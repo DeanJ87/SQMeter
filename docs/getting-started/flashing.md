@@ -10,11 +10,11 @@ Each release ships three binaries:
 
 | File | When to use |
 |------|-------------|
-| `sqmv2-complete-flash-vX.Y.Z.bin` | **Fresh ESP32** — everything in one file |
-| `sqmv2-firmware-vX.Y.Z.bin` | OTA update via web UI |
-| `sqmv2-littlefs-vX.Y.Z.bin` | Web UI update only |
+| `sqmeter-complete-flash-vX.Y.Z.bin` | **Fresh ESP32** — everything in one file |
+| `sqmeter-firmware-vX.Y.Z.bin` | OTA update via web UI |
+| `sqmeter-littlefs-vX.Y.Z.bin` | Web UI update only |
 
-For a brand-new device, you only need `sqmv2-complete-flash-*.bin`.
+For a brand-new device, you only need `sqmeter-complete-flash-*.bin`.
 
 ---
 
@@ -33,8 +33,8 @@ pip install esptool
 One command, one file. Flashes bootloader, partition table, firmware, and web UI filesystem all at once:
 
 ```bash
-esptool.py --chip esp32 --port PORT --baud 460800 \
-  write_flash 0x0 sqmv2-complete-flash-v0.0.1.bin
+esptool.py --chip esp32 --port PORT --baud 115200 \
+  write_flash 0x0 sqmeter-complete-flash-v0.0.1.bin
 ```
 
 Replace `PORT` with your serial port:
@@ -64,14 +64,14 @@ Prefer OTA updates from the web UI — no cable needed. But if you need USB:
 
 ### Firmware only
 ```bash
-esptool.py --chip esp32 --port PORT --baud 460800 \
-  write_flash 0x10000 sqmv2-firmware-v0.0.1.bin
+esptool.py --chip esp32 --port PORT --baud 115200 \
+  write_flash 0x10000 sqmeter-firmware-v0.0.1.bin
 ```
 
 ### Web UI filesystem only
 ```bash
-esptool.py --chip esp32 --port PORT --baud 460800 \
-  write_flash 0x310000 sqmv2-littlefs-v0.0.1.bin
+esptool.py --chip esp32 --port PORT --baud 115200 \
+  write_flash 0x310000 sqmeter-littlefs-v0.0.1.bin
 ```
 
 !!! note "NVS is safe"

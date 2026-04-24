@@ -1,6 +1,6 @@
 # Sky Quality Calculations
 
-SQMv2 converts raw lux from the TSL2591 into three astronomical metrics.
+SQMeter converts raw lux from the TSL2591 into three astronomical metrics.
 
 ---
 
@@ -49,7 +49,7 @@ Higher = more stars visible. A dark rural sky gives NELM ≈ 6.5. Suburban skies
 
 ## Cloud Detection (MLX90614)
 
-When an MLX90614 IR thermometer is present, SQMv2 estimates cloud cover by comparing sky IR temperature to ambient temperature. A large negative delta (sky much colder than ambient) indicates clear sky. A small delta indicates cloud cover blocking the sky's thermal emission.
+When an MLX90614 IR thermometer is present, SQMeter estimates cloud cover by comparing sky IR temperature to ambient temperature. A large negative delta (sky much colder than ambient) indicates clear sky. A small delta indicates cloud cover blocking the sky's thermal emission.
 
 This is a heuristic and works best in dry climates. Humidity and fog affect the reading.
 

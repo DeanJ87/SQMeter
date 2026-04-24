@@ -1,6 +1,6 @@
 # Hardware Setup
 
-SQMv2 runs on any standard ESP32 dev board. All sensors connect via I2C.
+SQMeter runs on any standard ESP32 dev board. All sensors connect via I2C.
 
 ---
 

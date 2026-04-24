@@ -1,13 +1,13 @@
 # WebSocket
 
-Connect to `/ws` for a real-time stream of sensor readings. The device pushes updates every second — no polling required.
+Connect to `/ws/sensors` for a real-time stream of sensor readings. The device pushes updates every second — no polling required.
 
 ---
 
 ## Connecting
 
 ```javascript
-const ws = new WebSocket('ws://sqm-esp32.local/ws');
+const ws = new WebSocket('ws://sqm-esp32.local/ws/sensors');
 
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
@@ -25,19 +25,11 @@ ws.onclose = () => {
 
 ```json
 {
-  "tsl2591": {
+  "lightSensor": {
     "lux": 0.0234,
     "visible": 123,
     "infrared": 45,
     "full": 168,
-    "timestamp": 12345,
-    "status": 0
-  },
-  "bme280": {
-    "temperature": 12.4,
-    "humidity": 72.1,
-    "pressure": 1013.25,
-    "timestamp": 12345,
     "status": 0
   },
   "skyQuality": {
@@ -45,11 +37,43 @@ ws.onclose = () => {
     "nelm": 6.2,
     "bortle": 2.0,
     "description": "Typical truly dark site"
+  },
+  "environment": {
+    "temperature": 12.4,
+    "humidity": 72.1,
+    "pressure": 1013.25,
+    "dewpoint": 7.8,
+    "status": 0
+  },
+  "irTemperature": {
+    "objectTemp": -15.2,
+    "ambientTemp": 12.4,
+    "status": 0
+  },
+  "cloudConditions": {
+    "temperatureDelta": -27.6,
+    "correctedDelta": -24.1,
+    "cloudCoverPercent": 5.0,
+    "condition": 0,
+    "description": "Clear",
+    "humidityUsed": 72.1
+  },
+  "gps": {
+    "hasFix": true,
+    "satellites": 8,
+    "latitude": 51.5074,
+    "longitude": -0.1278,
+    "altitude": 42.0,
+    "hdop": 1.2,
+    "age": 800
   }
 }
 ```
 
-### `status` field
+!!! note "GPS field"
+    `gps` is only included in the message when a GPS module is connected and initialised.
+
+### `status` values
 
 | Value | Meaning |
 |-------|---------|
@@ -68,12 +92,13 @@ import json
 import websockets
 
 async def stream():
-    async with websockets.connect("ws://sqm-esp32.local/ws") as ws:
+    async with websockets.connect("ws://sqm-esp32.local/ws/sensors") as ws:
         async for message in ws:
             data = json.loads(message)
             sqm = data["skyQuality"]["sqm"]
             bortle = data["skyQuality"]["bortle"]
-            print(f"SQM: {sqm:.2f}  Bortle: {bortle}")
+            cloud = data["cloudConditions"]["description"]
+            print(f"SQM: {sqm:.2f}  Bortle: {bortle}  Sky: {cloud}")
 
 asyncio.run(stream())
 ```
@@ -84,4 +109,4 @@ asyncio.run(stream())
 
 - The server broadcasts to all connected clients simultaneously
 - There is no authentication on the WebSocket endpoint
-- The connection is kept alive with the ESP32's async TCP stack — no manual ping/pong needed
+- Broadcasts happen every 1 second regardless of `sensor.readIntervalMs`

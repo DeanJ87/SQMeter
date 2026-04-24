@@ -1,4 +1,4 @@
-# SQM v2 - Build and Upload Guide
+# SQMeter - Build and Upload Guide
 
 ## Quick Start
 

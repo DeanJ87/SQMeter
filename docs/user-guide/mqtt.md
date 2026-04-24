@@ -1,6 +1,6 @@
 # MQTT Integration
 
-SQMv2 can publish sensor readings to any MQTT broker — Home Assistant, Grafana, or your own pipeline.
+SQMeter can publish sensor readings to any MQTT broker — Home Assistant, Grafana, or your own pipeline.
 
 ---
 
