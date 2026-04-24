@@ -66,6 +66,11 @@ jobs:
         run: npm run build
         working-directory: web
 
+      - name: Populate data directory for LittleFS
+        run: |
+          rm -rf data
+          cp -r web/dist data
+
       - name: Build firmware
         run: pio run
 
