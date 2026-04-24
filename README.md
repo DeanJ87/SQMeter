@@ -1,4 +1,4 @@
-# SQMeter
+# SQMeter (Sky Quality Meter)
 
 Modern ESP32-based dark sky monitoring system for measuring sky brightness, environmental conditions, and light pollution.
 
