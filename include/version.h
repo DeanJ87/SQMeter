@@ -1,7 +1,7 @@
 #pragma once
 
 // Firmware version information
-#define FIRMWARE_VERSION "2.0.0"
+#define FIRMWARE_VERSION "0.0.1"
 #define FIRMWARE_BUILD_DATE __DATE__
 #define FIRMWARE_BUILD_TIME __TIME__
 #define FIRMWARE_NAME "SQMv2"
