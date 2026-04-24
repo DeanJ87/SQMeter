@@ -4,6 +4,9 @@
 
 SQMeter is an open-source sky quality meter built on the ESP32. It measures light pollution in real time and gives you Bortle class, SQM magnitude, and naked-eye limiting magnitude — accessible from any browser on your local network.
 
+[Try the Live Demo :material-arrow-right:](https://DeanJ87.github.io/SQMeter/demo/){ .md-button .md-button--primary }
+[View on GitHub :fontawesome-brands-github:](https://github.com/DeanJ87/SQMeter){ .md-button }
+
 ---
 
 ## Features

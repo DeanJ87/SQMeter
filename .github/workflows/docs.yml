@@ -10,10 +10,12 @@ on:
       - '.github/workflows/docs.yml'
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -41,8 +43,6 @@ jobs:
         run: npm install
         working-directory: web
 
-      # Generate MSW service worker file and commit it to public/ if missing.
-      # The file is version-pinned to the installed msw package.
       - name: Init MSW service worker
         run: npx msw init public/ --save
         working-directory: web
@@ -58,7 +58,7 @@ jobs:
       - name: Take screenshots
         run: npm run screenshots
         working-directory: web
-        continue-on-error: true  # screenshots are best-effort; don't fail the deploy
+        continue-on-error: true
 
       - name: Build MkDocs site
         run: mkdocs build --strict
@@ -66,10 +66,22 @@ jobs:
       - name: Copy demo into docs site
         run: cp -r web/dist-demo site/demo
 
-      # Deploy everything — docs at /SQMeter/, demo at /SQMeter/demo/
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
-          force_orphan: true
+          path: ./site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
