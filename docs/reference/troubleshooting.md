@@ -72,4 +72,4 @@ Nuclear option — clears firmware, filesystem, and NVS (WiFi config, all settin
 esptool.py --chip esp32 --port PORT erase_flash
 ```
 
-Then re-flash from the release `sqmv2-complete-flash-*.bin`.
+Then re-flash from the release `sqmeter-complete-flash-*.bin`.

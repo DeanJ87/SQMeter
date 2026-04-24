@@ -126,7 +126,7 @@ void setup()
 
     // Initialize logging
     Logger::init();
-    Logger::info("Main", "=== SQM v2 Starting ===");
+    Logger::info("Main", "=== SQMeter Starting ===");
     Logger::info("Main", "ESP32 Chip: %s Rev %d", ESP.getChipModel(), ESP.getChipRevision());
     Logger::info("Main", "Flash: %d bytes", ESP.getFlashChipSize());
     Logger::info("Main", "Free heap: %d bytes", ESP.getFreeHeap());

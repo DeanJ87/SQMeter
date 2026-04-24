@@ -1,8 +1,8 @@
-# SQMv2
+# SQMeter
 
 **ESP32 Dark Sky Quality Monitor**
 
-SQMv2 is an open-source sky quality meter built on the ESP32. It measures light pollution in real time and gives you Bortle class, SQM magnitude, and naked-eye limiting magnitude — accessible from any browser on your local network.
+SQMeter is an open-source sky quality meter built on the ESP32. It measures light pollution in real time and gives you Bortle class, SQM magnitude, and naked-eye limiting magnitude — accessible from any browser on your local network.
 
 ---
 

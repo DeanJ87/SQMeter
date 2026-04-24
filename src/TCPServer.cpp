@@ -167,7 +167,7 @@ namespace SQM
 
     String TCPServer::handleFirmwareName()
     {
-        return String("SQMv2");
+        return String("SQMeter");
     }
 
     String TCPServer::handleHumidity()

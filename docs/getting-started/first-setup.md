@@ -1,68 +1,87 @@
 # First Boot
 
-After flashing, SQMv2 has no WiFi credentials. It will start a captive portal so you can configure it from any phone or laptop.
+SQMeter ships with no WiFi credentials. On first power-on it starts in **hotspot mode** — it broadcasts its own open WiFi network so you can configure it from any phone or laptop.
 
 ---
 
-## Step 1 — Connect to the Setup AP
+## Step 1 — Power On
 
-Power on the ESP32. Within a few seconds it will broadcast a WiFi network:
+Connect the ESP32 to USB or a 5V supply. Within a few seconds it broadcasts:
 
 ```
-SSID: SQM-Setup
+SSID:     SQM-Setup
+Password: (none — open network)
 ```
-
-Connect to it with any device. No password required.
 
 ---
 
-## Step 2 — Open the Captive Portal
+## Step 2 — Connect to the Hotspot
 
-Navigate to:
+Connect your phone or laptop to **SQM-Setup**. No password required.
 
-```
-http://192.168.4.1
-```
+=== "iOS / Android"
+    A **"Sign in to network"** notification will appear automatically. Tap it to open the captive portal in your browser.
 
-Most phones will show a "Sign in to network" prompt automatically and take you there.
+=== "macOS"
+    A sign-in sheet pops up automatically in Safari after joining the network.
+
+=== "Windows"
+    Click the network notification or open a browser — Windows will redirect you to the portal.
+
+=== "Linux"
+    Open a browser and navigate to `http://192.168.4.1` manually.
 
 ---
 
 ## Step 3 — Configure WiFi
 
-1. The portal will scan for nearby networks
-2. Select your network and enter the password
-3. Hit **Connect**
-4. The device will restart and join your network
+The captive portal shows a list of nearby networks:
+
+1. Select your home/lab network
+2. Enter the password
+3. Tap **Connect**
+
+The device restarts and joins your network. The hotspot disappears.
 
 !!! note "2.4 GHz only"
-    ESP32 does not support 5 GHz networks. Make sure you're selecting a 2.4 GHz SSID.
+    ESP32 does not support 5 GHz. If your router broadcasts both bands under the same SSID, the device will pick the 2.4 GHz band automatically.
 
 ---
 
 ## Step 4 — Find the Device
 
-After connecting, the device logs its IP to serial. If you don't have a serial monitor open, check your router's DHCP client list for a host named `sqm-esp32` (or whatever hostname you configured).
-
-The web interface is at:
+After connecting, SQMeter is reachable at:
 
 ```
-http://sqm-esp32.local   # mDNS — works on most networks
-http://<device-ip>       # Direct IP — always works
+http://sqmeter.local      # mDNS — works on most networks
+http://<device-ip>        # Direct IP — always works
 ```
+
+The IP address is logged over serial (115200 baud) if you have a monitor connected. You can also check your router's DHCP client list for a host named `sqmeter`.
+
+---
+
+## Step 5 — Access the Dashboard
+
+Open the web UI. You should see live sensor readings on the Dashboard within a few seconds of the sensors initialising.
 
 ---
 
 ## WiFi Config is Persistent
 
-Credentials are stored in the NVS partition, separate from the firmware and filesystem. You can:
+Credentials live in the NVS partition — completely separate from firmware and filesystem storage:
 
-- Flash new firmware → WiFi stays configured
-- Update the web UI filesystem → WiFi stays configured
-- Power cycle the device → WiFi stays configured
+| Action | WiFi config |
+|--------|------------|
+| Flash new firmware | ✅ Preserved |
+| Update web UI filesystem | ✅ Preserved |
+| Power cycle | ✅ Preserved |
+| Full chip erase | ❌ Cleared |
 
-The only way to clear it is a full chip erase:
+To force the hotspot again (reset WiFi config):
 
 ```bash
 esptool.py --chip esp32 --port PORT erase_flash
 ```
+
+Then re-flash from the release binaries.

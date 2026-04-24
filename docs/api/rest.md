@@ -36,19 +36,11 @@ curl http://sqm-esp32.local/api/sensors
 
 ```json
 {
-  "tsl2591": {
+  "lightSensor": {
     "lux": 0.0234,
     "visible": 123,
     "infrared": 45,
     "full": 168,
-    "timestamp": 12345,
-    "status": 0
-  },
-  "bme280": {
-    "temperature": 12.4,
-    "humidity": 72.1,
-    "pressure": 1013.25,
-    "timestamp": 12345,
     "status": 0
   },
   "skyQuality": {
@@ -56,9 +48,50 @@ curl http://sqm-esp32.local/api/sensors
     "nelm": 6.2,
     "bortle": 2.0,
     "description": "Typical truly dark site"
+  },
+  "environment": {
+    "temperature": 12.4,
+    "humidity": 72.1,
+    "pressure": 1013.25,
+    "dewpoint": 7.8,
+    "status": 0
+  },
+  "irTemperature": {
+    "objectTemp": -15.2,
+    "ambientTemp": 12.4,
+    "status": 0
+  },
+  "cloudConditions": {
+    "temperatureDelta": -27.6,
+    "correctedDelta": -24.1,
+    "cloudCoverPercent": 5.0,
+    "condition": 0,
+    "description": "Clear",
+    "humidityUsed": 72.1
+  },
+  "gps": {
+    "hasFix": true,
+    "satellites": 8,
+    "latitude": 51.5074,
+    "longitude": -0.1278,
+    "altitude": 42.0,
+    "hdop": 1.2,
+    "age": 800
   }
 }
 ```
+
+!!! note "GPS field"
+    The `gps` object is only present if a GPS module is connected and initialised. All other objects are always present.
+
+### `status` values
+
+| Value | Meaning |
+|-------|---------|
+| `0` | OK |
+| `1` | Sensor not found |
+| `2` | Read error |
+| `3` | Stale data |
 
 ---
 
@@ -129,7 +162,7 @@ OTA firmware update. Send a raw `.bin` file as `multipart/form-data`.
 
 ```bash
 curl -X POST http://sqm-esp32.local/api/update \
-  -F "firmware=@sqmv2-firmware-v0.0.1.bin"
+  -F "firmware=@sqmeter-firmware-v0.0.1.bin"
 ```
 
 The device reboots automatically on success.

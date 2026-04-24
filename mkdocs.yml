@@ -1,4 +1,4 @@
-site_name: SQMv2
+site_name: SQMeter
 site_description: ESP32 Dark Sky Quality Monitor
 site_url: https://DeanJ87.github.io/SQMeter/
 repo_url: https://github.com/DeanJ87/SQMeter
@@ -70,6 +70,7 @@ nav:
   - Development:
     - Dev Workflow: development/workflow.md
     - Adding Sensors: development/sensors.md
+    - Contributing: development/contributing.md
   - Reference:
     - Sky Quality Calculations: reference/sky-quality.md
     - Troubleshooting: reference/troubleshooting.md

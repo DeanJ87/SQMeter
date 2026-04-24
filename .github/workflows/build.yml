@@ -129,16 +129,16 @@ jobs:
       - name: Rename binaries with version tag
         run: |
           VERSION="${GITHUB_REF#refs/tags/}"
-          mv firmware/firmware.bin             sqmv2-firmware-${VERSION}.bin
-          mv littlefs/littlefs.bin             sqmv2-littlefs-${VERSION}.bin
-          mv complete-flash/complete-flash.bin sqmv2-complete-flash-${VERSION}.bin
+          mv firmware/firmware.bin             sqmeter-firmware-${VERSION}.bin
+          mv littlefs/littlefs.bin             sqmeter-littlefs-${VERSION}.bin
+          mv complete-flash/complete-flash.bin sqmeter-complete-flash-${VERSION}.bin
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: SQMv2 ${{ github.ref_name }}
+          name: SQMeter ${{ github.ref_name }}
           generate_release_notes: true
           files: |
-            sqmv2-firmware-*.bin
-            sqmv2-littlefs-*.bin
-            sqmv2-complete-flash-*.bin
+            sqmeter-firmware-*.bin
+            sqmeter-littlefs-*.bin
+            sqmeter-complete-flash-*.bin
