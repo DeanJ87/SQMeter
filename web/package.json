@@ -1,12 +1,15 @@
 {
-  "name": "sqm-web-ui",
-  "version": "2.0.0",
-  "description": "Dark Sky Monitoring System Web Interface",
+  "name": "sqmeter-web-ui",
+  "version": "0.0.1",
+  "description": "SQMeter Web Interface",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:demo": "tsc && vite build --config vite.demo.config.ts",
     "preview": "vite preview",
+    "preview:demo": "vite preview --config vite.demo.config.ts",
+    "screenshots": "playwright test tests/screenshots.spec.ts",
     "lint": "eslint src --ext ts,tsx"
   },
   "dependencies": {
@@ -15,13 +18,18 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.44.0",
     "@preact/preset-vite": "^2.7.0",
     "@types/node": "^20.10.6",
     "autoprefixer": "^10.4.16",
+    "msw": "^2.3.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
     "terser": "^5.46.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.10"
+  },
+  "msw": {
+    "workerDirectory": ["public"]
   }
 }

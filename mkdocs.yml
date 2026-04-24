@@ -5,6 +5,15 @@ repo_url: https://github.com/DeanJ87/SQMeter
 repo_name: DeanJ87/SQMeter
 edit_uri: edit/main/docs/
 
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/DeanJ87/SQMeter
+      name: GitHub
+    - icon: material/monitor-eye
+      link: https://DeanJ87.github.io/SQMeter/demo/
+      name: Live Demo
+
 theme:
   name: material
   palette:
