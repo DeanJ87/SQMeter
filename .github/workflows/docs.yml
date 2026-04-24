@@ -3,6 +3,11 @@ name: Deploy Docs & Demo
 on:
   push:
     branches: [ main, master ]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'web/**'
+      - '.github/workflows/docs.yml'
 
 permissions:
   contents: write
