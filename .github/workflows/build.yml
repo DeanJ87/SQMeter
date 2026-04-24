@@ -1,11 +1,10 @@
 name: Build Firmware & LittleFS
 
 on:
-  push:
-    branches: [ master, main ]
-    tags: [ 'v*' ]
   pull_request:
     branches: [ master, main ]
+  push:
+    tags: [ 'v*' ]
 
 jobs:
   build:
