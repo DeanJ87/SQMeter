@@ -1,10 +1,10 @@
 #pragma once
 
 // Firmware version information
-#define FIRMWARE_VERSION "0.0.1"
+#define FIRMWARE_VERSION "0.0.2"
 #define FIRMWARE_BUILD_DATE __DATE__
 #define FIRMWARE_BUILD_TIME __TIME__
-#define FIRMWARE_NAME "SQMv2"
+#define FIRMWARE_NAME "SQMeter"
 
 // Helper to get full version string
 inline const char *getFirmwareVersion()
