@@ -1,0 +1,139 @@
+name: Build Firmware & LittleFS
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Cache PlatformIO build
+        uses: actions/cache@v4
+        with:
+          path: .pio/build
+          key: ${{ runner.os }}-pio-build-${{ hashFiles('platformio.ini', 'src/**', 'include/**', 'partitions.csv') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-build-
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: web/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('web/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install PlatformIO and esptool
+        run: pip install platformio esptool
+
+      # Stamp version.h with the git tag so the firmware reports its release version
+      - name: Inject release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          sed -i "s/#define FIRMWARE_VERSION \".*\"/#define FIRMWARE_VERSION \"${VERSION}\"/" include/version.h
+
+      - name: Install web dependencies
+        run: npm install
+        working-directory: web
+
+      - name: Build web UI
+        run: npm run build
+        working-directory: web
+
+      - name: Build firmware
+        run: pio run
+
+      - name: Build LittleFS image
+        run: pio run --target buildfs
+
+      # Merge all pieces into a single binary for fresh ESP32 flashing.
+      # NVS (0x9000) is intentionally excluded — it is user config and should
+      # start empty so the device can be configured via the web UI on first boot.
+      - name: Create complete flash image
+        run: |
+          BOOT_APP0=$(find ~/.platformio -name "boot_app0.bin" | head -1)
+          esptool.py --chip esp32 merge_bin \
+            -o .pio/build/esp32dev/complete-flash.bin \
+            --flash_mode dio \
+            --flash_freq 40m \
+            --flash_size 4MB \
+            0x1000  .pio/build/esp32dev/bootloader.bin \
+            0x8000  .pio/build/esp32dev/partitions.bin \
+            0xe000  "${BOOT_APP0}" \
+            0x10000 .pio/build/esp32dev/firmware.bin \
+            0x310000 .pio/build/esp32dev/littlefs.bin
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: .pio/build/esp32dev/firmware.bin
+          if-no-files-found: error
+
+      - name: Upload LittleFS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: littlefs
+          path: .pio/build/esp32dev/littlefs.bin
+          if-no-files-found: error
+
+      - name: Upload complete flash artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: complete-flash
+          path: .pio/build/esp32dev/complete-flash.bin
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Rename binaries with version tag
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          mv firmware/firmware.bin             sqmv2-firmware-${VERSION}.bin
+          mv littlefs/littlefs.bin             sqmv2-littlefs-${VERSION}.bin
+          mv complete-flash/complete-flash.bin sqmv2-complete-flash-${VERSION}.bin
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: SQMv2 ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            sqmv2-firmware-*.bin
+            sqmv2-littlefs-*.bin
+            sqmv2-complete-flash-*.bin
