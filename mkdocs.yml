@@ -1,0 +1,75 @@
+site_name: SQMv2
+site_description: ESP32 Dark Sky Quality Monitor
+site_url: https://DeanJ87.github.io/SQMeter/
+repo_url: https://github.com/DeanJ87/SQMeter
+repo_name: DeanJ87/SQMeter
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+  favicon: assets/favicon.png
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Flashing Your Device: getting-started/flashing.md
+    - Hardware Setup: getting-started/hardware.md
+    - First Boot: getting-started/first-setup.md
+  - User Guide:
+    - Configuration: user-guide/configuration.md
+    - MQTT Integration: user-guide/mqtt.md
+    - OTA Updates: user-guide/ota.md
+  - API Reference:
+    - REST API: api/rest.md
+    - WebSocket: api/websocket.md
+  - Development:
+    - Dev Workflow: development/workflow.md
+    - Adding Sensors: development/sensors.md
+  - Reference:
+    - Sky Quality Calculations: reference/sky-quality.md
+    - Troubleshooting: reference/troubleshooting.md
