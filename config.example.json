@@ -1,0 +1,27 @@
+{
+  "deviceName": "SQM-ESP32",
+  "timezone": "UTC",
+  "wifi": {
+    "ssid": "YourWiFiSSID",
+    "password": "YourWiFiPassword",
+    "hostname": "sqm-esp32",
+    "autoReconnect": true,
+    "reconnectDelayMs": 1000,
+    "maxReconnectDelayMs": 300000
+  },
+  "mqtt": {
+    "enabled": false,
+    "broker": "mqtt.example.com",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "topic": "sqm/data",
+    "publishIntervalMs": 60000
+  },
+  "sensor": {
+    "readIntervalMs": 5000,
+    "i2cSDA": 21,
+    "i2cSCL": 22,
+    "i2cFrequency": 100000
+  }
+}

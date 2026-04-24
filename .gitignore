@@ -1,0 +1,38 @@
+# PlatformIO
+.pio/
+.vscode/
+.clang_complete
+.gcc-flags.json
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.py[cod]
+
+# Build outputs
+data/
+*.bin
+*.elf
+*.hex
+*.map
+
+# Web UI
+web/node_modules/
+web/dist/
+web/.vite/
+web/package-lock.json
+
+# Configuration (may contain secrets)
+data/config.json
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+*.swp
+*.swo
+*~
