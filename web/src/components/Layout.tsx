@@ -14,7 +14,13 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => 
   ];
 
   const navigate = (path: string) => {
-    route(path);
+    // Demo uses hash routing so GitHub Pages hard-refresh never 404s.
+    // Real device uses preact-router's history-based route().
+    if (import.meta.env.VITE_DEMO_MODE === 'true') {
+      window.location.hash = path;
+    } else {
+      route(path);
+    }
   };
 
   return (
