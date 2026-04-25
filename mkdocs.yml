@@ -65,6 +65,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Live Demo: demo.md
   - Getting Started:
     - Flashing Your Device: getting-started/flashing.md
     - Hardware Setup: getting-started/hardware.md
@@ -73,6 +74,13 @@ nav:
     - Configuration: user-guide/configuration.md
     - MQTT Integration: user-guide/mqtt.md
     - OTA Updates: user-guide/ota.md
+  - Hardware:
+    - Overview: hardware/overview.md
+    - Schematic: hardware/schematic.md
+    - PCB: hardware/pcb.md
+    - Enclosure: hardware/enclosure.md
+    - Bill of Materials: hardware/bom.md
+    - Assembly: hardware/assembly.md
   - API Reference:
     - REST API: api/rest.md
     - WebSocket: api/websocket.md
