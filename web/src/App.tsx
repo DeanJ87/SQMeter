@@ -1,5 +1,5 @@
 import { FunctionalComponent } from 'preact';
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import Router from 'preact-router';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -7,17 +7,41 @@ import Settings from './components/Settings';
 import System from './components/System';
 import Updates from './components/Updates';
 
-// Strip the Vite base URL prefix from pathname so preact-router receives
-// bare paths like "/" rather than "/SQMeter/demo/" when deployed to a subpath.
-const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
-const getPath = () => window.location.pathname.slice(base.length) || '/';
+// Demo is hosted on GitHub Pages which has no server-side routing support.
+// Hash routing means the hash fragment is never sent to the server, so hard
+// refreshing /SQMeter/demo/#/settings always loads /SQMeter/demo/ (which
+// exists), then the client reads the hash and renders the correct page.
+//
+// Production (real ESP32) serves the app at the device root so plain path
+// routing works fine there — no base-path stripping needed.
+const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
+
+const getUrl = (): string => {
+  if (isDemo) {
+    return window.location.hash.replace(/^#/, '') || '/';
+  }
+  return window.location.pathname || '/';
+};
 
 const App: FunctionalComponent = () => {
-  const [url, setUrl] = useState(getPath);
+  const [url, setUrl] = useState(getUrl);
+
+  useEffect(() => {
+    if (!isDemo) return;
+    const onHashChange = () => {
+      const next = getUrl();
+      setUrl((prev) => (prev === next ? prev : next));
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   const handleRoute = ({ url: next }: { url: string }) => {
-    setUrl(next);
-    history.replaceState(null, '', base + next.replace(/^\//, '/'));
+    setUrl((prev) => {
+      if (prev === next) return prev;
+      if (!isDemo) history.replaceState(null, '', next);
+      return next;
+    });
   };
 
   return (
