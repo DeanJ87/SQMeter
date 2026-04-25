@@ -3,8 +3,24 @@ name: Build Firmware & LittleFS
 on:
   pull_request:
     branches: [ master, main ]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'lib/**'
+      - 'web/src/**'
+      - 'web/package.json'
+      - 'web/vite.config.ts'
+      - 'platformio.ini'
+      - 'partitions.csv'
+      - '.github/workflows/build.yml'
   push:
     tags: [ 'v*' ]
+
+# Cancel in-progress PR builds when new commits are pushed.
+# Tag builds are never cancelled — releases must complete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -93,12 +109,14 @@ jobs:
             0x10000 .pio/build/esp32dev/firmware.bin \
             0x310000 .pio/build/esp32dev/littlefs.bin
 
+      # PR builds: keep 5 days (inspection only). Tag builds go into GitHub Releases permanently.
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: firmware
           path: .pio/build/esp32dev/firmware.bin
           if-no-files-found: error
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
       - name: Upload LittleFS artifact
         uses: actions/upload-artifact@v4
@@ -106,6 +124,7 @@ jobs:
           name: littlefs
           path: .pio/build/esp32dev/littlefs.bin
           if-no-files-found: error
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
       - name: Upload complete flash artifact
         uses: actions/upload-artifact@v4
@@ -113,6 +132,7 @@ jobs:
           name: complete-flash
           path: .pio/build/esp32dev/complete-flash.bin
           if-no-files-found: error
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
   release:
     needs: build
