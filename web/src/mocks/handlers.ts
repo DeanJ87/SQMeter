@@ -6,8 +6,9 @@ import {
   mockWifiNetworks,
 } from "./data";
 
-// WebSocket handler — matches any host so it works on both localhost and Pages
+// WebSocket handlers — wildcard host works on both localhost and GitHub Pages
 const sensorSocket = ws.link("*/ws/sensors");
+const statusSocket = ws.link("*/ws/status");
 
 export const handlers = [
   // REST — sensors snapshot
@@ -25,16 +26,25 @@ export const handlers = [
   // REST — config
   http.get("/api/config", () => HttpResponse.json(mockConfig)),
   http.post("/api/config", () => HttpResponse.json({ ok: true })),
+  http.put("/api/config", () => HttpResponse.json({ ok: true })),
 
-  // REST — wifi
-  http.get("/api/wifi/scan", () => HttpResponse.json(mockWifiNetworks)),
+  // REST — wifi (returns { networks: [...] } to match firmware API shape)
+  http.get("/api/wifi/scan", () =>
+    HttpResponse.json({ networks: mockWifiNetworks })
+  ),
   http.post("/api/wifi/connect", () => HttpResponse.json({ ok: true })),
+
+  // REST — MQTT test
+  http.post("/api/mqtt/test", () =>
+    HttpResponse.json({ success: true, message: "Connection successful (demo)" })
+  ),
 
   // REST — control
   http.post("/api/restart", () => HttpResponse.json({ ok: true })),
-  http.post("/api/update", () => HttpResponse.json({ ok: true })),
+  http.post("/api/update", () => HttpResponse.json({ success: true })),
+  http.post("/api/update/fs", () => HttpResponse.json({ success: true })),
 
-  // WebSocket — push sensor data every second, simulating live readings
+  // WebSocket — push sensor data every second
   sensorSocket.addEventListener("connection", ({ client }) => {
     client.send(JSON.stringify(generateSensorData()));
 
@@ -42,6 +52,22 @@ export const handlers = [
       client.send(JSON.stringify(generateSensorData()));
     }, 1000);
 
+    client.addEventListener("close", () => clearInterval(interval));
+  }),
+
+  // WebSocket — push system status every 5 seconds
+  statusSocket.addEventListener("connection", ({ client }) => {
+    const send = () =>
+      client.send(
+        JSON.stringify({
+          ...mockStatus,
+          uptime: mockStatus.uptime + Math.floor(Date.now() / 1000),
+          time: { iso: new Date().toISOString(), timezone: "GMT0" },
+        })
+      );
+
+    send();
+    const interval = setInterval(send, 5000);
     client.addEventListener("close", () => clearInterval(interval));
   }),
 ];
