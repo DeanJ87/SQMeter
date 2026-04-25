@@ -9,6 +9,11 @@ on:
       - 'web/**'
       - '.github/workflows/docs.yml'
 
+# Cancel an in-progress docs deploy when a newer push lands on main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pages: write
