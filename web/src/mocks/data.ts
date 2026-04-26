@@ -51,10 +51,13 @@ export function generateSensorData(): SensorData {
       age: Math.round(jitter(800, 100)),
     },
     rainSensor: {
-      rainRate: parseFloat(jitter(2.4, 0.3).toFixed(1)),
-      accumulated: parseFloat(jitter(12.6, 0.1).toFixed(1)),
-      eventCount: Math.round(jitter(84, 2)),
-      status: 1,
+      isRaining: true,
+      acc: parseFloat(jitter(0.2, 0.1).toFixed(2)),
+      eventAcc: parseFloat(jitter(2.4, 0.2).toFixed(2)),
+      totalAcc: parseFloat(jitter(12.6, 0.1).toFixed(1)),
+      rInt: parseFloat(jitter(2.4, 0.3).toFixed(1)),
+      lensBad: false,
+      emSat: false,
     },
   };
 }
@@ -183,6 +186,9 @@ export const mockConfig: Config = {
     rxPin: 18,
     txPin: 19,
     baudRate: 9600,
+    mode: 'continuous',
+    resolution: 'switch',
+    units: 'metric',
   },
 };
 

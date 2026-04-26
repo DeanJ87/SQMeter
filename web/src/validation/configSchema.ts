@@ -108,6 +108,9 @@ export const rainSensorConfigSchema = z
       .refine((val) => [2400, 4800, 9600, 19200].includes(val), {
         message: "Baud rate must be one of: 2400, 4800, 9600, 19200",
       }),
+    mode: z.enum(['polling', 'continuous']),
+    resolution: z.enum(['high', 'low', 'switch']),
+    units: z.enum(['metric', 'imperial', 'switch']),
   })
   .refine((data) => !data.enabled || data.rxPin !== data.txPin, {
     message: "RX and TX pins must be different",
