@@ -173,29 +173,40 @@ const Dashboard: FunctionalComponent = () => {
               Rain Sensor
             </h3>
             <span class={`px-3 py-1 rounded-full text-sm font-semibold ${
-              sensors.rainSensor.status === 0 ? 'bg-green-900 text-green-200' :
-              sensors.rainSensor.status === 1 ? 'bg-blue-900 text-blue-200' :
-              'bg-red-900 text-red-200'
+              sensors.rainSensor.isRaining ? 'bg-blue-900 text-blue-200' : 'bg-green-900 text-green-200'
             }`}>
-              {sensors.rainSensor.status === 0 ? 'Dry' :
-               sensors.rainSensor.status === 1 ? 'Wet' : 'Error'}
+              {sensors.rainSensor.isRaining ? 'Raining' : 'Dry'}
             </span>
           </div>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
-              <span class="text-gray-400">Rain Rate</span>
+              <span class="text-gray-400">Intensity (RInt)</span>
               <span class="text-xl font-bold text-white">
-                {sensors.rainSensor.rainRate.toFixed(1)} mm/hr
+                {sensors.rainSensor.rInt.toFixed(1)} mm/hr
               </span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-400">Accumulated</span>
-              <span class="text-white">{sensors.rainSensor.accumulated.toFixed(1)} mm</span>
+              <span class="text-gray-400">Since last read (Acc)</span>
+              <span class="text-white">{sensors.rainSensor.acc.toFixed(2)} mm</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-400">Event Count</span>
-              <span class="text-white">{sensors.rainSensor.eventCount}</span>
+              <span class="text-gray-400">Event total (EventAcc)</span>
+              <span class="text-white">{sensors.rainSensor.eventAcc.toFixed(2)} mm</span>
             </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">All-time total (TotalAcc)</span>
+              <span class="text-white">{sensors.rainSensor.totalAcc.toFixed(1)} mm</span>
+            </div>
+            {(sensors.rainSensor.lensBad || sensors.rainSensor.emSat) && (
+              <div class="pt-2 border-t border-gray-700 space-y-1">
+                {sensors.rainSensor.lensBad && (
+                  <span class="block text-xs text-yellow-400">⚠ LensBad — lens may be dirty or obstructed</span>
+                )}
+                {sensors.rainSensor.emSat && (
+                  <span class="block text-xs text-yellow-400">⚠ EmSat — emitter saturation detected</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
