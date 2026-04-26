@@ -1,11 +1,12 @@
 import { FunctionalComponent } from 'preact';
-import { route } from 'preact-router';
+import { route, useRouter } from 'preact-router';
 
 interface LayoutProps {
-  currentPath?: string;
+  path?: string;
 }
 
-const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => {
+const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
+  const [router] = useRouter();
   const navItems = [
     { path: '/', label: 'Dashboard', icon: '📊' },
     { path: '/system', label: 'System', icon: '💻' },
@@ -13,19 +14,8 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => 
     { path: '/updates', label: 'Updates', icon: '📦' },
   ];
 
-  const navigate = (path: string) => {
-    // Demo uses hash routing so GitHub Pages hard-refresh never 404s.
-    // Real device uses preact-router's history-based route().
-    if (import.meta.env.VITE_DEMO_MODE === 'true') {
-      window.location.hash = path;
-    } else {
-      route(path);
-    }
-  };
-
   return (
     <div class="min-h-screen bg-gray-900">
-      {/* Header */}
       <header class="bg-gray-800 border-b border-gray-700 shadow-lg">
         <div class="container mx-auto px-4 py-4">
           <div class="flex items-center justify-between">
@@ -40,16 +30,15 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => 
         </div>
       </header>
 
-      {/* Navigation */}
       <nav class="bg-gray-800 border-b border-gray-700">
         <div class="container mx-auto px-4">
           <div class="flex space-x-1">
             {navItems.map((item) => (
               <button
                 key={item.path}
-                onClick={() => navigate(item.path)}
+                onClick={() => route(item.path)}
                 class={`px-4 py-3 text-sm font-medium transition-colors ${
-                  currentPath === item.path
+                  router.url === item.path
                     ? 'text-white bg-gray-700 border-b-2 border-blue-500'
                     : 'text-gray-400 hover:text-white hover:bg-gray-750'
                 }`}
@@ -62,12 +51,10 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => 
         </div>
       </nav>
 
-      {/* Main Content */}
       <main class="container mx-auto px-4 py-6">
         {children}
       </main>
 
-      {/* Footer */}
       <footer class="bg-gray-800 border-t border-gray-700 mt-12">
         <div class="container mx-auto px-4 py-4 text-center text-sm text-gray-400">
           <p>ESP32 Dark Sky Monitoring System • Built with Preact + TypeScript</p>
