@@ -76,6 +76,7 @@ nav:
     - OTA Updates: user-guide/ota.md
   - Hardware:
     - Overview: hardware/overview.md
+    - RG-15 Rain Sensor: hardware/rg15.md
     - Schematic: hardware/schematic.md
     - PCB: hardware/pcb.md
     - Enclosure: hardware/enclosure.md
