@@ -6,13 +6,14 @@ SQMeter is built around an ESP32 development board and a small set of I2C sensor
 
 ## Components
 
-| Component | Role | Interface |
-|-----------|------|-----------|
-| ESP32 dev board | Main MCU, WiFi, web server | — |
-| TSL2591 | Sky brightness (lux / SQM) | I2C `0x29` |
-| BME280 | Temperature, humidity, pressure | I2C `0x76` |
-| MLX90614 | IR cloud temperature | I2C `0x5A` |
-| GPS module (optional) | Location and precise time | UART |
+| Component | Role | Interface | Notes |
+|-----------|------|-----------|-------|
+| ESP32 dev board | Main MCU, WiFi, web server | — | — |
+| TSL2591 | Sky brightness (lux / SQM) | I2C `0x29` | — |
+| BME280 | Temperature, humidity, pressure | I2C `0x76` | — |
+| MLX90614 | IR cloud temperature | I2C `0x5A` | — |
+| GPS module (optional) | Location and precise time | UART | Optional |
+| RG-15 (optional) | Rain detection | UART | Optional — active development |
 
 The ESP32 is the only component with WiFi. Everything else talks to it over I2C. The GPS module is optional — NTP can be used for time sync without it.
 
