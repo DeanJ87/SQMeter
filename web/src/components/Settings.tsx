@@ -875,6 +875,47 @@ const Settings: FunctionalComponent = () => {
                   <option value="19200">19200</option>
                 </select>
               </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                  Mode
+                </label>
+                <select
+                  value={config.rain.mode ?? 'continuous'}
+                  onChange={(e) => updateConfig(['rain', 'mode'], (e.target as HTMLSelectElement).value)}
+                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="polling">Polling</option>
+                  <option value="continuous">Continuous</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                  Resolution
+                </label>
+                <select
+                  value={config.rain.resolution ?? 'switch'}
+                  onChange={(e) => updateConfig(['rain', 'resolution'], (e.target as HTMLSelectElement).value)}
+                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="high">High (0.01 mm)</option>
+                  <option value="low">Low (0.2 mm)</option>
+                  <option value="switch">Switch (by jumper)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                  Units
+                </label>
+                <select
+                  value={config.rain.units ?? 'metric'}
+                  onChange={(e) => updateConfig(['rain', 'units'], (e.target as HTMLSelectElement).value)}
+                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="metric">Metric (mm)</option>
+                  <option value="imperial">Imperial (inches)</option>
+                  <option value="switch">Switch (by jumper)</option>
+                </select>
+              </div>
             </div>
           )}
         </div>

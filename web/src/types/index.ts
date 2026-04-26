@@ -216,10 +216,13 @@ export interface Config {
 }
 
 export interface RainSensorReading {
-  rainRate: number;      // mm/hr instantaneous
-  accumulated: number;   // mm since last reset
-  eventCount: number;    // discrete rain pulse / event count
-  status: number;        // 0 = dry, 1 = wet, -1 = error
+  isRaining: boolean;
+  acc: number;
+  eventAcc: number;
+  totalAcc: number;
+  rInt: number;
+  lensBad: boolean;
+  emSat: boolean;
 }
 
 export interface RainSensorConfig {
@@ -227,6 +230,9 @@ export interface RainSensorConfig {
   rxPin: number;
   txPin: number;
   baudRate: number;
+  mode: 'polling' | 'continuous';
+  resolution: 'high' | 'low' | 'switch';
+  units: 'metric' | 'imperial' | 'switch';
 }
 
 export interface WiFiNetwork {
