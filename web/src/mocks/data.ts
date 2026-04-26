@@ -50,6 +50,12 @@ export function generateSensorData(): SensorData {
       hdop: 1.1,
       age: Math.round(jitter(800, 100)),
     },
+    rainSensor: {
+      rainRate: parseFloat(jitter(2.4, 0.3).toFixed(1)),
+      accumulated: parseFloat(jitter(12.6, 0.1).toFixed(1)),
+      eventCount: Math.round(jitter(84, 2)),
+      status: 1,
+    },
   };
 }
 
@@ -125,6 +131,7 @@ export const mockStatus: SystemStatus = {
     bme280: { initialized: true, status: 0, lastUpdate: Date.now() - 5000 },
     mlx90614: { initialized: true, status: 0, lastUpdate: Date.now() - 5000 },
     gps: { initialized: true, status: 0, lastUpdate: Date.now() - 1000 },
+    rg15: { initialized: true, status: 0, lastUpdate: Date.now() - 5000 },
   },
 };
 
@@ -170,6 +177,12 @@ export const mockConfig: Config = {
     i2cSDA: 21,
     i2cSCL: 22,
     i2cFrequency: 100000,
+  },
+  rain: {
+    enabled: true,
+    rxPin: 18,
+    txPin: 19,
+    baudRate: 9600,
   },
 };
 
