@@ -87,6 +87,33 @@ export const sensorConfigSchema = z
     path: ["i2cSDA"],
   });
 
+export const rainSensorConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    rxPin: z
+      .number()
+      .int()
+      .refine((val) => validGPIOs.includes(val), {
+        message: `RX pin must be a valid GPIO: ${validGPIOs.join(", ")}`,
+      }),
+    txPin: z
+      .number()
+      .int()
+      .refine((val) => validGPIOs.includes(val), {
+        message: `TX pin must be a valid GPIO: ${validGPIOs.join(", ")}`,
+      }),
+    baudRate: z
+      .number()
+      .int()
+      .refine((val) => [2400, 4800, 9600, 19200].includes(val), {
+        message: "Baud rate must be one of: 2400, 4800, 9600, 19200",
+      }),
+  })
+  .refine((data) => !data.enabled || data.rxPin !== data.txPin, {
+    message: "RX and TX pins must be different",
+    path: ["rxPin"],
+  });
+
 export const configSchema = z.object({
   deviceName: z.string().min(1, "Device name is required"),
   wifi: wifiConfigSchema,
@@ -94,6 +121,7 @@ export const configSchema = z.object({
   ntp: ntpConfigSchema,
   sensor: sensorConfigSchema,
   timezone: z.string(),
+  rain: rainSensorConfigSchema.optional(),
 });
 
 export type ConfigSchema = z.infer<typeof configSchema>;

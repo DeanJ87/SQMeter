@@ -51,6 +51,7 @@ export interface SensorData {
     hdop: number;
     age: number;
   };
+  rainSensor?: RainSensorReading;
 }
 
 export interface SystemStatus {
@@ -141,6 +142,11 @@ export interface SystemStatus {
       status: number;
       lastUpdate: number;
     };
+    rg15?: {
+      initialized: boolean;
+      status: number;
+      lastUpdate: number;
+    };
   };
   gpsData?: {
     hasFix: boolean;
@@ -206,6 +212,21 @@ export interface Config {
   ntp: NTPConfig;
   gps: GPSConfig;
   sensor: SensorConfig;
+  rain?: RainSensorConfig;
+}
+
+export interface RainSensorReading {
+  rainRate: number;      // mm/hr instantaneous
+  accumulated: number;   // mm since last reset
+  eventCount: number;    // discrete rain pulse / event count
+  status: number;        // 0 = dry, 1 = wet, -1 = error
+}
+
+export interface RainSensorConfig {
+  enabled: boolean;
+  rxPin: number;
+  txPin: number;
+  baudRate: number;
 }
 
 export interface WiFiNetwork {

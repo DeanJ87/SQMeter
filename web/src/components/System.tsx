@@ -444,6 +444,19 @@ const System: FunctionalComponent = () => {
               {getSensorStatusBadge(status.sensors.gps.status).text}
             </span>
           </div>
+          {status.sensors.rg15 && (
+            <div class="flex justify-between items-center">
+              <div>
+                <span class="text-white font-medium">RG-15 (Rain Sensor)</span>
+                <div class="text-xs text-gray-500">
+                  {status.sensors.rg15.initialized ? '✓ Initialized' : '✗ Not Initialized'} • Last update: {status.sensors.rg15.lastUpdate}ms
+                </div>
+              </div>
+              <span class={`px-3 py-1 rounded-full text-sm font-semibold ${getSensorStatusBadge(status.sensors.rg15.status).color}`}>
+                {getSensorStatusBadge(status.sensors.rg15.status).text}
+              </span>
+            </div>
+          )}
         </div>
       </section>
 
