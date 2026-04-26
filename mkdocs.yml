@@ -65,7 +65,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Live Demo: demo.md
+  - Live Demo: live-demo.md
   - Getting Started:
     - Flashing Your Device: getting-started/flashing.md
     - Hardware Setup: getting-started/hardware.md

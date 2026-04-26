@@ -69,7 +69,7 @@ jobs:
         run: mkdocs build --strict
 
       - name: Copy demo into docs site
-        run: cp -r web/dist-demo site/demo
+        run: rm -rf site/demo && cp -r web/dist-demo site/demo
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
