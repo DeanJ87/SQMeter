@@ -164,6 +164,42 @@ const Dashboard: FunctionalComponent = () => {
         </div>
       )}
 
+      {/* Rain Sensor */}
+      {sensors.rainSensor && (
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+              <span class="mr-2">🌧️</span>
+              Rain Sensor
+            </h3>
+            <span class={`px-3 py-1 rounded-full text-sm font-semibold ${
+              sensors.rainSensor.status === 0 ? 'bg-green-900 text-green-200' :
+              sensors.rainSensor.status === 1 ? 'bg-blue-900 text-blue-200' :
+              'bg-red-900 text-red-200'
+            }`}>
+              {sensors.rainSensor.status === 0 ? 'Dry' :
+               sensors.rainSensor.status === 1 ? 'Wet' : 'Error'}
+            </span>
+          </div>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Rain Rate</span>
+              <span class="text-xl font-bold text-white">
+                {sensors.rainSensor.rainRate.toFixed(1)} mm/hr
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Accumulated</span>
+              <span class="text-white">{sensors.rainSensor.accumulated.toFixed(1)} mm</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Event Count</span>
+              <span class="text-white">{sensors.rainSensor.eventCount}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sensor Readings Grid */}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Light Sensor */}

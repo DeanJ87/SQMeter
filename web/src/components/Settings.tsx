@@ -806,6 +806,80 @@ const Settings: FunctionalComponent = () => {
         </div>
       </section>
 
+      {/* Rain Sensor Settings */}
+      <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-white mb-4">Rain Sensor</h2>
+        <div class="space-y-4">
+          <div class="flex items-center">
+            <input
+              type="checkbox"
+              checked={config.rain?.enabled ?? false}
+              onChange={(e) => updateConfig(['rain', 'enabled'], (e.target as HTMLInputElement).checked)}
+              class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <label class="ml-2 text-sm font-medium text-gray-300">
+              Enable RG-15 Rain Sensor
+            </label>
+          </div>
+
+          {config.rain?.enabled && (
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                  RX Pin
+                </label>
+                <input
+                  type="number"
+                  value={config.rain.rxPin}
+                  onChange={(e) => updateConfig(['rain', 'rxPin'], parseInt((e.target as HTMLInputElement).value))}
+                  min="0"
+                  max="39"
+                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                    validationErrors['rain.rxPin'] ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                  }`}
+                />
+                {validationErrors['rain.rxPin'] && (
+                  <p class="mt-1 text-sm text-red-400">{validationErrors['rain.rxPin']}</p>
+                )}
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                  TX Pin
+                </label>
+                <input
+                  type="number"
+                  value={config.rain.txPin}
+                  onChange={(e) => updateConfig(['rain', 'txPin'], parseInt((e.target as HTMLInputElement).value))}
+                  min="0"
+                  max="39"
+                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                    validationErrors['rain.txPin'] ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                  }`}
+                />
+                {validationErrors['rain.txPin'] && (
+                  <p class="mt-1 text-sm text-red-400">{validationErrors['rain.txPin']}</p>
+                )}
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                  Baud Rate
+                </label>
+                <select
+                  value={config.rain.baudRate}
+                  onChange={(e) => updateConfig(['rain', 'baudRate'], parseInt((e.target as HTMLSelectElement).value))}
+                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="2400">2400</option>
+                  <option value="4800">4800</option>
+                  <option value="9600">9600</option>
+                  <option value="19200">19200</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Save Button */}
       <div class="flex justify-end">
         <button
