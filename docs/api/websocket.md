@@ -66,12 +66,21 @@ ws.onclose = () => {
     "altitude": 42.0,
     "hdop": 1.2,
     "age": 800
+  },
+  "rainSensor": {
+    "isRaining": false,
+    "acc": 0.0,
+    "eventAcc": 0.0,
+    "totalAcc": 12.6,
+    "rInt": 0.0,
+    "lensBad": false,
+    "emSat": false
   }
 }
 ```
 
-!!! note "GPS field"
-    `gps` is only included in the message when a GPS module is connected and initialised.
+!!! note "Optional fields"
+    `gps` is only included when a GPS module is connected and initialised. `rainSensor` is only included when the RG-15 is enabled and has reported data.
 
 ### `status` values
 

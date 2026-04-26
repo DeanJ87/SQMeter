@@ -77,12 +77,43 @@ curl http://sqm-esp32.local/api/sensors
     "altitude": 42.0,
     "hdop": 1.2,
     "age": 800
+  },
+  "rainSensor": {
+    "isRaining": false,
+    "acc": 0.0,
+    "eventAcc": 0.0,
+    "totalAcc": 12.6,
+    "rInt": 0.0,
+    "lensBad": false,
+    "emSat": false
   }
 }
 ```
 
-!!! note "GPS field"
-    The `gps` object is only present if a GPS module is connected and initialised. All other objects are always present.
+!!! note "Optional fields"
+    `gps` is only present when a GPS module is connected and initialised. `rainSensor` is only present when the RG-15 is enabled and has reported data.
+
+### Rain sensor fields
+
+| Field | Unit | Description |
+|-------|------|-------------|
+| `isRaining` | bool | `true` if currently in an active rain event |
+| `acc` | mm | Accumulation since the last reading |
+| `eventAcc` | mm | Total accumulation for the current rain event |
+| `totalAcc` | mm | Total since last counter reset (`POST /api/rain/reset`) |
+| `rInt` | mm/hr | Instantaneous rain intensity |
+| `lensBad` | bool | Lens diagnostic — clean if `true` |
+| `emSat` | bool | Emitter saturation diagnostic |
+
+---
+
+### `POST /api/rain/reset`
+
+Reset the RG-15 total accumulation counter (sends `O` command to sensor).
+
+```bash
+curl -X POST http://sqm-esp32.local/api/rain/reset
+```
 
 ### `status` values
 

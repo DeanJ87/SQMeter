@@ -48,8 +48,19 @@ Published to `{topic}` every `publishIntervalMs` milliseconds:
     "temperature": 12.4,
     "humidity": 72.1,
     "pressure": 1013.25
+  },
+  "rain": {
+    "isRaining": false,
+    "acc": 0.0,
+    "eventAcc": 0.0,
+    "totalAcc": 12.6,
+    "rInt": 0.0
   }
 }
+```
+
+!!! note "Optional rain field"
+    The `rain` object is only included when the RG-15 is enabled and connected.
 ```
 
 ---
@@ -78,6 +89,24 @@ mqtt:
       state_topic: "sqm/backyard"
       value_template: "{{ value_json.environment.temperature }}"
       unit_of_measurement: "°C"
+
+    - name: "Rain Rate"
+      state_topic: "sqm/backyard"
+      value_template: "{{ value_json.rain.rInt | default(0) }}"
+      unit_of_measurement: "mm/hr"
+
+    - name: "Rain Event Accumulation"
+      state_topic: "sqm/backyard"
+      value_template: "{{ value_json.rain.eventAcc | default(0) }}"
+      unit_of_measurement: "mm"
+
+    - binary_sensor:
+      - name: "Raining"
+        state_topic: "sqm/backyard"
+        value_template: "{{ value_json.rain.isRaining | default(false) }}"
+        payload_on: "True"
+        payload_off: "False"
+        device_class: moisture
 ```
 
 ---
