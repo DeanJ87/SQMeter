@@ -49,6 +49,7 @@ SQMeter is an open-source sky quality meter built on the ESP32. It measures ligh
 | BME280 | Temperature, humidity, pressure | I2C `0x76` |
 | MLX90614 | IR cloud temperature | I2C `0x5A` |
 | GPS (optional) | Location & time | UART |
+| RG-15 (optional) | Rain detection | UART |
 
 ---
 
