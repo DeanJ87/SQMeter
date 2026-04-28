@@ -1,4 +1,5 @@
 import { FunctionalComponent } from 'preact';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { route } from 'preact-router';
 
 interface LayoutProps {
@@ -6,6 +7,9 @@ interface LayoutProps {
 }
 
 const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const navItems = [
     { path: '/', label: 'Dashboard', icon: '📊' },
     { path: '/system', label: 'System', icon: '💻' },
@@ -15,7 +19,20 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => 
 
   const navigate = (path: string) => {
     route(path);
+    setMenuOpen(false);
   };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
 
   return (
     <div class="min-h-screen bg-gray-900">
@@ -30,12 +47,44 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => 
                 <p class="text-sm text-gray-400">Dark Sky Monitor</p>
               </div>
             </div>
+
+            {/* Hamburger button — mobile only */}
+            <button
+              class="sm:hidden flex flex-col justify-center items-center w-10 h-10 space-y-1.5 text-gray-300 hover:text-white focus:outline-none"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="Toggle navigation menu"
+              aria-expanded={menuOpen}
+            >
+              <div class="w-6 h-0.5 bg-current transition-all" />
+              <div class="w-6 h-0.5 bg-current transition-all" />
+              <div class="w-6 h-0.5 bg-current transition-all" />
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Navigation */}
-      <nav class="bg-gray-800 border-b border-gray-700">
+      {/* Mobile dropdown menu */}
+      {menuOpen && (
+        <div ref={menuRef} class="sm:hidden absolute z-50 left-0 right-0 bg-gray-800 border-b border-gray-700 shadow-xl">
+          {navItems.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              class={`w-full flex items-center px-6 py-4 text-sm font-medium transition-colors border-b border-gray-700 last:border-b-0 ${
+                currentPath === item.path
+                  ? 'text-white bg-gray-700 border-l-4 border-l-blue-500'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              <span class="mr-3 text-lg">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Desktop navigation — hidden on mobile */}
+      <nav class="hidden sm:block bg-gray-800 border-b border-gray-700">
         <div class="container mx-auto px-4">
           <div class="flex space-x-1">
             {navItems.map((item) => (

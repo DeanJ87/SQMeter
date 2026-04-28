@@ -87,15 +87,15 @@ const Dashboard: FunctionalComponent = () => {
         <div class="bg-gradient-to-br from-blue-900 to-indigo-900 rounded-xl p-8 shadow-2xl border border-blue-700">
           <div class="text-center">
             <div class="text-6xl mb-4">
-              {sensors.cloudConditions.condition === 1 ? '☀️' : 
-               sensors.cloudConditions.condition === 2 ? '⛅' : 
+              {sensors.cloudConditions.condition === 1 ? '🌙' :
+               sensors.cloudConditions.condition === 2 ? '⛅' :
                sensors.cloudConditions.condition === 3 ? '☁️' : '❓'}
             </div>
             <h2 class="text-3xl font-bold text-white mb-2">Cloud Conditions</h2>
             <div class="text-2xl font-semibold text-blue-200 mb-6">
               {sensors.cloudConditions.description}
             </div>
-            <div class="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
               <div class="bg-black bg-opacity-30 rounded-lg p-4">
                 <div class="text-sm text-gray-400">Cloud Cover</div>
                 <div class="text-2xl font-bold text-white">
