@@ -1,0 +1,12 @@
+# All files — single maintainer project
+* @decanus
+
+# Firmware and embedded code
+src/ @decanus
+include/ @decanus
+
+# Web frontend
+web/ @decanus
+
+# CI/CD and GitHub configuration
+.github/ @decanus
