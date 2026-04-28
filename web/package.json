@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext ts,tsx"
+    "lint": "eslint src --ext ts,tsx",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "preact": "^10.19.3",
@@ -16,12 +19,17 @@
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.7.0",
+    "@testing-library/preact": "^3.2.0",
+    "@testing-library/user-event": "^14.5.0",
     "@types/node": "^20.10.6",
+    "@vitest/coverage-v8": "^2.0.0",
     "autoprefixer": "^10.4.16",
+    "jsdom": "^25.0.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
     "terser": "^5.46.1",
     "typescript": "^5.3.3",
-    "vite": "^5.0.10"
+    "vite": "^5.0.10",
+    "vitest": "^2.0.0"
   }
 }

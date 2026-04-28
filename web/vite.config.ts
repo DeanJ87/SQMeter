@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 import preact from "@preact/preset-vite";
 
@@ -8,6 +9,18 @@ const ESP32_IP = "192.168.1.128";
 
 export default defineConfig({
   plugins: [preact()],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/main.tsx', 'src/test/**'],
+    },
+  },
   build: {
     outDir: "dist",
     assetsDir: "assets",
