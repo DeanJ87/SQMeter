@@ -132,12 +132,16 @@ namespace SQM
         cfg.primaryTimeSource = TimeSource::NTP;
         cfg.secondaryTimeSource = TimeSource::GPS;
 
+        cfg.cloudDetection.clearSkyThreshold = -13.0f;
+        cfg.cloudDetection.cloudyThreshold = -3.0f;
+        cfg.cloudDetection.humidityCorrection = 0.75f;
+
         return cfg;
     }
 
     std::string Config::toJson() const
     {
-        StaticJsonDocument<1536> doc; // Increased from 1024 for GPS config
+        StaticJsonDocument<1792> doc; // Increased from 1536 for cloudDetection config
 
         doc["deviceName"] = deviceName;
         doc["timezone"] = timezone;
@@ -182,6 +186,11 @@ namespace SQM
         sensor["i2cSCL"] = this->sensor.i2cSCL;
         sensor["i2cFrequency"] = this->sensor.i2cFrequency;
 
+        JsonObject cloudDetection = doc.createNestedObject("cloudDetection");
+        cloudDetection["clearSkyThreshold"] = this->cloudDetection.clearSkyThreshold;
+        cloudDetection["cloudyThreshold"] = this->cloudDetection.cloudyThreshold;
+        cloudDetection["humidityCorrection"] = this->cloudDetection.humidityCorrection;
+
         std::string output;
         serializeJsonPretty(doc, output);
         return output;
@@ -189,7 +198,7 @@ namespace SQM
 
     std::optional<Config> Config::fromJson(const std::string &json)
     {
-        StaticJsonDocument<1536> doc; // Increased from 1024 for GPS config
+        StaticJsonDocument<1792> doc; // Increased from 1536 for cloudDetection config
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
@@ -242,6 +251,11 @@ namespace SQM
         cfg.sensor.i2cSDA = sensor["i2cSDA"] | 21;
         cfg.sensor.i2cSCL = sensor["i2cSCL"] | 22;
         cfg.sensor.i2cFrequency = sensor["i2cFrequency"] | 100000;
+
+        JsonObject cloudDetection = doc["cloudDetection"];
+        cfg.cloudDetection.clearSkyThreshold = cloudDetection["clearSkyThreshold"] | -13.0f;
+        cfg.cloudDetection.cloudyThreshold = cloudDetection["cloudyThreshold"] | -3.0f;
+        cfg.cloudDetection.humidityCorrection = cloudDetection["humidityCorrection"] | 0.75f;
 
         return cfg;
     }

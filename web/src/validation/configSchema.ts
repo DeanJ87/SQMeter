@@ -87,6 +87,12 @@ export const sensorConfigSchema = z
     path: ["i2cSDA"],
   });
 
+export const cloudDetectionConfigSchema = z.object({
+  clearSkyThreshold: z.number().min(-30).max(0),
+  cloudyThreshold: z.number().min(-20).max(10),
+  humidityCorrection: z.number().min(0).max(2),
+}).optional().default({ clearSkyThreshold: -13.0, cloudyThreshold: -3.0, humidityCorrection: 0.75 });
+
 export const configSchema = z.object({
   deviceName: z.string().min(1, "Device name is required"),
   wifi: wifiConfigSchema,
@@ -94,6 +100,7 @@ export const configSchema = z.object({
   ntp: ntpConfigSchema,
   sensor: sensorConfigSchema,
   timezone: z.string(),
+  cloudDetection: cloudDetectionConfigSchema,
 });
 
 export type ConfigSchema = z.infer<typeof configSchema>;

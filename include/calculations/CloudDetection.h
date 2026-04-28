@@ -44,7 +44,14 @@ namespace SQM
          * @param relativeHumidity Relative humidity (0-100%), default 53%
          * @return CloudMetrics containing cloud cover estimation
          */
-        static CloudMetrics calculate(float skyTemp, float ambientTemp, float relativeHumidity = 53.0f);
+        static CloudMetrics calculate(
+            float skyTemp,
+            float ambientTemp,
+            float relativeHumidity = 53.0f,
+            float clearSkyThreshold = CLEAR_SKY_THRESHOLD,
+            float cloudyThreshold = CLOUDY_THRESHOLD,
+            float humidityCorrection = HUMIDITY_CORRECTION_FACTOR
+        );
 
         /**
          * Apply humidity correction to temperature delta
@@ -57,9 +64,10 @@ namespace SQM
          *
          * @param tempDelta Raw temperature difference (sky - ambient)
          * @param humidity Relative humidity (0-100%)
+         * @param correctionFactor k1 humidity correction factor
          * @return Humidity-corrected temperature delta
          */
-        static float applyHumidityCorrection(float tempDelta, float humidity);
+        static float applyHumidityCorrection(float tempDelta, float humidity, float correctionFactor = HUMIDITY_CORRECTION_FACTOR);
 
         /**
          * Classify cloud condition from corrected temperature delta
@@ -72,9 +80,11 @@ namespace SQM
          * Errs on the side of caution for astronomical observations.
          *
          * @param correctedDelta Humidity-corrected temperature delta
+         * @param clearThreshold corrected delta below which sky is clear
+         * @param cloudyThreshold corrected delta above which sky is overcast
          * @return Cloud condition classification
          */
-        static CloudCondition classifyCondition(float correctedDelta);
+        static CloudCondition classifyCondition(float correctedDelta, float clearThreshold = CLEAR_SKY_THRESHOLD, float cloudyThreshold = CLOUDY_THRESHOLD);
 
         /**
          * Estimate cloud cover percentage
@@ -83,9 +93,11 @@ namespace SQM
          * More sophisticated than binary classification.
          *
          * @param correctedDelta Humidity-corrected temperature delta
+         * @param clearThreshold corrected delta below which sky is clear
+         * @param cloudyThreshold corrected delta above which sky is overcast
          * @return Estimated cloud cover (0-100%)
          */
-        static float estimateCloudCover(float correctedDelta);
+        static float estimateCloudCover(float correctedDelta, float clearThreshold = CLEAR_SKY_THRESHOLD, float cloudyThreshold = CLOUDY_THRESHOLD);
 
         /**
          * Get human-readable description of cloud condition

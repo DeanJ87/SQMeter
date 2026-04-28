@@ -692,10 +692,14 @@ namespace SQM
         // Cloud detection from IR temperature sensor
         // Use BME280 humidity if available, otherwise default to 53%
         float humidity = (bmeReading.status == SensorStatus::OK) ? bmeReading.humidity : 53.0f;
+        const Config &cfg = getConfigCallback();
         CloudMetrics cloudMetrics = CloudDetection::calculate(
             mlxReading.objectTemp,
             mlxReading.ambientTemp,
-            humidity);
+            humidity,
+            cfg.cloudDetection.clearSkyThreshold,
+            cfg.cloudDetection.cloudyThreshold,
+            cfg.cloudDetection.humidityCorrection);
 
         JsonObject cloud = doc.createNestedObject("cloudConditions");
         cloud["temperatureDelta"] = cloudMetrics.temperatureDelta;
