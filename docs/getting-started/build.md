@@ -1,4 +1,4 @@
-# SQM v2 - Build and Upload Guide
+# Build & Upload
 
 ## Quick Start
 
@@ -59,7 +59,8 @@ pio run --target uploadfs
 pio run --target uploadfs && pio run --target upload
 ```
 
-**Note:** Configuration (WiFi credentials, MQTT settings, etc.) is stored in NVS (Non-Volatile Storage), which is separate from the filesystem. This means you can safely upload the filesystem without losing your WiFi configuration!
+!!! note
+    Configuration (WiFi credentials, MQTT settings, etc.) is stored in NVS (Non-Volatile Storage), which is separate from the filesystem. You can safely upload the filesystem without losing your WiFi configuration.
 
 ### 5. Monitor Serial Output
 
@@ -90,7 +91,8 @@ Or use the PlatformIO IDE serial monitor.
 3. Edit files in `web/src/`
 4. Changes auto-reload in browser
 
-**Note:** In dev mode, API and WebSocket calls are proxied to the ESP32 device. Set the `ESP32_IP` environment variable to your device's IP address, or update it in `vite.config.ts`.
+!!! note
+    In dev mode, API and WebSocket calls are proxied to the ESP32 device. Set the `ESP32_IP` environment variable to your device's IP address, or update it in `vite.config.ts`.
 
 ### Production Build
 
@@ -106,7 +108,7 @@ Or use the PlatformIO IDE serial monitor.
 
 ## OTA Updates
 
-Update firmware over WiFi without USB cable.
+Update firmware over WiFi without a USB cable.
 
 ### Via Web Interface
 
@@ -136,7 +138,7 @@ Custom partition scheme (`partitions.csv`):
 | otadata | data | ota | 0xe000 | 8KB |
 | app0 | app | ota_0 | 0x10000 | 1920KB |
 | app1 | app | ota_1 | 0x1F0000 | 1920KB |
-| spiffs | data | spiffs | 0x3D0000 | 192KB |
+| littlefs | data | littlefs | 0x3D0000 | 192KB |
 
 This allows:
 - OTA updates with two app partitions
@@ -234,34 +236,6 @@ npm run build
    - Test OTA updates
    - Confirm MQTT publishing
 
-## Continuous Integration
-
-Example GitHub Actions workflow:
-
-```yaml
-name: Build
-
-on: [push, pull_request]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - name: Install PlatformIO
-        run: pip install platformio
-      - name: Build Web UI
-        run: cd web && npm install && npm run build
-      - name: Build Firmware
-        run: pio run
-```
-
 ## Performance Optimization
 
 ### Firmware Size
@@ -310,8 +284,4 @@ curl -X POST http://device-ip/api/config \
 
 1. Download configuration
 2. Save firmware: `.pio/build/esp32dev/firmware.bin`
-3. Save filesystem image: `.pio/build/esp32dev/spiffs.bin`
-
----
-
-Happy building! 🚀
+3. Save filesystem image: `.pio/build/esp32dev/littlefs.bin`
