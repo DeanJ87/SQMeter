@@ -136,7 +136,7 @@ Custom partition scheme (`partitions.csv`):
 | otadata | data | ota | 0xe000 | 8KB |
 | app0 | app | ota_0 | 0x10000 | 1920KB |
 | app1 | app | ota_1 | 0x1F0000 | 1920KB |
-| spiffs | data | spiffs | 0x3D0000 | 192KB |
+| littlefs | data | littlefs | 0x3D0000 | 192KB |
 
 This allows:
 - OTA updates with two app partitions
