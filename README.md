@@ -5,8 +5,10 @@ A sophisticated dark sky quality monitoring system built with ESP32, featuring r
 ## Features
 
 ### Hardware & Sensors
-- **TSL2591** - High-sensitivity light sensor for lux measurements
-- **BME280** - Environmental sensor (temperature, humidity, pressure)
+- **TSL2591** - High-sensitivity light sensor for lux/SQM measurements
+- **BME280** - Environmental sensor (temperature, humidity, pressure, dew point)
+- **MLX90614** - IR thermometer for cloud detection (sky vs ambient temperature)
+- **GPS** (optional) - Location and precise time synchronization
 - ESP32 with WiFi connectivity
 
 ### Sky Quality Measurements
@@ -19,15 +21,16 @@ A sophisticated dark sky quality monitoring system built with ESP32, featuring r
 - Modern single-page application (Preact + TypeScript)
 - Real-time data via WebSocket (no polling)
 - Responsive dark-themed UI with TailwindCSS
-- Three main pages:
+- Four main pages:
   - **Dashboard** - Live sensor readings and sky quality
   - **Settings** - Device configuration
-  - **System** - Status, OTA updates, system controls
+  - **System** - Status and system controls
+  - **Updates** - OTA firmware updates
 
 ### Backend Architecture
 - **Async HTTP Server** on port 80
 - **REST API** at `/api/*` endpoints
-- **WebSocket** at `/ws` for real-time updates
+- **WebSocket** at `/ws/sensors` for real-time updates
 - **OTA Updates** via web interface
 - **LittleFS** for configuration and web files
 - **MQTT** publishing (optional)
@@ -47,51 +50,70 @@ A sophisticated dark sky quality monitoring system built with ESP32, featuring r
 
 ```
 SQMv2/
-├── platformio.ini          # PlatformIO configuration
-├── partitions.csv          # ESP32 partition table
+├── platformio.ini
+├── partitions.csv
+├── config.example.json
 ├── scripts/
-│   └── build_web.py        # Automated web UI build script
-├── include/                # C++ headers
+│   └── build_web.py
+├── include/
 │   ├── Config.h
 │   ├── Logger.h
 │   ├── WiFiManager.h
 │   ├── WebServer.h
 │   ├── MQTTClient.h
+│   ├── TimeManager.h
+│   ├── TCPServer.h
 │   ├── sensors/
 │   │   ├── SensorBase.h
 │   │   ├── TSL2591Sensor.h
-│   │   └── BME280Sensor.h
+│   │   ├── BME280Sensor.h
+│   │   ├── MLX90614Sensor.h
+│   │   └── GPSSensor.h
 │   └── calculations/
-│       └── SkyQuality.h
-├── src/                    # C++ implementation
+│       ├── SkyQuality.h
+│       └── CloudDetection.h
+├── src/
 │   ├── main.cpp
 │   ├── Config.cpp
 │   ├── Logger.cpp
 │   ├── WiFiManager.cpp
 │   ├── WebServer.cpp
 │   ├── MQTTClient.cpp
+│   ├── TimeManager.cpp
+│   ├── TCPServer.cpp
 │   ├── sensors/
 │   │   ├── TSL2591Sensor.cpp
-│   │   └── BME280Sensor.cpp
+│   │   ├── BME280Sensor.cpp
+│   │   ├── MLX90614Sensor.cpp
+│   │   └── GPSSensor.cpp
 │   └── calculations/
-│       └── SkyQuality.cpp
-└── web/                    # Frontend source
+│       ├── SkyQuality.cpp
+│       └── CloudDetection.cpp
+└── web/
     ├── package.json
+    ├── package-lock.json
     ├── tsconfig.json
     ├── vite.config.ts
     ├── tailwind.config.js
+    ├── postcss.config.js
     └── src/
         ├── main.tsx
         ├── App.tsx
+        ├── index.css
         ├── components/
         │   ├── Dashboard.tsx
         │   ├── Settings.tsx
         │   ├── System.tsx
-        │   └── Layout.tsx
+        │   ├── Layout.tsx
+        │   └── Updates.tsx
         ├── hooks/
         │   └── useWebSocket.ts
-        └── types/
-            └── index.ts
+        ├── types/
+        │   └── index.ts
+        ├── utils/
+        │   └── timezone.ts
+        └── validation/
+            └── configSchema.ts
 ```
 
 ## Getting Started
@@ -152,10 +174,9 @@ Both sensors use I2C interface:
 
 ### Configuration
 
-Configuration is stored in `/spiffs/config.json` on the device. You can modify it via:
+Configuration is stored in NVS (Non-Volatile Storage) on the device, which persists across firmware and filesystem updates. You can modify it via:
 - Web interface Settings page
 - Direct API calls to `/api/config`
-- Manual editing (requires filesystem re-upload)
 
 Default configuration includes:
 - WiFi settings (SSID, password, hostname)
@@ -178,10 +199,10 @@ Default configuration includes:
 
 ### WebSocket
 
-Connect to `/ws` for real-time sensor updates:
+Connect to `/ws/sensors` for real-time sensor updates:
 
 ```javascript
-const ws = new WebSocket('ws://device-ip/ws');
+const ws = new WebSocket('ws://device-ip/ws/sensors');
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
   console.log('Sensor data:', data);
@@ -191,26 +212,38 @@ ws.onmessage = (event) => {
 Data format:
 ```json
 {
-  "tsl2591": {
-    "lux": 0.0234,
+  "lightSensor": {
+    "lux": 0.000234,
     "visible": 123,
     "infrared": 45,
     "full": 168,
-    "timestamp": 12345,
     "status": 0
   },
-  "bme280": {
+  "environment": {
     "temperature": 22.5,
     "humidity": 45.2,
     "pressure": 1013.25,
-    "timestamp": 12345,
+    "dewpoint": 11.3,
     "status": 0
   },
   "skyQuality": {
-    "sqm": 21.5,
+    "sqm": 21.50,
     "nelm": 6.2,
     "bortle": 2.0,
     "description": "Typical truly dark site"
+  },
+  "irTemperature": {
+    "skyTemp": -18.5,
+    "ambientTemp": 21.3,
+    "status": 0
+  },
+  "cloudConditions": {
+    "condition": 1,
+    "description": "Clear",
+    "temperatureDelta": -39.8,
+    "correctedDelta": -40.2,
+    "cloudCoverPercent": 0.0,
+    "humidityUsed": 45.2
   }
 }
 ```
@@ -242,6 +275,8 @@ Enable MQTT in settings to publish sensor data to your broker:
   }
 }
 ```
+
+**Note:** full payload structure mirrors the WebSocket format above.
 
 ## Development
 

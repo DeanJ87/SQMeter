@@ -112,7 +112,7 @@ Update firmware over WiFi without USB cable.
 
 1. Build firmware: `pio run`
 2. Locate `.pio/build/esp32dev/firmware.bin`
-3. Navigate to System page in web UI
+3. Navigate to Updates page in web UI
 4. Upload firmware file
 5. Device will restart automatically
 
@@ -136,12 +136,12 @@ Custom partition scheme (`partitions.csv`):
 | otadata | data | ota | 0xe000 | 8KB |
 | app0 | app | ota_0 | 0x10000 | 1920KB |
 | app1 | app | ota_1 | 0x1F0000 | 1920KB |
-| spiffs | data | spiffs | 0x3D0000 | 192KB |
+| littlefs | data | spiffs | 0x3D0000 | 192KB |
 
 This allows:
 - OTA updates with two app partitions
-- 192KB for web UI and configuration
-- NVS for system data
+- 192KB for web UI files (LittleFS filesystem)
+- NVS for configuration and system data
 
 ## Troubleshooting
 
@@ -310,7 +310,7 @@ curl -X POST http://device-ip/api/config \
 
 1. Download configuration
 2. Save firmware: `.pio/build/esp32dev/firmware.bin`
-3. Save filesystem image: `.pio/build/esp32dev/spiffs.bin`
+3. Save filesystem image: `.pio/build/esp32dev/littlefs.bin`
 
 ---
 
