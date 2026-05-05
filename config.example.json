@@ -22,6 +22,16 @@
     "enabled": false,
     "password": ""
   },
+  "rain": {
+    "enabled": false,
+    "rxPin": 18,
+    "txPin": 19,
+    "baudRate": 9600,
+    "debugUart": false,
+    "mode": "polling",
+    "resolution": "high",
+    "units": "metric"
+  },
   "sensor": {
     "readIntervalMs": 5000,
     "i2cSDA": 21,

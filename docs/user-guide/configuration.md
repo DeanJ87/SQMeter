@@ -65,6 +65,7 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
     "rxPin": 18,
     "txPin": 19,
     "baudRate": 9600,
+    "debugUart": false,
     "mode": "polling",
     "resolution": "high",
     "units": "metric"
@@ -183,6 +184,7 @@ The `auth.password` field is masked in `GET /api/config` responses. Send the mas
 | `rxPin` | int | `18` | ESP32 RX pin (connects to RG-15 TX) |
 | `txPin` | int | `19` | ESP32 TX pin (connects to RG-15 RX) |
 | `baudRate` | int | `9600` | RG-15 serial baud rate |
+| `debugUart` | bool | `false` | Log RG-15 UART command/response traffic |
 | `mode` | string | `"polling"` | `"polling"` or `"continuous"` |
 | `resolution` | string | `"high"` | `"high"`, `"low"`, or `"switch"` |
 | `units` | string | `"metric"` | `"metric"`, `"imperial"`, or `"switch"` |
@@ -207,6 +209,7 @@ SQMeter is designed for a trusted LAN environment. See the [Security Guide](secu
 - `GET /api/config` redacts stored secrets (WiFi, MQTT, OTA, and auth passwords), but still exposes non-secret settings.
 - HTTP traffic is plaintext, so credentials sent via config updates are visible to LAN observers. TLS is not supported on the ESP32 in this firmware.
 - Command-line ArduinoOTA is disabled unless `ota.enabled` is `true` and `ota.password` is set.
+- `rain.debugUart` only affects serial logging for RG-15 command/response traffic. It does not log WiFi, MQTT, or OTA secrets.
 
 Keep the device on a private network or isolated observatory VLAN. Do not expose port 80 or ArduinoOTA to the public internet.
 

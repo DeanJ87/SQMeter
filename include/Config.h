@@ -73,6 +73,7 @@ namespace SQM
         uint8_t rxPin;
         uint8_t txPin;
         uint32_t baudRate;
+        bool debugUart;
         std::string mode;       // "polling" or "continuous"
         std::string resolution; // "high", "low", or "switch"
         std::string units;      // "metric", "imperial", or "switch"

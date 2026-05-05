@@ -77,7 +77,22 @@ curl http://sqm-esp32.local/api/status
     "bme280": { "initialized": true, "status": 0, "lastUpdate": 3595000 },
     "mlx90614": { "initialized": true, "status": 0, "lastUpdate": 3595000 },
     "gps": { "initialized": false, "status": 1, "lastUpdate": 0 },
-    "rg15": { "initialized": false, "status": 1, "lastUpdate": 0 }
+    "rg15": {
+      "enabled": true,
+      "initialized": true,
+      "online": true,
+      "stale": false,
+      "state": "online",
+      "status": 0,
+      "lastUpdate": 3595000,
+      "uart": {
+        "last_command": "R",
+        "last_raw_response": "Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 1.24 mm, RInt 0.00 mm/h",
+        "timeouts": 0,
+        "parse_errors": 0,
+        "successful_reads": 42
+      }
+    }
   },
   "mqtt": {
     "enabled": false,
@@ -93,7 +108,7 @@ curl http://sqm-esp32.local/api/status
 ```
 
 !!! warning "Known diagnostic gaps"
-    The current firmware does not expose `minFreeHeap`, reset reason, boot count, or per-sensor last error. Use serial logs for those diagnostics until the firmware contract is extended.
+    The firmware now exposes RG-15 UART diagnostics and sensor freshness information, but it still does not expose every possible system metric such as reset reason, boot count, or `minFreeHeap`. Use serial logs for deeper system bring-up diagnostics.
 
 ---
 
@@ -150,6 +165,15 @@ curl http://sqm-esp32.local/api/sensors
     "age": 800
   },
   "rainSensor": {
+    "enabled": true,
+    "sensor": "hydreon_rg15",
+    "initialized": true,
+    "online": true,
+    "stale": false,
+    "state": "online",
+    "timestamp": 1234567890,
+    "ageMs": 40,
+    "status": 0,
     "isRaining": false,
     "acc": 0.000,
     "eventAcc": 0.000,
@@ -157,13 +181,30 @@ curl http://sqm-esp32.local/api/sensors
     "rInt": 0.000,
     "lensBad": false,
     "emSat": false,
-    "status": 0
+    "uart": {
+      "configured": true,
+      "opened": true,
+      "rx_pin": 18,
+      "tx_pin": 19,
+      "baud_rate": 9600,
+      "uart_port": 1,
+      "mode": "polling",
+      "resolution": "high",
+      "units": "metric",
+      "debug_uart": false,
+      "last_command": "R",
+      "last_raw_response": "Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 1.24 mm, RInt 0.00 mm/h",
+      "last_error": null,
+      "timeouts": 0,
+      "parse_errors": 0,
+      "successful_reads": 42
+    }
   }
 }
 ```
 
 !!! note "Optional fields"
-    The `gps` object is only present if a GPS module is connected and initialised. The `rainSensor` object is only present if the RG-15 is enabled and initialised. All other objects are always present.
+    The `gps` object is only present if a GPS module is connected and initialised. The `rainSensor` object is present whenever the RG-15 path is compiled into the firmware; check `enabled`, `initialized`, and `online` to distinguish disabled, opened, and live sensor states. All other objects are always present.
 
 ### `status` values
 
@@ -173,6 +214,28 @@ curl http://sqm-esp32.local/api/sensors
 | `1` | Sensor not found |
 | `2` | Read error |
 | `3` | Stale data |
+
+### `POST /api/sensors/rg15/test`
+
+Trigger a manual RG-15 read and return communication diagnostics.
+
+When HTTP auth is enabled, this endpoint requires credentials.
+
+```bash
+curl -X POST http://sqm-esp32.local/api/sensors/rg15/test
+```
+
+The response includes:
+
+- `command`
+- `bytes_written`
+- `raw_response`
+- `ack`
+- `acknowledged`
+- `parsed`
+- `elapsed_ms`
+- `error`
+- `hint`
 
 ---
 

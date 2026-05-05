@@ -445,16 +445,56 @@ const System: FunctionalComponent = () => {
             </span>
           </div>
           {status.sensors.rg15 && (
-            <div class="flex justify-between items-center">
-              <div>
-                <span class="text-white font-medium">RG-15 (Rain Sensor)</span>
-                <div class="text-xs text-gray-500">
-                  {status.sensors.rg15.initialized ? '✓ Initialized' : '✗ Not Initialized'} • Last update: {status.sensors.rg15.lastUpdate}ms
+            <div class="space-y-3 rounded-lg border border-gray-700 bg-gray-900 p-4">
+              <div class="flex justify-between items-center gap-3">
+                <div>
+                  <span class="text-white font-medium">RG-15 (Rain Sensor)</span>
+                  <div class="text-xs text-gray-500">
+                    UART opened: {status.sensors.rg15.initialized ? 'Yes' : 'No'} • Online: {status.sensors.rg15.online ? 'Yes' : 'No'} • Stale: {status.sensors.rg15.stale ? 'Yes' : 'No'}
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    State: {status.sensors.rg15.state} • Last update: {status.sensors.rg15.lastUpdate}ms
+                  </div>
+                </div>
+                <span class={`px-3 py-1 rounded-full text-sm font-semibold ${getSensorStatusBadge(status.sensors.rg15.status).color}`}>
+                  {getSensorStatusBadge(status.sensors.rg15.status).text}
+                </span>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">RX / TX</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.rx_pin ?? '--'} / {status.sensors.rg15.uart?.tx_pin ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Baud rate</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.baud_rate ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Last response age</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.last_response_age_ms ?? '--'} ms</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3 md:col-span-3">
+                  <div class="text-xs text-gray-500">Last command / response / error</div>
+                  <div class="text-white font-mono break-all">{status.sensors.rg15.uart?.last_command ?? '--'}</div>
+                  <div class="text-xs text-gray-400 font-mono break-all mt-1">{status.sensors.rg15.uart?.last_raw_response ?? '--'}</div>
+                  <div class="text-xs text-yellow-300 font-mono break-all mt-1">{status.sensors.rg15.uart?.last_error ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Successful reads</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.successful_reads ?? 0}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Timeouts</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.timeouts ?? 0}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Parse errors</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.parse_errors ?? 0}</div>
                 </div>
               </div>
-              <span class={`px-3 py-1 rounded-full text-sm font-semibold ${getSensorStatusBadge(status.sensors.rg15.status).color}`}>
-                {getSensorStatusBadge(status.sensors.rg15.status).text}
-              </span>
+              <div class="text-xs text-yellow-300">
+                Initialised only means the UART was opened. Online requires a valid response from the RG-15.
+              </div>
             </div>
           )}
         </div>

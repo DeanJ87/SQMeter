@@ -76,7 +76,8 @@ bool saveConfigCallback(const Config &newConfig)
             {
                 rg15Sensor->reconfigure(
                     config.rain.rxPin, config.rain.txPin, config.rain.baudRate,
-                    config.rain.mode, config.rain.resolution, config.rain.units);
+                    config.rain.mode, config.rain.resolution, config.rain.units,
+                    config.rain.debugUart);
             }
             else
             {
@@ -149,7 +150,8 @@ void setupSensors()
     {
         rg15Sensor = std::make_unique<RG15Sensor>(
             config.rain.rxPin, config.rain.txPin, config.rain.baudRate,
-            config.rain.mode, config.rain.resolution, config.rain.units);
+            config.rain.mode, config.rain.resolution, config.rain.units,
+            true, config.rain.debugUart);
         if (!rg15Sensor->begin())
         {
             Logger::warn("Main", "RG-15 initialization failed");

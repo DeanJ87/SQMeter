@@ -28,6 +28,15 @@ const Dashboard: FunctionalComponent = () => {
   const rainUnits = config?.rain?.units === 'imperial'
     ? { depth: 'in', intensity: 'in/hr' }
     : { depth: 'mm', intensity: 'mm/hr' };
+  const rain = sensors?.rainSensor;
+
+  const rainStatus = !rain?.enabled
+    ? { text: 'Disabled', color: 'bg-gray-900 text-gray-300' }
+    : rain.stale
+      ? { text: 'Stale', color: 'bg-yellow-900 text-yellow-200' }
+      : rain.online
+        ? { text: 'Online', color: 'bg-green-900 text-green-200' }
+        : { text: 'Offline', color: 'bg-red-900 text-red-200' };
 
   const payloadTimestamp = sensors?.dataTimestamp;
   const dataTimestamp = payloadTimestamp && payloadTimestamp > 1000000000000
@@ -201,44 +210,82 @@ const Dashboard: FunctionalComponent = () => {
       )}
 
       {/* Rain Sensor */}
-      {sensors.rainSensor && (
+      {rain && (
         <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-white flex items-center">
               <span class="mr-2">🌧️</span>
               Rain Sensor
             </h3>
-            <span class={`px-3 py-1 rounded-full text-sm font-semibold ${
-              sensors.rainSensor.isRaining ? 'bg-blue-900 text-blue-200' : 'bg-green-900 text-green-200'
-            }`}>
-              {sensors.rainSensor.isRaining ? 'Raining' : 'Dry'}
+            <span class={`px-3 py-1 rounded-full text-sm font-semibold ${rainStatus.color}`}>
+              {rainStatus.text}
             </span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 text-xs text-gray-400">
+            <div>UART opened: <span class="text-white">{rain.initialized ? 'Yes' : 'No'}</span></div>
+            <div>RX/TX: <span class="text-white">{rain.uart?.rx_pin ?? '--'} / {rain.uart?.tx_pin ?? '--'}</span></div>
+            <div>Baud: <span class="text-white">{rain.uart?.baud_rate ?? '--'}</span></div>
+          </div>
+          <div class="text-sm text-yellow-300 mb-3">
+            Initialised only means the UART was opened. Online requires a valid response from the RG-15.
           </div>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-gray-400">Intensity (RInt)</span>
               <span class="text-xl font-bold text-white">
-                {formatNumber(sensors.rainSensor.rInt, 1)} {rainUnits.intensity}
+                {rain.enabled ? formatNumber(rain.rInt, 1) : '--'} {rainUnits.intensity}
               </span>
             </div>
             <div class="flex justify-between items-center">
               <span class="text-gray-400">Since last read (Acc)</span>
-              <span class="text-white">{formatNumber(sensors.rainSensor.acc, 2)} {rainUnits.depth}</span>
+              <span class="text-white">{rain.enabled ? formatNumber(rain.acc, 2) : '--'} {rainUnits.depth}</span>
             </div>
             <div class="flex justify-between items-center">
               <span class="text-gray-400">Event total (EventAcc)</span>
-              <span class="text-white">{formatNumber(sensors.rainSensor.eventAcc, 2)} {rainUnits.depth}</span>
+              <span class="text-white">{rain.enabled ? formatNumber(rain.eventAcc, 2) : '--'} {rainUnits.depth}</span>
             </div>
             <div class="flex justify-between items-center">
               <span class="text-gray-400">All-time total (TotalAcc)</span>
-              <span class="text-white">{formatNumber(sensors.rainSensor.totalAcc, 1)} {rainUnits.depth}</span>
+              <span class="text-white">{rain.enabled ? formatNumber(rain.totalAcc, 1) : '--'} {rainUnits.depth}</span>
             </div>
-            {(sensors.rainSensor.lensBad || sensors.rainSensor.emSat) && (
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Last response age</span>
+              <span class="text-white">{rain.uart?.last_response_age_ms ?? '--'} ms</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Last command</span>
+              <span class="text-white font-mono">{rain.uart?.last_command ?? '--'}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Last raw response</span>
+              <span class="text-white font-mono text-xs text-right break-all">
+                {rain.uart?.last_raw_response ?? '--'}
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Last error</span>
+              <span class="text-white font-mono text-xs text-right break-all">
+                {rain.uart?.last_error ?? '--'}
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Successful reads</span>
+              <span class="text-white">{rain.uart?.successful_reads ?? 0}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Timeouts</span>
+              <span class="text-white">{rain.uart?.timeouts ?? 0}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Parse errors</span>
+              <span class="text-white">{rain.uart?.parse_errors ?? 0}</span>
+            </div>
+            {(rain.lensBad || rain.emSat) && (
               <div class="pt-2 border-t border-gray-700 space-y-1">
-                {sensors.rainSensor.lensBad && (
+                {rain.lensBad && (
                   <span class="block text-xs text-yellow-400">⚠ LensBad — lens may be dirty or obstructed</span>
                 )}
-                {sensors.rainSensor.emSat && (
+                {rain.emSat && (
                   <span class="block text-xs text-yellow-400">⚠ EmSat — emitter saturation detected</span>
                 )}
               </div>

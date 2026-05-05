@@ -28,6 +28,118 @@ namespace SQM
         {
             ESP.restart();
         }
+
+        const char *rg15StateToString(RG15State state)
+        {
+            switch (state)
+            {
+            case RG15State::RG15_DISABLED:
+                return "disabled";
+            case RG15State::RG15_CONFIGURED:
+                return "configured";
+            case RG15State::RG15_UART_OPENED:
+                return "uart_opened";
+            case RG15State::RG15_CONFIGURING:
+                return "configuring";
+            case RG15State::RG15_COMMAND_SENT:
+                return "command_sent";
+            case RG15State::RG15_AWAITING_RESPONSE:
+                return "awaiting_response";
+            case RG15State::RG15_ACKNOWLEDGED:
+                return "acknowledged";
+            case RG15State::RG15_READING_RECEIVED:
+                return "reading_received";
+            case RG15State::RG15_PARSE_ERROR:
+                return "parse_error";
+            case RG15State::RG15_TIMEOUT:
+                return "timeout";
+            case RG15State::RG15_STALE:
+                return "stale";
+            case RG15State::RG15_ONLINE:
+                return "online";
+            default:
+                return "unknown";
+            }
+        }
+
+        static void appendOptionalString(JsonObject obj, const char *key, const std::optional<std::string> &value)
+        {
+            if (value)
+            {
+                obj[key] = value->c_str();
+            }
+            else
+            {
+                obj[key] = nullptr;
+            }
+        }
+
+        static void appendRG15Diagnostics(JsonObject root, const RG15Reading &reading, const RG15Diagnostics &diag, uint32_t now)
+        {
+            root["enabled"] = diag.enabled;
+            root["sensor"] = "hydreon_rg15";
+            root["initialized"] = diag.uartOpened;
+            root["online"] = reading.online;
+            root["stale"] = reading.stale;
+            root["state"] = rg15StateToString(diag.state);
+            root["timestamp"] = reading.timestamp;
+            root["ageMs"] = reading.ageMs;
+            root["status"] = static_cast<int>(reading.status);
+            root["isRaining"] = reading.isRaining;
+            root["acc"] = reading.acc;
+            root["eventAcc"] = reading.eventAcc;
+            root["totalAcc"] = reading.totalAcc;
+            root["rInt"] = reading.rInt;
+            root["lensBad"] = reading.lensBad;
+            root["emSat"] = reading.emSat;
+
+            JsonObject uart = root.createNestedObject("uart");
+            uart["configured"] = diag.configured;
+            uart["opened"] = diag.uartOpened;
+            uart["rx_pin"] = diag.rxPin;
+            uart["tx_pin"] = diag.txPin;
+            uart["baud_rate"] = diag.baudRate;
+            uart["uart_port"] = diag.uartPort;
+            uart["mode"] = diag.mode;
+            uart["resolution"] = diag.resolution;
+            uart["units"] = diag.units;
+            uart["debug_uart"] = diag.debugUart;
+            appendOptionalString(uart, "last_command", diag.lastCommand);
+            if (diag.lastCommandMs != 0)
+                uart["last_command_ms"] = static_cast<uint32_t>(diag.lastCommandMs);
+            else
+                uart["last_command_ms"] = nullptr;
+            uart["last_bytes_written"] = diag.lastBytesWritten;
+            appendOptionalString(uart, "expected_ack", diag.expectedAck);
+            appendOptionalString(uart, "last_ack", diag.lastAck);
+            if (diag.lastAckMs != 0)
+                uart["last_ack_ms"] = static_cast<uint32_t>(diag.lastAckMs);
+            else
+                uart["last_ack_ms"] = nullptr;
+            appendOptionalString(uart, "last_raw_response", diag.lastRawResponse);
+            if (diag.lastResponseMs != 0)
+                uart["last_response_ms"] = static_cast<uint32_t>(diag.lastResponseMs);
+            else
+                uart["last_response_ms"] = nullptr;
+            appendOptionalString(uart, "last_error", diag.lastError);
+            uart["timeouts"] = diag.timeouts;
+            uart["parse_errors"] = diag.parseErrors;
+            uart["successful_reads"] = diag.successfulReads;
+            uart["response_timeout_ms"] = diag.responseTimeoutMs;
+            uart["stale_timeout_ms"] = diag.staleTimeoutMs;
+            if (diag.lastResponseMs != 0)
+                uart["last_response_age_ms"] = static_cast<uint32_t>(now - diag.lastResponseMs);
+            else
+                uart["last_response_age_ms"] = nullptr;
+            if (diag.lastSuccessfulReadMs != 0)
+                uart["last_successful_read_ms"] = static_cast<uint32_t>(diag.lastSuccessfulReadMs);
+            else
+                uart["last_successful_read_ms"] = nullptr;
+            if (diag.lastSuccessfulReadMs != 0)
+                uart["last_successful_read_age_ms"] = static_cast<uint32_t>(now - diag.lastSuccessfulReadMs);
+            else
+                uart["last_successful_read_age_ms"] = nullptr;
+        }
     }
 
     WebServer::WebServer(
@@ -132,7 +244,8 @@ namespace SQM
         next.bme = bmeSensor.getReading();
         next.mlx = mlxSensor.getReading();
         next.gps = gpsSensor.getReading();
-        next.rg15 = rg15Sensor.getReading();
+        next.rg15 = rg15Sensor.copyReading();
+        next.rg15Diagnostics = rg15Sensor.getDiagnostics();
         next.tslInitialized = tslSensor.isInitialized();
         next.bmeInitialized = bmeSensor.isInitialized();
         next.mlxInitialized = mlxSensor.isInitialized();
@@ -241,6 +354,9 @@ namespace SQM
         // WiFi endpoints
         server.on("/api/wifi/scan", HTTP_GET, [this](AsyncWebServerRequest *request)
                   { handleWiFiScan(request); });
+
+        server.on("/api/sensors/rg15/test", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  { handleRG15Test(request); });
 
         // MQTT test endpoint
         AsyncCallbackJsonWebHandler *mqttTestHandler = new AsyncCallbackJsonWebHandler(
@@ -536,6 +652,49 @@ namespace SQM
         WiFi.scanDelete();
     }
 
+    void WebServer::handleRG15Test(AsyncWebServerRequest *request)
+    {
+        if (!requireAuth(request))
+            return;
+
+        const uint32_t startedAt = millis();
+        const bool ok = rg15Sensor.testCommunication();
+        const RG15Reading reading = rg15Sensor.copyReading();
+        const RG15Diagnostics diagnostics = rg15Sensor.getDiagnostics();
+        const uint32_t now = millis();
+
+        StaticJsonDocument<1024> response;
+        response["ok"] = ok && reading.status == SensorStatus::OK;
+        response["command"] = diagnostics.lastCommand ? diagnostics.lastCommand->c_str() : "R";
+        response["bytes_written"] = diagnostics.lastBytesWritten;
+        response["elapsed_ms"] = now - startedAt;
+        if (diagnostics.lastRawResponse)
+            response["raw_response"] = diagnostics.lastRawResponse->c_str();
+        else
+            response["raw_response"] = nullptr;
+        if (diagnostics.lastAck)
+            response["ack"] = diagnostics.lastAck->c_str();
+        else
+            response["ack"] = nullptr;
+        response["acknowledged"] = diagnostics.lastAck.has_value();
+        response["parsed"] = reading.status == SensorStatus::OK;
+        response["online"] = reading.online;
+        response["stale"] = reading.stale;
+        if (diagnostics.lastSuccessfulReadMs != 0)
+            response["last_successful_read_age_ms"] = static_cast<uint32_t>(now - diagnostics.lastSuccessfulReadMs);
+        else
+            response["last_successful_read_age_ms"] = nullptr;
+        if (diagnostics.lastError)
+            response["error"] = diagnostics.lastError->c_str();
+        else
+            response["error"] = nullptr;
+        response["hint"] = "Check RG-15 Serial OUT -> ESP32 RX, Serial IN -> ESP32 TX, common ground, baud rate, and voltage level.";
+
+        String responseStr;
+        serializeJson(response, responseStr);
+        request->send(ok && reading.status == SensorStatus::OK ? 200 : 400, "application/json", responseStr.c_str());
+    }
+
     void WebServer::pollWiFiConnect()
     {
         if (!wifiConnectActive)
@@ -773,7 +932,7 @@ namespace SQM
 
     std::string WebServer::createSensorDataJson() const
     {
-        StaticJsonDocument<1792> doc;
+        StaticJsonDocument<3072> doc;
         const SensorSnapshot snapshot = getSensorSnapshot();
         const uint32_t now = millis();
         const uint32_t dataAge = ageMs(now, snapshot.dataTimestamp);
@@ -857,21 +1016,10 @@ namespace SQM
             gps["ageMs"] = ageMs(now, gpsReading.timestamp);
         }
 
-        // RG-15 rain sensor data (if initialized)
-        if (snapshot.rg15Initialized)
+        // RG-15 rain sensor data
         {
-            const RG15Reading &rg15Reading = snapshot.rg15;
             JsonObject rain = doc.createNestedObject("rainSensor");
-            rain["isRaining"] = rg15Reading.isRaining;
-            rain["acc"] = rg15Reading.acc;
-            rain["eventAcc"] = rg15Reading.eventAcc;
-            rain["totalAcc"] = rg15Reading.totalAcc;
-            rain["rInt"] = rg15Reading.rInt;
-            rain["lensBad"] = rg15Reading.lensBad;
-            rain["emSat"] = rg15Reading.emSat;
-            rain["status"] = static_cast<int>(rg15Reading.status);
-            rain["timestamp"] = rg15Reading.timestamp;
-            rain["ageMs"] = ageMs(now, rg15Reading.timestamp);
+            appendRG15Diagnostics(rain, snapshot.rg15, snapshot.rg15Diagnostics, now);
         }
 
         std::string json;
@@ -881,8 +1029,9 @@ namespace SQM
 
     std::string WebServer::createStatusJson() const
     {
-        StaticJsonDocument<2560> doc; // Includes MQTT, partition, and boot diagnostics
+        StaticJsonDocument<4096> doc; // Includes MQTT, partition, and boot diagnostics
         const SensorSnapshot snapshot = getSensorSnapshot();
+        const uint32_t now = millis();
 
         // Firmware version
         JsonObject firmware = doc.createNestedObject("firmware");
@@ -1027,8 +1176,8 @@ namespace SQM
         gps["lastUpdate"] = snapshot.gpsLastUpdate;
 
         JsonObject rg15 = sensors.createNestedObject("rg15");
+        appendRG15Diagnostics(rg15, snapshot.rg15, snapshot.rg15Diagnostics, now);
         rg15["initialized"] = snapshot.rg15Initialized;
-        rg15["status"] = static_cast<int>(snapshot.rg15.status);
         rg15["lastUpdate"] = snapshot.rg15LastUpdate;
 
         // GPS data
