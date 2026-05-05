@@ -6,7 +6,6 @@ All notable changes to SQMeter are documented here.
 
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
-- GPS time source implementation
 
 ## [0.0.1] — 2026-04-25
 
@@ -18,6 +17,7 @@ Initial alpha release.
 - BME280 temperature, humidity, pressure
 - MLX90614 IR cloud temperature and cloud cover estimate
 - GPS module support (optional, u-blox NEO-6M compatible)
+- GPS time source implementation
 - NTP time sync with configurable servers and timezone
 - MQTT publishing to any broker (Home Assistant, Grafana, etc.)
 - OTA firmware and filesystem updates from the browser
