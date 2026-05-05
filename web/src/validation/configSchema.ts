@@ -44,6 +44,16 @@ export const mqttConfigSchema = z
     },
   );
 
+export const otaConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    password: z.string(),
+  })
+  .refine((data) => !data.enabled || data.password.length > 0, {
+    message: "ArduinoOTA password is required when command-line OTA is enabled",
+    path: ["password"],
+  });
+
 export const ntpConfigSchema = z.object({
   enabled: z.boolean(),
   server1: z.string(),
@@ -121,6 +131,7 @@ export const configSchema = z.object({
   deviceName: z.string().min(1, "Device name is required"),
   wifi: wifiConfigSchema,
   mqtt: mqttConfigSchema,
+  ota: otaConfigSchema,
   ntp: ntpConfigSchema,
   sensor: sensorConfigSchema,
   timezone: z.string(),

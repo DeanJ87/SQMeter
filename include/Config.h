@@ -34,6 +34,12 @@ namespace SQM
         uint32_t publishIntervalMs;
     };
 
+    struct OTAConfig
+    {
+        bool enabled;
+        std::string password;
+    };
+
     struct NTPConfig
     {
         bool enabled;
@@ -76,6 +82,7 @@ namespace SQM
     {
         WiFiConfig wifi;
         MQTTConfig mqtt;
+        OTAConfig ota;
         NTPConfig ntp;
         GPSConfig gps;
         RainConfig rain;
@@ -91,8 +98,8 @@ namespace SQM
         bool save() const;
         static Config createDefault();
 
-        std::string toJson() const;
-        static std::optional<Config> fromJson(const std::string &json);
+        std::string toJson(bool redactSecrets = false) const;
+        static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr);
     };
 
 } // namespace SQM

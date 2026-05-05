@@ -150,7 +150,8 @@ namespace SQM
             {
                 String jsonStr;
                 serializeJson(json, jsonStr);
-                auto configOpt = Config::fromJson(jsonStr.c_str());
+                const Config &currentConfig = getConfigCallback();
+                auto configOpt = Config::fromJson(jsonStr.c_str(), &currentConfig);
 
                 if (!configOpt)
                 {
@@ -456,7 +457,7 @@ namespace SQM
     void WebServer::handleGetConfig(AsyncWebServerRequest *request)
     {
         const Config &cfg = getConfigCallback();
-        std::string json = cfg.toJson();
+        std::string json = cfg.toJson(true);
         request->send(200, "application/json", json.c_str());
     }
 
