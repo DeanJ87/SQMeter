@@ -1,84 +1,81 @@
 # SQMeter Audit Remediation Plan
 
-This matrix tracks the 32 findings from `docs/audits/sqmeter-nuclear-codebase-audit.md`.
+This file tracks closure for the findings in `docs/audits/sqmeter-nuclear-codebase-audit.md`.
 
-Statuses:
+## Integrated Workstreams
 
-| Status | Meaning |
-|--------|---------|
-| Docs closed | Documentation was corrected in this branch for the verified current behavior |
-| Partial | Documentation now warns about the limitation, but firmware/UI/build work remains |
-| Open | No local remediation in this docs branch |
-| Deferred | Out of this worker's scope or needs another worker's implementation |
+| Workstream | Commit | Status |
+|------------|--------|--------|
+| Security/secrets/OTA | `f8244b6` | Merged |
+| Config/API/settings | `b81d313` | Merged |
+| Firmware async/reliability | `26c0c92` | Merged |
+| MQTT/telemetry/ASCOM | `6511961` | Merged |
+| UI/MSW/UX | `0337c3f` | Merged |
+| Tests/CI/build | `7fa2f21` | Merged |
+| Docs/remediation | `09aaa43` | Merged |
+| Architecture cleanup | `d11421d` partial | Cherry-picked non-conflicting `Logger.cpp` and `TSL2591Sensor.cpp` changes |
 
-## Closure Matrix
+## Critical And High Findings
 
-| ID | Severity | Area | Status | Local evidence | Validation evidence |
-|----|----------|------|--------|----------------|---------------------|
-| AUDIT-001 | Critical | Async callbacks | Partial | REST/OTA docs warn that WiFi scan and OTA handlers are blocking/unauthenticated where applicable | Integration placeholder: firmware async refactor and WDT regression test |
-| AUDIT-002 | Critical | Sensor concurrency | Open | No docs can close firmware data-race risk | Integration placeholder: firmware mutex/double-buffer implementation and stress test |
-| AUDIT-003 | Critical | Credential logging | Partial | Configuration and README now document current trusted-LAN/credential exposure model | Integration placeholder: firmware removes plaintext config logging |
-| AUDIT-004 | High | Config method mismatch | Partial | REST docs explicitly state `POST /api/config`, not `PUT`; firmware still needs UI contract verification | Integration placeholder: Settings save browser/API regression test |
-| AUDIT-005 | High | MQTT client ID | Partial | MQTT guide warns current firmware uses publish topic as MQTT client ID | Integration placeholder: firmware MAC/client-id fix and broker two-device test |
-| AUDIT-006 | High | WiFi scan blocking | Docs closed | `docs/api/rest.md` now shows actual `/api/wifi/scan` payload and warns scan is synchronous | Docs build/link check |
-| AUDIT-007 | High | NVS JSON size | Partial | Config docs document full current schema and trusted config handling | Integration placeholder: firmware compact JSON and NVS size guard |
-| AUDIT-008 | High | ArduinoOTA auth | Partial | README/config/OTA docs warn OTA and ArduinoOTA are unauthenticated LAN capabilities | Integration placeholder: firmware OTA password/auth mitigation |
-| AUDIT-009 | High | ASCOM rain rate | Partial | `docs/api/ascom.md` documents `:051#` currently returns `0.0` and is unsafe for rain interlocks | Integration placeholder: firmware wires RG-15 into TCPServer and ASCOM client test |
-| AUDIT-010 | High | WebSocket stale data | Partial | WebSocket docs warn 1s broadcast can repeat 5s sensor data and lacks timestamp | Integration placeholder: firmware data timestamp or broadcast cadence fix |
-| AUDIT-011 | High | `/api/config` passwords | Partial | REST/config docs warn `GET /api/config` returns password fields without auth | Integration placeholder: firmware masks passwords and preserves existing secrets on empty save |
-| AUDIT-012 | High | LittleFS format-on-fail | Open | No docs claim filesystem mount failure is recoverable | Integration placeholder: firmware mount failure handling |
-| AUDIT-013 | High | TSL2591 CPL formula | Open | Out of docs scope; no user-facing formula guarantee changed | Integration placeholder: firmware constant cleanup and calculation unit tests |
-| AUDIT-014 | Medium | MQTT timestamp | Partial | MQTT guide documents current `timestamp` as uptime milliseconds, not epoch | Integration placeholder: TimeManager-backed epoch timestamp and consumer test |
-| AUDIT-015 | Medium | MQTT LWT | Partial | MQTT guide warns there is no availability/LWT topic | Integration placeholder: broker availability topic test |
-| AUDIT-016 | Medium | `/api/status` docs | Docs closed | `docs/api/rest.md` now documents actual nested status shape from `src/WebServer.cpp` | Docs build/link check |
-| AUDIT-017 | Medium | WiFi scan docs | Docs closed | `docs/api/rest.md` now documents `{networks:[...]}` and `encryption` field | Docs build/link check |
-| AUDIT-018 | Medium | RG-15 busy wait | Open | RG-15 hardware docs were already present; firmware polling risk remains | Integration placeholder: firmware yield/state-machine fix and rain polling soak test |
-| AUDIT-019 | Medium | Heap diagnostics | Partial | REST docs include current status fields and warn `minFreeHeap` is absent | Integration placeholder: firmware adds `minFreeHeap`/`maxAllocHeap` |
-| AUDIT-020 | Medium | Reset reason/boot count | Partial | REST docs warn reset reason and boot count are absent | Integration placeholder: firmware adds reset diagnostics |
-| AUDIT-021 | Medium | Settings validation count | Deferred | UI implementation is outside this docs worker's ownership | Integration placeholder: UI unit test for validation count |
-| AUDIT-022 | Medium | Mock config response | Deferred | UI mock implementation is outside this docs worker's ownership | Integration placeholder: mock/API contract test |
-| AUDIT-023 | Medium | GPS changelog | Docs closed | `CHANGELOG.md` moved GPS time source implementation into `0.0.1` | Changelog diff review |
-| AUDIT-024 | Medium | Cloud humidity fallback | Partial | REST docs expose current `humidityUsed`; no firmware fallback-source field yet | Integration placeholder: firmware `humiditySource` field and BME failure test |
-| AUDIT-025 | Medium | Rain units UI | Partial | WebSocket/API/MQTT docs clarify current rain payload fields do not carry unit metadata | Integration placeholder: UI displays configured rain units |
-| AUDIT-026 | Medium | Screenshot CI ignored | Deferred | CI workflow outside this docs branch scope unless assigned to CI worker | Integration placeholder: docs workflow removes `continue-on-error` after screenshot stability |
-| AUDIT-027 | Medium | Async library pinning | Deferred | Build dependency pinning is outside docs worker scope | Integration placeholder: PlatformIO dependency pin and reproducible build |
-| AUDIT-028 | Medium | npm cache key | Deferred | CI workflow outside docs worker scope unless assigned to CI worker | Integration placeholder: workflow cache key changes to `package-lock.json` |
-| AUDIT-029 | Low | Logger default DEBUG | Partial | README/config docs warn current trusted-LAN/serial exposure risk; runtime log level remains firmware work | Integration placeholder: firmware defaults INFO or config-driven log level |
-| AUDIT-030 | Low | WS reconnect backoff | Deferred | UI hook implementation outside docs worker scope | Integration placeholder: UI reconnect backoff test |
-| AUDIT-031 | Low | TCP server reconnect | Partial | ASCOM docs warn integrations must validate runtime behavior and keep TCP on LAN | Integration placeholder: firmware restarts TCP server after WiFi reconnect |
-| AUDIT-032 | Low | GPS HDOP inconsistency | Partial | REST docs show current `gps` and `gpsData` behavior where relevant; firmware normalization remains | Integration placeholder: API contract test normalizes HDOP |
+| ID | Severity | Status | Branch/commit | Files | Validation evidence | Follow-up |
+|----|----------|--------|---------------|-------|---------------------|-----------|
+| AUDIT-001 | Critical | Fixed | `fix/audit-firmware-async-state` `26c0c92` | `src/WebServer.cpp`, `include/WebServer.h`, `src/main.cpp`, `src/sensors/RG15Sensor.cpp` | Worker `pio run` passed; final `rg "delay\\("` review required | MQTT test remains synchronous; consider a nonblocking MQTT test state machine |
+| AUDIT-002 | Critical | Fixed | `fix/audit-firmware-async-state` `26c0c92` | `src/WebServer.cpp`, `include/WebServer.h`, `src/main.cpp` | Worker `pio run` passed; final firmware build required | Hardware/soak test under simultaneous WebSocket/API/MQTT load |
+| AUDIT-003 | Critical | Fixed | `fix/audit-security-secrets-ota` `f8244b6`, config `b81d313` | `src/Config.cpp`, `include/Config.h` | Secret logging grep required after final merge | Keep serial logs reviewed before release |
+| AUDIT-004 | High | Fixed | `fix/audit-config-api-settings` `b81d313`, UI `0337c3f` | `src/WebServer.cpp`, `web/src/components/Settings.tsx`, `web/src/mocks/handlers.ts` | Config branch firmware/web builds passed; final web build required | None |
+| AUDIT-005 | High | Fixed | `fix/audit-telemetry-mqtt-ascom` `6511961` | `src/MQTTClient.cpp`, `include/MQTTClient.h` | Worker `pio run` passed | Live broker test with two devices |
+| AUDIT-006 | High | Fixed | `fix/audit-firmware-async-state` `26c0c92` | `src/WebServer.cpp`, `include/WebServer.h`, UI/docs updates | Worker `pio run` passed; final `rg "WiFi\\.scanNetworks\\("` review required | Confirm UI handles `202` scan-in-progress payload |
+| AUDIT-007 | High | Fixed | `fix/audit-config-api-settings` `b81d313` | `src/Config.cpp`, `include/Config.h` | Config branch `pio run` passed; final `rg serializeJsonPretty` required | Add firmware unit test for oversized config |
+| AUDIT-008 | High | Fixed | `fix/audit-security-secrets-ota` `f8244b6` | `include/Config.h`, `src/Config.cpp`, `src/main.cpp`, UI/docs config files | Secret branch grep passed; final firmware build required | Web OTA endpoints remain unauthenticated and should get optional auth later |
+| AUDIT-009 | High | Fixed | `fix/audit-telemetry-mqtt-ascom` `6511961` | `src/TCPServer.cpp`, `include/TCPServer.h`, `src/main.cpp` | Worker `pio run` passed | Validate ASCOM `:051#` against real RG-15 hardware |
+| AUDIT-010 | High | Fixed | `fix/audit-firmware-async-state` `26c0c92`, UI `0337c3f` | `src/WebServer.cpp`, `include/WebServer.h`, `web/src/components/Dashboard.tsx`, `web/src/mocks/data.ts` | Worker firmware/UI builds passed; final web build required | Field test stale indicators with real sensor cadence |
+| AUDIT-011 | High | Fixed | `fix/audit-security-secrets-ota` `f8244b6`, config `b81d313` | `src/Config.cpp`, `src/WebServer.cpp`, UI config/types/docs | Secret grep passed in worker; final secret grep required | Add optional HTTP auth later |
+| AUDIT-012 | High | Fixed | `fix/audit-firmware-async-state` `26c0c92` | `src/main.cpp` | Worker `pio run` passed | Document recovery path if LittleFS is missing |
+| AUDIT-013 | High | Fixed | `fix/audit-architecture-cleanup` `d11421d` partial | `src/sensors/TSL2591Sensor.cpp` | Worker `pio run` passed | Add lux/SQM unit tests |
 
-## Documentation Remediation Completed
+## Medium And Low Findings
 
-| Finding | Files |
-|---------|-------|
-| AUDIT-016 | `docs/api/rest.md` |
-| AUDIT-017 | `docs/api/rest.md` |
-| AUDIT-023 | `CHANGELOG.md` |
-| WebSocket stale/rain docs | `docs/api/websocket.md` |
-| MQTT stale payload docs | `docs/user-guide/mqtt.md` |
-| OTA/update/fs docs | `docs/api/rest.md`, `docs/user-guide/ota.md` |
-| ASCOM/TCP docs | `docs/api/ascom.md`, `mkdocs.yml` |
-| Config schema/security docs | `docs/user-guide/configuration.md`, `README.md`, `BUILD.md` |
+| ID | Severity | Status | Branch/commit | Notes |
+|----|----------|--------|---------------|-------|
+| AUDIT-014 | Medium | Fixed | `6511961` | MQTT payload emits epoch seconds when time is valid and `timeValid` otherwise |
+| AUDIT-015 | Medium | Fixed | `6511961` | MQTT retained availability and LWT added under `<topic>/availability` |
+| AUDIT-016 | Medium | Fixed | `09aaa43` | REST status docs updated |
+| AUDIT-017 | Medium | Fixed | `09aaa43` | WiFi scan docs updated |
+| AUDIT-018 | Medium | Fixed | `26c0c92` | RG-15 wait loop yields |
+| AUDIT-019 | Medium | Fixed | `26c0c92` | `minFreeHeap` and `maxAllocHeap` added |
+| AUDIT-020 | Medium | Fixed | `26c0c92` | reset reason and RTC boot count added |
+| AUDIT-021 | Medium | Fixed | `0337c3f` | validation errors now use canonical keys/count |
+| AUDIT-022 | Medium | Fixed | `0337c3f`, `b81d313` | MSW config save returns `{success:true}` |
+| AUDIT-023 | Medium | Fixed | `09aaa43` | changelog GPS status corrected |
+| AUDIT-024 | Medium | Fixed | `26c0c92` | cloud payload includes humidity source/BME availability |
+| AUDIT-025 | Medium | Partially fixed | `0337c3f` | UI labels metric/imperial; `switch` mode remains limited by current backend contract |
+| AUDIT-026 | Medium | Fixed | `7fa2f21` | screenshot CI no longer continues on error; tests now assert content and save screenshots |
+| AUDIT-027 | Medium | Fixed | `7fa2f21` | async libraries pinned to commit hashes |
+| AUDIT-028 | Medium | Fixed | `7fa2f21` | `package-lock.json` committed; CI uses `npm ci` and lockfile cache key |
+| AUDIT-029 | Low | Fixed | `d11421d` partial | logger defaults to INFO unless `DEBUG_BUILD` |
+| AUDIT-030 | Low | Fixed | `0337c3f` | WebSocket hook uses backoff and cleanup refs |
+| AUDIT-031 | Low | Fixed | `6511961` | TCP server restarts after WiFi reconnect |
+| AUDIT-032 | Low | Fixed | `6511961` | GPS HDOP normalized in sensor payload |
 
-## Integration Evidence Slots
+## Validation Evidence
 
-Use this section during final audit closure once firmware/UI/CI workers merge their changes.
+Branch-level validation completed before integration:
 
-| Evidence item | Command or method | Result |
-|---------------|-------------------|--------|
-| Docs build | `mkdocs build --strict` | Blocked locally: `mkdocs` command not installed |
-| Static nav/link check | Python check for nav coverage and relative `.md` links | Passed locally |
-| REST status contract | `curl http://<device>/api/status` | Pending hardware/API validation |
-| WiFi scan contract | `curl http://<device>/api/wifi/scan` | Pending hardware/API validation |
-| WebSocket sensor contract | Connect to `ws://<device>/ws/sensors` | Pending hardware/API validation |
-| MQTT payload | `mosquitto_sub -h <broker> -t "sqm/#" -v` | Pending broker validation |
-| ASCOM rain-rate command | `printf ':051#' | nc <device> 2020` | Pending firmware fix and hardware validation |
-| OTA firmware endpoint | Browser System page or `POST /api/update` | Pending hardware validation |
-| OTA filesystem endpoint | Browser System page or `POST /api/update/fs` | Pending hardware validation |
+- `fix/audit-firmware-async-state`: `platformio run` passed; `platformio test` not applicable because no firmware `test/` directory exists.
+- `fix/audit-security-secrets-ota`: targeted secret grep and `git diff --check` passed; final integrated builds required.
+- `fix/audit-config-api-settings`: `pio run`, `npm run build`, and `git diff --check` passed.
+- `fix/audit-telemetry-mqtt-ascom`: `pio run` and `git diff --check` passed.
+- `fix/audit-ui-msw-ux`: `npm run build` and `npm run build:demo` passed; old screenshot baseline mode failed before CI branch replaced it.
+- `fix/audit-tests-ci-build`: `npm ci`, `npm run typecheck`, `npm run build`, `npm run build:demo`, `npm run screenshots`, `mkdocs build --strict`, `platformio run`, and `platformio run --target buildfs` passed in the worker.
+- `fix/audit-docs-remediation`: `mkdocs build --strict` passed during integration using the existing venv MkDocs binary.
+- `fix/audit-architecture-cleanup`: `pio run` passed.
 
-## Risks
+Final integrated validation is recorded in the PR body.
 
-- This branch documents verified current behavior; it does not fix firmware safety issues.
-- Runtime behavior may change when firmware/UI workers merge their remediation branches. Re-check REST, WebSocket, MQTT, and ASCOM examples before final release docs are published.
-- The copied audit report is intentionally included under `docs/audits/` for traceability.
+## Deferred Work
+
+- Add optional HTTP authentication for config-mutating and web OTA endpoints.
+- Add firmware unit tests for config parsing, sky quality, cloud detection, RG-15 parsing, and MQTT payloads.
+- Add hardware validation for OTA, WiFi scan/connect, ASCOM rain rate, and MQTT availability.
+- Improve RG-15 `switch` unit reporting so the UI can display the physical switch-selected units exactly.
+- Keep RG-15 feature expansion out of this remediation PR; further RG-15 feature work should happen after this lands.
