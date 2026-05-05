@@ -158,6 +158,16 @@ namespace SQM
                     return;
                 }
 
+                const Config &currentConfig = getConfigCallback();
+                if (configOpt->wifi.password.empty())
+                {
+                    configOpt->wifi.password = currentConfig.wifi.password;
+                }
+                if (configOpt->mqtt.password.empty())
+                {
+                    configOpt->mqtt.password = currentConfig.mqtt.password;
+                }
+
                 if (saveConfigCallback(*configOpt))
                 {
                     request->send(200, "application/json", "{\"success\":true}");
@@ -167,6 +177,7 @@ namespace SQM
                     request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
                 }
             });
+        configHandler->setMethod(HTTP_POST | HTTP_PUT);
         server.addHandler(configHandler);
 
         // System endpoints
@@ -456,7 +467,7 @@ namespace SQM
     void WebServer::handleGetConfig(AsyncWebServerRequest *request)
     {
         const Config &cfg = getConfigCallback();
-        std::string json = cfg.toJson();
+        std::string json = cfg.toJson(false);
         request->send(200, "application/json", json.c_str());
     }
 

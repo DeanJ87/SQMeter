@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 #include <cstdint>
+#include <cstddef>
 
 namespace SQM
 {
@@ -86,12 +87,14 @@ namespace SQM
         TimeSource secondaryTimeSource; // Fallback time source
 
         static constexpr const char *TAG = "Config";
+        static constexpr size_t MAX_PERSISTED_JSON_BYTES = 3800;
 
         static std::optional<Config> load();
         bool save() const;
         static Config createDefault();
 
-        std::string toJson() const;
+        std::string toJson(bool includeSecrets = true) const;
+        bool validate(std::string *error = nullptr) const;
         static std::optional<Config> fromJson(const std::string &json);
     };
 
