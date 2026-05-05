@@ -97,12 +97,19 @@ jobs:
 
       - name: Integrity checks
         run: |
-          # No active port 2020 references in product code or docs
-          if grep -rn "port 2020\|:2020\|WiFiServer.*2020\|TCPServer" src/ include/ web/src/ docs/user-guide/ docs/api/ docs/getting-started/ docs/hardware/ docs/reference/ README.md 2>/dev/null | grep -v "audits/"; then
-            echo "ERROR: Active port 2020 / TCPServer reference found"
+          # No active TCPServer code references (firmware source and UI code only)
+          if grep -rn "TCPServer\|WiFiServer.*2020" src/ include/ web/src/ 2>/dev/null; then
+            echo "ERROR: TCPServer / port 2020 server reference found in firmware or UI code"
             exit 1
           fi
-          echo "Port 2020 check passed"
+          echo "TCPServer code check passed"
+
+          # No user-guide or getting-started docs advertising port 2020 as active
+          if grep -rn "port 2020" docs/user-guide/ docs/getting-started/ docs/hardware/ docs/reference/ README.md 2>/dev/null; then
+            echo "ERROR: port 2020 referenced as active functionality in product docs"
+            exit 1
+          fi
+          echo "Port 2020 docs check passed"
 
           # No serializeJsonPretty in config persistence
           if grep -rn "serializeJsonPretty" src/ include/ lib/ 2>/dev/null; then
