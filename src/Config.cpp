@@ -43,6 +43,60 @@ namespace SQM
         }
     }
 
+    namespace
+    {
+        bool isValidGpio(int pin)
+        {
+            switch (pin)
+            {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+            case 12:
+            case 13:
+            case 14:
+            case 15:
+            case 16:
+            case 17:
+            case 18:
+            case 19:
+            case 21:
+            case 22:
+            case 23:
+            case 25:
+            case 26:
+            case 27:
+            case 32:
+            case 33:
+            case 34:
+            case 35:
+            case 36:
+            case 39:
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        bool isValidBaudRate(uint32_t baudRate)
+        {
+            return baudRate == 2400 || baudRate == 4800 || baudRate == 9600 || baudRate == 19200 ||
+                   baudRate == 38400 || baudRate == 57600 || baudRate == 115200;
+        }
+
+        bool setError(std::string *error, const char *message)
+        {
+            if (error)
+            {
+                *error = message;
+            }
+            return false;
+        }
+    } // namespace
+
     std::optional<Config> Config::load()
     {
         Logger::info(TAG, "Loading configuration from NVS");
@@ -90,8 +144,23 @@ namespace SQM
     {
         Logger::info(TAG, "Attempting to save configuration to NVS...");
 
+        std::string validationError;
+        if (!validate(&validationError))
+        {
+            Logger::error(TAG, "Refusing to save invalid configuration: %s", validationError.c_str());
+            return false;
+        }
+
         std::string json = toJson();
-        Logger::info(TAG, "Config JSON to save (%d bytes)", json.length());
+        Logger::info(TAG, "Config JSON to save (%u bytes)", static_cast<unsigned>(json.length()));
+
+        if (json.length() > MAX_PERSISTED_JSON_BYTES)
+        {
+            Logger::error(TAG, "Config JSON too large for NVS (%u bytes, max %u bytes)",
+                          static_cast<unsigned>(json.length()),
+                          static_cast<unsigned>(MAX_PERSISTED_JSON_BYTES));
+            return false;
+        }
 
         Preferences prefs;
         if (!prefs.begin(NVS_NAMESPACE, false))
@@ -245,6 +314,108 @@ namespace SQM
         return output;
     }
 
+    bool Config::validate(std::string *error) const
+    {
+        if (deviceName.empty())
+        {
+            return setError(error, "Device name is required");
+        }
+
+        if (primaryTimeSource != TimeSource::NTP && primaryTimeSource != TimeSource::GPS)
+        {
+            return setError(error, "Primary time source is invalid");
+        }
+
+        if (secondaryTimeSource != TimeSource::NTP && secondaryTimeSource != TimeSource::GPS)
+        {
+            return setError(error, "Secondary time source is invalid");
+        }
+
+        if (wifi.reconnectDelayMs == 0 || wifi.maxReconnectDelayMs == 0 ||
+            wifi.reconnectDelayMs > 86400000 || wifi.maxReconnectDelayMs > 86400000 ||
+            wifi.reconnectDelayMs > wifi.maxReconnectDelayMs)
+        {
+            return setError(error, "WiFi reconnect delays are invalid");
+        }
+
+        if (mqtt.port == 0)
+        {
+            return setError(error, "MQTT port is invalid");
+        }
+
+        if (mqtt.enabled && (mqtt.broker.empty() || mqtt.topic.empty()))
+        {
+            return setError(error, "MQTT broker and topic are required when MQTT is enabled");
+        }
+
+        if (mqtt.publishIntervalMs < 1000 || mqtt.publishIntervalMs > 86400000)
+        {
+            return setError(error, "MQTT publish interval is invalid");
+        }
+
+        if (ntp.enabled && ntp.server1.empty())
+        {
+            return setError(error, "Primary NTP server is required when NTP is enabled");
+        }
+
+        if (ntp.syncIntervalMs < 600000 || ntp.syncIntervalMs > 86400000)
+        {
+            return setError(error, "NTP sync interval is invalid");
+        }
+
+        if (!isValidGpio(gps.rxPin) || !isValidGpio(gps.txPin) || gps.rxPin == gps.txPin)
+        {
+            return setError(error, "GPS pins are invalid");
+        }
+
+        if (!isValidBaudRate(gps.baudRate))
+        {
+            return setError(error, "GPS baud rate is invalid");
+        }
+
+        if (!isValidGpio(rain.rxPin) || !isValidGpio(rain.txPin) || (rain.enabled && rain.rxPin == rain.txPin))
+        {
+            return setError(error, "Rain sensor pins are invalid");
+        }
+
+        if (!isValidBaudRate(rain.baudRate))
+        {
+            return setError(error, "Rain sensor baud rate is invalid");
+        }
+
+        if (rain.mode != "polling" && rain.mode != "continuous")
+        {
+            return setError(error, "Rain sensor mode is invalid");
+        }
+
+        if (rain.resolution != "high" && rain.resolution != "low" && rain.resolution != "switch")
+        {
+            return setError(error, "Rain sensor resolution is invalid");
+        }
+
+        if (rain.units != "metric" && rain.units != "imperial" && rain.units != "switch")
+        {
+            return setError(error, "Rain sensor units are invalid");
+        }
+
+        if (sensor.readIntervalMs < 100 || sensor.readIntervalMs > 3600000)
+        {
+            return setError(error, "Sensor read interval is invalid");
+        }
+
+        if (!isValidGpio(sensor.i2cSDA) || !isValidGpio(sensor.i2cSCL) || sensor.i2cSDA == sensor.i2cSCL)
+        {
+            return setError(error, "I2C pins are invalid");
+        }
+
+        if (sensor.i2cFrequency < 10000 || sensor.i2cFrequency > 400000)
+        {
+            return setError(error, "I2C frequency is invalid");
+        }
+
+        return true;
+    }
+
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig)
     {
         StaticJsonDocument<3072> doc;
@@ -372,6 +543,12 @@ namespace SQM
                 cfg.sensor.i2cSCL = sensor["i2cSCL"] | 22;
             if (sensor.containsKey("i2cFrequency"))
                 cfg.sensor.i2cFrequency = sensor["i2cFrequency"] | 100000;
+
+        std::string validationError;
+        if (!cfg.validate(&validationError))
+        {
+            Logger::error(TAG, "Configuration validation failed: %s", validationError.c_str());
+            return std::nullopt;
         }
 
         return cfg;

@@ -149,12 +149,20 @@ const Settings: FunctionalComponent = () => {
         body: JSON.stringify(config),
       });
 
+      const contentType = response.headers.get('content-type') || '';
+      const responseBody = contentType.includes('application/json')
+        ? await response.json()
+        : null;
+
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Configuration saved successfully!' });
-        setValidationErrors({});
+        if (responseBody?.success === false) {
+          setMessage({ type: 'error', text: responseBody.error || 'Failed to save configuration' });
+        } else {
+          setMessage({ type: 'success', text: 'Configuration saved successfully!' });
+          setValidationErrors({});
+        }
       } else {
-        const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Failed to save configuration' });
+        setMessage({ type: 'error', text: responseBody?.error || 'Failed to save configuration' });
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'Network error occurred' });

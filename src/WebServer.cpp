@@ -168,6 +168,7 @@ namespace SQM
                     request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
                 }
             });
+        configHandler->setMethod(HTTP_POST | HTTP_PUT);
         server.addHandler(configHandler);
 
         // System endpoints
