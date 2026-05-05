@@ -44,6 +44,16 @@ export const mqttConfigSchema = z
     },
   );
 
+export const otaConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    password: z.string(),
+  })
+  .refine((data) => !data.enabled || data.password.length > 0, {
+    message: "ArduinoOTA password is required when command-line OTA is enabled",
+    path: ["password"],
+  });
+
 export const ntpConfigSchema = z.object({
   enabled: z.boolean(),
   server1: z.string(),
@@ -87,20 +97,57 @@ export const sensorConfigSchema = z
     path: ["i2cSDA"],
   });
 
-export const cloudDetectionConfigSchema = z.object({
-  clearSkyThreshold: z.number().min(-30).max(0),
-  cloudyThreshold: z.number().min(-20).max(10),
-  humidityCorrection: z.number().min(0).max(2),
-}).optional().default({ clearSkyThreshold: -13.0, cloudyThreshold: -3.0, humidityCorrection: 0.75 });
+export const cloudDetectionConfigSchema = z
+  .object({
+    clearSkyThreshold: z.number().min(-30).max(0),
+    cloudyThreshold: z.number().min(-20).max(10),
+    humidityCorrection: z.number().min(0).max(2),
+  })
+  .refine((data) => data.clearSkyThreshold < data.cloudyThreshold, {
+    message: "Clear sky threshold must be less than cloudy threshold",
+    path: ["clearSkyThreshold"],
+  });
+
+export const rainSensorConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    rxPin: z
+      .number()
+      .int()
+      .refine((val) => validGPIOs.includes(val), {
+        message: `RX pin must be a valid GPIO: ${validGPIOs.join(", ")}`,
+      }),
+    txPin: z
+      .number()
+      .int()
+      .refine((val) => validGPIOs.includes(val), {
+        message: `TX pin must be a valid GPIO: ${validGPIOs.join(", ")}`,
+      }),
+    baudRate: z
+      .number()
+      .int()
+      .refine((val) => [2400, 4800, 9600, 19200].includes(val), {
+        message: "Baud rate must be one of: 2400, 4800, 9600, 19200",
+      }),
+    mode: z.enum(['polling', 'continuous']),
+    resolution: z.enum(['high', 'low', 'switch']),
+    units: z.enum(['metric', 'imperial', 'switch']),
+  })
+  .refine((data) => !data.enabled || data.rxPin !== data.txPin, {
+    message: "RX and TX pins must be different",
+    path: ["rxPin"],
+  });
 
 export const configSchema = z.object({
   deviceName: z.string().min(1, "Device name is required"),
   wifi: wifiConfigSchema,
   mqtt: mqttConfigSchema,
+  ota: otaConfigSchema,
   ntp: ntpConfigSchema,
   sensor: sensorConfigSchema,
   timezone: z.string(),
   cloudDetection: cloudDetectionConfigSchema,
+  rain: rainSensorConfigSchema.optional(),
 });
 
 export type ConfigSchema = z.infer<typeof configSchema>;

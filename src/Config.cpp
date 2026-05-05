@@ -2,11 +2,100 @@
 #include "Logger.h"
 #include <ArduinoJson.h>
 #include <Preferences.h>
+#include <cstring>
 
 namespace SQM
 {
     static const char *NVS_NAMESPACE = "sqm";
     static const char *NVS_CONFIG_KEY = "config";
+    static const char *SECRET_MASK = "********";
+
+    namespace
+    {
+        bool isPlaceholderSecret(const char *value)
+        {
+            return value == nullptr || value[0] == '\0' ||
+                   std::strcmp(value, SECRET_MASK) == 0 ||
+                   std::strcmp(value, "***") == 0;
+        }
+
+        void assignSecret(JsonObject obj, const char *key, std::string &target, bool preservePlaceholders)
+        {
+            if (!obj.containsKey(key))
+            {
+                return;
+            }
+
+            JsonVariant value = obj[key];
+            if (value.isNull())
+            {
+                target.clear();
+                return;
+            }
+
+            const char *secret = value | "";
+            if (preservePlaceholders && isPlaceholderSecret(secret))
+            {
+                return;
+            }
+
+            target = secret;
+        }
+    }
+
+    namespace
+    {
+        bool isValidGpio(int pin)
+        {
+            switch (pin)
+            {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+            case 12:
+            case 13:
+            case 14:
+            case 15:
+            case 16:
+            case 17:
+            case 18:
+            case 19:
+            case 21:
+            case 22:
+            case 23:
+            case 25:
+            case 26:
+            case 27:
+            case 32:
+            case 33:
+            case 34:
+            case 35:
+            case 36:
+            case 39:
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        bool isValidBaudRate(uint32_t baudRate)
+        {
+            return baudRate == 2400 || baudRate == 4800 || baudRate == 9600 || baudRate == 19200 ||
+                   baudRate == 38400 || baudRate == 57600 || baudRate == 115200;
+        }
+
+        bool setError(std::string *error, const char *message)
+        {
+            if (error)
+            {
+                *error = message;
+            }
+            return false;
+        }
+    } // namespace
 
     std::optional<Config> Config::load()
     {
@@ -35,7 +124,7 @@ namespace SQM
             return std::nullopt;
         }
 
-        Logger::info(TAG, "Loaded config JSON (%d bytes): %s", jsonStr.length(), jsonStr.c_str());
+        Logger::info(TAG, "Loaded config JSON (%d bytes)", jsonStr.length());
 
         std::string json = jsonStr.c_str();
         auto config = fromJson(json);
@@ -55,8 +144,23 @@ namespace SQM
     {
         Logger::info(TAG, "Attempting to save configuration to NVS...");
 
+        std::string validationError;
+        if (!validate(&validationError))
+        {
+            Logger::error(TAG, "Refusing to save invalid configuration: %s", validationError.c_str());
+            return false;
+        }
+
         std::string json = toJson();
-        Logger::info(TAG, "Config JSON to save (%d bytes): %s", json.length(), json.c_str());
+        Logger::info(TAG, "Config JSON to save (%u bytes)", static_cast<unsigned>(json.length()));
+
+        if (json.length() > MAX_PERSISTED_JSON_BYTES)
+        {
+            Logger::error(TAG, "Config JSON too large for NVS (%u bytes, max %u bytes)",
+                          static_cast<unsigned>(json.length()),
+                          static_cast<unsigned>(MAX_PERSISTED_JSON_BYTES));
+            return false;
+        }
 
         Preferences prefs;
         if (!prefs.begin(NVS_NAMESPACE, false))
@@ -83,7 +187,6 @@ namespace SQM
             String verified = verifyPrefs.getString(NVS_CONFIG_KEY, "");
             verifyPrefs.end();
             Logger::info(TAG, "Verification: NVS contains %d bytes", verified.length());
-            Logger::debug(TAG, "Verification content: %s", verified.c_str());
         }
 
         return true;
@@ -111,6 +214,9 @@ namespace SQM
         cfg.mqtt.topic = "sqm/data";
         cfg.mqtt.publishIntervalMs = 60000; // 1 minute
 
+        cfg.ota.enabled = false;
+        cfg.ota.password = "";
+
         cfg.ntp.enabled = true;
         cfg.ntp.server1 = "pool.ntp.org";
         cfg.ntp.server2 = "time.nist.gov";
@@ -123,6 +229,14 @@ namespace SQM
         cfg.gps.rxPin = 17;
         cfg.gps.txPin = 16;
         cfg.gps.baudRate = 9600;
+
+        cfg.rain.enabled = false;
+        cfg.rain.rxPin = 18;
+        cfg.rain.txPin = 19;
+        cfg.rain.baudRate = 9600;
+        cfg.rain.mode = "polling";
+        cfg.rain.resolution = "high";
+        cfg.rain.units = "metric";
 
         cfg.sensor.readIntervalMs = 5000; // 5 seconds
         cfg.sensor.i2cSDA = 21;
@@ -139,9 +253,9 @@ namespace SQM
         return cfg;
     }
 
-    std::string Config::toJson() const
+    std::string Config::toJson(bool redactSecrets) const
     {
-        StaticJsonDocument<1792> doc; // Increased from 1536 for cloudDetection config
+        StaticJsonDocument<3072> doc;
 
         doc["deviceName"] = deviceName;
         doc["timezone"] = timezone;
@@ -150,7 +264,7 @@ namespace SQM
 
         JsonObject wifi = doc.createNestedObject("wifi");
         wifi["ssid"] = this->wifi.ssid;
-        wifi["password"] = this->wifi.password;
+        wifi["password"] = redactSecrets && !this->wifi.password.empty() ? SECRET_MASK : this->wifi.password.c_str();
         wifi["hostname"] = this->wifi.hostname;
         wifi["autoReconnect"] = this->wifi.autoReconnect;
         wifi["reconnectDelayMs"] = this->wifi.reconnectDelayMs;
@@ -161,9 +275,13 @@ namespace SQM
         mqtt["broker"] = this->mqtt.broker;
         mqtt["port"] = this->mqtt.port;
         mqtt["username"] = this->mqtt.username;
-        mqtt["password"] = this->mqtt.password;
+        mqtt["password"] = redactSecrets && !this->mqtt.password.empty() ? SECRET_MASK : this->mqtt.password.c_str();
         mqtt["topic"] = this->mqtt.topic;
         mqtt["publishIntervalMs"] = this->mqtt.publishIntervalMs;
+
+        JsonObject ota = doc.createNestedObject("ota");
+        ota["enabled"] = this->ota.enabled;
+        ota["password"] = redactSecrets && !this->ota.password.empty() ? SECRET_MASK : this->ota.password.c_str();
 
         JsonObject ntp = doc.createNestedObject("ntp");
         ntp["enabled"] = this->ntp.enabled;
@@ -180,6 +298,15 @@ namespace SQM
         gps["txPin"] = this->gps.txPin;
         gps["baudRate"] = this->gps.baudRate;
 
+        JsonObject rain = doc.createNestedObject("rain");
+        rain["enabled"] = this->rain.enabled;
+        rain["rxPin"] = this->rain.rxPin;
+        rain["txPin"] = this->rain.txPin;
+        rain["baudRate"] = this->rain.baudRate;
+        rain["mode"] = this->rain.mode;
+        rain["resolution"] = this->rain.resolution;
+        rain["units"] = this->rain.units;
+
         JsonObject sensor = doc.createNestedObject("sensor");
         sensor["readIntervalMs"] = this->sensor.readIntervalMs;
         sensor["i2cSDA"] = this->sensor.i2cSDA;
@@ -192,13 +319,120 @@ namespace SQM
         cloudDetection["humidityCorrection"] = this->cloudDetection.humidityCorrection;
 
         std::string output;
-        serializeJsonPretty(doc, output);
+        serializeJson(doc, output);
         return output;
     }
 
-    std::optional<Config> Config::fromJson(const std::string &json)
+    bool Config::validate(std::string *error) const
     {
-        StaticJsonDocument<1792> doc; // Increased from 1536 for cloudDetection config
+        if (deviceName.empty())
+        {
+            return setError(error, "Device name is required");
+        }
+
+        if (primaryTimeSource != TimeSource::NTP && primaryTimeSource != TimeSource::GPS)
+        {
+            return setError(error, "Primary time source is invalid");
+        }
+
+        if (secondaryTimeSource != TimeSource::NTP && secondaryTimeSource != TimeSource::GPS)
+        {
+            return setError(error, "Secondary time source is invalid");
+        }
+
+        if (wifi.reconnectDelayMs == 0 || wifi.maxReconnectDelayMs == 0 ||
+            wifi.reconnectDelayMs > 86400000 || wifi.maxReconnectDelayMs > 86400000 ||
+            wifi.reconnectDelayMs > wifi.maxReconnectDelayMs)
+        {
+            return setError(error, "WiFi reconnect delays are invalid");
+        }
+
+        if (mqtt.port == 0)
+        {
+            return setError(error, "MQTT port is invalid");
+        }
+
+        if (mqtt.enabled && (mqtt.broker.empty() || mqtt.topic.empty()))
+        {
+            return setError(error, "MQTT broker and topic are required when MQTT is enabled");
+        }
+
+        if (mqtt.publishIntervalMs < 1000 || mqtt.publishIntervalMs > 86400000)
+        {
+            return setError(error, "MQTT publish interval is invalid");
+        }
+
+        if (ntp.enabled && ntp.server1.empty())
+        {
+            return setError(error, "Primary NTP server is required when NTP is enabled");
+        }
+
+        if (ntp.syncIntervalMs < 600000 || ntp.syncIntervalMs > 86400000)
+        {
+            return setError(error, "NTP sync interval is invalid");
+        }
+
+        if (!isValidGpio(gps.rxPin) || !isValidGpio(gps.txPin) || gps.rxPin == gps.txPin)
+        {
+            return setError(error, "GPS pins are invalid");
+        }
+
+        if (!isValidBaudRate(gps.baudRate))
+        {
+            return setError(error, "GPS baud rate is invalid");
+        }
+
+        if (!isValidGpio(rain.rxPin) || !isValidGpio(rain.txPin) || (rain.enabled && rain.rxPin == rain.txPin))
+        {
+            return setError(error, "Rain sensor pins are invalid");
+        }
+
+        if (!isValidBaudRate(rain.baudRate))
+        {
+            return setError(error, "Rain sensor baud rate is invalid");
+        }
+
+        if (rain.mode != "polling" && rain.mode != "continuous")
+        {
+            return setError(error, "Rain sensor mode is invalid");
+        }
+
+        if (rain.resolution != "high" && rain.resolution != "low" && rain.resolution != "switch")
+        {
+            return setError(error, "Rain sensor resolution is invalid");
+        }
+
+        if (rain.units != "metric" && rain.units != "imperial" && rain.units != "switch")
+        {
+            return setError(error, "Rain sensor units are invalid");
+        }
+
+        if (sensor.readIntervalMs < 100 || sensor.readIntervalMs > 3600000)
+        {
+            return setError(error, "Sensor read interval is invalid");
+        }
+
+        if (!isValidGpio(sensor.i2cSDA) || !isValidGpio(sensor.i2cSCL) || sensor.i2cSDA == sensor.i2cSCL)
+        {
+            return setError(error, "I2C pins are invalid");
+        }
+
+        if (sensor.i2cFrequency < 10000 || sensor.i2cFrequency > 400000)
+        {
+            return setError(error, "I2C frequency is invalid");
+        }
+
+        if (cloudDetection.clearSkyThreshold >= cloudDetection.cloudyThreshold)
+        {
+            return setError(error, "Cloud detection: clear-sky threshold must be less than cloudy threshold");
+        }
+
+        return true;
+    }
+
+    std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig)
+    {
+        StaticJsonDocument<3072> doc;
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
@@ -207,55 +441,141 @@ namespace SQM
             return std::nullopt;
         }
 
-        Config cfg;
+        Config cfg = baseConfig != nullptr ? *baseConfig : createDefault();
+        const bool preserveSecretPlaceholders = baseConfig != nullptr;
 
-        cfg.deviceName = doc["deviceName"] | "SQM-ESP32";
-        cfg.timezone = doc["timezone"] | "UTC";
-        cfg.primaryTimeSource = static_cast<TimeSource>(doc["primaryTimeSource"] | 0);     // 0 = NTP
-        cfg.secondaryTimeSource = static_cast<TimeSource>(doc["secondaryTimeSource"] | 1); // 1 = GPS
+        if (doc.containsKey("deviceName"))
+            cfg.deviceName = doc["deviceName"] | "SQM-ESP32";
+        if (doc.containsKey("timezone"))
+            cfg.timezone = doc["timezone"] | "UTC";
+        if (doc.containsKey("primaryTimeSource"))
+            cfg.primaryTimeSource = static_cast<TimeSource>(doc["primaryTimeSource"] | 0); // 0 = NTP
+        if (doc.containsKey("secondaryTimeSource"))
+            cfg.secondaryTimeSource = static_cast<TimeSource>(doc["secondaryTimeSource"] | 1); // 1 = GPS
 
         JsonObject wifi = doc["wifi"];
-        cfg.wifi.ssid = wifi["ssid"] | "";
-        cfg.wifi.password = wifi["password"] | "";
-        cfg.wifi.hostname = wifi["hostname"] | "sqm-esp32";
-        cfg.wifi.autoReconnect = wifi["autoReconnect"] | true;
-        cfg.wifi.reconnectDelayMs = wifi["reconnectDelayMs"] | 1000;
-        cfg.wifi.maxReconnectDelayMs = wifi["maxReconnectDelayMs"] | 300000;
+        if (!wifi.isNull())
+        {
+            if (wifi.containsKey("ssid"))
+                cfg.wifi.ssid = wifi["ssid"] | "";
+            assignSecret(wifi, "password", cfg.wifi.password, preserveSecretPlaceholders);
+            if (wifi.containsKey("hostname"))
+                cfg.wifi.hostname = wifi["hostname"] | "sqm-esp32";
+            if (wifi.containsKey("autoReconnect"))
+                cfg.wifi.autoReconnect = wifi["autoReconnect"] | true;
+            if (wifi.containsKey("reconnectDelayMs"))
+                cfg.wifi.reconnectDelayMs = wifi["reconnectDelayMs"] | 1000;
+            if (wifi.containsKey("maxReconnectDelayMs"))
+                cfg.wifi.maxReconnectDelayMs = wifi["maxReconnectDelayMs"] | 300000;
+        }
 
         JsonObject mqtt = doc["mqtt"];
-        cfg.mqtt.enabled = mqtt["enabled"] | false;
-        cfg.mqtt.broker = mqtt["broker"] | "";
-        cfg.mqtt.port = mqtt["port"] | 1883;
-        cfg.mqtt.username = mqtt["username"] | "";
-        cfg.mqtt.password = mqtt["password"] | "";
-        cfg.mqtt.topic = mqtt["topic"] | "sqm/data";
-        cfg.mqtt.publishIntervalMs = mqtt["publishIntervalMs"] | 60000;
+        if (!mqtt.isNull())
+        {
+            if (mqtt.containsKey("enabled"))
+                cfg.mqtt.enabled = mqtt["enabled"] | false;
+            if (mqtt.containsKey("broker"))
+                cfg.mqtt.broker = mqtt["broker"] | "";
+            if (mqtt.containsKey("port"))
+                cfg.mqtt.port = mqtt["port"] | 1883;
+            if (mqtt.containsKey("username"))
+                cfg.mqtt.username = mqtt["username"] | "";
+            assignSecret(mqtt, "password", cfg.mqtt.password, preserveSecretPlaceholders);
+            if (mqtt.containsKey("topic"))
+                cfg.mqtt.topic = mqtt["topic"] | "sqm/data";
+            if (mqtt.containsKey("publishIntervalMs"))
+                cfg.mqtt.publishIntervalMs = mqtt["publishIntervalMs"] | 60000;
+        }
+
+        JsonObject ota = doc["ota"];
+        if (!ota.isNull())
+        {
+            if (ota.containsKey("enabled"))
+                cfg.ota.enabled = ota["enabled"] | false;
+            assignSecret(ota, "password", cfg.ota.password, preserveSecretPlaceholders);
+        }
 
         JsonObject ntp = doc["ntp"];
-        cfg.ntp.enabled = ntp["enabled"] | true;
-        cfg.ntp.server1 = ntp["server1"] | "pool.ntp.org";
-        cfg.ntp.server2 = ntp["server2"] | "time.nist.gov";
-        cfg.ntp.timezone = ntp["timezone"] | "UTC0";
-        cfg.ntp.gmtOffsetSec = ntp["gmtOffsetSec"] | 0;
-        cfg.ntp.daylightOffsetSec = ntp["daylightOffsetSec"] | 0;
-        cfg.ntp.syncIntervalMs = ntp["syncIntervalMs"] | 3600000;
+        if (!ntp.isNull())
+        {
+            if (ntp.containsKey("enabled"))
+                cfg.ntp.enabled = ntp["enabled"] | true;
+            if (ntp.containsKey("server1"))
+                cfg.ntp.server1 = ntp["server1"] | "pool.ntp.org";
+            if (ntp.containsKey("server2"))
+                cfg.ntp.server2 = ntp["server2"] | "time.nist.gov";
+            if (ntp.containsKey("timezone"))
+                cfg.ntp.timezone = ntp["timezone"] | "UTC0";
+            if (ntp.containsKey("gmtOffsetSec"))
+                cfg.ntp.gmtOffsetSec = ntp["gmtOffsetSec"] | 0;
+            if (ntp.containsKey("daylightOffsetSec"))
+                cfg.ntp.daylightOffsetSec = ntp["daylightOffsetSec"] | 0;
+            if (ntp.containsKey("syncIntervalMs"))
+                cfg.ntp.syncIntervalMs = ntp["syncIntervalMs"] | 3600000;
+        }
 
         JsonObject gps = doc["gps"];
-        cfg.gps.enabled = gps["enabled"] | false;
-        cfg.gps.rxPin = gps["rxPin"] | 17;
-        cfg.gps.txPin = gps["txPin"] | 16;
-        cfg.gps.baudRate = gps["baudRate"] | 9600;
+        if (!gps.isNull())
+        {
+            if (gps.containsKey("enabled"))
+                cfg.gps.enabled = gps["enabled"] | false;
+            if (gps.containsKey("rxPin"))
+                cfg.gps.rxPin = gps["rxPin"] | 17;
+            if (gps.containsKey("txPin"))
+                cfg.gps.txPin = gps["txPin"] | 16;
+            if (gps.containsKey("baudRate"))
+                cfg.gps.baudRate = gps["baudRate"] | 9600;
+        }
+
+        JsonObject rain = doc["rain"];
+        if (!rain.isNull())
+        {
+            if (rain.containsKey("enabled"))
+                cfg.rain.enabled = rain["enabled"] | false;
+            if (rain.containsKey("rxPin"))
+                cfg.rain.rxPin = rain["rxPin"] | 18;
+            if (rain.containsKey("txPin"))
+                cfg.rain.txPin = rain["txPin"] | 19;
+            if (rain.containsKey("baudRate"))
+                cfg.rain.baudRate = rain["baudRate"] | 9600;
+            if (rain.containsKey("mode"))
+                cfg.rain.mode = rain["mode"] | "polling";
+            if (rain.containsKey("resolution"))
+                cfg.rain.resolution = rain["resolution"] | "high";
+            if (rain.containsKey("units"))
+                cfg.rain.units = rain["units"] | "metric";
+        }
 
         JsonObject sensor = doc["sensor"];
-        cfg.sensor.readIntervalMs = sensor["readIntervalMs"] | 5000;
-        cfg.sensor.i2cSDA = sensor["i2cSDA"] | 21;
-        cfg.sensor.i2cSCL = sensor["i2cSCL"] | 22;
-        cfg.sensor.i2cFrequency = sensor["i2cFrequency"] | 100000;
+        if (!sensor.isNull())
+        {
+            if (sensor.containsKey("readIntervalMs"))
+                cfg.sensor.readIntervalMs = sensor["readIntervalMs"] | 5000;
+            if (sensor.containsKey("i2cSDA"))
+                cfg.sensor.i2cSDA = sensor["i2cSDA"] | 21;
+            if (sensor.containsKey("i2cSCL"))
+                cfg.sensor.i2cSCL = sensor["i2cSCL"] | 22;
+            if (sensor.containsKey("i2cFrequency"))
+                cfg.sensor.i2cFrequency = sensor["i2cFrequency"] | 100000;
+        }
 
-        JsonObject cloudDetection = doc["cloudDetection"];
-        cfg.cloudDetection.clearSkyThreshold = cloudDetection["clearSkyThreshold"] | -13.0f;
-        cfg.cloudDetection.cloudyThreshold = cloudDetection["cloudyThreshold"] | -3.0f;
-        cfg.cloudDetection.humidityCorrection = cloudDetection["humidityCorrection"] | 0.75f;
+        JsonObject cloudDetectionObj = doc["cloudDetection"];
+        if (!cloudDetectionObj.isNull())
+        {
+            if (cloudDetectionObj.containsKey("clearSkyThreshold"))
+                cfg.cloudDetection.clearSkyThreshold = cloudDetectionObj["clearSkyThreshold"] | -13.0f;
+            if (cloudDetectionObj.containsKey("cloudyThreshold"))
+                cfg.cloudDetection.cloudyThreshold = cloudDetectionObj["cloudyThreshold"] | -3.0f;
+            if (cloudDetectionObj.containsKey("humidityCorrection"))
+                cfg.cloudDetection.humidityCorrection = cloudDetectionObj["humidityCorrection"] | 0.75f;
+        }
+
+        std::string validationError;
+        if (!cfg.validate(&validationError))
+        {
+            Logger::error(TAG, "Configuration validation failed: %s", validationError.c_str());
+            return std::nullopt;
+        }
 
         return cfg;
     }

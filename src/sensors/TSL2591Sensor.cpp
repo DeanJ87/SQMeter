@@ -4,6 +4,12 @@
 
 namespace SQM
 {
+    namespace
+    {
+        constexpr float TSL2591_INTEGRATION_TIME_MS = 600.0F;
+        constexpr float TSL2591_GAIN_FACTOR = 9876.0F;
+        constexpr float TSL2591_LUX_COEFFICIENT = 408.0F;
+    }
 
     TSL2591Sensor::TSL2591Sensor()
         : sensor(std::make_unique<Adafruit_TSL2591>(2591))
@@ -73,14 +79,8 @@ namespace SQM
         reading.full = lum & 0xFFFF;
         reading.visible = reading.full - reading.infrared;
 
-        // Custom lux calculation optimized for dark sky monitoring
-        // Based on TSL2591 datasheet and dark sky community formulas
-        // Using coefficient of 408.0 (common in SQM applications)
-        const float LUX_COEFF = 408.0F;
-
-        // Calculate counts per lux (CPL) based on fixed MAX gain and 600ms integration
-        // With GAIN_MAX (9876x) and 600ms integration time
-        float cpl = (100.0F * 600.0F / 100.0F) * 9876.0F / LUX_COEFF;
+        // CPL = (ATIME_ms * AGAIN) / DF, using fixed MAX gain and 600ms integration.
+        float cpl = (TSL2591_INTEGRATION_TIME_MS * TSL2591_GAIN_FACTOR) / TSL2591_LUX_COEFFICIENT;
 
         // Check for saturation first - normal for outdoor sensors during daytime
         bool saturated = (reading.full >= 0xFFFF || reading.infrared >= 0xFFFF);

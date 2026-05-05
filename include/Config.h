@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 #include <cstdint>
+#include <cstddef>
 
 namespace SQM
 {
@@ -34,6 +35,12 @@ namespace SQM
         uint32_t publishIntervalMs;
     };
 
+    struct OTAConfig
+    {
+        bool enabled;
+        std::string password;
+    };
+
     struct NTPConfig
     {
         bool enabled;
@@ -51,6 +58,17 @@ namespace SQM
         uint8_t rxPin;
         uint8_t txPin;
         uint32_t baudRate;
+    };
+
+    struct RainConfig
+    {
+        bool enabled;
+        uint8_t rxPin;
+        uint8_t txPin;
+        uint32_t baudRate;
+        std::string mode;       // "polling" or "continuous"
+        std::string resolution; // "high", "low", or "switch"
+        std::string units;      // "metric", "imperial", or "switch"
     };
 
     struct SensorConfig
@@ -72,8 +90,10 @@ namespace SQM
     {
         WiFiConfig wifi;
         MQTTConfig mqtt;
+        OTAConfig ota;
         NTPConfig ntp;
         GPSConfig gps;
+        RainConfig rain;
         SensorConfig sensor;
         CloudDetectionConfig cloudDetection;
         std::string deviceName;
@@ -82,13 +102,15 @@ namespace SQM
         TimeSource secondaryTimeSource; // Fallback time source
 
         static constexpr const char *TAG = "Config";
+        static constexpr size_t MAX_PERSISTED_JSON_BYTES = 3800;
 
         static std::optional<Config> load();
         bool save() const;
         static Config createDefault();
 
-        std::string toJson() const;
-        static std::optional<Config> fromJson(const std::string &json);
+        std::string toJson(bool redactSecrets = false) const;
+        bool validate(std::string *error = nullptr) const;
+        static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr);
     };
 
 } // namespace SQM
