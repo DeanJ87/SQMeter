@@ -31,6 +31,7 @@ const defaultRainConfig: NonNullable<Config['rain']> = {
   rxPin: 18,
   txPin: 19,
   baudRate: 9600,
+  debugUart: false,
   mode: 'continuous',
   resolution: 'switch',
   units: 'metric',
@@ -58,6 +59,8 @@ const Settings: FunctionalComponent = () => {
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [testingMqtt, setTestingMqtt] = useState(false);
   const [mqttTestResult, setMqttTestResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [testingRain, setTestingRain] = useState(false);
+  const [rainTestResult, setRainTestResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const errorPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -120,6 +123,35 @@ const Settings: FunctionalComponent = () => {
       setMqttTestResult({ type: 'error', text: 'Network error occurred' });
     } finally {
       setTestingMqtt(false);
+    }
+  };
+
+  const testRg15Communication = async () => {
+    if (!config?.rain?.enabled) return;
+
+    setTestingRain(true);
+    setRainTestResult(null);
+
+    try {
+      const response = await fetch('/api/sensors/rg15/test', { method: 'POST' });
+      const result = await response.json();
+      if (response.ok && result.ok) {
+        setRainTestResult({
+          type: 'success',
+          text: result.raw_response
+            ? `Communication succeeded: ${result.raw_response}`
+            : 'Communication succeeded',
+        });
+      } else {
+        setRainTestResult({
+          type: 'error',
+          text: result.error || result.hint || 'RG-15 communication test failed',
+        });
+      }
+    } catch (error) {
+      setRainTestResult({ type: 'error', text: 'Network error occurred' });
+    } finally {
+      setTestingRain(false);
     }
   };
 
@@ -945,6 +977,9 @@ const Settings: FunctionalComponent = () => {
       <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h2 class="text-xl font-semibold text-white mb-4">Rain Sensor</h2>
         <div class="space-y-4">
+          <div class="p-3 bg-yellow-900 border border-yellow-700 rounded-lg text-sm text-yellow-200">
+            Initialised only means the UART was opened. Online requires a valid response from the RG-15.
+          </div>
           <div class="flex items-center">
             <input
               type="checkbox"
@@ -958,100 +993,137 @@ const Settings: FunctionalComponent = () => {
           </div>
 
           {config.rain?.enabled && (
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  RX Pin
-                </label>
-                <input
-                  type="number"
-                  value={config.rain.rxPin}
-                  onChange={(e) => updateConfig(['rain', 'rxPin'], parseInt((e.target as HTMLInputElement).value))}
-                  min="0"
-                  max="39"
-                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                    errorFor('rain.rxPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
-                  }`}
-                />
-                {errorFor('rain.rxPin') && (
-                  <p class="mt-1 text-sm text-red-400">{errorFor('rain.rxPin')}</p>
+            <>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    RX Pin
+                  </label>
+                  <input
+                    type="number"
+                    value={config.rain.rxPin}
+                    onChange={(e) => updateConfig(['rain', 'rxPin'], parseInt((e.target as HTMLInputElement).value))}
+                    min="0"
+                    max="39"
+                    class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                      errorFor('rain.rxPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    }`}
+                  />
+                  {errorFor('rain.rxPin') && (
+                    <p class="mt-1 text-sm text-red-400">{errorFor('rain.rxPin')}</p>
+                  )}
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    TX Pin
+                  </label>
+                  <input
+                    type="number"
+                    value={config.rain.txPin}
+                    onChange={(e) => updateConfig(['rain', 'txPin'], parseInt((e.target as HTMLInputElement).value))}
+                    min="0"
+                    max="39"
+                    class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                      errorFor('rain.txPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    }`}
+                  />
+                  {errorFor('rain.txPin') && (
+                    <p class="mt-1 text-sm text-red-400">{errorFor('rain.txPin')}</p>
+                  )}
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Baud Rate
+                  </label>
+                  <select
+                    value={config.rain.baudRate}
+                    onChange={(e) => updateConfig(['rain', 'baudRate'], parseInt((e.target as HTMLSelectElement).value))}
+                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="2400">2400</option>
+                    <option value="4800">4800</option>
+                    <option value="9600">9600</option>
+                    <option value="19200">19200</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Mode
+                  </label>
+                  <select
+                    value={config.rain.mode ?? 'continuous'}
+                    onChange={(e) => updateConfig(['rain', 'mode'], (e.target as HTMLSelectElement).value)}
+                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="polling">Polling</option>
+                    <option value="continuous">Continuous</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Resolution
+                  </label>
+                  <select
+                    value={config.rain.resolution ?? 'switch'}
+                    onChange={(e) => updateConfig(['rain', 'resolution'], (e.target as HTMLSelectElement).value)}
+                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="high">High (0.01 mm)</option>
+                    <option value="low">Low (0.2 mm)</option>
+                    <option value="switch">Switch (by jumper)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Units
+                  </label>
+                  <select
+                    value={config.rain.units ?? 'metric'}
+                    onChange={(e) => updateConfig(['rain', 'units'], (e.target as HTMLSelectElement).value)}
+                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="metric">Metric (mm)</option>
+                    <option value="imperial">Imperial (inches)</option>
+                    <option value="switch">Switch (by jumper)</option>
+                  </select>
+                </div>
+                <div class="md:col-span-3 flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={config.rain.debugUart}
+                    onChange={(e) => updateConfig(['rain', 'debugUart'], (e.target as HTMLInputElement).checked)}
+                    class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                  />
+                  <label class="ml-2 text-sm font-medium text-gray-300">
+                    Enable RG-15 UART debug logging
+                  </label>
+                </div>
+              </div>
+
+              <div class="pt-4 border-t border-gray-700 space-y-3">
+                <button
+                  type="button"
+                  onClick={testRg15Communication}
+                  disabled={testingRain}
+                  class="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-colors"
+                >
+                  {testingRain ? '🔄 Testing RG-15...' : '🧪 Test RG-15 communication'}
+                </button>
+                <p class="text-xs text-gray-500">
+                  This sends a harmless read command and reports the raw response, acknowledgement, and parse status.
+                </p>
+                {rainTestResult && (
+                  <div class={`p-3 rounded-lg ${
+                    rainTestResult.type === 'success' ? 'bg-green-900 border border-green-700' : 'bg-red-900 border border-red-700'
+                  }`}>
+                    <p class="text-white text-sm">
+                      {rainTestResult.type === 'success' ? '✅ ' : '❌ '}
+                      {rainTestResult.text}
+                    </p>
+                  </div>
                 )}
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  TX Pin
-                </label>
-                <input
-                  type="number"
-                  value={config.rain.txPin}
-                  onChange={(e) => updateConfig(['rain', 'txPin'], parseInt((e.target as HTMLInputElement).value))}
-                  min="0"
-                  max="39"
-                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                    errorFor('rain.txPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
-                  }`}
-                />
-                {errorFor('rain.txPin') && (
-                  <p class="mt-1 text-sm text-red-400">{errorFor('rain.txPin')}</p>
-                )}
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Baud Rate
-                </label>
-                <select
-                  value={config.rain.baudRate}
-                  onChange={(e) => updateConfig(['rain', 'baudRate'], parseInt((e.target as HTMLSelectElement).value))}
-                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="2400">2400</option>
-                  <option value="4800">4800</option>
-                  <option value="9600">9600</option>
-                  <option value="19200">19200</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Mode
-                </label>
-                <select
-                  value={config.rain.mode ?? 'continuous'}
-                  onChange={(e) => updateConfig(['rain', 'mode'], (e.target as HTMLSelectElement).value)}
-                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="polling">Polling</option>
-                  <option value="continuous">Continuous</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Resolution
-                </label>
-                <select
-                  value={config.rain.resolution ?? 'switch'}
-                  onChange={(e) => updateConfig(['rain', 'resolution'], (e.target as HTMLSelectElement).value)}
-                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="high">High (0.01 mm)</option>
-                  <option value="low">Low (0.2 mm)</option>
-                  <option value="switch">Switch (by jumper)</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Units
-                </label>
-                <select
-                  value={config.rain.units ?? 'metric'}
-                  onChange={(e) => updateConfig(['rain', 'units'], (e.target as HTMLSelectElement).value)}
-                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="metric">Metric (mm)</option>
-                  <option value="imperial">Imperial (inches)</option>
-                  <option value="switch">Switch (by jumper)</option>
-                </select>
-              </div>
-            </div>
+            </>
           )}
         </div>
       </section>

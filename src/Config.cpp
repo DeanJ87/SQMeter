@@ -238,6 +238,7 @@ namespace SQM
         cfg.rain.rxPin = 18;
         cfg.rain.txPin = 19;
         cfg.rain.baudRate = 9600;
+        cfg.rain.debugUart = false;
         cfg.rain.mode = "polling";
         cfg.rain.resolution = "high";
         cfg.rain.units = "metric";
@@ -308,6 +309,7 @@ namespace SQM
         rain["rxPin"] = this->rain.rxPin;
         rain["txPin"] = this->rain.txPin;
         rain["baudRate"] = this->rain.baudRate;
+        rain["debugUart"] = this->rain.debugUart;
         rain["mode"] = this->rain.mode;
         rain["resolution"] = this->rain.resolution;
         rain["units"] = this->rain.units;
@@ -553,6 +555,8 @@ namespace SQM
                 cfg.rain.txPin = rain["txPin"] | 19;
             if (rain.containsKey("baudRate"))
                 cfg.rain.baudRate = rain["baudRate"] | 9600;
+            if (rain.containsKey("debugUart"))
+                cfg.rain.debugUart = rain["debugUart"] | false;
             if (rain.containsKey("mode"))
                 cfg.rain.mode = rain["mode"] | "polling";
             if (rain.containsKey("resolution"))

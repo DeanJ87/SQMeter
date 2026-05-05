@@ -25,7 +25,7 @@ In the Settings page (or via API), enable MQTT and set your broker details:
 The device will start publishing once it reconnects.
 
 !!! warning "Current MQTT limitations"
-    The current firmware uses the publish topic as the MQTT client ID, publishes `timestamp` as device uptime milliseconds rather than Unix epoch time, and does not publish an availability/LWT topic. Avoid using MQTT as a sole safety signal until those firmware gaps are fixed.
+    MQTT is still a plaintext LAN integration and should not be treated as a safety controller. Use the payload as telemetry and keep physical safety interlocks independent.
 
 ---
 
@@ -70,16 +70,28 @@ Published to `{topic}` every `publishIntervalMs` milliseconds:
     "hdop": 1.2
   },
   "rain": {
+    "enabled": true,
+    "initialized": true,
+    "online": true,
+    "stale": false,
+    "status": 0,
     "isRaining": false,
     "acc": 0.0,
     "eventAcc": 0.0,
     "totalAcc": 12.34,
-    "rInt": 0.0
+    "rInt": 0.0,
+    "uart": {
+      "last_command": "R",
+      "last_raw_response": "Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 1.24 mm, RInt 0.00 mm/h",
+      "timeouts": 0,
+      "parse_errors": 0,
+      "successful_reads": 42
+    }
   }
 }
 ```
 
-`infrared` and `clouds` are omitted if the MLX90614 reading is unavailable. `location` is omitted unless GPS has a valid fix. `rain` is omitted unless the RG-15 is enabled, initialised, and has an OK reading.
+`infrared` and `clouds` are omitted if the MLX90614 reading is unavailable. `location` is omitted unless GPS has a valid fix. `rain` is included whenever the RG-15 path is enabled and now carries UART diagnostics alongside the rain reading.
 
 ---
 
