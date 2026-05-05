@@ -12,6 +12,7 @@ on:
       - 'web/package-lock.json'
       - 'web/tsconfig.json'
       - 'web/vite.config.ts'
+      - 'web/vitest.config.ts'
       - 'platformio.ini'
       - 'partitions.csv'
       - '.github/workflows/build.yml'
@@ -86,9 +87,29 @@ jobs:
         run: npm run typecheck
         working-directory: web
 
+      - name: Run web unit tests
+        run: npm test
+        working-directory: web
+
       - name: Build web UI
         run: npm run build
         working-directory: web
+
+      - name: Integrity checks
+        run: |
+          # No active port 2020 references in product code or docs
+          if grep -rn "port 2020\|:2020\|WiFiServer.*2020\|TCPServer" src/ include/ web/src/ docs/user-guide/ docs/api/ docs/getting-started/ docs/hardware/ docs/reference/ README.md 2>/dev/null | grep -v "audits/"; then
+            echo "ERROR: Active port 2020 / TCPServer reference found"
+            exit 1
+          fi
+          echo "Port 2020 check passed"
+
+          # No serializeJsonPretty in config persistence
+          if grep -rn "serializeJsonPretty" src/ include/ lib/ 2>/dev/null; then
+            echo "ERROR: serializeJsonPretty found in firmware (config persistence must use compact JSON)"
+            exit 1
+          fi
+          echo "serializeJsonPretty check passed"
 
       - name: Populate data directory for LittleFS
         run: |
