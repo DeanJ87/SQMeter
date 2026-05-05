@@ -144,10 +144,12 @@ namespace SQM
 
         void resetSessionState();
         void updateDiagnosticsState(RG15State state);
+        void markCommunicationOk();
         static const char *stateToString(RG15State state);
         bool start(bool probeImmediately);
         void applyConfig();
         bool sendCommand(char cmd, const char *expectedAck = nullptr);
+        bool queryLineCommand(char cmd, const char *expectedPrefix = nullptr);
         bool pollReading();
         bool drainBuffer();
         bool readLine(std::string &line);
