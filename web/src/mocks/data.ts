@@ -186,6 +186,11 @@ export const mockConfig: Config = {
     i2cSCL: 22,
     i2cFrequency: 100000,
   },
+  cloudDetection: {
+    clearSkyThreshold: -13.0,
+    cloudyThreshold: -3.0,
+    humidityCorrection: 0.75,
+  },
   rain: {
     enabled: true,
     rxPin: 18,
