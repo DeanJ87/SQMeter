@@ -443,30 +443,116 @@ namespace SQM
         }
 
         std::string line;
-        if (!readLine(line))
+        const uint32_t startedAt = millis();
+
+        while (millis() - startedAt < RESPONSE_TIMEOUT_MS)
         {
-            diagnostics.timeouts++;
-            diagnostics.lastError = "timeout_waiting_for_response";
-            updateDiagnosticsState(RG15State::RG15_TIMEOUT);
-            reading.online = diagnostics.online;
-            reading.stale = true;
-            reading.status = SensorStatus::TIMEOUT;
+            if (!readLine(line))
+            {
+                continue;
+            }
+
+            diagnostics.lastRawResponse = line;
+            diagnostics.lastResponseMs = millis();
+            markCommunicationOk();
+
             if (debugUart)
             {
-                Logger::info(TAG, "timeout waiting for response after %u ms", RESPONSE_TIMEOUT_MS);
+                Logger::info(TAG, "RX raw: \"%s\"", line.c_str());
             }
-            return false;
+
+            if (handleControlLine(line))
+            {
+                continue;
+            }
+
+            return handleRainLine(line);
         }
 
-        diagnostics.lastRawResponse = line;
-        diagnostics.lastResponseMs = millis();
-        markCommunicationOk();
-
+        diagnostics.timeouts++;
+        diagnostics.lastError = "timeout_waiting_for_response";
+        updateDiagnosticsState(RG15State::RG15_TIMEOUT);
+        reading.online = diagnostics.online;
+        reading.stale = true;
+        reading.status = SensorStatus::TIMEOUT;
         if (debugUart)
         {
-            Logger::info(TAG, "RX raw: \"%s\"", line.c_str());
+            Logger::info(TAG, "timeout waiting for response after %u ms", RESPONSE_TIMEOUT_MS);
+        }
+        return false;
+    }
+
+    bool RG15Sensor::drainBuffer()
+    {
+        bool gotAny = false;
+        std::string line;
+
+        while (serial && serial->available())
+        {
+            if (readLine(line))
+            {
+                diagnostics.lastRawResponse = line;
+                diagnostics.lastResponseMs = millis();
+                markCommunicationOk();
+                gotAny = true;
+
+                if (debugUart)
+                {
+                    Logger::info(TAG, "RX raw: \"%s\"", line.c_str());
+                }
+
+                if (handleControlLine(line))
+                {
+                    continue;
+                }
+
+                handleRainLine(line);
+            }
         }
 
+        return gotAny;
+    }
+
+    bool RG15Sensor::handleControlLine(const std::string &line)
+    {
+        if (line.length() == 1)
+        {
+            const char c = line[0];
+            if (c == 'p' || c == 'c' || c == 'm' || c == 'i' || c == 'h' || c == 'l' || c == 's' || c == 'x' || c == 'y')
+            {
+                diagnostics.lastAck = line;
+                diagnostics.lastAckMs = diagnostics.lastResponseMs;
+                diagnostics.lastError.reset();
+                updateDiagnosticsState(RG15State::RG15_ACKNOWLEDGED);
+                if (debugUart)
+                {
+                    Logger::info(TAG, "RX async ack \"%s\"", line.c_str());
+                }
+                return true;
+            }
+        }
+
+        if (line.rfind("Baud ", 0) == 0 ||
+            line.rfind("Reset ", 0) == 0 ||
+            line.rfind("SW ", 0) == 0 ||
+            line.rfind("Emitters ", 0) == 0 ||
+            line.rfind("EmTotal ", 0) == 0 ||
+            line.rfind("PwrDays ", 0) == 0 ||
+            line.rfind(";", 0) == 0)
+        {
+            diagnostics.lastError.reset();
+            if (debugUart)
+            {
+                Logger::info(TAG, "RX status line \"%s\"", line.c_str());
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    bool RG15Sensor::handleRainLine(const std::string &line)
+    {
         updateDiagnosticsState(RG15State::RG15_READING_RECEIVED);
 
         if (!parseLine(line))
@@ -501,49 +587,6 @@ namespace SQM
         }
 
         return true;
-    }
-
-    bool RG15Sensor::drainBuffer()
-    {
-        bool gotAny = false;
-        std::string line;
-
-        while (serial && serial->available())
-        {
-            if (readLine(line))
-            {
-                diagnostics.lastRawResponse = line;
-                diagnostics.lastResponseMs = millis();
-                markCommunicationOk();
-                gotAny = true;
-
-                if (debugUart)
-                {
-                    Logger::info(TAG, "RX raw: \"%s\"", line.c_str());
-                }
-
-                if (parseLine(line))
-                {
-                    diagnostics.lastError.reset();
-                    diagnostics.successfulReads++;
-                    diagnostics.lastSuccessfulReadMs = reading.timestamp;
-                    reading.online = true;
-                    reading.stale = false;
-                    updateDiagnosticsState(RG15State::RG15_ONLINE);
-                }
-                else
-                {
-                    diagnostics.parseErrors++;
-                    diagnostics.lastError = "parse_failed_expected_fields";
-                    updateDiagnosticsState(RG15State::RG15_PARSE_ERROR);
-                    reading.online = diagnostics.online;
-                    reading.stale = true;
-                    reading.status = SensorStatus::INVALID_DATA;
-                }
-            }
-        }
-
-        return gotAny;
     }
 
     bool RG15Sensor::readLine(std::string &line)
