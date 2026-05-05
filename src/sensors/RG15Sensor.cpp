@@ -1,7 +1,10 @@
 #include "sensors/RG15Sensor.h"
 #include "Logger.h"
 #include <ArduinoJson.h>
+#include <cctype>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 namespace SQM
 {
@@ -29,6 +32,45 @@ namespace SQM
             SemaphoreHandle_t mutex;
             bool locked;
         };
+
+        bool extractFloatField(const std::string &line, const char *label, float &value)
+        {
+            size_t labelPos = line.find(label);
+            const size_t labelLength = std::strlen(label);
+
+            while (labelPos != std::string::npos)
+            {
+                const bool startsField = labelPos == 0 ||
+                                         line[labelPos - 1] == ',' ||
+                                         std::isspace(static_cast<unsigned char>(line[labelPos - 1]));
+                const size_t valuePos = labelPos + labelLength;
+                const bool hasValueSeparator = valuePos < line.length() &&
+                                               std::isspace(static_cast<unsigned char>(line[valuePos]));
+
+                if (startsField && hasValueSeparator)
+                {
+                    const char *cursor = line.c_str() + valuePos;
+                    while (*cursor != '\0' && std::isspace(static_cast<unsigned char>(*cursor)))
+                    {
+                        cursor++;
+                    }
+
+                    char *end = nullptr;
+                    const float parsed = std::strtof(cursor, &end);
+                    if (end == cursor)
+                    {
+                        return false;
+                    }
+
+                    value = parsed;
+                    return true;
+                }
+
+                labelPos = line.find(label, labelPos + 1);
+            }
+
+            return false;
+        }
     } // namespace
 
     const char *RG15Sensor::stateToString(RG15State state)
@@ -686,18 +728,10 @@ namespace SQM
         }
 
         float acc = 0.0f, eventAcc = 0.0f, totalAcc = 0.0f, rInt = 0.0f;
-        int matched = std::sscanf(line.c_str(),
-                                  "Acc %f, EventAcc %f, TotalAcc %f, RInt %f %*s",
-                                  &acc, &eventAcc, &totalAcc, &rInt);
-
-        if (matched != 4)
-        {
-            matched = std::sscanf(line.c_str(),
-                                  "Acc %f %*s, EventAcc %f %*s, TotalAcc %f %*s, RInt %f %*s",
-                                  &acc, &eventAcc, &totalAcc, &rInt);
-        }
-
-        if (matched != 4)
+        if (!extractFloatField(line, "Acc", acc) ||
+            !extractFloatField(line, "EventAcc", eventAcc) ||
+            !extractFloatField(line, "TotalAcc", totalAcc) ||
+            !extractFloatField(line, "RInt", rInt))
         {
             return false;
         }
