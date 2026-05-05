@@ -54,6 +54,21 @@ export const otaConfigSchema = z
     path: ["password"],
   });
 
+export const authConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    username: z.string(),
+    password: z.string(),
+  })
+  .refine((data) => !data.enabled || data.username.length > 0, {
+    message: "Username is required when HTTP auth is enabled",
+    path: ["username"],
+  })
+  .refine((data) => !data.enabled || data.password.length > 0, {
+    message: "Password is required when HTTP auth is enabled",
+    path: ["password"],
+  });
+
 export const ntpConfigSchema = z.object({
   enabled: z.boolean(),
   server1: z.string(),
@@ -132,6 +147,7 @@ export const configSchema = z.object({
   wifi: wifiConfigSchema,
   mqtt: mqttConfigSchema,
   ota: otaConfigSchema,
+  auth: authConfigSchema,
   ntp: ntpConfigSchema,
   sensor: sensorConfigSchema,
   timezone: z.string(),

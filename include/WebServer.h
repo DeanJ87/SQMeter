@@ -143,6 +143,7 @@ namespace SQM
             size_t len);
 
         // Helper functions
+        bool requireAuth(AsyncWebServerRequest *request) const;
         SensorSnapshot getSensorSnapshot() const;
         std::string createSensorDataJson() const;
         std::string createStatusJson() const;

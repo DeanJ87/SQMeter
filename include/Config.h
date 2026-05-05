@@ -41,6 +41,13 @@ namespace SQM
         std::string password;
     };
 
+    struct AuthConfig
+    {
+        bool enabled;
+        std::string username;
+        std::string password;
+    };
+
     struct NTPConfig
     {
         bool enabled;
@@ -84,6 +91,7 @@ namespace SQM
         WiFiConfig wifi;
         MQTTConfig mqtt;
         OTAConfig ota;
+        AuthConfig auth;
         NTPConfig ntp;
         GPSConfig gps;
         RainConfig rain;

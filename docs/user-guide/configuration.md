@@ -54,6 +54,12 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
     "password": ""
   },
 
+  "auth": {
+    "enabled": false,
+    "username": "admin",
+    "password": ""
+  },
+
   "rain": {
     "enabled": false,
     "rxPin": 18,
@@ -145,6 +151,30 @@ When GPS is enabled and has a fix, it can serve as the primary time source for a
 
 ArduinoOTA is disabled unless both `ota.enabled` is `true` and `ota.password` is set. The web UI OTA upload page is separate from command-line ArduinoOTA.
 
+### HTTP Authentication
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Require credentials for mutation endpoints |
+| `username` | string | `"admin"` | Username for HTTP Basic Auth |
+| `password` | string | `""` | Password (required when auth is enabled) |
+
+When `auth.enabled` is `true`, the following endpoints require HTTP Basic Auth credentials:
+
+- `POST /api/config` — save configuration
+- `POST /api/restart` — restart device
+- `POST /api/update` — firmware OTA upload
+- `POST /api/update/fs` — filesystem OTA upload
+- `POST /api/wifi/connect` — change WiFi network
+- `POST /api/mqtt/test` — test MQTT connection
+
+Read-only endpoints remain accessible without credentials:
+
+- `GET /api/sensors`, `GET /api/status`, `GET /api/config`
+- WebSocket streams (`/ws/sensors`, `/ws/status`)
+
+The `auth.password` field is masked in `GET /api/config` responses. Send the mask placeholder or an empty string to preserve the stored password; send `null` to clear it.
+
 ### Rain Sensor
 
 | Field | Type | Default | Description |
@@ -170,11 +200,12 @@ ArduinoOTA is disabled unless both `ota.enabled` is `true` and `ota.password` is
 
 ## Security Notes
 
-SQMeter currently assumes a trusted LAN:
+SQMeter is designed for a trusted LAN environment. See the [Security Guide](security.md) for a full threat model and setup recommendations.
 
-- The web UI, REST API, WebSocket streams, and OTA endpoints do not require HTTP authentication.
-- `GET /api/config` redacts stored WiFi, MQTT, and ArduinoOTA password fields, but still exposes non-secret operational settings.
-- HTTP traffic is plaintext, so credentials sent through setup or config updates are visible to devices that can observe the LAN.
+- By default there is no HTTP authentication; read-only and mutation endpoints are both accessible to any LAN device.
+- Enable `auth.enabled` with a strong password to protect mutation endpoints (config save, OTA, restart, WiFi change).
+- `GET /api/config` redacts stored secrets (WiFi, MQTT, OTA, and auth passwords), but still exposes non-secret settings.
+- HTTP traffic is plaintext, so credentials sent via config updates are visible to LAN observers. TLS is not supported on the ESP32 in this firmware.
 - Command-line ArduinoOTA is disabled unless `ota.enabled` is `true` and `ota.password` is set.
 
 Keep the device on a private network or isolated observatory VLAN. Do not expose port 80 or ArduinoOTA to the public internet.

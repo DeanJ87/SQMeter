@@ -180,6 +180,11 @@ export const mockConfig: Config = {
     enabled: false,
     password: "",
   },
+  auth: {
+    enabled: false,
+    username: "admin",
+    password: "",
+  },
   sensor: {
     readIntervalMs: 5000,
     i2cSDA: 21,

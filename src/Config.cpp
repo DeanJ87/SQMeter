@@ -217,6 +217,10 @@ namespace SQM
         cfg.ota.enabled = false;
         cfg.ota.password = "";
 
+        cfg.auth.enabled = false;
+        cfg.auth.username = "admin";
+        cfg.auth.password = "";
+
         cfg.ntp.enabled = true;
         cfg.ntp.server1 = "pool.ntp.org";
         cfg.ntp.server2 = "time.nist.gov";
@@ -251,7 +255,7 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets) const
     {
-        StaticJsonDocument<3072> doc;
+        StaticJsonDocument<3584> doc;
 
         doc["deviceName"] = deviceName;
         doc["timezone"] = timezone;
@@ -278,6 +282,11 @@ namespace SQM
         JsonObject ota = doc.createNestedObject("ota");
         ota["enabled"] = this->ota.enabled;
         ota["password"] = redactSecrets && !this->ota.password.empty() ? SECRET_MASK : this->ota.password.c_str();
+
+        JsonObject auth = doc.createNestedObject("auth");
+        auth["enabled"] = this->auth.enabled;
+        auth["username"] = this->auth.username;
+        auth["password"] = redactSecrets && !this->auth.password.empty() ? SECRET_MASK : this->auth.password.c_str();
 
         JsonObject ntp = doc.createNestedObject("ntp");
         ntp["enabled"] = this->ntp.enabled;
@@ -353,6 +362,16 @@ namespace SQM
             return setError(error, "MQTT publish interval is invalid");
         }
 
+        if (auth.enabled && auth.password.empty())
+        {
+            return setError(error, "HTTP auth password is required when auth is enabled");
+        }
+
+        if (auth.enabled && auth.username.empty())
+        {
+            return setError(error, "HTTP auth username is required when auth is enabled");
+        }
+
         if (ntp.enabled && ntp.server1.empty())
         {
             return setError(error, "Primary NTP server is required when NTP is enabled");
@@ -418,7 +437,7 @@ namespace SQM
 
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig)
     {
-        StaticJsonDocument<3072> doc;
+        StaticJsonDocument<3584> doc;
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
@@ -479,6 +498,16 @@ namespace SQM
             if (ota.containsKey("enabled"))
                 cfg.ota.enabled = ota["enabled"] | false;
             assignSecret(ota, "password", cfg.ota.password, preserveSecretPlaceholders);
+        }
+
+        JsonObject auth = doc["auth"];
+        if (!auth.isNull())
+        {
+            if (auth.containsKey("enabled"))
+                cfg.auth.enabled = auth["enabled"] | false;
+            if (auth.containsKey("username"))
+                cfg.auth.username = auth["username"] | "admin";
+            assignSecret(auth, "password", cfg.auth.password, preserveSecretPlaceholders);
         }
 
         JsonObject ntp = doc["ntp"];
