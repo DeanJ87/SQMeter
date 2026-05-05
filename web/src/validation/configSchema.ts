@@ -97,6 +97,17 @@ export const sensorConfigSchema = z
     path: ["i2cSDA"],
   });
 
+export const cloudDetectionConfigSchema = z
+  .object({
+    clearSkyThreshold: z.number().min(-30).max(0),
+    cloudyThreshold: z.number().min(-20).max(10),
+    humidityCorrection: z.number().min(0).max(2),
+  })
+  .refine((data) => data.clearSkyThreshold < data.cloudyThreshold, {
+    message: "Clear sky threshold must be less than cloudy threshold",
+    path: ["clearSkyThreshold"],
+  });
+
 export const rainSensorConfigSchema = z
   .object({
     enabled: z.boolean(),
@@ -135,6 +146,7 @@ export const configSchema = z.object({
   ntp: ntpConfigSchema,
   sensor: sensorConfigSchema,
   timezone: z.string(),
+  cloudDetection: cloudDetectionConfigSchema,
   rain: rainSensorConfigSchema.optional(),
 });
 

@@ -246,6 +246,10 @@ namespace SQM
         cfg.primaryTimeSource = TimeSource::NTP;
         cfg.secondaryTimeSource = TimeSource::GPS;
 
+        cfg.cloudDetection.clearSkyThreshold = -13.0f;
+        cfg.cloudDetection.cloudyThreshold = -3.0f;
+        cfg.cloudDetection.humidityCorrection = 0.75f;
+
         return cfg;
     }
 
@@ -308,6 +312,11 @@ namespace SQM
         sensor["i2cSDA"] = this->sensor.i2cSDA;
         sensor["i2cSCL"] = this->sensor.i2cSCL;
         sensor["i2cFrequency"] = this->sensor.i2cFrequency;
+
+        JsonObject cloudDetection = doc.createNestedObject("cloudDetection");
+        cloudDetection["clearSkyThreshold"] = this->cloudDetection.clearSkyThreshold;
+        cloudDetection["cloudyThreshold"] = this->cloudDetection.cloudyThreshold;
+        cloudDetection["humidityCorrection"] = this->cloudDetection.humidityCorrection;
 
         std::string output;
         serializeJson(doc, output);
@@ -411,6 +420,11 @@ namespace SQM
         if (sensor.i2cFrequency < 10000 || sensor.i2cFrequency > 400000)
         {
             return setError(error, "I2C frequency is invalid");
+        }
+
+        if (cloudDetection.clearSkyThreshold >= cloudDetection.cloudyThreshold)
+        {
+            return setError(error, "Cloud detection: clear-sky threshold must be less than cloudy threshold");
         }
 
         return true;
@@ -543,6 +557,17 @@ namespace SQM
                 cfg.sensor.i2cSCL = sensor["i2cSCL"] | 22;
             if (sensor.containsKey("i2cFrequency"))
                 cfg.sensor.i2cFrequency = sensor["i2cFrequency"] | 100000;
+        }
+
+        JsonObject cloudDetectionObj = doc["cloudDetection"];
+        if (!cloudDetectionObj.isNull())
+        {
+            if (cloudDetectionObj.containsKey("clearSkyThreshold"))
+                cfg.cloudDetection.clearSkyThreshold = cloudDetectionObj["clearSkyThreshold"] | -13.0f;
+            if (cloudDetectionObj.containsKey("cloudyThreshold"))
+                cfg.cloudDetection.cloudyThreshold = cloudDetectionObj["cloudyThreshold"] | -3.0f;
+            if (cloudDetectionObj.containsKey("humidityCorrection"))
+                cfg.cloudDetection.humidityCorrection = cloudDetectionObj["humidityCorrection"] | 0.75f;
         }
 
         std::string validationError;
