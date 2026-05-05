@@ -123,7 +123,7 @@ namespace SQM
     private:
         static constexpr const char *TAG = "RG15";
         static constexpr uint32_t UART_NUM = 1;
-        static constexpr uint32_t RESPONSE_TIMEOUT_MS = 500;
+        static constexpr uint32_t RESPONSE_TIMEOUT_MS = 1500;
         static constexpr uint32_t STALE_TIMEOUT_MS = 30000;
         static constexpr size_t LINE_BUFFER_SIZE = 128;
         static constexpr uint32_t ACK_QUIET_PERIOD_MS = 20;
@@ -154,6 +154,8 @@ namespace SQM
         bool drainBuffer();
         bool readLine(std::string &line);
         bool readAck(char expectedAck, std::string &ack);
+        bool handleControlLine(const std::string &line);
+        bool handleRainLine(const std::string &line);
         bool parseLine(const std::string &line);
     };
 
