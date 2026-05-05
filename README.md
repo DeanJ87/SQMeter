@@ -22,6 +22,7 @@ SQMeter measures light pollution in real time using an ESP32. It gives you SQM m
 - BME280 — temperature, humidity, pressure
 - MLX90614 — IR cloud temperature and cloud cover estimate
 - GPS support (optional) — location and precise time
+- RG-15 rain sensor support (optional)
 - Real-time web dashboard over WebSocket
 - REST API and MQTT publishing
 - OTA firmware updates from the browser
@@ -30,3 +31,7 @@ SQMeter measures light pollution in real time using an ESP32. It gives you SQM m
 ## Quick Start
 
 See [Flashing Your Device](https://deanj87.github.io/SQMeter/getting-started/flashing/) to get started with a new ESP32.
+
+## Current Security Model
+
+SQMeter is intended for a trusted local network. The current firmware has no web/API authentication, unauthenticated OTA endpoints, and exposes saved configuration through the LAN API. Do not port-forward the device or place it on guest WiFi.

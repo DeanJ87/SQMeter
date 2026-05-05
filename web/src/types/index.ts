@@ -37,11 +37,12 @@ export interface CloudConditions {
 }
 
 export interface SensorData {
-  lightSensor: LightSensorReading;
-  environment: EnvironmentReading;
-  irTemperature: IRTemperatureReading;
-  skyQuality: SkyQuality;
-  cloudConditions: CloudConditions;
+  dataTimestamp?: number;
+  lightSensor?: LightSensorReading;
+  environment?: EnvironmentReading;
+  irTemperature?: IRTemperatureReading;
+  skyQuality?: SkyQuality;
+  cloudConditions?: CloudConditions;
   gps?: {
     hasFix: boolean;
     satellites: number;
@@ -178,6 +179,11 @@ export interface MQTTConfig {
   publishIntervalMs: number;
 }
 
+export interface OTAConfig {
+  enabled: boolean;
+  password: string;
+}
+
 export interface NTPConfig {
   enabled: boolean;
   server1: string;
@@ -209,6 +215,7 @@ export interface Config {
   secondaryTimeSource: number; // 0=NTP, 1=GPS
   wifi: WiFiConfig;
   mqtt: MQTTConfig;
+  ota: OTAConfig;
   ntp: NTPConfig;
   gps: GPSConfig;
   sensor: SensorConfig;

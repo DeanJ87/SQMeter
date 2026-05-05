@@ -4,6 +4,8 @@ import type { Config, WiFiNetwork } from '../types';
 import { configSchema } from '../validation/configSchema';
 import { ZodError } from 'zod';
 
+type ValidationErrors = Record<string, string>;
+
 // Common timezone options with POSIX format
 const TIMEZONE_OPTIONS = [
   { label: 'UTC', value: 'UTC0' },
@@ -18,6 +20,28 @@ const TIMEZONE_OPTIONS = [
   { label: 'Custom', value: 'custom' },
 ];
 
+const defaultRainConfig: NonNullable<Config['rain']> = {
+  enabled: false,
+  rxPin: 18,
+  txPin: 19,
+  baudRate: 9600,
+  mode: 'continuous',
+  resolution: 'switch',
+  units: 'metric',
+};
+
+const fieldErrorAliases: Record<string, string> = {
+  mqttBroker: 'mqtt.broker',
+  mqttPort: 'mqtt.port',
+  mqttTopic: 'mqtt.topic',
+  mqttInterval: 'mqtt.publishIntervalMs',
+  sensorInterval: 'sensor.readIntervalMs',
+  i2cSDA: 'sensor.i2cSDA',
+  i2cSCL: 'sensor.i2cSCL',
+  i2cPins: 'sensor.i2cSDA',
+  i2cFrequency: 'sensor.i2cFrequency',
+};
+
 const Settings: FunctionalComponent = () => {
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +49,7 @@ const Settings: FunctionalComponent = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [wifiNetworks, setWifiNetworks] = useState<WiFiNetwork[]>([]);
   const [scanningWifi, setScanningWifi] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [testingMqtt, setTestingMqtt] = useState(false);
   const [mqttTestResult, setMqttTestResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const errorPanelRef = useRef<HTMLDivElement>(null);
@@ -93,29 +117,20 @@ const Settings: FunctionalComponent = () => {
     }
   };
 
-  const validateConfig = (): boolean => {
-    if (!config) return false;
+  const validateConfig = (): ValidationErrors | null => {
+    if (!config) return { config: 'Configuration is not loaded' };
     
     try {
       configSchema.parse(config);
       setValidationErrors({});
-      console.log('✅ Validation passed');
-      return true;
+      return null;
     } catch (error) {
       if (error instanceof ZodError) {
-        const errors: Record<string, string> = {};
-        console.error('❌ Validation failed:', error.issues);
+        const errors: ValidationErrors = {};
         
         error.issues.forEach((issue) => {
-          // Map nested paths to flat field names used in the UI
           const path = issue.path.join('.');
-          const flatPath = path.replace(/\./g, '');
-          
-          // Store both versions for flexibility
-          errors[path] = issue.message;
-          errors[flatPath] = issue.message;
-          
-          console.log(`  - ${path}: ${issue.message}`);
+          errors[path || 'config'] = issue.message;
         });
         
         setValidationErrors(errors);
@@ -124,20 +139,19 @@ const Settings: FunctionalComponent = () => {
         setTimeout(() => {
           errorPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
-        console.log('Validation errors set:', errors);
+        return errors;
       }
-      return false;
+      return { config: 'Configuration validation failed' };
     }
   };
 
   const saveConfig = async () => {
     if (!config) return;
 
-    console.log('💾 Attempting to save config:', config);
-
-    if (!validateConfig()) {
-      const errorCount = Object.keys(validationErrors).length / 2; // Divide by 2 since we store both versions
-      setMessage({ type: 'error', text: `Please fix ${errorCount} validation error(s) - check console for details` });
+    const errors = validateConfig();
+    if (errors) {
+      const errorCount = Object.keys(errors).length;
+      setMessage({ type: 'error', text: `Please fix ${errorCount} validation error(s)` });
       return;
     }
 
@@ -146,17 +160,25 @@ const Settings: FunctionalComponent = () => {
 
     try {
       const response = await fetch('/api/config', {
-        method: 'PUT',  // Using PUT for full resource replacement
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       });
 
+      const contentType = response.headers.get('content-type') || '';
+      const responseBody = contentType.includes('application/json')
+        ? await response.json()
+        : null;
+
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Configuration saved successfully!' });
-        setValidationErrors({});
+        if (responseBody?.success === false) {
+          setMessage({ type: 'error', text: responseBody.error || 'Failed to save configuration' });
+        } else {
+          setMessage({ type: 'success', text: 'Configuration saved successfully!' });
+          setValidationErrors({});
+        }
       } else {
-        const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Failed to save configuration' });
+        setMessage({ type: 'error', text: responseBody?.error || 'Failed to save configuration' });
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'Network error occurred' });
@@ -168,7 +190,15 @@ const Settings: FunctionalComponent = () => {
   const updateConfig = (path: string[], value: any) => {
     if (!config) return;
 
-    const newConfig = { ...config };
+    const newConfig = {
+      ...config,
+      wifi: { ...config.wifi },
+      mqtt: { ...config.mqtt },
+      ntp: { ...config.ntp },
+      gps: { ...config.gps },
+      sensor: { ...config.sensor },
+      rain: config.rain ? { ...config.rain } : { ...defaultRainConfig },
+    };
     let current: any = newConfig;
     
     for (let i = 0; i < path.length - 1; i++) {
@@ -178,6 +208,8 @@ const Settings: FunctionalComponent = () => {
     current[path[path.length - 1]] = value;
     setConfig(newConfig);
   };
+
+  const errorFor = (key: string) => validationErrors[fieldErrorAliases[key] ?? key];
 
   if (loading) {
     return (
@@ -216,14 +248,12 @@ const Settings: FunctionalComponent = () => {
           <h3 class="text-lg font-semibold text-white mb-2">⚠️ Validation Errors</h3>
           <ul class="space-y-1 text-sm text-orange-200">
             {Object.entries(validationErrors)
-              .filter(([key]) => !key.includes('.')) // Only show the flat paths
               .map(([field, error]) => (
                 <li key={field}>
                   <strong>{field}:</strong> {error}
                 </li>
               ))}
           </ul>
-          <p class="text-xs text-orange-300 mt-2">Check browser console for detailed path information</p>
         </div>
       )}
 
@@ -338,6 +368,42 @@ const Settings: FunctionalComponent = () => {
               Auto Reconnect
             </label>
           </div>
+        </div>
+      </section>
+
+      {/* OTA Settings */}
+      <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-white mb-4">ArduinoOTA</h2>
+        <div class="space-y-4">
+          <div class="flex items-center">
+            <input
+              type="checkbox"
+              checked={config.ota.enabled}
+              onChange={(e) => updateConfig(['ota', 'enabled'], (e.target as HTMLInputElement).checked)}
+              class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <label class="ml-2 text-sm font-medium text-gray-300">
+              Enable command-line OTA
+            </label>
+          </div>
+          {config.ota.enabled && (
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                value={config.ota.password}
+                onChange={(e) => updateConfig(['ota', 'password'], (e.target as HTMLInputElement).value)}
+                class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                  validationErrors['ota.password'] || validationErrors.otaPassword ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                }`}
+              />
+              {(validationErrors['ota.password'] || validationErrors.otaPassword) && (
+                <p class="mt-1 text-sm text-red-400">{validationErrors['ota.password'] || validationErrors.otaPassword}</p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -607,11 +673,11 @@ const Settings: FunctionalComponent = () => {
                   onChange={(e) => updateConfig(['mqtt', 'broker'], (e.target as HTMLInputElement).value)}
                   placeholder="mqtt.example.com or 192.168.1.100"
                   class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                    validationErrors.mqttBroker ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    errorFor('mqttBroker') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
                   }`}
                 />
-                {validationErrors.mqttBroker && (
-                  <p class="mt-1 text-sm text-red-400">{validationErrors.mqttBroker}</p>
+                {errorFor('mqttBroker') && (
+                  <p class="mt-1 text-sm text-red-400">{errorFor('mqttBroker')}</p>
                 )}
               </div>
               <div>
@@ -625,11 +691,11 @@ const Settings: FunctionalComponent = () => {
                   min="1"
                   max="65535"
                   class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                    validationErrors.mqttPort ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    errorFor('mqttPort') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
                   }`}
                 />
-                {validationErrors.mqttPort && (
-                  <p class="mt-1 text-sm text-red-400">{validationErrors.mqttPort}</p>
+                {errorFor('mqttPort') && (
+                  <p class="mt-1 text-sm text-red-400">{errorFor('mqttPort')}</p>
                 )}
                 <p class="mt-1 text-xs text-gray-500">Default: 1883 (unencrypted), 8883 (TLS)</p>
               </div>
@@ -667,11 +733,11 @@ const Settings: FunctionalComponent = () => {
                   onChange={(e) => updateConfig(['mqtt', 'topic'], (e.target as HTMLInputElement).value)}
                   placeholder="sqm/data"
                   class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                    validationErrors.mqttTopic ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    errorFor('mqttTopic') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
                   }`}
                 />
-                {validationErrors.mqttTopic && (
-                  <p class="mt-1 text-sm text-red-400">{validationErrors.mqttTopic}</p>
+                {errorFor('mqttTopic') && (
+                  <p class="mt-1 text-sm text-red-400">{errorFor('mqttTopic')}</p>
                 )}
                 <p class="mt-1 text-xs text-gray-500">Valid characters: a-z, A-Z, 0-9, /, _, -</p>
               </div>
@@ -686,11 +752,11 @@ const Settings: FunctionalComponent = () => {
                   min="1"
                   max="3600"
                   class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                    validationErrors.mqttInterval ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    errorFor('mqttInterval') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
                   }`}
                 />
-                {validationErrors.mqttInterval && (
-                  <p class="mt-1 text-sm text-red-400">{validationErrors.mqttInterval}</p>
+                {errorFor('mqttInterval') && (
+                  <p class="mt-1 text-sm text-red-400">{errorFor('mqttInterval')}</p>
                 )}
                 <p class="mt-1 text-xs text-gray-500">How often to publish sensor data (1-3600 seconds)</p>
               </div>
@@ -737,11 +803,11 @@ const Settings: FunctionalComponent = () => {
               max="3600000"
               step="100"
               class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                validationErrors.sensorInterval ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                errorFor('sensorInterval') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
               }`}
             />
-            {validationErrors.sensorInterval && (
-              <p class="mt-1 text-sm text-red-400">{validationErrors.sensorInterval}</p>
+            {errorFor('sensorInterval') && (
+              <p class="mt-1 text-sm text-red-400">{errorFor('sensorInterval')}</p>
             )}
             <p class="mt-1 text-xs text-gray-500">Minimum: 100ms, Maximum: 1 hour (3600000ms)</p>
           </div>
@@ -755,11 +821,11 @@ const Settings: FunctionalComponent = () => {
                 value={config.sensor.i2cSDA}
                 onChange={(e) => updateConfig(['sensor', 'i2cSDA'], parseInt((e.target as HTMLInputElement).value) || 21)}
                 class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                  validationErrors.i2cSDA || validationErrors.i2cPins ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                  errorFor('i2cSDA') || errorFor('i2cPins') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
                 }`}
               />
-              {validationErrors.i2cSDA && (
-                <p class="mt-1 text-sm text-red-400">{validationErrors.i2cSDA}</p>
+              {errorFor('i2cSDA') && (
+                <p class="mt-1 text-sm text-red-400">{errorFor('i2cSDA')}</p>
               )}
             </div>
             <div>
@@ -771,16 +837,16 @@ const Settings: FunctionalComponent = () => {
                 value={config.sensor.i2cSCL}
                 onChange={(e) => updateConfig(['sensor', 'i2cSCL'], parseInt((e.target as HTMLInputElement).value) || 22)}
                 class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                  validationErrors.i2cSCL || validationErrors.i2cPins ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                  errorFor('i2cSCL') || errorFor('i2cPins') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
                 }`}
               />
-              {validationErrors.i2cSCL && (
-                <p class="mt-1 text-sm text-red-400">{validationErrors.i2cSCL}</p>
+              {errorFor('i2cSCL') && (
+                <p class="mt-1 text-sm text-red-400">{errorFor('i2cSCL')}</p>
               )}
             </div>
           </div>
-          {validationErrors.i2cPins && (
-            <p class="text-sm text-red-400">{validationErrors.i2cPins}</p>
+          {errorFor('i2cPins') && (
+            <p class="text-sm text-red-400">{errorFor('i2cPins')}</p>
           )}
           <p class="text-xs text-gray-500">
             Common: SDA=21, SCL=22. Valid GPIOs: 0,1,2,3,4,5,12-19,21-23,25-27,32-36,39
@@ -799,8 +865,8 @@ const Settings: FunctionalComponent = () => {
               <option value="100000">100 kHz (Standard)</option>
               <option value="400000">400 kHz (Fast)</option>
             </select>
-            {validationErrors.i2cFrequency && (
-              <p class="mt-1 text-sm text-red-400">{validationErrors.i2cFrequency}</p>
+            {errorFor('i2cFrequency') && (
+              <p class="mt-1 text-sm text-red-400">{errorFor('i2cFrequency')}</p>
             )}
           </div>
         </div>
@@ -835,11 +901,11 @@ const Settings: FunctionalComponent = () => {
                   min="0"
                   max="39"
                   class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                    validationErrors['rain.rxPin'] ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    errorFor('rain.rxPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
                   }`}
                 />
-                {validationErrors['rain.rxPin'] && (
-                  <p class="mt-1 text-sm text-red-400">{validationErrors['rain.rxPin']}</p>
+                {errorFor('rain.rxPin') && (
+                  <p class="mt-1 text-sm text-red-400">{errorFor('rain.rxPin')}</p>
                 )}
               </div>
               <div>
@@ -853,11 +919,11 @@ const Settings: FunctionalComponent = () => {
                   min="0"
                   max="39"
                   class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                    validationErrors['rain.txPin'] ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    errorFor('rain.txPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
                   }`}
                 />
-                {validationErrors['rain.txPin'] && (
-                  <p class="mt-1 text-sm text-red-400">{validationErrors['rain.txPin']}</p>
+                {errorFor('rain.txPin') && (
+                  <p class="mt-1 text-sm text-red-400">{errorFor('rain.txPin')}</p>
                 )}
               </div>
               <div>
