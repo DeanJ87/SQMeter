@@ -24,6 +24,8 @@ namespace SQM
         std::string broker;
         int port;
         std::string topic;
+        std::string availabilityTopic;
+        std::string clientId;
     };
 
     class MQTTClient
@@ -64,6 +66,9 @@ namespace SQM
 
         void connect();
         void reconnect();
+        void publishAvailability(bool online);
+        std::string buildClientId() const;
+        std::string getAvailabilityTopic() const;
 
         std::string createPayload(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15);
     };

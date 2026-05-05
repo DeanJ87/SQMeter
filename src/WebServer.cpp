@@ -718,7 +718,7 @@ namespace SQM
             gps["latitude"] = gpsReading.latitude;
             gps["longitude"] = gpsReading.longitude;
             gps["altitude"] = gpsReading.altitude;
-            gps["hdop"] = gpsReading.hdop;
+            gps["hdop"] = gpsReading.hdop / 100.0;
             gps["age"] = gpsReading.age;
         }
 
@@ -915,6 +915,8 @@ namespace SQM
             mqtt["broker"] = mqttStatus.broker.c_str(); // Explicitly convert std::string
             mqtt["port"] = mqttStatus.port;
             mqtt["topic"] = mqttStatus.topic.c_str(); // Explicitly convert std::string
+            mqtt["availabilityTopic"] = mqttStatus.availabilityTopic.c_str();
+            mqtt["clientId"] = mqttStatus.clientId.c_str();
         }
 
         std::string json;
