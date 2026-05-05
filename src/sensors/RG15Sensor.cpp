@@ -31,8 +31,7 @@ namespace SQM
 
         initialized = true;
 
-        // Give sensor time to wake up then apply configured mode
-        delay(200);
+        // Apply configured mode without blocking async config handlers.
         applyConfig();
 
         reading.status = SensorStatus::OK;
@@ -64,8 +63,7 @@ namespace SQM
         }
         // "switch" = leave as DIP switch, no command
 
-        // Drain any acknowledgment bytes silently
-        delay(200);
+        // Drain any immediately available acknowledgment bytes silently.
         while (serial->available())
         {
             serial->read();
@@ -181,6 +179,8 @@ namespace SQM
                     line += c;
                 }
             }
+
+            yield();
         }
 
         return false;

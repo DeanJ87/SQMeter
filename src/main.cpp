@@ -31,6 +31,7 @@ static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
 static std::unique_ptr<TCPServer> tcpServer;
 static bool arduinoOTAEnabled = false;
+RTC_DATA_ATTR uint32_t bootCount = 0;
 
 // Timing
 static uint32_t lastSensorUpdate = 0;
@@ -167,6 +168,7 @@ void setup()
 {
     Serial.begin(115200);
     delay(100);
+    bootCount++;
 
     // Initialize logging
     Logger::init();
@@ -192,9 +194,9 @@ void setup()
     }
 
     // Mount LittleFS for serving web files
-    if (!LittleFS.begin(true))
+    if (!LittleFS.begin(false))
     {
-        Logger::error("Main", "Failed to mount LittleFS");
+        Logger::error("Main", "Failed to mount LittleFS; filesystem not formatted automatically");
     }
     else
     {
@@ -300,6 +302,7 @@ void setup()
         getConfigCallback,
         saveConfigCallback);
     webServer->begin();
+    webServer->refreshSensorSnapshot(lastSensorUpdate);
 
     // Initialize TCP server for ASCOM compatibility (port 2020)
     tcpServer = std::make_unique<TCPServer>(2020);
@@ -355,14 +358,14 @@ void loop()
         mlxSensor->update();
         gpsSensor->update();
         rg15Sensor->update();
+        lastSensorUpdate = now;
+        webServer->refreshSensorSnapshot(lastSensorUpdate);
 
         // Publish to MQTT if enabled
         if (mqttClient && mqttClient->isEnabled())
         {
             mqttClient->publishSensorData(*tslSensor, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor);
         }
-
-        lastSensorUpdate = now;
     }
 
     // Small delay to prevent tight loop

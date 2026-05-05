@@ -15,6 +15,8 @@
 #include <memory>
 #include <vector>
 #include <functional>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 namespace SQM
 {
@@ -43,6 +45,7 @@ namespace SQM
 
         void begin();
         void handle();
+        void refreshSensorSnapshot(uint32_t dataTimestampMs);
 
         // Broadcast sensor data to Dashboard WebSocket clients
         void broadcastSensorData();
@@ -59,6 +62,29 @@ namespace SQM
         static constexpr uint16_t PORT = 80;
         static constexpr uint32_t WS_SENSOR_BROADCAST_INTERVAL_MS = 1000; // Sensors update every 1s
         static constexpr uint32_t WS_STATUS_BROADCAST_INTERVAL_MS = 2000; // Status updates every 2s
+        static constexpr uint32_t SENSOR_STALE_GRACE_MS = 1000;
+        static constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 10000;
+
+        struct SensorSnapshot
+        {
+            TSL2591Reading tsl;
+            BME280Reading bme;
+            MLX90614Reading mlx;
+            GPSReading gps;
+            RG15Reading rg15;
+            bool gpsInitialized = false;
+            bool rg15Initialized = false;
+            bool tslInitialized = false;
+            bool bmeInitialized = false;
+            bool mlxInitialized = false;
+            uint32_t tslLastUpdate = 0;
+            uint32_t bmeLastUpdate = 0;
+            uint32_t mlxLastUpdate = 0;
+            uint32_t gpsLastUpdate = 0;
+            uint32_t rg15LastUpdate = 0;
+            uint32_t dataTimestamp = 0;
+            uint32_t capturedAt = 0;
+        };
 
         AsyncWebServer server;
         AsyncWebSocket wsSensors; // /ws/sensors for Dashboard
@@ -76,6 +102,13 @@ namespace SQM
 
         uint32_t lastSensorBroadcast;
         uint32_t lastStatusBroadcast;
+        SensorSnapshot sensorSnapshot;
+        SemaphoreHandle_t sensorSnapshotMutex;
+        bool wifiConnectActive;
+        bool wifiConnectConfigSaved;
+        uint32_t wifiConnectStartedAt;
+        std::string pendingWifiSSID;
+        std::string pendingWifiPassword;
 
         // Setup route handlers
         void setupStaticRoutes();
@@ -90,6 +123,7 @@ namespace SQM
         void handleRestart(AsyncWebServerRequest *request);
         void handleWiFiScan(AsyncWebServerRequest *request);
         void handleMQTTTest(AsyncWebServerRequest *request, JsonVariant &json);
+        void pollWiFiConnect();
 
         // WebSocket handlers
         void onSensorWebSocketEvent(
@@ -109,9 +143,12 @@ namespace SQM
             size_t len);
 
         // Helper functions
+        SensorSnapshot getSensorSnapshot() const;
         std::string createSensorDataJson() const;
         std::string createStatusJson() const;
         static std::string createErrorJson(const char *error);
+        static bool scheduleRestart(uint32_t delayMs);
+        static uint32_t ageMs(uint32_t now, uint32_t timestamp);
     };
 
 } // namespace SQM
