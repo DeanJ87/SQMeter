@@ -8,7 +8,7 @@ All endpoints are on port 80. Base URL: `http://<device-ip>/api`
 
 ### `GET /api/status`
 
-System status — uptime, memory, WiFi signal.
+System status, firmware metadata, memory, flash, filesystem, partition, time, WiFi, sensor, GPS, and MQTT diagnostics.
 
 ```bash
 curl http://sqm-esp32.local/api/status
@@ -18,11 +18,82 @@ curl http://sqm-esp32.local/api/status
 {
   "uptime": 3600,
   "freeHeap": 210432,
-  "rssi": -62,
-  "ip": "192.168.1.42",
-  "version": "0.0.1"
+  "heapSize": 327680,
+  "cpuFreqMHz": 240,
+  "flashSize": 4194304,
+  "sketchSize": 1048576,
+  "freeSketchSpace": 786432,
+  "fsTotal": 196608,
+  "fsUsed": 40960,
+  "firmware": {
+    "name": "SQMeter",
+    "version": "0.0.1",
+    "buildDate": "Apr 25 2026",
+    "buildTime": "12:00:00"
+  },
+  "partitions": {
+    "runningSlot": "app0",
+    "runningAddress": 65536,
+    "runningSize": 1966080,
+    "bootSlot": "app0",
+    "nextSlot": "app1",
+    "nextSize": 1966080,
+    "fsAddress": 3997696,
+    "fsSize": 196608,
+    "nvs": {
+      "usedEntries": 24,
+      "freeEntries": 96,
+      "totalEntries": 120,
+      "namespaceCount": 2
+    }
+  },
+  "time": {
+    "iso": "2026-04-25T22:14:00+0000",
+    "timezone": "UTC0"
+  },
+  "ntp": {
+    "enabled": true,
+    "synced": true,
+    "status": 2,
+    "lastSync": 120000,
+    "nextSync": 720000,
+    "drift": 0,
+    "server": "pool.ntp.org",
+    "activeSource": 1,
+    "gpsEnabled": false,
+    "gpsHasFix": false,
+    "gpsTimeUTC": "",
+    "gpsSatellites": 0
+  },
+  "wifi": {
+    "connected": true,
+    "ssid": "MyNetwork",
+    "ip": "192.168.1.42",
+    "rssi": -62,
+    "mac": "AA:BB:CC:DD:EE:FF"
+  },
+  "sensors": {
+    "tsl2591": { "initialized": true, "status": 0, "lastUpdate": 3595000 },
+    "bme280": { "initialized": true, "status": 0, "lastUpdate": 3595000 },
+    "mlx90614": { "initialized": true, "status": 0, "lastUpdate": 3595000 },
+    "gps": { "initialized": false, "status": 1, "lastUpdate": 0 },
+    "rg15": { "initialized": false, "status": 1, "lastUpdate": 0 }
+  },
+  "mqtt": {
+    "enabled": false,
+    "connected": false,
+    "state": -1,
+    "lastPublish": 0,
+    "lastReconnectAttempt": 0,
+    "broker": "",
+    "port": 1883,
+    "topic": "sqm/data"
+  }
 }
 ```
+
+!!! warning "Known diagnostic gaps"
+    The current firmware does not expose `minFreeHeap`, reset reason, boot count, or per-sensor last error. Use serial logs for those diagnostics until the firmware contract is extended.
 
 ---
 
@@ -113,6 +184,9 @@ Read the full device configuration.
 curl http://sqm-esp32.local/api/config
 ```
 
+!!! warning "Credential exposure"
+    The current firmware returns saved WiFi and MQTT password fields in this response and does not require HTTP authentication. Treat `/api/config` as LAN-sensitive and do not expose the device to guest networks or the public internet.
+
 ---
 
 ### `POST /api/config`
@@ -125,6 +199,15 @@ curl -X POST http://sqm-esp32.local/api/config \
   -d '{"deviceName": "backyard-sqm", "sensor": {"readIntervalMs": 10000}}'
 ```
 
+Successful saves return:
+
+```json
+{ "success": true }
+```
+
+!!! note
+    Use `POST`, not `PUT`. The firmware registers `/api/config` with `AsyncCallbackJsonWebHandler`, which accepts POST requests.
+
 ---
 
 ### `GET /api/wifi/scan`
@@ -136,11 +219,16 @@ curl http://sqm-esp32.local/api/wifi/scan
 ```
 
 ```json
-[
-  { "ssid": "MyNetwork", "rssi": -55, "secure": true },
-  { "ssid": "Neighbour", "rssi": -80, "secure": true }
-]
+{
+  "networks": [
+    { "ssid": "MyNetwork", "rssi": -55, "encryption": "secured" },
+    { "ssid": "Neighbour", "rssi": -80, "encryption": "secured" }
+  ]
+}
 ```
+
+!!! warning "Blocking scan"
+    This endpoint currently calls `WiFi.scanNetworks()` synchronously inside the async web-server handler. Avoid repeated scans while streaming WebSocket data or performing OTA updates.
 
 ---
 
@@ -176,3 +264,19 @@ curl -X POST http://sqm-esp32.local/api/update \
 ```
 
 The device reboots automatically on success.
+
+---
+
+### `POST /api/update/fs`
+
+OTA filesystem update. Send a LittleFS image as `multipart/form-data`.
+
+```bash
+curl -X POST http://sqm-esp32.local/api/update/fs \
+  -F "filesystem=@sqmeter-littlefs-v0.0.1.bin"
+```
+
+Use this endpoint for web UI assets only. It does not update firmware and does not erase NVS configuration.
+
+!!! warning "Unauthenticated update endpoints"
+    `/api/update` and `/api/update/fs` are LAN-only convenience endpoints and currently have no HTTP authentication. Keep SQMeter on a trusted network and do not port-forward it.
