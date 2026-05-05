@@ -1,12 +1,13 @@
 import { FunctionalComponent } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { route } from 'preact-router';
+import { route, useRouter } from 'preact-router';
 
 interface LayoutProps {
-  currentPath?: string;
+  path?: string;
 }
 
-const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => {
+const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
+  const [router] = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -22,7 +23,6 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => 
     setMenuOpen(false);
   };
 
-  // Close menu when clicking outside
   useEffect(() => {
     if (!menuOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -36,7 +36,6 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => 
 
   return (
     <div class="min-h-screen bg-gray-900">
-      {/* Header */}
       <header class="bg-gray-800 border-b border-gray-700 shadow-lg">
         <div class="container mx-auto px-4 py-4">
           <div class="flex items-center justify-between">
@@ -71,7 +70,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => 
               key={item.path}
               onClick={() => navigate(item.path)}
               class={`w-full flex items-center px-6 py-4 text-sm font-medium transition-colors border-b border-gray-700 last:border-b-0 ${
-                currentPath === item.path
+                router.url === item.path
                   ? 'text-white bg-gray-700 border-l-4 border-l-blue-500'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
               }`}
@@ -90,9 +89,9 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => 
             {navItems.map((item) => (
               <button
                 key={item.path}
-                onClick={() => navigate(item.path)}
+                onClick={() => route(item.path)}
                 class={`px-4 py-3 text-sm font-medium transition-colors ${
-                  currentPath === item.path
+                  router.url === item.path
                     ? 'text-white bg-gray-700 border-b-2 border-blue-500'
                     : 'text-gray-400 hover:text-white hover:bg-gray-750'
                 }`}
@@ -105,12 +104,10 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, currentPath }) => 
         </div>
       </nav>
 
-      {/* Main Content */}
       <main class="container mx-auto px-4 py-6">
         {children}
       </main>
 
-      {/* Footer */}
       <footer class="bg-gray-800 border-t border-gray-700 mt-12">
         <div class="container mx-auto px-4 py-4 text-center text-sm text-gray-400">
           <p>ESP32 Dark Sky Monitoring System • Built with Preact + TypeScript</p>

@@ -1,9 +1,18 @@
 import { FunctionalComponent } from 'preact';
+import { useEffect, useState } from 'preact/hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
-import type { SensorData } from '../types';
+import type { Config, SensorData } from '../types';
 
 const Dashboard: FunctionalComponent = () => {
-  const { data: sensors, connected } = useWebSocket<SensorData>('/ws/sensors');
+  const { data: sensors, connected, lastMessageAt } = useWebSocket<SensorData>('/ws/sensors');
+  const [config, setConfig] = useState<Config | null>(null);
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => setConfig(data))
+      .catch(() => setConfig(null));
+  }, []);
 
   const getBortleColor = (bortle: number): string => {
     if (bortle <= 2) return 'text-green-400';
@@ -12,6 +21,22 @@ const Dashboard: FunctionalComponent = () => {
     if (bortle <= 8) return 'text-orange-400';
     return 'text-red-400';
   };
+
+  const formatNumber = (value: number | undefined, digits: number) =>
+    typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '--';
+
+  const rainUnits = config?.rain?.units === 'imperial'
+    ? { depth: 'in', intensity: 'in/hr' }
+    : { depth: 'mm', intensity: 'mm/hr' };
+
+  const payloadTimestamp = sensors?.dataTimestamp;
+  const dataTimestamp = payloadTimestamp && payloadTimestamp > 1000000000000
+    ? payloadTimestamp
+    : lastMessageAt;
+  const dataAgeSeconds = dataTimestamp ? Math.max(0, Math.floor((Date.now() - dataTimestamp) / 1000)) : null;
+  const isStale = dataAgeSeconds !== null && config?.sensor?.readIntervalMs
+    ? dataAgeSeconds * 1000 > config.sensor.readIntervalMs * 2
+    : false;
 
   if (!connected) {
     return (
@@ -41,23 +66,29 @@ const Dashboard: FunctionalComponent = () => {
     <div class="space-y-6">
       {/* Connection Status */}
       <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
-        <div class="flex items-center space-x-2">
-          <div class={`w-3 h-3 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+        <div class="flex flex-wrap items-center gap-3">
+          <div class={`w-3 h-3 rounded-full ${connected && !isStale ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
           <span class="text-sm text-gray-400">
             {connected ? 'Connected' : 'Disconnected'}
           </span>
+          {dataAgeSeconds !== null && (
+            <span class={`text-sm ${isStale ? 'text-yellow-300' : 'text-gray-400'}`}>
+              Data age: {dataAgeSeconds}s
+            </span>
+          )}
         </div>
       </div>
 
       {/* Sky Quality - Primary Display */}
-      <div class="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-xl p-8 shadow-2xl border border-indigo-700">
+      {sensors.skyQuality ? (
+        <div class="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-xl p-8 shadow-2xl border border-indigo-700">
         <div class="text-center">
           <div class="text-6xl mb-4">🌌</div>
           <h2 class="text-3xl font-bold text-white mb-2">Sky Quality</h2>
           <div class="mt-6 space-y-4">
             <div>
               <div class="text-6xl font-bold text-white mb-2">
-                {sensors.skyQuality.sqm.toFixed(2)}
+                {formatNumber(sensors.skyQuality.sqm, 2)}
               </div>
               <div class="text-xl text-gray-300">mag/arcsec²</div>
             </div>
@@ -68,19 +99,24 @@ const Dashboard: FunctionalComponent = () => {
               <div class="bg-black bg-opacity-30 rounded-lg p-4">
                 <div class="text-sm text-gray-400">NELM</div>
                 <div class="text-2xl font-bold text-white">
-                  {sensors.skyQuality.nelm.toFixed(1)}
+                  {formatNumber(sensors.skyQuality.nelm, 1)}
                 </div>
               </div>
               <div class="bg-black bg-opacity-30 rounded-lg p-4">
                 <div class="text-sm text-gray-400">Bortle</div>
                 <div class="text-2xl font-bold text-white">
-                  {sensors.skyQuality.bortle.toFixed(1)}
+                  {formatNumber(sensors.skyQuality.bortle, 1)}
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      ) : (
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 text-gray-300">
+          Sky quality data unavailable
+        </div>
+      )}
 
       {/* Cloud Conditions */}
       {sensors.cloudConditions && (
@@ -164,9 +200,57 @@ const Dashboard: FunctionalComponent = () => {
         </div>
       )}
 
+      {/* Rain Sensor */}
+      {sensors.rainSensor && (
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+              <span class="mr-2">🌧️</span>
+              Rain Sensor
+            </h3>
+            <span class={`px-3 py-1 rounded-full text-sm font-semibold ${
+              sensors.rainSensor.isRaining ? 'bg-blue-900 text-blue-200' : 'bg-green-900 text-green-200'
+            }`}>
+              {sensors.rainSensor.isRaining ? 'Raining' : 'Dry'}
+            </span>
+          </div>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Intensity (RInt)</span>
+              <span class="text-xl font-bold text-white">
+                {formatNumber(sensors.rainSensor.rInt, 1)} {rainUnits.intensity}
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Since last read (Acc)</span>
+              <span class="text-white">{formatNumber(sensors.rainSensor.acc, 2)} {rainUnits.depth}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">Event total (EventAcc)</span>
+              <span class="text-white">{formatNumber(sensors.rainSensor.eventAcc, 2)} {rainUnits.depth}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-400">All-time total (TotalAcc)</span>
+              <span class="text-white">{formatNumber(sensors.rainSensor.totalAcc, 1)} {rainUnits.depth}</span>
+            </div>
+            {(sensors.rainSensor.lensBad || sensors.rainSensor.emSat) && (
+              <div class="pt-2 border-t border-gray-700 space-y-1">
+                {sensors.rainSensor.lensBad && (
+                  <span class="block text-xs text-yellow-400">⚠ LensBad — lens may be dirty or obstructed</span>
+                )}
+                {sensors.rainSensor.emSat && (
+                  <span class="block text-xs text-yellow-400">⚠ EmSat — emitter saturation detected</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Sensor Readings Grid */}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Light Sensor */}
+        {sensors.lightSensor && (
         <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-white flex items-center">
@@ -178,7 +262,7 @@ const Dashboard: FunctionalComponent = () => {
             <div class="flex justify-between items-center">
               <span class="text-gray-400">Illuminance</span>
               <span class="text-xl font-bold text-white">
-                {sensors.lightSensor.status === 0 ? sensors.lightSensor.lux.toFixed(6) : '--'} lux
+                {sensors.lightSensor.status === 0 ? formatNumber(sensors.lightSensor.lux, 6) : '--'} lux
               </span>
             </div>
             <div class="flex justify-between items-center">
@@ -195,6 +279,7 @@ const Dashboard: FunctionalComponent = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* Sky Temperature Sensor */}
         {sensors.irTemperature && (
