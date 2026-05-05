@@ -208,6 +208,9 @@ namespace SQM
             "/api/config",
             [this](AsyncWebServerRequest *request, JsonVariant &json)
             {
+                if (!requireAuth(request))
+                    return;
+
                 String jsonStr;
                 serializeJson(json, jsonStr);
                 const Config &currentConfig = getConfigCallback();
@@ -253,6 +256,9 @@ namespace SQM
             "/api/wifi/connect",
             [this](AsyncWebServerRequest *request, JsonVariant &json)
             {
+                if (!requireAuth(request))
+                    return;
+
                 JsonObject jsonObj = json.as<JsonObject>();
 
                 if (!jsonObj.containsKey("ssid") || !jsonObj.containsKey("password"))
@@ -305,8 +311,10 @@ namespace SQM
     void WebServer::setupOTA()
     {
         // Firmware OTA update (app partition)
-        server.on("/api/update", HTTP_POST, [](AsyncWebServerRequest *request)
+        server.on("/api/update", HTTP_POST, [this](AsyncWebServerRequest *request)
                   {
+            if (!requireAuth(request))
+                return;
             bool success = !Update.hasError();
             String response_json;
             
@@ -372,8 +380,10 @@ namespace SQM
         static bool fs_update_error = false;
         static String fs_error_msg = "";
 
-        server.on("/api/update/fs", HTTP_POST, [](AsyncWebServerRequest *request)
+        server.on("/api/update/fs", HTTP_POST, [this](AsyncWebServerRequest *request)
                   {
+            if (!requireAuth(request))
+                return;
             String response_json;
             
             if (fs_update_error) {
@@ -477,6 +487,8 @@ namespace SQM
 
     void WebServer::handleRestart(AsyncWebServerRequest *request)
     {
+        if (!requireAuth(request))
+            return;
         request->send(200, "application/json", "{\"success\":true,\"message\":\"Restarting...\"}");
         scheduleRestart(500);
     }
@@ -565,6 +577,9 @@ namespace SQM
 
     void WebServer::handleMQTTTest(AsyncWebServerRequest *request, JsonVariant &json)
     {
+        if (!requireAuth(request))
+            return;
+
         JsonObject jsonObj = json.as<JsonObject>();
 
         if (!jsonObj.containsKey("broker") || !jsonObj.containsKey("port"))
@@ -1077,6 +1092,21 @@ namespace SQM
             return false;
         }
 
+        return true;
+    }
+
+    bool WebServer::requireAuth(AsyncWebServerRequest *request) const
+    {
+        const Config &cfg = getConfigCallback();
+        if (!cfg.auth.enabled || cfg.auth.password.empty())
+        {
+            return true;
+        }
+        if (!request->authenticate(cfg.auth.username.c_str(), cfg.auth.password.c_str()))
+        {
+            request->requestAuthentication("SQMeter", false);
+            return false;
+        }
         return true;
     }
 

@@ -72,6 +72,7 @@ nav:
     - First Boot: getting-started/first-setup.md
   - User Guide:
     - Configuration: user-guide/configuration.md
+    - Security: user-guide/security.md
     - MQTT Integration: user-guide/mqtt.md
     - OTA Updates: user-guide/ota.md
   - Hardware:

@@ -184,6 +184,12 @@ export interface OTAConfig {
   password: string;
 }
 
+export interface AuthConfig {
+  enabled: boolean;
+  username: string;
+  password: string;
+}
+
 export interface NTPConfig {
   enabled: boolean;
   server1: string;
@@ -216,6 +222,7 @@ export interface Config {
   wifi: WiFiConfig;
   mqtt: MQTTConfig;
   ota: OTAConfig;
+  auth: AuthConfig;
   ntp: NTPConfig;
   gps: GPSConfig;
   sensor: SensorConfig;

@@ -20,6 +20,12 @@ const TIMEZONE_OPTIONS = [
   { label: 'Custom', value: 'custom' },
 ];
 
+const defaultAuthConfig: NonNullable<Config['auth']> = {
+  enabled: false,
+  username: 'admin',
+  password: '',
+};
+
 const defaultRainConfig: NonNullable<Config['rain']> = {
   enabled: false,
   rxPin: 18,
@@ -197,6 +203,7 @@ const Settings: FunctionalComponent = () => {
       ntp: { ...config.ntp },
       gps: { ...config.gps },
       sensor: { ...config.sensor },
+      auth: config.auth ? { ...config.auth } : { ...defaultAuthConfig },
       rain: config.rain ? { ...config.rain } : { ...defaultRainConfig },
     };
     let current: any = newConfig;
@@ -403,6 +410,68 @@ const Settings: FunctionalComponent = () => {
                 <p class="mt-1 text-sm text-red-400">{validationErrors['ota.password'] || validationErrors.otaPassword}</p>
               )}
             </div>
+          )}
+        </div>
+      </section>
+
+      {/* HTTP Auth Settings */}
+      <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-white mb-4">HTTP Authentication</h2>
+        <div class="space-y-4">
+          <div class="flex items-center">
+            <input
+              type="checkbox"
+              checked={config.auth?.enabled ?? false}
+              onChange={(e) => updateConfig(['auth', 'enabled'], (e.target as HTMLInputElement).checked)}
+              class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <label class="ml-2 text-sm font-medium text-gray-300">
+              Require authentication for config and OTA endpoints
+            </label>
+          </div>
+          {config.auth?.enabled && (
+            <>
+              <div class="p-3 bg-yellow-900 border border-yellow-700 rounded-lg text-sm text-yellow-200">
+                When enabled, saving config, OTA updates, and restart require a username and password.
+                Read-only sensor and status endpoints remain accessible without credentials.
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={config.auth.username}
+                  onChange={(e) => updateConfig(['auth', 'username'], (e.target as HTMLInputElement).value)}
+                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                    validationErrors['auth.username'] ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                  }`}
+                />
+                {validationErrors['auth.username'] && (
+                  <p class="mt-1 text-sm text-red-400">{validationErrors['auth.username']}</p>
+                )}
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={config.auth.password}
+                  onChange={(e) => updateConfig(['auth', 'password'], (e.target as HTMLInputElement).value)}
+                  placeholder="Leave empty to clear; send placeholder to preserve stored value"
+                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                    validationErrors['auth.password'] ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                  }`}
+                />
+                {validationErrors['auth.password'] && (
+                  <p class="mt-1 text-sm text-red-400">{validationErrors['auth.password']}</p>
+                )}
+                <p class="mt-1 text-xs text-gray-500">
+                  Stored password is masked. Type a new password to change it, or leave the masked value to keep the current one.
+                </p>
+              </div>
+            </>
           )}
         </div>
       </section>
