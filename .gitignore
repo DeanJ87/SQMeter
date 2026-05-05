@@ -19,8 +19,15 @@ data/
 # Web UI
 web/node_modules/
 web/dist/
+web/dist-demo/
 web/.vite/
-web/package-lock.json
+web/public/mockServiceWorker.js
+web/test-results/
+web/tests/*-snapshots/
+
+# Documentation outputs
+site/
+docs/assets/screenshots/*.png
 
 # Configuration (may contain secrets)
 data/config.json

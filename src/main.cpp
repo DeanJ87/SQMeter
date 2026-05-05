@@ -13,6 +13,7 @@
 #include "sensors/BME280Sensor.h"
 #include "sensors/MLX90614Sensor.h"
 #include "sensors/GPSSensor.h"
+#include "sensors/RG15Sensor.h"
 #include "TCPServer.h"
 
 using namespace SQM;
@@ -24,10 +25,13 @@ static std::unique_ptr<TSL2591Sensor> tslSensor;
 static std::unique_ptr<BME280Sensor> bmeSensor;
 static std::unique_ptr<MLX90614Sensor> mlxSensor;
 static std::unique_ptr<GPSSensor> gpsSensor;
+static std::unique_ptr<RG15Sensor> rg15Sensor;
 static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
 static std::unique_ptr<TCPServer> tcpServer;
+static bool arduinoOTAEnabled = false;
+RTC_DATA_ATTR uint32_t bootCount = 0;
 
 // Timing
 static uint32_t lastSensorUpdate = 0;
@@ -56,6 +60,30 @@ bool saveConfigCallback(const Config &newConfig)
         {
             timeManager->updateConfig(config.ntp, config.gps,
                                       config.primaryTimeSource, config.secondaryTimeSource);
+        }
+
+        if (!config.ota.enabled || config.ota.password.empty())
+        {
+            arduinoOTAEnabled = false;
+        }
+        else if (!arduinoOTAEnabled)
+        {
+            Logger::warn("Main", "ArduinoOTA config saved; restart required to start command-line OTA");
+        }
+
+        // Reconfigure RG-15 in-place so WebServer's reference stays valid
+        if (rg15Sensor)
+        {
+            if (config.rain.enabled)
+            {
+                rg15Sensor->reconfigure(
+                    config.rain.rxPin, config.rain.txPin, config.rain.baudRate,
+                    config.rain.mode, config.rain.resolution, config.rain.units);
+            }
+            else
+            {
+                rg15Sensor->stop();
+            }
         }
     }
 
@@ -117,16 +145,34 @@ void setupSensors()
         gpsSensor = std::make_unique<GPSSensor>();
         Logger::info("Main", "GPS disabled in configuration");
     }
+
+    // Initialize RG-15 rain sensor (UART, not I2C)
+    if (config.rain.enabled)
+    {
+        rg15Sensor = std::make_unique<RG15Sensor>(
+            config.rain.rxPin, config.rain.txPin, config.rain.baudRate,
+            config.rain.mode, config.rain.resolution, config.rain.units);
+        if (!rg15Sensor->begin())
+        {
+            Logger::warn("Main", "RG-15 initialization failed");
+        }
+    }
+    else
+    {
+        rg15Sensor = std::make_unique<RG15Sensor>();
+        Logger::info("Main", "RG-15 rain sensor disabled in configuration");
+    }
 }
 
 void setup()
 {
     Serial.begin(115200);
     delay(100);
+    bootCount++;
 
     // Initialize logging
     Logger::init();
-    Logger::info("Main", "=== SQM v2 Starting ===");
+    Logger::info("Main", "=== SQMeter Starting ===");
     Logger::info("Main", "ESP32 Chip: %s Rev %d", ESP.getChipModel(), ESP.getChipRevision());
     Logger::info("Main", "Flash: %d bytes", ESP.getFlashChipSize());
     Logger::info("Main", "Free heap: %d bytes", ESP.getFreeHeap());
@@ -148,9 +194,9 @@ void setup()
     }
 
     // Mount LittleFS for serving web files
-    if (!LittleFS.begin(true))
+    if (!LittleFS.begin(false))
     {
-        Logger::error("Main", "Failed to mount LittleFS");
+        Logger::error("Main", "Failed to mount LittleFS; filesystem not formatted automatically");
     }
     else
     {
@@ -181,11 +227,11 @@ void setup()
         wifiManager->startCaptivePortal();
     }
 
-    // Initialize ArduinoOTA for command-line firmware uploads
-    if (wifiManager->isConnected())
+    // Initialize ArduinoOTA for command-line firmware uploads only when configured securely.
+    if (wifiManager->isConnected() && config.ota.enabled && !config.ota.password.empty())
     {
         ArduinoOTA.setHostname(config.wifi.hostname.c_str());
-        // No password - don't call setPassword() to disable authentication entirely
+        ArduinoOTA.setPassword(config.ota.password.c_str());
 
         ArduinoOTA.onStart([]()
                            {
@@ -220,7 +266,12 @@ void setup()
             else if (error == OTA_END_ERROR) Logger::error("OTA", "End Failed"); });
 
         ArduinoOTA.begin();
-        Logger::info("Main", "ArduinoOTA enabled");
+        arduinoOTAEnabled = true;
+        Logger::info("Main", "ArduinoOTA enabled with password authentication");
+    }
+    else if (wifiManager->isConnected())
+    {
+        Logger::warn("Main", "ArduinoOTA disabled; configure ota.enabled and ota.password to enable command-line OTA");
     }
 
     // Initialize time manager with GPS/NTP priority
@@ -245,15 +296,17 @@ void setup()
         *bmeSensor,
         *mlxSensor,
         *gpsSensor,
+        *rg15Sensor,
         timeManager.get(),
         mqttClient.get(),
         getConfigCallback,
         saveConfigCallback);
     webServer->begin();
+    webServer->refreshSensorSnapshot(lastSensorUpdate);
 
     // Initialize TCP server for ASCOM compatibility (port 2020)
     tcpServer = std::make_unique<TCPServer>(2020);
-    tcpServer->setSensorReferences(tslSensor.get(), bmeSensor.get(), mlxSensor.get(), gpsSensor.get());
+    tcpServer->setSensorReferences(tslSensor.get(), bmeSensor.get(), mlxSensor.get(), gpsSensor.get(), rg15Sensor.get());
     tcpServer->begin();
 
     Logger::info("Main", "=== Setup complete ===");
@@ -270,7 +323,10 @@ void loop()
     wifiManager->handle();
 
     // Handle ArduinoOTA
-    ArduinoOTA.handle();
+    if (arduinoOTAEnabled)
+    {
+        ArduinoOTA.handle();
+    }
 
     // Handle time manager
     if (timeManager)
@@ -301,14 +357,15 @@ void loop()
         bmeSensor->update();
         mlxSensor->update();
         gpsSensor->update();
+        rg15Sensor->update();
+        lastSensorUpdate = now;
+        webServer->refreshSensorSnapshot(lastSensorUpdate);
 
         // Publish to MQTT if enabled
         if (mqttClient && mqttClient->isEnabled())
         {
-            mqttClient->publishSensorData(*tslSensor, *bmeSensor, *mlxSensor, *gpsSensor);
+            mqttClient->publishSensorData(*tslSensor, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor);
         }
-
-        lastSensorUpdate = now;
     }
 
     // Small delay to prevent tight loop

@@ -37,11 +37,12 @@ export interface CloudConditions {
 }
 
 export interface SensorData {
-  lightSensor: LightSensorReading;
-  environment: EnvironmentReading;
-  irTemperature: IRTemperatureReading;
-  skyQuality: SkyQuality;
-  cloudConditions: CloudConditions;
+  dataTimestamp?: number;
+  lightSensor?: LightSensorReading;
+  environment?: EnvironmentReading;
+  irTemperature?: IRTemperatureReading;
+  skyQuality?: SkyQuality;
+  cloudConditions?: CloudConditions;
   gps?: {
     hasFix: boolean;
     satellites: number;
@@ -51,6 +52,7 @@ export interface SensorData {
     hdop: number;
     age: number;
   };
+  rainSensor?: RainSensorReading;
 }
 
 export interface SystemStatus {
@@ -141,6 +143,11 @@ export interface SystemStatus {
       status: number;
       lastUpdate: number;
     };
+    rg15?: {
+      initialized: boolean;
+      status: number;
+      lastUpdate: number;
+    };
   };
   gpsData?: {
     hasFix: boolean;
@@ -170,6 +177,11 @@ export interface MQTTConfig {
   password: string;
   topic: string;
   publishIntervalMs: number;
+}
+
+export interface OTAConfig {
+  enabled: boolean;
+  password: string;
 }
 
 export interface NTPConfig {
@@ -203,9 +215,31 @@ export interface Config {
   secondaryTimeSource: number; // 0=NTP, 1=GPS
   wifi: WiFiConfig;
   mqtt: MQTTConfig;
+  ota: OTAConfig;
   ntp: NTPConfig;
   gps: GPSConfig;
   sensor: SensorConfig;
+  rain?: RainSensorConfig;
+}
+
+export interface RainSensorReading {
+  isRaining: boolean;
+  acc: number;
+  eventAcc: number;
+  totalAcc: number;
+  rInt: number;
+  lensBad: boolean;
+  emSat: boolean;
+}
+
+export interface RainSensorConfig {
+  enabled: boolean;
+  rxPin: number;
+  txPin: number;
+  baudRate: number;
+  mode: 'polling' | 'continuous';
+  resolution: 'high' | 'low' | 'switch';
+  units: 'metric' | 'imperial' | 'switch';
 }
 
 export interface WiFiNetwork {

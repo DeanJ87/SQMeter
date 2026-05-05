@@ -4,6 +4,7 @@
 #include "sensors/BME280Sensor.h"
 #include "sensors/MLX90614Sensor.h"
 #include "sensors/GPSSensor.h"
+#include "sensors/RG15Sensor.h"
 #include "calculations/CloudDetection.h"
 #include "calculations/SkyQuality.h"
 #include "version.h"
@@ -12,16 +13,13 @@
 namespace SQM
 {
     TCPServer::TCPServer(uint16_t port)
-        : port(port), server(nullptr), tslSensor(nullptr), bmeSensor(nullptr), mlxSensor(nullptr), gpsSensor(nullptr)
+        : port(port), server(nullptr), tslSensor(nullptr), bmeSensor(nullptr), mlxSensor(nullptr), gpsSensor(nullptr), rg15Sensor(nullptr)
     {
     }
 
     TCPServer::~TCPServer()
     {
-        if (server)
-        {
-            delete server;
-        }
+        stop();
     }
 
     void TCPServer::begin()
@@ -39,18 +37,46 @@ namespace SQM
         Logger::info(TAG, "TCP server started on port %d", port);
     }
 
-    void TCPServer::setSensorReferences(TSL2591Sensor *tsl, BME280Sensor *bme, MLX90614Sensor *mlx, GPSSensor *gps)
+    void TCPServer::setSensorReferences(TSL2591Sensor *tsl, BME280Sensor *bme, MLX90614Sensor *mlx, GPSSensor *gps, RG15Sensor *rg15)
     {
         tslSensor = tsl;
         bmeSensor = bme;
         mlxSensor = mlx;
         gpsSensor = gps;
+        rg15Sensor = rg15;
+    }
+
+    void TCPServer::stop()
+    {
+        if (client)
+        {
+            client.stop();
+        }
+
+        if (server)
+        {
+            delete server;
+            server = nullptr;
+        }
     }
 
     void TCPServer::handle()
     {
-        if (!server)
+        if (!WiFi.isConnected())
+        {
+            if (server)
+            {
+                Logger::warn(TAG, "WiFi disconnected, stopping TCP server");
+                stop();
+            }
             return;
+        }
+
+        if (!server)
+        {
+            begin();
+            return;
+        }
 
         // Check for new client
         if (!client || !client.connected())
@@ -167,7 +193,7 @@ namespace SQM
 
     String TCPServer::handleFirmwareName()
     {
-        return String("SQMv2");
+        return String("SQMeter");
     }
 
     String TCPServer::handleHumidity()
@@ -247,8 +273,14 @@ namespace SQM
 
     String TCPServer::handleRainRate()
     {
-        // TODO: Implement when rain sensor added
-        return "0.0";
+        if (!rg15Sensor || !rg15Sensor->isInitialized())
+            return "-1.0";
+
+        RG15Reading reading = rg15Sensor->getReading();
+        if (reading.status != SensorStatus::OK)
+            return "-1.0";
+
+        return String(reading.rInt, 2);
     }
 
     String TCPServer::handleWindSpeed()
