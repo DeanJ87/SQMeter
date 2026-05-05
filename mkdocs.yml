@@ -85,7 +85,7 @@ nav:
   - API Reference:
     - REST API: api/rest.md
     - WebSocket: api/websocket.md
-    - ASCOM TCP: api/ascom.md
+    - Integrations: api/integrations.md
   - Development:
     - Dev Workflow: development/workflow.md
     - Adding Sensors: development/sensors.md
