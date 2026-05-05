@@ -25,8 +25,7 @@ export const handlers = [
 
   // REST — config
   http.get("/api/config", () => HttpResponse.json(mockConfig)),
-  http.post("/api/config", () => HttpResponse.json({ ok: true })),
-  http.put("/api/config", () => HttpResponse.json({ ok: true })),
+  http.post("/api/config", () => HttpResponse.json({ success: true })),
 
   // REST — wifi (returns { networks: [...] } to match firmware API shape)
   http.get("/api/wifi/scan", () =>
@@ -46,10 +45,14 @@ export const handlers = [
 
   // WebSocket — push sensor data every second
   sensorSocket.addEventListener("connection", ({ client }) => {
-    client.send(JSON.stringify(generateSensorData()));
+    let lastSensorData = generateSensorData();
+    client.send(JSON.stringify(lastSensorData));
 
     const interval = setInterval(() => {
-      client.send(JSON.stringify(generateSensorData()));
+      if (Date.now() - (lastSensorData.dataTimestamp ?? 0) >= mockConfig.sensor.readIntervalMs) {
+        lastSensorData = generateSensorData();
+      }
+      client.send(JSON.stringify(lastSensorData));
     }, 1000);
 
     client.addEventListener("close", () => clearInterval(interval));

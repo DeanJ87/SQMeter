@@ -37,11 +37,12 @@ export interface CloudConditions {
 }
 
 export interface SensorData {
-  lightSensor: LightSensorReading;
-  environment: EnvironmentReading;
-  irTemperature: IRTemperatureReading;
-  skyQuality: SkyQuality;
-  cloudConditions: CloudConditions;
+  dataTimestamp?: number;
+  lightSensor?: LightSensorReading;
+  environment?: EnvironmentReading;
+  irTemperature?: IRTemperatureReading;
+  skyQuality?: SkyQuality;
+  cloudConditions?: CloudConditions;
   gps?: {
     hasFix: boolean;
     satellites: number;
