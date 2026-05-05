@@ -118,10 +118,13 @@ Update firmware over WiFi without USB cable.
 
 ### Via PlatformIO
 
+ArduinoOTA uploads are disabled unless `ota.enabled` is `true` and `ota.password` is configured on the device. Use the same password in PlatformIO.
+
 ```bash
 # Configure in platformio.ini:
 # upload_protocol = espota
 # upload_port = <device-ip>
+# upload_flags = --auth=<ota-password>
 
 pio run --target upload
 ```

@@ -49,6 +49,11 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
     "publishIntervalMs": 60000
   },
 
+  "ota": {
+    "enabled": false,
+    "password": ""
+  },
+
   "sensor": {
     "readIntervalMs": 5000,
     "i2cSDA": 21,
@@ -121,6 +126,15 @@ When GPS is enabled and has a fix, it can serve as the primary time source for a
 | `topic` | string | `"sqmeter/data"` | Publish topic |
 | `publishIntervalMs` | int | `60000` | Publish interval — default 1 min |
 
+### ArduinoOTA
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Enable command-line ArduinoOTA uploads |
+| `password` | string | `""` | Required when command-line ArduinoOTA is enabled |
+
+ArduinoOTA is disabled unless both `ota.enabled` is `true` and `ota.password` is set. The web UI OTA upload page is separate from command-line ArduinoOTA.
+
 ### Sensor
 
 | Field | Type | Default | Description |
@@ -143,6 +157,8 @@ curl -X POST http://sqmeter.local/api/config \
   -H "Content-Type: application/json" \
   -d '{"deviceName": "backyard-sqm", "ntp": {"server1": "time.google.com"}}'
 ```
+
+Password fields returned by `GET /api/config` are masked as `********`. Sending a masked or empty password back to `POST /api/config` preserves the stored value; send `null` for a password field only when you intentionally want to clear it.
 
 ---
 

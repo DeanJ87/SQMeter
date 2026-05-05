@@ -107,7 +107,7 @@ curl http://sqm-esp32.local/api/sensors
 
 ### `GET /api/config`
 
-Read the full device configuration.
+Read the full device configuration. Password fields are returned as `********` when a stored password exists.
 
 ```bash
 curl http://sqm-esp32.local/api/config
@@ -124,6 +124,8 @@ curl -X POST http://sqm-esp32.local/api/config \
   -H "Content-Type: application/json" \
   -d '{"deviceName": "backyard-sqm", "sensor": {"readIntervalMs": 10000}}'
 ```
+
+Masked or empty password fields preserve the existing stored password. Send `null` for `wifi.password`, `mqtt.password`, or `ota.password` only when you intentionally want to clear that password.
 
 ---
 

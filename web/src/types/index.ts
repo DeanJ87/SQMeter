@@ -178,6 +178,11 @@ export interface MQTTConfig {
   publishIntervalMs: number;
 }
 
+export interface OTAConfig {
+  enabled: boolean;
+  password: string;
+}
+
 export interface NTPConfig {
   enabled: boolean;
   server1: string;
@@ -209,6 +214,7 @@ export interface Config {
   secondaryTimeSource: number; // 0=NTP, 1=GPS
   wifi: WiFiConfig;
   mqtt: MQTTConfig;
+  ota: OTAConfig;
   ntp: NTPConfig;
   gps: GPSConfig;
   sensor: SensorConfig;
