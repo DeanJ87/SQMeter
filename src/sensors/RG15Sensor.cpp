@@ -109,6 +109,13 @@ namespace SQM
         diagnostics.state = state;
     }
 
+    void RG15Sensor::markCommunicationOk()
+    {
+        diagnostics.online = true;
+        reading.online = true;
+        reading.stale = false;
+    }
+
     bool RG15Sensor::start(bool probeImmediately)
     {
         MutexGuard guard(stateMutex);
@@ -136,8 +143,8 @@ namespace SQM
 
         if (debugUart)
         {
-            Logger::debug(TAG, "UART configured: rx=%u tx=%u baud=%u port=%u debug=%d",
-                          rxPin, txPin, baudRate, UART_NUM, debugUart ? 1 : 0);
+            Logger::info(TAG, "UART configured: rx=%u tx=%u baud=%u port=%u debug=%d",
+                         rxPin, txPin, baudRate, UART_NUM, debugUart ? 1 : 0);
         }
 
         applyConfig();
@@ -148,9 +155,13 @@ namespace SQM
             pollReading();
         }
 
-        if (probeImmediately && diagnostics.successfulReads == 0)
+        if (probeImmediately && !diagnostics.online)
         {
             Logger::warn(TAG, "sensor remains offline: no UART response received");
+        }
+        else if (probeImmediately && diagnostics.successfulReads == 0)
+        {
+            Logger::warn(TAG, "sensor responded, but no valid rain reading has been parsed yet");
         }
 
         return true;
@@ -173,11 +184,34 @@ namespace SQM
         diagnostics.lastRawResponse.reset();
         diagnostics.lastError.reset();
 
+        if (debugUart)
+        {
+            Logger::info(TAG, "query baud: TX \"B\"");
+        }
+        queryLineCommand('B', "Baud");
+
+        if (mode == "polling")
+        {
+            if (debugUart)
+            {
+                Logger::info(TAG, "forcing polling mode: TX \"P\"");
+            }
+            sendCommand('P', "p");
+        }
+        else if (mode == "continuous")
+        {
+            if (debugUart)
+            {
+                Logger::info(TAG, "forcing continuous mode: TX \"C\"");
+            }
+            sendCommand('C', "c");
+        }
+
         if (units == "metric")
         {
             if (debugUart)
             {
-                Logger::debug(TAG, "forcing metric units: TX \"M\"");
+                Logger::info(TAG, "forcing metric units: TX \"M\"");
             }
             sendCommand('M', "m");
         }
@@ -185,7 +219,7 @@ namespace SQM
         {
             if (debugUart)
             {
-                Logger::debug(TAG, "forcing imperial units: TX \"I\"");
+                Logger::info(TAG, "forcing imperial units: TX \"I\"");
             }
             sendCommand('I', "i");
         }
@@ -194,7 +228,7 @@ namespace SQM
         {
             if (debugUart)
             {
-                Logger::debug(TAG, "forcing high resolution: TX \"H\"");
+                Logger::info(TAG, "forcing high resolution: TX \"H\"");
             }
             sendCommand('H', "h");
         }
@@ -202,7 +236,7 @@ namespace SQM
         {
             if (debugUart)
             {
-                Logger::debug(TAG, "forcing low resolution: TX \"L\"");
+                Logger::info(TAG, "forcing low resolution: TX \"L\"");
             }
             sendCommand('L', "l");
         }
@@ -241,11 +275,11 @@ namespace SQM
         {
             if (expectedAck)
             {
-                Logger::debug(TAG, "TX \"%c\" expect ack \"%s\"", cmd, expectedAck);
+                Logger::info(TAG, "TX \"%c\" expect ack \"%s\"", cmd, expectedAck);
             }
             else
             {
-                Logger::debug(TAG, "TX \"%c\"", cmd);
+                Logger::info(TAG, "TX \"%c\"", cmd);
             }
         }
 
@@ -276,13 +310,60 @@ namespace SQM
         diagnostics.lastAckMs = millis();
         diagnostics.lastRawResponse = ack;
         diagnostics.lastResponseMs = diagnostics.lastAckMs;
+        markCommunicationOk();
         updateDiagnosticsState(RG15State::RG15_ACKNOWLEDGED);
 
         if (debugUart)
         {
-            Logger::debug(TAG, "RX ack \"%s\" after %ums", ack.c_str(), diagnostics.lastAckMs - diagnostics.lastCommandMs);
+            Logger::info(TAG, "RX ack \"%s\" after %ums", ack.c_str(), diagnostics.lastAckMs - diagnostics.lastCommandMs);
         }
 
+        return true;
+    }
+
+    bool RG15Sensor::queryLineCommand(char cmd, const char *expectedPrefix)
+    {
+        if (!sendCommand(cmd))
+        {
+            return false;
+        }
+
+        std::string line;
+        if (!readLine(line))
+        {
+            diagnostics.timeouts++;
+            diagnostics.lastError = "timeout_waiting_for_response";
+            updateDiagnosticsState(RG15State::RG15_TIMEOUT);
+            if (debugUart)
+            {
+                Logger::info(TAG, "timeout waiting for response to \"%c\" after %u ms", cmd, RESPONSE_TIMEOUT_MS);
+            }
+            return false;
+        }
+
+        diagnostics.lastRawResponse = line;
+        diagnostics.lastResponseMs = millis();
+        markCommunicationOk();
+
+        if (debugUart)
+        {
+            Logger::info(TAG, "RX raw: \"%s\"", line.c_str());
+        }
+
+        if (expectedPrefix != nullptr && line.rfind(expectedPrefix, 0) != 0)
+        {
+            diagnostics.parseErrors++;
+            diagnostics.lastError = "unexpected_response";
+            updateDiagnosticsState(RG15State::RG15_PARSE_ERROR);
+            if (debugUart)
+            {
+                Logger::info(TAG, "unexpected response to \"%c\": expected prefix \"%s\"", cmd, expectedPrefix);
+            }
+            return false;
+        }
+
+        diagnostics.lastError.reset();
+        updateDiagnosticsState(RG15State::RG15_ACKNOWLEDGED);
         return true;
     }
 
@@ -308,7 +389,7 @@ namespace SQM
 
             if (reading.timestamp == 0)
             {
-                reading.online = false;
+                reading.online = diagnostics.online;
                 reading.stale = enabledConfig;
                 if (mode == "polling")
                 {
@@ -329,14 +410,14 @@ namespace SQM
                     Logger::warn(TAG, "No data for %u ms, marking stale", STALE_TIMEOUT_MS);
                 }
                 reading.status = SensorStatus::TIMEOUT;
-                reading.online = false;
+                reading.online = diagnostics.online;
                 reading.stale = true;
                 updateDiagnosticsState(RG15State::RG15_STALE);
                 diagnostics.stale = true;
             }
             else if (reading.status != SensorStatus::OK)
             {
-                reading.online = false;
+                reading.online = diagnostics.online;
                 reading.stale = true;
             }
         }
@@ -353,7 +434,7 @@ namespace SQM
 
         if (debugUart)
         {
-            Logger::debug(TAG, "poll TX \"R\"");
+            Logger::info(TAG, "poll TX \"R\"");
         }
 
         if (!sendCommand('R'))
@@ -367,22 +448,23 @@ namespace SQM
             diagnostics.timeouts++;
             diagnostics.lastError = "timeout_waiting_for_response";
             updateDiagnosticsState(RG15State::RG15_TIMEOUT);
-            reading.online = false;
+            reading.online = diagnostics.online;
             reading.stale = true;
             reading.status = SensorStatus::TIMEOUT;
             if (debugUart)
             {
-                Logger::debug(TAG, "timeout waiting for response after %u ms", RESPONSE_TIMEOUT_MS);
+                Logger::info(TAG, "timeout waiting for response after %u ms", RESPONSE_TIMEOUT_MS);
             }
             return false;
         }
 
         diagnostics.lastRawResponse = line;
         diagnostics.lastResponseMs = millis();
+        markCommunicationOk();
 
         if (debugUart)
         {
-            Logger::debug(TAG, "RX raw: \"%s\"", line.c_str());
+            Logger::info(TAG, "RX raw: \"%s\"", line.c_str());
         }
 
         updateDiagnosticsState(RG15State::RG15_READING_RECEIVED);
@@ -392,12 +474,12 @@ namespace SQM
             diagnostics.parseErrors++;
             diagnostics.lastError = "parse_failed_expected_fields";
             updateDiagnosticsState(RG15State::RG15_PARSE_ERROR);
-            reading.online = false;
+            reading.online = diagnostics.online;
             reading.stale = true;
             reading.status = SensorStatus::INVALID_DATA;
             if (debugUart)
             {
-                Logger::debug(TAG, "parse failed: expected Acc/EventAcc/TotalAcc/RInt fields");
+                Logger::info(TAG, "parse failed: expected Acc/EventAcc/TotalAcc/RInt fields");
             }
             return false;
         }
@@ -412,10 +494,10 @@ namespace SQM
 
         if (debugUart)
         {
-            Logger::debug(TAG, "parsed acc=%.2f event=%.2f total=%.2f intensity=%.2f unit=%s",
-                          reading.acc, reading.eventAcc, reading.totalAcc, reading.rInt,
-                          units == "imperial" ? "in" : "mm");
-            Logger::debug(TAG, "online=true age=%ums", 0u);
+            Logger::info(TAG, "parsed acc=%.2f event=%.2f total=%.2f intensity=%.2f unit=%s",
+                         reading.acc, reading.eventAcc, reading.totalAcc, reading.rInt,
+                         units == "imperial" ? "in" : "mm");
+            Logger::info(TAG, "online=true age=%ums", 0u);
         }
 
         return true;
@@ -432,11 +514,12 @@ namespace SQM
             {
                 diagnostics.lastRawResponse = line;
                 diagnostics.lastResponseMs = millis();
+                markCommunicationOk();
                 gotAny = true;
 
                 if (debugUart)
                 {
-                    Logger::debug(TAG, "RX raw: \"%s\"", line.c_str());
+                    Logger::info(TAG, "RX raw: \"%s\"", line.c_str());
                 }
 
                 if (parseLine(line))
@@ -453,7 +536,7 @@ namespace SQM
                     diagnostics.parseErrors++;
                     diagnostics.lastError = "parse_failed_expected_fields";
                     updateDiagnosticsState(RG15State::RG15_PARSE_ERROR);
-                    reading.online = false;
+                    reading.online = diagnostics.online;
                     reading.stale = true;
                     reading.status = SensorStatus::INVALID_DATA;
                 }
@@ -554,7 +637,7 @@ namespace SQM
         {
             if (debugUart)
             {
-                Logger::debug(TAG, "line too short to parse: \"%s\"", line.c_str());
+                Logger::info(TAG, "line too short to parse: \"%s\"", line.c_str());
             }
             return false;
         }
@@ -614,9 +697,9 @@ namespace SQM
 
         if (debugUart)
         {
-            Logger::debug(TAG, "parsed acc=%.2f event=%.2f total=%.2f intensity=%.2f unit=%s",
-                          reading.acc, reading.eventAcc, reading.totalAcc, reading.rInt,
-                          units == "imperial" ? "in" : "mm");
+            Logger::info(TAG, "parsed acc=%.2f event=%.2f total=%.2f intensity=%.2f unit=%s",
+                         reading.acc, reading.eventAcc, reading.totalAcc, reading.rInt,
+                         units == "imperial" ? "in" : "mm");
         }
 
         return true;
