@@ -77,12 +77,22 @@ curl http://sqm-esp32.local/api/sensors
     "altitude": 42.0,
     "hdop": 1.2,
     "age": 800
+  },
+  "rainSensor": {
+    "isRaining": false,
+    "acc": 0.000,
+    "eventAcc": 0.000,
+    "totalAcc": 12.340,
+    "rInt": 0.000,
+    "lensBad": false,
+    "emSat": false,
+    "status": 0
   }
 }
 ```
 
-!!! note "GPS field"
-    The `gps` object is only present if a GPS module is connected and initialised. All other objects are always present.
+!!! note "Optional fields"
+    The `gps` object is only present if a GPS module is connected and initialised. The `rainSensor` object is only present if the RG-15 is enabled and initialised. All other objects are always present.
 
 ### `status` values
 
