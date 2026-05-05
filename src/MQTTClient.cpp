@@ -63,7 +63,7 @@ namespace SQM
         return status;
     }
 
-    void MQTTClient::publishSensorData(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps)
+    void MQTTClient::publishSensorData(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15)
     {
         if (!config.enabled || !mqttClient->connected())
         {
@@ -76,7 +76,7 @@ namespace SQM
             return;
         }
 
-        std::string payload = createPayload(tsl, bme, mlx, gps);
+        std::string payload = createPayload(tsl, bme, mlx, gps, rg15);
 
         Logger::debug(TAG, "Publishing payload (%d bytes)", payload.length());
 
@@ -154,9 +154,9 @@ namespace SQM
         connect();
     }
 
-    std::string MQTTClient::createPayload(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps)
+    std::string MQTTClient::createPayload(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15)
     {
-        StaticJsonDocument<1024> doc; // Increased from 768 to accommodate GPS data
+        StaticJsonDocument<1536> doc;
 
         // Timestamp
         doc["timestamp"] = millis();
@@ -218,7 +218,19 @@ namespace SQM
             location["longitude"] = gpsReading.longitude;
             location["altitude"] = gpsReading.altitude;
             location["satellites"] = gpsReading.satellites;
-            location["hdop"] = gpsReading.hdop / 100.0; // Convert to actual value
+            location["hdop"] = gpsReading.hdop / 100.0;
+        }
+
+        // RG-15 rain sensor data
+        const auto &rg15Reading = rg15.getReading();
+        if (rg15.isInitialized() && rg15Reading.status == SensorStatus::OK)
+        {
+            JsonObject rain = doc.createNestedObject("rain");
+            rain["isRaining"] = rg15Reading.isRaining;
+            rain["acc"] = rg15Reading.acc;
+            rain["eventAcc"] = rg15Reading.eventAcc;
+            rain["totalAcc"] = rg15Reading.totalAcc;
+            rain["rInt"] = rg15Reading.rInt;
         }
 
         std::string json;

@@ -53,6 +53,17 @@ namespace SQM
         uint32_t baudRate;
     };
 
+    struct RainConfig
+    {
+        bool enabled;
+        uint8_t rxPin;
+        uint8_t txPin;
+        uint32_t baudRate;
+        std::string mode;       // "polling" or "continuous"
+        std::string resolution; // "high", "low", or "switch"
+        std::string units;      // "metric", "imperial", or "switch"
+    };
+
     struct SensorConfig
     {
         uint32_t readIntervalMs;
@@ -67,6 +78,7 @@ namespace SQM
         MQTTConfig mqtt;
         NTPConfig ntp;
         GPSConfig gps;
+        RainConfig rain;
         SensorConfig sensor;
         std::string deviceName;
         std::string timezone;
