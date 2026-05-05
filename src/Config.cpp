@@ -543,6 +543,7 @@ namespace SQM
                 cfg.sensor.i2cSCL = sensor["i2cSCL"] | 22;
             if (sensor.containsKey("i2cFrequency"))
                 cfg.sensor.i2cFrequency = sensor["i2cFrequency"] | 100000;
+        }
 
         std::string validationError;
         if (!cfg.validate(&validationError))
