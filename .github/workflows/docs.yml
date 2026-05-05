@@ -1,6 +1,13 @@
 name: Deploy Docs & Demo
 
 on:
+  pull_request:
+    branches: [ master, main ]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'web/**'
+      - '.github/workflows/docs.yml'
   push:
     branches: [ main, master ]
     paths:
@@ -38,14 +45,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: web/node_modules
-          key: ${{ runner.os }}-npm-${{ hashFiles('web/package.json') }}
+          key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
           restore-keys: ${{ runner.os }}-npm-
 
       - name: Install MkDocs Material
         run: pip install mkdocs-material
 
       - name: Install web dependencies
-        run: npm install
+        run: npm ci
+        working-directory: web
+
+      - name: Typecheck web UI
+        run: npm run typecheck
         working-directory: web
 
       - name: Init MSW service worker
@@ -63,7 +74,6 @@ jobs:
       - name: Take screenshots
         run: npm run screenshots
         working-directory: web
-        continue-on-error: true
 
       - name: Build MkDocs site
         run: mkdocs build --strict
@@ -79,6 +89,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
