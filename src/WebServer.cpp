@@ -12,6 +12,7 @@
 #include <nvs.h>
 #include <nvs_flash.h>
 #include "calculations/CloudDetection.h"
+#include "sensors/RG15Sensor.h"
 
 namespace SQM
 {
@@ -21,6 +22,7 @@ namespace SQM
         BME280Sensor &bme,
         MLX90614Sensor &mlx,
         GPSSensor &gps,
+        RG15Sensor &rg15,
         TimeManager *timeMgr,
         MQTTClient *mqtt,
         GetConfigCallback getConfig,
@@ -32,6 +34,7 @@ namespace SQM
           bmeSensor(bme),
           mlxSensor(mlx),
           gpsSensor(gps),
+          rg15Sensor(rg15),
           timeManager(timeMgr),
           mqttClient(mqtt),
           getConfigCallback(getConfig),
@@ -654,7 +657,7 @@ namespace SQM
 
     std::string WebServer::createSensorDataJson() const
     {
-        StaticJsonDocument<1024> doc; // Increased to accommodate GPS data
+        StaticJsonDocument<1536> doc;
 
         // Light sensor data (TSL2591)
         const auto &tslReading = tslSensor.getReading();
@@ -717,6 +720,21 @@ namespace SQM
             gps["altitude"] = gpsReading.altitude;
             gps["hdop"] = gpsReading.hdop;
             gps["age"] = gpsReading.age;
+        }
+
+        // RG-15 rain sensor data (if initialized)
+        if (rg15Sensor.isInitialized())
+        {
+            const RG15Reading &rg15Reading = rg15Sensor.getReading();
+            JsonObject rain = doc.createNestedObject("rainSensor");
+            rain["isRaining"] = rg15Reading.isRaining;
+            rain["acc"] = rg15Reading.acc;
+            rain["eventAcc"] = rg15Reading.eventAcc;
+            rain["totalAcc"] = rg15Reading.totalAcc;
+            rain["rInt"] = rg15Reading.rInt;
+            rain["lensBad"] = rg15Reading.lensBad;
+            rain["emSat"] = rg15Reading.emSat;
+            rain["status"] = static_cast<int>(rg15Reading.status);
         }
 
         std::string json;
@@ -864,6 +882,11 @@ namespace SQM
         gps["initialized"] = gpsSensor.isInitialized();
         gps["status"] = static_cast<int>(gpsSensor.getReading().status);
         gps["lastUpdate"] = gpsSensor.getLastUpdateTime();
+
+        JsonObject rg15 = sensors.createNestedObject("rg15");
+        rg15["initialized"] = rg15Sensor.isInitialized();
+        rg15["status"] = static_cast<int>(rg15Sensor.getReading().status);
+        rg15["lastUpdate"] = rg15Sensor.getLastUpdateTime();
 
         // GPS data
         if (gpsSensor.isInitialized())
