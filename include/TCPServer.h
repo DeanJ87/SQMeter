@@ -10,6 +10,7 @@ namespace SQM
     class BME280Sensor;
     class MLX90614Sensor;
     class GPSSensor;
+    class RG15Sensor;
 
     class TCPServer
     {
@@ -19,7 +20,7 @@ namespace SQM
 
         void begin();
         void handle();
-        void setSensorReferences(TSL2591Sensor *tsl, BME280Sensor *bme, MLX90614Sensor *mlx, GPSSensor *gps);
+        void setSensorReferences(TSL2591Sensor *tsl, BME280Sensor *bme, MLX90614Sensor *mlx, GPSSensor *gps, RG15Sensor *rg15);
 
     private:
         static constexpr const char *TAG = "TCPServer";
@@ -33,7 +34,9 @@ namespace SQM
         BME280Sensor *bmeSensor;
         MLX90614Sensor *mlxSensor;
         GPSSensor *gpsSensor;
+        RG15Sensor *rg15Sensor;
 
+        void stop();
         void handleClient();
         void processCommand(const String &command);
         void sendResponse(const String &data);

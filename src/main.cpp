@@ -288,7 +288,7 @@ void setup()
 
     // Initialize TCP server for ASCOM compatibility (port 2020)
     tcpServer = std::make_unique<TCPServer>(2020);
-    tcpServer->setSensorReferences(tslSensor.get(), bmeSensor.get(), mlxSensor.get(), gpsSensor.get());
+    tcpServer->setSensorReferences(tslSensor.get(), bmeSensor.get(), mlxSensor.get(), gpsSensor.get(), rg15Sensor.get());
     tcpServer->begin();
 
     Logger::info("Main", "=== Setup complete ===");
