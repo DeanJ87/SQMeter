@@ -25,8 +25,8 @@ export const handlers = [
 
   // REST — config
   http.get("/api/config", () => HttpResponse.json(mockConfig)),
-  http.post("/api/config", () => HttpResponse.json({ ok: true })),
-  http.put("/api/config", () => HttpResponse.json({ ok: true })),
+  http.post("/api/config", () => HttpResponse.json({ success: true })),
+  http.put("/api/config", () => HttpResponse.json({ success: true })),
 
   // REST — wifi (returns { networks: [...] } to match firmware API shape)
   http.get("/api/wifi/scan", () =>
