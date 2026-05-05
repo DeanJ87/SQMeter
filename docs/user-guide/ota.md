@@ -20,6 +20,23 @@ Update firmware over WiFi without a USB cable.
 
 ---
 
+## Via ArduinoOTA
+
+Command-line ArduinoOTA is disabled by default. To enable it, set both fields below in the device configuration and restart:
+
+```json
+{
+  "ota": {
+    "enabled": true,
+    "password": "use-a-long-random-password"
+  }
+}
+```
+
+Use the same password from your upload tool. If `ota.enabled` is false or `ota.password` is empty, the device will not start the ArduinoOTA listener.
+
+---
+
 ## Via esptool (USB)
 
 If the device is unresponsive over WiFi, fall back to USB:

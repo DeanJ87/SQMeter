@@ -175,6 +175,10 @@ export const mockConfig: Config = {
     topic: "sqmeter/data",
     publishIntervalMs: 60000,
   },
+  ota: {
+    enabled: false,
+    password: "",
+  },
   sensor: {
     readIntervalMs: 5000,
     i2cSDA: 21,

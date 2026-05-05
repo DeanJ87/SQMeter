@@ -30,6 +30,7 @@ static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
 static std::unique_ptr<TCPServer> tcpServer;
+static bool arduinoOTAEnabled = false;
 
 // Timing
 static uint32_t lastSensorUpdate = 0;
@@ -58,6 +59,15 @@ bool saveConfigCallback(const Config &newConfig)
         {
             timeManager->updateConfig(config.ntp, config.gps,
                                       config.primaryTimeSource, config.secondaryTimeSource);
+        }
+
+        if (!config.ota.enabled || config.ota.password.empty())
+        {
+            arduinoOTAEnabled = false;
+        }
+        else if (!arduinoOTAEnabled)
+        {
+            Logger::warn("Main", "ArduinoOTA config saved; restart required to start command-line OTA");
         }
 
         // Reconfigure RG-15 in-place so WebServer's reference stays valid
@@ -215,11 +225,11 @@ void setup()
         wifiManager->startCaptivePortal();
     }
 
-    // Initialize ArduinoOTA for command-line firmware uploads
-    if (wifiManager->isConnected())
+    // Initialize ArduinoOTA for command-line firmware uploads only when configured securely.
+    if (wifiManager->isConnected() && config.ota.enabled && !config.ota.password.empty())
     {
         ArduinoOTA.setHostname(config.wifi.hostname.c_str());
-        // No password - don't call setPassword() to disable authentication entirely
+        ArduinoOTA.setPassword(config.ota.password.c_str());
 
         ArduinoOTA.onStart([]()
                            {
@@ -254,7 +264,12 @@ void setup()
             else if (error == OTA_END_ERROR) Logger::error("OTA", "End Failed"); });
 
         ArduinoOTA.begin();
-        Logger::info("Main", "ArduinoOTA enabled");
+        arduinoOTAEnabled = true;
+        Logger::info("Main", "ArduinoOTA enabled with password authentication");
+    }
+    else if (wifiManager->isConnected())
+    {
+        Logger::warn("Main", "ArduinoOTA disabled; configure ota.enabled and ota.password to enable command-line OTA");
     }
 
     // Initialize time manager with GPS/NTP priority
@@ -305,7 +320,10 @@ void loop()
     wifiManager->handle();
 
     // Handle ArduinoOTA
-    ArduinoOTA.handle();
+    if (arduinoOTAEnabled)
+    {
+        ArduinoOTA.handle();
+    }
 
     // Handle time manager
     if (timeManager)
