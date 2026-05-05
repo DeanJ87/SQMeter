@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 #include <cstdint>
+#include <cstddef>
 
 namespace SQM
 {
@@ -32,6 +33,12 @@ namespace SQM
         std::string password;
         std::string topic;
         uint32_t publishIntervalMs;
+    };
+
+    struct OTAConfig
+    {
+        bool enabled;
+        std::string password;
     };
 
     struct NTPConfig
@@ -76,6 +83,7 @@ namespace SQM
     {
         WiFiConfig wifi;
         MQTTConfig mqtt;
+        OTAConfig ota;
         NTPConfig ntp;
         GPSConfig gps;
         RainConfig rain;
@@ -86,13 +94,15 @@ namespace SQM
         TimeSource secondaryTimeSource; // Fallback time source
 
         static constexpr const char *TAG = "Config";
+        static constexpr size_t MAX_PERSISTED_JSON_BYTES = 3800;
 
         static std::optional<Config> load();
         bool save() const;
         static Config createDefault();
 
-        std::string toJson() const;
-        static std::optional<Config> fromJson(const std::string &json);
+        std::string toJson(bool redactSecrets = false) const;
+        bool validate(std::string *error = nullptr) const;
+        static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr);
     };
 
 } // namespace SQM

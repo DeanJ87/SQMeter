@@ -9,11 +9,20 @@
 namespace SQM
 {
 
-    LogLevel Logger::currentLevel = LogLevel::DEBUG;
+    LogLevel Logger::currentLevel =
+#ifdef DEBUG_BUILD
+        LogLevel::DEBUG;
+#else
+        LogLevel::INFO;
+#endif
 
     void Logger::init()
     {
+#ifdef DEBUG_BUILD
         currentLevel = LogLevel::DEBUG;
+#else
+        currentLevel = LogLevel::INFO;
+#endif
     }
 
     void Logger::setLevel(LogLevel level)

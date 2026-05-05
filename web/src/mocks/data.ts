@@ -8,6 +8,7 @@ export function generateSensorData(): SensorData {
   const lux = Math.pow(10, (12.59 - sqm) / 2.5);
 
   return {
+    dataTimestamp: Date.now(),
     lightSensor: {
       lux: parseFloat(lux.toFixed(4)),
       visible: Math.round(jitter(312, 10)),
@@ -174,6 +175,10 @@ export const mockConfig: Config = {
     password: "",
     topic: "sqmeter/data",
     publishIntervalMs: 60000,
+  },
+  ota: {
+    enabled: false,
+    password: "",
   },
   sensor: {
     readIntervalMs: 5000,

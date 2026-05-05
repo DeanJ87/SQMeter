@@ -9,13 +9,26 @@
 #include <PubSubClient.h>
 #include <esp_partition.h>
 #include <esp_ota_ops.h>
+#include <esp_system.h>
+#include <esp_timer.h>
 #include <nvs.h>
 #include <nvs_flash.h>
 #include "calculations/CloudDetection.h"
 #include "sensors/RG15Sensor.h"
 
+extern uint32_t bootCount;
+
 namespace SQM
 {
+    namespace
+    {
+        esp_timer_handle_t restartTimer = nullptr;
+
+        void restartTimerCallback(void *)
+        {
+            ESP.restart();
+        }
+    }
 
     WebServer::WebServer(
         TSL2591Sensor &tsl,
@@ -40,14 +53,24 @@ namespace SQM
           getConfigCallback(getConfig),
           saveConfigCallback(saveConfig),
           lastSensorBroadcast(0),
-          lastStatusBroadcast(0)
+          lastStatusBroadcast(0),
+          sensorSnapshotMutex(xSemaphoreCreateMutex()),
+          wifiConnectActive(false),
+          wifiConnectConfigSaved(false),
+          wifiConnectStartedAt(0)
     {
+        refreshSensorSnapshot(0);
     }
 
     WebServer::~WebServer()
     {
         wsSensors.closeAll();
         wsStatus.closeAll();
+        if (sensorSnapshotMutex)
+        {
+            vSemaphoreDelete(sensorSnapshotMutex);
+            sensorSnapshotMutex = nullptr;
+        }
     }
 
     void WebServer::begin()
@@ -83,6 +106,7 @@ namespace SQM
     {
         wsSensors.cleanupClients();
         wsStatus.cleanupClients();
+        pollWiFiConnect();
 
         const uint32_t now = millis();
 
@@ -98,6 +122,42 @@ namespace SQM
         {
             broadcastStatusData();
             lastStatusBroadcast = now;
+        }
+    }
+
+    void WebServer::refreshSensorSnapshot(uint32_t dataTimestampMs)
+    {
+        SensorSnapshot next;
+        next.tsl = tslSensor.getReading();
+        next.bme = bmeSensor.getReading();
+        next.mlx = mlxSensor.getReading();
+        next.gps = gpsSensor.getReading();
+        next.rg15 = rg15Sensor.getReading();
+        next.tslInitialized = tslSensor.isInitialized();
+        next.bmeInitialized = bmeSensor.isInitialized();
+        next.mlxInitialized = mlxSensor.isInitialized();
+        next.gpsInitialized = gpsSensor.isInitialized();
+        next.rg15Initialized = rg15Sensor.isInitialized();
+        next.tslLastUpdate = tslSensor.getLastUpdateTime();
+        next.bmeLastUpdate = bmeSensor.getLastUpdateTime();
+        next.mlxLastUpdate = mlxSensor.getLastUpdateTime();
+        next.gpsLastUpdate = gpsSensor.getLastUpdateTime();
+        next.rg15LastUpdate = rg15Sensor.getLastUpdateTime();
+        next.dataTimestamp = dataTimestampMs;
+        next.capturedAt = millis();
+
+        if (!sensorSnapshotMutex)
+        {
+            sensorSnapshot = next;
+        }
+        else if (xSemaphoreTake(sensorSnapshotMutex, pdMS_TO_TICKS(20)) == pdTRUE)
+        {
+            sensorSnapshot = next;
+            xSemaphoreGive(sensorSnapshotMutex);
+        }
+        else
+        {
+            Logger::warn(TAG, "Sensor snapshot lock unavailable");
         }
     }
 
@@ -150,7 +210,8 @@ namespace SQM
             {
                 String jsonStr;
                 serializeJson(json, jsonStr);
-                auto configOpt = Config::fromJson(jsonStr.c_str());
+                const Config &currentConfig = getConfigCallback();
+                auto configOpt = Config::fromJson(jsonStr.c_str(), &currentConfig);
 
                 if (!configOpt)
                 {
@@ -167,6 +228,7 @@ namespace SQM
                     request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
                 }
             });
+        configHandler->setMethod(HTTP_POST | HTTP_PUT);
         server.addHandler(configHandler);
 
         // System endpoints
@@ -202,69 +264,24 @@ namespace SQM
                 const char *ssid = jsonObj["ssid"];
                 const char *password = jsonObj["password"];
 
-                Logger::info(TAG, "Testing connection to SSID: '%s'", ssid);
+                Logger::info(TAG, "Starting nonblocking connection to SSID: '%s'", ssid);
 
-                // Test connection
-                WiFi.disconnect();
-                delay(100);
-                WiFi.begin(ssid, password);
+                pendingWifiSSID = ssid;
+                pendingWifiPassword = password;
+                wifiConnectActive = true;
+                wifiConnectConfigSaved = false;
+                wifiConnectStartedAt = millis();
+                WiFi.disconnect(false);
+                WiFi.begin(pendingWifiSSID.c_str(), pendingWifiPassword.c_str());
 
-                int attempts = 0;
-                while (WiFi.status() != WL_CONNECTED && attempts < 20)
-                {
-                    delay(500);
-                    attempts++;
-                    Logger::debug(TAG, "Connecting... attempt %d/20, status=%d", attempts, WiFi.status());
-                }
-
-                if (WiFi.status() != WL_CONNECTED)
-                {
-                    Logger::error(TAG, "Failed to connect. Status: %d", WiFi.status());
-                    String errorMsg;
-                    switch (WiFi.status())
-                    {
-                    case WL_NO_SSID_AVAIL:
-                        errorMsg = "{\"error\":\"Network not found\"}";
-                        break;
-                    case WL_CONNECT_FAILED:
-                        errorMsg = "{\"error\":\"Wrong password or connection refused\"}";
-                        break;
-                    default:
-                        errorMsg = "{\"error\":\"Connection failed\"}";
-                    }
-                    request->send(401, "application/json", errorMsg.c_str());
-                    WiFi.disconnect();
-                    return;
-                }
-
-                Logger::info(TAG, "Connected! IP: %s", WiFi.localIP().toString().c_str());
-
-                // Save config
-                Config config = getConfigCallback();
-                config.wifi.ssid = ssid;
-                config.wifi.password = password;
-
-                if (!saveConfigCallback(config))
-                {
-                    request->send(200, "application/json", "{\"success\":true,\"message\":\"Connected but not saved\"}");
-                    return;
-                }
-
-                // Return success with new IP address using ArduinoJson
                 StaticJsonDocument<256> doc;
                 doc["success"] = true;
-                doc["message"] = "Connected successfully!";
-                doc["ip"] = WiFi.localIP().toString();
+                doc["pending"] = true;
+                doc["message"] = "Connection started";
 
-                String *responseStr = new String();
-                serializeJson(doc, *responseStr);
-
-                AsyncWebServerResponse *response = request->beginResponse(200, "application/json", *responseStr);
-                request->send(response);
-                delete responseStr;
-
-                // Disable AP after response is sent (in async task to avoid crash)
-                // The AP will stay up so user can see the response and navigate to new IP
+                String responseStr;
+                serializeJson(doc, responseStr);
+                request->send(202, "application/json", responseStr.c_str());
             });
         server.addHandler(wifiConnectHandler);
     }
@@ -323,8 +340,7 @@ namespace SQM
             request->send(response);
             
             if (success) {
-                delay(1000);
-                ESP.restart();
+                WebServer::scheduleRestart(1000);
             } }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
                   {
             if (!index) {
@@ -377,8 +393,7 @@ namespace SQM
             request->send(response);
             
             if (!fs_update_error) {
-                delay(1000);
-                ESP.restart();
+                WebServer::scheduleRestart(1000);
             } }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
                   {
             if (!index) {
@@ -456,22 +471,43 @@ namespace SQM
     void WebServer::handleGetConfig(AsyncWebServerRequest *request)
     {
         const Config &cfg = getConfigCallback();
-        std::string json = cfg.toJson();
+        std::string json = cfg.toJson(true);
         request->send(200, "application/json", json.c_str());
     }
 
     void WebServer::handleRestart(AsyncWebServerRequest *request)
     {
         request->send(200, "application/json", "{\"success\":true,\"message\":\"Restarting...\"}");
-        delay(1000);
-        ESP.restart();
+        scheduleRestart(500);
     }
 
     void WebServer::handleWiFiScan(AsyncWebServerRequest *request)
     {
-        int n = WiFi.scanNetworks();
+        int n = WiFi.scanComplete();
+
+        if (n == WIFI_SCAN_RUNNING)
+        {
+            request->send(202, "application/json", "{\"success\":true,\"scanning\":true,\"networks\":[]}");
+            return;
+        }
+
+        if (n < 0)
+        {
+            WiFi.scanDelete();
+            if (WiFi.scanNetworks(true) == WIFI_SCAN_RUNNING)
+            {
+                request->send(202, "application/json", "{\"success\":true,\"scanning\":true,\"networks\":[]}");
+            }
+            else
+            {
+                request->send(500, "application/json", createErrorJson("Failed to start WiFi scan").c_str());
+            }
+            return;
+        }
 
         StaticJsonDocument<2048> doc;
+        doc["success"] = true;
+        doc["scanning"] = false;
         JsonArray networks = doc.createNestedArray("networks");
 
         for (int i = 0; i < n; i++)
@@ -485,6 +521,46 @@ namespace SQM
         std::string json;
         serializeJson(doc, json);
         request->send(200, "application/json", json.c_str());
+        WiFi.scanDelete();
+    }
+
+    void WebServer::pollWiFiConnect()
+    {
+        if (!wifiConnectActive)
+        {
+            return;
+        }
+
+        const wl_status_t status = WiFi.status();
+        if (status == WL_CONNECTED)
+        {
+            if (!wifiConnectConfigSaved)
+            {
+                Config config = getConfigCallback();
+                config.wifi.ssid = pendingWifiSSID;
+                config.wifi.password = pendingWifiPassword;
+                wifiConnectConfigSaved = saveConfigCallback(config);
+                if (!wifiConnectConfigSaved)
+                {
+                    Logger::error(TAG, "Connected to WiFi but failed to save config");
+                }
+            }
+
+            Logger::info(TAG, "WiFi connected. IP: %s", WiFi.localIP().toString().c_str());
+            wifiConnectActive = false;
+            pendingWifiSSID.clear();
+            pendingWifiPassword.clear();
+            return;
+        }
+
+        if (millis() - wifiConnectStartedAt >= WIFI_CONNECT_TIMEOUT_MS)
+        {
+            Logger::error(TAG, "WiFi connection timed out. Status: %d", status);
+            WiFi.disconnect(false);
+            wifiConnectActive = false;
+            pendingWifiSSID.clear();
+            pendingWifiPassword.clear();
+        }
     }
 
     void WebServer::handleMQTTTest(AsyncWebServerRequest *request, JsonVariant &json)
@@ -655,18 +731,53 @@ namespace SQM
         }
     }
 
+    WebServer::SensorSnapshot WebServer::getSensorSnapshot() const
+    {
+        SensorSnapshot snapshot;
+        if (!sensorSnapshotMutex)
+        {
+            return sensorSnapshot;
+        }
+
+        if (xSemaphoreTake(sensorSnapshotMutex, pdMS_TO_TICKS(20)) == pdTRUE)
+        {
+            snapshot = sensorSnapshot;
+            xSemaphoreGive(sensorSnapshotMutex);
+        }
+        else
+        {
+            Logger::warn(TAG, "Sensor snapshot read lock unavailable");
+        }
+        return snapshot;
+    }
+
+    uint32_t WebServer::ageMs(uint32_t now, uint32_t timestamp)
+    {
+        return timestamp == 0 ? 0 : now - timestamp;
+    }
+
     std::string WebServer::createSensorDataJson() const
     {
-        StaticJsonDocument<1536> doc;
+        StaticJsonDocument<1792> doc;
+        const SensorSnapshot snapshot = getSensorSnapshot();
+        const uint32_t now = millis();
+        const uint32_t dataAge = ageMs(now, snapshot.dataTimestamp);
+        const uint32_t staleAfter = getConfigCallback().sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
+
+        doc["dataTimestamp"] = snapshot.dataTimestamp;
+        doc["dataAgeMs"] = dataAge;
+        doc["dataStale"] = snapshot.dataTimestamp == 0 || dataAge > staleAfter;
 
         // Light sensor data (TSL2591)
-        const auto &tslReading = tslSensor.getReading();
+        const auto &tslReading = snapshot.tsl;
         JsonObject lightSensor = doc.createNestedObject("lightSensor");
         lightSensor["lux"] = tslReading.lux;
         lightSensor["visible"] = tslReading.visible;
         lightSensor["infrared"] = tslReading.infrared;
         lightSensor["full"] = tslReading.full;
         lightSensor["status"] = static_cast<int>(tslReading.status);
+        lightSensor["timestamp"] = tslReading.timestamp;
+        lightSensor["ageMs"] = ageMs(now, tslReading.timestamp);
 
         // Sky quality calculations
         SkyQualityMetrics sqm = SkyQuality::calculate(tslReading.lux);
@@ -677,24 +788,29 @@ namespace SQM
         sky["description"] = SkyQuality::getBortleDescription(sqm.bortle);
 
         // Environmental sensor data (BME280)
-        const auto &bmeReading = bmeSensor.getReading();
+        const auto &bmeReading = snapshot.bme;
         JsonObject environment = doc.createNestedObject("environment");
         environment["temperature"] = bmeReading.temperature;
         environment["humidity"] = bmeReading.humidity;
         environment["pressure"] = bmeReading.pressure;
         environment["dewpoint"] = bmeReading.dewpoint;
         environment["status"] = static_cast<int>(bmeReading.status);
+        environment["timestamp"] = bmeReading.timestamp;
+        environment["ageMs"] = ageMs(now, bmeReading.timestamp);
 
         // IR temperature sensor data (MLX90614)
-        const auto &mlxReading = mlxSensor.getReading();
+        const auto &mlxReading = snapshot.mlx;
         JsonObject irTemperature = doc.createNestedObject("irTemperature");
         irTemperature["objectTemp"] = mlxReading.objectTemp;
         irTemperature["ambientTemp"] = mlxReading.ambientTemp;
         irTemperature["status"] = static_cast<int>(mlxReading.status);
+        irTemperature["timestamp"] = mlxReading.timestamp;
+        irTemperature["ageMs"] = ageMs(now, mlxReading.timestamp);
 
         // Cloud detection from IR temperature sensor
         // Use BME280 humidity if available, otherwise default to 53%
-        float humidity = (bmeReading.status == SensorStatus::OK) ? bmeReading.humidity : 53.0f;
+        bool usingHumidityFallback = bmeReading.status != SensorStatus::OK;
+        float humidity = usingHumidityFallback ? 53.0f : bmeReading.humidity;
         CloudMetrics cloudMetrics = CloudDetection::calculate(
             mlxReading.objectTemp,
             mlxReading.ambientTemp,
@@ -707,25 +823,29 @@ namespace SQM
         cloud["condition"] = static_cast<int>(cloudMetrics.condition);
         cloud["description"] = cloudMetrics.description;
         cloud["humidityUsed"] = humidity;
+        cloud["humiditySource"] = usingHumidityFallback ? "default" : "bme280";
+        cloud["bme280Available"] = !usingHumidityFallback;
 
         // GPS data (if initialized)
-        if (gpsSensor.isInitialized())
+        if (snapshot.gpsInitialized)
         {
-            const GPSReading &gpsReading = gpsSensor.getReading();
+            const GPSReading &gpsReading = snapshot.gps;
             JsonObject gps = doc.createNestedObject("gps");
             gps["hasFix"] = gpsReading.hasFix;
             gps["satellites"] = gpsReading.satellites;
             gps["latitude"] = gpsReading.latitude;
             gps["longitude"] = gpsReading.longitude;
             gps["altitude"] = gpsReading.altitude;
-            gps["hdop"] = gpsReading.hdop;
+            gps["hdop"] = gpsReading.hdop / 100.0;
             gps["age"] = gpsReading.age;
+            gps["timestamp"] = gpsReading.timestamp;
+            gps["ageMs"] = ageMs(now, gpsReading.timestamp);
         }
 
         // RG-15 rain sensor data (if initialized)
-        if (rg15Sensor.isInitialized())
+        if (snapshot.rg15Initialized)
         {
-            const RG15Reading &rg15Reading = rg15Sensor.getReading();
+            const RG15Reading &rg15Reading = snapshot.rg15;
             JsonObject rain = doc.createNestedObject("rainSensor");
             rain["isRaining"] = rg15Reading.isRaining;
             rain["acc"] = rg15Reading.acc;
@@ -735,6 +855,8 @@ namespace SQM
             rain["lensBad"] = rg15Reading.lensBad;
             rain["emSat"] = rg15Reading.emSat;
             rain["status"] = static_cast<int>(rg15Reading.status);
+            rain["timestamp"] = rg15Reading.timestamp;
+            rain["ageMs"] = ageMs(now, rg15Reading.timestamp);
         }
 
         std::string json;
@@ -744,7 +866,8 @@ namespace SQM
 
     std::string WebServer::createStatusJson() const
     {
-        StaticJsonDocument<2048> doc; // Increased from 1024 to accommodate MQTT and partition data
+        StaticJsonDocument<2560> doc; // Includes MQTT, partition, and boot diagnostics
+        const SensorSnapshot snapshot = getSensorSnapshot();
 
         // Firmware version
         JsonObject firmware = doc.createNestedObject("firmware");
@@ -756,11 +879,15 @@ namespace SQM
         // System stats
         doc["uptime"] = millis() / 1000;
         doc["freeHeap"] = ESP.getFreeHeap();
+        doc["minFreeHeap"] = ESP.getMinFreeHeap();
+        doc["maxAllocHeap"] = ESP.getMaxAllocHeap();
         doc["heapSize"] = ESP.getHeapSize();
         doc["cpuFreqMHz"] = ESP.getCpuFreqMHz();
         doc["flashSize"] = ESP.getFlashChipSize();
         doc["sketchSize"] = ESP.getSketchSize();
         doc["freeSketchSpace"] = ESP.getFreeSketchSpace();
+        doc["resetReason"] = static_cast<int>(esp_reset_reason());
+        doc["bootCount"] = ::bootCount;
 
         // Filesystem stats
         doc["fsTotal"] = LittleFS.totalBytes();
@@ -859,39 +986,40 @@ namespace SQM
         wifi["ip"] = WiFi.localIP().toString();
         wifi["rssi"] = WiFi.RSSI();
         wifi["mac"] = WiFi.macAddress();
+        wifi["connectPending"] = wifiConnectActive;
 
         // Sensor status
         JsonObject sensors = doc.createNestedObject("sensors");
 
         JsonObject tsl = sensors.createNestedObject("tsl2591");
-        tsl["initialized"] = tslSensor.isInitialized();
-        tsl["status"] = static_cast<int>(tslSensor.getReading().status);
-        tsl["lastUpdate"] = tslSensor.getLastUpdateTime();
+        tsl["initialized"] = snapshot.tslInitialized;
+        tsl["status"] = static_cast<int>(snapshot.tsl.status);
+        tsl["lastUpdate"] = snapshot.tslLastUpdate;
 
         JsonObject bme = sensors.createNestedObject("bme280");
-        bme["initialized"] = bmeSensor.isInitialized();
-        bme["status"] = static_cast<int>(bmeSensor.getReading().status);
-        bme["lastUpdate"] = bmeSensor.getLastUpdateTime();
+        bme["initialized"] = snapshot.bmeInitialized;
+        bme["status"] = static_cast<int>(snapshot.bme.status);
+        bme["lastUpdate"] = snapshot.bmeLastUpdate;
 
         JsonObject mlx = sensors.createNestedObject("mlx90614");
-        mlx["initialized"] = mlxSensor.isInitialized();
-        mlx["status"] = static_cast<int>(mlxSensor.getReading().status);
-        mlx["lastUpdate"] = mlxSensor.getLastUpdateTime();
+        mlx["initialized"] = snapshot.mlxInitialized;
+        mlx["status"] = static_cast<int>(snapshot.mlx.status);
+        mlx["lastUpdate"] = snapshot.mlxLastUpdate;
 
         JsonObject gps = sensors.createNestedObject("gps");
-        gps["initialized"] = gpsSensor.isInitialized();
-        gps["status"] = static_cast<int>(gpsSensor.getReading().status);
-        gps["lastUpdate"] = gpsSensor.getLastUpdateTime();
+        gps["initialized"] = snapshot.gpsInitialized;
+        gps["status"] = static_cast<int>(snapshot.gps.status);
+        gps["lastUpdate"] = snapshot.gpsLastUpdate;
 
         JsonObject rg15 = sensors.createNestedObject("rg15");
-        rg15["initialized"] = rg15Sensor.isInitialized();
-        rg15["status"] = static_cast<int>(rg15Sensor.getReading().status);
-        rg15["lastUpdate"] = rg15Sensor.getLastUpdateTime();
+        rg15["initialized"] = snapshot.rg15Initialized;
+        rg15["status"] = static_cast<int>(snapshot.rg15.status);
+        rg15["lastUpdate"] = snapshot.rg15LastUpdate;
 
         // GPS data
-        if (gpsSensor.isInitialized())
+        if (snapshot.gpsInitialized)
         {
-            const GPSReading &gpsReading = gpsSensor.getReading();
+            const GPSReading &gpsReading = snapshot.gps;
             JsonObject gpsData = doc.createNestedObject("gpsData");
             gpsData["hasFix"] = gpsReading.hasFix;
             gpsData["satellites"] = gpsReading.satellites;
@@ -915,11 +1043,41 @@ namespace SQM
             mqtt["broker"] = mqttStatus.broker.c_str(); // Explicitly convert std::string
             mqtt["port"] = mqttStatus.port;
             mqtt["topic"] = mqttStatus.topic.c_str(); // Explicitly convert std::string
+            mqtt["availabilityTopic"] = mqttStatus.availabilityTopic.c_str();
+            mqtt["clientId"] = mqttStatus.clientId.c_str();
         }
 
         std::string json;
         serializeJson(doc, json);
         return json;
+    }
+
+    bool WebServer::scheduleRestart(uint32_t delayMs)
+    {
+        if (!restartTimer)
+        {
+            esp_timer_create_args_t restartTimerArgs = {};
+            restartTimerArgs.callback = &restartTimerCallback;
+            restartTimerArgs.arg = nullptr;
+            restartTimerArgs.dispatch_method = ESP_TIMER_TASK;
+            restartTimerArgs.name = "sqm_restart";
+            restartTimerArgs.skip_unhandled_events = false;
+
+            if (esp_timer_create(&restartTimerArgs, &restartTimer) != ESP_OK)
+            {
+                Logger::error(TAG, "Failed to create restart timer");
+                return false;
+            }
+        }
+
+        esp_timer_stop(restartTimer);
+        if (esp_timer_start_once(restartTimer, static_cast<uint64_t>(delayMs) * 1000ULL) != ESP_OK)
+        {
+            Logger::error(TAG, "Failed to schedule restart");
+            return false;
+        }
+
+        return true;
     }
 
     std::string WebServer::createErrorJson(const char *error)
