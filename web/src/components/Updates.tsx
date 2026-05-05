@@ -47,14 +47,32 @@ const Updates: FunctionalComponent = () => {
     setUploadProgress(0);
     setStatus('Uploading...');
 
+    const endpoint = updateType === 'firmware' ? '/api/update' : '/api/update/fs';
+
+    // Demo mode: MSW can't trigger XHR upload progress events, so fake it
+    if (import.meta.env.VITE_DEMO_MODE === 'true') {
+      let p = 0;
+      const iv = setInterval(() => {
+        p = Math.min(p + Math.random() * 12 + 6, 100);
+        const rounded = Math.round(p);
+        setUploadProgress(rounded);
+        setStatus(`Uploading... ${rounded}%`);
+        if (p >= 100) {
+          clearInterval(iv);
+          setStatus('Upload complete! Device is rebooting...');
+          setUploading(false);
+          setWaitingForReboot(true);
+        }
+      }, 250);
+      return;
+    }
+
     const formData = new FormData();
     formData.append('update', file);
 
-    const endpoint = updateType === 'firmware' ? '/api/update' : '/api/update/fs';
-
     try {
       const xhr = new XMLHttpRequest();
-      
+
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
           const progress = Math.round((e.loaded / e.total) * 100);
@@ -65,22 +83,18 @@ const Updates: FunctionalComponent = () => {
 
       xhr.addEventListener('load', () => {
         if (xhr.status === 200) {
-          // Check if the response indicates success
           try {
             const response = JSON.parse(xhr.responseText);
             if (response.success === true) {
-              // Upload succeeded, device will reboot
               setStatus('Upload complete! Device is rebooting...');
               setUploading(false);
               setWaitingForReboot(true);
             } else {
-              // Upload failed according to device
               const errorMsg = response.error || 'Unknown error';
               setStatus(`❌ Upload failed: ${errorMsg}`);
               setUploading(false);
             }
           } catch (e) {
-            // Couldn't parse response, assume success if we got here
             setStatus('Upload complete! Device is rebooting...');
             setUploading(false);
             setWaitingForReboot(true);
@@ -92,8 +106,6 @@ const Updates: FunctionalComponent = () => {
       });
 
       xhr.addEventListener('error', () => {
-        // Connection lost during upload - this might actually mean success!
-        // If progress was 100%, assume device rebooted
         if (uploadProgress === 100) {
           setStatus('Upload complete! Device is rebooting...');
           setUploading(false);
