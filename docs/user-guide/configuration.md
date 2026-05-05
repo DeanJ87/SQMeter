@@ -177,7 +177,7 @@ SQMeter currently assumes a trusted LAN:
 - HTTP traffic is plaintext, so credentials sent through setup or config updates are visible to devices that can observe the LAN.
 - Command-line ArduinoOTA is disabled unless `ota.enabled` is `true` and `ota.password` is set.
 
-Keep the device on a private network or isolated observatory VLAN. Do not expose port 80, port 2020, or ArduinoOTA to the public internet.
+Keep the device on a private network or isolated observatory VLAN. Do not expose port 80 or ArduinoOTA to the public internet.
 
 Some settings are applied immediately, but hardware bus settings such as I2C pins, GPS pins, and RG-15 pins may require a restart because the sensors are initialised during firmware startup.
 
