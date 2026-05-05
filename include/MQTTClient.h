@@ -5,6 +5,7 @@
 #include "sensors/BME280Sensor.h"
 #include "sensors/MLX90614Sensor.h"
 #include "sensors/GPSSensor.h"
+#include "sensors/RG15Sensor.h"
 #include <PubSubClient.h>
 #include <WiFiClient.h>
 #include <memory>
@@ -45,7 +46,7 @@ namespace SQM
         MQTTStatus getStatus() const;
 
         // Publish sensor data
-        void publishSensorData(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps);
+        void publishSensorData(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15);
 
         // Update configuration
         void updateConfig(const MQTTConfig &newConfig);
@@ -64,7 +65,7 @@ namespace SQM
         void connect();
         void reconnect();
 
-        std::string createPayload(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps);
+        std::string createPayload(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15);
     };
 
 } // namespace SQM

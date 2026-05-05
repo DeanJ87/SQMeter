@@ -5,6 +5,7 @@
 #include "sensors/BME280Sensor.h"
 #include "sensors/MLX90614Sensor.h"
 #include "sensors/GPSSensor.h"
+#include "sensors/RG15Sensor.h"
 #include "calculations/SkyQuality.h"
 #include "TimeManager.h"
 #include "MQTTClient.h"
@@ -29,6 +30,7 @@ namespace SQM
             BME280Sensor &bme,
             MLX90614Sensor &mlx,
             GPSSensor &gps,
+            RG15Sensor &rg15,
             TimeManager *timeMgr,
             MQTTClient *mqtt,
             GetConfigCallback getConfig,
@@ -66,6 +68,7 @@ namespace SQM
         BME280Sensor &bmeSensor;
         MLX90614Sensor &mlxSensor;
         GPSSensor &gpsSensor;
+        RG15Sensor &rg15Sensor;
         TimeManager *timeManager;
         MQTTClient *mqttClient;
         GetConfigCallback getConfigCallback;

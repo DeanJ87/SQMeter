@@ -13,6 +13,7 @@
 #include "sensors/BME280Sensor.h"
 #include "sensors/MLX90614Sensor.h"
 #include "sensors/GPSSensor.h"
+#include "sensors/RG15Sensor.h"
 #include "TCPServer.h"
 
 using namespace SQM;
@@ -24,6 +25,7 @@ static std::unique_ptr<TSL2591Sensor> tslSensor;
 static std::unique_ptr<BME280Sensor> bmeSensor;
 static std::unique_ptr<MLX90614Sensor> mlxSensor;
 static std::unique_ptr<GPSSensor> gpsSensor;
+static std::unique_ptr<RG15Sensor> rg15Sensor;
 static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
@@ -56,6 +58,21 @@ bool saveConfigCallback(const Config &newConfig)
         {
             timeManager->updateConfig(config.ntp, config.gps,
                                       config.primaryTimeSource, config.secondaryTimeSource);
+        }
+
+        // Reconfigure RG-15 in-place so WebServer's reference stays valid
+        if (rg15Sensor)
+        {
+            if (config.rain.enabled)
+            {
+                rg15Sensor->reconfigure(
+                    config.rain.rxPin, config.rain.txPin, config.rain.baudRate,
+                    config.rain.mode, config.rain.resolution, config.rain.units);
+            }
+            else
+            {
+                rg15Sensor->stop();
+            }
         }
     }
 
@@ -116,6 +133,23 @@ void setupSensors()
         // Create disabled GPS sensor for API consistency
         gpsSensor = std::make_unique<GPSSensor>();
         Logger::info("Main", "GPS disabled in configuration");
+    }
+
+    // Initialize RG-15 rain sensor (UART, not I2C)
+    if (config.rain.enabled)
+    {
+        rg15Sensor = std::make_unique<RG15Sensor>(
+            config.rain.rxPin, config.rain.txPin, config.rain.baudRate,
+            config.rain.mode, config.rain.resolution, config.rain.units);
+        if (!rg15Sensor->begin())
+        {
+            Logger::warn("Main", "RG-15 initialization failed");
+        }
+    }
+    else
+    {
+        rg15Sensor = std::make_unique<RG15Sensor>();
+        Logger::info("Main", "RG-15 rain sensor disabled in configuration");
     }
 }
 
@@ -245,6 +279,7 @@ void setup()
         *bmeSensor,
         *mlxSensor,
         *gpsSensor,
+        *rg15Sensor,
         timeManager.get(),
         mqttClient.get(),
         getConfigCallback,
@@ -301,11 +336,12 @@ void loop()
         bmeSensor->update();
         mlxSensor->update();
         gpsSensor->update();
+        rg15Sensor->update();
 
         // Publish to MQTT if enabled
         if (mqttClient && mqttClient->isEnabled())
         {
-            mqttClient->publishSensorData(*tslSensor, *bmeSensor, *mlxSensor, *gpsSensor);
+            mqttClient->publishSensorData(*tslSensor, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor);
         }
 
         lastSensorUpdate = now;

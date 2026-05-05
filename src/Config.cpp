@@ -124,6 +124,14 @@ namespace SQM
         cfg.gps.txPin = 16;
         cfg.gps.baudRate = 9600;
 
+        cfg.rain.enabled = false;
+        cfg.rain.rxPin = 18;
+        cfg.rain.txPin = 19;
+        cfg.rain.baudRate = 9600;
+        cfg.rain.mode = "polling";
+        cfg.rain.resolution = "high";
+        cfg.rain.units = "metric";
+
         cfg.sensor.readIntervalMs = 5000; // 5 seconds
         cfg.sensor.i2cSDA = 21;
         cfg.sensor.i2cSCL = 22;
@@ -137,7 +145,7 @@ namespace SQM
 
     std::string Config::toJson() const
     {
-        StaticJsonDocument<1536> doc; // Increased from 1024 for GPS config
+        StaticJsonDocument<2048> doc;
 
         doc["deviceName"] = deviceName;
         doc["timezone"] = timezone;
@@ -176,6 +184,15 @@ namespace SQM
         gps["txPin"] = this->gps.txPin;
         gps["baudRate"] = this->gps.baudRate;
 
+        JsonObject rain = doc.createNestedObject("rain");
+        rain["enabled"] = this->rain.enabled;
+        rain["rxPin"] = this->rain.rxPin;
+        rain["txPin"] = this->rain.txPin;
+        rain["baudRate"] = this->rain.baudRate;
+        rain["mode"] = this->rain.mode;
+        rain["resolution"] = this->rain.resolution;
+        rain["units"] = this->rain.units;
+
         JsonObject sensor = doc.createNestedObject("sensor");
         sensor["readIntervalMs"] = this->sensor.readIntervalMs;
         sensor["i2cSDA"] = this->sensor.i2cSDA;
@@ -189,7 +206,7 @@ namespace SQM
 
     std::optional<Config> Config::fromJson(const std::string &json)
     {
-        StaticJsonDocument<1536> doc; // Increased from 1024 for GPS config
+        StaticJsonDocument<2048> doc;
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
@@ -236,6 +253,15 @@ namespace SQM
         cfg.gps.rxPin = gps["rxPin"] | 17;
         cfg.gps.txPin = gps["txPin"] | 16;
         cfg.gps.baudRate = gps["baudRate"] | 9600;
+
+        JsonObject rain = doc["rain"];
+        cfg.rain.enabled = rain["enabled"] | false;
+        cfg.rain.rxPin = rain["rxPin"] | 18;
+        cfg.rain.txPin = rain["txPin"] | 19;
+        cfg.rain.baudRate = rain["baudRate"] | 9600;
+        cfg.rain.mode = rain["mode"] | "polling";
+        cfg.rain.resolution = rain["resolution"] | "high";
+        cfg.rain.units = rain["units"] | "metric";
 
         JsonObject sensor = doc["sensor"];
         cfg.sensor.readIntervalMs = sensor["readIntervalMs"] | 5000;
