@@ -3,6 +3,8 @@
 #include "calculations/SkyQuality.h"
 #include "calculations/CloudDetection.h"
 #include <ArduinoJson.h>
+#include <WiFi.h>
+#include <time.h>
 
 namespace SQM
 {
@@ -60,6 +62,8 @@ namespace SQM
         status.broker = config.broker;
         status.port = config.port;
         status.topic = config.topic;
+        status.availabilityTopic = getAvailabilityTopic();
+        status.clientId = buildClientId();
         return status;
     }
 
@@ -99,13 +103,19 @@ namespace SQM
         if (config.enabled)
         {
             mqttClient->setServer(config.broker.c_str(), config.port);
-            if (!mqttClient->connected())
+            if (mqttClient->connected())
             {
-                connect();
+                publishAvailability(false);
+                mqttClient->disconnect();
             }
+            connect();
         }
         else
         {
+            if (mqttClient->connected())
+            {
+                publishAvailability(false);
+            }
             mqttClient->disconnect();
         }
     }
@@ -117,22 +127,35 @@ namespace SQM
 
         Logger::info(TAG, "Connecting to MQTT broker: %s:%d", config.broker.c_str(), config.port);
 
+        const std::string clientId = buildClientId();
+        const std::string availabilityTopic = getAvailabilityTopic();
+
         bool connected = false;
         if (!config.username.empty())
         {
             connected = mqttClient->connect(
-                config.topic.c_str(),
+                clientId.c_str(),
                 config.username.c_str(),
-                config.password.c_str());
+                config.password.c_str(),
+                availabilityTopic.c_str(),
+                1,
+                true,
+                "offline");
         }
         else
         {
-            connected = mqttClient->connect(config.topic.c_str());
+            connected = mqttClient->connect(
+                clientId.c_str(),
+                availabilityTopic.c_str(),
+                1,
+                true,
+                "offline");
         }
 
         if (connected)
         {
-            Logger::info(TAG, "Connected to MQTT broker");
+            Logger::info(TAG, "Connected to MQTT broker as %s", clientId.c_str());
+            publishAvailability(true);
         }
         else
         {
@@ -154,12 +177,43 @@ namespace SQM
         connect();
     }
 
+    void MQTTClient::publishAvailability(bool online)
+    {
+        if (!config.enabled || !mqttClient->connected())
+        {
+            return;
+        }
+
+        const std::string availabilityTopic = getAvailabilityTopic();
+        const char *payload = online ? "online" : "offline";
+        if (!mqttClient->publish(availabilityTopic.c_str(), payload, true))
+        {
+            Logger::warn(TAG, "Failed to publish MQTT availability: %s", payload);
+        }
+    }
+
+    std::string MQTTClient::buildClientId() const
+    {
+        const uint32_t macSuffix = static_cast<uint32_t>(ESP.getEfuseMac() & 0xFFFFFFULL);
+        char id[24];
+        snprintf(id, sizeof(id), "SQMeter-%06X", macSuffix);
+        return std::string(id);
+    }
+
+    std::string MQTTClient::getAvailabilityTopic() const
+    {
+        return config.topic + "/availability";
+    }
+
     std::string MQTTClient::createPayload(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15)
     {
         StaticJsonDocument<1536> doc;
 
         // Timestamp
-        doc["timestamp"] = millis();
+        const time_t epochSeconds = time(nullptr);
+        const bool timeValid = epochSeconds >= 1704067200; // 2024-01-01T00:00:00Z
+        doc["timestamp"] = timeValid ? static_cast<int64_t>(epochSeconds) : static_cast<int64_t>(millis());
+        doc["timeValid"] = timeValid;
 
         // TSL2591 data
         const auto &tslReading = tsl.getReading();
