@@ -687,8 +687,15 @@ namespace SQM
 
         float acc = 0.0f, eventAcc = 0.0f, totalAcc = 0.0f, rInt = 0.0f;
         int matched = std::sscanf(line.c_str(),
+                                  "Acc %f, EventAcc %f, TotalAcc %f, RInt %f %*s",
+                                  &acc, &eventAcc, &totalAcc, &rInt);
+
+        if (matched != 4)
+        {
+            matched = std::sscanf(line.c_str(),
                                   "Acc %f %*s, EventAcc %f %*s, TotalAcc %f %*s, RInt %f %*s",
                                   &acc, &eventAcc, &totalAcc, &rInt);
+        }
 
         if (matched != 4)
         {
