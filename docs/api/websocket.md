@@ -1,6 +1,9 @@
 # WebSocket
 
-Connect to `/ws/sensors` for a real-time stream of sensor readings. The device pushes updates every second — no polling required.
+Connect to `/ws/sensors` for a live stream of sensor readings. The device currently pushes messages every second.
+
+!!! note "Data freshness"
+    The default sensor poll interval is 5 seconds, so several WebSocket messages can contain the same sensor reading. The current payload does not include a data timestamp.
 
 ---
 
@@ -66,12 +69,25 @@ ws.onclose = () => {
     "altitude": 42.0,
     "hdop": 1.2,
     "age": 800
+  },
+  "rainSensor": {
+    "isRaining": false,
+    "acc": 0.000,
+    "eventAcc": 0.000,
+    "totalAcc": 12.340,
+    "rInt": 0.000,
+    "lensBad": false,
+    "emSat": false,
+    "status": 0
   }
 }
 ```
 
 !!! note "GPS field"
     `gps` is only included in the message when a GPS module is connected and initialised.
+
+!!! note "Rain sensor field"
+    `rainSensor` is only included when the RG-15 rain sensor is enabled and initialised. Values use the RG-15 configured units; the current payload field names do not include the unit.
 
 ### `status` values
 

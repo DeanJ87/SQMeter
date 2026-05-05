@@ -42,6 +42,12 @@ cd ..
 
 The build script in `scripts/build_web.py` will automatically build the web UI before creating the filesystem image.
 
+For docs validation, run:
+
+```bash
+mkdocs build --strict
+```
+
 ### 4. Upload to ESP32
 
 **Upload firmware only (for code changes):**
@@ -129,6 +135,8 @@ ArduinoOTA uploads are disabled unless `ota.enabled` is `true` and `ota.password
 pio run --target upload
 ```
 
+Note: The current firmware also exposes browser OTA endpoints (`POST /api/update` for firmware and `POST /api/update/fs` for LittleFS). They are unauthenticated and should only be used on a trusted LAN.
+
 ## Partition Table
 
 Custom partition scheme (`partitions.csv`):
@@ -143,8 +151,8 @@ Custom partition scheme (`partitions.csv`):
 
 This allows:
 - OTA updates with two app partitions
-- 192KB for web UI and configuration
-- NVS for system data
+- 192KB for the LittleFS web UI
+- NVS for WiFi credentials, MQTT settings, and other configuration
 
 ## Troubleshooting
 
