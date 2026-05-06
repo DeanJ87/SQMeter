@@ -80,6 +80,8 @@ export interface RG15UartDiagnostics {
   successful_reads: number;
   response_timeout_ms: number;
   stale_timeout_ms: number;
+  last_health_check_ms?: number | null;
+  last_health_check_age_ms?: number | null;
   last_status_line?: string | null;
   software_version?: string | null;
   software_build_date?: string | null;
@@ -108,6 +110,10 @@ export interface RG15SensorDiagnostics {
   eventAcc: number;
   totalAcc: number;
   rInt: number;
+  accumulation_since_last_read?: number;
+  event_accumulation?: number;
+  total_accumulation?: number;
+  rain_intensity?: number;
   lensBad: boolean;
   emSat: boolean;
   uart: RG15UartDiagnostics;
@@ -216,6 +222,10 @@ export interface SystemStatus {
       eventAcc?: number;
       totalAcc?: number;
       rInt?: number;
+      accumulation_since_last_read?: number;
+      event_accumulation?: number;
+      total_accumulation?: number;
+      rain_intensity?: number;
       lensBad?: boolean;
       emSat?: boolean;
       uart?: RG15UartDiagnostics;
@@ -315,6 +325,10 @@ export interface RainSensorReading {
   eventAcc: number;
   totalAcc: number;
   rInt: number;
+  accumulation_since_last_read?: number;
+  event_accumulation?: number;
+  total_accumulation?: number;
+  rain_intensity?: number;
   lensBad: boolean;
   emSat: boolean;
   uart: RG15UartDiagnostics;

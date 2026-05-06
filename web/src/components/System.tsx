@@ -43,6 +43,13 @@ const System: FunctionalComponent = () => {
     return `${(bytes / 1048576).toFixed(2)} MB`;
   };
 
+  const formatAgeMs = (value: number | null | undefined): string => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return '--';
+    if (value < 1000) return `${value} ms`;
+    if (value < 60000) return `${(value / 1000).toFixed(1)} s`;
+    return `${Math.floor(value / 60000)}m ${Math.floor((value % 60000) / 1000)}s`;
+  };
+
   const getSensorStatusBadge = (status: number): { text: string; color: string } => {
     switch (status) {
       case 0: return { text: 'OK', color: 'bg-green-900 text-green-200' };
@@ -462,6 +469,18 @@ const System: FunctionalComponent = () => {
               </div>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                 <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Rain intensity</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.rain_intensity ?? status.sensors.rg15.rInt ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Since last read</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.accumulation_since_last_read ?? status.sensors.rg15.acc ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Event total</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.event_accumulation ?? status.sensors.rg15.eventAcc ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
                   <div class="text-xs text-gray-500">RX / TX</div>
                   <div class="text-white font-mono">{status.sensors.rg15.uart?.rx_pin ?? '--'} / {status.sensors.rg15.uart?.tx_pin ?? '--'}</div>
                 </div>
@@ -471,13 +490,38 @@ const System: FunctionalComponent = () => {
                 </div>
                 <div class="bg-gray-800 rounded p-3">
                   <div class="text-xs text-gray-500">Last response age</div>
-                  <div class="text-white font-mono">{status.sensors.rg15.uart?.last_response_age_ms ?? '--'} ms</div>
+                  <div class="text-white font-mono">{formatAgeMs(status.sensors.rg15.uart?.last_response_age_ms)}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Health probe age</div>
+                  <div class="text-white font-mono">{formatAgeMs(status.sensors.rg15.uart?.last_health_check_age_ms)}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">SW version</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.software_version ?? '--'}</div>
+                  <div class="text-xs text-gray-400 font-mono mt-1">{status.sensors.rg15.uart?.software_build_date ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Power / reset</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.power_on_days ?? '--'} days</div>
+                  <div class="text-xs text-gray-400 font-mono mt-1">Reset: {status.sensors.rg15.uart?.reset_reason ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Emitters</div>
+                  <div class="text-white font-mono">
+                    {status.sensors.rg15.uart?.emitter_1 ?? '--'} / {status.sensors.rg15.uart?.emitter_2 ?? '--'}
+                    {status.sensors.rg15.uart?.emitter_total != null ? ` (${status.sensors.rg15.uart.emitter_total})` : ''}
+                  </div>
                 </div>
                 <div class="bg-gray-800 rounded p-3 md:col-span-3">
                   <div class="text-xs text-gray-500">Last command / response / error</div>
                   <div class="text-white font-mono break-all">{status.sensors.rg15.uart?.last_command ?? '--'}</div>
                   <div class="text-xs text-gray-400 font-mono break-all mt-1">{status.sensors.rg15.uart?.last_raw_response ?? '--'}</div>
                   <div class="text-xs text-yellow-300 font-mono break-all mt-1">{status.sensors.rg15.uart?.last_error ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3 md:col-span-3">
+                  <div class="text-xs text-gray-500">Last status line</div>
+                  <div class="text-white font-mono break-all">{status.sensors.rg15.uart?.last_status_line ?? '--'}</div>
                 </div>
                 <div class="bg-gray-800 rounded p-3">
                   <div class="text-xs text-gray-500">Successful reads</div>

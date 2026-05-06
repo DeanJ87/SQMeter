@@ -71,6 +71,70 @@ namespace SQM
 
             return false;
         }
+
+        bool extractIntField(const std::string &line, const char *label, int &value)
+        {
+            size_t labelPos = line.find(label);
+            const size_t labelLength = std::strlen(label);
+
+            while (labelPos != std::string::npos)
+            {
+                const bool startsField = labelPos == 0 ||
+                                         line[labelPos - 1] == ',' ||
+                                         std::isspace(static_cast<unsigned char>(line[labelPos - 1]));
+                const size_t valuePos = labelPos + labelLength;
+                const bool hasValueSeparator = valuePos < line.length() &&
+                                               std::isspace(static_cast<unsigned char>(line[valuePos]));
+
+                if (startsField && hasValueSeparator)
+                {
+                    const char *cursor = line.c_str() + valuePos;
+                    while (*cursor != '\0' && std::isspace(static_cast<unsigned char>(*cursor)))
+                    {
+                        cursor++;
+                    }
+
+                    char *end = nullptr;
+                    const long parsed = std::strtol(cursor, &end, 10);
+                    if (end == cursor)
+                    {
+                        return false;
+                    }
+
+                    value = static_cast<int>(parsed);
+                    return true;
+                }
+
+                labelPos = line.find(label, labelPos + 1);
+            }
+
+            return false;
+        }
+
+        bool hasFlagToken(const std::string &flags, const char *token)
+        {
+            size_t pos = flags.find(token);
+            const size_t tokenLength = std::strlen(token);
+
+            while (pos != std::string::npos)
+            {
+                const bool leftOk = pos == 0 ||
+                                    std::isspace(static_cast<unsigned char>(flags[pos - 1])) ||
+                                    flags[pos - 1] == ',';
+                const size_t right = pos + tokenLength;
+                const bool rightOk = right >= flags.length() ||
+                                     std::isspace(static_cast<unsigned char>(flags[right])) ||
+                                     flags[right] == ',';
+                if (leftOk && rightOk)
+                {
+                    return true;
+                }
+
+                pos = flags.find(token, pos + 1);
+            }
+
+            return false;
+        }
     } // namespace
 
     const char *RG15Sensor::stateToString(RG15State state)
@@ -346,7 +410,37 @@ namespace SQM
         }
 
         std::string ack;
-        if (!readAck(expectedAck[0], ack))
+        const uint32_t ackStartedAt = millis();
+        bool gotAck = false;
+        while (millis() - ackStartedAt < RESPONSE_TIMEOUT_MS)
+        {
+            if (!readLine(ack))
+            {
+                continue;
+            }
+
+            diagnostics.lastRawResponse = ack;
+            diagnostics.lastResponseMs = millis();
+
+            if (ack.size() == 1 && ack[0] == expectedAck[0])
+            {
+                gotAck = true;
+                break;
+            }
+
+            if (handleControlLine(ack))
+            {
+                continue;
+            }
+
+            if (debugUart)
+            {
+                Logger::info(TAG, "unexpected response while waiting for ack \"%s\": \"%s\"",
+                             expectedAck, ack.c_str());
+            }
+        }
+
+        if (!gotAck)
         {
             diagnostics.timeouts++;
             diagnostics.lastError = "timeout_waiting_for_ack";
@@ -378,29 +472,35 @@ namespace SQM
         }
 
         std::string line;
-        if (!readLine(line))
+        const uint32_t startedAt = millis();
+        while (millis() - startedAt < RESPONSE_TIMEOUT_MS)
         {
-            diagnostics.timeouts++;
-            diagnostics.lastError = "timeout_waiting_for_response";
-            updateDiagnosticsState(RG15State::RG15_TIMEOUT);
+            if (!readLine(line))
+            {
+                continue;
+            }
+
+            diagnostics.lastRawResponse = line;
+            diagnostics.lastResponseMs = millis();
+            markCommunicationOk();
+
             if (debugUart)
             {
-                Logger::info(TAG, "timeout waiting for response to \"%c\" after %u ms", cmd, RESPONSE_TIMEOUT_MS);
+                Logger::info(TAG, "RX raw: \"%s\"", line.c_str());
             }
-            return false;
-        }
 
-        diagnostics.lastRawResponse = line;
-        diagnostics.lastResponseMs = millis();
-        markCommunicationOk();
+            if (expectedPrefix == nullptr || line.rfind(expectedPrefix, 0) == 0)
+            {
+                diagnostics.lastError.reset();
+                updateDiagnosticsState(RG15State::RG15_ACKNOWLEDGED);
+                return true;
+            }
 
-        if (debugUart)
-        {
-            Logger::info(TAG, "RX raw: \"%s\"", line.c_str());
-        }
+            if (handleControlLine(line))
+            {
+                continue;
+            }
 
-        if (expectedPrefix != nullptr && line.rfind(expectedPrefix, 0) != 0)
-        {
             diagnostics.parseErrors++;
             diagnostics.lastError = "unexpected_response";
             updateDiagnosticsState(RG15State::RG15_PARSE_ERROR);
@@ -411,9 +511,14 @@ namespace SQM
             return false;
         }
 
-        diagnostics.lastError.reset();
-        updateDiagnosticsState(RG15State::RG15_ACKNOWLEDGED);
-        return true;
+        diagnostics.timeouts++;
+        diagnostics.lastError = "timeout_waiting_for_response";
+        updateDiagnosticsState(RG15State::RG15_TIMEOUT);
+        if (debugUart)
+        {
+            Logger::info(TAG, "timeout waiting for response to \"%c\" after %u ms", cmd, RESPONSE_TIMEOUT_MS);
+        }
+        return false;
     }
 
     void RG15Sensor::update()
@@ -428,10 +533,23 @@ namespace SQM
             return;
         }
 
-        const bool gotReading = (mode == "polling") ? pollReading() : drainBuffer();
         const uint32_t now = millis();
+        bool gotCommunication = false;
+        if (mode == "polling")
+        {
+            gotCommunication = pollReading();
+        }
+        else
+        {
+            gotCommunication = drainBuffer();
+            const uint32_t lastProbe = diagnostics.lastHealthCheckMs == 0 ? diagnostics.lastResponseMs : diagnostics.lastHealthCheckMs;
+            if (lastProbe == 0 || now - lastProbe >= CONTINUOUS_HEALTH_CHECK_MS)
+            {
+                gotCommunication = queryHealth() || gotCommunication;
+            }
+        }
 
-        if (!gotReading)
+        if (!gotCommunication)
         {
             const uint32_t age = reading.timestamp == 0 ? 0 : now - reading.timestamp;
             reading.ageMs = age;
@@ -452,8 +570,10 @@ namespace SQM
                 return;
             }
 
+            const uint32_t lastProofMs = diagnostics.lastResponseMs != 0 ? diagnostics.lastResponseMs : diagnostics.lastSuccessfulReadMs;
+            const uint32_t proofAge = lastProofMs == 0 ? 0 : now - lastProofMs;
             const uint32_t staleTimeoutMs = effectiveStaleTimeoutMs();
-            if (age > staleTimeoutMs)
+            if (lastProofMs == 0 || proofAge > staleTimeoutMs)
             {
                 if (reading.status == SensorStatus::OK)
                 {
@@ -468,9 +588,19 @@ namespace SQM
             else if (reading.status != SensorStatus::OK)
             {
                 reading.online = diagnostics.online;
-                reading.stale = true;
+                reading.stale = false;
             }
         }
+    }
+
+    bool RG15Sensor::queryHealth()
+    {
+        if (debugUart)
+        {
+            Logger::info(TAG, "health query baud: TX \"B\"");
+        }
+        diagnostics.lastHealthCheckMs = millis();
+        return queryLineCommand('B', "Baud");
     }
 
     bool RG15Sensor::pollReading()
@@ -494,6 +624,7 @@ namespace SQM
 
         std::string line;
         const uint32_t startedAt = millis();
+        bool gotAnyResponse = false;
 
         while (millis() - startedAt < RESPONSE_TIMEOUT_MS)
         {
@@ -505,6 +636,7 @@ namespace SQM
             diagnostics.lastRawResponse = line;
             diagnostics.lastResponseMs = millis();
             markCommunicationOk();
+            gotAnyResponse = true;
 
             if (debugUart)
             {
@@ -517,6 +649,14 @@ namespace SQM
             }
 
             return handleRainLine(line);
+        }
+
+        if (gotAnyResponse)
+        {
+            diagnostics.lastError.reset();
+            reading.online = diagnostics.online;
+            reading.stale = false;
+            return false;
         }
 
         diagnostics.timeouts++;
@@ -623,10 +763,15 @@ namespace SQM
             {
                 int emitter1 = 0;
                 int emitter2 = 0;
-                if (std::sscanf(line.c_str(), "Emitters %d %d", &emitter1, &emitter2) == 2)
+                int emitterTotal = 0;
+                if (std::sscanf(line.c_str(), "Emitters %d %d", &emitter1, &emitter2) >= 2)
                 {
                     diagnostics.emitter1 = emitter1;
                     diagnostics.emitter2 = emitter2;
+                }
+                if (extractIntField(line, "EmTotal", emitterTotal))
+                {
+                    diagnostics.emitterTotal = emitterTotal;
                 }
             }
             else if (line.rfind("EmTotal ", 0) == 0)
@@ -810,20 +955,21 @@ namespace SQM
         reading.lensBad = false;
         reading.emSat = false;
 
-        size_t unitPos = line.find("mm");
+        const size_t rIntPos = line.find("RInt");
+        size_t unitPos = rIntPos == std::string::npos ? std::string::npos : line.find("mmph", rIntPos);
         if (unitPos == std::string::npos)
         {
-            unitPos = line.find(" in");
+            unitPos = rIntPos == std::string::npos ? std::string::npos : line.find("iph", rIntPos);
         }
 
         if (unitPos != std::string::npos)
         {
-            const size_t flagsStart = line.find(' ', unitPos + 2);
+            const size_t flagsStart = line.find(' ', unitPos);
             if (flagsStart != std::string::npos && flagsStart < line.length())
             {
                 const std::string flags = line.substr(flagsStart);
-                reading.lensBad = (flags.find('i') != std::string::npos);
-                reading.emSat = (flags.find('o') != std::string::npos);
+                reading.lensBad = hasFlagToken(flags, "i") || hasFlagToken(flags, "LensBad");
+                reading.emSat = hasFlagToken(flags, "o") || hasFlagToken(flags, "EmSat");
             }
         }
 
@@ -894,7 +1040,7 @@ namespace SQM
 
     std::string RG15Sensor::toJson() const
     {
-        StaticJsonDocument<1536> doc;
+        StaticJsonDocument<2048> doc;
         const RG15Reading current = copyReading();
         const RG15Diagnostics diag = getDiagnostics();
         const uint32_t now = millis();
@@ -913,6 +1059,10 @@ namespace SQM
         doc["eventAcc"] = current.eventAcc;
         doc["totalAcc"] = current.totalAcc;
         doc["rInt"] = current.rInt;
+        doc["accumulation_since_last_read"] = current.acc;
+        doc["event_accumulation"] = current.eventAcc;
+        doc["total_accumulation"] = current.totalAcc;
+        doc["rain_intensity"] = current.rInt;
         doc["lensBad"] = current.lensBad;
         doc["emSat"] = current.emSat;
 
@@ -965,6 +1115,10 @@ namespace SQM
         uart["successful_reads"] = diag.successfulReads;
         uart["response_timeout_ms"] = diag.responseTimeoutMs;
         uart["stale_timeout_ms"] = diag.staleTimeoutMs;
+        if (diag.lastHealthCheckMs != 0)
+            uart["last_health_check_ms"] = static_cast<uint32_t>(diag.lastHealthCheckMs);
+        else
+            uart["last_health_check_ms"] = nullptr;
         if (diag.lastStatusLine)
             uart["last_status_line"] = diag.lastStatusLine->c_str();
         else

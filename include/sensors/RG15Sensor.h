@@ -81,6 +81,7 @@ namespace SQM
         std::optional<int> emitter1;
         std::optional<int> emitter2;
         std::optional<int> emitterTotal;
+        uint32_t lastHealthCheckMs;
         uint32_t lastSuccessfulReadMs;
         uint32_t timeouts;
         uint32_t parseErrors;
@@ -96,7 +97,7 @@ namespace SQM
               lastAckMs(0), lastRawResponse(std::nullopt), lastResponseMs(0), lastError(std::nullopt),
               lastStatusLine(std::nullopt), softwareVersion(std::nullopt), softwareBuildDate(std::nullopt),
               resetReason(std::nullopt), powerOnDays(std::nullopt), emitter1(std::nullopt),
-              emitter2(std::nullopt), emitterTotal(std::nullopt),
+              emitter2(std::nullopt), emitterTotal(std::nullopt), lastHealthCheckMs(0),
               lastSuccessfulReadMs(0), timeouts(0), parseErrors(0), successfulReads(0),
               responseTimeoutMs(500), staleTimeoutMs(30000)
         {
@@ -136,7 +137,8 @@ namespace SQM
         static constexpr uint32_t UART_NUM = 1;
         static constexpr uint32_t RESPONSE_TIMEOUT_MS = 1500;
         static constexpr uint32_t STALE_TIMEOUT_MS = 30000;
-        static constexpr uint32_t CONTINUOUS_STALE_TIMEOUT_MS = 75UL * 60UL * 1000UL;
+        static constexpr uint32_t CONTINUOUS_HEALTH_CHECK_MS = 5UL * 60UL * 1000UL;
+        static constexpr uint32_t CONTINUOUS_STALE_TIMEOUT_MS = (2UL * CONTINUOUS_HEALTH_CHECK_MS) + STALE_TIMEOUT_MS;
         static constexpr size_t LINE_BUFFER_SIZE = 128;
         static constexpr uint32_t ACK_QUIET_PERIOD_MS = 20;
 
@@ -163,6 +165,7 @@ namespace SQM
         void applyConfig();
         bool sendCommand(char cmd, const char *expectedAck = nullptr);
         bool queryLineCommand(char cmd, const char *expectedPrefix = nullptr);
+        bool queryHealth();
         bool pollReading();
         bool drainBuffer();
         bool readLine(std::string &line);
