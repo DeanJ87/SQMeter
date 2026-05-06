@@ -24,7 +24,7 @@ namespace SQM
 
         Logger::info(TAG, "Initializing MQTT client");
         mqttClient->setServer(config.broker.c_str(), config.port);
-        mqttClient->setBufferSize(2048); // Increase buffer size for cloud and RG-15 diagnostics
+        mqttClient->setBufferSize(3072); // Fits cloud and RG-15 diagnostics payloads
         mqttClient->setKeepAlive(60);
         mqttClient->setSocketTimeout(10);
 
@@ -207,7 +207,7 @@ namespace SQM
 
     std::string MQTTClient::createPayload(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15)
     {
-        StaticJsonDocument<2048> doc;
+        StaticJsonDocument<3072> doc;
 
         // Timestamp
         const time_t epochSeconds = time(nullptr);
@@ -292,6 +292,10 @@ namespace SQM
         rain["eventAcc"] = rg15Reading.eventAcc;
         rain["totalAcc"] = rg15Reading.totalAcc;
         rain["rInt"] = rg15Reading.rInt;
+        rain["accumulation_since_last_read"] = rg15Reading.acc;
+        rain["event_accumulation"] = rg15Reading.eventAcc;
+        rain["total_accumulation"] = rg15Reading.totalAcc;
+        rain["rain_intensity"] = rg15Reading.rInt;
         rain["lensBad"] = rg15Reading.lensBad;
         rain["emSat"] = rg15Reading.emSat;
         rain["units"] = rg15Diag.units.c_str();
@@ -310,6 +314,11 @@ namespace SQM
         uart["timeouts"] = rg15Diag.timeouts;
         uart["parse_errors"] = rg15Diag.parseErrors;
         uart["successful_reads"] = rg15Diag.successfulReads;
+        if (rg15Diag.lastHealthCheckMs != 0)
+        {
+            uart["last_health_check_ms"] = rg15Diag.lastHealthCheckMs;
+            uart["last_health_check_age_ms"] = millis() - rg15Diag.lastHealthCheckMs;
+        }
         if (rg15Diag.lastStatusLine)
             uart["last_status_line"] = rg15Diag.lastStatusLine->c_str();
         if (rg15Diag.softwareVersion)

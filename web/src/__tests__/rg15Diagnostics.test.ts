@@ -31,7 +31,8 @@ describe("RG-15 diagnostics contracts", () => {
     expect(sensor.rainSensor?.stale).toBe(false);
     expect(sensor.rainSensor?.uart.last_raw_response).toContain("Acc");
     expect(sensor.rainSensor?.uart.software_version).toBe("1.000");
-    expect(sensor.rainSensor?.uart.stale_timeout_ms).toBe(4500000);
+    expect(sensor.rainSensor?.uart.stale_timeout_ms).toBe(630000);
+    expect(sensor.rainSensor?.uart.last_health_check_age_ms).toBeGreaterThan(0);
     expect(sensor.rainSensor?.uart.successful_reads).toBeGreaterThan(0);
   });
 

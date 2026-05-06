@@ -90,6 +90,10 @@ namespace SQM
             root["eventAcc"] = reading.eventAcc;
             root["totalAcc"] = reading.totalAcc;
             root["rInt"] = reading.rInt;
+            root["accumulation_since_last_read"] = reading.acc;
+            root["event_accumulation"] = reading.eventAcc;
+            root["total_accumulation"] = reading.totalAcc;
+            root["rain_intensity"] = reading.rInt;
             root["lensBad"] = reading.lensBad;
             root["emSat"] = reading.emSat;
 
@@ -127,6 +131,14 @@ namespace SQM
             uart["successful_reads"] = diag.successfulReads;
             uart["response_timeout_ms"] = diag.responseTimeoutMs;
             uart["stale_timeout_ms"] = diag.staleTimeoutMs;
+            if (diag.lastHealthCheckMs != 0)
+                uart["last_health_check_ms"] = static_cast<uint32_t>(diag.lastHealthCheckMs);
+            else
+                uart["last_health_check_ms"] = nullptr;
+            if (diag.lastHealthCheckMs != 0)
+                uart["last_health_check_age_ms"] = static_cast<uint32_t>(now - diag.lastHealthCheckMs);
+            else
+                uart["last_health_check_age_ms"] = nullptr;
             appendOptionalString(uart, "last_status_line", diag.lastStatusLine);
             appendOptionalString(uart, "software_version", diag.softwareVersion);
             appendOptionalString(uart, "software_build_date", diag.softwareBuildDate);
