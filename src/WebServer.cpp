@@ -127,6 +127,26 @@ namespace SQM
             uart["successful_reads"] = diag.successfulReads;
             uart["response_timeout_ms"] = diag.responseTimeoutMs;
             uart["stale_timeout_ms"] = diag.staleTimeoutMs;
+            appendOptionalString(uart, "last_status_line", diag.lastStatusLine);
+            appendOptionalString(uart, "software_version", diag.softwareVersion);
+            appendOptionalString(uart, "software_build_date", diag.softwareBuildDate);
+            appendOptionalString(uart, "reset_reason", diag.resetReason);
+            if (diag.powerOnDays)
+                uart["power_on_days"] = *diag.powerOnDays;
+            else
+                uart["power_on_days"] = nullptr;
+            if (diag.emitter1)
+                uart["emitter_1"] = *diag.emitter1;
+            else
+                uart["emitter_1"] = nullptr;
+            if (diag.emitter2)
+                uart["emitter_2"] = *diag.emitter2;
+            else
+                uart["emitter_2"] = nullptr;
+            if (diag.emitterTotal)
+                uart["emitter_total"] = *diag.emitterTotal;
+            else
+                uart["emitter_total"] = nullptr;
             if (diag.lastResponseMs != 0)
                 uart["last_response_age_ms"] = static_cast<uint32_t>(now - diag.lastResponseMs);
             else
@@ -932,7 +952,7 @@ namespace SQM
 
     std::string WebServer::createSensorDataJson() const
     {
-        StaticJsonDocument<3072> doc;
+        StaticJsonDocument<4096> doc;
         const SensorSnapshot snapshot = getSensorSnapshot();
         const uint32_t now = millis();
         const uint32_t dataAge = ageMs(now, snapshot.dataTimestamp);

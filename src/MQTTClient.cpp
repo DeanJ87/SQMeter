@@ -207,7 +207,7 @@ namespace SQM
 
     std::string MQTTClient::createPayload(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15)
     {
-        StaticJsonDocument<1536> doc;
+        StaticJsonDocument<2048> doc;
 
         // Timestamp
         const time_t epochSeconds = time(nullptr);
@@ -310,6 +310,22 @@ namespace SQM
         uart["timeouts"] = rg15Diag.timeouts;
         uart["parse_errors"] = rg15Diag.parseErrors;
         uart["successful_reads"] = rg15Diag.successfulReads;
+        if (rg15Diag.lastStatusLine)
+            uart["last_status_line"] = rg15Diag.lastStatusLine->c_str();
+        if (rg15Diag.softwareVersion)
+            uart["software_version"] = rg15Diag.softwareVersion->c_str();
+        if (rg15Diag.softwareBuildDate)
+            uart["software_build_date"] = rg15Diag.softwareBuildDate->c_str();
+        if (rg15Diag.resetReason)
+            uart["reset_reason"] = rg15Diag.resetReason->c_str();
+        if (rg15Diag.powerOnDays)
+            uart["power_on_days"] = *rg15Diag.powerOnDays;
+        if (rg15Diag.emitter1)
+            uart["emitter_1"] = *rg15Diag.emitter1;
+        if (rg15Diag.emitter2)
+            uart["emitter_2"] = *rg15Diag.emitter2;
+        if (rg15Diag.emitterTotal)
+            uart["emitter_total"] = *rg15Diag.emitterTotal;
         if (rg15Diag.lastCommand)
             uart["last_command"] = rg15Diag.lastCommand->c_str();
         if (rg15Diag.lastAck)

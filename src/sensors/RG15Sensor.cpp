@@ -123,7 +123,7 @@ namespace SQM
         diagnostics.enabled = enabled;
         diagnostics.configured = enabled;
         diagnostics.responseTimeoutMs = RESPONSE_TIMEOUT_MS;
-        diagnostics.staleTimeoutMs = STALE_TIMEOUT_MS;
+        diagnostics.staleTimeoutMs = effectiveStaleTimeoutMs();
         diagnostics.uartPort = UART_NUM;
     }
 
@@ -141,7 +141,7 @@ namespace SQM
         diagnostics.enabled = enabledConfig;
         diagnostics.configured = enabledConfig;
         diagnostics.responseTimeoutMs = RESPONSE_TIMEOUT_MS;
-        diagnostics.staleTimeoutMs = STALE_TIMEOUT_MS;
+        diagnostics.staleTimeoutMs = effectiveStaleTimeoutMs();
         diagnostics.uartPort = UART_NUM;
         diagnostics.state = enabledConfig ? RG15State::RG15_CONFIGURED : RG15State::RG15_DISABLED;
     }
@@ -156,6 +156,11 @@ namespace SQM
         diagnostics.online = true;
         reading.online = true;
         reading.stale = false;
+    }
+
+    uint32_t RG15Sensor::effectiveStaleTimeoutMs() const
+    {
+        return mode == "continuous" ? CONTINUOUS_STALE_TIMEOUT_MS : STALE_TIMEOUT_MS;
     }
 
     bool RG15Sensor::start(bool probeImmediately)
@@ -225,6 +230,8 @@ namespace SQM
         diagnostics.lastAck.reset();
         diagnostics.lastRawResponse.reset();
         diagnostics.lastError.reset();
+
+        drainBuffer();
 
         if (debugUart)
         {
@@ -445,11 +452,12 @@ namespace SQM
                 return;
             }
 
-            if (age > STALE_TIMEOUT_MS)
+            const uint32_t staleTimeoutMs = effectiveStaleTimeoutMs();
+            if (age > staleTimeoutMs)
             {
                 if (reading.status == SensorStatus::OK)
                 {
-                    Logger::warn(TAG, "No data for %u ms, marking stale", STALE_TIMEOUT_MS);
+                    Logger::warn(TAG, "No data for %u ms, marking stale", staleTimeoutMs);
                 }
                 reading.status = SensorStatus::TIMEOUT;
                 reading.online = diagnostics.online;
@@ -580,8 +588,56 @@ namespace SQM
             line.rfind("Emitters ", 0) == 0 ||
             line.rfind("EmTotal ", 0) == 0 ||
             line.rfind("PwrDays ", 0) == 0 ||
+            line.rfind("Event", 0) == 0 ||
             line.rfind(";", 0) == 0)
         {
+            diagnostics.lastStatusLine = line;
+            if (line.rfind("Reset ", 0) == 0)
+            {
+                diagnostics.resetReason = line.substr(6);
+            }
+            else if (line.rfind("SW ", 0) == 0)
+            {
+                const size_t versionStart = 3;
+                const size_t versionEnd = line.find(' ', versionStart);
+                if (versionEnd != std::string::npos)
+                {
+                    diagnostics.softwareVersion = line.substr(versionStart, versionEnd - versionStart);
+                    const size_t buildStart = line.find_first_not_of(' ', versionEnd);
+                    if (buildStart != std::string::npos)
+                    {
+                        diagnostics.softwareBuildDate = line.substr(buildStart);
+                    }
+                }
+            }
+            else if (line.rfind("PwrDays ", 0) == 0)
+            {
+                char *end = nullptr;
+                const float days = std::strtof(line.c_str() + 8, &end);
+                if (end != line.c_str() + 8)
+                {
+                    diagnostics.powerOnDays = days;
+                }
+            }
+            else if (line.rfind("Emitters ", 0) == 0)
+            {
+                int emitter1 = 0;
+                int emitter2 = 0;
+                if (std::sscanf(line.c_str(), "Emitters %d %d", &emitter1, &emitter2) == 2)
+                {
+                    diagnostics.emitter1 = emitter1;
+                    diagnostics.emitter2 = emitter2;
+                }
+            }
+            else if (line.rfind("EmTotal ", 0) == 0)
+            {
+                int total = 0;
+                if (std::sscanf(line.c_str(), "EmTotal %d", &total) == 1)
+                {
+                    diagnostics.emitterTotal = total;
+                }
+            }
+
             diagnostics.lastError.reset();
             if (debugUart)
             {
@@ -779,13 +835,6 @@ namespace SQM
         lastUpdateTime = reading.timestamp;
         diagnostics.lastSuccessfulReadMs = reading.timestamp;
 
-        if (debugUart)
-        {
-            Logger::info(TAG, "parsed acc=%.2f event=%.2f total=%.2f intensity=%.2f unit=%s",
-                         reading.acc, reading.eventAcc, reading.totalAcc, reading.rInt,
-                         units == "imperial" ? "in" : "mm");
-        }
-
         return true;
     }
 
@@ -818,6 +867,7 @@ namespace SQM
         snapshot.mode = mode;
         snapshot.resolution = resolution;
         snapshot.units = units;
+        snapshot.staleTimeoutMs = effectiveStaleTimeoutMs();
 
         if (snapshot.lastCommandMs != 0 && snapshot.lastCommandMs <= now)
         {
@@ -844,7 +894,7 @@ namespace SQM
 
     std::string RG15Sensor::toJson() const
     {
-        StaticJsonDocument<1024> doc;
+        StaticJsonDocument<1536> doc;
         const RG15Reading current = copyReading();
         const RG15Diagnostics diag = getDiagnostics();
         const uint32_t now = millis();
@@ -915,6 +965,38 @@ namespace SQM
         uart["successful_reads"] = diag.successfulReads;
         uart["response_timeout_ms"] = diag.responseTimeoutMs;
         uart["stale_timeout_ms"] = diag.staleTimeoutMs;
+        if (diag.lastStatusLine)
+            uart["last_status_line"] = diag.lastStatusLine->c_str();
+        else
+            uart["last_status_line"] = nullptr;
+        if (diag.softwareVersion)
+            uart["software_version"] = diag.softwareVersion->c_str();
+        else
+            uart["software_version"] = nullptr;
+        if (diag.softwareBuildDate)
+            uart["software_build_date"] = diag.softwareBuildDate->c_str();
+        else
+            uart["software_build_date"] = nullptr;
+        if (diag.resetReason)
+            uart["reset_reason"] = diag.resetReason->c_str();
+        else
+            uart["reset_reason"] = nullptr;
+        if (diag.powerOnDays)
+            uart["power_on_days"] = *diag.powerOnDays;
+        else
+            uart["power_on_days"] = nullptr;
+        if (diag.emitter1)
+            uart["emitter_1"] = *diag.emitter1;
+        else
+            uart["emitter_1"] = nullptr;
+        if (diag.emitter2)
+            uart["emitter_2"] = *diag.emitter2;
+        else
+            uart["emitter_2"] = nullptr;
+        if (diag.emitterTotal)
+            uart["emitter_total"] = *diag.emitterTotal;
+        else
+            uart["emitter_total"] = nullptr;
         if (diag.lastResponseMs != 0)
             uart["last_response_age_ms"] = static_cast<uint32_t>(now - diag.lastResponseMs);
         else
