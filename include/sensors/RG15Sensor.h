@@ -29,18 +29,20 @@ namespace SQM
     struct RG15Reading : public SensorReading
     {
         bool isRaining;
+        bool rainLatched;
         bool online;
         bool stale;
         float acc;      // Accumulation since last poll (mm or in)
         float eventAcc; // Event accumulation (mm or in)
+        float localEventAcc; // SQMeter event accumulation using rainClearDelayMs
         float totalAcc; // Total accumulation since power-on (mm or in)
         float rInt;     // Rain intensity (mm/h or in/h)
         bool lensBad;   // Hardware / lens fault
         bool emSat;     // Emitter saturation
         uint32_t ageMs;
 
-        RG15Reading() : isRaining(false), online(false), stale(true), acc(0.0f),
-                        eventAcc(0.0f), totalAcc(0.0f), rInt(0.0f), lensBad(false),
+        RG15Reading() : isRaining(false), rainLatched(false), online(false), stale(true), acc(0.0f),
+                        eventAcc(0.0f), localEventAcc(0.0f), totalAcc(0.0f), rInt(0.0f), lensBad(false),
                         emSat(false), ageMs(0)
         {
             timestamp = 0;
@@ -64,6 +66,11 @@ namespace SQM
         std::string mode;
         std::string resolution;
         std::string units;
+        uint32_t pollIntervalMs;
+        uint32_t rainClearDelayMs;
+        bool dailyResetEnabled;
+        uint8_t dailyResetHour;
+        uint8_t dailyResetMinute;
         std::optional<std::string> lastCommand;
         uint32_t lastCommandMs;
         size_t lastBytesWritten;
@@ -82,6 +89,11 @@ namespace SQM
         std::optional<int> emitter2;
         std::optional<int> emitterTotal;
         uint32_t lastHealthCheckMs;
+        uint32_t lastPollMs;
+        uint32_t lastRainDetectedMs;
+        uint32_t lastTotalResetMs;
+        uint32_t lastRebootCommandMs;
+        int lastDailyResetYearDay;
         uint32_t lastSuccessfulReadMs;
         uint32_t timeouts;
         uint32_t parseErrors;
@@ -92,12 +104,16 @@ namespace SQM
         RG15Diagnostics()
             : enabled(false), configured(false), uartOpened(false), online(false), stale(false),
               debugUart(false), state(RG15State::RG15_DISABLED), rxPin(0), txPin(0), baudRate(9600),
-              uartPort(1), mode("polling"), resolution("high"), units("metric"), lastCommand(std::nullopt),
+              uartPort(1), mode("polling"), resolution("high"), units("metric"),
+              pollIntervalMs(5000), rainClearDelayMs(900000), dailyResetEnabled(false),
+              dailyResetHour(0), dailyResetMinute(0), lastCommand(std::nullopt),
               lastCommandMs(0), lastBytesWritten(0), expectedAck(std::nullopt), lastAck(std::nullopt),
               lastAckMs(0), lastRawResponse(std::nullopt), lastResponseMs(0), lastError(std::nullopt),
               lastStatusLine(std::nullopt), softwareVersion(std::nullopt), softwareBuildDate(std::nullopt),
               resetReason(std::nullopt), powerOnDays(std::nullopt), emitter1(std::nullopt),
               emitter2(std::nullopt), emitterTotal(std::nullopt), lastHealthCheckMs(0),
+              lastPollMs(0), lastRainDetectedMs(0), lastTotalResetMs(0), lastRebootCommandMs(0),
+              lastDailyResetYearDay(-1),
               lastSuccessfulReadMs(0), timeouts(0), parseErrors(0), successfulReads(0),
               responseTimeoutMs(500), staleTimeoutMs(30000)
         {
@@ -112,7 +128,12 @@ namespace SQM
                    const std::string &resolution = "high",
                    const std::string &units = "metric",
                    bool enabled = false,
-                   bool debugUart = false);
+                   bool debugUart = false,
+                   uint32_t pollIntervalMs = 5000,
+                   uint32_t rainClearDelayMs = 900000,
+                   bool dailyResetEnabled = false,
+                   uint8_t dailyResetHour = 0,
+                   uint8_t dailyResetMinute = 0);
         ~RG15Sensor() override = default;
 
         bool begin() override;
@@ -125,10 +146,15 @@ namespace SQM
         RG15Diagnostics getDiagnostics() const;
         bool isOnline() const { return reading.online; }
         bool testCommunication();
+        bool resetTotalAccumulation();
+        bool rebootSensor();
 
         void reconfigure(uint8_t newRxPin, uint8_t newTxPin, uint32_t newBaudRate,
                          const std::string &newMode, const std::string &newResolution,
-                         const std::string &newUnits, bool newDebugUart);
+                         const std::string &newUnits, bool newDebugUart,
+                         uint32_t newPollIntervalMs, uint32_t newRainClearDelayMs,
+                         bool newDailyResetEnabled, uint8_t newDailyResetHour,
+                         uint8_t newDailyResetMinute);
 
         void stop();
 
@@ -137,8 +163,6 @@ namespace SQM
         static constexpr uint32_t UART_NUM = 1;
         static constexpr uint32_t RESPONSE_TIMEOUT_MS = 1500;
         static constexpr uint32_t STALE_TIMEOUT_MS = 30000;
-        static constexpr uint32_t CONTINUOUS_HEALTH_CHECK_MS = 5UL * 60UL * 1000UL;
-        static constexpr uint32_t CONTINUOUS_STALE_TIMEOUT_MS = (2UL * CONTINUOUS_HEALTH_CHECK_MS) + STALE_TIMEOUT_MS;
         static constexpr size_t LINE_BUFFER_SIZE = 128;
         static constexpr uint32_t ACK_QUIET_PERIOD_MS = 20;
 
@@ -150,6 +174,11 @@ namespace SQM
         std::string mode;
         std::string resolution;
         std::string units;
+        uint32_t pollIntervalMs;
+        uint32_t rainClearDelayMs;
+        bool dailyResetEnabled;
+        uint8_t dailyResetHour;
+        uint8_t dailyResetMinute;
 
         std::unique_ptr<HardwareSerial> serial;
         RG15Reading reading;
@@ -160,12 +189,13 @@ namespace SQM
         void updateDiagnosticsState(RG15State state);
         void markCommunicationOk();
         uint32_t effectiveStaleTimeoutMs() const;
+        void updateRainLatch(uint32_t now);
+        void maybeRunScheduledTotalReset(uint32_t now);
         static const char *stateToString(RG15State state);
         bool start(bool probeImmediately);
         void applyConfig();
         bool sendCommand(char cmd, const char *expectedAck = nullptr);
         bool queryLineCommand(char cmd, const char *expectedPrefix = nullptr);
-        bool queryHealth();
         bool pollReading();
         bool drainBuffer();
         bool readLine(std::string &line);

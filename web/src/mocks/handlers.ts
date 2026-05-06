@@ -56,6 +56,12 @@ export const handlers = [
       hint: "Check RG-15 Serial OUT -> ESP32 RX, Serial IN -> ESP32 TX, common ground, baud rate, and voltage level.",
     })
   ),
+  http.post("/api/sensors/rg15/reset-total", () =>
+    HttpResponse.json({ ok: true, command: "O", message: "RG-15 total accumulation reset command sent" })
+  ),
+  http.post("/api/sensors/rg15/reboot", () =>
+    HttpResponse.json({ ok: true, command: "K", message: "RG-15 reboot command sent" })
+  ),
 
   // REST — control
   http.post("/api/restart", () => HttpResponse.json({ ok: true })),

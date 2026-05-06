@@ -76,8 +76,11 @@ Published to `{topic}` every `publishIntervalMs` milliseconds:
     "stale": false,
     "status": 0,
     "isRaining": false,
+    "raining": false,
     "acc": 0.0,
-    "eventAcc": 0.0,
+    "eventAcc": 2.4,
+    "event_accumulation": 0.0,
+    "hydreon_event_accumulation": 2.4,
     "totalAcc": 12.34,
     "rInt": 0.0,
     "uart": {

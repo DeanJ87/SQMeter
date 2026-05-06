@@ -242,6 +242,11 @@ namespace SQM
         cfg.rain.mode = "polling";
         cfg.rain.resolution = "high";
         cfg.rain.units = "metric";
+        cfg.rain.pollIntervalMs = 5000;
+        cfg.rain.rainClearDelayMs = 15UL * 60UL * 1000UL;
+        cfg.rain.dailyResetEnabled = false;
+        cfg.rain.dailyResetHour = 0;
+        cfg.rain.dailyResetMinute = 0;
 
         cfg.sensor.readIntervalMs = 5000; // 5 seconds
         cfg.sensor.i2cSDA = 21;
@@ -313,6 +318,11 @@ namespace SQM
         rain["mode"] = this->rain.mode;
         rain["resolution"] = this->rain.resolution;
         rain["units"] = this->rain.units;
+        rain["pollIntervalMs"] = this->rain.pollIntervalMs;
+        rain["rainClearDelayMs"] = this->rain.rainClearDelayMs;
+        rain["dailyResetEnabled"] = this->rain.dailyResetEnabled;
+        rain["dailyResetHour"] = this->rain.dailyResetHour;
+        rain["dailyResetMinute"] = this->rain.dailyResetMinute;
 
         JsonObject sensor = doc.createNestedObject("sensor");
         sensor["readIntervalMs"] = this->sensor.readIntervalMs;
@@ -404,9 +414,9 @@ namespace SQM
             return setError(error, "Rain sensor baud rate is invalid");
         }
 
-        if (rain.mode != "polling" && rain.mode != "continuous")
+        if (rain.mode != "polling")
         {
-            return setError(error, "Rain sensor mode is invalid");
+            return setError(error, "Rain sensor mode must be polling");
         }
 
         if (rain.resolution != "high" && rain.resolution != "low" && rain.resolution != "switch")
@@ -417,6 +427,21 @@ namespace SQM
         if (rain.units != "metric" && rain.units != "imperial" && rain.units != "switch")
         {
             return setError(error, "Rain sensor units are invalid");
+        }
+
+        if (rain.pollIntervalMs < 1000 || rain.pollIntervalMs > 3600000)
+        {
+            return setError(error, "Rain sensor poll interval is invalid");
+        }
+
+        if (rain.rainClearDelayMs < 60000 || rain.rainClearDelayMs > 86400000)
+        {
+            return setError(error, "Rain clear delay is invalid");
+        }
+
+        if (rain.dailyResetHour > 23 || rain.dailyResetMinute > 59)
+        {
+            return setError(error, "Rain daily reset time is invalid");
         }
 
         if (sensor.readIntervalMs < 100 || sensor.readIntervalMs > 3600000)
@@ -559,10 +584,22 @@ namespace SQM
                 cfg.rain.debugUart = rain["debugUart"] | false;
             if (rain.containsKey("mode"))
                 cfg.rain.mode = rain["mode"] | "polling";
+            if (cfg.rain.mode != "polling")
+                cfg.rain.mode = "polling";
             if (rain.containsKey("resolution"))
                 cfg.rain.resolution = rain["resolution"] | "high";
             if (rain.containsKey("units"))
                 cfg.rain.units = rain["units"] | "metric";
+            if (rain.containsKey("pollIntervalMs"))
+                cfg.rain.pollIntervalMs = rain["pollIntervalMs"] | 5000;
+            if (rain.containsKey("rainClearDelayMs"))
+                cfg.rain.rainClearDelayMs = rain["rainClearDelayMs"] | (15UL * 60UL * 1000UL);
+            if (rain.containsKey("dailyResetEnabled"))
+                cfg.rain.dailyResetEnabled = rain["dailyResetEnabled"] | false;
+            if (rain.containsKey("dailyResetHour"))
+                cfg.rain.dailyResetHour = rain["dailyResetHour"] | 0;
+            if (rain.containsKey("dailyResetMinute"))
+                cfg.rain.dailyResetMinute = rain["dailyResetMinute"] | 0;
         }
 
         JsonObject sensor = doc["sensor"];

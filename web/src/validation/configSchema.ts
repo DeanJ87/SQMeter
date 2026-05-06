@@ -134,9 +134,14 @@ export const rainSensorConfigSchema = z
         message: "Baud rate must be one of: 2400, 4800, 9600, 19200",
       }),
     debugUart: z.boolean(),
-    mode: z.enum(['polling', 'continuous']),
+    mode: z.literal('polling'),
     resolution: z.enum(['high', 'low', 'switch']),
     units: z.enum(['metric', 'imperial', 'switch']),
+    pollIntervalMs: z.number().int().min(1000, "Poll interval must be at least 1 second").max(3600000, "Poll interval must be at most 1 hour"),
+    rainClearDelayMs: z.number().int().min(60000, "Rain clear delay must be at least 1 minute").max(86400000, "Rain clear delay must be at most 24 hours"),
+    dailyResetEnabled: z.boolean(),
+    dailyResetHour: z.number().int().min(0).max(23),
+    dailyResetMinute: z.number().int().min(0).max(59),
   })
   .refine((data) => !data.enabled || data.rxPin !== data.txPin, {
     message: "RX and TX pins must be different",

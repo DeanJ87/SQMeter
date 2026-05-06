@@ -288,12 +288,15 @@ namespace SQM
         rain["timestamp"] = rg15Reading.timestamp;
         rain["ageMs"] = rg15Reading.ageMs;
         rain["isRaining"] = rg15Reading.isRaining;
+        rain["raining"] = rg15Reading.rainLatched;
         rain["acc"] = rg15Reading.acc;
         rain["eventAcc"] = rg15Reading.eventAcc;
         rain["totalAcc"] = rg15Reading.totalAcc;
         rain["rInt"] = rg15Reading.rInt;
         rain["accumulation_since_last_read"] = rg15Reading.acc;
-        rain["event_accumulation"] = rg15Reading.eventAcc;
+        rain["event_accumulation"] = rg15Reading.localEventAcc;
+        rain["local_event_accumulation"] = rg15Reading.localEventAcc;
+        rain["hydreon_event_accumulation"] = rg15Reading.eventAcc;
         rain["total_accumulation"] = rg15Reading.totalAcc;
         rain["rain_intensity"] = rg15Reading.rInt;
         rain["lensBad"] = rg15Reading.lensBad;
@@ -311,6 +314,11 @@ namespace SQM
         uart["resolution"] = rg15Diag.resolution.c_str();
         uart["units"] = rg15Diag.units.c_str();
         uart["debug_uart"] = rg15Diag.debugUart;
+        uart["poll_interval_ms"] = rg15Diag.pollIntervalMs;
+        uart["rain_clear_delay_ms"] = rg15Diag.rainClearDelayMs;
+        uart["daily_reset_enabled"] = rg15Diag.dailyResetEnabled;
+        uart["daily_reset_hour"] = rg15Diag.dailyResetHour;
+        uart["daily_reset_minute"] = rg15Diag.dailyResetMinute;
         uart["timeouts"] = rg15Diag.timeouts;
         uart["parse_errors"] = rg15Diag.parseErrors;
         uart["successful_reads"] = rg15Diag.successfulReads;
@@ -318,6 +326,26 @@ namespace SQM
         {
             uart["last_health_check_ms"] = rg15Diag.lastHealthCheckMs;
             uart["last_health_check_age_ms"] = millis() - rg15Diag.lastHealthCheckMs;
+        }
+        if (rg15Diag.lastPollMs != 0)
+        {
+            uart["last_poll_ms"] = rg15Diag.lastPollMs;
+            uart["last_poll_age_ms"] = millis() - rg15Diag.lastPollMs;
+        }
+        if (rg15Diag.lastRainDetectedMs != 0)
+        {
+            uart["last_rain_detected_ms"] = rg15Diag.lastRainDetectedMs;
+            uart["last_rain_detected_age_ms"] = millis() - rg15Diag.lastRainDetectedMs;
+        }
+        if (rg15Diag.lastTotalResetMs != 0)
+        {
+            uart["last_total_reset_ms"] = rg15Diag.lastTotalResetMs;
+            uart["last_total_reset_age_ms"] = millis() - rg15Diag.lastTotalResetMs;
+        }
+        if (rg15Diag.lastRebootCommandMs != 0)
+        {
+            uart["last_reboot_command_ms"] = rg15Diag.lastRebootCommandMs;
+            uart["last_reboot_command_age_ms"] = millis() - rg15Diag.lastRebootCommandMs;
         }
         if (rg15Diag.lastStatusLine)
             uart["last_status_line"] = rg15Diag.lastStatusLine->c_str();

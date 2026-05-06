@@ -86,12 +86,15 @@ namespace SQM
             root["ageMs"] = reading.ageMs;
             root["status"] = static_cast<int>(reading.status);
             root["isRaining"] = reading.isRaining;
+            root["raining"] = reading.rainLatched;
             root["acc"] = reading.acc;
             root["eventAcc"] = reading.eventAcc;
             root["totalAcc"] = reading.totalAcc;
             root["rInt"] = reading.rInt;
             root["accumulation_since_last_read"] = reading.acc;
-            root["event_accumulation"] = reading.eventAcc;
+            root["event_accumulation"] = reading.localEventAcc;
+            root["local_event_accumulation"] = reading.localEventAcc;
+            root["hydreon_event_accumulation"] = reading.eventAcc;
             root["total_accumulation"] = reading.totalAcc;
             root["rain_intensity"] = reading.rInt;
             root["lensBad"] = reading.lensBad;
@@ -108,6 +111,11 @@ namespace SQM
             uart["resolution"] = diag.resolution;
             uart["units"] = diag.units;
             uart["debug_uart"] = diag.debugUart;
+            uart["poll_interval_ms"] = diag.pollIntervalMs;
+            uart["rain_clear_delay_ms"] = diag.rainClearDelayMs;
+            uart["daily_reset_enabled"] = diag.dailyResetEnabled;
+            uart["daily_reset_hour"] = diag.dailyResetHour;
+            uart["daily_reset_minute"] = diag.dailyResetMinute;
             appendOptionalString(uart, "last_command", diag.lastCommand);
             if (diag.lastCommandMs != 0)
                 uart["last_command_ms"] = static_cast<uint32_t>(diag.lastCommandMs);
@@ -139,6 +147,38 @@ namespace SQM
                 uart["last_health_check_age_ms"] = static_cast<uint32_t>(now - diag.lastHealthCheckMs);
             else
                 uart["last_health_check_age_ms"] = nullptr;
+            if (diag.lastPollMs != 0)
+                uart["last_poll_ms"] = static_cast<uint32_t>(diag.lastPollMs);
+            else
+                uart["last_poll_ms"] = nullptr;
+            if (diag.lastPollMs != 0)
+                uart["last_poll_age_ms"] = static_cast<uint32_t>(now - diag.lastPollMs);
+            else
+                uart["last_poll_age_ms"] = nullptr;
+            if (diag.lastRainDetectedMs != 0)
+                uart["last_rain_detected_ms"] = static_cast<uint32_t>(diag.lastRainDetectedMs);
+            else
+                uart["last_rain_detected_ms"] = nullptr;
+            if (diag.lastRainDetectedMs != 0)
+                uart["last_rain_detected_age_ms"] = static_cast<uint32_t>(now - diag.lastRainDetectedMs);
+            else
+                uart["last_rain_detected_age_ms"] = nullptr;
+            if (diag.lastTotalResetMs != 0)
+                uart["last_total_reset_ms"] = static_cast<uint32_t>(diag.lastTotalResetMs);
+            else
+                uart["last_total_reset_ms"] = nullptr;
+            if (diag.lastTotalResetMs != 0)
+                uart["last_total_reset_age_ms"] = static_cast<uint32_t>(now - diag.lastTotalResetMs);
+            else
+                uart["last_total_reset_age_ms"] = nullptr;
+            if (diag.lastRebootCommandMs != 0)
+                uart["last_reboot_command_ms"] = static_cast<uint32_t>(diag.lastRebootCommandMs);
+            else
+                uart["last_reboot_command_ms"] = nullptr;
+            if (diag.lastRebootCommandMs != 0)
+                uart["last_reboot_command_age_ms"] = static_cast<uint32_t>(now - diag.lastRebootCommandMs);
+            else
+                uart["last_reboot_command_age_ms"] = nullptr;
             appendOptionalString(uart, "last_status_line", diag.lastStatusLine);
             appendOptionalString(uart, "software_version", diag.softwareVersion);
             appendOptionalString(uart, "software_build_date", diag.softwareBuildDate);
@@ -389,6 +429,10 @@ namespace SQM
 
         server.on("/api/sensors/rg15/test", HTTP_POST, [this](AsyncWebServerRequest *request)
                   { handleRG15Test(request); });
+        server.on("/api/sensors/rg15/reset-total", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  { handleRG15ResetTotal(request); });
+        server.on("/api/sensors/rg15/reboot", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  { handleRG15Reboot(request); });
 
         // MQTT test endpoint
         AsyncCallbackJsonWebHandler *mqttTestHandler = new AsyncCallbackJsonWebHandler(
@@ -725,6 +769,38 @@ namespace SQM
         String responseStr;
         serializeJson(response, responseStr);
         request->send(ok && reading.status == SensorStatus::OK ? 200 : 400, "application/json", responseStr.c_str());
+    }
+
+    void WebServer::handleRG15ResetTotal(AsyncWebServerRequest *request)
+    {
+        if (!requireAuth(request))
+            return;
+
+        const bool ok = rg15Sensor.resetTotalAccumulation();
+        StaticJsonDocument<256> response;
+        response["ok"] = ok;
+        response["command"] = "O";
+        response["message"] = ok ? "RG-15 total accumulation reset command sent" : "RG-15 total accumulation reset failed";
+
+        String responseStr;
+        serializeJson(response, responseStr);
+        request->send(ok ? 200 : 400, "application/json", responseStr.c_str());
+    }
+
+    void WebServer::handleRG15Reboot(AsyncWebServerRequest *request)
+    {
+        if (!requireAuth(request))
+            return;
+
+        const bool ok = rg15Sensor.rebootSensor();
+        StaticJsonDocument<256> response;
+        response["ok"] = ok;
+        response["command"] = "K";
+        response["message"] = ok ? "RG-15 reboot command sent" : "RG-15 reboot command failed";
+
+        String responseStr;
+        serializeJson(response, responseStr);
+        request->send(ok ? 200 : 400, "application/json", responseStr.c_str());
     }
 
     void WebServer::pollWiFiConnect()

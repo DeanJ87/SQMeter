@@ -124,6 +124,8 @@ namespace SQM
         void handleRestart(AsyncWebServerRequest *request);
         void handleWiFiScan(AsyncWebServerRequest *request);
         void handleRG15Test(AsyncWebServerRequest *request);
+        void handleRG15ResetTotal(AsyncWebServerRequest *request);
+        void handleRG15Reboot(AsyncWebServerRequest *request);
         void handleMQTTTest(AsyncWebServerRequest *request, JsonVariant &json);
         void pollWiFiConnect();
 
