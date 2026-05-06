@@ -32,9 +32,14 @@ const defaultRainConfig: NonNullable<Config['rain']> = {
   txPin: 19,
   baudRate: 9600,
   debugUart: false,
-  mode: 'continuous',
-  resolution: 'switch',
+  mode: 'polling',
+  resolution: 'high',
   units: 'metric',
+  pollIntervalMs: 5000,
+  rainClearDelayMs: 15 * 60 * 1000,
+  dailyResetEnabled: false,
+  dailyResetHour: 0,
+  dailyResetMinute: 0,
 };
 
 const fieldErrorAliases: Record<string, string> = {
@@ -1048,16 +1053,29 @@ const Settings: FunctionalComponent = () => {
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-2">
-                    Mode
+                    Poll interval (seconds)
                   </label>
-                  <select
-                    value={config.rain.mode ?? 'continuous'}
-                    onChange={(e) => updateConfig(['rain', 'mode'], (e.target as HTMLSelectElement).value)}
+                  <input
+                    type="number"
+                    min="1"
+                    max="3600"
+                    value={Math.round((config.rain.pollIntervalMs ?? 5000) / 1000)}
+                    onChange={(e) => updateConfig(['rain', 'pollIntervalMs'], Math.max(1, parseInt((e.target as HTMLInputElement).value) || 5) * 1000)}
                     class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="polling">Polling</option>
-                    <option value="continuous">Continuous</option>
-                  </select>
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Raining clear delay (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1440"
+                    value={Math.round((config.rain.rainClearDelayMs ?? 900000) / 60000)}
+                    onChange={(e) => updateConfig(['rain', 'rainClearDelayMs'], Math.max(1, parseInt((e.target as HTMLInputElement).value) || 15) * 60000)}
+                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-2">
@@ -1098,6 +1116,43 @@ const Settings: FunctionalComponent = () => {
                     Enable RG-15 UART debug logging
                   </label>
                 </div>
+                <div class="md:col-span-3 flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={config.rain.dailyResetEnabled ?? false}
+                    onChange={(e) => updateConfig(['rain', 'dailyResetEnabled'], (e.target as HTMLInputElement).checked)}
+                    class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                  />
+                  <label class="ml-2 text-sm font-medium text-gray-300">
+                    Reset RG-15 total accumulation daily
+                  </label>
+                </div>
+                {config.rain.dailyResetEnabled && (
+                  <>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-300 mb-2">Reset hour</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="23"
+                        value={config.rain.dailyResetHour ?? 0}
+                        onChange={(e) => updateConfig(['rain', 'dailyResetHour'], parseInt((e.target as HTMLInputElement).value) || 0)}
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-300 mb-2">Reset minute</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={config.rain.dailyResetMinute ?? 0}
+                        onChange={(e) => updateConfig(['rain', 'dailyResetMinute'], parseInt((e.target as HTMLInputElement).value) || 0)}
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div class="pt-4 border-t border-gray-700 space-y-3">

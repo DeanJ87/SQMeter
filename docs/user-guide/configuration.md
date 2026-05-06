@@ -68,7 +68,12 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
     "debugUart": false,
     "mode": "polling",
     "resolution": "high",
-    "units": "metric"
+    "units": "metric",
+    "pollIntervalMs": 5000,
+    "rainClearDelayMs": 900000,
+    "dailyResetEnabled": false,
+    "dailyResetHour": 0,
+    "dailyResetMinute": 0
   },
 
   "sensor": {
@@ -185,9 +190,14 @@ The `auth.password` field is masked in `GET /api/config` responses. Send the mas
 | `txPin` | int | `19` | ESP32 TX pin (connects to RG-15 RX) |
 | `baudRate` | int | `9600` | RG-15 serial baud rate |
 | `debugUart` | bool | `false` | Log RG-15 UART command/response traffic |
-| `mode` | string | `"polling"` | `"polling"` or `"continuous"` |
+| `mode` | string | `"polling"` | Compatibility field; RG-15 communication is polling-only |
 | `resolution` | string | `"high"` | `"high"`, `"low"`, or `"switch"` |
 | `units` | string | `"metric"` | `"metric"`, `"imperial"`, or `"switch"` |
+| `pollIntervalMs` | int | `5000` | Interval between RG-15 `R` commands in polling mode |
+| `rainClearDelayMs` | int | `900000` | Local rain latch clear delay after intensity returns to zero |
+| `dailyResetEnabled` | bool | `false` | Reset RG-15 total accumulation once per day |
+| `dailyResetHour` | int | `0` | Local hour for scheduled total reset |
+| `dailyResetMinute` | int | `0` | Local minute for scheduled total reset |
 
 ### Sensor
 

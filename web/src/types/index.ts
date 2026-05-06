@@ -66,6 +66,11 @@ export interface RG15UartDiagnostics {
   resolution: string;
   units: string;
   debug_uart: boolean;
+  poll_interval_ms?: number;
+  rain_clear_delay_ms?: number;
+  daily_reset_enabled?: boolean;
+  daily_reset_hour?: number;
+  daily_reset_minute?: number;
   last_command?: string | null;
   last_command_ms?: number | null;
   last_bytes_written?: number;
@@ -82,6 +87,14 @@ export interface RG15UartDiagnostics {
   stale_timeout_ms: number;
   last_health_check_ms?: number | null;
   last_health_check_age_ms?: number | null;
+  last_poll_ms?: number | null;
+  last_poll_age_ms?: number | null;
+  last_rain_detected_ms?: number | null;
+  last_rain_detected_age_ms?: number | null;
+  last_total_reset_ms?: number | null;
+  last_total_reset_age_ms?: number | null;
+  last_reboot_command_ms?: number | null;
+  last_reboot_command_age_ms?: number | null;
   last_status_line?: string | null;
   software_version?: string | null;
   software_build_date?: string | null;
@@ -106,12 +119,15 @@ export interface RG15SensorDiagnostics {
   ageMs: number;
   status: number;
   isRaining: boolean;
+  raining?: boolean;
   acc: number;
   eventAcc: number;
   totalAcc: number;
   rInt: number;
   accumulation_since_last_read?: number;
   event_accumulation?: number;
+  local_event_accumulation?: number;
+  hydreon_event_accumulation?: number;
   total_accumulation?: number;
   rain_intensity?: number;
   lensBad: boolean;
@@ -218,12 +234,15 @@ export interface SystemStatus {
       timestamp?: number;
       ageMs?: number;
       isRaining?: boolean;
+      raining?: boolean;
       acc?: number;
       eventAcc?: number;
       totalAcc?: number;
       rInt?: number;
       accumulation_since_last_read?: number;
       event_accumulation?: number;
+      local_event_accumulation?: number;
+      hydreon_event_accumulation?: number;
       total_accumulation?: number;
       rain_intensity?: number;
       lensBad?: boolean;
@@ -321,12 +340,15 @@ export interface RainSensorReading {
   timestamp: number;
   ageMs: number;
   isRaining: boolean;
+  raining?: boolean;
   acc: number;
   eventAcc: number;
   totalAcc: number;
   rInt: number;
   accumulation_since_last_read?: number;
   event_accumulation?: number;
+  local_event_accumulation?: number;
+  hydreon_event_accumulation?: number;
   total_accumulation?: number;
   rain_intensity?: number;
   lensBad: boolean;
@@ -340,9 +362,14 @@ export interface RainSensorConfig {
   txPin: number;
   baudRate: number;
   debugUart: boolean;
-  mode: 'polling' | 'continuous';
+  mode: 'polling';
   resolution: 'high' | 'low' | 'switch';
   units: 'metric' | 'imperial' | 'switch';
+  pollIntervalMs: number;
+  rainClearDelayMs: number;
+  dailyResetEnabled: boolean;
+  dailyResetHour: number;
+  dailyResetMinute: number;
 }
 
 export interface WiFiNetwork {

@@ -233,6 +233,12 @@ const Dashboard: FunctionalComponent = () => {
 
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
             <div class="bg-gray-900 rounded p-3">
+              <div class="text-xs text-gray-500">Raining</div>
+              <div class="text-xl font-bold text-white">
+                {(rain.raining ?? rain.isRaining) ? 'Yes' : 'No'}
+              </div>
+            </div>
+            <div class="bg-gray-900 rounded p-3">
               <div class="text-xs text-gray-500">Rain intensity</div>
               <div class="text-xl font-bold text-white">
                 {rain.enabled ? formatNumber(rain.rain_intensity ?? rain.rInt, 1) : '--'} {rainUnits.intensity}
@@ -247,7 +253,7 @@ const Dashboard: FunctionalComponent = () => {
               <div class="text-lg font-semibold text-white">{rain.enabled ? formatNumber(rain.event_accumulation ?? rain.eventAcc, 2) : '--'} {rainUnits.depth}</div>
             </div>
             <div class="bg-gray-900 rounded p-3">
-              <div class="text-xs text-gray-500">Lifetime total</div>
+              <div class="text-xs text-gray-500">Daily total</div>
               <div class="text-lg font-semibold text-white">{rain.enabled ? formatNumber(rain.total_accumulation ?? rain.totalAcc, 2) : '--'} {rainUnits.depth}</div>
             </div>
           </div>

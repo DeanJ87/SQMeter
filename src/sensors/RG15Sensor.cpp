@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 
 namespace SQM
 {
@@ -172,9 +173,15 @@ namespace SQM
 
     RG15Sensor::RG15Sensor(uint8_t rxPin, uint8_t txPin, uint32_t baudRate,
                            const std::string &mode, const std::string &resolution,
-                           const std::string &units, bool enabled, bool debugUart)
+                           const std::string &units, bool enabled, bool debugUart,
+                           uint32_t pollIntervalMs, uint32_t rainClearDelayMs,
+                           bool dailyResetEnabled, uint8_t dailyResetHour,
+                           uint8_t dailyResetMinute)
         : enabledConfig(enabled), debugUart(debugUart), rxPin(rxPin), txPin(txPin),
           baudRate(baudRate), mode(mode), resolution(resolution), units(units),
+          pollIntervalMs(pollIntervalMs), rainClearDelayMs(rainClearDelayMs),
+          dailyResetEnabled(dailyResetEnabled), dailyResetHour(dailyResetHour),
+          dailyResetMinute(dailyResetMinute),
           serial(std::make_unique<HardwareSerial>(UART_NUM)), stateMutex(xSemaphoreCreateMutex())
     {
         diagnostics.rxPin = rxPin;
@@ -186,6 +193,11 @@ namespace SQM
         diagnostics.debugUart = debugUart;
         diagnostics.enabled = enabled;
         diagnostics.configured = enabled;
+        diagnostics.pollIntervalMs = pollIntervalMs;
+        diagnostics.rainClearDelayMs = rainClearDelayMs;
+        diagnostics.dailyResetEnabled = dailyResetEnabled;
+        diagnostics.dailyResetHour = dailyResetHour;
+        diagnostics.dailyResetMinute = dailyResetMinute;
         diagnostics.responseTimeoutMs = RESPONSE_TIMEOUT_MS;
         diagnostics.staleTimeoutMs = effectiveStaleTimeoutMs();
         diagnostics.uartPort = UART_NUM;
@@ -204,6 +216,11 @@ namespace SQM
         diagnostics.debugUart = debugUart;
         diagnostics.enabled = enabledConfig;
         diagnostics.configured = enabledConfig;
+        diagnostics.pollIntervalMs = pollIntervalMs;
+        diagnostics.rainClearDelayMs = rainClearDelayMs;
+        diagnostics.dailyResetEnabled = dailyResetEnabled;
+        diagnostics.dailyResetHour = dailyResetHour;
+        diagnostics.dailyResetMinute = dailyResetMinute;
         diagnostics.responseTimeoutMs = RESPONSE_TIMEOUT_MS;
         diagnostics.staleTimeoutMs = effectiveStaleTimeoutMs();
         diagnostics.uartPort = UART_NUM;
@@ -224,7 +241,7 @@ namespace SQM
 
     uint32_t RG15Sensor::effectiveStaleTimeoutMs() const
     {
-        return mode == "continuous" ? CONTINUOUS_STALE_TIMEOUT_MS : STALE_TIMEOUT_MS;
+        return STALE_TIMEOUT_MS;
     }
 
     bool RG15Sensor::start(bool probeImmediately)
@@ -303,22 +320,11 @@ namespace SQM
         }
         queryLineCommand('B', "Baud");
 
-        if (mode == "polling")
+        if (debugUart)
         {
-            if (debugUart)
-            {
-                Logger::info(TAG, "forcing polling mode: TX \"P\"");
-            }
-            sendCommand('P', "p");
+            Logger::info(TAG, "forcing polling mode: TX \"P\"");
         }
-        else if (mode == "continuous")
-        {
-            if (debugUart)
-            {
-                Logger::info(TAG, "forcing continuous mode: TX \"C\"");
-            }
-            sendCommand('C', "c");
-        }
+        sendCommand('P', "p");
 
         if (units == "metric")
         {
@@ -534,19 +540,18 @@ namespace SQM
         }
 
         const uint32_t now = millis();
-        bool gotCommunication = false;
-        if (mode == "polling")
+        maybeRunScheduledTotalReset(now);
+        if (reading.rainLatched && diagnostics.lastRainDetectedMs != 0 &&
+            now - diagnostics.lastRainDetectedMs > rainClearDelayMs)
         {
-            gotCommunication = pollReading();
+            reading.rainLatched = false;
+            reading.localEventAcc = 0.0f;
         }
-        else
+        bool gotCommunication = false;
+        if (diagnostics.lastPollMs == 0 || now - diagnostics.lastPollMs >= pollIntervalMs)
         {
-            gotCommunication = drainBuffer();
-            const uint32_t lastProbe = diagnostics.lastHealthCheckMs == 0 ? diagnostics.lastResponseMs : diagnostics.lastHealthCheckMs;
-            if (lastProbe == 0 || now - lastProbe >= CONTINUOUS_HEALTH_CHECK_MS)
-            {
-                gotCommunication = queryHealth() || gotCommunication;
-            }
+            diagnostics.lastPollMs = now;
+            gotCommunication = pollReading();
         }
 
         if (!gotCommunication)
@@ -558,15 +563,8 @@ namespace SQM
             {
                 reading.online = diagnostics.online;
                 reading.stale = enabledConfig;
-                if (mode == "polling")
-                {
-                    reading.status = SensorStatus::TIMEOUT;
-                    updateDiagnosticsState(RG15State::RG15_TIMEOUT);
-                }
-                else if (diagnostics.state != RG15State::RG15_PARSE_ERROR)
-                {
-                    updateDiagnosticsState(RG15State::RG15_CONFIGURED);
-                }
+                reading.status = SensorStatus::TIMEOUT;
+                updateDiagnosticsState(RG15State::RG15_TIMEOUT);
                 return;
             }
 
@@ -591,16 +589,6 @@ namespace SQM
                 reading.stale = false;
             }
         }
-    }
-
-    bool RG15Sensor::queryHealth()
-    {
-        if (debugUart)
-        {
-            Logger::info(TAG, "health query baud: TX \"B\"");
-        }
-        diagnostics.lastHealthCheckMs = millis();
-        return queryLineCommand('B', "Baud");
     }
 
     bool RG15Sensor::pollReading()
@@ -708,7 +696,7 @@ namespace SQM
         if (line.length() == 1)
         {
             const char c = line[0];
-            if (c == 'p' || c == 'c' || c == 'm' || c == 'i' || c == 'h' || c == 'l' || c == 's' || c == 'x' || c == 'y')
+            if (c == 'p' || c == 'c' || c == 'm' || c == 'i' || c == 'h' || c == 'l' || c == 's' || c == 'x' || c == 'y' || c == 'o')
             {
                 diagnostics.lastAck = line;
                 diagnostics.lastAckMs = diagnostics.lastResponseMs;
@@ -816,6 +804,7 @@ namespace SQM
         diagnostics.lastError.reset();
         diagnostics.successfulReads++;
         diagnostics.lastSuccessfulReadMs = reading.timestamp;
+        updateRainLatch(reading.timestamp);
         reading.online = true;
         reading.stale = false;
         reading.ageMs = 0;
@@ -984,6 +973,73 @@ namespace SQM
         return true;
     }
 
+    void RG15Sensor::updateRainLatch(uint32_t now)
+    {
+        const bool sawRain = reading.rInt > 0.0f || reading.acc > 0.0f;
+        if (sawRain)
+        {
+            if (!reading.rainLatched)
+            {
+                reading.localEventAcc = 0.0f;
+            }
+            reading.localEventAcc += reading.acc;
+            diagnostics.lastRainDetectedMs = now;
+            reading.rainLatched = true;
+            return;
+        }
+
+        if (diagnostics.lastRainDetectedMs == 0)
+        {
+            reading.rainLatched = false;
+            reading.localEventAcc = 0.0f;
+            return;
+        }
+
+        reading.rainLatched = (now - diagnostics.lastRainDetectedMs) <= rainClearDelayMs;
+        if (!reading.rainLatched)
+        {
+            reading.localEventAcc = 0.0f;
+        }
+    }
+
+    void RG15Sensor::maybeRunScheduledTotalReset(uint32_t now)
+    {
+        if (!dailyResetEnabled || !initialized || !serial)
+        {
+            return;
+        }
+
+        const time_t currentTime = time(nullptr);
+        if (currentTime < 1700000000)
+        {
+            return;
+        }
+
+        tm localTime{};
+        if (localtime_r(&currentTime, &localTime) == nullptr)
+        {
+            return;
+        }
+
+        if (localTime.tm_hour != dailyResetHour || localTime.tm_min != dailyResetMinute ||
+            localTime.tm_yday == diagnostics.lastDailyResetYearDay)
+        {
+            return;
+        }
+
+        if (debugUart)
+        {
+            Logger::info(TAG, "daily total reset: TX \"O\"");
+        }
+
+        diagnostics.lastDailyResetYearDay = localTime.tm_yday;
+        if (sendCommand('O'))
+        {
+            diagnostics.lastTotalResetMs = now;
+            reading.totalAcc = 0.0f;
+        }
+    }
+
     RG15Reading RG15Sensor::copyReading() const
     {
         MutexGuard guard(stateMutex);
@@ -1013,6 +1069,11 @@ namespace SQM
         snapshot.mode = mode;
         snapshot.resolution = resolution;
         snapshot.units = units;
+        snapshot.pollIntervalMs = pollIntervalMs;
+        snapshot.rainClearDelayMs = rainClearDelayMs;
+        snapshot.dailyResetEnabled = dailyResetEnabled;
+        snapshot.dailyResetHour = dailyResetHour;
+        snapshot.dailyResetMinute = dailyResetMinute;
         snapshot.staleTimeoutMs = effectiveStaleTimeoutMs();
 
         if (snapshot.lastCommandMs != 0 && snapshot.lastCommandMs <= now)
@@ -1055,12 +1116,15 @@ namespace SQM
         doc["ageMs"] = current.ageMs;
         doc["status"] = static_cast<int>(current.status);
         doc["isRaining"] = current.isRaining;
+        doc["raining"] = current.rainLatched;
         doc["acc"] = current.acc;
         doc["eventAcc"] = current.eventAcc;
         doc["totalAcc"] = current.totalAcc;
         doc["rInt"] = current.rInt;
         doc["accumulation_since_last_read"] = current.acc;
-        doc["event_accumulation"] = current.eventAcc;
+        doc["event_accumulation"] = current.localEventAcc;
+        doc["local_event_accumulation"] = current.localEventAcc;
+        doc["hydreon_event_accumulation"] = current.eventAcc;
         doc["total_accumulation"] = current.totalAcc;
         doc["rain_intensity"] = current.rInt;
         doc["lensBad"] = current.lensBad;
@@ -1077,6 +1141,11 @@ namespace SQM
         uart["resolution"] = diag.resolution;
         uart["units"] = diag.units;
         uart["debug_uart"] = diag.debugUart;
+        uart["poll_interval_ms"] = diag.pollIntervalMs;
+        uart["rain_clear_delay_ms"] = diag.rainClearDelayMs;
+        uart["daily_reset_enabled"] = diag.dailyResetEnabled;
+        uart["daily_reset_hour"] = diag.dailyResetHour;
+        uart["daily_reset_minute"] = diag.dailyResetMinute;
         if (diag.lastCommand)
             uart["last_command"] = diag.lastCommand->c_str();
         else
@@ -1119,6 +1188,38 @@ namespace SQM
             uart["last_health_check_ms"] = static_cast<uint32_t>(diag.lastHealthCheckMs);
         else
             uart["last_health_check_ms"] = nullptr;
+        if (diag.lastPollMs != 0)
+            uart["last_poll_ms"] = static_cast<uint32_t>(diag.lastPollMs);
+        else
+            uart["last_poll_ms"] = nullptr;
+        if (diag.lastPollMs != 0)
+            uart["last_poll_age_ms"] = static_cast<uint32_t>(now - diag.lastPollMs);
+        else
+            uart["last_poll_age_ms"] = nullptr;
+        if (diag.lastRainDetectedMs != 0)
+            uart["last_rain_detected_ms"] = static_cast<uint32_t>(diag.lastRainDetectedMs);
+        else
+            uart["last_rain_detected_ms"] = nullptr;
+        if (diag.lastRainDetectedMs != 0)
+            uart["last_rain_detected_age_ms"] = static_cast<uint32_t>(now - diag.lastRainDetectedMs);
+        else
+            uart["last_rain_detected_age_ms"] = nullptr;
+        if (diag.lastTotalResetMs != 0)
+            uart["last_total_reset_ms"] = static_cast<uint32_t>(diag.lastTotalResetMs);
+        else
+            uart["last_total_reset_ms"] = nullptr;
+        if (diag.lastTotalResetMs != 0)
+            uart["last_total_reset_age_ms"] = static_cast<uint32_t>(now - diag.lastTotalResetMs);
+        else
+            uart["last_total_reset_age_ms"] = nullptr;
+        if (diag.lastRebootCommandMs != 0)
+            uart["last_reboot_command_ms"] = static_cast<uint32_t>(diag.lastRebootCommandMs);
+        else
+            uart["last_reboot_command_ms"] = nullptr;
+        if (diag.lastRebootCommandMs != 0)
+            uart["last_reboot_command_age_ms"] = static_cast<uint32_t>(now - diag.lastRebootCommandMs);
+        else
+            uart["last_reboot_command_age_ms"] = nullptr;
         if (diag.lastStatusLine)
             uart["last_status_line"] = diag.lastStatusLine->c_str();
         else
@@ -1181,6 +1282,50 @@ namespace SQM
         return pollReading();
     }
 
+    bool RG15Sensor::resetTotalAccumulation()
+    {
+        MutexGuard guard(stateMutex);
+        if (!guard.isLocked() || !initialized || !serial)
+        {
+            return false;
+        }
+
+        if (debugUart)
+        {
+            Logger::info(TAG, "manual total reset: TX \"O\"");
+        }
+
+        const bool ok = sendCommand('O');
+        if (ok)
+        {
+            diagnostics.lastTotalResetMs = millis();
+            reading.totalAcc = 0.0f;
+        }
+        return ok;
+    }
+
+    bool RG15Sensor::rebootSensor()
+    {
+        MutexGuard guard(stateMutex);
+        if (!guard.isLocked() || !initialized || !serial)
+        {
+            return false;
+        }
+
+        if (debugUart)
+        {
+            Logger::info(TAG, "reboot sensor: TX \"K\"");
+        }
+
+        const bool ok = sendCommand('K');
+        diagnostics.lastRebootCommandMs = millis();
+        diagnostics.online = false;
+        reading.online = false;
+        reading.stale = true;
+        updateDiagnosticsState(RG15State::RG15_COMMAND_SENT);
+        return ok;
+    }
+
     void RG15Sensor::stop()
     {
         MutexGuard guard(stateMutex);
@@ -1208,7 +1353,10 @@ namespace SQM
 
     void RG15Sensor::reconfigure(uint8_t newRxPin, uint8_t newTxPin, uint32_t newBaudRate,
                                  const std::string &newMode, const std::string &newResolution,
-                                 const std::string &newUnits, bool newDebugUart)
+                                 const std::string &newUnits, bool newDebugUart,
+                                 uint32_t newPollIntervalMs, uint32_t newRainClearDelayMs,
+                                 bool newDailyResetEnabled, uint8_t newDailyResetHour,
+                                 uint8_t newDailyResetMinute)
     {
         stop();
 
@@ -1219,6 +1367,11 @@ namespace SQM
         resolution = newResolution;
         units = newUnits;
         debugUart = newDebugUart;
+        pollIntervalMs = newPollIntervalMs;
+        rainClearDelayMs = newRainClearDelayMs;
+        dailyResetEnabled = newDailyResetEnabled;
+        dailyResetHour = newDailyResetHour;
+        dailyResetMinute = newDailyResetMinute;
         enabledConfig = true;
 
         diagnostics.rxPin = rxPin;
@@ -1228,6 +1381,11 @@ namespace SQM
         diagnostics.resolution = resolution;
         diagnostics.units = units;
         diagnostics.debugUart = debugUart;
+        diagnostics.pollIntervalMs = pollIntervalMs;
+        diagnostics.rainClearDelayMs = rainClearDelayMs;
+        diagnostics.dailyResetEnabled = dailyResetEnabled;
+        diagnostics.dailyResetHour = dailyResetHour;
+        diagnostics.dailyResetMinute = dailyResetMinute;
 
         start(false);
     }
