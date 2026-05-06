@@ -73,6 +73,14 @@ namespace SQM
         std::optional<std::string> lastRawResponse;
         uint32_t lastResponseMs;
         std::optional<std::string> lastError;
+        std::optional<std::string> lastStatusLine;
+        std::optional<std::string> softwareVersion;
+        std::optional<std::string> softwareBuildDate;
+        std::optional<std::string> resetReason;
+        std::optional<float> powerOnDays;
+        std::optional<int> emitter1;
+        std::optional<int> emitter2;
+        std::optional<int> emitterTotal;
         uint32_t lastSuccessfulReadMs;
         uint32_t timeouts;
         uint32_t parseErrors;
@@ -86,6 +94,9 @@ namespace SQM
               uartPort(1), mode("polling"), resolution("high"), units("metric"), lastCommand(std::nullopt),
               lastCommandMs(0), lastBytesWritten(0), expectedAck(std::nullopt), lastAck(std::nullopt),
               lastAckMs(0), lastRawResponse(std::nullopt), lastResponseMs(0), lastError(std::nullopt),
+              lastStatusLine(std::nullopt), softwareVersion(std::nullopt), softwareBuildDate(std::nullopt),
+              resetReason(std::nullopt), powerOnDays(std::nullopt), emitter1(std::nullopt),
+              emitter2(std::nullopt), emitterTotal(std::nullopt),
               lastSuccessfulReadMs(0), timeouts(0), parseErrors(0), successfulReads(0),
               responseTimeoutMs(500), staleTimeoutMs(30000)
         {
@@ -125,6 +136,7 @@ namespace SQM
         static constexpr uint32_t UART_NUM = 1;
         static constexpr uint32_t RESPONSE_TIMEOUT_MS = 1500;
         static constexpr uint32_t STALE_TIMEOUT_MS = 30000;
+        static constexpr uint32_t CONTINUOUS_STALE_TIMEOUT_MS = 75UL * 60UL * 1000UL;
         static constexpr size_t LINE_BUFFER_SIZE = 128;
         static constexpr uint32_t ACK_QUIET_PERIOD_MS = 20;
 
@@ -145,6 +157,7 @@ namespace SQM
         void resetSessionState();
         void updateDiagnosticsState(RG15State state);
         void markCommunicationOk();
+        uint32_t effectiveStaleTimeoutMs() const;
         static const char *stateToString(RG15State state);
         bool start(bool probeImmediately);
         void applyConfig();

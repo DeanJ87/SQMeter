@@ -24,6 +24,12 @@ const Dashboard: FunctionalComponent = () => {
 
   const formatNumber = (value: number | undefined, digits: number) =>
     typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '--';
+  const formatAgeMs = (value: number | null | undefined) => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return '--';
+    if (value < 1000) return `${value} ms`;
+    if (value < 60000) return `${(value / 1000).toFixed(1)} s`;
+    return `${Math.floor(value / 60000)}m ${Math.floor((value % 60000) / 1000)}s`;
+  };
 
   const rainUnits = config?.rain?.units === 'imperial'
     ? { depth: 'in', intensity: 'in/hr' }
@@ -212,74 +218,128 @@ const Dashboard: FunctionalComponent = () => {
       {/* Rain Sensor */}
       {rain && (
         <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-white flex items-center">
+          <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div>
+              <h3 class="text-lg font-semibold text-white flex items-center">
               <span class="mr-2">🌧️</span>
               Rain Sensor
-            </h3>
+              </h3>
+              <p class="text-xs text-gray-400 mt-1">
+                Initialised only means UART opened. Online requires a valid RG-15 response.
+              </p>
+            </div>
             <span class={`px-3 py-1 rounded-full text-sm font-semibold ${rainStatus.color}`}>
               {rainStatus.text}
             </span>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 text-xs text-gray-400">
-            <div>UART opened: <span class="text-white">{rain.initialized ? 'Yes' : 'No'}</span></div>
-            <div>RX/TX: <span class="text-white">{rain.uart?.rx_pin ?? '--'} / {rain.uart?.tx_pin ?? '--'}</span></div>
-            <div>Baud: <span class="text-white">{rain.uart?.baud_rate ?? '--'}</span></div>
-          </div>
-          <div class="text-sm text-yellow-300 mb-3">
-            Initialised only means the UART was opened. Online requires a valid response from the RG-15.
-          </div>
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Intensity (RInt)</span>
-              <span class="text-xl font-bold text-white">
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            <div class="bg-gray-900 rounded p-3">
+              <div class="text-xs text-gray-500">RInt</div>
+              <div class="text-xl font-bold text-white">
                 {rain.enabled ? formatNumber(rain.rInt, 1) : '--'} {rainUnits.intensity}
-              </span>
+              </div>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Since last read (Acc)</span>
-              <span class="text-white">{rain.enabled ? formatNumber(rain.acc, 2) : '--'} {rainUnits.depth}</span>
+            <div class="bg-gray-900 rounded p-3">
+              <div class="text-xs text-gray-500">Acc</div>
+              <div class="text-lg font-semibold text-white">{rain.enabled ? formatNumber(rain.acc, 2) : '--'} {rainUnits.depth}</div>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Event total (EventAcc)</span>
-              <span class="text-white">{rain.enabled ? formatNumber(rain.eventAcc, 2) : '--'} {rainUnits.depth}</span>
+            <div class="bg-gray-900 rounded p-3">
+              <div class="text-xs text-gray-500">EventAcc</div>
+              <div class="text-lg font-semibold text-white">{rain.enabled ? formatNumber(rain.eventAcc, 2) : '--'} {rainUnits.depth}</div>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">All-time total (TotalAcc)</span>
-              <span class="text-white">{rain.enabled ? formatNumber(rain.totalAcc, 1) : '--'} {rainUnits.depth}</span>
+            <div class="bg-gray-900 rounded p-3">
+              <div class="text-xs text-gray-500">TotalAcc</div>
+              <div class="text-lg font-semibold text-white">{rain.enabled ? formatNumber(rain.totalAcc, 2) : '--'} {rainUnits.depth}</div>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Last response age</span>
-              <span class="text-white">{rain.uart?.last_response_age_ms ?? '--'} ms</span>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
+            <div class="space-y-2">
+              <h4 class="text-xs uppercase tracking-wide text-gray-500">UART</h4>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                <span class="text-gray-400">Opened</span>
+                <span class="text-white">{rain.initialized ? 'Yes' : 'No'}</span>
+                <span class="text-gray-400">RX / TX</span>
+                <span class="text-white">{rain.uart?.rx_pin ?? '--'} / {rain.uart?.tx_pin ?? '--'}</span>
+                <span class="text-gray-400">Baud</span>
+                <span class="text-white">{rain.uart?.baud_rate ?? '--'}</span>
+                <span class="text-gray-400">Mode</span>
+                <span class="text-white capitalize">{rain.uart?.mode ?? '--'}</span>
+                <span class="text-gray-400">Debug logs</span>
+                <span class="text-white">{rain.uart?.debug_uart ? 'On' : 'Off'}</span>
+                <span class="text-gray-400">Stale after</span>
+                <span class="text-white">{formatAgeMs(rain.uart?.stale_timeout_ms)}</span>
+              </div>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Last command</span>
-              <span class="text-white font-mono">{rain.uart?.last_command ?? '--'}</span>
+
+            <div class="space-y-2">
+              <h4 class="text-xs uppercase tracking-wide text-gray-500">Device</h4>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                <span class="text-gray-400">SW version</span>
+                <span class="text-white font-mono">{rain.uart?.software_version ?? '--'}</span>
+                <span class="text-gray-400">SW build</span>
+                <span class="text-white font-mono">{rain.uart?.software_build_date ?? '--'}</span>
+                <span class="text-gray-400">Power days</span>
+                <span class="text-white">{formatNumber(rain.uart?.power_on_days ?? undefined, 1)}</span>
+                <span class="text-gray-400">Reset</span>
+                <span class="text-white font-mono">{rain.uart?.reset_reason ?? '--'}</span>
+                <span class="text-gray-400">Emitters</span>
+                <span class="text-white">
+                  {rain.uart?.emitter_1 ?? '--'} / {rain.uart?.emitter_2 ?? '--'}
+                  {rain.uart?.emitter_total != null ? ` (${rain.uart.emitter_total})` : ''}
+                </span>
+              </div>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Last raw response</span>
-              <span class="text-white font-mono text-xs text-right break-all">
-                {rain.uart?.last_raw_response ?? '--'}
-              </span>
+
+            <div class="space-y-2">
+              <h4 class="text-xs uppercase tracking-wide text-gray-500">Latest traffic</h4>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                <span class="text-gray-400">Command</span>
+                <span class="text-white font-mono">{rain.uart?.last_command ?? '--'}</span>
+                <span class="text-gray-400">Ack</span>
+                <span class="text-white font-mono">{rain.uart?.last_ack ?? '--'}</span>
+                <span class="text-gray-400">Response age</span>
+                <span class="text-white">{formatAgeMs(rain.uart?.last_response_age_ms)}</span>
+                <span class="text-gray-400">Read age</span>
+                <span class="text-white">{formatAgeMs(rain.uart?.last_successful_read_age_ms)}</span>
+              </div>
+              <div>
+                <div class="text-gray-400 mb-1">Raw response</div>
+                <div class="bg-black bg-opacity-30 rounded p-2 text-white font-mono text-xs break-all">
+                  {rain.uart?.last_raw_response ?? '--'}
+                </div>
+              </div>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Last error</span>
-              <span class="text-white font-mono text-xs text-right break-all">
-                {rain.uart?.last_error ?? '--'}
-              </span>
+
+            <div class="space-y-2">
+              <h4 class="text-xs uppercase tracking-wide text-gray-500">Counters</h4>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                <span class="text-gray-400">Successful reads</span>
+                <span class="text-white">{rain.uart?.successful_reads ?? 0}</span>
+                <span class="text-gray-400">Timeouts</span>
+                <span class="text-white">{rain.uart?.timeouts ?? 0}</span>
+                <span class="text-gray-400">Parse errors</span>
+                <span class="text-white">{rain.uart?.parse_errors ?? 0}</span>
+                <span class="text-gray-400">Last error</span>
+                <span class="text-white font-mono text-xs break-all">{rain.uart?.last_error ?? '--'}</span>
+              </div>
+              {rain.uart?.last_status_line && (
+                <div>
+                  <div class="text-gray-400 mb-1">Last status line</div>
+                  <div class="bg-black bg-opacity-30 rounded p-2 text-white font-mono text-xs break-all">
+                    {rain.uart.last_status_line}
+                  </div>
+                </div>
+              )}
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Successful reads</span>
-              <span class="text-white">{rain.uart?.successful_reads ?? 0}</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Timeouts</span>
-              <span class="text-white">{rain.uart?.timeouts ?? 0}</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Parse errors</span>
-              <span class="text-white">{rain.uart?.parse_errors ?? 0}</span>
-            </div>
+          </div>
+
+          <div class="mt-4 text-xs text-gray-500">
+            In continuous mode the RG-15 only sends a new reading when accumulation changes. EventAcc resets about 60 minutes after the last detected drop.
+          </div>
+
+          <div class="mt-3">
             {(rain.lensBad || rain.emSat) && (
               <div class="pt-2 border-t border-gray-700 space-y-1">
                 {rain.lensBad && (

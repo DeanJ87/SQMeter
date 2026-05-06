@@ -80,6 +80,14 @@ export interface RG15UartDiagnostics {
   successful_reads: number;
   response_timeout_ms: number;
   stale_timeout_ms: number;
+  last_status_line?: string | null;
+  software_version?: string | null;
+  software_build_date?: string | null;
+  reset_reason?: string | null;
+  power_on_days?: number | null;
+  emitter_1?: number | null;
+  emitter_2?: number | null;
+  emitter_total?: number | null;
   last_response_age_ms?: number | null;
   last_successful_read_ms?: number | null;
   last_successful_read_age_ms?: number | null;
