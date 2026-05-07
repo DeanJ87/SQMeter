@@ -3,6 +3,57 @@ import { useState } from 'preact/hooks';
 import { getTimezoneFriendlyName } from '../utils/timezone';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { SystemStatus } from '../types';
+import { Card, Pill, ProgressMeter, ReadingRow } from './ui';
+
+const formatUptime = (seconds: number): string => {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return days > 0 ? `${days}d ${hours}h ${minutes}m` : `${hours}h ${minutes}m`;
+};
+
+const formatBytes = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(2)} KB`;
+  return `${(bytes / 1048576).toFixed(2)} MB`;
+};
+
+const formatAgeMs = (value: number | null | undefined): string => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '--';
+  if (value < 1000) return `${value} ms`;
+  if (value < 60000) return `${(value / 1000).toFixed(1)} s`;
+  return `${Math.floor(value / 60000)}m ${Math.floor((value % 60000) / 1000)}s`;
+};
+
+const formatShortAgeMs = (value: number | null | undefined): string => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > 86400000) return '--';
+  return formatAgeMs(value);
+};
+
+const sensorBadge = (status: number): { text: string; tone: string } => {
+  switch (status) {
+    case 0: return { text: 'OK', tone: 'pill-green' };
+    case 1: return { text: 'Not initialized', tone: 'pill-amber' };
+    case 2: return { text: 'Error', tone: 'pill-red' };
+    case 3: return { text: 'Timeout', tone: 'pill-amber' };
+    case 4: return { text: 'Invalid data', tone: 'pill-red' };
+    default: return { text: 'Unknown', tone: 'pill-dim' };
+  }
+};
+
+const InfoRow: FunctionalComponent<{ label: string; value: string; tone?: string }> = ({ label, value, tone = '' }) => (
+  <ReadingRow label={label} value={value} valueClass={tone} />
+);
+
+const SensorRow: FunctionalComponent<{ name: string; status: number }> = ({ name, status }) => {
+  const badge = sensorBadge(status);
+  return (
+    <div class="reading-row">
+      <span class="reading-label">{name}</span>
+      <Pill tone={badge.tone}>{badge.text}</Pill>
+    </div>
+  );
+};
 
 const System: FunctionalComponent = () => {
   const { data: status, connected } = useWebSocket<SystemStatus>('/ws/status');
@@ -10,12 +61,9 @@ const System: FunctionalComponent = () => {
 
   if (!connected || !status) {
     return (
-      <div class="flex items-center justify-center min-h-[60vh]">
-        <div class="text-center">
-          <div class="text-6xl mb-4">⏳</div>
-          <h2 class="text-2xl font-bold text-white mb-2">Loading...</h2>
-          <p class="text-gray-400">Connecting to device...</p>
-        </div>
+      <div class="empty-state">
+        <h2>Loading...</h2>
+        <p>Connecting to device...</p>
       </div>
     );
   }
@@ -26,7 +74,7 @@ const System: FunctionalComponent = () => {
     try {
       await fetch('/api/restart', { method: 'POST' });
       alert('Device is restarting...');
-    } catch (error) {
+    } catch {
       alert('Failed to restart device');
     }
   };
@@ -45,652 +93,206 @@ const System: FunctionalComponent = () => {
     }
   };
 
-  const formatUptime = (seconds: number): string => {
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${days}d ${hours}h ${minutes}m ${secs}s`;
-  };
-
-  const formatBytes = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1048576) return `${(bytes / 1024).toFixed(2)} KB`;
-    return `${(bytes / 1048576).toFixed(2)} MB`;
-  };
-
-  const formatAgeMs = (value: number | null | undefined): string => {
-    if (typeof value !== 'number' || !Number.isFinite(value)) return '--';
-    if (value < 1000) return `${value} ms`;
-    if (value < 60000) return `${(value / 1000).toFixed(1)} s`;
-    return `${Math.floor(value / 60000)}m ${Math.floor((value % 60000) / 1000)}s`;
-  };
-
-  const getSensorStatusBadge = (status: number): { text: string; color: string } => {
-    switch (status) {
-      case 0: return { text: 'OK', color: 'bg-green-900 text-green-200' };
-      case 1: return { text: 'Not Initialized', color: 'bg-yellow-900 text-yellow-200' };
-      case 2: return { text: 'Error', color: 'bg-red-900 text-red-200' };
-      case 3: return { text: 'Timeout', color: 'bg-orange-900 text-orange-200' };
-      case 4: return { text: 'Invalid Data', color: 'bg-red-900 text-red-200' };
-      default: return { text: 'Unknown', color: 'bg-gray-900 text-gray-200' };
-    }
-  };
-
-  const heapUsedPercent = ((status.heapSize - status.freeHeap) / status.heapSize) * 100;
+  const heapUsedPercent = status.heapSize > 0 ? ((status.heapSize - status.freeHeap) / status.heapSize) * 100 : 0;
+  const flashUsedPercent = status.flashSize > 0 ? (status.sketchSize / status.flashSize) * 100 : 0;
+  const fsUsedPercent = status.fsTotal > 0 ? (status.fsUsed / status.fsTotal) * 100 : 0;
+  const rg15 = status.sensors.rg15;
 
   return (
-    <div class="max-w-4xl mx-auto space-y-6">
-      <h1 class="text-3xl font-bold text-white mb-6">System Information</h1>
-
-      {/* Firmware Info */}
+    <div class="panel-page system-page page-enter">
       {status.firmware && (
-        <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h2 class="text-xl font-semibold text-white mb-4">Firmware</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <div class="text-sm text-gray-400 mb-1">Name</div>
-              <div class="text-lg font-semibold text-white">
-                {status.firmware.name}
-              </div>
-            </div>
-            <div>
-              <div class="text-sm text-gray-400 mb-1">Version</div>
-              <div class="text-lg font-semibold text-white">
-                v{status.firmware.version}
-              </div>
-            </div>
-            <div class="md:col-span-2">
-              <div class="text-sm text-gray-400 mb-1">Build Date</div>
-              <div class="text-lg font-semibold text-white font-mono">
-                {status.firmware.buildDate} {status.firmware.buildTime}
-              </div>
-            </div>
+        <Card title="Firmware" icon="cpu" tone="cyan">
+          <div class="system-row-grid">
+            <InfoRow label="Name" value={status.firmware.name} />
+            <InfoRow label="Version" value={`v${status.firmware.version}`} tone="tone-cyan" />
+            <InfoRow label="Build" value={`${status.firmware.buildDate} ${status.firmware.buildTime}`} />
           </div>
-        </section>
+        </Card>
       )}
 
-      {/* System Status */}
-      <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <h2 class="text-xl font-semibold text-white mb-4">Status</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <div class="text-sm text-gray-400 mb-1">Uptime</div>
-            <div class="text-lg font-semibold text-white">
-              {formatUptime(status.uptime)}
-            </div>
+      <Card title="Runtime Status" icon="cpu" tone="violet">
+        <div class="system-row-grid">
+          <InfoRow label="Uptime" value={formatUptime(status.uptime)} />
+          <InfoRow label="CPU Frequency" value={`${status.cpuFreqMHz} MHz`} />
+          <div class="system-metric">
+            <InfoRow label="Free Heap" value={`${formatBytes(status.freeHeap)} / ${formatBytes(status.heapSize)}`} />
+            <ProgressMeter value={100 - heapUsedPercent} />
+          </div>
+          <div class="system-metric">
+            <InfoRow label="Flash" value={`${formatBytes(status.sketchSize)} / ${formatBytes(status.flashSize)}`} />
+            <ProgressMeter value={flashUsedPercent} />
+          </div>
+          <div class="system-metric">
+            <InfoRow label="Filesystem" value={`${formatBytes(status.fsUsed)} / ${formatBytes(status.fsTotal)}`} />
+            <ProgressMeter value={fsUsedPercent} />
           </div>
           <div>
-            <div class="text-sm text-gray-400 mb-1">
-              Current Time
+            <div class="reading-row">
+              <span class="reading-label">Current Time</span>
               {status.ntp && status.ntp.activeSource > 0 && (
-                <span class={`ml-2 px-2 py-0.5 rounded text-xs font-semibold ${
-                  status.ntp.activeSource === 1 ? 'bg-blue-900 text-blue-200' : 'bg-green-900 text-green-200'
-                }`}>
-                  {status.ntp.activeSource === 1 ? '📡 NTP' : '📍 GPS'}
-                </span>
+                <Pill tone="pill-green">{status.ntp.activeSource === 1 ? 'NTP' : 'GPS'}</Pill>
               )}
             </div>
-            <div class="text-lg font-semibold text-white font-mono">
-              {status.time.iso}
-            </div>
-            <div class="text-xs text-gray-500 mt-1">
-              {getTimezoneFriendlyName(status.time.timezone)}
-            </div>
-          </div>
-          <div>
-            <div class="text-sm text-gray-400 mb-1">CPU Frequency</div>
-            <div class="text-lg font-semibold text-white">
-              {status.cpuFreqMHz} MHz
-            </div>
-          </div>
-          <div>
-            <div class="text-sm text-gray-400 mb-1">Memory (Heap)</div>
-            <div class="text-lg font-semibold text-white">
-              {formatBytes(status.freeHeap)} / {formatBytes(status.heapSize)}
-            </div>
-            <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
-              <div
-                class="bg-blue-600 h-2 rounded-full transition-all"
-                style={{ width: `${100 - heapUsedPercent}%` }}
-              />
-            </div>
-          </div>
-          <div>
-            <div class="text-sm text-gray-400 mb-1">Flash (Program)</div>
-            <div class="text-lg font-semibold text-white">
-              {formatBytes(status.sketchSize)} / {formatBytes(status.flashSize)}
-            </div>
-            <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
-              <div
-                class="bg-green-600 h-2 rounded-full transition-all"
-                style={{ width: `${(status.sketchSize / status.flashSize) * 100}%` }}
-              />
-            </div>
-            <div class="text-xs text-gray-500 mt-1">
-              Running: {status.partitions?.runningSlot || 'Unknown'} • Free: {formatBytes(status.freeSketchSpace || 0)}
-            </div>
-          </div>
-          <div>
-            <div class="text-sm text-gray-400 mb-1">Filesystem (LittleFS)</div>
-            <div class="text-lg font-semibold text-white">
-              {formatBytes(status.fsUsed)} / {formatBytes(status.fsTotal)}
-            </div>
-            <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
-              <div
-                class="bg-purple-600 h-2 rounded-full transition-all"
-                style={{ width: `${(status.fsUsed / status.fsTotal) * 100}%` }}
-              />
-            </div>
-            <div class="text-xs text-gray-500 mt-1">
-              Partition Size: {formatBytes(status.partitions?.fsSize || status.fsTotal)}
-            </div>
+            <strong class="system-time">{status.time.iso}</strong>
+            <p class="system-subtle">{getTimezoneFriendlyName(status.time.timezone)}</p>
           </div>
         </div>
-      </section>
+      </Card>
 
-      {/* Partition Details */}
-      {status.partitions && (
-        <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h2 class="text-xl font-semibold text-white mb-4">Flash Partitions</h2>
-          <div class="space-y-4">
-            {/* OTA Partitions */}
-            <div class="bg-gray-900 rounded-lg p-4">
-              <h3 class="text-sm font-semibold text-gray-300 mb-3">OTA (Over-The-Air Update)</h3>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <div class="text-xs text-gray-500">Current Slot</div>
-                  <div class="text-white font-mono text-sm">{status.partitions.runningSlot}</div>
-                  <div class="text-xs text-gray-500 mt-1">{formatBytes(status.partitions.runningSize)}</div>
-                </div>
-                <div>
-                  <div class="text-xs text-gray-500">Next Update Slot</div>
-                  <div class="text-white font-mono text-sm">{status.partitions.nextSlot}</div>
-                  <div class="text-xs text-gray-500 mt-1">{formatBytes(status.partitions.nextSize)}</div>
-                </div>
-              </div>
-              <div class="text-xs text-gray-400 mt-2">
-                ℹ️ Firmware alternates between app0 and app1 partitions for safe updates
-              </div>
-            </div>
+      <Card title="Sensors" icon="eye" tone="green">
+        <div class="system-list">
+          <SensorRow name="TSL2591 Light Sensor" status={status.sensors.tsl2591.status} />
+          <SensorRow name="BME280 Environment" status={status.sensors.bme280.status} />
+          <SensorRow name="MLX90614 IR Temperature" status={status.sensors.mlx90614.status} />
+          <SensorRow name="GPS Module" status={status.sensors.gps.status} />
+          {rg15 && <SensorRow name="RG-15 Rain Sensor" status={rg15.status} />}
+        </div>
+      </Card>
 
-            {/* NVS Partition */}
-            {status.partitions.nvs && (
-              <div class="bg-gray-900 rounded-lg p-4">
-                <h3 class="text-sm font-semibold text-gray-300 mb-3">NVS (Non-Volatile Storage)</h3>
-                <div class="grid grid-cols-3 gap-4">
-                  <div>
-                    <div class="text-xs text-gray-500">Used Entries</div>
-                    <div class="text-white font-semibold">{status.partitions.nvs.usedEntries}</div>
-                  </div>
-                  <div>
-                    <div class="text-xs text-gray-500">Free Entries</div>
-                    <div class="text-white font-semibold">{status.partitions.nvs.freeEntries}</div>
-                  </div>
-                  <div>
-                    <div class="text-xs text-gray-500">Namespaces</div>
-                    <div class="text-white font-semibold">{status.partitions.nvs.namespaceCount}</div>
-                  </div>
-                </div>
-                <div class="w-full bg-gray-700 rounded-full h-2 mt-3">
-                  <div
-                    class="bg-yellow-600 h-2 rounded-full transition-all"
-                    style={{ width: `${(status.partitions.nvs.usedEntries / status.partitions.nvs.totalEntries) * 100}%` }}
-                  />
-                </div>
-                <div class="text-xs text-gray-400 mt-2">
-                  📝 Stores configuration, WiFi credentials, and settings
-                </div>
-              </div>
-            )}
+      {rg15 && (
+        <Card title="RG-15 Diagnostics" icon="rain" tone="cyan">
+          <div class="system-actions">
+            <button
+              type="button"
+              disabled={rg15Action.loading}
+              onClick={() => runRg15Action('/api/sensors/rg15/reset-total', 'RG-15 total reset command sent')}
+              class="bg-blue-600"
+            >
+              Reset total
+            </button>
+            <button
+              type="button"
+              disabled={rg15Action.loading}
+              onClick={() => runRg15Action('/api/sensors/rg15/reboot', 'RG-15 reboot command sent')}
+              class="bg-amber-600"
+            >
+              Reboot RG-15
+            </button>
           </div>
-        </section>
+          {rg15Action.message && <p class="system-message">{rg15Action.message}</p>}
+
+          <div class="system-diagnostic-grid">
+            <InfoRow label="Online" value={rg15.online ? 'Yes' : 'No'} tone={rg15.online ? 'tone-green' : 'tone-red'} />
+            <InfoRow label="Raining" value={(rg15.raining ?? rg15.isRaining) ? 'Yes' : 'No'} />
+            <InfoRow label="Rain intensity" value={String(rg15.rain_intensity ?? rg15.rInt ?? '--')} />
+            <InfoRow label="Since last read" value={String(rg15.accumulation_since_last_read ?? rg15.acc ?? '--')} />
+            <InfoRow label="Event total" value={String(rg15.event_accumulation ?? rg15.eventAcc ?? '--')} />
+            <InfoRow label="RX / TX" value={`${rg15.uart?.rx_pin ?? '--'} / ${rg15.uart?.tx_pin ?? '--'}`} />
+            <InfoRow label="Baud rate" value={String(rg15.uart?.baud_rate ?? '--')} />
+            <InfoRow label="Successful reads" value={String(rg15.uart?.successful_reads ?? 0)} />
+            <InfoRow label="Timeouts" value={String(rg15.uart?.timeouts ?? 0)} />
+            <InfoRow label="Parse errors" value={String(rg15.uart?.parse_errors ?? 0)} />
+            <InfoRow label="Last response age" value={formatAgeMs(rg15.uart?.last_response_age_ms)} />
+            <InfoRow label="Health probe age" value={formatAgeMs(rg15.uart?.last_health_check_age_ms)} />
+          </div>
+
+          <div class="system-log-row">
+            <span>Last command / response / error</span>
+            <strong>{rg15.uart?.last_command ?? '--'}</strong>
+            <em>{rg15.uart?.last_raw_response ?? '--'}</em>
+            <em>{rg15.uart?.last_error ?? '--'}</em>
+          </div>
+        </Card>
       )}
 
-      {/* NTP Status */}
-      {status.ntp && (
-        <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h2 class="text-xl font-semibold text-white mb-4">Network Time (NTP)</h2>
-          {status.ntp.enabled ? (
-            <div class="space-y-3">
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">Sync Status</span>
-                <span class={`px-3 py-1 rounded-full text-sm font-semibold ${
-                  status.ntp.synced ? 'bg-green-900 text-green-200' : 
-                  status.ntp.status === 1 ? 'bg-yellow-900 text-yellow-200' :
-                  'bg-red-900 text-red-200'
-                }`}>
-                  {status.ntp.synced ? '✓ Synced' : 
-                   status.ntp.status === 1 ? '⏳ Syncing...' :
-                   status.ntp.status === 3 ? '✗ Failed' : '○ Not Synced'}
-                </span>
-              </div>
-              {status.ntp.synced && (
-                <>
-                  <div class="flex justify-between items-center">
-                    <span class="text-gray-400">Last Sync</span>
-                    <span class="text-white font-medium">
-                      {status.ntp.lastSync > 0 ? `${Math.floor((status.uptime * 1000 - status.ntp.lastSync) / 1000)}s ago` : 'Never'}
-                    </span>
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-gray-400">Next Sync</span>
-                    <span class="text-white font-medium">
-                      {status.ntp.nextSync > 0 ? `in ${Math.floor(status.ntp.nextSync / 1000)}s` : 'Calculating...'}
-                    </span>
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-gray-400">Clock Drift</span>
-                    <span class="text-white font-medium">
-                      {status.ntp.drift}s
-                    </span>
-                  </div>
-                </>
-              )}
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">NTP Server</span>
-                <span class="text-white font-mono text-sm">{status.ntp.server}</span>
-              </div>
-            </div>
-          ) : (
-            <div class="text-gray-400">NTP is disabled. Enable in Settings to sync time automatically.</div>
-          )}
-        </section>
-      )}
-
-      {/* GPS Time Status */}
-      {status.ntp && status.ntp.gpsEnabled && (
-        <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h2 class="text-xl font-semibold text-white mb-4">GPS Time</h2>
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Status</span>
-              <span class={`px-3 py-1 rounded-full text-sm font-semibold ${
-                status.ntp.gpsHasFix ? 'bg-green-900 text-green-200' : 'bg-yellow-900 text-yellow-200'
-              }`}>
-                {status.ntp.gpsHasFix ? '✓ Fix Acquired' : '⏳ Searching...'}
-              </span>
-            </div>
-            
-            {/* GPS UTC TIME - PROMINENT DISPLAY */}
-            {status.ntp.gpsHasFix && status.ntp.gpsTimeUTC && (
-              <div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
-                <div class="text-sm text-gray-400 mb-1">GPS Time (UTC)</div>
-                <div class="text-2xl font-bold text-white font-mono">
-                  {status.ntp.gpsTimeUTC}
-                </div>
-              </div>
-            )}
-            
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Satellites</span>
-              <span class="text-white font-medium">
-                {status.ntp.gpsSatellites || 0}
-              </span>
-            </div>
-            
-            {status.ntp.gpsHasFix && status.gpsData && (
+      {status.partitions && (
+        <Card title="Flash Partitions" icon="upload" tone="cyan">
+          <div class="system-row-grid">
+            <InfoRow label="Current Slot" value={status.partitions.runningSlot} />
+            <InfoRow label="Next Update Slot" value={status.partitions.nextSlot} />
+            <InfoRow label="OTA Slot Size" value={formatBytes(status.partitions.runningSize)} />
+            {status.partitions.nvs && (
               <>
-                <div class="flex justify-between items-center">
-                  <span class="text-gray-400">Time Update Age</span>
-                  <span class="text-white font-medium">
-                    {(status.gpsData.age / 1000).toFixed(1)}s
-                  </span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-gray-400">Location Accuracy (HDOP)</span>
-                  <span class="text-white font-medium">
-                    {status.gpsData.hdop.toFixed(1)}
-                  </span>
-                </div>
+                <InfoRow label="NVS Used" value={String(status.partitions.nvs.usedEntries)} />
+                <InfoRow label="NVS Free" value={String(status.partitions.nvs.freeEntries)} />
+                <InfoRow label="Namespaces" value={String(status.partitions.nvs.namespaceCount)} />
               </>
             )}
           </div>
-        </section>
+        </Card>
       )}
 
-      {/* MQTT Status */}
-      {status.mqtt && (
-        <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h2 class="text-xl font-semibold text-white mb-4">MQTT</h2>
-          {status.mqtt.enabled ? (
-            <div class="space-y-3">
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">Connection Status</span>
-                <span class={`px-3 py-1 rounded-full text-sm font-semibold ${
-                  status.mqtt.connected ? 'bg-green-900 text-green-200' : 
-                  status.mqtt.lastReconnectAttempt > 0 && (status.uptime * 1000 - status.mqtt.lastReconnectAttempt) < 5000 ? 'bg-yellow-900 text-yellow-200' :
-                  'bg-red-900 text-red-200'
-                }`}>
-                  {status.mqtt.connected ? '✓ Connected' : 
-                   status.mqtt.lastReconnectAttempt > 0 && (status.uptime * 1000 - status.mqtt.lastReconnectAttempt) < 5000 ? '🔄 Reconnecting...' :
-                   '✗ Disconnected'}
-                </span>
-              </div>
-              {!status.mqtt.connected && (
-                <>
-                  <div class="flex justify-between items-center">
-                    <span class="text-gray-400">State Code</span>
-                    <span class="text-white font-mono">
-                      {status.mqtt.state === -4 ? '-4 (Timeout)' :
-                       status.mqtt.state === -3 ? '-3 (Connection Lost)' :
-                       status.mqtt.state === -2 ? '-2 (Connect Failed)' :
-                       status.mqtt.state === -1 ? '-1 (Disconnected)' :
-                       status.mqtt.state === 1 ? '1 (Bad Protocol)' :
-                       status.mqtt.state === 2 ? '2 (Bad Client ID)' :
-                       status.mqtt.state === 3 ? '3 (Unavailable)' :
-                       status.mqtt.state === 4 ? '4 (Bad Credentials)' :
-                       status.mqtt.state === 5 ? '5 (Unauthorized)' :
-                       status.mqtt.state}
-                    </span>
-                  </div>
-                  <div class="flex justify-between items-center">
-                    <span class="text-gray-400">Last Reconnect Attempt</span>
-                    <span class="text-white font-medium">
-                      {status.mqtt.lastReconnectAttempt > 0 
-                        ? `${Math.floor((status.uptime * 1000 - status.mqtt.lastReconnectAttempt) / 1000)}s ago` 
-                        : 'Never'}
-                    </span>
-                  </div>
-                </>
-              )}
-              {status.mqtt.connected && (
-                <div class="flex justify-between items-center">
-                  <span class="text-gray-400">Last Publish</span>
-                  <span class="text-white font-medium">
-                    {status.mqtt.lastPublish > 0 
-                      ? `${Math.floor((status.uptime * 1000 - status.mqtt.lastPublish) / 1000)}s ago` 
-                      : 'No data published yet'}
-                  </span>
-                </div>
-              )}
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">Broker</span>
-                <span class="text-white font-mono text-sm">{status.mqtt.broker}:{status.mqtt.port}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">Topic</span>
-                <span class="text-white font-mono text-sm">{status.mqtt.topic}</span>
-              </div>
+      {status.ntp && (
+        <Card title="Network Time (NTP)" icon="gps" tone="green">
+          {status.ntp.enabled ? (
+            <div class="system-list">
+              <InfoRow label="Status" value={status.ntp.synced ? 'Synced' : status.ntp.status === 1 ? 'Syncing' : 'Not synced'} tone={status.ntp.synced ? 'tone-green' : 'tone-amber'} />
+              <InfoRow label="Server" value={status.ntp.server} />
+              <InfoRow label="Last Sync Age" value={formatShortAgeMs(status.ntp.lastSync)} />
+              <InfoRow label="Next Sync" value={formatShortAgeMs(status.ntp.nextSync)} />
+              <InfoRow label="Clock Drift" value={`${status.ntp.drift}s`} />
             </div>
           ) : (
-            <div class="text-gray-400">MQTT is disabled. Enable in Settings to publish sensor data.</div>
+            <p class="system-subtle">NTP is disabled.</p>
           )}
-        </section>
+        </Card>
       )}
 
-      {/* Sensor Status */}
-      <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <h2 class="text-xl font-semibold text-white mb-4">Sensors</h2>
-        <div class="space-y-3">
-          <div class="flex justify-between items-center">
-            <div>
-              <span class="text-white font-medium">TSL2591 (Light Sensor)</span>
-              <div class="text-xs text-gray-500">
-                {status.sensors.tsl2591.initialized ? '✓ Initialized' : '✗ Not Initialized'} • Last update: {status.sensors.tsl2591.lastUpdate}ms
-              </div>
-            </div>
-            <span class={`px-3 py-1 rounded-full text-sm font-semibold ${getSensorStatusBadge(status.sensors.tsl2591.status).color}`}>
-              {getSensorStatusBadge(status.sensors.tsl2591.status).text}
-            </span>
+      {status.ntp && status.ntp.gpsEnabled && (
+        <Card title="GPS Time" icon="gps" tone="green">
+          <div class="system-list">
+            <InfoRow label="Status" value={status.ntp.gpsHasFix ? 'Lock acquired' : 'Searching'} tone={status.ntp.gpsHasFix ? 'tone-green' : 'tone-amber'} />
+            {status.ntp.gpsHasFix && status.ntp.gpsTimeUTC && (
+              <InfoRow label="GPS Time (UTC)" value={status.ntp.gpsTimeUTC} tone="tone-cyan" />
+            )}
+            <InfoRow label="Satellites" value={String(status.ntp.gpsSatellites || 0)} />
+            {status.gpsData && (
+              <InfoRow label="HDOP" value={status.gpsData.hdop.toFixed(1)} />
+            )}
           </div>
-          <div class="flex justify-between items-center">
-            <div>
-              <span class="text-white font-medium">BME280 (Environment)</span>
-              <div class="text-xs text-gray-500">
-                {status.sensors.bme280.initialized ? '✓ Initialized' : '✗ Not Initialized'} • Last update: {status.sensors.bme280.lastUpdate}ms
-              </div>
-            </div>
-            <span class={`px-3 py-1 rounded-full text-sm font-semibold ${getSensorStatusBadge(status.sensors.bme280.status).color}`}>
-              {getSensorStatusBadge(status.sensors.bme280.status).text}
-            </span>
-          </div>
-          <div class="flex justify-between items-center">
-            <div>
-              <span class="text-white font-medium">MLX90614 (IR Temperature)</span>
-              <div class="text-xs text-gray-500">
-                {status.sensors.mlx90614.initialized ? '✓ Initialized' : '✗ Not Initialized'} • Last update: {status.sensors.mlx90614.lastUpdate}ms
-              </div>
-            </div>
-            <span class={`px-3 py-1 rounded-full text-sm font-semibold ${getSensorStatusBadge(status.sensors.mlx90614.status).color}`}>
-              {getSensorStatusBadge(status.sensors.mlx90614.status).text}
-            </span>
-          </div>
-          <div class="flex justify-between items-center">
-            <div>
-              <span class="text-white font-medium">GPS Module (Ublox Neo-6M)</span>
-              <div class="text-xs text-gray-500">
-                {status.sensors.gps.initialized ? '✓ Initialized' : '✗ Not Initialized'} • Last update: {status.sensors.gps.lastUpdate}ms
-              </div>
-            </div>
-            <span class={`px-3 py-1 rounded-full text-sm font-semibold ${getSensorStatusBadge(status.sensors.gps.status).color}`}>
-              {getSensorStatusBadge(status.sensors.gps.status).text}
-            </span>
-          </div>
-          {status.sensors.rg15 && (
-            <div class="space-y-3 rounded-lg border border-gray-700 bg-gray-900 p-4">
-              <div class="flex justify-between items-center gap-3">
-                <div>
-                  <span class="text-white font-medium">RG-15 (Rain Sensor)</span>
-                  <div class="text-xs text-gray-500">
-                    UART opened: {status.sensors.rg15.initialized ? 'Yes' : 'No'} • Online: {status.sensors.rg15.online ? 'Yes' : 'No'} • Raining: {(status.sensors.rg15.raining ?? status.sensors.rg15.isRaining) ? 'Yes' : 'No'} • Stale: {status.sensors.rg15.stale ? 'Yes' : 'No'}
-                  </div>
-                  <div class="text-xs text-gray-500">
-                    State: {status.sensors.rg15.state} • Last update: {status.sensors.rg15.lastUpdate}ms
-                  </div>
-                </div>
-                <span class={`px-3 py-1 rounded-full text-sm font-semibold ${getSensorStatusBadge(status.sensors.rg15.status).color}`}>
-                  {getSensorStatusBadge(status.sensors.rg15.status).text}
-                </span>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={rg15Action.loading}
-                  onClick={() => runRg15Action('/api/sensors/rg15/reset-total', 'RG-15 total reset command sent')}
-                  class="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white text-sm font-semibold rounded transition-colors"
-                >
-                  Reset total
-                </button>
-                <button
-                  type="button"
-                  disabled={rg15Action.loading}
-                  onClick={() => runRg15Action('/api/sensors/rg15/reboot', 'RG-15 reboot command sent')}
-                  class="px-3 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-600 text-white text-sm font-semibold rounded transition-colors"
-                >
-                  Reboot RG-15
-                </button>
-                {rg15Action.message && (
-                  <span class="text-sm text-gray-300 self-center">{rg15Action.message}</span>
-                )}
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                <div class="bg-gray-800 rounded p-3">
-                  <div class="text-xs text-gray-500">Raining</div>
-                  <div class="text-white font-mono">{(status.sensors.rg15.raining ?? status.sensors.rg15.isRaining) ? 'Yes' : 'No'}</div>
-                  <div class="text-xs text-gray-400 font-mono mt-1">Clear delay: {formatAgeMs(status.sensors.rg15.uart?.rain_clear_delay_ms)}</div>
-                </div>
-                <div class="bg-gray-800 rounded p-3">
-                  <div class="text-xs text-gray-500">Rain intensity</div>
-                  <div class="text-white font-mono">{status.sensors.rg15.rain_intensity ?? status.sensors.rg15.rInt ?? '--'}</div>
-                </div>
-                <div class="bg-gray-800 rounded p-3">
-                  <div class="text-xs text-gray-500">Since last read</div>
-                  <div class="text-white font-mono">{status.sensors.rg15.accumulation_since_last_read ?? status.sensors.rg15.acc ?? '--'}</div>
-                </div>
-                <div class="bg-gray-800 rounded p-3">
-                  <div class="text-xs text-gray-500">Event total</div>
-                  <div class="text-white font-mono">{status.sensors.rg15.event_accumulation ?? status.sensors.rg15.eventAcc ?? '--'}</div>
-                </div>
-                <div class="bg-gray-800 rounded p-3">
-                  <div class="text-xs text-gray-500">RX / TX</div>
-                  <div class="text-white font-mono">{status.sensors.rg15.uart?.rx_pin ?? '--'} / {status.sensors.rg15.uart?.tx_pin ?? '--'}</div>
-                </div>
-                <div class="bg-gray-800 rounded p-3">
-                  <div class="text-xs text-gray-500">Baud rate</div>
-                  <div class="text-white font-mono">{status.sensors.rg15.uart?.baud_rate ?? '--'}</div>
-                </div>
-                <div class="bg-gray-800 rounded p-3">
-                  <div class="text-xs text-gray-500">Last response age</div>
-                  <div class="text-white font-mono">{formatAgeMs(status.sensors.rg15.uart?.last_response_age_ms)}</div>
-                </div>
-                <div class="bg-gray-800 rounded p-3">
-                  <div class="text-xs text-gray-500">Health probe age</div>
-                  <div class="text-white font-mono">{formatAgeMs(status.sensors.rg15.uart?.last_health_check_age_ms)}</div>
-                </div>
-                {(status.sensors.rg15.uart?.software_version || status.sensors.rg15.uart?.software_build_date) && (
-                  <div class="bg-gray-800 rounded p-3">
-                    <div class="text-xs text-gray-500">SW version</div>
-                    <div class="text-white font-mono">{status.sensors.rg15.uart?.software_version ?? '--'}</div>
-                    <div class="text-xs text-gray-400 font-mono mt-1">{status.sensors.rg15.uart?.software_build_date ?? '--'}</div>
-                  </div>
-                )}
-                {(status.sensors.rg15.uart?.power_on_days != null || status.sensors.rg15.uart?.reset_reason || status.sensors.rg15.uart?.last_total_reset_age_ms != null) && (
-                  <div class="bg-gray-800 rounded p-3">
-                    <div class="text-xs text-gray-500">Power / reset</div>
-                    {status.sensors.rg15.uart?.power_on_days != null && (
-                      <div class="text-white font-mono">{status.sensors.rg15.uart.power_on_days} days</div>
-                    )}
-                    {status.sensors.rg15.uart?.reset_reason && (
-                      <div class="text-xs text-gray-400 font-mono mt-1">Reset: {status.sensors.rg15.uart.reset_reason}</div>
-                    )}
-                    {status.sensors.rg15.uart?.last_total_reset_age_ms != null && (
-                      <div class="text-xs text-gray-400 font-mono mt-1">Daily total reset: {formatAgeMs(status.sensors.rg15.uart.last_total_reset_age_ms)}</div>
-                    )}
-                  </div>
-                )}
-                {(status.sensors.rg15.uart?.emitter_1 != null || status.sensors.rg15.uart?.emitter_2 != null || status.sensors.rg15.uart?.emitter_total != null) && (
-                  <div class="bg-gray-800 rounded p-3">
-                    <div class="text-xs text-gray-500">Emitters</div>
-                    <div class="text-white font-mono">
-                      {status.sensors.rg15.uart?.emitter_1 ?? '--'} / {status.sensors.rg15.uart?.emitter_2 ?? '--'}
-                      {status.sensors.rg15.uart?.emitter_total != null ? ` (${status.sensors.rg15.uart.emitter_total})` : ''}
-                    </div>
-                  </div>
-                )}
-                <div class="bg-gray-800 rounded p-3 md:col-span-3">
-                  <div class="text-xs text-gray-500">Last command / response / error</div>
-                  <div class="text-white font-mono break-all">{status.sensors.rg15.uart?.last_command ?? '--'}</div>
-                  <div class="text-xs text-gray-400 font-mono break-all mt-1">{status.sensors.rg15.uart?.last_raw_response ?? '--'}</div>
-                  <div class="text-xs text-yellow-300 font-mono break-all mt-1">{status.sensors.rg15.uart?.last_error ?? '--'}</div>
-                </div>
-                <div class="bg-gray-800 rounded p-3 md:col-span-3">
-                  <div class="text-xs text-gray-500">Last status line</div>
-                  <div class="text-white font-mono break-all">{status.sensors.rg15.uart?.last_status_line ?? '--'}</div>
-                </div>
-                <div class="bg-gray-800 rounded p-3">
-                  <div class="text-xs text-gray-500">Successful reads</div>
-                  <div class="text-white font-mono">{status.sensors.rg15.uart?.successful_reads ?? 0}</div>
-                </div>
-                <div class="bg-gray-800 rounded p-3">
-                  <div class="text-xs text-gray-500">Timeouts</div>
-                  <div class="text-white font-mono">{status.sensors.rg15.uart?.timeouts ?? 0}</div>
-                </div>
-                <div class="bg-gray-800 rounded p-3">
-                  <div class="text-xs text-gray-500">Parse errors</div>
-                  <div class="text-white font-mono">{status.sensors.rg15.uart?.parse_errors ?? 0}</div>
-                </div>
-              </div>
-              <div class="text-xs text-yellow-300">
-                Initialised only means the UART was opened. Online requires a valid response from the RG-15.
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
+        </Card>
+      )}
 
-      {/* GPS Data */}
+      {status.mqtt && (
+        <Card title="MQTT" icon="wifi" tone="cyan">
+          {status.mqtt.enabled ? (
+            <div class="system-list">
+              <InfoRow label="Status" value={status.mqtt.connected ? 'Connected' : 'Disconnected'} tone={status.mqtt.connected ? 'tone-green' : 'tone-red'} />
+              <InfoRow label="Broker" value={`${status.mqtt.broker}:${status.mqtt.port}`} />
+              <InfoRow label="Topic" value={status.mqtt.topic} />
+            </div>
+          ) : (
+            <p class="system-subtle">MQTT is disabled.</p>
+          )}
+        </Card>
+      )}
+
       {status.gpsData && status.sensors.gps.initialized && (
-        <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h2 class="text-xl font-semibold text-white mb-4">GPS Location</h2>
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">GPS Fix</span>
-              <span class={`px-3 py-1 rounded-full text-sm font-semibold ${
-                status.gpsData.hasFix ? 'bg-green-900 text-green-200' : 'bg-yellow-900 text-yellow-200'
-              }`}>
-                {status.gpsData.hasFix ? '✓ Lock Acquired' : '⏳ Searching...'}
-              </span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Satellites</span>
-              <span class="text-white font-medium">{status.gpsData.satellites}</span>
-            </div>
+        <Card title="GPS Location" icon="gps" tone="green">
+          <div class="system-list">
+            <InfoRow label="Fix" value={status.gpsData.hasFix ? 'Lock acquired' : 'Searching'} tone={status.gpsData.hasFix ? 'tone-green' : 'tone-amber'} />
+            <InfoRow label="Satellites" value={String(status.gpsData.satellites)} />
             {status.gpsData.hasFix && (
               <>
-                <div class="flex justify-between items-center">
-                  <span class="text-gray-400">Latitude</span>
-                  <span class="text-white font-mono">{status.gpsData.latitude.toFixed(6)}°</span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-gray-400">Longitude</span>
-                  <span class="text-white font-mono">{status.gpsData.longitude.toFixed(6)}°</span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-gray-400">Altitude</span>
-                  <span class="text-white font-medium">{status.gpsData.altitude.toFixed(1)} m</span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-gray-400">HDOP (Accuracy)</span>
-                  <span class="text-white font-medium">{status.gpsData.hdop.toFixed(2)}</span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-gray-400">Fix Age</span>
-                  <span class="text-white font-medium">{(status.gpsData.age / 1000).toFixed(1)}s</span>
-                </div>
+                <InfoRow label="Latitude" value={`${status.gpsData.latitude.toFixed(6)} deg`} />
+                <InfoRow label="Longitude" value={`${status.gpsData.longitude.toFixed(6)} deg`} />
+                <InfoRow label="Altitude" value={`${status.gpsData.altitude.toFixed(1)} m`} />
+                <InfoRow label="Fix Age" value={formatAgeMs(status.gpsData.age)} />
               </>
             )}
           </div>
-        </section>
+        </Card>
       )}
 
-      {/* WiFi Status */}
-      <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <h2 class="text-xl font-semibold text-white mb-4">WiFi</h2>
-        <div class="space-y-3">
-          <div class="flex justify-between items-center">
-            <span class="text-gray-400">Status</span>
-            <span class={`px-3 py-1 rounded-full text-sm font-semibold ${
-              status.wifi.connected ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'
-            }`}>
-              {status.wifi.connected ? 'Connected' : 'Disconnected'}
-            </span>
-          </div>
+      <Card title="WiFi" icon="wifi" tone="cyan">
+        <div class="system-list">
+          <InfoRow label="Status" value={status.wifi.connected ? 'Connected' : 'Disconnected'} tone={status.wifi.connected ? 'tone-green' : 'tone-red'} />
           {status.wifi.connected && (
             <>
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">SSID</span>
-                <span class="text-white font-medium">{status.wifi.ssid}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">IP Address</span>
-                <span class="text-white font-mono">{status.wifi.ip}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">Signal Strength</span>
-                <span class="text-white font-medium">{status.wifi.rssi} dBm</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">MAC Address</span>
-                <span class="text-white font-mono text-sm">{status.wifi.mac}</span>
-              </div>
+              <InfoRow label="SSID" value={status.wifi.ssid} />
+              <InfoRow label="IP Address" value={status.wifi.ip} tone="tone-cyan" />
+              <InfoRow label="Signal" value={`${status.wifi.rssi} dBm`} />
+              <InfoRow label="MAC Address" value={status.wifi.mac} />
             </>
           )}
         </div>
-      </section>
+      </Card>
 
-      {/* System Actions */}
-      <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <h2 class="text-xl font-semibold text-white mb-4">Actions</h2>
-        <div class="space-y-3">
-          <button
-            onClick={handleRestart}
-            class="w-full px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
-          >
-            Restart Device
-          </button>
-        </div>
-      </section>
+      <Card title="Actions" icon="cpu" tone="red">
+        <button onClick={handleRestart} class="bg-red-600 system-wide-button">
+          Restart Device
+        </button>
+      </Card>
     </div>
   );
 };

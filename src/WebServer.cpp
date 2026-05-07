@@ -22,6 +22,8 @@ namespace SQM
 {
     namespace
     {
+        constexpr size_t CONFIG_JSON_BUFFER_SIZE = 4096;
+
         esp_timer_handle_t restartTimer = nullptr;
 
         void restartTimerCallback(void *)
@@ -415,7 +417,8 @@ namespace SQM
                 {
                     request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
                 }
-            });
+            },
+            CONFIG_JSON_BUFFER_SIZE);
         configHandler->setMethod(HTTP_POST | HTTP_PUT);
         server.addHandler(configHandler);
 
