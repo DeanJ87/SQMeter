@@ -112,6 +112,24 @@ export const sensorConfigSchema = z
     path: ["i2cSDA"],
   });
 
+export const skyAveragingConfigSchema = z.object({
+  windowSeconds: z
+    .number()
+    .int()
+    .min(10, "Sky averaging window must be at least 10 seconds")
+    .max(300, "Sky averaging window cannot exceed 300 seconds"),
+});
+
+export const skyCalibrationConfigSchema = z.object({
+  enabled: z.boolean(),
+  sqmOffset: z.number().min(-5, "SQM offset is too low").max(5, "SQM offset is too high"),
+  darkVisibleOffset: z.number().min(0, "Dark visible offset cannot be negative"),
+  darkFullOffset: z.number().min(0, "Dark full offset cannot be negative"),
+  darkIrOffset: z.number().min(0, "Dark IR offset cannot be negative"),
+  darkSampleCount: z.number().int().min(0),
+  darkCalibratedAt: z.number().int().min(0),
+});
+
 export const rainSensorConfigSchema = z
   .object({
     enabled: z.boolean(),
@@ -156,6 +174,8 @@ export const configSchema = z.object({
   auth: authConfigSchema,
   ntp: ntpConfigSchema,
   sensor: sensorConfigSchema,
+  skyAveraging: skyAveragingConfigSchema.optional(),
+  skyCalibration: skyCalibrationConfigSchema.optional(),
   timezone: z.string(),
   rain: rainSensorConfigSchema.optional(),
 });

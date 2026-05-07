@@ -315,6 +315,20 @@ export interface SensorConfig {
   i2cFrequency: number;
 }
 
+export interface SkyAveragingConfig {
+  windowSeconds: number;
+}
+
+export interface SkyCalibrationConfig {
+  enabled: boolean;
+  sqmOffset: number;
+  darkVisibleOffset: number;
+  darkFullOffset: number;
+  darkIrOffset: number;
+  darkSampleCount: number;
+  darkCalibratedAt: number;
+}
+
 export interface Config {
   deviceName: string;
   timezone: string;
@@ -327,6 +341,8 @@ export interface Config {
   ntp: NTPConfig;
   gps: GPSConfig;
   sensor: SensorConfig;
+  skyAveraging?: SkyAveragingConfig;
+  skyCalibration?: SkyCalibrationConfig;
   rain?: RainSensorConfig;
 }
 

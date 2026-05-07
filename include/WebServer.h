@@ -68,6 +68,7 @@ namespace SQM
         struct SensorSnapshot
         {
             TSL2591Reading tsl;
+            TSL2591Diagnostics tslDiagnostics;
             BME280Reading bme;
             MLX90614Reading mlx;
             GPSReading gps;
@@ -124,6 +125,7 @@ namespace SQM
         void handleRestart(AsyncWebServerRequest *request);
         void handleWiFiScan(AsyncWebServerRequest *request);
         void handleRG15Test(AsyncWebServerRequest *request);
+        void handleTSL2591DarkCalibration(AsyncWebServerRequest *request);
         void handleRG15ResetTotal(AsyncWebServerRequest *request);
         void handleRG15Reboot(AsyncWebServerRequest *request);
         void handleMQTTTest(AsyncWebServerRequest *request, JsonVariant &json);

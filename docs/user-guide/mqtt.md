@@ -39,10 +39,19 @@ Published to `{topic}` every `publishIntervalMs` milliseconds:
   "light": {
     "lux": 0.0234,
     "visible": 123,
-    "infrared": 45
+    "infrared": 45,
+    "full": 168,
+    "gain": "MAX",
+    "gainFactor": 9876,
+    "integrationMs": 600,
+    "averagingWindowSeconds": 90,
+    "calibrated": true,
+    "saturated": false
   },
   "sky": {
     "sqm": 21.5,
+    "rawSqm": 21.42,
+    "calibratedSqm": 21.5,
     "nelm": 6.2,
     "bortle": 2.0
   },

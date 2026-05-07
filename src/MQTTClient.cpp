@@ -207,7 +207,7 @@ namespace SQM
 
     std::string MQTTClient::createPayload(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15)
     {
-        StaticJsonDocument<3072> doc;
+        DynamicJsonDocument doc(3584);
 
         // Timestamp
         const time_t epochSeconds = time(nullptr);
@@ -217,15 +217,25 @@ namespace SQM
 
         // TSL2591 data
         const auto &tslReading = tsl.getReading();
+        const auto tslDiagnostics = tsl.getDiagnostics();
         JsonObject light = doc.createNestedObject("light");
         light["lux"] = tslReading.lux;
         light["visible"] = tslReading.visible;
         light["infrared"] = tslReading.infrared;
+        light["full"] = tslReading.full;
+        light["gain"] = tslDiagnostics.gainName;
+        light["gainFactor"] = tslDiagnostics.gainFactor;
+        light["integrationMs"] = tslDiagnostics.integrationMs;
+        light["averagingWindowSeconds"] = tslDiagnostics.averagingWindowSeconds;
+        light["calibrated"] = tslDiagnostics.calibrated;
+        light["saturated"] = tslDiagnostics.saturated;
 
         // Sky quality
         SkyQualityMetrics sqm = SkyQuality::calculate(tslReading.lux);
         JsonObject sky = doc.createNestedObject("sky");
         sky["sqm"] = sqm.sqm;
+        sky["rawSqm"] = tslReading.rawSqm;
+        sky["calibratedSqm"] = tslReading.calibratedSqm;
         sky["nelm"] = sqm.nelm;
         sky["bortle"] = sqm.bortle;
 

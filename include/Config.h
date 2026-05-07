@@ -92,6 +92,22 @@ namespace SQM
         uint32_t i2cFrequency;
     };
 
+    struct SkyAveragingConfig
+    {
+        uint16_t windowSeconds;
+    };
+
+    struct SkyCalibrationConfig
+    {
+        bool enabled;
+        float sqmOffset;
+        float darkVisibleOffset;
+        float darkFullOffset;
+        float darkIrOffset;
+        uint32_t darkSampleCount;
+        int64_t darkCalibratedAt;
+    };
+
     struct Config
     {
         WiFiConfig wifi;
@@ -102,13 +118,15 @@ namespace SQM
         GPSConfig gps;
         RainConfig rain;
         SensorConfig sensor;
+        SkyAveragingConfig skyAveraging;
+        SkyCalibrationConfig skyCalibration;
         std::string deviceName;
         std::string timezone;
         TimeSource primaryTimeSource;   // Primary time source
         TimeSource secondaryTimeSource; // Fallback time source
 
         static constexpr const char *TAG = "Config";
-        static constexpr size_t MAX_PERSISTED_JSON_BYTES = 3800;
+        static constexpr size_t MAX_PERSISTED_JSON_BYTES = 4600;
 
         static std::optional<Config> load();
         bool save() const;

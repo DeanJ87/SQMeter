@@ -81,6 +81,20 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
     "i2cSDA": 21,
     "i2cSCL": 22,
     "i2cFrequency": 100000
+  },
+
+  "skyAveraging": {
+    "windowSeconds": 90
+  },
+
+  "skyCalibration": {
+    "enabled": false,
+    "sqmOffset": 0,
+    "darkVisibleOffset": 0,
+    "darkFullOffset": 0,
+    "darkIrOffset": 0,
+    "darkSampleCount": 0,
+    "darkCalibratedAt": 0
   }
 }
 ```
@@ -207,6 +221,28 @@ The `auth.password` field is masked in `GET /api/config` responses. Send the mas
 | `i2cSDA` | int | `21` | SDA GPIO pin |
 | `i2cSCL` | int | `22` | SCL GPIO pin |
 | `i2cFrequency` | int | `100000` | I2C clock speed (Hz) |
+
+The TSL2591 light sensor is sampled separately at approximately 600 ms cadence so dark-sky rolling averages are not limited by `readIntervalMs`.
+
+### Sky Averaging
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `windowSeconds` | int | `90` | Rolling raw-count averaging window for night SQM readings. Valid range is 10-300 seconds. |
+
+### Sky Calibration
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Apply `sqmOffset` to the rolling SQM result |
+| `sqmOffset` | float | `0` | Absolute SQM correction after comparison with a reference SQM/SQM-L |
+| `darkVisibleOffset` | float | `0` | Saved dark visible-count floor subtracted before lux/SQM conversion |
+| `darkFullOffset` | float | `0` | Reserved dark full-channel statistic |
+| `darkIrOffset` | float | `0` | Reserved dark IR-channel statistic |
+| `darkSampleCount` | int | `0` | Number of rolling samples used when dark calibration was stored |
+| `darkCalibratedAt` | int | `0` | Epoch timestamp when available, otherwise device milliseconds |
+
+To set the dark floor, cover the lens/baffle aperture with an opaque cap, wait for `skyAveraging.windowSeconds`, then call `POST /api/sensors/tsl2591/calibrate-dark`.
 
 ---
 
