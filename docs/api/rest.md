@@ -124,16 +124,33 @@ curl http://sqm-esp32.local/api/sensors
 {
   "lightSensor": {
     "lux": 0.0234,
+    "rawLux": 0.0231,
     "visible": 123,
     "infrared": 45,
     "full": 168,
+    "gainName": "MAX",
+    "gainFactor": 9876,
+    "integrationMs": 600,
+    "averagingWindowSeconds": 90,
+    "calibrated": true,
+    "saturated": false,
     "status": 0
   },
   "skyQuality": {
     "sqm": 21.5,
+    "rawSqm": 21.42,
+    "calibratedSqm": 21.5,
     "nelm": 6.2,
     "bortle": 2.0,
-    "description": "Typical truly dark site"
+    "description": "Typical truly dark site",
+    "nightMode": true
+  },
+  "lightDiagnostics": {
+    "rollingVisible": 123.4,
+    "correctedVisible": 121.9,
+    "darkVisibleOffset": 1.5,
+    "sampleCount": 138,
+    "rejectedSamples": 0
   },
   "environment": {
     "temperature": 12.4,
@@ -203,6 +220,23 @@ curl http://sqm-esp32.local/api/sensors
       "successful_reads": 42
     }
   }
+}
+```
+
+### `POST /api/sensors/tsl2591/calibrate-dark`
+
+Stores the current rolling TSL2591 visible count as the dark visible offset. Cover the aperture with an opaque cap, wait for the rolling window to fill, then call this endpoint.
+
+```bash
+curl -X POST http://sqm-esp32.local/api/sensors/tsl2591/calibrate-dark
+```
+
+```json
+{
+  "success": true,
+  "darkVisibleOffset": 1.5,
+  "sampleCount": 138,
+  "darkCalibratedAt": 1778171234
 }
 ```
 
