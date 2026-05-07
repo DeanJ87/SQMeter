@@ -3,63 +3,72 @@ import { route, useRouter } from 'preact-router';
 
 interface LayoutProps {
   path?: string;
+  default?: boolean;
 }
+
+const navItems = [
+  { path: '/', label: 'Dashboard', icon: 'chart' },
+  { path: '/system', label: 'System', icon: 'cpu' },
+  { path: '/settings', label: 'Settings', icon: 'gear' },
+  { path: '/updates', label: 'Updates', icon: 'upload' },
+];
+
+const TinyIcon: FunctionalComponent<{ name: string }> = ({ name }) => {
+  const common = {
+    stroke: 'currentColor',
+    strokeWidth: 1.7,
+    fill: 'none',
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+  const paths = {
+    chart: <path {...common} d="M4 17 9 11l4 4 7-8M15 7h5v5" />,
+    cpu: <><rect {...common} x="5" y="5" width="14" height="14" rx="2" /><path {...common} d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4" /></>,
+    gear: <><circle {...common} cx="12" cy="12" r="3" /><path {...common} d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7.8 7.8 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.6a7.8 7.8 0 0 0-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7.8 7.8 0 0 0 2 1.2l.4 2.6h4.4l.4-2.6a7.8 7.8 0 0 0 2-1.2l2.4 1 2-3.5-2-1.5A7 7 0 0 0 19 12Z" /></>,
+    upload: <><path {...common} d="M12 16V4M7 9l5-5 5 5" /><path {...common} d="M5 18v2h14v-2" /></>,
+  };
+
+  return (
+    <svg class="nav-icon-svg" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+      {paths[name as keyof typeof paths]}
+    </svg>
+  );
+};
 
 const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
   const [router] = useRouter();
-  const navItems = [
-    { path: '/', label: 'Dashboard', icon: '📊' },
-    { path: '/system', label: 'System', icon: '💻' },
-    { path: '/settings', label: 'Settings', icon: '⚙️' },
-    { path: '/updates', label: 'Updates', icon: '📦' },
-  ];
 
   return (
-    <div class="min-h-screen bg-gray-900">
-      <header class="bg-gray-800 border-b border-gray-700 shadow-lg">
-        <div class="container mx-auto px-4 py-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-              <div class="text-3xl">🌌</div>
-              <div>
-                <h1 class="text-2xl font-bold text-white">SQMeter</h1>
-                <p class="text-sm text-gray-400">Dark Sky Monitor</p>
-              </div>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="app-header-inner">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">✦</div>
+            <div>
+              <h1>SQMeter</h1>
+              <p>Dark Sky Monitor</p>
             </div>
           </div>
-        </div>
-      </header>
 
-      <nav class="bg-gray-800 border-b border-gray-700">
-        <div class="container mx-auto px-4">
-          <div class="flex space-x-1">
+          <nav class="top-nav" aria-label="Primary">
             {navItems.map((item) => (
               <button
                 key={item.path}
+                type="button"
                 onClick={() => route(item.path)}
-                class={`px-4 py-3 text-sm font-medium transition-colors ${
-                  router.url === item.path
-                    ? 'text-white bg-gray-700 border-b-2 border-blue-500'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-750'
-                }`}
+                class={`nav-button ${router.url === item.path ? 'is-active' : ''}`}
               >
-                <span class="mr-2">{item.icon}</span>
-                {item.label}
+                <TinyIcon name={item.icon} />
+                <span>{item.label}</span>
               </button>
             ))}
-          </div>
+          </nav>
         </div>
-      </nav>
+      </header>
 
-      <main class="container mx-auto px-4 py-6">
+      <main class="app-main">
         {children}
       </main>
-
-      <footer class="bg-gray-800 border-t border-gray-700 mt-12">
-        <div class="container mx-auto px-4 py-4 text-center text-sm text-gray-400">
-          <p>ESP32 Dark Sky Monitoring System • Built with Preact + TypeScript</p>
-        </div>
-      </footer>
     </div>
   );
 };
