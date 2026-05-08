@@ -329,6 +329,12 @@ export interface SkyCalibrationConfig {
   darkCalibratedAt: number;
 }
 
+export interface CloudDetectionConfig {
+  clearSkyThreshold: number;
+  cloudyThreshold: number;
+  humidityCorrection: number;
+}
+
 export interface Config {
   deviceName: string;
   timezone: string;
@@ -343,6 +349,7 @@ export interface Config {
   sensor: SensorConfig;
   skyAveraging?: SkyAveragingConfig;
   skyCalibration?: SkyCalibrationConfig;
+  cloudDetection: CloudDetectionConfig;
   rain?: RainSensorConfig;
 }
 

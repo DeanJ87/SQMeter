@@ -49,5 +49,10 @@
     "darkIrOffset": 0,
     "darkSampleCount": 0,
     "darkCalibratedAt": 0
+  },
+  "cloudDetection": {
+    "clearSkyThreshold": -13.0,
+    "cloudyThreshold": -3.0,
+    "humidityCorrection": 0.75
   }
 }

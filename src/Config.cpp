@@ -267,6 +267,10 @@ namespace SQM
         cfg.primaryTimeSource = TimeSource::NTP;
         cfg.secondaryTimeSource = TimeSource::GPS;
 
+        cfg.cloudDetection.clearSkyThreshold = -13.0f;
+        cfg.cloudDetection.cloudyThreshold = -3.0f;
+        cfg.cloudDetection.humidityCorrection = 0.75f;
+
         return cfg;
     }
 
@@ -352,6 +356,11 @@ namespace SQM
         skyCalibration["darkIrOffset"] = this->skyCalibration.darkIrOffset;
         skyCalibration["darkSampleCount"] = this->skyCalibration.darkSampleCount;
         skyCalibration["darkCalibratedAt"] = this->skyCalibration.darkCalibratedAt;
+
+        JsonObject cloudDetection = doc.createNestedObject("cloudDetection");
+        cloudDetection["clearSkyThreshold"] = this->cloudDetection.clearSkyThreshold;
+        cloudDetection["cloudyThreshold"] = this->cloudDetection.cloudyThreshold;
+        cloudDetection["humidityCorrection"] = this->cloudDetection.humidityCorrection;
 
         std::string output;
         serializeJson(doc, output);
@@ -497,6 +506,11 @@ namespace SQM
             skyCalibration.darkFullOffset < 0.0F || skyCalibration.darkIrOffset < 0.0F)
         {
             return setError(error, "Sky dark calibration offsets are invalid");
+        }
+
+        if (cloudDetection.clearSkyThreshold >= cloudDetection.cloudyThreshold)
+        {
+            return setError(error, "Cloud detection: clear-sky threshold must be less than cloudy threshold");
         }
 
         return true;
@@ -679,6 +693,17 @@ namespace SQM
                 cfg.skyCalibration.darkSampleCount = skyCalibration["darkSampleCount"] | 0;
             if (skyCalibration.containsKey("darkCalibratedAt"))
                 cfg.skyCalibration.darkCalibratedAt = skyCalibration["darkCalibratedAt"] | 0;
+        }
+
+        JsonObject cloudDetectionObj = doc["cloudDetection"];
+        if (!cloudDetectionObj.isNull())
+        {
+            if (cloudDetectionObj.containsKey("clearSkyThreshold"))
+                cfg.cloudDetection.clearSkyThreshold = cloudDetectionObj["clearSkyThreshold"] | -13.0f;
+            if (cloudDetectionObj.containsKey("cloudyThreshold"))
+                cfg.cloudDetection.cloudyThreshold = cloudDetectionObj["cloudyThreshold"] | -3.0f;
+            if (cloudDetectionObj.containsKey("humidityCorrection"))
+                cfg.cloudDetection.humidityCorrection = cloudDetectionObj["humidityCorrection"] | 0.75f;
         }
 
         std::string validationError;
