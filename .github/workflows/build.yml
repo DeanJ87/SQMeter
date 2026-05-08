@@ -1,5 +1,6 @@
 name: Build Firmware & LittleFS
 
+
 on:
   pull_request:
     branches: [ master, main ]
