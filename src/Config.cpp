@@ -125,7 +125,7 @@ namespace SQM
             return std::nullopt;
         }
 
-        Logger::info(TAG, "Loaded config JSON (%d bytes)", jsonStr.length());
+        Logger::info(TAG, "Loaded config JSON (%u bytes)", static_cast<unsigned>(jsonStr.length()));
 
         std::string json = jsonStr.c_str();
         auto config = fromJson(json);
@@ -179,7 +179,7 @@ namespace SQM
             return false;
         }
 
-        Logger::info(TAG, "Configuration saved successfully to NVS (%d bytes)", written);
+        Logger::info(TAG, "Configuration saved successfully to NVS (%u bytes)", static_cast<unsigned>(written));
 
         // Verify by reading back
         Preferences verifyPrefs;
@@ -187,7 +187,7 @@ namespace SQM
         {
             String verified = verifyPrefs.getString(NVS_CONFIG_KEY, "");
             verifyPrefs.end();
-            Logger::info(TAG, "Verification: NVS contains %d bytes", verified.length());
+            Logger::info(TAG, "Verification: NVS contains %u bytes", static_cast<unsigned>(verified.length()));
         }
 
         return true;
