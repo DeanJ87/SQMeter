@@ -12,16 +12,12 @@
     "preview:demo": "vite preview --config vite.demo.config.ts",
     "screenshots": "playwright test tests/screenshots.spec.ts",
     "lint": "eslint src --ext ts,tsx",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run"
   },
   "dependencies": {
     "preact": "^10.19.3",
     "preact-router": "^4.1.2",
     "zod": "^4.3.6"
-  },
-  "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.60.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
@@ -34,9 +30,14 @@
     "terser": "^5.46.1",
     "typescript": "^5.3.3",
     "vite": "^8.0.10",
-    "vitest": "^1.6.0"
+    "vitest": "^3.2.4"
   },
   "msw": {
-    "workerDirectory": ["public"]
+    "workerDirectory": [
+      "public"
+    ]
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.60.3"
   }
 }

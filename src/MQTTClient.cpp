@@ -82,17 +82,17 @@ namespace SQM
 
         std::string payload = createPayload(tsl, bme, mlx, gps, rg15);
 
-        Logger::debug(TAG, "Publishing payload (%d bytes)", payload.length());
+        Logger::debug(TAG, "Publishing payload (%u bytes)", static_cast<unsigned>(payload.length()));
 
         if (mqttClient->publish(config.topic.c_str(), payload.c_str()))
         {
-            Logger::info(TAG, "Published sensor data (%d bytes)", payload.length());
+            Logger::info(TAG, "Published sensor data (%u bytes)", static_cast<unsigned>(payload.length()));
             lastPublish = now;
         }
         else
         {
-            Logger::error(TAG, "Failed to publish sensor data (payload: %d bytes, buffer: %d bytes)",
-                          payload.length(), mqttClient->getBufferSize());
+            Logger::error(TAG, "Failed to publish sensor data (payload: %u bytes, buffer: %u bytes)",
+                          static_cast<unsigned>(payload.length()), static_cast<unsigned>(mqttClient->getBufferSize()));
         }
     }
 

@@ -39,7 +39,7 @@ const validBase: Config = {
   },
   gps: { enabled: false, rxPin: 16, txPin: 17, baudRate: 9600 },
   sensor: { readIntervalMs: 5000, i2cSDA: 21, i2cSCL: 22, i2cFrequency: 100000 },
-  cloudDetection: { clearSkyThreshold: -13, cloudyThreshold: -3, humidityCorrection: 0.75 },
+  cloudDetection: { clearSkyThreshold: -13.0, cloudyThreshold: -3.0, humidityCorrection: 0.75 },
 };
 
 describe("configSchema", () => {
