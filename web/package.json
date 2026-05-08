@@ -19,9 +19,6 @@
     "preact-router": "^4.1.2",
     "zod": "^4.3.6"
   },
-  "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.60.3"
-  },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
     "@preact/preset-vite": "^2.7.0",
@@ -39,5 +36,8 @@
     "workerDirectory": [
       "public"
     ]
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.60.3"
   }
 }
