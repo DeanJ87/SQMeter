@@ -38,6 +38,18 @@
     "i2cSCL": 22,
     "i2cFrequency": 100000
   },
+  "skyAveraging": {
+    "windowSeconds": 90
+  },
+  "skyCalibration": {
+    "enabled": false,
+    "sqmOffset": 0,
+    "darkVisibleOffset": 0,
+    "darkFullOffset": 0,
+    "darkIrOffset": 0,
+    "darkSampleCount": 0,
+    "darkCalibratedAt": 0
+  },
   "cloudDetection": {
     "clearSkyThreshold": -13.0,
     "cloudyThreshold": -3.0,

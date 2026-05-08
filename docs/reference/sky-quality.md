@@ -1,6 +1,6 @@
 # Sky Quality Calculations
 
-SQMeter converts raw lux from the TSL2591 into three astronomical metrics.
+SQMeter converts TSL2591 light readings into three astronomical metrics. The conversion is only as good as the optical build and calibration: a bare TSL2591 is not a calibrated SQM instrument because it has a very wide angular response and can collect stray light from the horizon, ground, buildings, vehicles, and the enclosure.
 
 ---
 
@@ -11,6 +11,10 @@ Measures sky brightness in magnitudes per square arcsecond (mag/arcsec²). Highe
 ```
 SQM = -2.5 × log₁₀(lux) + 12.59
 ```
+
+Firmware averages raw TSL2591 counts before this conversion. The night SQM path uses MAX gain and 600 ms integration, applies a rolling average, subtracts the saved dark visible offset, then applies the optional SQM calibration offset.
+
+Dark calibration should be repeated whenever the lens, baffle, aperture, lens-to-sensor distance, or internal finish changes.
 
 Typical values:
 

@@ -2,6 +2,7 @@
 #include "Logger.h"
 #include <ArduinoJson.h>
 #include <Preferences.h>
+#include <cmath>
 #include <cstring>
 
 namespace SQM
@@ -253,6 +254,16 @@ namespace SQM
         cfg.sensor.i2cSCL = 22;
         cfg.sensor.i2cFrequency = 100000; // 100kHz
 
+        cfg.skyAveraging.windowSeconds = 90;
+
+        cfg.skyCalibration.enabled = false;
+        cfg.skyCalibration.sqmOffset = 0.0F;
+        cfg.skyCalibration.darkVisibleOffset = 0.0F;
+        cfg.skyCalibration.darkFullOffset = 0.0F;
+        cfg.skyCalibration.darkIrOffset = 0.0F;
+        cfg.skyCalibration.darkSampleCount = 0;
+        cfg.skyCalibration.darkCalibratedAt = 0;
+
         cfg.primaryTimeSource = TimeSource::NTP;
         cfg.secondaryTimeSource = TimeSource::GPS;
 
@@ -265,7 +276,7 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets) const
     {
-        StaticJsonDocument<3584> doc;
+        DynamicJsonDocument doc(4608);
 
         doc["deviceName"] = deviceName;
         doc["timezone"] = timezone;
@@ -333,6 +344,18 @@ namespace SQM
         sensor["i2cSDA"] = this->sensor.i2cSDA;
         sensor["i2cSCL"] = this->sensor.i2cSCL;
         sensor["i2cFrequency"] = this->sensor.i2cFrequency;
+
+        JsonObject skyAveraging = doc.createNestedObject("skyAveraging");
+        skyAveraging["windowSeconds"] = this->skyAveraging.windowSeconds;
+
+        JsonObject skyCalibration = doc.createNestedObject("skyCalibration");
+        skyCalibration["enabled"] = this->skyCalibration.enabled;
+        skyCalibration["sqmOffset"] = this->skyCalibration.sqmOffset;
+        skyCalibration["darkVisibleOffset"] = this->skyCalibration.darkVisibleOffset;
+        skyCalibration["darkFullOffset"] = this->skyCalibration.darkFullOffset;
+        skyCalibration["darkIrOffset"] = this->skyCalibration.darkIrOffset;
+        skyCalibration["darkSampleCount"] = this->skyCalibration.darkSampleCount;
+        skyCalibration["darkCalibratedAt"] = this->skyCalibration.darkCalibratedAt;
 
         JsonObject cloudDetection = doc.createNestedObject("cloudDetection");
         cloudDetection["clearSkyThreshold"] = this->cloudDetection.clearSkyThreshold;
@@ -468,6 +491,23 @@ namespace SQM
             return setError(error, "I2C frequency is invalid");
         }
 
+        if (skyAveraging.windowSeconds < 10 || skyAveraging.windowSeconds > 300)
+        {
+            return setError(error, "Sky averaging window is invalid");
+        }
+
+        if (!std::isfinite(skyCalibration.sqmOffset) || skyCalibration.sqmOffset < -5.0F || skyCalibration.sqmOffset > 5.0F)
+        {
+            return setError(error, "Sky SQM calibration offset is invalid");
+        }
+
+        if (!std::isfinite(skyCalibration.darkVisibleOffset) || !std::isfinite(skyCalibration.darkFullOffset) ||
+            !std::isfinite(skyCalibration.darkIrOffset) || skyCalibration.darkVisibleOffset < 0.0F ||
+            skyCalibration.darkFullOffset < 0.0F || skyCalibration.darkIrOffset < 0.0F)
+        {
+            return setError(error, "Sky dark calibration offsets are invalid");
+        }
+
         if (cloudDetection.clearSkyThreshold >= cloudDetection.cloudyThreshold)
         {
             return setError(error, "Cloud detection: clear-sky threshold must be less than cloudy threshold");
@@ -478,7 +518,7 @@ namespace SQM
 
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig)
     {
-        StaticJsonDocument<3584> doc;
+        DynamicJsonDocument doc(4608);
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
@@ -627,6 +667,32 @@ namespace SQM
                 cfg.sensor.i2cSCL = sensor["i2cSCL"] | 22;
             if (sensor.containsKey("i2cFrequency"))
                 cfg.sensor.i2cFrequency = sensor["i2cFrequency"] | 100000;
+        }
+
+        JsonObject skyAveraging = doc["skyAveraging"];
+        if (!skyAveraging.isNull())
+        {
+            if (skyAveraging.containsKey("windowSeconds"))
+                cfg.skyAveraging.windowSeconds = skyAveraging["windowSeconds"] | 90;
+        }
+
+        JsonObject skyCalibration = doc["skyCalibration"];
+        if (!skyCalibration.isNull())
+        {
+            if (skyCalibration.containsKey("enabled"))
+                cfg.skyCalibration.enabled = skyCalibration["enabled"] | false;
+            if (skyCalibration.containsKey("sqmOffset"))
+                cfg.skyCalibration.sqmOffset = skyCalibration["sqmOffset"] | 0.0F;
+            if (skyCalibration.containsKey("darkVisibleOffset"))
+                cfg.skyCalibration.darkVisibleOffset = skyCalibration["darkVisibleOffset"] | 0.0F;
+            if (skyCalibration.containsKey("darkFullOffset"))
+                cfg.skyCalibration.darkFullOffset = skyCalibration["darkFullOffset"] | 0.0F;
+            if (skyCalibration.containsKey("darkIrOffset"))
+                cfg.skyCalibration.darkIrOffset = skyCalibration["darkIrOffset"] | 0.0F;
+            if (skyCalibration.containsKey("darkSampleCount"))
+                cfg.skyCalibration.darkSampleCount = skyCalibration["darkSampleCount"] | 0;
+            if (skyCalibration.containsKey("darkCalibratedAt"))
+                cfg.skyCalibration.darkCalibratedAt = skyCalibration["darkCalibratedAt"] | 0;
         }
 
         JsonObject cloudDetectionObj = doc["cloudDetection"];
