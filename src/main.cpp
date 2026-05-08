@@ -33,6 +33,8 @@ RTC_DATA_ATTR uint32_t bootCount = 0;
 
 // Timing
 static uint32_t lastSensorUpdate = 0;
+static uint32_t lastTslUpdate = 0;
+static constexpr uint32_t TSL_SAMPLE_INTERVAL_MS = 650;
 
 // Callbacks for WebServer
 const Config &getConfigCallback()
@@ -119,6 +121,7 @@ void setupSensors()
     {
         Logger::error("Main", "Failed to initialize TSL2591");
     }
+    tslSensor->configureSkyMeasurement(config.skyAveraging, config.skyCalibration);
 
     if (!bmeSensor->begin())
     {
@@ -342,11 +345,17 @@ void loop()
         mqttClient->handle();
     }
 
-    // Update sensors periodically
+    // Update TSL2591 on its own cadence so dark-sky rolling averages are based on 600ms samples.
     const uint32_t now = millis();
-    if (now - lastSensorUpdate >= config.sensor.readIntervalMs)
+    if (now - lastTslUpdate >= TSL_SAMPLE_INTERVAL_MS)
     {
         tslSensor->update();
+        lastTslUpdate = now;
+    }
+
+    // Update slower sensors and publish periodically.
+    if (now - lastSensorUpdate >= config.sensor.readIntervalMs)
+    {
         bmeSensor->update();
         mlxSensor->update();
         gpsSensor->update();

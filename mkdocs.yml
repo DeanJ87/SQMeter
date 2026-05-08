@@ -88,6 +88,7 @@ nav:
     - WebSocket: api/websocket.md
     - Integrations: api/integrations.md
   - Development:
+    - ADR 001 Sky Optics: development/adr-001-sky-optics-and-averaging.md
     - Dev Workflow: development/workflow.md
     - Adding Sensors: development/sensors.md
     - Contributing: development/contributing.md

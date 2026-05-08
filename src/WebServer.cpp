@@ -13,6 +13,7 @@
 #include <esp_timer.h>
 #include <nvs.h>
 #include <nvs_flash.h>
+#include <ctime>
 #include "calculations/CloudDetection.h"
 #include "sensors/RG15Sensor.h"
 
@@ -313,6 +314,7 @@ namespace SQM
     {
         SensorSnapshot next;
         next.tsl = tslSensor.getReading();
+        next.tslDiagnostics = tslSensor.getDiagnostics();
         next.bme = bmeSensor.getReading();
         next.mlx = mlxSensor.getReading();
         next.gps = gpsSensor.getReading();
@@ -385,6 +387,9 @@ namespace SQM
         server.on("/api/sensors", HTTP_GET, [this](AsyncWebServerRequest *request)
                   { handleGetSensors(request); });
 
+        server.on("/api/sensors/tsl2591/calibrate-dark", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  { handleTSL2591DarkCalibration(request); });
+
         // Config endpoints
         server.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest *request)
                   { handleGetConfig(request); });
@@ -409,6 +414,7 @@ namespace SQM
 
                 if (saveConfigCallback(*configOpt))
                 {
+                    tslSensor.configureSkyMeasurement(configOpt->skyAveraging, configOpt->skyCalibration);
                     request->send(200, "application/json", "{\"success\":true}");
                 }
                 else
@@ -771,6 +777,45 @@ namespace SQM
         request->send(ok && reading.status == SensorStatus::OK ? 200 : 400, "application/json", responseStr.c_str());
     }
 
+    void WebServer::handleTSL2591DarkCalibration(AsyncWebServerRequest *request)
+    {
+        if (!requireAuth(request))
+            return;
+
+        const TSL2591Diagnostics diagnostics = tslSensor.getDiagnostics();
+        if (diagnostics.sampleCount == 0)
+        {
+            request->send(400, "application/json", createErrorJson("No TSL2591 samples available for dark calibration").c_str());
+            return;
+        }
+
+        Config updated = getConfigCallback();
+        updated.skyCalibration.darkVisibleOffset = diagnostics.rollingVisible;
+        updated.skyCalibration.darkFullOffset = 0.0F;
+        updated.skyCalibration.darkIrOffset = 0.0F;
+        updated.skyCalibration.darkSampleCount = diagnostics.sampleCount;
+        const time_t epochSeconds = time(nullptr);
+        updated.skyCalibration.darkCalibratedAt = epochSeconds >= 1704067200 ? static_cast<int64_t>(epochSeconds) : static_cast<int64_t>(millis());
+
+        if (!saveConfigCallback(updated))
+        {
+            request->send(500, "application/json", createErrorJson("Failed to save dark calibration").c_str());
+            return;
+        }
+
+        tslSensor.configureSkyMeasurement(updated.skyAveraging, updated.skyCalibration);
+
+        StaticJsonDocument<384> response;
+        response["success"] = true;
+        response["darkVisibleOffset"] = updated.skyCalibration.darkVisibleOffset;
+        response["sampleCount"] = updated.skyCalibration.darkSampleCount;
+        response["darkCalibratedAt"] = updated.skyCalibration.darkCalibratedAt;
+
+        String responseStr;
+        serializeJson(response, responseStr);
+        request->send(200, "application/json", responseStr.c_str());
+    }
+
     void WebServer::handleRG15ResetTotal(AsyncWebServerRequest *request)
     {
         if (!requireAuth(request))
@@ -1040,7 +1085,7 @@ namespace SQM
 
     std::string WebServer::createSensorDataJson() const
     {
-        StaticJsonDocument<4096> doc;
+        DynamicJsonDocument doc(5120);
         const SensorSnapshot snapshot = getSensorSnapshot();
         const uint32_t now = millis();
         const uint32_t dataAge = ageMs(now, snapshot.dataTimestamp);
@@ -1054,20 +1099,39 @@ namespace SQM
         const auto &tslReading = snapshot.tsl;
         JsonObject lightSensor = doc.createNestedObject("lightSensor");
         lightSensor["lux"] = tslReading.lux;
+        lightSensor["rawLux"] = tslReading.rawLux;
         lightSensor["visible"] = tslReading.visible;
         lightSensor["infrared"] = tslReading.infrared;
         lightSensor["full"] = tslReading.full;
         lightSensor["status"] = static_cast<int>(tslReading.status);
         lightSensor["timestamp"] = tslReading.timestamp;
         lightSensor["ageMs"] = ageMs(now, tslReading.timestamp);
+        lightSensor["gainName"] = snapshot.tslDiagnostics.gainName;
+        lightSensor["gainFactor"] = snapshot.tslDiagnostics.gainFactor;
+        lightSensor["integrationMs"] = snapshot.tslDiagnostics.integrationMs;
+        lightSensor["averagingWindowSeconds"] = snapshot.tslDiagnostics.averagingWindowSeconds;
+        lightSensor["calibrated"] = snapshot.tslDiagnostics.calibrated;
+        lightSensor["saturated"] = snapshot.tslDiagnostics.saturated;
 
         // Sky quality calculations
         SkyQualityMetrics sqm = SkyQuality::calculate(tslReading.lux);
         JsonObject sky = doc.createNestedObject("skyQuality");
         sky["sqm"] = sqm.sqm;
+        sky["rawSqm"] = tslReading.rawSqm;
+        sky["calibratedSqm"] = tslReading.calibratedSqm;
         sky["nelm"] = sqm.nelm;
         sky["bortle"] = sqm.bortle;
         sky["description"] = SkyQuality::getBortleDescription(sqm.bortle);
+        sky["nightMode"] = snapshot.tslDiagnostics.nightMode;
+
+        JsonObject diagnostics = doc.createNestedObject("lightDiagnostics");
+        diagnostics["rollingVisible"] = snapshot.tslDiagnostics.rollingVisible;
+        diagnostics["correctedVisible"] = snapshot.tslDiagnostics.correctedVisible;
+        diagnostics["darkVisibleOffset"] = snapshot.tslDiagnostics.darkVisibleOffset;
+        diagnostics["sampleCount"] = snapshot.tslDiagnostics.sampleCount;
+        diagnostics["rejectedSamples"] = snapshot.tslDiagnostics.rejectedSamples;
+        diagnostics["consecutiveSaturatedSamples"] = snapshot.tslDiagnostics.consecutiveSaturatedSamples;
+        diagnostics["consecutiveLowSamples"] = snapshot.tslDiagnostics.consecutiveLowSamples;
 
         // Environmental sensor data (BME280)
         const auto &bmeReading = snapshot.bme;
