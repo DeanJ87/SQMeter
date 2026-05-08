@@ -22,7 +22,7 @@ const Updates: FunctionalComponent = () => {
         try {
           const response = await fetch('/api/status');
           if (response.ok) {
-            setStatus('✅ Update successful! Device is back online.');
+            setStatus('Update successful. Device is back online.');
             setWaitingForReboot(false);
             setFile(null);
             window.clearInterval(checkInterval);
@@ -91,7 +91,7 @@ const Updates: FunctionalComponent = () => {
               setWaitingForReboot(true);
             } else {
               const errorMsg = response.error || 'Unknown error';
-              setStatus(`❌ Upload failed: ${errorMsg}`);
+              setStatus(`Upload failed: ${errorMsg}`);
               setUploading(false);
             }
           } catch (e) {
@@ -100,7 +100,7 @@ const Updates: FunctionalComponent = () => {
             setWaitingForReboot(true);
           }
         } else {
-          setStatus(`❌ Upload failed: HTTP ${xhr.status}`);
+          setStatus(`Upload failed: HTTP ${xhr.status}`);
           setUploading(false);
         }
       });
@@ -111,7 +111,7 @@ const Updates: FunctionalComponent = () => {
           setUploading(false);
           setWaitingForReboot(true);
         } else {
-          setStatus('❌ Upload error occurred');
+          setStatus('Upload error occurred');
           setUploading(false);
         }
       });
@@ -119,7 +119,7 @@ const Updates: FunctionalComponent = () => {
       xhr.open('POST', endpoint);
       xhr.send(formData);
     } catch (error) {
-      setStatus(`❌ Failed to upload: ${error}`);
+      setStatus(`Failed to upload: ${error}`);
       setUploading(false);
     }
   };
@@ -145,7 +145,7 @@ const Updates: FunctionalComponent = () => {
   const help = getFileHelp();
 
   return (
-    <div class="max-w-2xl mx-auto space-y-6">
+    <div class="panel-page updates-page page-enter compact-page">
       <div>
         <h1 class="text-3xl font-bold text-white mb-2">OTA Updates</h1>
         <p class="text-gray-400">
@@ -168,7 +168,7 @@ const Updates: FunctionalComponent = () => {
               class="mt-1 mr-3"
             />
             <div class="flex-1">
-              <div class="text-white font-semibold mb-1">🔧 Firmware (Backend)</div>
+              <div class="text-white font-semibold mb-1">Firmware (Backend)</div>
               <div class="text-sm text-gray-400">
                 Updates C++ application code: sensors, cloud detection, calculations, WiFi, MQTT
               </div>
@@ -189,7 +189,7 @@ const Updates: FunctionalComponent = () => {
               class="mt-1 mr-3"
             />
             <div class="flex-1">
-              <div class="text-white font-semibold mb-1">🌐 Filesystem (Frontend)</div>
+              <div class="text-white font-semibold mb-1">Filesystem (Frontend)</div>
               <div class="text-sm text-gray-400">
                 Updates web interface files: HTML, CSS, JavaScript, UI components
               </div>
@@ -207,7 +207,7 @@ const Updates: FunctionalComponent = () => {
         
         <div class="bg-blue-900/30 border border-blue-700/50 rounded-lg p-4 mb-4">
           <div class="text-blue-200 text-sm">
-            <div class="font-semibold mb-1">📋 What this updates:</div>
+            <div class="font-semibold mb-1">What this updates:</div>
             <div class="text-blue-300">{help.description}</div>
             <div class="mt-2 text-xs text-blue-400 font-mono">
               Build location: {help.location}
@@ -257,9 +257,9 @@ const Updates: FunctionalComponent = () => {
 
           {status && (
             <div class={`p-3 rounded-lg text-sm ${
-              status.includes('✅') 
+              status.includes('successful') 
                 ? 'bg-green-900/30 border border-green-700/50 text-green-200'
-                : status.includes('❌')
+                : status.includes('failed') || status.includes('error') || status.includes('Failed')
                 ? 'bg-red-900/30 border border-red-700/50 text-red-200'
                 : 'bg-blue-900/30 border border-blue-700/50 text-blue-200'
             }`}>
@@ -283,7 +283,7 @@ const Updates: FunctionalComponent = () => {
 
       {/* Warnings */}
       <section class="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
-        <h3 class="text-yellow-200 font-semibold mb-2">⚠️ Important Notes</h3>
+        <h3 class="text-yellow-200 font-semibold mb-2">Important Notes</h3>
         <ul class="text-sm text-yellow-300 space-y-1 list-disc list-inside">
           <li>Do not power off the device during update</li>
           <li>Do not close this browser tab until update completes</li>

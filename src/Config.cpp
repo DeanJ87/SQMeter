@@ -96,6 +96,41 @@ namespace SQM
             }
             return false;
         }
+
+        bool isTimeSourceEnabled(const Config &cfg, TimeSource source)
+        {
+            return source == TimeSource::NTP ? cfg.ntp.enabled : cfg.gps.enabled;
+        }
+
+        void normalizeTimeSources(Config &cfg)
+        {
+            if (!cfg.ntp.enabled && !cfg.gps.enabled)
+            {
+                return;
+            }
+
+            if (!isTimeSourceEnabled(cfg, cfg.primaryTimeSource))
+            {
+                cfg.primaryTimeSource = cfg.ntp.enabled ? TimeSource::NTP : TimeSource::GPS;
+            }
+
+            if (!isTimeSourceEnabled(cfg, cfg.secondaryTimeSource))
+            {
+                cfg.secondaryTimeSource = cfg.gps.enabled && cfg.primaryTimeSource != TimeSource::GPS
+                                            ? TimeSource::GPS
+                                            : TimeSource::NTP;
+            }
+
+            if (cfg.ntp.enabled && cfg.gps.enabled && cfg.primaryTimeSource == cfg.secondaryTimeSource)
+            {
+                cfg.secondaryTimeSource = cfg.primaryTimeSource == TimeSource::NTP ? TimeSource::GPS : TimeSource::NTP;
+            }
+
+            if (!cfg.ntp.enabled || !cfg.gps.enabled)
+            {
+                cfg.secondaryTimeSource = cfg.primaryTimeSource;
+            }
+        }
     } // namespace
 
     std::optional<Config> Config::load()
@@ -382,6 +417,26 @@ namespace SQM
         if (secondaryTimeSource != TimeSource::NTP && secondaryTimeSource != TimeSource::GPS)
         {
             return setError(error, "Secondary time source is invalid");
+        }
+
+        if (!ntp.enabled && !gps.enabled)
+        {
+            return setError(error, "At least one time source must be enabled");
+        }
+
+        if (!isTimeSourceEnabled(*this, primaryTimeSource))
+        {
+            return setError(error, "Primary time source is disabled");
+        }
+
+        if (ntp.enabled && gps.enabled && !isTimeSourceEnabled(*this, secondaryTimeSource))
+        {
+            return setError(error, "Secondary time source is disabled");
+        }
+
+        if (ntp.enabled && gps.enabled && primaryTimeSource == secondaryTimeSource)
+        {
+            return setError(error, "Time sources must be different when both NTP and GPS are enabled");
         }
 
         if (wifi.reconnectDelayMs == 0 || wifi.maxReconnectDelayMs == 0 ||
@@ -705,6 +760,8 @@ namespace SQM
             if (cloudDetectionObj.containsKey("humidityCorrection"))
                 cfg.cloudDetection.humidityCorrection = cloudDetectionObj["humidityCorrection"] | 0.75f;
         }
+
+        normalizeTimeSources(cfg);
 
         std::string validationError;
         if (!cfg.validate(&validationError))
