@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "preview:demo": "vite preview --config vite.demo.config.ts",
     "screenshots": "playwright test tests/screenshots.spec.ts",
-    "lint": "eslint src --ext ts,tsx"
+    "lint": "eslint src --ext ts,tsx",
+    "test": "vitest run"
   },
   "dependencies": {
     "preact": "^10.19.3",
@@ -28,9 +29,12 @@
     "tailwindcss": "^3.4.0",
     "terser": "^5.46.1",
     "typescript": "^5.3.3",
-    "vite": "^8.0.10"
+    "vite": "^8.0.10",
+    "vitest": "^3.2.4"
   },
   "msw": {
-    "workerDirectory": ["public"]
+    "workerDirectory": [
+      "public"
+    ]
   }
 }
