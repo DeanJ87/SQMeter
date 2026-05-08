@@ -42,6 +42,12 @@ const defaultRainConfig: NonNullable<Config['rain']> = {
   dailyResetMinute: 0,
 };
 
+const defaultCloudDetectionConfig: Config['cloudDetection'] = {
+  clearSkyThreshold: -13.0,
+  cloudyThreshold: -3.0,
+  humidityCorrection: 0.75,
+};
+
 const fieldErrorAliases: Record<string, string> = {
   mqttBroker: 'mqtt.broker',
   mqttPort: 'mqtt.port',
@@ -104,6 +110,9 @@ const toConfigPayload = (source: Config): Config => {
     gps: { ...source.gps },
     rain,
     sensor: { ...source.sensor },
+    cloudDetection: source.cloudDetection
+      ? { ...source.cloudDetection }
+      : { ...defaultCloudDetectionConfig },
   };
 
   return {
@@ -314,6 +323,7 @@ const Settings: FunctionalComponent = () => {
       ntp: { ...config.ntp },
       gps: { ...config.gps },
       sensor: { ...config.sensor },
+      cloudDetection: { ...(config.cloudDetection ?? defaultCloudDetectionConfig) },
       auth: config.auth ? { ...config.auth } : { ...defaultAuthConfig },
       rain: config.rain ? { ...config.rain } : { ...defaultRainConfig },
     };
@@ -341,6 +351,7 @@ const Settings: FunctionalComponent = () => {
       ntp: { ...config.ntp },
       gps: { ...config.gps },
       sensor: { ...config.sensor },
+      cloudDetection: { ...(config.cloudDetection ?? defaultCloudDetectionConfig) },
       auth: config.auth ? { ...config.auth } : { ...defaultAuthConfig },
       rain: {
         ...(config.rain ? { ...config.rain } : { ...defaultRainConfig }),
@@ -371,6 +382,7 @@ const Settings: FunctionalComponent = () => {
       ntp: { ...config.ntp },
       gps: { ...config.gps },
       sensor: { ...config.sensor },
+      cloudDetection: { ...(config.cloudDetection ?? defaultCloudDetectionConfig) },
       auth: config.auth ? { ...config.auth } : { ...defaultAuthConfig },
       rain: config.rain ? { ...config.rain } : { ...defaultRainConfig },
     };
@@ -1157,6 +1169,61 @@ const Settings: FunctionalComponent = () => {
             {errorFor('i2cFrequency') && (
               <p class="mt-1 text-sm text-red-400">{errorFor('i2cFrequency')}</p>
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* Cloud Detection Settings */}
+      <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-white mb-4">Cloud Detection</h2>
+        <p class="text-sm text-gray-400 mb-4">
+          These thresholds control when the IR temperature sensor classifies the sky as clear, cloudy, or overcast. Lower (more negative) clear sky threshold = more strict clear-sky classification.
+        </p>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              Clear Sky Threshold (°C)
+            </label>
+            <input
+              type="number"
+              value={config.cloudDetection.clearSkyThreshold}
+              onChange={(e) => updateConfig(['cloudDetection', 'clearSkyThreshold'], parseFloat((e.target as HTMLInputElement).value))}
+              min="-30"
+              max="0"
+              step="0.1"
+              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+            />
+            <p class="mt-1 text-xs text-gray-500">Corrected delta below which sky is classified as clear (default: -13.0°C)</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              Cloudy Threshold (°C)
+            </label>
+            <input
+              type="number"
+              value={config.cloudDetection.cloudyThreshold}
+              onChange={(e) => updateConfig(['cloudDetection', 'cloudyThreshold'], parseFloat((e.target as HTMLInputElement).value))}
+              min="-20"
+              max="10"
+              step="0.1"
+              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+            />
+            <p class="mt-1 text-xs text-gray-500">Corrected delta above which sky is classified as overcast (default: -3.0°C)</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              Humidity Correction Factor
+            </label>
+            <input
+              type="number"
+              value={config.cloudDetection.humidityCorrection}
+              onChange={(e) => updateConfig(['cloudDetection', 'humidityCorrection'], parseFloat((e.target as HTMLInputElement).value))}
+              min="0"
+              max="2"
+              step="0.01"
+              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+            />
+            <p class="mt-1 text-xs text-gray-500">k1 factor for AAG CloudWatcher humidity correction formula (default: 0.75)</p>
           </div>
         </div>
       </section>
