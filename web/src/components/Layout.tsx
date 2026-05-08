@@ -1,118 +1,74 @@
 import { FunctionalComponent } from 'preact';
-import { useState, useEffect, useRef } from 'preact/hooks';
 import { route, useRouter } from 'preact-router';
 
 interface LayoutProps {
   path?: string;
+  default?: boolean;
 }
+
+const navItems = [
+  { path: '/', label: 'Dashboard', icon: 'chart' },
+  { path: '/system', label: 'System', icon: 'cpu' },
+  { path: '/settings', label: 'Settings', icon: 'gear' },
+  { path: '/updates', label: 'Updates', icon: 'upload' },
+];
+
+const TinyIcon: FunctionalComponent<{ name: string }> = ({ name }) => {
+  const common = {
+    stroke: 'currentColor',
+    strokeWidth: 1.7,
+    fill: 'none',
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+  const paths = {
+    chart: <path {...common} d="M4 17 9 11l4 4 7-8M15 7h5v5" />,
+    cpu: <><rect {...common} x="5" y="5" width="14" height="14" rx="2" /><path {...common} d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4" /></>,
+    gear: <><circle {...common} cx="12" cy="12" r="3" /><path {...common} d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7.8 7.8 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.6a7.8 7.8 0 0 0-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7.8 7.8 0 0 0 2 1.2l.4 2.6h4.4l.4-2.6a7.8 7.8 0 0 0 2-1.2l2.4 1 2-3.5-2-1.5A7 7 0 0 0 19 12Z" /></>,
+    upload: <><path {...common} d="M12 16V4M7 9l5-5 5 5" /><path {...common} d="M5 18v2h14v-2" /></>,
+  };
+
+  return (
+    <svg class="nav-icon-svg" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+      {paths[name as keyof typeof paths]}
+    </svg>
+  );
+};
 
 const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
   const [router] = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const navItems = [
-    { path: '/', label: 'Dashboard', icon: '📊' },
-    { path: '/system', label: 'System', icon: '💻' },
-    { path: '/settings', label: 'Settings', icon: '⚙️' },
-    { path: '/updates', label: 'Updates', icon: '📦' },
-  ];
-
-  const navigate = (path: string) => {
-    route(path);
-    setMenuOpen(false);
-  };
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [menuOpen]);
 
   return (
-    <div class="min-h-screen bg-gray-900">
-      <header class="bg-gray-800 border-b border-gray-700 shadow-lg">
-        <div class="container mx-auto px-4 py-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-              <div class="text-3xl">🌌</div>
-              <div>
-                <h1 class="text-2xl font-bold text-white">SQMeter</h1>
-                <p class="text-sm text-gray-400">Dark Sky Monitor</p>
-              </div>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="app-header-inner">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">✦</div>
+            <div>
+              <h1>SQMeter</h1>
+              <p>Dark Sky Monitor</p>
             </div>
-
-            {/* Hamburger button — mobile only */}
-            <button
-              class="sm:hidden flex flex-col justify-center items-center w-10 h-10 space-y-1.5 text-gray-300 hover:text-white focus:outline-none"
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-label="Toggle navigation menu"
-              aria-expanded={menuOpen}
-            >
-              <div class="w-6 h-0.5 bg-current transition-all" />
-              <div class="w-6 h-0.5 bg-current transition-all" />
-              <div class="w-6 h-0.5 bg-current transition-all" />
-            </button>
           </div>
-        </div>
-      </header>
 
-      {/* Mobile dropdown menu */}
-      {menuOpen && (
-        <div ref={menuRef} class="sm:hidden absolute z-50 left-0 right-0 bg-gray-800 border-b border-gray-700 shadow-xl">
-          {navItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              class={`w-full flex items-center px-6 py-4 text-sm font-medium transition-colors border-b border-gray-700 last:border-b-0 ${
-                router.url === item.path
-                  ? 'text-white bg-gray-700 border-l-4 border-l-blue-500'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
-              }`}
-            >
-              <span class="mr-3 text-lg">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Desktop navigation — hidden on mobile */}
-      <nav class="hidden sm:block bg-gray-800 border-b border-gray-700">
-        <div class="container mx-auto px-4">
-          <div class="flex space-x-1">
+          <nav class="top-nav" aria-label="Primary">
             {navItems.map((item) => (
               <button
                 key={item.path}
+                type="button"
                 onClick={() => route(item.path)}
-                class={`px-4 py-3 text-sm font-medium transition-colors ${
-                  router.url === item.path
-                    ? 'text-white bg-gray-700 border-b-2 border-blue-500'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-750'
-                }`}
+                class={`nav-button ${router.url === item.path ? 'is-active' : ''}`}
               >
-                <span class="mr-2">{item.icon}</span>
-                {item.label}
+                <TinyIcon name={item.icon} />
+                <span>{item.label}</span>
               </button>
             ))}
-          </div>
+          </nav>
         </div>
-      </nav>
+      </header>
 
-      <main class="container mx-auto px-4 py-6">
+      <main class="app-main">
         {children}
       </main>
-
-      <footer class="bg-gray-800 border-t border-gray-700 mt-12">
-        <div class="container mx-auto px-4 py-4 text-center text-sm text-gray-400">
-          <p>ESP32 Dark Sky Monitoring System • Built with Preact + TypeScript</p>
-        </div>
-      </footer>
     </div>
   );
 };

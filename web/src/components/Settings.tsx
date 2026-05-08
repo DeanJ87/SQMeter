@@ -42,6 +42,12 @@ const defaultRainConfig: NonNullable<Config['rain']> = {
   dailyResetMinute: 0,
 };
 
+const defaultCloudDetectionConfig: Config['cloudDetection'] = {
+  clearSkyThreshold: -13.0,
+  cloudyThreshold: -3.0,
+  humidityCorrection: 0.75,
+};
+
 const fieldErrorAliases: Record<string, string> = {
   mqttBroker: 'mqtt.broker',
   mqttPort: 'mqtt.port',
@@ -52,6 +58,67 @@ const fieldErrorAliases: Record<string, string> = {
   i2cSCL: 'sensor.i2cSCL',
   i2cPins: 'sensor.i2cSDA',
   i2cFrequency: 'sensor.i2cFrequency',
+};
+
+const isSourceEnabled = (candidate: Config, source: number) => (
+  source === 0 ? candidate.ntp.enabled : candidate.gps.enabled
+);
+
+const normalizeTimeSources = (candidate: Config): Pick<Config, 'primaryTimeSource' | 'secondaryTimeSource'> => {
+  const ntpEnabled = candidate.ntp.enabled;
+  const gpsEnabled = candidate.gps.enabled;
+
+  if (!ntpEnabled && !gpsEnabled) {
+    return {
+      primaryTimeSource: candidate.primaryTimeSource,
+      secondaryTimeSource: candidate.secondaryTimeSource,
+    };
+  }
+
+  let primaryTimeSource = isSourceEnabled(candidate, candidate.primaryTimeSource)
+    ? candidate.primaryTimeSource
+    : ntpEnabled ? 0 : 1;
+
+  let secondaryTimeSource = isSourceEnabled(candidate, candidate.secondaryTimeSource)
+    ? candidate.secondaryTimeSource
+    : gpsEnabled && primaryTimeSource !== 1 ? 1 : 0;
+
+  if (ntpEnabled && gpsEnabled && primaryTimeSource === secondaryTimeSource) {
+    secondaryTimeSource = primaryTimeSource === 0 ? 1 : 0;
+  }
+
+  if (!ntpEnabled || !gpsEnabled) {
+    secondaryTimeSource = primaryTimeSource;
+  }
+
+  return { primaryTimeSource, secondaryTimeSource };
+};
+
+const toConfigPayload = (source: Config): Config => {
+  const rain = source.rain ? { ...source.rain } : { ...defaultRainConfig };
+  const auth = source.auth ? { ...source.auth } : { ...defaultAuthConfig };
+  const base: Config = {
+    deviceName: source.deviceName,
+    timezone: source.timezone,
+    primaryTimeSource: source.primaryTimeSource,
+    secondaryTimeSource: source.secondaryTimeSource,
+    wifi: { ...source.wifi },
+    mqtt: { ...source.mqtt },
+    ota: { ...source.ota },
+    auth,
+    ntp: { ...source.ntp },
+    gps: { ...source.gps },
+    rain,
+    sensor: { ...source.sensor },
+    cloudDetection: source.cloudDetection
+      ? { ...source.cloudDetection }
+      : { ...defaultCloudDetectionConfig },
+  };
+
+  return {
+    ...base,
+    ...normalizeTimeSources(base),
+  };
 };
 
 const Settings: FunctionalComponent = () => {
@@ -66,6 +133,7 @@ const Settings: FunctionalComponent = () => {
   const [mqttTestResult, setMqttTestResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [testingRain, setTestingRain] = useState(false);
   const [rainTestResult, setRainTestResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [originalWifiSsid, setOriginalWifiSsid] = useState<string | null>(null);
   const errorPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,11 +144,8 @@ const Settings: FunctionalComponent = () => {
     try {
       const response = await fetch('/api/config');
       const data = await response.json();
-      // Apply defaults for cloudDetection in case firmware predates this field
-      if (!data.cloudDetection) {
-        data.cloudDetection = { clearSkyThreshold: -13.0, cloudyThreshold: -3.0, humidityCorrection: 0.75 };
-      }
-      setConfig(data);
+      setConfig(toConfigPayload(data));
+      setOriginalWifiSsid(data.wifi?.ssid ?? '');
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to load configuration' });
     } finally {
@@ -164,41 +229,54 @@ const Settings: FunctionalComponent = () => {
     }
   };
 
-  const validateConfig = (): ValidationErrors | null => {
-    if (!config) return { config: 'Configuration is not loaded' };
-    
+  const collectValidationErrors = (candidate: Config | null): ValidationErrors => {
+    if (!candidate) return { config: 'Configuration is not loaded' };
+
     try {
-      configSchema.parse(config);
-      setValidationErrors({});
-      return null;
+      configSchema.parse(toConfigPayload(candidate));
+      return {};
     } catch (error) {
       if (error instanceof ZodError) {
         const errors: ValidationErrors = {};
-        
+
         error.issues.forEach((issue) => {
           const path = issue.path.join('.');
           errors[path || 'config'] = issue.message;
         });
-        
-        setValidationErrors(errors);
-        
-        // Scroll to error panel
-        setTimeout(() => {
-          errorPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+
         return errors;
       }
       return { config: 'Configuration validation failed' };
     }
   };
 
+  const focusFirstError = (errors: ValidationErrors) => {
+    const firstField = Object.keys(errors)[0];
+    if (!firstField) return;
+
+    setTimeout(() => {
+      const alias = Object.entries(fieldErrorAliases).find(([, path]) => path === firstField)?.[0];
+      const target = document.querySelector<HTMLElement>(`[data-field="${firstField}"]`)
+        ?? (alias ? document.querySelector<HTMLElement>(`[data-field="${alias}"]`) : null)
+        ?? errorPanelRef.current;
+
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) {
+        target.focus({ preventScroll: true });
+      }
+    }, 50);
+  };
+
   const saveConfig = async () => {
     if (!config) return;
 
-    const errors = validateConfig();
+    const payload = toConfigPayload(config);
+    const errors = collectValidationErrors(payload);
+    setValidationErrors(errors);
     if (errors) {
       const errorCount = Object.keys(errors).length;
       setMessage({ type: 'error', text: `Please fix ${errorCount} validation error(s)` });
+      focusFirstError(errors);
       return;
     }
 
@@ -209,7 +287,7 @@ const Settings: FunctionalComponent = () => {
       const response = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
+        body: JSON.stringify(payload),
       });
 
       const contentType = response.headers.get('content-type') || '';
@@ -222,6 +300,7 @@ const Settings: FunctionalComponent = () => {
           setMessage({ type: 'error', text: responseBody.error || 'Failed to save configuration' });
         } else {
           setMessage({ type: 'success', text: 'Configuration saved successfully!' });
+          setConfig(payload);
           setValidationErrors({});
         }
       } else {
@@ -244,6 +323,7 @@ const Settings: FunctionalComponent = () => {
       ntp: { ...config.ntp },
       gps: { ...config.gps },
       sensor: { ...config.sensor },
+      cloudDetection: { ...(config.cloudDetection ?? defaultCloudDetectionConfig) },
       auth: config.auth ? { ...config.auth } : { ...defaultAuthConfig },
       rain: config.rain ? { ...config.rain } : { ...defaultRainConfig },
     };
@@ -254,17 +334,68 @@ const Settings: FunctionalComponent = () => {
     }
     
     current[path[path.length - 1]] = value;
-    setConfig(newConfig);
+    const normalizedConfig = toConfigPayload(newConfig);
+    setConfig(normalizedConfig);
+    setValidationErrors(collectValidationErrors(normalizedConfig));
+  };
+
+  const updateDailyResetTime = (value: string) => {
+    if (!config) return;
+    const [hourRaw, minuteRaw] = value.split(':').map((part) => parseInt(part, 10));
+    const hour = Number.isFinite(hourRaw) ? hourRaw : 0;
+    const minute = Number.isFinite(minuteRaw) ? minuteRaw : 0;
+    const newConfig = {
+      ...config,
+      wifi: { ...config.wifi },
+      mqtt: { ...config.mqtt },
+      ntp: { ...config.ntp },
+      gps: { ...config.gps },
+      sensor: { ...config.sensor },
+      cloudDetection: { ...(config.cloudDetection ?? defaultCloudDetectionConfig) },
+      auth: config.auth ? { ...config.auth } : { ...defaultAuthConfig },
+      rain: {
+        ...(config.rain ? { ...config.rain } : { ...defaultRainConfig }),
+        dailyResetHour: hour,
+        dailyResetMinute: minute,
+      },
+    };
+    const normalizedConfig = toConfigPayload(newConfig);
+    setConfig(normalizedConfig);
+    setValidationErrors(collectValidationErrors(normalizedConfig));
   };
 
   const errorFor = (key: string) => validationErrors[fieldErrorAliases[key] ?? key];
+  const shouldShowWifiPassword = Boolean(
+    config && originalWifiSsid !== null && wifiNetworks.length > 0 && config.wifi.ssid !== originalWifiSsid
+  );
+
+  const updateWifiNetwork = (ssid: string) => {
+    if (!config) return;
+    const newConfig = {
+      ...config,
+      wifi: {
+        ...config.wifi,
+        ssid,
+        password: ssid !== originalWifiSsid ? '' : config.wifi.password,
+      },
+      mqtt: { ...config.mqtt },
+      ntp: { ...config.ntp },
+      gps: { ...config.gps },
+      sensor: { ...config.sensor },
+      cloudDetection: { ...(config.cloudDetection ?? defaultCloudDetectionConfig) },
+      auth: config.auth ? { ...config.auth } : { ...defaultAuthConfig },
+      rain: config.rain ? { ...config.rain } : { ...defaultRainConfig },
+    };
+    const normalizedConfig = toConfigPayload(newConfig);
+    setConfig(normalizedConfig);
+    setValidationErrors(collectValidationErrors(normalizedConfig));
+  };
 
   if (loading) {
     return (
-      <div class="flex items-center justify-center min-h-[60vh]">
+      <div class="empty-state">
         <div class="text-center">
-          <div class="text-6xl mb-4">⚙️</div>
-          <h2 class="text-2xl font-bold text-white">Loading Settings...</h2>
+          <h2>Loading Settings...</h2>
         </div>
       </div>
     );
@@ -272,36 +403,20 @@ const Settings: FunctionalComponent = () => {
 
   if (!config) {
     return (
-      <div class="text-center text-red-400">
+      <div class="empty-state tone-red">
         Failed to load configuration
       </div>
     );
   }
 
   return (
-    <div class="max-w-4xl mx-auto space-y-6">
-      <h1 class="text-3xl font-bold text-white mb-6">Settings</h1>
-
+    <div class="panel-page settings-page page-enter">
       {message && (
-        <div class={`p-4 rounded-lg ${
-          message.type === 'success' ? 'bg-green-900 border-green-700' : 'bg-red-900 border-red-700'
-        } border`}>
-          <p class="text-white">{message.text}</p>
-        </div>
-      )}
-
-      {/* Validation Errors Debug Panel */}
-      {Object.keys(validationErrors).length > 0 && (
-        <div ref={errorPanelRef} class="bg-orange-900 border border-orange-700 rounded-lg p-4">
-          <h3 class="text-lg font-semibold text-white mb-2">⚠️ Validation Errors</h3>
-          <ul class="space-y-1 text-sm text-orange-200">
-            {Object.entries(validationErrors)
-              .map(([field, error]) => (
-                <li key={field}>
-                  <strong>{field}:</strong> {error}
-                </li>
-              ))}
-          </ul>
+        <div
+          ref={errorPanelRef}
+          class={`settings-message ${message.type === 'success' ? 'settings-message-success' : 'settings-message-error'}`}
+        >
+          <p>{message.text}</p>
         </div>
       )}
 
@@ -314,11 +429,17 @@ const Settings: FunctionalComponent = () => {
               Device Name
             </label>
             <input
+              data-field="deviceName"
               type="text"
               value={config.deviceName}
               onChange={(e) => updateConfig(['deviceName'], (e.target as HTMLInputElement).value)}
-              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                errorFor('deviceName') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+              }`}
             />
+            {errorFor('deviceName') && (
+              <p class="mt-1 text-sm text-red-400">{errorFor('deviceName')}</p>
+            )}
           </div>
         </div>
       </section>
@@ -338,22 +459,25 @@ const Settings: FunctionalComponent = () => {
                 disabled={scanningWifi}
                 class="text-sm px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded text-white transition-colors"
               >
-                {scanningWifi ? 'Scanning...' : '📡 Scan Networks'}
+                {scanningWifi ? 'Scanning...' : 'Scan Networks'}
               </button>
             </div>
             <select
+              data-field="wifi.ssid"
               value={config.wifi.ssid === '' ? 'OTHER' : 
                      (wifiNetworks || []).some(n => n.ssid === config.wifi.ssid) ? config.wifi.ssid : 
                      config.wifi.ssid}
               onChange={(e) => {
                 const value = (e.target as HTMLSelectElement).value;
                 if (value === 'OTHER') {
-                  updateConfig(['wifi', 'ssid'], '');
+                  updateWifiNetwork('');
                 } else {
-                  updateConfig(['wifi', 'ssid'], value);
+                  updateWifiNetwork(value);
                 }
               }}
-              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                errorFor('wifi.ssid') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+              }`}
             >
               {/* Current network if not in scan results and not empty */}
               {config.wifi.ssid && !(wifiNetworks || []).some(n => n.ssid === config.wifi.ssid) && (
@@ -374,39 +498,54 @@ const Settings: FunctionalComponent = () => {
             {/* Only show manual input when "Other" is selected */}
             {config.wifi.ssid === '' && (
               <input
+                data-field="wifi.ssid"
                 type="text"
                 value={config.wifi.ssid}
-                onChange={(e) => updateConfig(['wifi', 'ssid'], (e.target as HTMLInputElement).value)}
+                onChange={(e) => updateWifiNetwork((e.target as HTMLInputElement).value)}
                 placeholder="Enter network name (SSID)"
                 class="mt-2 w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
                 autoFocus
               />
             )}
+            {errorFor('wifi.ssid') && (
+              <p class="mt-1 text-sm text-red-400">{errorFor('wifi.ssid')}</p>
+            )}
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              value={config.wifi.password}
-              onChange={(e) => updateConfig(['wifi', 'password'], (e.target as HTMLInputElement).value)}
-              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
+          {shouldShowWifiPassword && (
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">
+                Password
+              </label>
+              <input
+                data-field="wifi.password"
+                type="password"
+                value={config.wifi.password}
+                onChange={(e) => updateConfig(['wifi', 'password'], (e.target as HTMLInputElement).value)}
+                placeholder="Network password"
+                class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          )}
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">
               Hostname
             </label>
             <input
+              data-field="wifi.hostname"
               type="text"
               value={config.wifi.hostname}
               onChange={(e) => updateConfig(['wifi', 'hostname'], (e.target as HTMLInputElement).value)}
-              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                errorFor('wifi.hostname') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+              }`}
             />
+            {errorFor('wifi.hostname') && (
+              <p class="mt-1 text-sm text-red-400">{errorFor('wifi.hostname')}</p>
+            )}
           </div>
           <div class="flex items-center">
             <input
+              data-field="wifi.autoReconnect"
               type="checkbox"
               checked={config.wifi.autoReconnect}
               onChange={(e) => updateConfig(['wifi', 'autoReconnect'], (e.target as HTMLInputElement).checked)}
@@ -416,12 +555,15 @@ const Settings: FunctionalComponent = () => {
               Auto Reconnect
             </label>
           </div>
+          {errorFor('ntp.enabled') && (
+            <p class="text-sm text-red-400">{errorFor('ntp.enabled')}</p>
+          )}
         </div>
       </section>
 
       {/* OTA Settings */}
       <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <h2 class="text-xl font-semibold text-white mb-4">ArduinoOTA</h2>
+        <h2 class="text-xl font-semibold text-white mb-4">Over-The-Air Updates</h2>
         <div class="space-y-4">
           <div class="flex items-center">
             <input
@@ -440,6 +582,7 @@ const Settings: FunctionalComponent = () => {
                 Password
               </label>
               <input
+                data-field="ota.password"
                 type="password"
                 value={config.ota.password}
                 onChange={(e) => updateConfig(['ota', 'password'], (e.target as HTMLInputElement).value)}
@@ -481,6 +624,7 @@ const Settings: FunctionalComponent = () => {
                   Username
                 </label>
                 <input
+                  data-field="auth.username"
                   type="text"
                   value={config.auth.username}
                   onChange={(e) => updateConfig(['auth', 'username'], (e.target as HTMLInputElement).value)}
@@ -497,6 +641,7 @@ const Settings: FunctionalComponent = () => {
                   Password
                 </label>
                 <input
+                  data-field="auth.password"
                   type="password"
                   value={config.auth.password}
                   onChange={(e) => updateConfig(['auth', 'password'], (e.target as HTMLInputElement).value)}
@@ -546,6 +691,7 @@ const Settings: FunctionalComponent = () => {
               Timezone
             </label>
             <select
+              data-field="ntp.timezone"
               value={
                 TIMEZONE_OPTIONS.some(opt => opt.value === config.ntp.timezone) 
                   ? config.ntp.timezone 
@@ -572,6 +718,7 @@ const Settings: FunctionalComponent = () => {
                 Custom Timezone (POSIX format)
               </label>
               <input
+                data-field="ntp.timezone"
                 type="text"
                 value={config.ntp.timezone}
                 onChange={(e) => updateConfig(['ntp', 'timezone'], (e.target as HTMLInputElement).value)}
@@ -591,18 +738,25 @@ const Settings: FunctionalComponent = () => {
                   Primary NTP Server
                 </label>
                 <input
+                  data-field="ntp.server1"
                   type="text"
                   value={config.ntp.server1}
                   onChange={(e) => updateConfig(['ntp', 'server1'], (e.target as HTMLInputElement).value)}
                   placeholder="pool.ntp.org"
-                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                    errorFor('ntp.server1') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                  }`}
                 />
+                {errorFor('ntp.server1') && (
+                  <p class="mt-1 text-sm text-red-400">{errorFor('ntp.server1')}</p>
+                )}
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Secondary NTP Server (optional)
+                  Secondary NTP Server
                 </label>
                 <input
+                  data-field="ntp.server2"
                   type="text"
                   value={config.ntp.server2}
                   onChange={(e) => updateConfig(['ntp', 'server2'], (e.target as HTMLInputElement).value)}
@@ -615,13 +769,19 @@ const Settings: FunctionalComponent = () => {
                   Sync Interval (minutes)
                 </label>
                 <input
+                  data-field="ntp.syncIntervalMs"
                   type="number"
                   value={config.ntp.syncIntervalMs / 60000}
                   onChange={(e) => updateConfig(['ntp', 'syncIntervalMs'], parseInt((e.target as HTMLInputElement).value) * 60000)}
                   min="10"
                   max="1440"
-                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                    errorFor('ntp.syncIntervalMs') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                  }`}
                 />
+                {errorFor('ntp.syncIntervalMs') && (
+                  <p class="mt-1 text-sm text-red-400">{errorFor('ntp.syncIntervalMs')}</p>
+                )}
               </div>
             </>
           )}
@@ -660,32 +820,45 @@ const Settings: FunctionalComponent = () => {
                     RX Pin
                   </label>
                   <input
+                    data-field="gps.rxPin"
                     type="number"
                     value={config.gps.rxPin}
                     onChange={(e) => updateConfig(['gps', 'rxPin'], parseInt((e.target as HTMLInputElement).value))}
                     min="0"
                     max="39"
-                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                    class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                      errorFor('gps.rxPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    }`}
                   />
+                  {errorFor('gps.rxPin') && (
+                    <p class="mt-1 text-sm text-red-400">{errorFor('gps.rxPin')}</p>
+                  )}
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-2">
                     TX Pin
                   </label>
                   <input
+                    data-field="gps.txPin"
                     type="number"
                     value={config.gps.txPin}
                     onChange={(e) => updateConfig(['gps', 'txPin'], parseInt((e.target as HTMLInputElement).value))}
                     min="0"
                     max="39"
-                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                    class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                      errorFor('gps.txPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    }`}
                   />
+                  {errorFor('gps.txPin') && (
+                    <p class="mt-1 text-sm text-red-400">{errorFor('gps.txPin')}</p>
+                  )}
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-2">
                     Baud Rate
                   </label>
                   <select
+                    data-field="gps.baudRate"
                     value={config.gps.baudRate}
                     onChange={(e) => updateConfig(['gps', 'baudRate'], parseInt((e.target as HTMLSelectElement).value))}
                     class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
@@ -697,6 +870,9 @@ const Settings: FunctionalComponent = () => {
                     <option value="57600">57600</option>
                     <option value="115200">115200</option>
                   </select>
+                  {errorFor('gps.baudRate') && (
+                    <p class="mt-1 text-sm text-red-400">{errorFor('gps.baudRate')}</p>
+                  )}
                 </div>
               </div>
             </>
@@ -714,6 +890,7 @@ const Settings: FunctionalComponent = () => {
                   Primary Source
                 </label>
                 <select
+                  data-field="primaryTimeSource"
                   value={config.primaryTimeSource}
                   onChange={(e) => {
                     const newPrimary = parseInt((e.target as HTMLSelectElement).value);
@@ -731,6 +908,9 @@ const Settings: FunctionalComponent = () => {
                   {config.ntp.enabled && <option value="0">NTP</option>}
                   {config.gps.enabled && <option value="1">GPS</option>}
                 </select>
+                {errorFor('primaryTimeSource') && (
+                  <p class="mt-1 text-sm text-red-400">{errorFor('primaryTimeSource')}</p>
+                )}
                 <p class="mt-1 text-xs text-gray-500">
                   Try this source first
                 </p>
@@ -740,6 +920,7 @@ const Settings: FunctionalComponent = () => {
                   Secondary Source (Fallback)
                 </label>
                 <select
+                  data-field="secondaryTimeSource"
                   value={config.secondaryTimeSource}
                   onChange={(e) => updateConfig(['secondaryTimeSource'], parseInt((e.target as HTMLSelectElement).value))}
                   class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
@@ -747,6 +928,9 @@ const Settings: FunctionalComponent = () => {
                   {config.ntp.enabled && config.primaryTimeSource !== 0 && <option value="0">NTP</option>}
                   {config.gps.enabled && config.primaryTimeSource !== 1 && <option value="1">GPS</option>}
                 </select>
+                {errorFor('secondaryTimeSource') && (
+                  <p class="mt-1 text-sm text-red-400">{errorFor('secondaryTimeSource')}</p>
+                )}
                 <p class="mt-1 text-xs text-gray-500">
                   Use if primary source is unavailable
                 </p>
@@ -774,10 +958,11 @@ const Settings: FunctionalComponent = () => {
           {config.mqtt.enabled && (
             <>
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Broker *
+                <label data-required class="block text-sm font-medium text-gray-300 mb-2">
+                  Broker
                 </label>
                 <input
+                  data-field="mqttBroker"
                   type="text"
                   value={config.mqtt.broker}
                   onChange={(e) => updateConfig(['mqtt', 'broker'], (e.target as HTMLInputElement).value)}
@@ -791,10 +976,11 @@ const Settings: FunctionalComponent = () => {
                 )}
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Port *
+                <label data-required class="block text-sm font-medium text-gray-300 mb-2">
+                  Port
                 </label>
                 <input
+                  data-field="mqttPort"
                   type="number"
                   value={config.mqtt.port}
                   onChange={(e) => updateConfig(['mqtt', 'port'], Math.max(1, Math.min(65535, parseInt((e.target as HTMLInputElement).value) || 1883)))}
@@ -811,7 +997,7 @@ const Settings: FunctionalComponent = () => {
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Username (optional)
+                  Username
                 </label>
                 <input
                   type="text"
@@ -823,7 +1009,7 @@ const Settings: FunctionalComponent = () => {
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Password (optional)
+                  Password
                 </label>
                 <input
                   type="password"
@@ -834,10 +1020,11 @@ const Settings: FunctionalComponent = () => {
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Topic *
+                <label data-required class="block text-sm font-medium text-gray-300 mb-2">
+                  Topic
                 </label>
                 <input
+                  data-field="mqttTopic"
                   type="text"
                   value={config.mqtt.topic}
                   onChange={(e) => updateConfig(['mqtt', 'topic'], (e.target as HTMLInputElement).value)}
@@ -856,6 +1043,7 @@ const Settings: FunctionalComponent = () => {
                   Publish Interval (seconds)
                 </label>
                 <input
+                  data-field="mqttInterval"
                   type="number"
                   value={config.mqtt.publishIntervalMs / 1000}
                   onChange={(e) => updateConfig(['mqtt', 'publishIntervalMs'], Math.max(1, parseInt((e.target as HTMLInputElement).value) || 60) * 1000)}
@@ -879,14 +1067,13 @@ const Settings: FunctionalComponent = () => {
                   disabled={testingMqtt || !config.mqtt.broker || !config.mqtt.port}
                   class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-colors"
                 >
-                  {testingMqtt ? '🔄 Testing Connection...' : '🔌 Test MQTT Connection'}
+                  {testingMqtt ? 'Testing Connection...' : 'Test MQTT Connection'}
                 </button>
                 {mqttTestResult && (
                   <div class={`mt-3 p-3 rounded-lg ${
                     mqttTestResult.type === 'success' ? 'bg-green-900 border border-green-700' : 'bg-red-900 border border-red-700'
                   }`}>
                     <p class="text-white text-sm">
-                      {mqttTestResult.type === 'success' ? '✅ ' : '❌ '}
                       {mqttTestResult.text}
                     </p>
                   </div>
@@ -906,6 +1093,7 @@ const Settings: FunctionalComponent = () => {
               Read Interval (ms)
             </label>
             <input
+              data-field="sensorInterval"
               type="number"
               value={config.sensor.readIntervalMs}
               onChange={(e) => updateConfig(['sensor', 'readIntervalMs'], Math.max(100, parseInt((e.target as HTMLInputElement).value) || 5000))}
@@ -927,6 +1115,7 @@ const Settings: FunctionalComponent = () => {
                 I2C SDA Pin
               </label>
               <input
+                data-field="i2cSDA"
                 type="number"
                 value={config.sensor.i2cSDA}
                 onChange={(e) => updateConfig(['sensor', 'i2cSDA'], parseInt((e.target as HTMLInputElement).value) || 21)}
@@ -943,6 +1132,7 @@ const Settings: FunctionalComponent = () => {
                 I2C SCL Pin
               </label>
               <input
+                data-field="i2cSCL"
                 type="number"
                 value={config.sensor.i2cSCL}
                 onChange={(e) => updateConfig(['sensor', 'i2cSCL'], parseInt((e.target as HTMLInputElement).value) || 22)}
@@ -966,6 +1156,7 @@ const Settings: FunctionalComponent = () => {
               I2C Frequency (Hz)
             </label>
             <select
+              data-field="i2cFrequency"
               value={config.sensor.i2cFrequency}
               onChange={(e) => updateConfig(['sensor', 'i2cFrequency'], parseInt((e.target as HTMLSelectElement).value))}
               class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
@@ -1064,6 +1255,7 @@ const Settings: FunctionalComponent = () => {
                     RX Pin
                   </label>
                   <input
+                    data-field="rain.rxPin"
                     type="number"
                     value={config.rain.rxPin}
                     onChange={(e) => updateConfig(['rain', 'rxPin'], parseInt((e.target as HTMLInputElement).value))}
@@ -1082,6 +1274,7 @@ const Settings: FunctionalComponent = () => {
                     TX Pin
                   </label>
                   <input
+                    data-field="rain.txPin"
                     type="number"
                     value={config.rain.txPin}
                     onChange={(e) => updateConfig(['rain', 'txPin'], parseInt((e.target as HTMLInputElement).value))}
@@ -1100,6 +1293,7 @@ const Settings: FunctionalComponent = () => {
                     Baud Rate
                   </label>
                   <select
+                    data-field="rain.baudRate"
                     value={config.rain.baudRate}
                     onChange={(e) => updateConfig(['rain', 'baudRate'], parseInt((e.target as HTMLSelectElement).value))}
                     class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
@@ -1109,32 +1303,47 @@ const Settings: FunctionalComponent = () => {
                     <option value="9600">9600</option>
                     <option value="19200">19200</option>
                   </select>
+                  {errorFor('rain.baudRate') && (
+                    <p class="mt-1 text-sm text-red-400">{errorFor('rain.baudRate')}</p>
+                  )}
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-2">
                     Poll interval (seconds)
                   </label>
                   <input
+                    data-field="rain.pollIntervalMs"
                     type="number"
                     min="1"
                     max="3600"
                     value={Math.round((config.rain.pollIntervalMs ?? 5000) / 1000)}
                     onChange={(e) => updateConfig(['rain', 'pollIntervalMs'], Math.max(1, parseInt((e.target as HTMLInputElement).value) || 5) * 1000)}
-                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                    class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                      errorFor('rain.pollIntervalMs') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    }`}
                   />
+                  {errorFor('rain.pollIntervalMs') && (
+                    <p class="mt-1 text-sm text-red-400">{errorFor('rain.pollIntervalMs')}</p>
+                  )}
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-2">
                     Raining clear delay (minutes)
                   </label>
                   <input
+                    data-field="rain.rainClearDelayMs"
                     type="number"
                     min="1"
                     max="1440"
                     value={Math.round((config.rain.rainClearDelayMs ?? 900000) / 60000)}
                     onChange={(e) => updateConfig(['rain', 'rainClearDelayMs'], Math.max(1, parseInt((e.target as HTMLInputElement).value) || 15) * 60000)}
-                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                    class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                      errorFor('rain.rainClearDelayMs') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    }`}
                   />
+                  {errorFor('rain.rainClearDelayMs') && (
+                    <p class="mt-1 text-sm text-red-400">{errorFor('rain.rainClearDelayMs')}</p>
+                  )}
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-300 mb-2">
@@ -1187,30 +1396,19 @@ const Settings: FunctionalComponent = () => {
                   </label>
                 </div>
                 {config.rain.dailyResetEnabled && (
-                  <>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-300 mb-2">Reset hour</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="23"
-                        value={config.rain.dailyResetHour ?? 0}
-                        onChange={(e) => updateConfig(['rain', 'dailyResetHour'], parseInt((e.target as HTMLInputElement).value) || 0)}
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-300 mb-2">Reset minute</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        value={config.rain.dailyResetMinute ?? 0}
-                        onChange={(e) => updateConfig(['rain', 'dailyResetMinute'], parseInt((e.target as HTMLInputElement).value) || 0)}
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                  </>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Daily reset time</label>
+                    <input
+                      data-field="rain.dailyResetHour"
+                      type="time"
+                      value={`${String(config.rain.dailyResetHour ?? 0).padStart(2, '0')}:${String(config.rain.dailyResetMinute ?? 0).padStart(2, '0')}`}
+                      onChange={(e) => updateDailyResetTime((e.target as HTMLInputElement).value)}
+                      class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                    />
+                    {(errorFor('rain.dailyResetHour') || errorFor('rain.dailyResetMinute')) && (
+                      <p class="mt-1 text-sm text-red-400">{errorFor('rain.dailyResetHour') || errorFor('rain.dailyResetMinute')}</p>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1221,7 +1419,7 @@ const Settings: FunctionalComponent = () => {
                   disabled={testingRain}
                   class="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-colors"
                 >
-                  {testingRain ? '🔄 Testing RG-15...' : '🧪 Test RG-15 communication'}
+                  {testingRain ? 'Testing RG-15...' : 'Test RG-15 communication'}
                 </button>
                 <p class="text-xs text-gray-500">
                   This sends a harmless read command and reports the raw response, acknowledgement, and parse status.
@@ -1231,7 +1429,6 @@ const Settings: FunctionalComponent = () => {
                     rainTestResult.type === 'success' ? 'bg-green-900 border border-green-700' : 'bg-red-900 border border-red-700'
                   }`}>
                     <p class="text-white text-sm">
-                      {rainTestResult.type === 'success' ? '✅ ' : '❌ '}
                       {rainTestResult.text}
                     </p>
                   </div>
@@ -1243,7 +1440,7 @@ const Settings: FunctionalComponent = () => {
       </section>
 
       {/* Save Button */}
-      <div class="flex justify-end">
+      <div class="settings-save-bar">
         <button
           onClick={saveConfig}
           disabled={saving}

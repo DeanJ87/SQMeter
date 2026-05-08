@@ -9,7 +9,10 @@ const validGPIOs = [
 export const wifiConfigSchema = z.object({
   ssid: z.string().min(1, "WiFi SSID is required"),
   password: z.string(),
-  hostname: z.string(),
+  hostname: z
+    .string()
+    .min(1, "Hostname is required")
+    .regex(/^[a-zA-Z0-9-]+$/, "Hostname can only contain letters, numbers, and hyphens"),
   autoReconnect: z.boolean(),
   reconnectDelayMs: z.number().int().positive(),
   maxReconnectDelayMs: z.number().int().positive(),
@@ -32,17 +35,18 @@ export const mqttConfigSchema = z
       .int()
       .min(1000, "Publish interval must be at least 1 second"),
   })
-  .refine(
-    (data) =>
-      !data.enabled ||
-      (data.broker.length > 0 &&
-        data.topic.length > 0 &&
-        data.topic.match(/^[a-zA-Z0-9/_-]+$/)),
-    {
-      message: "MQTT broker and valid topic are required when MQTT is enabled",
-      path: ["broker"],
-    },
-  );
+  .refine((data) => !data.enabled || data.broker.trim().length > 0, {
+    message: "MQTT broker is required when MQTT is enabled",
+    path: ["broker"],
+  })
+  .refine((data) => !data.enabled || data.topic.trim().length > 0, {
+    message: "MQTT topic is required when MQTT is enabled",
+    path: ["topic"],
+  })
+  .refine((data) => !data.enabled || /^[a-zA-Z0-9/_-]+$/.test(data.topic), {
+    message: "MQTT topic can only contain letters, numbers, slash, underscore, and hyphen",
+    path: ["topic"],
+  });
 
 export const otaConfigSchema = z
   .object({
@@ -71,9 +75,9 @@ export const authConfigSchema = z
 
 export const ntpConfigSchema = z.object({
   enabled: z.boolean(),
-  server1: z.string(),
+  server1: z.string().min(1, "Primary NTP server is required"),
   server2: z.string(),
-  timezone: z.string(),
+  timezone: z.string().min(1, "Timezone is required"),
   gmtOffsetSec: z.number().int(),
   daylightOffsetSec: z.number().int(),
   syncIntervalMs: z
@@ -81,6 +85,33 @@ export const ntpConfigSchema = z.object({
     .int()
     .min(600000, "Sync interval must be at least 10 minutes"),
 });
+
+export const gpsConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    rxPin: z
+      .number()
+      .int()
+      .refine((val) => validGPIOs.includes(val), {
+        message: `RX pin must be a valid GPIO: ${validGPIOs.join(", ")}`,
+      }),
+    txPin: z
+      .number()
+      .int()
+      .refine((val) => validGPIOs.includes(val), {
+        message: `TX pin must be a valid GPIO: ${validGPIOs.join(", ")}`,
+      }),
+    baudRate: z
+      .number()
+      .int()
+      .refine((val) => [4800, 9600, 19200, 38400, 57600, 115200].includes(val), {
+        message: "Baud rate must be one of: 4800, 9600, 19200, 38400, 57600, 115200",
+      }),
+  })
+  .refine((data) => !data.enabled || data.rxPin !== data.txPin, {
+    message: "RX and TX pins must be different",
+    path: ["rxPin"],
+  });
 
 export const sensorConfigSchema = z
   .object({
@@ -177,19 +208,59 @@ export const rainSensorConfigSchema = z
     path: ["rxPin"],
   });
 
-export const configSchema = z.object({
-  deviceName: z.string().min(1, "Device name is required"),
-  wifi: wifiConfigSchema,
-  mqtt: mqttConfigSchema,
-  ota: otaConfigSchema,
-  auth: authConfigSchema,
-  ntp: ntpConfigSchema,
-  sensor: sensorConfigSchema,
-  skyAveraging: skyAveragingConfigSchema.optional(),
-  skyCalibration: skyCalibrationConfigSchema.optional(),
-  timezone: z.string(),
-  cloudDetection: cloudDetectionConfigSchema,
-  rain: rainSensorConfigSchema.optional(),
-});
+export const configSchema = z
+  .object({
+    deviceName: z.string().min(1, "Device name is required"),
+    timezone: z.string(),
+    primaryTimeSource: z.number().int().min(0).max(1),
+    secondaryTimeSource: z.number().int().min(0).max(1),
+    wifi: wifiConfigSchema,
+    mqtt: mqttConfigSchema,
+    ota: otaConfigSchema,
+    auth: authConfigSchema,
+    ntp: ntpConfigSchema,
+    gps: gpsConfigSchema,
+    sensor: sensorConfigSchema,
+    skyAveraging: skyAveragingConfigSchema.optional(),
+    skyCalibration: skyCalibrationConfigSchema.optional(),
+    rain: rainSensorConfigSchema.optional(),
+    cloudDetection: cloudDetectionConfigSchema,
+  })
+  .superRefine((data, ctx) => {
+    if (!data.ntp.enabled && !data.gps.enabled) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enable at least one time source: NTP or GPS",
+        path: ["ntp", "enabled"],
+      });
+    }
+
+    const sourceEnabled = (source: number) => source === 0 ? data.ntp.enabled : data.gps.enabled;
+    const sourceName = (source: number) => source === 0 ? "NTP" : "GPS";
+
+    if (!sourceEnabled(data.primaryTimeSource)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Primary time source ${sourceName(data.primaryTimeSource)} is disabled`,
+        path: ["primaryTimeSource"],
+      });
+    }
+
+    if (data.ntp.enabled && data.gps.enabled && !sourceEnabled(data.secondaryTimeSource)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Secondary time source ${sourceName(data.secondaryTimeSource)} is disabled`,
+        path: ["secondaryTimeSource"],
+      });
+    }
+
+    if (data.ntp.enabled && data.gps.enabled && data.primaryTimeSource === data.secondaryTimeSource) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Primary and secondary time sources must be different",
+        path: ["secondaryTimeSource"],
+      });
+    }
+  });
 
 export type ConfigSchema = z.infer<typeof configSchema>;
