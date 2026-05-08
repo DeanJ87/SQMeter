@@ -54,6 +54,21 @@ export const otaConfigSchema = z
     path: ["password"],
   });
 
+export const authConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    username: z.string(),
+    password: z.string(),
+  })
+  .refine((data) => !data.enabled || data.username.length > 0, {
+    message: "Username is required when HTTP auth is enabled",
+    path: ["username"],
+  })
+  .refine((data) => !data.enabled || data.password.length > 0, {
+    message: "Password is required when HTTP auth is enabled",
+    path: ["password"],
+  });
+
 export const ntpConfigSchema = z.object({
   enabled: z.boolean(),
   server1: z.string(),
@@ -129,9 +144,15 @@ export const rainSensorConfigSchema = z
       .refine((val) => [2400, 4800, 9600, 19200].includes(val), {
         message: "Baud rate must be one of: 2400, 4800, 9600, 19200",
       }),
-    mode: z.enum(['polling', 'continuous']),
+    debugUart: z.boolean(),
+    mode: z.literal('polling'),
     resolution: z.enum(['high', 'low', 'switch']),
     units: z.enum(['metric', 'imperial', 'switch']),
+    pollIntervalMs: z.number().int().min(1000, "Poll interval must be at least 1 second").max(3600000, "Poll interval must be at most 1 hour"),
+    rainClearDelayMs: z.number().int().min(60000, "Rain clear delay must be at least 1 minute").max(86400000, "Rain clear delay must be at most 24 hours"),
+    dailyResetEnabled: z.boolean(),
+    dailyResetHour: z.number().int().min(0).max(23),
+    dailyResetMinute: z.number().int().min(0).max(59),
   })
   .refine((data) => !data.enabled || data.rxPin !== data.txPin, {
     message: "RX and TX pins must be different",
@@ -143,6 +164,7 @@ export const configSchema = z.object({
   wifi: wifiConfigSchema,
   mqtt: mqttConfigSchema,
   ota: otaConfigSchema,
+  auth: authConfigSchema,
   ntp: ntpConfigSchema,
   sensor: sensorConfigSchema,
   timezone: z.string(),

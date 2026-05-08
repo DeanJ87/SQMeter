@@ -1,10 +1,12 @@
 import { FunctionalComponent } from 'preact';
+import { useState } from 'preact/hooks';
 import { getTimezoneFriendlyName } from '../utils/timezone';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { SystemStatus } from '../types';
 
 const System: FunctionalComponent = () => {
   const { data: status, connected } = useWebSocket<SystemStatus>('/ws/status');
+  const [rg15Action, setRg15Action] = useState<{ loading: boolean; message: string | null }>({ loading: false, message: null });
 
   if (!connected || !status) {
     return (
@@ -29,6 +31,20 @@ const System: FunctionalComponent = () => {
     }
   };
 
+  const runRg15Action = async (path: string, successMessage: string) => {
+    setRg15Action({ loading: true, message: null });
+    try {
+      const response = await fetch(path, { method: 'POST' });
+      const data = await response.json().catch(() => ({}));
+      setRg15Action({
+        loading: false,
+        message: response.ok ? successMessage : (data.message || 'RG-15 action failed'),
+      });
+    } catch {
+      setRg15Action({ loading: false, message: 'RG-15 action failed' });
+    }
+  };
+
   const formatUptime = (seconds: number): string => {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
@@ -41,6 +57,13 @@ const System: FunctionalComponent = () => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1048576) return `${(bytes / 1024).toFixed(2)} KB`;
     return `${(bytes / 1048576).toFixed(2)} MB`;
+  };
+
+  const formatAgeMs = (value: number | null | undefined): string => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return '--';
+    if (value < 1000) return `${value} ms`;
+    if (value < 60000) return `${(value / 1000).toFixed(1)} s`;
+    return `${Math.floor(value / 60000)}m ${Math.floor((value % 60000) / 1000)}s`;
   };
 
   const getSensorStatusBadge = (status: number): { text: string; color: string } => {
@@ -445,16 +468,132 @@ const System: FunctionalComponent = () => {
             </span>
           </div>
           {status.sensors.rg15 && (
-            <div class="flex justify-between items-center">
-              <div>
-                <span class="text-white font-medium">RG-15 (Rain Sensor)</span>
-                <div class="text-xs text-gray-500">
-                  {status.sensors.rg15.initialized ? '✓ Initialized' : '✗ Not Initialized'} • Last update: {status.sensors.rg15.lastUpdate}ms
+            <div class="space-y-3 rounded-lg border border-gray-700 bg-gray-900 p-4">
+              <div class="flex justify-between items-center gap-3">
+                <div>
+                  <span class="text-white font-medium">RG-15 (Rain Sensor)</span>
+                  <div class="text-xs text-gray-500">
+                    UART opened: {status.sensors.rg15.initialized ? 'Yes' : 'No'} • Online: {status.sensors.rg15.online ? 'Yes' : 'No'} • Raining: {(status.sensors.rg15.raining ?? status.sensors.rg15.isRaining) ? 'Yes' : 'No'} • Stale: {status.sensors.rg15.stale ? 'Yes' : 'No'}
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    State: {status.sensors.rg15.state} • Last update: {status.sensors.rg15.lastUpdate}ms
+                  </div>
+                </div>
+                <span class={`px-3 py-1 rounded-full text-sm font-semibold ${getSensorStatusBadge(status.sensors.rg15.status).color}`}>
+                  {getSensorStatusBadge(status.sensors.rg15.status).text}
+                </span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={rg15Action.loading}
+                  onClick={() => runRg15Action('/api/sensors/rg15/reset-total', 'RG-15 total reset command sent')}
+                  class="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white text-sm font-semibold rounded transition-colors"
+                >
+                  Reset total
+                </button>
+                <button
+                  type="button"
+                  disabled={rg15Action.loading}
+                  onClick={() => runRg15Action('/api/sensors/rg15/reboot', 'RG-15 reboot command sent')}
+                  class="px-3 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-600 text-white text-sm font-semibold rounded transition-colors"
+                >
+                  Reboot RG-15
+                </button>
+                {rg15Action.message && (
+                  <span class="text-sm text-gray-300 self-center">{rg15Action.message}</span>
+                )}
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Raining</div>
+                  <div class="text-white font-mono">{(status.sensors.rg15.raining ?? status.sensors.rg15.isRaining) ? 'Yes' : 'No'}</div>
+                  <div class="text-xs text-gray-400 font-mono mt-1">Clear delay: {formatAgeMs(status.sensors.rg15.uart?.rain_clear_delay_ms)}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Rain intensity</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.rain_intensity ?? status.sensors.rg15.rInt ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Since last read</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.accumulation_since_last_read ?? status.sensors.rg15.acc ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Event total</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.event_accumulation ?? status.sensors.rg15.eventAcc ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">RX / TX</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.rx_pin ?? '--'} / {status.sensors.rg15.uart?.tx_pin ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Baud rate</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.baud_rate ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Last response age</div>
+                  <div class="text-white font-mono">{formatAgeMs(status.sensors.rg15.uart?.last_response_age_ms)}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Health probe age</div>
+                  <div class="text-white font-mono">{formatAgeMs(status.sensors.rg15.uart?.last_health_check_age_ms)}</div>
+                </div>
+                {(status.sensors.rg15.uart?.software_version || status.sensors.rg15.uart?.software_build_date) && (
+                  <div class="bg-gray-800 rounded p-3">
+                    <div class="text-xs text-gray-500">SW version</div>
+                    <div class="text-white font-mono">{status.sensors.rg15.uart?.software_version ?? '--'}</div>
+                    <div class="text-xs text-gray-400 font-mono mt-1">{status.sensors.rg15.uart?.software_build_date ?? '--'}</div>
+                  </div>
+                )}
+                {(status.sensors.rg15.uart?.power_on_days != null || status.sensors.rg15.uart?.reset_reason || status.sensors.rg15.uart?.last_total_reset_age_ms != null) && (
+                  <div class="bg-gray-800 rounded p-3">
+                    <div class="text-xs text-gray-500">Power / reset</div>
+                    {status.sensors.rg15.uart?.power_on_days != null && (
+                      <div class="text-white font-mono">{status.sensors.rg15.uart.power_on_days} days</div>
+                    )}
+                    {status.sensors.rg15.uart?.reset_reason && (
+                      <div class="text-xs text-gray-400 font-mono mt-1">Reset: {status.sensors.rg15.uart.reset_reason}</div>
+                    )}
+                    {status.sensors.rg15.uart?.last_total_reset_age_ms != null && (
+                      <div class="text-xs text-gray-400 font-mono mt-1">Daily total reset: {formatAgeMs(status.sensors.rg15.uart.last_total_reset_age_ms)}</div>
+                    )}
+                  </div>
+                )}
+                {(status.sensors.rg15.uart?.emitter_1 != null || status.sensors.rg15.uart?.emitter_2 != null || status.sensors.rg15.uart?.emitter_total != null) && (
+                  <div class="bg-gray-800 rounded p-3">
+                    <div class="text-xs text-gray-500">Emitters</div>
+                    <div class="text-white font-mono">
+                      {status.sensors.rg15.uart?.emitter_1 ?? '--'} / {status.sensors.rg15.uart?.emitter_2 ?? '--'}
+                      {status.sensors.rg15.uart?.emitter_total != null ? ` (${status.sensors.rg15.uart.emitter_total})` : ''}
+                    </div>
+                  </div>
+                )}
+                <div class="bg-gray-800 rounded p-3 md:col-span-3">
+                  <div class="text-xs text-gray-500">Last command / response / error</div>
+                  <div class="text-white font-mono break-all">{status.sensors.rg15.uart?.last_command ?? '--'}</div>
+                  <div class="text-xs text-gray-400 font-mono break-all mt-1">{status.sensors.rg15.uart?.last_raw_response ?? '--'}</div>
+                  <div class="text-xs text-yellow-300 font-mono break-all mt-1">{status.sensors.rg15.uart?.last_error ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3 md:col-span-3">
+                  <div class="text-xs text-gray-500">Last status line</div>
+                  <div class="text-white font-mono break-all">{status.sensors.rg15.uart?.last_status_line ?? '--'}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Successful reads</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.successful_reads ?? 0}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Timeouts</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.timeouts ?? 0}</div>
+                </div>
+                <div class="bg-gray-800 rounded p-3">
+                  <div class="text-xs text-gray-500">Parse errors</div>
+                  <div class="text-white font-mono">{status.sensors.rg15.uart?.parse_errors ?? 0}</div>
                 </div>
               </div>
-              <span class={`px-3 py-1 rounded-full text-sm font-semibold ${getSensorStatusBadge(status.sensors.rg15.status).color}`}>
-                {getSensorStatusBadge(status.sensors.rg15.status).text}
-              </span>
+              <div class="text-xs text-yellow-300">
+                Initialised only means the UART was opened. Online requires a valid response from the RG-15.
+              </div>
             </div>
           )}
         </div>

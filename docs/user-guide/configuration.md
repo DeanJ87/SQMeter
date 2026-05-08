@@ -54,14 +54,26 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
     "password": ""
   },
 
+  "auth": {
+    "enabled": false,
+    "username": "admin",
+    "password": ""
+  },
+
   "rain": {
     "enabled": false,
     "rxPin": 18,
     "txPin": 19,
     "baudRate": 9600,
+    "debugUart": false,
     "mode": "polling",
     "resolution": "high",
-    "units": "metric"
+    "units": "metric",
+    "pollIntervalMs": 5000,
+    "rainClearDelayMs": 900000,
+    "dailyResetEnabled": false,
+    "dailyResetHour": 0,
+    "dailyResetMinute": 0
   },
 
   "sensor": {
@@ -145,6 +157,30 @@ When GPS is enabled and has a fix, it can serve as the primary time source for a
 
 ArduinoOTA is disabled unless both `ota.enabled` is `true` and `ota.password` is set. The web UI OTA upload page is separate from command-line ArduinoOTA.
 
+### HTTP Authentication
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Require credentials for mutation endpoints |
+| `username` | string | `"admin"` | Username for HTTP Basic Auth |
+| `password` | string | `""` | Password (required when auth is enabled) |
+
+When `auth.enabled` is `true`, the following endpoints require HTTP Basic Auth credentials:
+
+- `POST /api/config` — save configuration
+- `POST /api/restart` — restart device
+- `POST /api/update` — firmware OTA upload
+- `POST /api/update/fs` — filesystem OTA upload
+- `POST /api/wifi/connect` — change WiFi network
+- `POST /api/mqtt/test` — test MQTT connection
+
+Read-only endpoints remain accessible without credentials:
+
+- `GET /api/sensors`, `GET /api/status`, `GET /api/config`
+- WebSocket streams (`/ws/sensors`, `/ws/status`)
+
+The `auth.password` field is masked in `GET /api/config` responses. Send the mask placeholder or an empty string to preserve the stored password; send `null` to clear it.
+
 ### Rain Sensor
 
 | Field | Type | Default | Description |
@@ -153,9 +189,15 @@ ArduinoOTA is disabled unless both `ota.enabled` is `true` and `ota.password` is
 | `rxPin` | int | `18` | ESP32 RX pin (connects to RG-15 TX) |
 | `txPin` | int | `19` | ESP32 TX pin (connects to RG-15 RX) |
 | `baudRate` | int | `9600` | RG-15 serial baud rate |
-| `mode` | string | `"polling"` | `"polling"` or `"continuous"` |
+| `debugUart` | bool | `false` | Log RG-15 UART command/response traffic |
+| `mode` | string | `"polling"` | Compatibility field; RG-15 communication is polling-only |
 | `resolution` | string | `"high"` | `"high"`, `"low"`, or `"switch"` |
 | `units` | string | `"metric"` | `"metric"`, `"imperial"`, or `"switch"` |
+| `pollIntervalMs` | int | `5000` | Interval between RG-15 `R` commands in polling mode |
+| `rainClearDelayMs` | int | `900000` | Local rain latch clear delay after intensity returns to zero |
+| `dailyResetEnabled` | bool | `false` | Reset RG-15 total accumulation once per day |
+| `dailyResetHour` | int | `0` | Local hour for scheduled total reset |
+| `dailyResetMinute` | int | `0` | Local minute for scheduled total reset |
 
 ### Sensor
 
@@ -170,14 +212,16 @@ ArduinoOTA is disabled unless both `ota.enabled` is `true` and `ota.password` is
 
 ## Security Notes
 
-SQMeter currently assumes a trusted LAN:
+SQMeter is designed for a trusted LAN environment. See the [Security Guide](security.md) for a full threat model and setup recommendations.
 
-- The web UI, REST API, WebSocket streams, and OTA endpoints do not require HTTP authentication.
-- `GET /api/config` redacts stored WiFi, MQTT, and ArduinoOTA password fields, but still exposes non-secret operational settings.
-- HTTP traffic is plaintext, so credentials sent through setup or config updates are visible to devices that can observe the LAN.
+- By default there is no HTTP authentication; read-only and mutation endpoints are both accessible to any LAN device.
+- Enable `auth.enabled` with a strong password to protect mutation endpoints (config save, OTA, restart, WiFi change).
+- `GET /api/config` redacts stored secrets (WiFi, MQTT, OTA, and auth passwords), but still exposes non-secret settings.
+- HTTP traffic is plaintext, so credentials sent via config updates are visible to LAN observers. TLS is not supported on the ESP32 in this firmware.
 - Command-line ArduinoOTA is disabled unless `ota.enabled` is `true` and `ota.password` is set.
+- `rain.debugUart` only affects serial logging for RG-15 command/response traffic. It does not log WiFi, MQTT, or OTA secrets.
 
-Keep the device on a private network or isolated observatory VLAN. Do not expose port 80, port 2020, or ArduinoOTA to the public internet.
+Keep the device on a private network or isolated observatory VLAN. Do not expose port 80 or ArduinoOTA to the public internet.
 
 Some settings are applied immediately, but hardware bus settings such as I2C pins, GPS pins, and RG-15 pins may require a restart because the sensors are initialised during firmware startup.
 

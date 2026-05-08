@@ -3,7 +3,7 @@
 Connect to `/ws/sensors` for a live stream of sensor readings. The device currently pushes messages every second.
 
 !!! note "Data freshness"
-    The default sensor poll interval is 5 seconds, so several WebSocket messages can contain the same sensor reading. The current payload does not include a data timestamp.
+    The default sensor poll interval is 5 seconds, so several WebSocket messages can contain the same sensor reading. The payload now includes `dataTimestamp`, `dataAgeMs`, and `dataStale`.
 
 ---
 
@@ -71,6 +71,15 @@ ws.onclose = () => {
     "age": 800
   },
   "rainSensor": {
+    "enabled": true,
+    "sensor": "hydreon_rg15",
+    "initialized": true,
+    "online": true,
+    "stale": false,
+    "state": "online",
+    "timestamp": 1234567890,
+    "ageMs": 40,
+    "status": 0,
     "isRaining": false,
     "acc": 0.000,
     "eventAcc": 0.000,
@@ -78,7 +87,13 @@ ws.onclose = () => {
     "rInt": 0.000,
     "lensBad": false,
     "emSat": false,
-    "status": 0
+    "uart": {
+      "last_command": "R",
+      "last_raw_response": "Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 1.24 mm, RInt 0.00 mm/h",
+      "timeouts": 0,
+      "parse_errors": 0,
+      "successful_reads": 42
+    }
   }
 }
 ```
@@ -87,7 +102,7 @@ ws.onclose = () => {
     `gps` is only included in the message when a GPS module is connected and initialised.
 
 !!! note "Rain sensor field"
-    `rainSensor` is only included when the RG-15 rain sensor is enabled and initialised. Values use the RG-15 configured units; the current payload field names do not include the unit.
+    `rainSensor` is included whenever the RG-15 path is compiled into the firmware. Check `enabled`, `initialized`, and `online` to distinguish disabled, UART-opened, and live sensor states. Values use the RG-15 configured units; the payload also includes UART diagnostics for bring-up debugging.
 
 ### `status` values
 

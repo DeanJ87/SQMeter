@@ -39,6 +39,30 @@ export const handlers = [
     HttpResponse.json({ success: true, message: "Connection successful (demo)" })
   ),
 
+  // REST — RG-15 communication test
+  http.post("/api/sensors/rg15/test", () =>
+    HttpResponse.json({
+      ok: true,
+      command: "R",
+      bytes_written: 2,
+      elapsed_ms: 42,
+      raw_response: "Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 1.24 mm, RInt 0.00 mm/h",
+      ack: "m",
+      acknowledged: true,
+      parsed: true,
+      online: true,
+      stale: false,
+      error: null,
+      hint: "Check RG-15 Serial OUT -> ESP32 RX, Serial IN -> ESP32 TX, common ground, baud rate, and voltage level.",
+    })
+  ),
+  http.post("/api/sensors/rg15/reset-total", () =>
+    HttpResponse.json({ ok: true, command: "O", message: "RG-15 total accumulation reset command sent" })
+  ),
+  http.post("/api/sensors/rg15/reboot", () =>
+    HttpResponse.json({ ok: true, command: "K", message: "RG-15 reboot command sent" })
+  ),
+
   // REST — control
   http.post("/api/restart", () => HttpResponse.json({ ok: true })),
   http.post("/api/update", () => HttpResponse.json({ success: true })),

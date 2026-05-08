@@ -41,6 +41,13 @@ namespace SQM
         std::string password;
     };
 
+    struct AuthConfig
+    {
+        bool enabled;
+        std::string username;
+        std::string password;
+    };
+
     struct NTPConfig
     {
         bool enabled;
@@ -66,9 +73,15 @@ namespace SQM
         uint8_t rxPin;
         uint8_t txPin;
         uint32_t baudRate;
-        std::string mode;       // "polling" or "continuous"
+        bool debugUart;
+        std::string mode;       // retained for compatibility; RG-15 uses polling only
         std::string resolution; // "high", "low", or "switch"
         std::string units;      // "metric", "imperial", or "switch"
+        uint32_t pollIntervalMs;
+        uint32_t rainClearDelayMs;
+        bool dailyResetEnabled;
+        uint8_t dailyResetHour;
+        uint8_t dailyResetMinute;
     };
 
     struct SensorConfig
@@ -91,6 +104,7 @@ namespace SQM
         WiFiConfig wifi;
         MQTTConfig mqtt;
         OTAConfig ota;
+        AuthConfig auth;
         NTPConfig ntp;
         GPSConfig gps;
         RainConfig rain;

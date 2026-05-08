@@ -24,7 +24,7 @@ namespace SQM
 
         Logger::info(TAG, "Initializing MQTT client");
         mqttClient->setServer(config.broker.c_str(), config.port);
-        mqttClient->setBufferSize(1024); // Increase buffer size for cloud data (default is 256)
+        mqttClient->setBufferSize(3072); // Fits cloud and RG-15 diagnostics payloads
         mqttClient->setKeepAlive(60);
         mqttClient->setSocketTimeout(10);
 
@@ -82,17 +82,17 @@ namespace SQM
 
         std::string payload = createPayload(tsl, bme, mlx, gps, rg15);
 
-        Logger::debug(TAG, "Publishing payload (%d bytes)", payload.length());
+        Logger::debug(TAG, "Publishing payload (%u bytes)", static_cast<unsigned>(payload.length()));
 
         if (mqttClient->publish(config.topic.c_str(), payload.c_str()))
         {
-            Logger::info(TAG, "Published sensor data (%d bytes)", payload.length());
+            Logger::info(TAG, "Published sensor data (%u bytes)", static_cast<unsigned>(payload.length()));
             lastPublish = now;
         }
         else
         {
-            Logger::error(TAG, "Failed to publish sensor data (payload: %d bytes, buffer: %d bytes)",
-                          payload.length(), mqttClient->getBufferSize());
+            Logger::error(TAG, "Failed to publish sensor data (payload: %u bytes, buffer: %u bytes)",
+                          static_cast<unsigned>(payload.length()), static_cast<unsigned>(mqttClient->getBufferSize()));
         }
     }
 
@@ -207,7 +207,7 @@ namespace SQM
 
     std::string MQTTClient::createPayload(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15)
     {
-        StaticJsonDocument<1536> doc;
+        StaticJsonDocument<3072> doc;
 
         // Timestamp
         const time_t epochSeconds = time(nullptr);
@@ -275,16 +275,106 @@ namespace SQM
             location["hdop"] = gpsReading.hdop / 100.0;
         }
 
-        // RG-15 rain sensor data
-        const auto &rg15Reading = rg15.getReading();
-        if (rg15.isInitialized() && rg15Reading.status == SensorStatus::OK)
+        // RG-15 rain sensor data and diagnostics
+        const auto rg15Reading = rg15.copyReading();
+        const auto rg15Diag = rg15.getDiagnostics();
+        JsonObject rain = doc.createNestedObject("rain");
+        rain["enabled"] = rg15Diag.enabled;
+        rain["sensor"] = "hydreon_rg15";
+        rain["initialized"] = rg15Diag.uartOpened;
+        rain["online"] = rg15Reading.online;
+        rain["stale"] = rg15Reading.stale;
+        rain["status"] = static_cast<int>(rg15Reading.status);
+        rain["timestamp"] = rg15Reading.timestamp;
+        rain["ageMs"] = rg15Reading.ageMs;
+        rain["isRaining"] = rg15Reading.isRaining;
+        rain["raining"] = rg15Reading.rainLatched;
+        rain["acc"] = rg15Reading.acc;
+        rain["eventAcc"] = rg15Reading.eventAcc;
+        rain["totalAcc"] = rg15Reading.totalAcc;
+        rain["rInt"] = rg15Reading.rInt;
+        rain["accumulation_since_last_read"] = rg15Reading.acc;
+        rain["event_accumulation"] = rg15Reading.localEventAcc;
+        rain["local_event_accumulation"] = rg15Reading.localEventAcc;
+        rain["hydreon_event_accumulation"] = rg15Reading.eventAcc;
+        rain["total_accumulation"] = rg15Reading.totalAcc;
+        rain["rain_intensity"] = rg15Reading.rInt;
+        rain["lensBad"] = rg15Reading.lensBad;
+        rain["emSat"] = rg15Reading.emSat;
+        rain["units"] = rg15Diag.units.c_str();
+
+        JsonObject uart = rain.createNestedObject("uart");
+        uart["configured"] = rg15Diag.configured;
+        uart["opened"] = rg15Diag.uartOpened;
+        uart["rx_pin"] = rg15Diag.rxPin;
+        uart["tx_pin"] = rg15Diag.txPin;
+        uart["baud_rate"] = rg15Diag.baudRate;
+        uart["uart_port"] = rg15Diag.uartPort;
+        uart["mode"] = rg15Diag.mode.c_str();
+        uart["resolution"] = rg15Diag.resolution.c_str();
+        uart["units"] = rg15Diag.units.c_str();
+        uart["debug_uart"] = rg15Diag.debugUart;
+        uart["poll_interval_ms"] = rg15Diag.pollIntervalMs;
+        uart["rain_clear_delay_ms"] = rg15Diag.rainClearDelayMs;
+        uart["daily_reset_enabled"] = rg15Diag.dailyResetEnabled;
+        uart["daily_reset_hour"] = rg15Diag.dailyResetHour;
+        uart["daily_reset_minute"] = rg15Diag.dailyResetMinute;
+        uart["timeouts"] = rg15Diag.timeouts;
+        uart["parse_errors"] = rg15Diag.parseErrors;
+        uart["successful_reads"] = rg15Diag.successfulReads;
+        if (rg15Diag.lastHealthCheckMs != 0)
         {
-            JsonObject rain = doc.createNestedObject("rain");
-            rain["isRaining"] = rg15Reading.isRaining;
-            rain["acc"] = rg15Reading.acc;
-            rain["eventAcc"] = rg15Reading.eventAcc;
-            rain["totalAcc"] = rg15Reading.totalAcc;
-            rain["rInt"] = rg15Reading.rInt;
+            uart["last_health_check_ms"] = rg15Diag.lastHealthCheckMs;
+            uart["last_health_check_age_ms"] = millis() - rg15Diag.lastHealthCheckMs;
+        }
+        if (rg15Diag.lastPollMs != 0)
+        {
+            uart["last_poll_ms"] = rg15Diag.lastPollMs;
+            uart["last_poll_age_ms"] = millis() - rg15Diag.lastPollMs;
+        }
+        if (rg15Diag.lastRainDetectedMs != 0)
+        {
+            uart["last_rain_detected_ms"] = rg15Diag.lastRainDetectedMs;
+            uart["last_rain_detected_age_ms"] = millis() - rg15Diag.lastRainDetectedMs;
+        }
+        if (rg15Diag.lastTotalResetMs != 0)
+        {
+            uart["last_total_reset_ms"] = rg15Diag.lastTotalResetMs;
+            uart["last_total_reset_age_ms"] = millis() - rg15Diag.lastTotalResetMs;
+        }
+        if (rg15Diag.lastRebootCommandMs != 0)
+        {
+            uart["last_reboot_command_ms"] = rg15Diag.lastRebootCommandMs;
+            uart["last_reboot_command_age_ms"] = millis() - rg15Diag.lastRebootCommandMs;
+        }
+        if (rg15Diag.lastStatusLine)
+            uart["last_status_line"] = rg15Diag.lastStatusLine->c_str();
+        if (rg15Diag.softwareVersion)
+            uart["software_version"] = rg15Diag.softwareVersion->c_str();
+        if (rg15Diag.softwareBuildDate)
+            uart["software_build_date"] = rg15Diag.softwareBuildDate->c_str();
+        if (rg15Diag.resetReason)
+            uart["reset_reason"] = rg15Diag.resetReason->c_str();
+        if (rg15Diag.powerOnDays)
+            uart["power_on_days"] = *rg15Diag.powerOnDays;
+        if (rg15Diag.emitter1)
+            uart["emitter_1"] = *rg15Diag.emitter1;
+        if (rg15Diag.emitter2)
+            uart["emitter_2"] = *rg15Diag.emitter2;
+        if (rg15Diag.emitterTotal)
+            uart["emitter_total"] = *rg15Diag.emitterTotal;
+        if (rg15Diag.lastCommand)
+            uart["last_command"] = rg15Diag.lastCommand->c_str();
+        if (rg15Diag.lastAck)
+            uart["last_ack"] = rg15Diag.lastAck->c_str();
+        if (rg15Diag.lastRawResponse)
+            uart["last_raw_response"] = rg15Diag.lastRawResponse->c_str();
+        if (rg15Diag.lastError)
+            uart["last_error"] = rg15Diag.lastError->c_str();
+        if (rg15Diag.lastSuccessfulReadMs != 0)
+        {
+            uart["last_successful_read_ms"] = rg15Diag.lastSuccessfulReadMs;
+            uart["last_successful_read_age_ms"] = millis() - rg15Diag.lastSuccessfulReadMs;
         }
 
         std::string json;

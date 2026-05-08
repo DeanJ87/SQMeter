@@ -24,10 +24,25 @@ const Dashboard: FunctionalComponent = () => {
 
   const formatNumber = (value: number | undefined, digits: number) =>
     typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '--';
+  const formatAgeMs = (value: number | null | undefined) => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return '--';
+    if (value < 1000) return `${value} ms`;
+    if (value < 60000) return `${(value / 1000).toFixed(1)} s`;
+    return `${Math.floor(value / 60000)}m ${Math.floor((value % 60000) / 1000)}s`;
+  };
 
   const rainUnits = config?.rain?.units === 'imperial'
     ? { depth: 'in', intensity: 'in/hr' }
     : { depth: 'mm', intensity: 'mm/hr' };
+  const rain = sensors?.rainSensor;
+
+  const rainStatus = !rain?.enabled
+    ? { text: 'Disabled', color: 'bg-gray-900 text-gray-300' }
+    : rain.stale
+      ? { text: 'Stale', color: 'bg-yellow-900 text-yellow-200' }
+      : rain.online
+        ? { text: 'Online', color: 'bg-green-900 text-green-200' }
+        : { text: 'Offline', color: 'bg-red-900 text-red-200' };
 
   const payloadTimestamp = sensors?.dataTimestamp;
   const dataTimestamp = payloadTimestamp && payloadTimestamp > 1000000000000
@@ -201,44 +216,61 @@ const Dashboard: FunctionalComponent = () => {
       )}
 
       {/* Rain Sensor */}
-      {sensors.rainSensor && (
+      {rain && (
         <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-white flex items-center">
-              <span class="mr-2">🌧️</span>
-              Rain Sensor
-            </h3>
-            <span class={`px-3 py-1 rounded-full text-sm font-semibold ${
-              sensors.rainSensor.isRaining ? 'bg-blue-900 text-blue-200' : 'bg-green-900 text-green-200'
-            }`}>
-              {sensors.rainSensor.isRaining ? 'Raining' : 'Dry'}
+          <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div>
+              <h3 class="text-lg font-semibold text-white flex items-center">
+                <span class="mr-2">🌧️</span>
+                Rain Sensor
+              </h3>
+              <p class="text-xs text-gray-400 mt-1">Hydreon RG-15 live rainfall reading</p>
+            </div>
+            <span class={`px-3 py-1 rounded-full text-sm font-semibold ${rainStatus.color}`}>
+              {rainStatus.text}
             </span>
           </div>
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Intensity (RInt)</span>
-              <span class="text-xl font-bold text-white">
-                {formatNumber(sensors.rainSensor.rInt, 1)} {rainUnits.intensity}
-              </span>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            <div class="bg-gray-900 rounded p-3">
+              <div class="text-xs text-gray-500">Raining</div>
+              <div class="text-xl font-bold text-white">
+                {(rain.raining ?? rain.isRaining) ? 'Yes' : 'No'}
+              </div>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Since last read (Acc)</span>
-              <span class="text-white">{formatNumber(sensors.rainSensor.acc, 2)} {rainUnits.depth}</span>
+            <div class="bg-gray-900 rounded p-3">
+              <div class="text-xs text-gray-500">Rain intensity</div>
+              <div class="text-xl font-bold text-white">
+                {rain.enabled ? formatNumber(rain.rain_intensity ?? rain.rInt, 1) : '--'} {rainUnits.intensity}
+              </div>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Event total (EventAcc)</span>
-              <span class="text-white">{formatNumber(sensors.rainSensor.eventAcc, 2)} {rainUnits.depth}</span>
+            <div class="bg-gray-900 rounded p-3">
+              <div class="text-xs text-gray-500">Since last read</div>
+              <div class="text-lg font-semibold text-white">{rain.enabled ? formatNumber(rain.accumulation_since_last_read ?? rain.acc, 2) : '--'} {rainUnits.depth}</div>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">All-time total (TotalAcc)</span>
-              <span class="text-white">{formatNumber(sensors.rainSensor.totalAcc, 1)} {rainUnits.depth}</span>
+            <div class="bg-gray-900 rounded p-3">
+              <div class="text-xs text-gray-500">Event total</div>
+              <div class="text-lg font-semibold text-white">{rain.enabled ? formatNumber(rain.event_accumulation ?? rain.eventAcc, 2) : '--'} {rainUnits.depth}</div>
             </div>
-            {(sensors.rainSensor.lensBad || sensors.rainSensor.emSat) && (
+            <div class="bg-gray-900 rounded p-3">
+              <div class="text-xs text-gray-500">Daily total</div>
+              <div class="text-lg font-semibold text-white">{rain.enabled ? formatNumber(rain.total_accumulation ?? rain.totalAcc, 2) : '--'} {rainUnits.depth}</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-400">
+            <div>Last read: <span class="text-white">{formatAgeMs(rain.uart?.last_successful_read_age_ms)}</span></div>
+            <div>Mode: <span class="text-white capitalize">{rain.uart?.mode ?? '--'}</span></div>
+            <div>Debug: <span class="text-white">System page</span></div>
+          </div>
+
+          <div class="mt-3">
+            {(rain.lensBad || rain.emSat) && (
               <div class="pt-2 border-t border-gray-700 space-y-1">
-                {sensors.rainSensor.lensBad && (
+                {rain.lensBad && (
                   <span class="block text-xs text-yellow-400">⚠ LensBad — lens may be dirty or obstructed</span>
                 )}
-                {sensors.rainSensor.emSat && (
+                {rain.emSat && (
                   <span class="block text-xs text-yellow-400">⚠ EmSat — emitter saturation detected</span>
                 )}
               </div>

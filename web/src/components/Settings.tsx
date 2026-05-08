@@ -20,14 +20,26 @@ const TIMEZONE_OPTIONS = [
   { label: 'Custom', value: 'custom' },
 ];
 
+const defaultAuthConfig: NonNullable<Config['auth']> = {
+  enabled: false,
+  username: 'admin',
+  password: '',
+};
+
 const defaultRainConfig: NonNullable<Config['rain']> = {
   enabled: false,
   rxPin: 18,
   txPin: 19,
   baudRate: 9600,
-  mode: 'continuous',
-  resolution: 'switch',
+  debugUart: false,
+  mode: 'polling',
+  resolution: 'high',
   units: 'metric',
+  pollIntervalMs: 5000,
+  rainClearDelayMs: 15 * 60 * 1000,
+  dailyResetEnabled: false,
+  dailyResetHour: 0,
+  dailyResetMinute: 0,
 };
 
 const fieldErrorAliases: Record<string, string> = {
@@ -52,6 +64,8 @@ const Settings: FunctionalComponent = () => {
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [testingMqtt, setTestingMqtt] = useState(false);
   const [mqttTestResult, setMqttTestResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [testingRain, setTestingRain] = useState(false);
+  const [rainTestResult, setRainTestResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const errorPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -118,6 +132,35 @@ const Settings: FunctionalComponent = () => {
       setMqttTestResult({ type: 'error', text: 'Network error occurred' });
     } finally {
       setTestingMqtt(false);
+    }
+  };
+
+  const testRg15Communication = async () => {
+    if (!config?.rain?.enabled) return;
+
+    setTestingRain(true);
+    setRainTestResult(null);
+
+    try {
+      const response = await fetch('/api/sensors/rg15/test', { method: 'POST' });
+      const result = await response.json();
+      if (response.ok && result.ok) {
+        setRainTestResult({
+          type: 'success',
+          text: result.raw_response
+            ? `Communication succeeded: ${result.raw_response}`
+            : 'Communication succeeded',
+        });
+      } else {
+        setRainTestResult({
+          type: 'error',
+          text: result.error || result.hint || 'RG-15 communication test failed',
+        });
+      }
+    } catch (error) {
+      setRainTestResult({ type: 'error', text: 'Network error occurred' });
+    } finally {
+      setTestingRain(false);
     }
   };
 
@@ -201,6 +244,7 @@ const Settings: FunctionalComponent = () => {
       ntp: { ...config.ntp },
       gps: { ...config.gps },
       sensor: { ...config.sensor },
+      auth: config.auth ? { ...config.auth } : { ...defaultAuthConfig },
       rain: config.rain ? { ...config.rain } : { ...defaultRainConfig },
     };
     let current: any = newConfig;
@@ -407,6 +451,68 @@ const Settings: FunctionalComponent = () => {
                 <p class="mt-1 text-sm text-red-400">{validationErrors['ota.password'] || validationErrors.otaPassword}</p>
               )}
             </div>
+          )}
+        </div>
+      </section>
+
+      {/* HTTP Auth Settings */}
+      <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-white mb-4">HTTP Authentication</h2>
+        <div class="space-y-4">
+          <div class="flex items-center">
+            <input
+              type="checkbox"
+              checked={config.auth?.enabled ?? false}
+              onChange={(e) => updateConfig(['auth', 'enabled'], (e.target as HTMLInputElement).checked)}
+              class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <label class="ml-2 text-sm font-medium text-gray-300">
+              Require authentication for config and OTA endpoints
+            </label>
+          </div>
+          {config.auth?.enabled && (
+            <>
+              <div class="p-3 bg-yellow-900 border border-yellow-700 rounded-lg text-sm text-yellow-200">
+                When enabled, saving config, OTA updates, and restart require a username and password.
+                Read-only sensor and status endpoints remain accessible without credentials.
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={config.auth.username}
+                  onChange={(e) => updateConfig(['auth', 'username'], (e.target as HTMLInputElement).value)}
+                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                    validationErrors['auth.username'] ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                  }`}
+                />
+                {validationErrors['auth.username'] && (
+                  <p class="mt-1 text-sm text-red-400">{validationErrors['auth.username']}</p>
+                )}
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={config.auth.password}
+                  onChange={(e) => updateConfig(['auth', 'password'], (e.target as HTMLInputElement).value)}
+                  placeholder="Leave empty to clear; send placeholder to preserve stored value"
+                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                    validationErrors['auth.password'] ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                  }`}
+                />
+                {validationErrors['auth.password'] && (
+                  <p class="mt-1 text-sm text-red-400">{validationErrors['auth.password']}</p>
+                )}
+                <p class="mt-1 text-xs text-gray-500">
+                  Stored password is masked. Type a new password to change it, or leave the masked value to keep the current one.
+                </p>
+              </div>
+            </>
           )}
         </div>
       </section>
@@ -935,6 +1041,9 @@ const Settings: FunctionalComponent = () => {
       <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h2 class="text-xl font-semibold text-white mb-4">Rain Sensor</h2>
         <div class="space-y-4">
+          <div class="p-3 bg-yellow-900 border border-yellow-700 rounded-lg text-sm text-yellow-200">
+            Initialised only means the UART was opened. Online requires a valid response from the RG-15.
+          </div>
           <div class="flex items-center">
             <input
               type="checkbox"
@@ -948,100 +1057,187 @@ const Settings: FunctionalComponent = () => {
           </div>
 
           {config.rain?.enabled && (
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  RX Pin
-                </label>
-                <input
-                  type="number"
-                  value={config.rain.rxPin}
-                  onChange={(e) => updateConfig(['rain', 'rxPin'], parseInt((e.target as HTMLInputElement).value))}
-                  min="0"
-                  max="39"
-                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                    errorFor('rain.rxPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
-                  }`}
-                />
-                {errorFor('rain.rxPin') && (
-                  <p class="mt-1 text-sm text-red-400">{errorFor('rain.rxPin')}</p>
+            <>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    RX Pin
+                  </label>
+                  <input
+                    type="number"
+                    value={config.rain.rxPin}
+                    onChange={(e) => updateConfig(['rain', 'rxPin'], parseInt((e.target as HTMLInputElement).value))}
+                    min="0"
+                    max="39"
+                    class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                      errorFor('rain.rxPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    }`}
+                  />
+                  {errorFor('rain.rxPin') && (
+                    <p class="mt-1 text-sm text-red-400">{errorFor('rain.rxPin')}</p>
+                  )}
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    TX Pin
+                  </label>
+                  <input
+                    type="number"
+                    value={config.rain.txPin}
+                    onChange={(e) => updateConfig(['rain', 'txPin'], parseInt((e.target as HTMLInputElement).value))}
+                    min="0"
+                    max="39"
+                    class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
+                      errorFor('rain.txPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
+                    }`}
+                  />
+                  {errorFor('rain.txPin') && (
+                    <p class="mt-1 text-sm text-red-400">{errorFor('rain.txPin')}</p>
+                  )}
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Baud Rate
+                  </label>
+                  <select
+                    value={config.rain.baudRate}
+                    onChange={(e) => updateConfig(['rain', 'baudRate'], parseInt((e.target as HTMLSelectElement).value))}
+                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="2400">2400</option>
+                    <option value="4800">4800</option>
+                    <option value="9600">9600</option>
+                    <option value="19200">19200</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Poll interval (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="3600"
+                    value={Math.round((config.rain.pollIntervalMs ?? 5000) / 1000)}
+                    onChange={(e) => updateConfig(['rain', 'pollIntervalMs'], Math.max(1, parseInt((e.target as HTMLInputElement).value) || 5) * 1000)}
+                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Raining clear delay (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1440"
+                    value={Math.round((config.rain.rainClearDelayMs ?? 900000) / 60000)}
+                    onChange={(e) => updateConfig(['rain', 'rainClearDelayMs'], Math.max(1, parseInt((e.target as HTMLInputElement).value) || 15) * 60000)}
+                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Resolution
+                  </label>
+                  <select
+                    value={config.rain.resolution ?? 'switch'}
+                    onChange={(e) => updateConfig(['rain', 'resolution'], (e.target as HTMLSelectElement).value)}
+                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="high">High (0.01 mm)</option>
+                    <option value="low">Low (0.2 mm)</option>
+                    <option value="switch">Switch (by jumper)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Units
+                  </label>
+                  <select
+                    value={config.rain.units ?? 'metric'}
+                    onChange={(e) => updateConfig(['rain', 'units'], (e.target as HTMLSelectElement).value)}
+                    class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="metric">Metric (mm)</option>
+                    <option value="imperial">Imperial (inches)</option>
+                    <option value="switch">Switch (by jumper)</option>
+                  </select>
+                </div>
+                <div class="md:col-span-3 flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={config.rain.debugUart}
+                    onChange={(e) => updateConfig(['rain', 'debugUart'], (e.target as HTMLInputElement).checked)}
+                    class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                  />
+                  <label class="ml-2 text-sm font-medium text-gray-300">
+                    Enable RG-15 UART debug logging
+                  </label>
+                </div>
+                <div class="md:col-span-3 flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={config.rain.dailyResetEnabled ?? false}
+                    onChange={(e) => updateConfig(['rain', 'dailyResetEnabled'], (e.target as HTMLInputElement).checked)}
+                    class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                  />
+                  <label class="ml-2 text-sm font-medium text-gray-300">
+                    Reset RG-15 total accumulation daily
+                  </label>
+                </div>
+                {config.rain.dailyResetEnabled && (
+                  <>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-300 mb-2">Reset hour</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="23"
+                        value={config.rain.dailyResetHour ?? 0}
+                        onChange={(e) => updateConfig(['rain', 'dailyResetHour'], parseInt((e.target as HTMLInputElement).value) || 0)}
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-300 mb-2">Reset minute</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={config.rain.dailyResetMinute ?? 0}
+                        onChange={(e) => updateConfig(['rain', 'dailyResetMinute'], parseInt((e.target as HTMLInputElement).value) || 0)}
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </>
                 )}
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  TX Pin
-                </label>
-                <input
-                  type="number"
-                  value={config.rain.txPin}
-                  onChange={(e) => updateConfig(['rain', 'txPin'], parseInt((e.target as HTMLInputElement).value))}
-                  min="0"
-                  max="39"
-                  class={`w-full px-4 py-2 bg-gray-700 border rounded-lg text-white focus:outline-none ${
-                    errorFor('rain.txPin') ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
-                  }`}
-                />
-                {errorFor('rain.txPin') && (
-                  <p class="mt-1 text-sm text-red-400">{errorFor('rain.txPin')}</p>
+
+              <div class="pt-4 border-t border-gray-700 space-y-3">
+                <button
+                  type="button"
+                  onClick={testRg15Communication}
+                  disabled={testingRain}
+                  class="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-colors"
+                >
+                  {testingRain ? '🔄 Testing RG-15...' : '🧪 Test RG-15 communication'}
+                </button>
+                <p class="text-xs text-gray-500">
+                  This sends a harmless read command and reports the raw response, acknowledgement, and parse status.
+                </p>
+                {rainTestResult && (
+                  <div class={`p-3 rounded-lg ${
+                    rainTestResult.type === 'success' ? 'bg-green-900 border border-green-700' : 'bg-red-900 border border-red-700'
+                  }`}>
+                    <p class="text-white text-sm">
+                      {rainTestResult.type === 'success' ? '✅ ' : '❌ '}
+                      {rainTestResult.text}
+                    </p>
+                  </div>
                 )}
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Baud Rate
-                </label>
-                <select
-                  value={config.rain.baudRate}
-                  onChange={(e) => updateConfig(['rain', 'baudRate'], parseInt((e.target as HTMLSelectElement).value))}
-                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="2400">2400</option>
-                  <option value="4800">4800</option>
-                  <option value="9600">9600</option>
-                  <option value="19200">19200</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Mode
-                </label>
-                <select
-                  value={config.rain.mode ?? 'continuous'}
-                  onChange={(e) => updateConfig(['rain', 'mode'], (e.target as HTMLSelectElement).value)}
-                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="polling">Polling</option>
-                  <option value="continuous">Continuous</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Resolution
-                </label>
-                <select
-                  value={config.rain.resolution ?? 'switch'}
-                  onChange={(e) => updateConfig(['rain', 'resolution'], (e.target as HTMLSelectElement).value)}
-                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="high">High (0.01 mm)</option>
-                  <option value="low">Low (0.2 mm)</option>
-                  <option value="switch">Switch (by jumper)</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  Units
-                </label>
-                <select
-                  value={config.rain.units ?? 'metric'}
-                  onChange={(e) => updateConfig(['rain', 'units'], (e.target as HTMLSelectElement).value)}
-                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="metric">Metric (mm)</option>
-                  <option value="imperial">Imperial (inches)</option>
-                  <option value="switch">Switch (by jumper)</option>
-                </select>
-              </div>
-            </div>
+            </>
           )}
         </div>
       </section>

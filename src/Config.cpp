@@ -124,7 +124,7 @@ namespace SQM
             return std::nullopt;
         }
 
-        Logger::info(TAG, "Loaded config JSON (%d bytes)", jsonStr.length());
+        Logger::info(TAG, "Loaded config JSON (%u bytes)", static_cast<unsigned>(jsonStr.length()));
 
         std::string json = jsonStr.c_str();
         auto config = fromJson(json);
@@ -178,7 +178,7 @@ namespace SQM
             return false;
         }
 
-        Logger::info(TAG, "Configuration saved successfully to NVS (%d bytes)", written);
+        Logger::info(TAG, "Configuration saved successfully to NVS (%u bytes)", static_cast<unsigned>(written));
 
         // Verify by reading back
         Preferences verifyPrefs;
@@ -186,7 +186,7 @@ namespace SQM
         {
             String verified = verifyPrefs.getString(NVS_CONFIG_KEY, "");
             verifyPrefs.end();
-            Logger::info(TAG, "Verification: NVS contains %d bytes", verified.length());
+            Logger::info(TAG, "Verification: NVS contains %u bytes", static_cast<unsigned>(verified.length()));
         }
 
         return true;
@@ -217,6 +217,10 @@ namespace SQM
         cfg.ota.enabled = false;
         cfg.ota.password = "";
 
+        cfg.auth.enabled = false;
+        cfg.auth.username = "admin";
+        cfg.auth.password = "";
+
         cfg.ntp.enabled = true;
         cfg.ntp.server1 = "pool.ntp.org";
         cfg.ntp.server2 = "time.nist.gov";
@@ -234,9 +238,15 @@ namespace SQM
         cfg.rain.rxPin = 18;
         cfg.rain.txPin = 19;
         cfg.rain.baudRate = 9600;
+        cfg.rain.debugUart = false;
         cfg.rain.mode = "polling";
         cfg.rain.resolution = "high";
         cfg.rain.units = "metric";
+        cfg.rain.pollIntervalMs = 5000;
+        cfg.rain.rainClearDelayMs = 15UL * 60UL * 1000UL;
+        cfg.rain.dailyResetEnabled = false;
+        cfg.rain.dailyResetHour = 0;
+        cfg.rain.dailyResetMinute = 0;
 
         cfg.sensor.readIntervalMs = 5000; // 5 seconds
         cfg.sensor.i2cSDA = 21;
@@ -255,7 +265,7 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets) const
     {
-        StaticJsonDocument<3072> doc;
+        StaticJsonDocument<3584> doc;
 
         doc["deviceName"] = deviceName;
         doc["timezone"] = timezone;
@@ -283,6 +293,11 @@ namespace SQM
         ota["enabled"] = this->ota.enabled;
         ota["password"] = redactSecrets && !this->ota.password.empty() ? SECRET_MASK : this->ota.password.c_str();
 
+        JsonObject auth = doc.createNestedObject("auth");
+        auth["enabled"] = this->auth.enabled;
+        auth["username"] = this->auth.username;
+        auth["password"] = redactSecrets && !this->auth.password.empty() ? SECRET_MASK : this->auth.password.c_str();
+
         JsonObject ntp = doc.createNestedObject("ntp");
         ntp["enabled"] = this->ntp.enabled;
         ntp["server1"] = this->ntp.server1;
@@ -303,9 +318,15 @@ namespace SQM
         rain["rxPin"] = this->rain.rxPin;
         rain["txPin"] = this->rain.txPin;
         rain["baudRate"] = this->rain.baudRate;
+        rain["debugUart"] = this->rain.debugUart;
         rain["mode"] = this->rain.mode;
         rain["resolution"] = this->rain.resolution;
         rain["units"] = this->rain.units;
+        rain["pollIntervalMs"] = this->rain.pollIntervalMs;
+        rain["rainClearDelayMs"] = this->rain.rainClearDelayMs;
+        rain["dailyResetEnabled"] = this->rain.dailyResetEnabled;
+        rain["dailyResetHour"] = this->rain.dailyResetHour;
+        rain["dailyResetMinute"] = this->rain.dailyResetMinute;
 
         JsonObject sensor = doc.createNestedObject("sensor");
         sensor["readIntervalMs"] = this->sensor.readIntervalMs;
@@ -362,6 +383,16 @@ namespace SQM
             return setError(error, "MQTT publish interval is invalid");
         }
 
+        if (auth.enabled && auth.password.empty())
+        {
+            return setError(error, "HTTP auth password is required when auth is enabled");
+        }
+
+        if (auth.enabled && auth.username.empty())
+        {
+            return setError(error, "HTTP auth username is required when auth is enabled");
+        }
+
         if (ntp.enabled && ntp.server1.empty())
         {
             return setError(error, "Primary NTP server is required when NTP is enabled");
@@ -392,9 +423,9 @@ namespace SQM
             return setError(error, "Rain sensor baud rate is invalid");
         }
 
-        if (rain.mode != "polling" && rain.mode != "continuous")
+        if (rain.mode != "polling")
         {
-            return setError(error, "Rain sensor mode is invalid");
+            return setError(error, "Rain sensor mode must be polling");
         }
 
         if (rain.resolution != "high" && rain.resolution != "low" && rain.resolution != "switch")
@@ -405,6 +436,21 @@ namespace SQM
         if (rain.units != "metric" && rain.units != "imperial" && rain.units != "switch")
         {
             return setError(error, "Rain sensor units are invalid");
+        }
+
+        if (rain.pollIntervalMs < 1000 || rain.pollIntervalMs > 3600000)
+        {
+            return setError(error, "Rain sensor poll interval is invalid");
+        }
+
+        if (rain.rainClearDelayMs < 60000 || rain.rainClearDelayMs > 86400000)
+        {
+            return setError(error, "Rain clear delay is invalid");
+        }
+
+        if (rain.dailyResetHour > 23 || rain.dailyResetMinute > 59)
+        {
+            return setError(error, "Rain daily reset time is invalid");
         }
 
         if (sensor.readIntervalMs < 100 || sensor.readIntervalMs > 3600000)
@@ -432,7 +478,7 @@ namespace SQM
 
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig)
     {
-        StaticJsonDocument<3072> doc;
+        StaticJsonDocument<3584> doc;
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
@@ -495,6 +541,16 @@ namespace SQM
             assignSecret(ota, "password", cfg.ota.password, preserveSecretPlaceholders);
         }
 
+        JsonObject auth = doc["auth"];
+        if (!auth.isNull())
+        {
+            if (auth.containsKey("enabled"))
+                cfg.auth.enabled = auth["enabled"] | false;
+            if (auth.containsKey("username"))
+                cfg.auth.username = auth["username"] | "admin";
+            assignSecret(auth, "password", cfg.auth.password, preserveSecretPlaceholders);
+        }
+
         JsonObject ntp = doc["ntp"];
         if (!ntp.isNull())
         {
@@ -538,12 +594,26 @@ namespace SQM
                 cfg.rain.txPin = rain["txPin"] | 19;
             if (rain.containsKey("baudRate"))
                 cfg.rain.baudRate = rain["baudRate"] | 9600;
+            if (rain.containsKey("debugUart"))
+                cfg.rain.debugUart = rain["debugUart"] | false;
             if (rain.containsKey("mode"))
                 cfg.rain.mode = rain["mode"] | "polling";
+            if (cfg.rain.mode != "polling")
+                cfg.rain.mode = "polling";
             if (rain.containsKey("resolution"))
                 cfg.rain.resolution = rain["resolution"] | "high";
             if (rain.containsKey("units"))
                 cfg.rain.units = rain["units"] | "metric";
+            if (rain.containsKey("pollIntervalMs"))
+                cfg.rain.pollIntervalMs = rain["pollIntervalMs"] | 5000;
+            if (rain.containsKey("rainClearDelayMs"))
+                cfg.rain.rainClearDelayMs = rain["rainClearDelayMs"] | (15UL * 60UL * 1000UL);
+            if (rain.containsKey("dailyResetEnabled"))
+                cfg.rain.dailyResetEnabled = rain["dailyResetEnabled"] | false;
+            if (rain.containsKey("dailyResetHour"))
+                cfg.rain.dailyResetHour = rain["dailyResetHour"] | 0;
+            if (rain.containsKey("dailyResetMinute"))
+                cfg.rain.dailyResetMinute = rain["dailyResetMinute"] | 0;
         }
 
         JsonObject sensor = doc["sensor"];
