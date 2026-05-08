@@ -1157,10 +1157,14 @@ namespace SQM
         // Use BME280 humidity if available, otherwise default to 53%
         bool usingHumidityFallback = bmeReading.status != SensorStatus::OK;
         float humidity = usingHumidityFallback ? 53.0f : bmeReading.humidity;
+        const Config &cfg = getConfigCallback();
         CloudMetrics cloudMetrics = CloudDetection::calculate(
             mlxReading.objectTemp,
             mlxReading.ambientTemp,
-            humidity);
+            humidity,
+            cfg.cloudDetection.clearSkyThreshold,
+            cfg.cloudDetection.cloudyThreshold,
+            cfg.cloudDetection.humidityCorrection);
 
         JsonObject cloud = doc.createNestedObject("cloudConditions");
         cloud["temperatureDelta"] = cloudMetrics.temperatureDelta;

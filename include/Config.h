@@ -108,6 +108,13 @@ namespace SQM
         int64_t darkCalibratedAt;
     };
 
+    struct CloudDetectionConfig
+    {
+        float clearSkyThreshold;    // °C, corrected delta below which sky is clear (default: -13.0)
+        float cloudyThreshold;      // °C, corrected delta above which sky is overcast (default: -3.0)
+        float humidityCorrection;   // k1 factor for humidity correction (default: 0.75)
+    };
+
     struct Config
     {
         WiFiConfig wifi;
@@ -120,6 +127,7 @@ namespace SQM
         SensorConfig sensor;
         SkyAveragingConfig skyAveraging;
         SkyCalibrationConfig skyCalibration;
+        CloudDetectionConfig cloudDetection;
         std::string deviceName;
         std::string timezone;
         TimeSource primaryTimeSource;   // Primary time source
