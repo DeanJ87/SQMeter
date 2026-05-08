@@ -618,8 +618,8 @@ namespace SQM
                     return;
                 }
                 
-                Logger::info("OTA", "Found filesystem partition at 0x%x, size %d bytes", 
-                    fs_partition->address, fs_partition->size);
+                Logger::info("OTA", "Found filesystem partition at 0x%x, size %u bytes",
+                    fs_partition->address, static_cast<unsigned>(fs_partition->size));
                 
                 // Unmount LittleFS before writing
                 LittleFS.end();
@@ -640,7 +640,7 @@ namespace SQM
                 // Write data directly to partition (no magic byte validation)
                 esp_err_t err = esp_partition_write(fs_partition, fs_bytes_written, data, len);
                 if (err != ESP_OK) {
-                    Logger::error("OTA", "Partition write failed at offset %d: %d", fs_bytes_written, err);
+                    Logger::error("OTA", "Partition write failed at offset %u: %d", static_cast<unsigned>(fs_bytes_written), err);
                     fs_update_error = true;
                     fs_error_msg = "Failed to write to partition";
                     return;
@@ -648,13 +648,13 @@ namespace SQM
                 fs_bytes_written += len;
                 
                 if (index % 10240 == 0) {  // Log every ~10KB
-                    Logger::info("OTA", "Written %d bytes", fs_bytes_written);
+                    Logger::info("OTA", "Written %u bytes", static_cast<unsigned>(fs_bytes_written));
                 }
             }
             
             if (final) {
                 if (!fs_update_error) {
-                    Logger::info("OTA", "Filesystem update success: %d bytes written", fs_bytes_written);
+                    Logger::info("OTA", "Filesystem update success: %u bytes written", static_cast<unsigned>(fs_bytes_written));
                 } else {
                     Logger::error("OTA", "Filesystem update failed: %s", fs_error_msg.c_str());
                 }
