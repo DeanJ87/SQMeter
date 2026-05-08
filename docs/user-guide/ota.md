@@ -73,6 +73,22 @@ esptool.py --chip esp32 --port PORT --baud 115200 \
 
 The partition table has two app slots (`app0` at `0x10000`, `app1` at `0x190000`). OTA writes the new firmware to the inactive slot, then updates the `otadata` partition to point the bootloader at it on next boot. If the new firmware fails to boot, the bootloader stays on the old slot.
 
+```mermaid
+stateDiagram-v2
+    [*] --> RunningApp0: bootloader selects app0
+    RunningApp0 --> UploadToApp1: upload firmware via /api/update
+    UploadToApp1 --> MarkApp1: write complete, update otadata
+    MarkApp1 --> RebootToApp1: restart
+    RebootToApp1 --> RunningApp1: new firmware boots
+    RebootToApp1 --> RunningApp0: boot fails, keep previous slot
+
+    RunningApp1 --> UploadToApp0: next OTA writes inactive app0
+    UploadToApp0 --> MarkApp0: write complete, update otadata
+    MarkApp0 --> RebootToApp0: restart
+    RebootToApp0 --> RunningApp0: new firmware boots
+    RebootToApp0 --> RunningApp1: boot fails, keep previous slot
+```
+
 This means you always have a working rollback as long as you don't erase the flash.
 
 The LittleFS filesystem update is separate from app OTA slots. It replaces the dashboard/settings assets and preserves NVS configuration, but an interrupted filesystem upload can leave the web UI unavailable until LittleFS is flashed again over USB or a later successful OTA filesystem upload.

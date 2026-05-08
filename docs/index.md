@@ -9,6 +9,44 @@ SQMeter is an open-source sky quality meter built on the ESP32. It measures ligh
 
 ---
 
+```mermaid
+flowchart LR
+    subgraph Sensors["Sensors"]
+        TSL["TSL2591<br/>sky brightness"]
+        BME["BME280<br/>environment"]
+        MLX["MLX90614<br/>cloud temperature"]
+        GPS["GPS<br/>optional time/location"]
+        RG15["RG-15<br/>optional rain"]
+    end
+
+    subgraph Device["ESP32 SQMeter"]
+        FW["Firmware<br/>sampling, calibration, config"]
+        FS["LittleFS<br/>embedded web UI"]
+        NVS["NVS<br/>saved settings"]
+    end
+
+    subgraph Clients["Local network clients"]
+        Browser["Browser dashboard"]
+        REST["REST API"]
+        WS["WebSocket streams"]
+        MQTT["MQTT broker"]
+    end
+
+    TSL -->|"I2C"| FW
+    BME -->|"I2C"| FW
+    MLX -->|"I2C"| FW
+    GPS -->|"UART"| FW
+    RG15 -->|"UART"| FW
+    FW <--> NVS
+    FS --> Browser
+    FW --> REST
+    FW --> WS
+    FW --> MQTT
+    Browser <--> FW
+```
+
+---
+
 ## Features
 
 <div class="grid cards" markdown>
