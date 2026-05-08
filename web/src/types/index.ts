@@ -55,6 +55,86 @@ export interface SensorData {
   rainSensor?: RainSensorReading;
 }
 
+export interface RG15UartDiagnostics {
+  configured: boolean;
+  opened: boolean;
+  rx_pin: number;
+  tx_pin: number;
+  baud_rate: number;
+  uart_port: number;
+  mode: string;
+  resolution: string;
+  units: string;
+  debug_uart: boolean;
+  poll_interval_ms?: number;
+  rain_clear_delay_ms?: number;
+  daily_reset_enabled?: boolean;
+  daily_reset_hour?: number;
+  daily_reset_minute?: number;
+  last_command?: string | null;
+  last_command_ms?: number | null;
+  last_bytes_written?: number;
+  expected_ack?: string | null;
+  last_ack?: string | null;
+  last_ack_ms?: number | null;
+  last_raw_response?: string | null;
+  last_response_ms?: number | null;
+  last_error?: string | null;
+  timeouts: number;
+  parse_errors: number;
+  successful_reads: number;
+  response_timeout_ms: number;
+  stale_timeout_ms: number;
+  last_health_check_ms?: number | null;
+  last_health_check_age_ms?: number | null;
+  last_poll_ms?: number | null;
+  last_poll_age_ms?: number | null;
+  last_rain_detected_ms?: number | null;
+  last_rain_detected_age_ms?: number | null;
+  last_total_reset_ms?: number | null;
+  last_total_reset_age_ms?: number | null;
+  last_reboot_command_ms?: number | null;
+  last_reboot_command_age_ms?: number | null;
+  last_status_line?: string | null;
+  software_version?: string | null;
+  software_build_date?: string | null;
+  reset_reason?: string | null;
+  power_on_days?: number | null;
+  emitter_1?: number | null;
+  emitter_2?: number | null;
+  emitter_total?: number | null;
+  last_response_age_ms?: number | null;
+  last_successful_read_ms?: number | null;
+  last_successful_read_age_ms?: number | null;
+}
+
+export interface RG15SensorDiagnostics {
+  enabled: boolean;
+  sensor: string;
+  initialized: boolean;
+  online: boolean;
+  stale: boolean;
+  state: string;
+  timestamp: number;
+  ageMs: number;
+  status: number;
+  isRaining: boolean;
+  raining?: boolean;
+  acc: number;
+  eventAcc: number;
+  totalAcc: number;
+  rInt: number;
+  accumulation_since_last_read?: number;
+  event_accumulation?: number;
+  local_event_accumulation?: number;
+  hydreon_event_accumulation?: number;
+  total_accumulation?: number;
+  rain_intensity?: number;
+  lensBad: boolean;
+  emSat: boolean;
+  uart: RG15UartDiagnostics;
+}
+
 export interface SystemStatus {
   firmware?: {
     name: string;
@@ -144,9 +224,30 @@ export interface SystemStatus {
       lastUpdate: number;
     };
     rg15?: {
+      enabled: boolean;
       initialized: boolean;
+      online: boolean;
+      stale: boolean;
+      state: string;
       status: number;
       lastUpdate: number;
+      timestamp?: number;
+      ageMs?: number;
+      isRaining?: boolean;
+      raining?: boolean;
+      acc?: number;
+      eventAcc?: number;
+      totalAcc?: number;
+      rInt?: number;
+      accumulation_since_last_read?: number;
+      event_accumulation?: number;
+      local_event_accumulation?: number;
+      hydreon_event_accumulation?: number;
+      total_accumulation?: number;
+      rain_intensity?: number;
+      lensBad?: boolean;
+      emSat?: boolean;
+      uart?: RG15UartDiagnostics;
     };
   };
   gpsData?: {
@@ -181,6 +282,12 @@ export interface MQTTConfig {
 
 export interface OTAConfig {
   enabled: boolean;
+  password: string;
+}
+
+export interface AuthConfig {
+  enabled: boolean;
+  username: string;
   password: string;
 }
 
@@ -222,6 +329,7 @@ export interface Config {
   wifi: WiFiConfig;
   mqtt: MQTTConfig;
   ota: OTAConfig;
+  auth: AuthConfig;
   ntp: NTPConfig;
   gps: GPSConfig;
   sensor: SensorConfig;
@@ -230,13 +338,29 @@ export interface Config {
 }
 
 export interface RainSensorReading {
+  enabled: boolean;
+  sensor: string;
+  initialized: boolean;
+  online: boolean;
+  stale: boolean;
+  status: number;
+  timestamp: number;
+  ageMs: number;
   isRaining: boolean;
+  raining?: boolean;
   acc: number;
   eventAcc: number;
   totalAcc: number;
   rInt: number;
+  accumulation_since_last_read?: number;
+  event_accumulation?: number;
+  local_event_accumulation?: number;
+  hydreon_event_accumulation?: number;
+  total_accumulation?: number;
+  rain_intensity?: number;
   lensBad: boolean;
   emSat: boolean;
+  uart: RG15UartDiagnostics;
 }
 
 export interface RainSensorConfig {
@@ -244,9 +368,15 @@ export interface RainSensorConfig {
   rxPin: number;
   txPin: number;
   baudRate: number;
-  mode: 'polling' | 'continuous';
+  debugUart: boolean;
+  mode: 'polling';
   resolution: 'high' | 'low' | 'switch';
   units: 'metric' | 'imperial' | 'switch';
+  pollIntervalMs: number;
+  rainClearDelayMs: number;
+  dailyResetEnabled: boolean;
+  dailyResetHour: number;
+  dailyResetMinute: number;
 }
 
 export interface WiFiNetwork {

@@ -72,6 +72,7 @@ namespace SQM
             MLX90614Reading mlx;
             GPSReading gps;
             RG15Reading rg15;
+            RG15Diagnostics rg15Diagnostics;
             bool gpsInitialized = false;
             bool rg15Initialized = false;
             bool tslInitialized = false;
@@ -122,6 +123,9 @@ namespace SQM
         void handleGetConfig(AsyncWebServerRequest *request);
         void handleRestart(AsyncWebServerRequest *request);
         void handleWiFiScan(AsyncWebServerRequest *request);
+        void handleRG15Test(AsyncWebServerRequest *request);
+        void handleRG15ResetTotal(AsyncWebServerRequest *request);
+        void handleRG15Reboot(AsyncWebServerRequest *request);
         void handleMQTTTest(AsyncWebServerRequest *request, JsonVariant &json);
         void pollWiFiConnect();
 
@@ -143,6 +147,7 @@ namespace SQM
             size_t len);
 
         // Helper functions
+        bool requireAuth(AsyncWebServerRequest *request) const;
         SensorSnapshot getSensorSnapshot() const;
         std::string createSensorDataJson() const;
         std::string createStatusJson() const;

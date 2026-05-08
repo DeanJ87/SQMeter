@@ -14,7 +14,6 @@
 #include "sensors/MLX90614Sensor.h"
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
-#include "TCPServer.h"
 
 using namespace SQM;
 
@@ -29,7 +28,6 @@ static std::unique_ptr<RG15Sensor> rg15Sensor;
 static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
-static std::unique_ptr<TCPServer> tcpServer;
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 
@@ -78,7 +76,10 @@ bool saveConfigCallback(const Config &newConfig)
             {
                 rg15Sensor->reconfigure(
                     config.rain.rxPin, config.rain.txPin, config.rain.baudRate,
-                    config.rain.mode, config.rain.resolution, config.rain.units);
+                    config.rain.mode, config.rain.resolution, config.rain.units,
+                    config.rain.debugUart, config.rain.pollIntervalMs,
+                    config.rain.rainClearDelayMs, config.rain.dailyResetEnabled,
+                    config.rain.dailyResetHour, config.rain.dailyResetMinute);
             }
             else
             {
@@ -151,7 +152,10 @@ void setupSensors()
     {
         rg15Sensor = std::make_unique<RG15Sensor>(
             config.rain.rxPin, config.rain.txPin, config.rain.baudRate,
-            config.rain.mode, config.rain.resolution, config.rain.units);
+            config.rain.mode, config.rain.resolution, config.rain.units,
+            true, config.rain.debugUart, config.rain.pollIntervalMs,
+            config.rain.rainClearDelayMs, config.rain.dailyResetEnabled,
+            config.rain.dailyResetHour, config.rain.dailyResetMinute);
         if (!rg15Sensor->begin())
         {
             Logger::warn("Main", "RG-15 initialization failed");
@@ -304,11 +308,6 @@ void setup()
     webServer->begin();
     webServer->refreshSensorSnapshot(lastSensorUpdate);
 
-    // Initialize TCP server for ASCOM compatibility (port 2020)
-    tcpServer = std::make_unique<TCPServer>(2020);
-    tcpServer->setSensorReferences(tslSensor.get(), bmeSensor.get(), mlxSensor.get(), gpsSensor.get(), rg15Sensor.get());
-    tcpServer->begin();
-
     Logger::info("Main", "=== Setup complete ===");
     Logger::info("Main", "IP Address: %s", wifiManager->getIPAddress().c_str());
     Logger::info("Main", "MAC Address: %s", wifiManager->getMACAddress().c_str());
@@ -336,12 +335,6 @@ void loop()
 
     // Handle web server
     webServer->handle();
-
-    // Handle TCP server (ASCOM compatibility)
-    if (tcpServer)
-    {
-        tcpServer->handle();
-    }
 
     // Handle MQTT
     if (mqttClient)
