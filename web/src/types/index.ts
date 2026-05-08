@@ -315,6 +315,12 @@ export interface SensorConfig {
   i2cFrequency: number;
 }
 
+export interface CloudDetectionConfig {
+  clearSkyThreshold: number;
+  cloudyThreshold: number;
+  humidityCorrection: number;
+}
+
 export interface Config {
   deviceName: string;
   timezone: string;
@@ -327,6 +333,7 @@ export interface Config {
   ntp: NTPConfig;
   gps: GPSConfig;
   sensor: SensorConfig;
+  cloudDetection: CloudDetectionConfig;
   rain?: RainSensorConfig;
 }
 
