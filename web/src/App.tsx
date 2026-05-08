@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import Settings from './components/Settings';
 import System from './components/System';
 import Updates from './components/Updates';
+import NotFound from './components/NotFound';
 
 const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -35,6 +36,9 @@ const App: FunctionalComponent = () => (
     </Layout>
     <Layout path="/updates">
       <Updates />
+    </Layout>
+    <Layout default>
+      <NotFound />
     </Layout>
   </Router>
 );

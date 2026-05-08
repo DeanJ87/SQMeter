@@ -44,7 +44,7 @@ test("dashboard", async ({ page }) => {
   await page.goto("./");
   await waitForDemoApp(page);
   await expect(page.getByRole("heading", { name: "Sky Quality" })).toBeVisible();
-  await expect(page.getByText("Connected")).toBeVisible();
+  await expect(page.getByText("Live")).toBeVisible();
   await capturePage(page, "dashboard");
 });
 
@@ -59,8 +59,8 @@ test("settings", async ({ page }) => {
 test("system", async ({ page }) => {
   await page.goto("./#/system");
   await waitForDemoApp(page);
-  await expect(page.getByRole("heading", { name: "System Information" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Firmware" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sensors" })).toBeVisible();
   await capturePage(page, "system");
 });
 
