@@ -47,6 +47,3 @@ If you used the port 2020 TCP interface to drive observatory automation software
 | Rain rate | TCP `:051#` | `GET /api/sensors` → `rainSensor.rInt` |
 
 Most observatory automation tools that previously supported the SQMeter TCP interface can be configured to query a REST endpoint via HTTP instead, either natively or via a local bridge script.
-
-!!! note "Historical audit note"
-    The port 2020 TCP server is documented as a finding in the [Nuclear Codebase Audit](../audits/sqmeter-nuclear-codebase-audit.md). That document is preserved as a historical record. The TCP server has since been removed; the API and integration paths above are the current supported paths.

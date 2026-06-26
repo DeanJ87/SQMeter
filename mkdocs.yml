@@ -92,8 +92,6 @@ nav:
     - Dev Workflow: development/workflow.md
     - Adding Sensors: development/sensors.md
     - Contributing: development/contributing.md
-    - Audit Report: audits/sqmeter-nuclear-codebase-audit.md
-    - Audit Remediation Plan: audits/sqmeter-audit-remediation-plan.md
   - Reference:
     - Sky Quality Calculations: reference/sky-quality.md
     - Troubleshooting: reference/troubleshooting.md
