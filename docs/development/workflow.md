@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - [PlatformIO CLI](https://platformio.org/install/cli) or VS Code with PlatformIO extension
-- Node.js 18+
+- Node.js 24+
 - Python 3
 
 ---
