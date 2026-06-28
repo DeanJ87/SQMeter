@@ -376,7 +376,9 @@ namespace SQM
                   { request->send(200, "text/plain", "Microsoft NCSI"); });
 
         // Serve files from LittleFS
-        server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
+        server.serveStatic("/", LittleFS, "/")
+            .setDefaultFile("index.html")
+            .setCacheControl("no-cache, no-store, must-revalidate");
     }
 
     void WebServer::setupAPIRoutes()

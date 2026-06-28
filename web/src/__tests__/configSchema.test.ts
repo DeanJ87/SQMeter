@@ -3,6 +3,7 @@ import {
   configSchema,
   authConfigSchema,
   getConfigValidationErrors,
+  getConfigValidationMessage,
   hasConfigValidationErrors,
 } from "../validation/configSchema";
 import { mockConfig } from "../mocks/data";
@@ -176,6 +177,22 @@ describe("frontend settings validation", () => {
     const errors = getConfigValidationErrors(setPath(mockConfig, "deviceName", ""));
     expect(errors.deviceName).toBe("Device name is required");
     expect(hasConfigValidationErrors(errors)).toBe(true);
+  });
+
+  it("reports one actionable error when both NTP and GPS are disabled", () => {
+    const candidate = structuredClone(mockConfig);
+    candidate.ntp.enabled = false;
+    candidate.gps.enabled = false;
+
+    const errors = getConfigValidationErrors(candidate);
+
+    expect(errors).toEqual({
+      "ntp.enabled": "Enable at least one time source: NTP or GPS",
+    });
+    expect(hasConfigValidationErrors(errors)).toBe(true);
+    expect(getConfigValidationMessage(errors)).toBe(
+      "Please fix 1 validation error: Enable at least one time source: NTP or GPS",
+    );
   });
 });
 

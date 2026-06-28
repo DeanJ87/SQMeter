@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Config, WiFiNetwork } from '../types';
 import {
   getConfigValidationErrors,
+  getConfigValidationMessage,
   hasConfigValidationErrors,
   type ValidationErrors,
 } from '../validation/configSchema';
@@ -259,8 +260,7 @@ const Settings: FunctionalComponent = () => {
     const errors = collectValidationErrors(payload);
     setValidationErrors(errors);
     if (hasConfigValidationErrors(errors)) {
-      const errorCount = Object.keys(errors).length;
-      setMessage({ type: 'error', text: `Please fix ${errorCount} validation error(s)` });
+      setMessage({ type: 'error', text: getConfigValidationMessage(errors) });
       focusFirstError(errors);
       return;
     }
@@ -540,9 +540,6 @@ const Settings: FunctionalComponent = () => {
               Auto Reconnect
             </label>
           </div>
-          {errorFor('ntp.enabled') && (
-            <p class="text-sm text-red-400">{errorFor('ntp.enabled')}</p>
-          )}
         </div>
       </section>
 
@@ -552,6 +549,7 @@ const Settings: FunctionalComponent = () => {
         <div class="space-y-4">
           <div class="flex items-center">
             <input
+              data-field="ntp.enabled"
               type="checkbox"
               checked={config.ota.enabled}
               onChange={(e) => updateConfig(['ota', 'enabled'], (e.target as HTMLInputElement).checked)}
@@ -670,6 +668,9 @@ const Settings: FunctionalComponent = () => {
               Enable NTP Time Sync
             </label>
           </div>
+          {errorFor('ntp.enabled') && (
+            <p class="text-sm text-red-400">{errorFor('ntp.enabled')}</p>
+          )}
           
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">
@@ -779,6 +780,7 @@ const Settings: FunctionalComponent = () => {
         <div class="space-y-4">
           <div class="flex items-center">
             <input
+              data-field="gps.enabled"
               type="checkbox"
               checked={config.gps.enabled}
               onChange={(e) => {

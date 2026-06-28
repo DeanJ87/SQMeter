@@ -233,6 +233,7 @@ export const configSchema = z
         message: "Enable at least one time source: NTP or GPS",
         path: ["ntp", "enabled"],
       });
+      return;
     }
 
     const sourceEnabled = (source: number) => source === 0 ? data.ntp.enabled : data.gps.enabled;
@@ -280,3 +281,9 @@ export const getConfigValidationErrors = (candidate: unknown): ValidationErrors 
 
 export const hasConfigValidationErrors = (errors: ValidationErrors): boolean =>
   Object.keys(errors).length > 0;
+
+export const getConfigValidationMessage = (errors: ValidationErrors): string => {
+  const messages = Object.values(errors);
+  if (messages.length === 1) return `Please fix 1 validation error: ${messages[0]}`;
+  return `Please fix ${messages.length} validation errors`;
+};
