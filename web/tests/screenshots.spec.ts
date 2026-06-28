@@ -53,6 +53,8 @@ test("settings", async ({ page }) => {
   await waitForDemoApp(page);
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await expect(page.getByText("Device Name")).toBeVisible();
+  await page.getByRole("button", { name: "Save Configuration" }).click();
+  await expect(page.getByText("Configuration saved successfully!")).toBeVisible();
   await capturePage(page, "settings");
 });
 

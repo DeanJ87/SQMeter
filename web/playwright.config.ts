@@ -19,7 +19,12 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        // GitHub-hosted runners already include Chrome. Avoid downloading a
+        // second browser during every Pages deployment.
+        channel: process.env.CI ? "chrome" : undefined,
+      },
     },
   ],
 

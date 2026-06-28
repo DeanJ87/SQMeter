@@ -67,10 +67,6 @@ jobs:
         run: npm run build:demo
         working-directory: web
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-        working-directory: web
-
       - name: Take screenshots
         run: npm run screenshots
         working-directory: web
