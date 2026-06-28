@@ -1,10 +1,11 @@
 import { FunctionalComponent } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Config, WiFiNetwork } from '../types';
-import { configSchema } from '../validation/configSchema';
-import { ZodError } from 'zod';
-
-type ValidationErrors = Record<string, string>;
+import {
+  getConfigValidationErrors,
+  hasConfigValidationErrors,
+  type ValidationErrors,
+} from '../validation/configSchema';
 
 // Common timezone options with POSIX format
 const TIMEZONE_OPTIONS = [
@@ -231,23 +232,7 @@ const Settings: FunctionalComponent = () => {
 
   const collectValidationErrors = (candidate: Config | null): ValidationErrors => {
     if (!candidate) return { config: 'Configuration is not loaded' };
-
-    try {
-      configSchema.parse(toConfigPayload(candidate));
-      return {};
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const errors: ValidationErrors = {};
-
-        error.issues.forEach((issue) => {
-          const path = issue.path.join('.');
-          errors[path || 'config'] = issue.message;
-        });
-
-        return errors;
-      }
-      return { config: 'Configuration validation failed' };
-    }
+    return getConfigValidationErrors(toConfigPayload(candidate));
   };
 
   const focusFirstError = (errors: ValidationErrors) => {
@@ -273,7 +258,7 @@ const Settings: FunctionalComponent = () => {
     const payload = toConfigPayload(config);
     const errors = collectValidationErrors(payload);
     setValidationErrors(errors);
-    if (errors) {
+    if (hasConfigValidationErrors(errors)) {
       const errorCount = Object.keys(errors).length;
       setMessage({ type: 'error', text: `Please fix ${errorCount} validation error(s)` });
       focusFirstError(errors);

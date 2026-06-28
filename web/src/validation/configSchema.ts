@@ -264,3 +264,19 @@ export const configSchema = z
   });
 
 export type ConfigSchema = z.infer<typeof configSchema>;
+export type ValidationErrors = Record<string, string>;
+
+export const getConfigValidationErrors = (candidate: unknown): ValidationErrors => {
+  const result = configSchema.safeParse(candidate);
+  if (result.success) return {};
+
+  return Object.fromEntries(
+    result.error.issues.map((issue) => [
+      issue.path.join(".") || "config",
+      issue.message,
+    ]),
+  );
+};
+
+export const hasConfigValidationErrors = (errors: ValidationErrors): boolean =>
+  Object.keys(errors).length > 0;

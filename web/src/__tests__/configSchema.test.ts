@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { configSchema, authConfigSchema } from "../validation/configSchema";
+import {
+  configSchema,
+  authConfigSchema,
+  getConfigValidationErrors,
+  hasConfigValidationErrors,
+} from "../validation/configSchema";
 import { mockConfig } from "../mocks/data";
 import type { Config } from "../types";
 
@@ -90,6 +95,87 @@ describe("configSchema", () => {
   it("rejects I2C SDA and SCL on the same pin", () => {
     const cfg = { ...validBase, sensor: { ...validBase.sensor, i2cSDA: 21, i2cSCL: 21 } };
     expect(configSchema.safeParse(cfg).success).toBe(false);
+  });
+});
+
+describe("frontend settings validation", () => {
+  const setPath = (source: Config, path: string, value: unknown): Config => {
+    const candidate = structuredClone(source) as Config;
+    const parts = path.split(".");
+    let target: Record<string, unknown> = candidate as unknown as Record<string, unknown>;
+
+    for (const part of parts.slice(0, -1)) {
+      target = target[part] as Record<string, unknown>;
+    }
+    target[parts.at(-1)!] = value;
+    return candidate;
+  };
+
+  const validSettings: Array<[path: string, value: unknown]> = [
+    ["deviceName", "Back Garden SQMeter"],
+    ["wifi.ssid", "Observatory"],
+    ["wifi.password", "wifi-secret"],
+    ["wifi.hostname", "sqmeter-garden"],
+    ["wifi.autoReconnect", false],
+    ["ota.enabled", false],
+    ["ota.password", ""],
+    ["auth.enabled", false],
+    ["auth.username", "operator"],
+    ["auth.password", ""],
+    ["ntp.enabled", true],
+    ["ntp.timezone", "GMT0BST,M3.5.0/1,M10.5.0"],
+    ["ntp.server1", "time.cloudflare.com"],
+    ["ntp.server2", ""],
+    ["ntp.syncIntervalMs", 600000],
+    ["gps.enabled", true],
+    ["gps.rxPin", 16],
+    ["gps.txPin", 17],
+    ["gps.baudRate", 115200],
+    ["primaryTimeSource", 0],
+    ["secondaryTimeSource", 1],
+    ["mqtt.enabled", true],
+    ["mqtt.broker", "mqtt.example.com"],
+    ["mqtt.port", 8883],
+    ["mqtt.username", "sqmeter"],
+    ["mqtt.password", "mqtt-secret"],
+    ["mqtt.topic", "observatory/sqmeter"],
+    ["mqtt.publishIntervalMs", 1000],
+    ["sensor.readIntervalMs", 100],
+    ["sensor.i2cSDA", 21],
+    ["sensor.i2cSCL", 22],
+    ["sensor.i2cFrequency", 400000],
+    ["cloudDetection.clearSkyThreshold", -15],
+    ["cloudDetection.cloudyThreshold", -2],
+    ["cloudDetection.humidityCorrection", 1],
+    ["rain.enabled", true],
+    ["rain.rxPin", 18],
+    ["rain.txPin", 19],
+    ["rain.baudRate", 19200],
+    ["rain.pollIntervalMs", 1000],
+    ["rain.rainClearDelayMs", 60000],
+    ["rain.resolution", "low"],
+    ["rain.units", "imperial"],
+    ["rain.debugUart", true],
+    ["rain.dailyResetEnabled", true],
+    ["rain.dailyResetHour", 23],
+    ["rain.dailyResetMinute", 59],
+  ];
+
+  it.each(validSettings)("accepts the frontend setting %s", (path, value) => {
+    const result = configSchema.safeParse(setPath(mockConfig, path, value));
+    expect(result.success, result.success ? undefined : JSON.stringify(result.error.issues)).toBe(true);
+  });
+
+  it("allows save when a valid configuration has zero validation errors", () => {
+    const errors = getConfigValidationErrors(mockConfig);
+    expect(errors).toEqual({});
+    expect(hasConfigValidationErrors(errors)).toBe(false);
+  });
+
+  it("blocks save and identifies the field when validation fails", () => {
+    const errors = getConfigValidationErrors(setPath(mockConfig, "deviceName", ""));
+    expect(errors.deviceName).toBe("Device name is required");
+    expect(hasConfigValidationErrors(errors)).toBe(true);
   });
 });
 
