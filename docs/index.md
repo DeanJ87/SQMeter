@@ -31,7 +31,11 @@ SQMeter is an open-source sky quality meter built on the ESP32. It measures ligh
 
 - :material-update: **OTA Updates**
 
-    Flash new firmware from the browser — no USB cable needed after first flash.
+    Flash new firmware from the browser, or let the device update itself directly from GitHub Releases.
+
+- :material-connection: **ASCOM Alpaca**
+
+    Native SafetyMonitor + ObservingConditions device for N.I.N.A. — no separate bridge required.
 
 - :material-lock-open: **Open Hardware**
 

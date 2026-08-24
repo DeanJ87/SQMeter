@@ -382,3 +382,67 @@ Use this endpoint for web UI assets only. It does not update firmware and does n
 
 !!! warning "Unauthenticated update endpoints"
     `/api/update` and `/api/update/fs` are LAN-only convenience endpoints and currently have no HTTP authentication. Keep SQMeter on a trusted network and do not port-forward it.
+
+---
+
+### `GET /api/updates/check`
+
+Checks GitHub Releases for the given track and returns matched firmware+filesystem asset pairs. See [OTA Updates](../user-guide/ota.md#check-for-updates-recommended) for the full flow.
+
+```bash
+curl "http://sqm-esp32.local/api/updates/check?track=stable"
+```
+
+```json
+[
+  {
+    "tag": "v0.1.3",
+    "name": "SQMeter v0.1.3",
+    "prerelease": false,
+    "publishedAt": "2026-06-28T17:35:57Z",
+    "firmwareAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.1.3/sqmeter-firmware-v0.1.3.bin",
+    "firmwareAssetSize": 1123472,
+    "fsAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.1.3/sqmeter-littlefs-v0.1.3.bin",
+    "fsAssetSize": 524288
+  }
+]
+```
+
+`track` is `stable` (default) or `beta`, mapped directly from GitHub's `prerelease` flag. A release without both a `sqmeter-firmware-*.bin` and a `sqmeter-littlefs-*.bin` asset is omitted entirely.
+
+---
+
+### `POST /api/updates/apply`
+
+Starts a self-download-and-flash of a release returned by `check`, using its asset URLs directly.
+
+```bash
+curl -X POST http://sqm-esp32.local/api/updates/apply \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firmwareAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.1.3/sqmeter-firmware-v0.1.3.bin",
+    "firmwareAssetSize": 1123472,
+    "fsAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.1.3/sqmeter-littlefs-v0.1.3.bin",
+    "fsAssetSize": 524288
+  }'
+```
+
+Returns immediately with `{"success":true,"message":"Update started"}` - the download and flash happen on a background task. Progress and errors are pushed over `/ws/status` as `{"type":"ota_progress","progress":N}` messages (or `{"error":"..."}` on failure). The device reboots automatically once both assets are flashed successfully.
+
+---
+
+## ASCOM Alpaca API
+
+SQMeter can emit itself directly as an ASCOM Alpaca **SafetyMonitor** and **ObservingConditions** device - see [ASCOM Alpaca](../user-guide/alpaca.md) for the full setup guide, N.I.N.A. configuration, and safety-rule reference. Summary of the HTTP surface (all under the same port-80 server as the rest of the API, response envelope per the [ASCOM Alpaca API spec](https://ascom-standards.org/api/)):
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /management/apiversions` | Supported Alpaca API versions |
+| `GET /management/v1/description` | Server description |
+| `GET /management/v1/configureddevices` | Lists the two devices (empty if Alpaca is disabled in settings) |
+| `GET/PUT /api/v1/safetymonitor/0/connected` | Common ASCOM device API |
+| `GET /api/v1/safetymonitor/0/issafe` | `true`/`false` from the safety-rule evaluation |
+| `GET/PUT /api/v1/observingconditions/0/connected` | Common ASCOM device API |
+| `GET /api/v1/observingconditions/0/<property>` | One route per Alpaca property (`cloudcover`, `dewpoint`, `humidity`, `skybrightness`, `skyquality`, `skytemperature`, `temperature`, `averageperiod`); unsupported properties (`pressure`, `rainrate`, `starfwhm`, `wind*`) return Alpaca error `0x400` (NotImplemented) |
+
+A UDP listener on port `32227` answers Alpaca discovery broadcasts (`alpacadiscovery1` → `{"AlpacaPort":80}`) whenever Alpaca is enabled in settings - this requires a device restart to start/stop, unlike the HTTP routes above which reflect the setting live.

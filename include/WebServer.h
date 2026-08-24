@@ -10,9 +10,12 @@
 #include "TimeManager.h"
 #include "MQTTClient.h"
 #include "OtaUpdater.h"
+#include "SafetyEvaluator.h"
+#include "ObservingConditionsMapper.h"
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
 #include <ArduinoJson.h>
+#include <WiFiUdp.h>
 #include <memory>
 #include <vector>
 #include <functional>
@@ -115,12 +118,18 @@ namespace SQM
 
         std::unique_ptr<OtaUpdater> otaUpdater;
 
+        WiFiUDP alpacaDiscoveryUdp;
+        bool alpacaDiscoveryStarted = false;
+        mutable uint32_t alpacaServerTransactionId = 0;
+
         // Setup route handlers
         void setupStaticRoutes();
         void setupAPIRoutes();
         void setupWebSocket();
         void setupOTA();
         void setupGithubUpdates();
+        void setupAlpacaRoutes();
+        void handleAlpacaDiscovery();
 
         // API endpoint handlers
         void handleGetStatus(AsyncWebServerRequest *request);
@@ -160,6 +169,13 @@ namespace SQM
         static std::string createErrorJson(const char *error);
         static bool scheduleRestart(uint32_t delayMs);
         static uint32_t ageMs(uint32_t now, uint32_t timestamp);
+
+        // Alpaca helpers
+        Alpaca::SafetyInputs buildAlpacaSafetyInputs() const;
+        Alpaca::ObservingConditionsSnapshot buildAlpacaObservingConditionsSnapshot() const;
+        std::string buildAlpacaResponseBool(AsyncWebServerRequest *request, bool value, int errorNumber, const std::string &errorMessage) const;
+        std::string buildAlpacaResponseDouble(AsyncWebServerRequest *request, double value, int errorNumber, const std::string &errorMessage) const;
+        std::string buildAlpacaResponseVoid(AsyncWebServerRequest *request, int errorNumber, const std::string &errorMessage) const;
     };
 
 } // namespace SQM

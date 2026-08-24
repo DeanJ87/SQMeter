@@ -306,12 +306,24 @@ namespace SQM
         cfg.cloudDetection.cloudyThreshold = -3.0f;
         cfg.cloudDetection.humidityCorrection = 0.75f;
 
+        cfg.alpaca.enabled = false;
+        cfg.alpaca.manualOverrideUnsafe = false;
+        cfg.alpaca.staleAfterSeconds = 30;
+        cfg.alpaca.cloudCoverEnabled = true;
+        cfg.alpaca.cloudCoverUnsafePercent = 90.0f;
+        cfg.alpaca.sqmMinEnabled = false;
+        cfg.alpaca.sqmMinSafe = 0.0f;
+        cfg.alpaca.humidityMaxEnabled = false;
+        cfg.alpaca.humidityMaxSafe = 100.0f;
+        cfg.alpaca.dewpointMarginEnabled = false;
+        cfg.alpaca.dewpointMarginMinC = 0.0f;
+
         return cfg;
     }
 
     std::string Config::toJson(bool redactSecrets) const
     {
-        DynamicJsonDocument doc(4608);
+        DynamicJsonDocument doc(5120);
 
         doc["deviceName"] = deviceName;
         doc["timezone"] = timezone;
@@ -396,6 +408,19 @@ namespace SQM
         cloudDetection["clearSkyThreshold"] = this->cloudDetection.clearSkyThreshold;
         cloudDetection["cloudyThreshold"] = this->cloudDetection.cloudyThreshold;
         cloudDetection["humidityCorrection"] = this->cloudDetection.humidityCorrection;
+
+        JsonObject alpaca = doc.createNestedObject("alpaca");
+        alpaca["enabled"] = this->alpaca.enabled;
+        alpaca["manualOverrideUnsafe"] = this->alpaca.manualOverrideUnsafe;
+        alpaca["staleAfterSeconds"] = this->alpaca.staleAfterSeconds;
+        alpaca["cloudCoverEnabled"] = this->alpaca.cloudCoverEnabled;
+        alpaca["cloudCoverUnsafePercent"] = this->alpaca.cloudCoverUnsafePercent;
+        alpaca["sqmMinEnabled"] = this->alpaca.sqmMinEnabled;
+        alpaca["sqmMinSafe"] = this->alpaca.sqmMinSafe;
+        alpaca["humidityMaxEnabled"] = this->alpaca.humidityMaxEnabled;
+        alpaca["humidityMaxSafe"] = this->alpaca.humidityMaxSafe;
+        alpaca["dewpointMarginEnabled"] = this->alpaca.dewpointMarginEnabled;
+        alpaca["dewpointMarginMinC"] = this->alpaca.dewpointMarginMinC;
 
         std::string output;
         serializeJson(doc, output);
@@ -573,7 +598,7 @@ namespace SQM
 
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig)
     {
-        DynamicJsonDocument doc(4608);
+        DynamicJsonDocument doc(5120);
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
@@ -759,6 +784,33 @@ namespace SQM
                 cfg.cloudDetection.cloudyThreshold = cloudDetectionObj["cloudyThreshold"] | -3.0f;
             if (cloudDetectionObj.containsKey("humidityCorrection"))
                 cfg.cloudDetection.humidityCorrection = cloudDetectionObj["humidityCorrection"] | 0.75f;
+        }
+
+        JsonObject alpacaObj = doc["alpaca"];
+        if (!alpacaObj.isNull())
+        {
+            if (alpacaObj.containsKey("enabled"))
+                cfg.alpaca.enabled = alpacaObj["enabled"] | false;
+            if (alpacaObj.containsKey("manualOverrideUnsafe"))
+                cfg.alpaca.manualOverrideUnsafe = alpacaObj["manualOverrideUnsafe"] | false;
+            if (alpacaObj.containsKey("staleAfterSeconds"))
+                cfg.alpaca.staleAfterSeconds = alpacaObj["staleAfterSeconds"] | 30;
+            if (alpacaObj.containsKey("cloudCoverEnabled"))
+                cfg.alpaca.cloudCoverEnabled = alpacaObj["cloudCoverEnabled"] | true;
+            if (alpacaObj.containsKey("cloudCoverUnsafePercent"))
+                cfg.alpaca.cloudCoverUnsafePercent = alpacaObj["cloudCoverUnsafePercent"] | 90.0f;
+            if (alpacaObj.containsKey("sqmMinEnabled"))
+                cfg.alpaca.sqmMinEnabled = alpacaObj["sqmMinEnabled"] | false;
+            if (alpacaObj.containsKey("sqmMinSafe"))
+                cfg.alpaca.sqmMinSafe = alpacaObj["sqmMinSafe"] | 0.0f;
+            if (alpacaObj.containsKey("humidityMaxEnabled"))
+                cfg.alpaca.humidityMaxEnabled = alpacaObj["humidityMaxEnabled"] | false;
+            if (alpacaObj.containsKey("humidityMaxSafe"))
+                cfg.alpaca.humidityMaxSafe = alpacaObj["humidityMaxSafe"] | 100.0f;
+            if (alpacaObj.containsKey("dewpointMarginEnabled"))
+                cfg.alpaca.dewpointMarginEnabled = alpacaObj["dewpointMarginEnabled"] | false;
+            if (alpacaObj.containsKey("dewpointMarginMinC"))
+                cfg.alpaca.dewpointMarginMinC = alpacaObj["dewpointMarginMinC"] | 0.0f;
         }
 
         normalizeTimeSources(cfg);

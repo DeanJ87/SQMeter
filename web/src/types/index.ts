@@ -335,6 +335,20 @@ export interface CloudDetectionConfig {
   humidityCorrection: number;
 }
 
+export interface AlpacaConfig {
+  enabled: boolean;
+  manualOverrideUnsafe: boolean;
+  staleAfterSeconds: number;
+  cloudCoverEnabled: boolean;
+  cloudCoverUnsafePercent: number;
+  sqmMinEnabled: boolean;
+  sqmMinSafe: number;
+  humidityMaxEnabled: boolean;
+  humidityMaxSafe: number;
+  dewpointMarginEnabled: boolean;
+  dewpointMarginMinC: number;
+}
+
 export interface Config {
   deviceName: string;
   timezone: string;
@@ -351,6 +365,7 @@ export interface Config {
   skyCalibration?: SkyCalibrationConfig;
   cloudDetection: CloudDetectionConfig;
   rain?: RainSensorConfig;
+  alpaca?: AlpacaConfig;
 }
 
 export interface RainSensorReading {

@@ -126,6 +126,9 @@ jobs:
           fi
           echo "serializeJsonPretty check passed"
 
+      - name: Run native unit tests
+        run: pio test -e native
+
       - name: Populate data directory for LittleFS
         run: |
           rm -rf data
