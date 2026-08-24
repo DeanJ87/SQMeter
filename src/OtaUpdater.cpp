@@ -349,13 +349,22 @@ namespace SQM
         // Firmware first (0-50% of progress), then filesystem (50-100%).
         // Only reboot once both have succeeded, so the device never boots
         // with a firmware/web-UI version mismatch.
-        if (!downloadAndFlashFirmware(release.firmwareAssetUrl, release.firmwareAssetSize, 0, 50))
+        // Filesystem first, firmware last. Update.end() flips the boot
+        // partition immediately on success (esp_ota_set_boot_partition), so
+        // that must be the very last thing that can fail - if it already
+        // succeeded and the filesystem write failed afterwards, the device
+        // would keep running old firmware but boot into new firmware on its
+        // next (possibly unrelated, e.g. power-loss) reset, serving it
+        // against a mismatched/old web UI with no way to retry until it's
+        // back online. Flashing filesystem first means any failure before
+        // the firmware write leaves the boot partition untouched.
+        if (!downloadAndFlashFilesystem(release.fsAssetUrl, release.fsAssetSize, 0, 50))
         {
             currentPhase = Phase::Error;
             return;
         }
 
-        if (!downloadAndFlashFilesystem(release.fsAssetUrl, release.fsAssetSize, 50, 99))
+        if (!downloadAndFlashFirmware(release.firmwareAssetUrl, release.firmwareAssetSize, 50, 99))
         {
             currentPhase = Phase::Error;
             return;
