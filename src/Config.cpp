@@ -593,6 +593,31 @@ namespace SQM
             return setError(error, "Cloud detection: clear-sky threshold must be less than cloudy threshold");
         }
 
+        if (alpaca.staleAfterSeconds < 1 || alpaca.staleAfterSeconds > 3600)
+        {
+            return setError(error, "Alpaca: stale data threshold must be between 1 and 3600 seconds");
+        }
+
+        if (!std::isfinite(alpaca.cloudCoverUnsafePercent) || alpaca.cloudCoverUnsafePercent < 0.0F || alpaca.cloudCoverUnsafePercent > 100.0F)
+        {
+            return setError(error, "Alpaca: cloud cover threshold must be between 0 and 100 percent");
+        }
+
+        if (!std::isfinite(alpaca.sqmMinSafe) || alpaca.sqmMinSafe < 0.0F || alpaca.sqmMinSafe > 30.0F)
+        {
+            return setError(error, "Alpaca: minimum SQM threshold must be between 0 and 30");
+        }
+
+        if (!std::isfinite(alpaca.humidityMaxSafe) || alpaca.humidityMaxSafe < 0.0F || alpaca.humidityMaxSafe > 100.0F)
+        {
+            return setError(error, "Alpaca: maximum humidity threshold must be between 0 and 100 percent");
+        }
+
+        if (!std::isfinite(alpaca.dewpointMarginMinC) || alpaca.dewpointMarginMinC < 0.0F || alpaca.dewpointMarginMinC > 20.0F)
+        {
+            return setError(error, "Alpaca: dewpoint margin threshold must be between 0 and 20 degrees C");
+        }
+
         return true;
     }
 
