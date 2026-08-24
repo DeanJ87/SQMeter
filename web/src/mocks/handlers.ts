@@ -4,6 +4,7 @@ import {
   mockStatus,
   mockConfig,
   mockWifiNetworks,
+  mockGithubReleases,
 } from "./data";
 
 // WebSocket handlers — wildcard host works on both localhost and GitHub Pages
@@ -67,6 +68,15 @@ export const handlers = [
   http.post("/api/restart", () => HttpResponse.json({ ok: true })),
   http.post("/api/update", () => HttpResponse.json({ success: true })),
   http.post("/api/update/fs", () => HttpResponse.json({ success: true })),
+
+  // REST — GitHub release updates
+  http.get("/api/updates/check", ({ request }) => {
+    const track = new URL(request.url).searchParams.get("track") === "beta" ? "beta" : "stable";
+    return HttpResponse.json(mockGithubReleases.filter((r) => r.prerelease === (track === "beta")));
+  }),
+  http.post("/api/updates/apply", () =>
+    HttpResponse.json({ success: true, message: "Update started" })
+  ),
 
   // WebSocket — push sensor data every second
   sensorSocket.addEventListener("connection", ({ client }) => {

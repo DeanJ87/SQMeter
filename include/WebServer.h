@@ -9,6 +9,7 @@
 #include "calculations/SkyQuality.h"
 #include "TimeManager.h"
 #include "MQTTClient.h"
+#include "OtaUpdater.h"
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
 #include <ArduinoJson.h>
@@ -112,11 +113,14 @@ namespace SQM
         std::string pendingWifiSSID;
         std::string pendingWifiPassword;
 
+        std::unique_ptr<OtaUpdater> otaUpdater;
+
         // Setup route handlers
         void setupStaticRoutes();
         void setupAPIRoutes();
         void setupWebSocket();
         void setupOTA();
+        void setupGithubUpdates();
 
         // API endpoint handlers
         void handleGetStatus(AsyncWebServerRequest *request);

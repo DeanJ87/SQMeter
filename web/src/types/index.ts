@@ -400,3 +400,14 @@ export interface WiFiNetwork {
   rssi: number;
   encryption: string;
 }
+
+export interface GithubRelease {
+  tag: string;
+  name: string;
+  prerelease: boolean;
+  publishedAt: string;
+  firmwareAssetUrl: string;
+  firmwareAssetSize: number;
+  fsAssetUrl: string;
+  fsAssetSize: number;
+}
