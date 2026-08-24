@@ -24,6 +24,7 @@ web/.vite/
 web/public/mockServiceWorker.js
 web/test-results/
 web/tests/*-snapshots/
+web/coverage/
 
 # Documentation outputs
 site/

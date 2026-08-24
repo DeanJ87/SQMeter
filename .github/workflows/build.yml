@@ -88,9 +88,16 @@ jobs:
         run: npm run typecheck
         working-directory: web
 
-      - name: Run web unit tests
-        run: npm test
+      - name: Run web unit tests with coverage
+        run: npm run test:coverage
         working-directory: web
+
+      - name: Upload web coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage
+          path: web/coverage/
+          retention-days: 14
 
       - name: Build web UI
         run: npm run build
