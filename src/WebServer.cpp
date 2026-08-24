@@ -247,6 +247,14 @@ namespace SQM
           wifiConnectStartedAt(0)
     {
         refreshSensorSnapshot(0);
+
+        otaUpdater = std::make_unique<OtaUpdater>(
+            [this](int percent)
+            { setOTAProgress(percent); },
+            [this](const char *message)
+            { setOTAError(message); },
+            []
+            { WebServer::scheduleRestart(1000); });
     }
 
     WebServer::~WebServer()
@@ -269,6 +277,7 @@ namespace SQM
         setupAPIRoutes();
         setupWebSocket();
         setupOTA();
+        setupGithubUpdates();
         setupStaticRoutes(); // Must be last - has catch-all serveStatic
 
         // SPA fallback - serve index.html for any non-API routes
@@ -667,6 +676,90 @@ namespace SQM
                     Logger::error("OTA", "Filesystem update failed: %s", fs_error_msg.c_str());
                 }
             } });
+    }
+
+    void WebServer::setupGithubUpdates()
+    {
+        // Check for available releases on the given track (?track=stable|beta,
+        // defaults to stable). Returns the filtered release list; staleness
+        // relative to the running firmware is computed client-side.
+        server.on("/api/updates/check", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+
+            std::string track = "stable";
+            if (request->hasParam("track")) {
+                String t = request->getParam("track")->value();
+                if (t == "beta") track = "beta";
+            }
+
+            std::string error;
+            std::vector<GithubRelease> releases = otaUpdater->checkForUpdate(track, error);
+
+            if (!error.empty()) {
+                AsyncWebServerResponse *response = request->beginResponse(
+                    502, "application/json", createErrorJson(error.c_str()).c_str());
+                request->send(response);
+                return;
+            }
+
+            DynamicJsonDocument doc(8192);
+            JsonArray arr = doc.to<JsonArray>();
+            for (const GithubRelease &r : releases) {
+                JsonObject o = arr.createNestedObject();
+                o["tag"] = r.tag;
+                o["name"] = r.name;
+                o["prerelease"] = r.prerelease;
+                o["publishedAt"] = r.publishedAt;
+                o["firmwareAssetUrl"] = r.firmwareAssetUrl;
+                o["firmwareAssetSize"] = r.firmwareAssetSize;
+                o["fsAssetUrl"] = r.fsAssetUrl;
+                o["fsAssetSize"] = r.fsAssetSize;
+            }
+
+            std::string json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json.c_str()); });
+
+        // Starts a self-download+flash of the given release's firmware AND
+        // filesystem assets as one atomic update (never just one, to avoid
+        // frontend/backend drift). Body: {"firmwareAssetUrl", "firmwareAssetSize",
+        // "fsAssetUrl", "fsAssetSize"}. Progress/errors are pushed over
+        // /ws/status ("ota_progress" messages), same channel the manual
+        // upload OTA flow already uses.
+        AsyncCallbackJsonWebHandler *applyHandler = new AsyncCallbackJsonWebHandler(
+            "/api/updates/apply",
+            [this](AsyncWebServerRequest *request, JsonVariant &json)
+            {
+                if (!requireAuth(request))
+                    return;
+
+                JsonObject body = json.as<JsonObject>();
+
+                GithubRelease release;
+                release.firmwareAssetUrl = std::string(body["firmwareAssetUrl"] | "");
+                release.firmwareAssetSize = body["firmwareAssetSize"] | 0;
+                release.fsAssetUrl = std::string(body["fsAssetUrl"] | "");
+                release.fsAssetSize = body["fsAssetSize"] | 0;
+
+                if (release.firmwareAssetUrl.empty() || release.fsAssetUrl.empty())
+                {
+                    request->send(400, "application/json",
+                                  createErrorJson("firmwareAssetUrl and fsAssetUrl are required").c_str());
+                    return;
+                }
+
+                if (!otaUpdater->applyUpdate(release))
+                {
+                    request->send(409, "application/json", createErrorJson("Update already in progress").c_str());
+                    return;
+                }
+
+                request->send(200, "application/json", "{\"success\":true,\"message\":\"Update started\"}");
+            });
+        applyHandler->setMethod(HTTP_POST);
+        server.addHandler(applyHandler);
     }
 
     void WebServer::handleGetStatus(AsyncWebServerRequest *request)

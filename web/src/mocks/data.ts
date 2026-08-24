@@ -1,4 +1,4 @@
-import type { SensorData, SystemStatus, Config } from "../types";
+import type { SensorData, SystemStatus, Config, GithubRelease } from "../types";
 
 const jitter = (base: number, range: number) =>
   base + (Math.random() - 0.5) * range;
@@ -360,4 +360,27 @@ export const mockWifiNetworks = [
   { ssid: "DarkSkyLab", rssi: -42, encryption: "WPA2" },
   { ssid: "NeighbourNet", rssi: -71, encryption: "WPA2" },
   { ssid: "TeleCom_5G", rssi: -85, encryption: "WPA3" },
+];
+
+export const mockGithubReleases: GithubRelease[] = [
+  {
+    tag: "v0.0.3",
+    name: "v0.0.3 - RG-15 diagnostics",
+    prerelease: false,
+    publishedAt: "2026-07-01T12:00:00Z",
+    firmwareAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.0.3/sqmeter-firmware-v0.0.3.bin",
+    firmwareAssetSize: 1273285,
+    fsAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.0.3/sqmeter-littlefs-v0.0.3.bin",
+    fsAssetSize: 274432,
+  },
+  {
+    tag: "v0.0.4-beta.1",
+    name: "v0.0.4-beta.1 - Alpaca preview",
+    prerelease: true,
+    publishedAt: "2026-08-10T09:30:00Z",
+    firmwareAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.0.4-beta.1/sqmeter-firmware-v0.0.4-beta.1.bin",
+    firmwareAssetSize: 1301022,
+    fsAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.0.4-beta.1/sqmeter-littlefs-v0.0.4-beta.1.bin",
+    fsAssetSize: 280100,
+  },
 ];
