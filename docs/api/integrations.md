@@ -4,6 +4,29 @@ SQMeter exposes device data through three supported integration paths. The legac
 
 ## Supported integration paths
 
+```mermaid
+flowchart LR
+    Sensors["Sensor readings<br/>sky, environment, clouds, rain, GPS"]
+    Firmware["SQMeter firmware<br/>normalises current state"]
+    REST["REST API<br/>pull snapshots"]
+    WS["WebSocket<br/>live browser/app streams"]
+    MQTT["MQTT<br/>scheduled broker publish"]
+    HA["Home Assistant / Grafana"]
+    Scripts["Scripts and local tools"]
+    Browser["Dashboard UI"]
+
+    Sensors --> Firmware
+    Firmware --> REST
+    Firmware --> WS
+    Firmware --> MQTT
+    REST --> Scripts
+    REST --> HA
+    WS --> Browser
+    WS --> Scripts
+    MQTT --> HA
+    MQTT --> Scripts
+```
+
 ### REST API
 
 Pull sensor data, status, and configuration over plain HTTP. See [REST API](rest.md) for full endpoint reference.

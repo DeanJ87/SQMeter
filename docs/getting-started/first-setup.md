@@ -4,6 +4,20 @@ SQMeter ships with no WiFi credentials. On first power-on it starts in **hotspot
 
 ---
 
+```mermaid
+stateDiagram-v2
+    [*] --> Boot
+    Boot --> SetupAP: no WiFi credentials in NVS
+    SetupAP --> CaptivePortal: phone or laptop joins SQM-Setup
+    CaptivePortal --> SaveCredentials: user selects 2.4 GHz WiFi
+    SaveCredentials --> Reboot: credentials saved to NVS
+    Reboot --> LanMode: device joins configured network
+    LanMode --> Dashboard: open sqmeter.local or device IP
+    LanMode --> SetupAP: NVS erased or full chip erase
+```
+
+---
+
 ## Step 1 — Power On
 
 Connect the ESP32 to USB or a 5V supply. Within a few seconds it broadcasts:
