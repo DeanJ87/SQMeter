@@ -115,6 +115,29 @@ namespace SQM
         float humidityCorrection;   // k1 factor for humidity correction (default: 0.75)
     };
 
+    // Thresholds for the native ASCOM Alpaca SafetyMonitor's "is it safe"
+    // evaluation, ported from the SQMeter-ASCOM-Alpaca Go bridge's config.
+    // Each *_enabled flag matches that bridge's "if configured" semantics -
+    // disabled thresholds never contribute to an unsafe verdict.
+    struct AlpacaConfig
+    {
+        bool enabled;                  // master switch for the Alpaca HTTP+UDP endpoints
+        bool manualOverrideUnsafe;      // force SafetyMonitor.IsSafe = false regardless of readings
+        uint32_t staleAfterSeconds;    // sensor data older than this counts as unsafe
+
+        bool cloudCoverEnabled;
+        float cloudCoverUnsafePercent;
+
+        bool sqmMinEnabled;
+        float sqmMinSafe;
+
+        bool humidityMaxEnabled;
+        float humidityMaxSafe;
+
+        bool dewpointMarginEnabled;
+        float dewpointMarginMinC;
+    };
+
     struct Config
     {
         WiFiConfig wifi;
@@ -128,13 +151,14 @@ namespace SQM
         SkyAveragingConfig skyAveraging;
         SkyCalibrationConfig skyCalibration;
         CloudDetectionConfig cloudDetection;
+        AlpacaConfig alpaca;
         std::string deviceName;
         std::string timezone;
         TimeSource primaryTimeSource;   // Primary time source
         TimeSource secondaryTimeSource; // Fallback time source
 
         static constexpr const char *TAG = "Config";
-        static constexpr size_t MAX_PERSISTED_JSON_BYTES = 4600;
+        static constexpr size_t MAX_PERSISTED_JSON_BYTES = 5100;
 
         static std::optional<Config> load();
         bool save() const;

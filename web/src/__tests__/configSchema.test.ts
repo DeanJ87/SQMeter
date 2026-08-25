@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   configSchema,
   authConfigSchema,
+  alpacaConfigSchema,
   getConfigValidationErrors,
   getConfigValidationMessage,
   hasConfigValidationErrors,
@@ -217,6 +218,61 @@ describe("authConfigSchema", () => {
     expect(
       authConfigSchema.safeParse({ enabled: true, username: "", password: "hunter2" }).success
     ).toBe(false);
+  });
+});
+
+describe("alpacaConfigSchema", () => {
+  const validAlpaca = {
+    enabled: false,
+    manualOverrideUnsafe: false,
+    staleAfterSeconds: 30,
+    cloudCoverEnabled: true,
+    cloudCoverUnsafePercent: 90,
+    sqmMinEnabled: false,
+    sqmMinSafe: 0,
+    humidityMaxEnabled: false,
+    humidityMaxSafe: 100,
+    dewpointMarginEnabled: false,
+    dewpointMarginMinC: 0,
+  };
+
+  it("passes with valid defaults", () => {
+    expect(alpacaConfigSchema.safeParse(validAlpaca).success).toBe(true);
+  });
+
+  it("fails when staleAfterSeconds is zero", () => {
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, staleAfterSeconds: 0 }).success).toBe(false);
+  });
+
+  it("fails when staleAfterSeconds exceeds 1 hour", () => {
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, staleAfterSeconds: 3601 }).success).toBe(false);
+  });
+
+  it("fails when cloudCoverUnsafePercent is out of range", () => {
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, cloudCoverUnsafePercent: 101 }).success).toBe(false);
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, cloudCoverUnsafePercent: -1 }).success).toBe(false);
+  });
+
+  it("fails when sqmMinSafe is out of range", () => {
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, sqmMinSafe: -1 }).success).toBe(false);
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, sqmMinSafe: 31 }).success).toBe(false);
+  });
+
+  it("fails when humidityMaxSafe is out of range", () => {
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, humidityMaxSafe: 101 }).success).toBe(false);
+  });
+
+  it("fails when dewpointMarginMinC is out of range", () => {
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, dewpointMarginMinC: -1 }).success).toBe(false);
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, dewpointMarginMinC: 21 }).success).toBe(false);
+  });
+
+  it("is accepted as an optional field on the full config schema", () => {
+    expect(configSchema.safeParse({ ...validBase, alpaca: validAlpaca }).success).toBe(true);
+  });
+
+  it("full config schema still passes when alpaca is omitted", () => {
+    expect(configSchema.safeParse(validBase).success).toBe(true);
   });
 });
 

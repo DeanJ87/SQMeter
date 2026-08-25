@@ -172,6 +172,20 @@ export const cloudDetectionConfigSchema = z
     path: ["clearSkyThreshold"],
   });
 
+export const alpacaConfigSchema = z.object({
+  enabled: z.boolean(),
+  manualOverrideUnsafe: z.boolean(),
+  staleAfterSeconds: z.number().int().min(1, "Must be at least 1 second").max(3600, "Must be at most 1 hour"),
+  cloudCoverEnabled: z.boolean(),
+  cloudCoverUnsafePercent: z.number().min(0).max(100),
+  sqmMinEnabled: z.boolean(),
+  sqmMinSafe: z.number().min(0).max(30),
+  humidityMaxEnabled: z.boolean(),
+  humidityMaxSafe: z.number().min(0).max(100),
+  dewpointMarginEnabled: z.boolean(),
+  dewpointMarginMinC: z.number().min(0).max(20),
+});
+
 export const rainSensorConfigSchema = z
   .object({
     enabled: z.boolean(),
@@ -225,6 +239,7 @@ export const configSchema = z
     skyCalibration: skyCalibrationConfigSchema.optional(),
     rain: rainSensorConfigSchema.optional(),
     cloudDetection: cloudDetectionConfigSchema,
+    alpaca: alpacaConfigSchema.optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.ntp.enabled && !data.gps.enabled) {

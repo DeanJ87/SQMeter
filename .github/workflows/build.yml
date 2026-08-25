@@ -126,6 +126,9 @@ jobs:
           fi
           echo "serializeJsonPretty check passed"
 
+      - name: Run native unit tests
+        run: pio test -e native
+
       - name: Populate data directory for LittleFS
         run: |
           rm -rf data
@@ -197,11 +200,26 @@ jobs:
           mv littlefs/littlefs.bin             sqmeter-littlefs-${VERSION}.bin
           mv complete-flash/complete-flash.bin sqmeter-complete-flash-${VERSION}.bin
 
+      # Any tag with a semver prerelease segment (e.g. v0.1.4-beta.1) is
+      # published as a GitHub prerelease, which is what the device's
+      # "Check for Updates" beta track filters on (GitHub's prerelease flag,
+      # not tag naming - see OtaUpdater::parseGithubReleases).
+      - name: Determine prerelease status
+        id: prerelease
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: SQMeter ${{ github.ref_name }}
           generate_release_notes: true
+          prerelease: ${{ steps.prerelease.outputs.value }}
           files: |
             sqmeter-firmware-*.bin
             sqmeter-littlefs-*.bin

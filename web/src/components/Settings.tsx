@@ -50,6 +50,20 @@ const defaultCloudDetectionConfig: Config['cloudDetection'] = {
   humidityCorrection: 0.75,
 };
 
+const defaultAlpacaConfig: NonNullable<Config['alpaca']> = {
+  enabled: false,
+  manualOverrideUnsafe: false,
+  staleAfterSeconds: 30,
+  cloudCoverEnabled: true,
+  cloudCoverUnsafePercent: 90,
+  sqmMinEnabled: false,
+  sqmMinSafe: 0,
+  humidityMaxEnabled: false,
+  humidityMaxSafe: 100,
+  dewpointMarginEnabled: false,
+  dewpointMarginMinC: 0,
+};
+
 const fieldErrorAliases: Record<string, string> = {
   mqttBroker: 'mqtt.broker',
   mqttPort: 'mqtt.port',
@@ -115,6 +129,7 @@ const toConfigPayload = (source: Config): Config => {
     cloudDetection: source.cloudDetection
       ? { ...source.cloudDetection }
       : { ...defaultCloudDetectionConfig },
+    alpaca: source.alpaca ? { ...source.alpaca } : { ...defaultAlpacaConfig },
   };
 
   return {
@@ -309,6 +324,7 @@ const Settings: FunctionalComponent = () => {
       gps: { ...config.gps },
       sensor: { ...config.sensor },
       cloudDetection: { ...(config.cloudDetection ?? defaultCloudDetectionConfig) },
+      alpaca: config.alpaca ? { ...config.alpaca } : { ...defaultAlpacaConfig },
       auth: config.auth ? { ...config.auth } : { ...defaultAuthConfig },
       rain: config.rain ? { ...config.rain } : { ...defaultRainConfig },
     };
@@ -337,6 +353,7 @@ const Settings: FunctionalComponent = () => {
       gps: { ...config.gps },
       sensor: { ...config.sensor },
       cloudDetection: { ...(config.cloudDetection ?? defaultCloudDetectionConfig) },
+      alpaca: config.alpaca ? { ...config.alpaca } : { ...defaultAlpacaConfig },
       auth: config.auth ? { ...config.auth } : { ...defaultAuthConfig },
       rain: {
         ...(config.rain ? { ...config.rain } : { ...defaultRainConfig }),
@@ -368,6 +385,7 @@ const Settings: FunctionalComponent = () => {
       gps: { ...config.gps },
       sensor: { ...config.sensor },
       cloudDetection: { ...(config.cloudDetection ?? defaultCloudDetectionConfig) },
+      alpaca: config.alpaca ? { ...config.alpaca } : { ...defaultAlpacaConfig },
       auth: config.auth ? { ...config.auth } : { ...defaultAuthConfig },
       rain: config.rain ? { ...config.rain } : { ...defaultRainConfig },
     };
@@ -393,6 +411,8 @@ const Settings: FunctionalComponent = () => {
       </div>
     );
   }
+
+  const alpaca = config.alpaca ?? defaultAlpacaConfig;
 
   return (
     <div class="panel-page settings-page page-enter">
@@ -1211,6 +1231,134 @@ const Settings: FunctionalComponent = () => {
               class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
             />
             <p class="mt-1 text-xs text-gray-500">k1 factor for AAG CloudWatcher humidity correction formula (default: 0.75)</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ASCOM Alpaca Settings */}
+      <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-white mb-4">ASCOM Alpaca</h2>
+        <p class="text-sm text-gray-400 mb-4">
+          Exposes this device directly as an ASCOM Alpaca SafetyMonitor and ObservingConditions device (HTTP + UDP discovery on port 32227), for use with N.I.N.A. and other ASCOM Alpaca clients. Requires a restart to start/stop the UDP discovery listener.
+        </p>
+        <div class="space-y-4">
+          <label class="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={alpaca.enabled}
+              onChange={(e) => updateConfig(['alpaca', 'enabled'], (e.target as HTMLInputElement).checked)}
+            />
+            <span class="text-white">Enable Alpaca SafetyMonitor / ObservingConditions</span>
+          </label>
+
+          <label class="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={alpaca.manualOverrideUnsafe}
+              onChange={(e) => updateConfig(['alpaca', 'manualOverrideUnsafe'], (e.target as HTMLInputElement).checked)}
+            />
+            <span class="text-white">Force SafetyMonitor unsafe (manual override)</span>
+          </label>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Stale Data Threshold (seconds)</label>
+            <input
+              type="number"
+              value={alpaca.staleAfterSeconds}
+              onChange={(e) => updateConfig(['alpaca', 'staleAfterSeconds'], parseInt((e.target as HTMLInputElement).value, 10))}
+              min="1"
+              max="3600"
+              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+            />
+            <p class="mt-1 text-xs text-gray-500">Sensor data older than this is treated as unsafe (default: 30s)</p>
+          </div>
+
+          <div class="border-t border-gray-700 pt-4">
+            <label class="flex items-center gap-3 mb-2">
+              <input
+                type="checkbox"
+                checked={alpaca.cloudCoverEnabled}
+                onChange={(e) => updateConfig(['alpaca', 'cloudCoverEnabled'], (e.target as HTMLInputElement).checked)}
+              />
+              <span class="text-white">Cloud cover threshold</span>
+            </label>
+            <input
+              type="number"
+              value={alpaca.cloudCoverUnsafePercent}
+              onChange={(e) => updateConfig(['alpaca', 'cloudCoverUnsafePercent'], parseFloat((e.target as HTMLInputElement).value))}
+              disabled={!alpaca.cloudCoverEnabled}
+              min="0"
+              max="100"
+              step="1"
+              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+            />
+            <p class="mt-1 text-xs text-gray-500">Unsafe when cloud cover % is at or above this value</p>
+          </div>
+
+          <div class="border-t border-gray-700 pt-4">
+            <label class="flex items-center gap-3 mb-2">
+              <input
+                type="checkbox"
+                checked={alpaca.sqmMinEnabled}
+                onChange={(e) => updateConfig(['alpaca', 'sqmMinEnabled'], (e.target as HTMLInputElement).checked)}
+              />
+              <span class="text-white">Minimum sky brightness (SQM) threshold</span>
+            </label>
+            <input
+              type="number"
+              value={alpaca.sqmMinSafe}
+              onChange={(e) => updateConfig(['alpaca', 'sqmMinSafe'], parseFloat((e.target as HTMLInputElement).value))}
+              disabled={!alpaca.sqmMinEnabled}
+              min="0"
+              max="30"
+              step="0.1"
+              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+            />
+            <p class="mt-1 text-xs text-gray-500">Unsafe when SQM (mag/arcsec²) drops below this value</p>
+          </div>
+
+          <div class="border-t border-gray-700 pt-4">
+            <label class="flex items-center gap-3 mb-2">
+              <input
+                type="checkbox"
+                checked={alpaca.humidityMaxEnabled}
+                onChange={(e) => updateConfig(['alpaca', 'humidityMaxEnabled'], (e.target as HTMLInputElement).checked)}
+              />
+              <span class="text-white">Maximum humidity threshold</span>
+            </label>
+            <input
+              type="number"
+              value={alpaca.humidityMaxSafe}
+              onChange={(e) => updateConfig(['alpaca', 'humidityMaxSafe'], parseFloat((e.target as HTMLInputElement).value))}
+              disabled={!alpaca.humidityMaxEnabled}
+              min="0"
+              max="100"
+              step="1"
+              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+            />
+            <p class="mt-1 text-xs text-gray-500">Unsafe when humidity % is above this value</p>
+          </div>
+
+          <div class="border-t border-gray-700 pt-4">
+            <label class="flex items-center gap-3 mb-2">
+              <input
+                type="checkbox"
+                checked={alpaca.dewpointMarginEnabled}
+                onChange={(e) => updateConfig(['alpaca', 'dewpointMarginEnabled'], (e.target as HTMLInputElement).checked)}
+              />
+              <span class="text-white">Minimum temperature-dewpoint margin</span>
+            </label>
+            <input
+              type="number"
+              value={alpaca.dewpointMarginMinC}
+              onChange={(e) => updateConfig(['alpaca', 'dewpointMarginMinC'], parseFloat((e.target as HTMLInputElement).value))}
+              disabled={!alpaca.dewpointMarginEnabled}
+              min="0"
+              max="20"
+              step="0.1"
+              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+            />
+            <p class="mt-1 text-xs text-gray-500">Unsafe when (temperature - dewpoint) drops below this margin, in °C</p>
           </div>
         </div>
       </section>

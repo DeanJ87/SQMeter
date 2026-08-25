@@ -25,7 +25,8 @@ SQMeter measures light pollution in real time using an ESP32. It gives you SQM m
 - RG-15 rain sensor support (optional)
 - Real-time web dashboard over WebSocket
 - REST API and MQTT publishing
-- OTA firmware updates from the browser
+- OTA firmware updates from the browser, or self-updated directly from GitHub Releases
+- Native ASCOM Alpaca SafetyMonitor + ObservingConditions device (N.I.N.A.-compatible, no separate bridge needed)
 - Captive portal Wi-Fi setup on first boot
 
 ## Quick Start

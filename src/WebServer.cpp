@@ -16,6 +16,7 @@
 #include <ctime>
 #include "calculations/CloudDetection.h"
 #include "sensors/RG15Sensor.h"
+#include "AlpacaDiscovery.h"
 
 extern uint32_t bootCount;
 
@@ -278,7 +279,21 @@ namespace SQM
         setupWebSocket();
         setupOTA();
         setupGithubUpdates();
+        setupAlpacaRoutes();
         setupStaticRoutes(); // Must be last - has catch-all serveStatic
+
+        if (getConfigCallback().alpaca.enabled)
+        {
+            if (alpacaDiscoveryUdp.begin(Alpaca::DISCOVERY_UDP_PORT))
+            {
+                alpacaDiscoveryStarted = true;
+                Logger::info(TAG, "Alpaca UDP discovery listening on port %u", Alpaca::DISCOVERY_UDP_PORT);
+            }
+            else
+            {
+                Logger::error(TAG, "Failed to start Alpaca UDP discovery listener");
+            }
+        }
 
         // SPA fallback - serve index.html for any non-API routes
         server.onNotFound([](AsyncWebServerRequest *request)
@@ -303,6 +318,7 @@ namespace SQM
         wsSensors.cleanupClients();
         wsStatus.cleanupClients();
         pollWiFiConnect();
+        handleAlpacaDiscovery();
 
         const uint32_t now = millis();
 
@@ -760,6 +776,311 @@ namespace SQM
             });
         applyHandler->setMethod(HTTP_POST);
         server.addHandler(applyHandler);
+    }
+
+    namespace
+    {
+        uint32_t getAlpacaClientTransactionId(AsyncWebServerRequest *request)
+        {
+            if (request->hasParam("ClientTransactionID"))
+                return request->getParam("ClientTransactionID")->value().toInt();
+            if (request->hasParam("ClientTransactionID", true))
+                return request->getParam("ClientTransactionID", true)->value().toInt();
+            return 0;
+        }
+    }
+
+    std::string WebServer::buildAlpacaResponseBool(AsyncWebServerRequest *request, bool value, int errorNumber, const std::string &errorMessage) const
+    {
+        StaticJsonDocument<192> doc;
+        doc["Value"] = value;
+        doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
+        doc["ServerTransactionID"] = ++alpacaServerTransactionId;
+        doc["ErrorNumber"] = errorNumber;
+        doc["ErrorMessage"] = errorMessage;
+        std::string json;
+        serializeJson(doc, json);
+        return json;
+    }
+
+    std::string WebServer::buildAlpacaResponseDouble(AsyncWebServerRequest *request, double value, int errorNumber, const std::string &errorMessage) const
+    {
+        StaticJsonDocument<192> doc;
+        doc["Value"] = value;
+        doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
+        doc["ServerTransactionID"] = ++alpacaServerTransactionId;
+        doc["ErrorNumber"] = errorNumber;
+        doc["ErrorMessage"] = errorMessage;
+        std::string json;
+        serializeJson(doc, json);
+        return json;
+    }
+
+    std::string WebServer::buildAlpacaResponseVoid(AsyncWebServerRequest *request, int errorNumber, const std::string &errorMessage) const
+    {
+        StaticJsonDocument<192> doc;
+        doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
+        doc["ServerTransactionID"] = ++alpacaServerTransactionId;
+        doc["ErrorNumber"] = errorNumber;
+        doc["ErrorMessage"] = errorMessage;
+        std::string json;
+        serializeJson(doc, json);
+        return json;
+    }
+
+    namespace
+    {
+        std::string buildAlpacaResponseString(AsyncWebServerRequest *request, const std::string &value, uint32_t &txnCounter)
+        {
+            StaticJsonDocument<256> doc;
+            doc["Value"] = value;
+            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
+            doc["ServerTransactionID"] = ++txnCounter;
+            doc["ErrorNumber"] = 0;
+            doc["ErrorMessage"] = "";
+            std::string json;
+            serializeJson(doc, json);
+            return json;
+        }
+
+        std::string buildAlpacaResponseIntArray(AsyncWebServerRequest *request, const std::vector<int> &values, uint32_t &txnCounter)
+        {
+            DynamicJsonDocument doc(256);
+            JsonArray arr = doc.createNestedArray("Value");
+            for (int v : values)
+                arr.add(v);
+            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
+            doc["ServerTransactionID"] = ++txnCounter;
+            doc["ErrorNumber"] = 0;
+            doc["ErrorMessage"] = "";
+            std::string json;
+            serializeJson(doc, json);
+            return json;
+        }
+
+        std::string buildAlpacaResponseStringArray(AsyncWebServerRequest *request, const std::vector<std::string> &values, uint32_t &txnCounter)
+        {
+            DynamicJsonDocument doc(256);
+            JsonArray arr = doc.createNestedArray("Value");
+            for (const auto &v : values)
+                arr.add(v);
+            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
+            doc["ServerTransactionID"] = ++txnCounter;
+            doc["ErrorNumber"] = 0;
+            doc["ErrorMessage"] = "";
+            std::string json;
+            serializeJson(doc, json);
+            return json;
+        }
+    }
+
+    Alpaca::SafetyInputs WebServer::buildAlpacaSafetyInputs() const
+    {
+        const SensorSnapshot snapshot = getSensorSnapshot();
+        const uint32_t now = millis();
+        const Config &cfg = getConfigCallback();
+
+        Alpaca::SafetyInputs in;
+        in.hasEverHadGoodData = snapshot.dataTimestamp != 0;
+        in.secondsSinceLastGoodData = ageMs(now, snapshot.dataTimestamp) / 1000;
+        in.requiredSensorFault = snapshot.tsl.status != SensorStatus::OK ||
+                                  snapshot.mlx.status != SensorStatus::OK;
+
+        SkyQualityMetrics sqm = SkyQuality::calculate(snapshot.tsl.lux);
+        in.sqm = sqm.sqm;
+
+        bool usingHumidityFallback = snapshot.bme.status != SensorStatus::OK;
+        float humidity = usingHumidityFallback ? 53.0f : snapshot.bme.humidity;
+        CloudMetrics cloudMetrics = CloudDetection::calculate(
+            snapshot.mlx.objectTemp,
+            snapshot.mlx.ambientTemp,
+            humidity,
+            cfg.cloudDetection.clearSkyThreshold,
+            cfg.cloudDetection.cloudyThreshold,
+            cfg.cloudDetection.humidityCorrection);
+        in.cloudCoverPercent = cloudMetrics.cloudCoverPercent;
+        in.humidityPercent = humidity;
+        in.temperatureC = snapshot.bme.temperature;
+        in.dewpointC = snapshot.bme.dewpoint;
+
+        return in;
+    }
+
+    Alpaca::ObservingConditionsSnapshot WebServer::buildAlpacaObservingConditionsSnapshot() const
+    {
+        const SensorSnapshot snapshot = getSensorSnapshot();
+        const uint32_t now = millis();
+        const uint32_t staleAfter = getConfigCallback().sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
+        const bool stale = snapshot.dataTimestamp == 0 || ageMs(now, snapshot.dataTimestamp) > staleAfter;
+
+        Alpaca::ObservingConditionsSnapshot snap;
+        snap.dataValid = !stale;
+
+        const Config &cfg = getConfigCallback();
+        bool usingHumidityFallback = snapshot.bme.status != SensorStatus::OK;
+        float humidity = usingHumidityFallback ? 53.0f : snapshot.bme.humidity;
+        CloudMetrics cloudMetrics = CloudDetection::calculate(
+            snapshot.mlx.objectTemp,
+            snapshot.mlx.ambientTemp,
+            humidity,
+            cfg.cloudDetection.clearSkyThreshold,
+            cfg.cloudDetection.cloudyThreshold,
+            cfg.cloudDetection.humidityCorrection);
+        snap.cloudCoverPercent = cloudMetrics.cloudCoverPercent;
+
+        SkyQualityMetrics sqm = SkyQuality::calculate(snapshot.tsl.lux);
+        snap.skyQualityMagArcsec2 = sqm.sqm;
+        snap.skyBrightnessLux = snapshot.tsl.lux;
+        snap.skyTemperatureC = snapshot.mlx.objectTemp;
+        snap.temperatureC = snapshot.bme.temperature;
+        snap.humidityPercent = humidity;
+        snap.dewpointC = snapshot.bme.dewpoint;
+
+        return snap;
+    }
+
+    void WebServer::setupAlpacaRoutes()
+    {
+        // --- Management API ---
+        server.on("/management/apiversions", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  { request->send(200, "application/json", buildAlpacaResponseIntArray(request, {1}, alpacaServerTransactionId).c_str()); });
+
+        server.on("/management/v1/description", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            DynamicJsonDocument doc(384);
+            JsonObject value = doc.createNestedObject("Value");
+            value["ServerName"] = FIRMWARE_NAME;
+            value["Manufacturer"] = "SQMeter";
+            value["ManufacturerVersion"] = FIRMWARE_VERSION;
+            value["Location"] = getConfigCallback().deviceName;
+            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
+            doc["ServerTransactionID"] = ++alpacaServerTransactionId;
+            doc["ErrorNumber"] = 0;
+            doc["ErrorMessage"] = "";
+            std::string json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json.c_str()); });
+
+        server.on("/management/v1/configureddevices", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            DynamicJsonDocument doc(768);
+            JsonArray value = doc.createNestedArray("Value");
+            if (getConfigCallback().alpaca.enabled) {
+                JsonObject safety = value.createNestedObject();
+                safety["DeviceName"] = "SQMeter SafetyMonitor";
+                safety["DeviceType"] = "SafetyMonitor";
+                safety["DeviceNumber"] = 0;
+                safety["UniqueID"] = "sqmeter-safetymonitor-0";
+
+                JsonObject obsCond = value.createNestedObject();
+                obsCond["DeviceName"] = "SQMeter ObservingConditions";
+                obsCond["DeviceType"] = "ObservingConditions";
+                obsCond["DeviceNumber"] = 0;
+                obsCond["UniqueID"] = "sqmeter-observingconditions-0";
+            }
+            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
+            doc["ServerTransactionID"] = ++alpacaServerTransactionId;
+            doc["ErrorNumber"] = 0;
+            doc["ErrorMessage"] = "";
+            std::string json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json.c_str()); });
+
+        // --- Common ASCOM device API, registered identically for both devices ---
+        auto registerCommonRoutes = [this](const std::string &basePath, const std::string &name, const std::string &description)
+        {
+            server.on((basePath + "/connected").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
+                      { request->send(200, "application/json", buildAlpacaResponseBool(request, getConfigCallback().alpaca.enabled, 0, "").c_str()); });
+            server.on((basePath + "/connected").c_str(), HTTP_PUT, [this](AsyncWebServerRequest *request)
+                      { request->send(200, "application/json", buildAlpacaResponseVoid(request, 0, "").c_str()); });
+            server.on((basePath + "/name").c_str(), HTTP_GET, [this, name](AsyncWebServerRequest *request)
+                      { request->send(200, "application/json", buildAlpacaResponseString(request, name, alpacaServerTransactionId).c_str()); });
+            server.on((basePath + "/description").c_str(), HTTP_GET, [this, description](AsyncWebServerRequest *request)
+                      { request->send(200, "application/json", buildAlpacaResponseString(request, description, alpacaServerTransactionId).c_str()); });
+            server.on((basePath + "/driverinfo").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
+                      { request->send(200, "application/json", buildAlpacaResponseString(request, "Native ESP32 firmware, no external bridge - https://github.com/DeanJ87/SQMeter", alpacaServerTransactionId).c_str()); });
+            server.on((basePath + "/driverversion").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
+                      { request->send(200, "application/json", buildAlpacaResponseString(request, FIRMWARE_VERSION, alpacaServerTransactionId).c_str()); });
+            server.on((basePath + "/interfaceversion").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
+                      { request->send(200, "application/json", buildAlpacaResponseDouble(request, 1, 0, "").c_str()); });
+            server.on((basePath + "/supportedactions").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
+                      { request->send(200, "application/json", buildAlpacaResponseStringArray(request, {}, alpacaServerTransactionId).c_str()); });
+        };
+
+        registerCommonRoutes("/api/v1/safetymonitor/0", "SQMeter SafetyMonitor",
+                              "Reports observatory safety based on cloud cover, sky brightness, humidity, and dew-point margin from the onboard SQMeter sensors.");
+        registerCommonRoutes("/api/v1/observingconditions/0", "SQMeter ObservingConditions",
+                              "Reports sky quality, cloud cover, sky temperature, humidity, dew point, and ambient temperature from the onboard SQMeter sensors.");
+
+        // --- SafetyMonitor-specific ---
+        server.on("/api/v1/safetymonitor/0/issafe", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            const Config &cfg = getConfigCallback();
+            if (!cfg.alpaca.enabled) {
+                request->send(200, "application/json", buildAlpacaResponseBool(request, false, Alpaca::ALPACA_ERR_NOT_CONNECTED, "Alpaca support is disabled in device settings").c_str());
+                return;
+            }
+
+            Alpaca::SafetyThresholds thresholds;
+            thresholds.manualOverrideUnsafe = cfg.alpaca.manualOverrideUnsafe;
+            thresholds.staleAfterSeconds = cfg.alpaca.staleAfterSeconds;
+            thresholds.cloudCoverEnabled = cfg.alpaca.cloudCoverEnabled;
+            thresholds.cloudCoverUnsafePercent = cfg.alpaca.cloudCoverUnsafePercent;
+            thresholds.sqmMinEnabled = cfg.alpaca.sqmMinEnabled;
+            thresholds.sqmMinSafe = cfg.alpaca.sqmMinSafe;
+            thresholds.humidityMaxEnabled = cfg.alpaca.humidityMaxEnabled;
+            thresholds.humidityMaxSafe = cfg.alpaca.humidityMaxSafe;
+            thresholds.dewpointMarginEnabled = cfg.alpaca.dewpointMarginEnabled;
+            thresholds.dewpointMarginMinC = cfg.alpaca.dewpointMarginMinC;
+
+            Alpaca::SafetyResult result = Alpaca::evaluateSafety(buildAlpacaSafetyInputs(), thresholds);
+            request->send(200, "application/json", buildAlpacaResponseBool(request, result.isSafe, 0, "").c_str()); });
+
+        // --- ObservingConditions-specific: one route per Alpaca property ---
+        static const char *observingProperties[] = {
+            "averageperiod", "cloudcover", "dewpoint", "humidity", "pressure",
+            "rainrate", "skybrightness", "skyquality", "skytemperature",
+            "starfwhm", "temperature", "winddirection", "windgust", "windspeed"};
+
+        for (const char *property : observingProperties)
+        {
+            std::string path = std::string("/api/v1/observingconditions/0/") + property;
+            std::string propertyName = property;
+            server.on(path.c_str(), HTTP_GET, [this, propertyName](AsyncWebServerRequest *request)
+                      {
+                const Config &cfg = getConfigCallback();
+                if (!cfg.alpaca.enabled) {
+                    request->send(200, "application/json", buildAlpacaResponseBool(request, false, Alpaca::ALPACA_ERR_NOT_CONNECTED, "Alpaca support is disabled in device settings").c_str());
+                    return;
+                }
+
+                Alpaca::PropertyResult result = Alpaca::getObservingConditionsProperty(propertyName, buildAlpacaObservingConditionsSnapshot());
+                if (result.ok) {
+                    request->send(200, "application/json", buildAlpacaResponseDouble(request, result.value, 0, "").c_str());
+                } else {
+                    request->send(200, "application/json", buildAlpacaResponseDouble(request, 0, result.errorNumber, result.errorMessage).c_str());
+                } });
+        }
+    }
+
+    void WebServer::handleAlpacaDiscovery()
+    {
+        if (!alpacaDiscoveryStarted)
+            return;
+
+        int packetSize = alpacaDiscoveryUdp.parsePacket();
+        if (packetSize <= 0)
+            return;
+
+        uint8_t buf[64];
+        int len = alpacaDiscoveryUdp.read(buf, sizeof(buf));
+        if (len > 0 && Alpaca::isValidDiscoveryRequest(buf, static_cast<size_t>(len)))
+        {
+            std::string response = Alpaca::buildDiscoveryResponse(PORT);
+            alpacaDiscoveryUdp.beginPacket(alpacaDiscoveryUdp.remoteIP(), alpacaDiscoveryUdp.remotePort());
+            alpacaDiscoveryUdp.write(reinterpret_cast<const uint8_t *>(response.data()), response.size());
+            alpacaDiscoveryUdp.endPacket();
+        }
     }
 
     void WebServer::handleGetStatus(AsyncWebServerRequest *request)
