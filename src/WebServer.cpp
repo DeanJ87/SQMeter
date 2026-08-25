@@ -998,7 +998,7 @@ namespace SQM
             server.on((basePath + "/description").c_str(), HTTP_GET, [this, description](AsyncWebServerRequest *request)
                       { request->send(200, "application/json", buildAlpacaResponseString(request, description, alpacaServerTransactionId).c_str()); });
             server.on((basePath + "/driverinfo").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
-                      { request->send(200, "application/json", buildAlpacaResponseString(request, "SQMeter native Alpaca driver", alpacaServerTransactionId).c_str()); });
+                      { request->send(200, "application/json", buildAlpacaResponseString(request, "Native ESP32 firmware, no external bridge - https://github.com/DeanJ87/SQMeter", alpacaServerTransactionId).c_str()); });
             server.on((basePath + "/driverversion").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
                       { request->send(200, "application/json", buildAlpacaResponseString(request, FIRMWARE_VERSION, alpacaServerTransactionId).c_str()); });
             server.on((basePath + "/interfaceversion").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
@@ -1007,8 +1007,10 @@ namespace SQM
                       { request->send(200, "application/json", buildAlpacaResponseStringArray(request, {}, alpacaServerTransactionId).c_str()); });
         };
 
-        registerCommonRoutes("/api/v1/safetymonitor/0", "SQMeter SafetyMonitor", "Native SQMeter cloud/sky safety monitor");
-        registerCommonRoutes("/api/v1/observingconditions/0", "SQMeter ObservingConditions", "Native SQMeter sky quality and environmental conditions");
+        registerCommonRoutes("/api/v1/safetymonitor/0", "SQMeter SafetyMonitor",
+                              "Reports observatory safety based on cloud cover, sky brightness, humidity, and dew-point margin from the onboard SQMeter sensors.");
+        registerCommonRoutes("/api/v1/observingconditions/0", "SQMeter ObservingConditions",
+                              "Reports sky quality, cloud cover, sky temperature, humidity, dew point, and ambient temperature from the onboard SQMeter sensors.");
 
         // --- SafetyMonitor-specific ---
         server.on("/api/v1/safetymonitor/0/issafe", HTTP_GET, [this](AsyncWebServerRequest *request)

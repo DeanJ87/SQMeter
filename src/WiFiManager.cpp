@@ -41,7 +41,19 @@ namespace SQM
             dnsServer->processNextRequest();
         }
 
-        if (!apMode && config.autoReconnect && !isConnected())
+        if (apMode || !config.autoReconnect)
+        {
+            return;
+        }
+
+        if (isConnected())
+        {
+            // Reset backoff once healthy, so the next outage starts from the
+            // short base delay again instead of resuming at whatever the
+            // previous outage had escalated to.
+            currentReconnectDelay = config.reconnectDelayMs;
+        }
+        else
         {
             handleReconnect();
         }
@@ -126,6 +138,7 @@ namespace SQM
 
         stopCaptivePortal();
         WiFi.mode(WIFI_STA);
+        currentReconnectDelay = config.reconnectDelayMs; // fresh credentials get a fresh backoff
         connectToWiFi();
 
         return true;
@@ -135,7 +148,6 @@ namespace SQM
     {
         WiFi.begin(config.ssid.c_str(), config.password.c_str());
         lastReconnectAttempt = millis();
-        currentReconnectDelay = config.reconnectDelayMs;
     }
 
     void WiFiManager::handleReconnect()
