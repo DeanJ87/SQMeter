@@ -495,6 +495,20 @@ void test_environment_fault_blocks_humidity_rules(void)
     TEST_ASSERT_EQUAL_UINT32(UNSAFE_ENVIRONMENT_FAULT, r.reasonFlags);
 }
 
+void test_faulted_sensor_skips_its_threshold(void)
+{
+    SafetyThresholds t;
+    t.sqmMinEnabled = true;
+    t.sqmMinSafe = 18.0f;
+    SafetyInputs in = freshSafeInputs();
+    in.requiredSensorFault = true;
+    in.irSkyFault = true;
+    in.skyLightFault = true;
+    in.cloudCoverPercent = 100.0f; // computed from zeroed MLX readings
+    in.sqm = 0.0f;                 // from zeroed TSL readings
+    TEST_ASSERT_EQUAL_UINT32(UNSAFE_SENSOR_FAULT, evaluateSafety(in, t).reasonFlags);
+}
+
 void test_safe_delay_filter(void)
 {
     SafeDelayFilter f;
@@ -565,6 +579,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_rain_rule_disabled_or_sensor_absent);
     RUN_TEST(test_rain_sensor_required);
     RUN_TEST(test_environment_fault_blocks_humidity_rules);
+    RUN_TEST(test_faulted_sensor_skips_its_threshold);
     RUN_TEST(test_safe_delay_filter);
     RUN_TEST(test_wind_limits);
     RUN_TEST(test_wind_limit_without_sensor_is_unsafe);

@@ -975,6 +975,8 @@ namespace SQM
         Alpaca::SafetyInputs in;
         in.hasEverHadGoodData = snapshot.dataTimestamp != 0;
         in.secondsSinceLastGoodData = ageMs(now, snapshot.dataTimestamp) / 1000;
+        in.skyLightFault = snapshot.tsl.status != SensorStatus::OK;
+        in.irSkyFault = snapshot.mlx.status != SensorStatus::OK;
         in.requiredSensorFault = snapshot.tsl.status != SensorStatus::OK ||
                                   snapshot.mlx.status != SensorStatus::OK;
 
