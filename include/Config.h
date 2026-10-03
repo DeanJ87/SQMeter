@@ -241,7 +241,9 @@ namespace SQM
         static constexpr const char *TAG = "Config";
         static constexpr size_t MAX_PERSISTED_JSON_BYTES = 5100;
 
-        static std::optional<Config> load();
+        // Loads the stored config into `out`. False (with `out` unspecified)
+        // if nothing valid is stored.
+        static bool load(Config &out);
         bool save() const;
         static Config createDefault();
 
@@ -249,6 +251,9 @@ namespace SQM
         std::string alertsToJson(bool redactSecrets = false) const;
         bool validate(std::string *error = nullptr) const;
         static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr);
+        // Applies JSON on top of `cfg` in place and validates. On failure
+        // `cfg` may be partially updated.
+        static bool applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders);
     };
 
 } // namespace SQM

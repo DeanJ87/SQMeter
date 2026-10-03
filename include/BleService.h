@@ -37,6 +37,11 @@ namespace SQM
     public:
         static constexpr bool available() { return SQM_ENABLE_BLE != 0; }
 
+        // BLE build with Bluetooth switched off: hand the controller's
+        // reserved RAM back to the heap. Bluetooth can't start again until a
+        // restart (turning it on already needs one).
+        static void releaseControllerMemory();
+
         // Starts advertising. `passkey` empty = no alarm service. Safe to call
         // once; later calls are ignored.
         void begin(const std::string &deviceName, const std::string &passkey);

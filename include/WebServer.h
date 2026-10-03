@@ -140,6 +140,7 @@ namespace SQM
         SafetyStatus safetyStatus;
         Alpaca::SafeDelayFilter safeDelayFilter;
         SemaphoreHandle_t safetyMutex = xSemaphoreCreateMutex();
+        TaskHandle_t loopTaskHandle = nullptr;
         uint32_t lastSafetyEvaluation = 0;
         static constexpr uint32_t SAFETY_EVALUATION_INTERVAL_MS = 1000;
         void updateSafetyStatus();
@@ -169,6 +170,7 @@ namespace SQM
         void setupOTA();
         void setupGithubUpdates();
         void setupAlpacaRoutes();
+        void handleAlpacaDeviceRequest(AsyncWebServerRequest *request);
         void handleAlpacaDiscovery();
 
         // API endpoint handlers

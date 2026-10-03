@@ -53,7 +53,7 @@ namespace SQM
 
         bool httpPost(const std::string &url, const char *contentType, const std::string &body,
                       const std::vector<std::pair<std::string, std::string>> &headers, bool insecureTls,
-                      std::string &detail)
+                      std::string &detail, const char *rootCa = ALERT_ROOT_CA_PEM)
         {
             std::unique_ptr<WiFiClient> client;
             if (url.rfind("https://", 0) == 0)
@@ -62,7 +62,7 @@ namespace SQM
                 if (insecureTls)
                     secure->setInsecure();
                 else
-                    secure->setCACert(ALERT_ROOT_CA_PEM);
+                    secure->setCACert(rootCa);
                 client = std::move(secure);
             }
             else
@@ -181,7 +181,18 @@ namespace SQM
     {
         mutex = xSemaphoreCreateMutex();
         queue = xQueueCreate(QUEUE_LENGTH, sizeof(Job *));
-        xTaskCreatePinnedToCore(taskEntry, "alerts", TASK_STACK_WORDS, this, 1, nullptr, 1);
+    }
+
+    void AlertDispatcher::ensureTask()
+    {
+        bool expected = false;
+        if (!taskRunning.compare_exchange_strong(expected, true))
+            return;
+        if (xTaskCreatePinnedToCore(taskEntry, "alerts", TASK_STACK_WORDS, this, 1, nullptr, 1) != pdPASS)
+        {
+            taskRunning.store(false);
+            Logger::error(TAG, "Couldn't start the alert task (low memory)");
+        }
     }
 
     void AlertDispatcher::taskEntry(void *arg)
@@ -248,7 +259,11 @@ namespace SQM
             return;
 
         Job *job = new Job{id, alert, cfg, deviceName, httpMask};
-        if (xQueueSend(queue, &job, 0) != pdTRUE)
+        if (xQueueSend(queue, &job, 0) == pdTRUE)
+        {
+            ensureTask();
+        }
+        else
         {
             Logger::warn(TAG, "Alert queue full - dropping notification");
             for (size_t i = 1; i < ALERT_CHANNEL_COUNT; ++i)
@@ -263,11 +278,23 @@ namespace SQM
         for (;;)
         {
             Job *job = nullptr;
-            if (xQueueReceive(queue, &job, portMAX_DELAY) == pdTRUE && job != nullptr)
+            if (xQueueReceive(queue, &job, pdMS_TO_TICKS(TASK_IDLE_EXIT_MS)) == pdTRUE)
             {
-                deliver(*job);
-                delete job;
+                if (job != nullptr)
+                {
+                    deliver(*job);
+                    delete job;
+                }
+                continue;
             }
+
+            // Idle: exit and give the stack back. If a job raced in after the
+            // timeout, take ownership again instead of exiting.
+            taskRunning.store(false);
+            bool expected = false;
+            if (uxQueueMessagesWaiting(queue) > 0 && taskRunning.compare_exchange_strong(expected, true))
+                continue;
+            vTaskDelete(nullptr);
         }
     }
 
@@ -327,7 +354,8 @@ namespace SQM
         if (!job.cfg.pushoverSound.empty())
             body += "&sound=" + urlEncode(job.cfg.pushoverSound);
 
-        return httpPost("https://api.pushover.net/1/messages.json", "application/x-www-form-urlencoded", body, {}, false, detail);
+        return httpPost("https://api.pushover.net/1/messages.json", "application/x-www-form-urlencoded", body, {}, false, detail,
+                        PUSHOVER_ROOT_CA_PEM);
     }
 
     bool AlertDispatcher::sendNtfy(const Job &job, std::string &detail)
@@ -347,7 +375,9 @@ namespace SQM
         if (!job.cfg.ntfyToken.empty())
             headers.push_back({"Authorization", "Bearer " + job.cfg.ntfyToken});
 
-        return httpPost(server + "/" + urlEncode(job.cfg.ntfyTopic), "text/plain; charset=utf-8", job.alert.message, headers, false, detail);
+        const bool ntfySh = server == "https://ntfy.sh";
+        return httpPost(server + "/" + urlEncode(job.cfg.ntfyTopic), "text/plain; charset=utf-8", job.alert.message, headers, false, detail,
+                        ntfySh ? NTFY_SH_ROOT_CA_PEM : ALERT_ROOT_CA_PEM);
     }
 
     bool AlertDispatcher::sendWebhook(const Job &job, std::string &detail)

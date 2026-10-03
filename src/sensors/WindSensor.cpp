@@ -52,6 +52,8 @@ namespace SQM
             detach();
             aggregator.reset();
             reading = WindReading{};
+            if (settings.enabled)
+                aggregator = std::make_unique<Wind::WindAggregator>();
             if (settings.enabled && initialized)
                 attach();
         }
@@ -89,7 +91,7 @@ namespace SQM
 
     void WindSensor::update()
     {
-        if (!settings.enabled || !attached)
+        if (!settings.enabled || !attached || !aggregator)
         {
             reading.status = SensorStatus::NOT_INITIALIZED;
             return;
@@ -121,15 +123,15 @@ namespace SQM
             }
         }
 
-        aggregator.addSample(speedMs, direction);
+        aggregator->addSample(speedMs, direction);
 
         reading.instantMs = speedMs;
-        reading.speedMs = aggregator.speedMs();
-        reading.gustMs = aggregator.gustMs();
-        reading.samples = static_cast<uint32_t>(aggregator.sampleCount());
+        reading.speedMs = aggregator->speedMs();
+        reading.gustMs = aggregator->gustMs();
+        reading.samples = static_cast<uint32_t>(aggregator->sampleCount());
         reading.vaneFault = settings.directionEnabled && vaneMisses >= VANE_FAULT_SECONDS;
         float avgDirection = 0.0f;
-        reading.directionValid = settings.directionEnabled && !reading.vaneFault && aggregator.directionDeg(avgDirection);
+        reading.directionValid = settings.directionEnabled && !reading.vaneFault && aggregator->directionDeg(avgDirection);
         reading.directionDeg = reading.directionValid ? avgDirection : 0.0f;
         reading.timestamp = now;
         reading.status = SensorStatus::OK;

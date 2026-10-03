@@ -7,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <NimBLEDevice.h>
 #include <esp_coexist.h>
+#include <esp_bt.h>
 
 namespace SQM
 {
@@ -128,6 +129,12 @@ namespace SQM
         Logger::info(TAG, "Advertising as \"%s\"%s (%d bonded phone%s)", name.c_str(),
                      alarmService ? " with the phone alarm service" : "", NimBLEDevice::getNumBonds(),
                      NimBLEDevice::getNumBonds() == 1 ? "" : "s");
+    }
+
+    void BleService::releaseControllerMemory()
+    {
+        if (esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_IDLE)
+            esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
     }
 
     BleAlarmStatus BleService::alarmStatus() const
@@ -302,6 +309,7 @@ namespace SQM
 
 namespace SQM
 {
+    void BleService::releaseControllerMemory() {}
     void BleService::begin(const std::string &, const std::string &) {}
     uint8_t BleService::connectedClients() const { return 0; }
     BleAlarmStatus BleService::alarmStatus() const { return {}; }

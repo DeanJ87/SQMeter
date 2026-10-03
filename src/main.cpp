@@ -4,6 +4,7 @@
 #include <LittleFS.h>
 #include <ArduinoOTA.h>
 #include "Logger.h"
+#include "HeapTrace.h"
 #include "Config.h"
 #include "WiFiManager.h"
 #include "WebServer.h"
@@ -206,16 +207,14 @@ void setup()
     Logger::info("Main", "=== SQMeter Starting ===");
     Logger::info("Main", "ESP32 Chip: %s Rev %d", ESP.getChipModel(), ESP.getChipRevision());
     Logger::info("Main", "Flash: %d bytes", ESP.getFlashChipSize());
-    Logger::info("Main", "Free heap: %d bytes", ESP.getFreeHeap());
+    HeapTrace::mark("boot");
 
     // Setup watchdog
     setupWatchdog();
 
     // Load configuration
-    auto configOpt = Config::load();
-    if (configOpt)
+    if (Config::load(config))
     {
-        config = *configOpt;
         Logger::info("Main", "Configuration loaded");
     }
     else
@@ -223,6 +222,8 @@ void setup()
         config = Config::createDefault();
         Logger::warn("Main", "Using default configuration");
     }
+
+    HeapTrace::mark("config loaded");
 
     // Mount LittleFS for serving web files
     if (!LittleFS.begin(false))
@@ -239,6 +240,8 @@ void setup()
 
     // Initialize sensors
     setupSensors();
+
+    HeapTrace::mark("sensors");
 
     // Initialize WiFi
     wifiManager = std::make_unique<WiFiManager>(config.wifi);
@@ -257,6 +260,8 @@ void setup()
         Logger::warn("Main", "WiFi connection failed, starting captive portal");
         wifiManager->startCaptivePortal();
     }
+
+    HeapTrace::mark("wifi");
 
     // Initialize ArduinoOTA for command-line firmware uploads only when configured securely.
     if (wifiManager->isConnected() && config.ota.enabled && !config.ota.password.empty())
@@ -317,9 +322,12 @@ void setup()
         timeManager->begin();
     }
 
+    HeapTrace::mark("ota + time");
+
     // Initialize MQTT
     mqttClient = std::make_unique<MQTTClient>(config.mqtt);
     mqttClient->begin();
+    HeapTrace::mark("mqtt");
 
     // Initialize web server
     webServer = std::make_unique<WebServer>(
@@ -335,6 +343,7 @@ void setup()
         saveConfigCallback);
     webServer->begin();
     webServer->refreshSensorSnapshot(lastSensorUpdate);
+    HeapTrace::mark("setup complete");
 
     Logger::info("Main", "=== Setup complete ===");
     Logger::info("Main", "IP Address: %s", wifiManager->getIPAddress().c_str());

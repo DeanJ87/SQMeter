@@ -29,8 +29,11 @@ namespace SQM
 
         void WindAggregator::addSample(float speedMs, float directionDeg)
         {
-            speeds[head] = (std::isfinite(speedMs) && speedMs > 0.0f) ? speedMs : 0.0f;
-            directions[head] = directionDeg;
+            const float speed = (std::isfinite(speedMs) && speedMs > 0.0f) ? speedMs : 0.0f;
+            speeds[head] = static_cast<uint16_t>(std::lround(std::fmin(speed, 655.0f) * 100.0f));
+            directions[head] = (std::isfinite(directionDeg) && directionDeg >= 0.0f)
+                                   ? static_cast<uint16_t>(std::lround(std::fmod(directionDeg, 360.0f) * 10.0f))
+                                   : NO_DIRECTION;
             head = (head + 1) % HISTORY_SECONDS;
             if (count < HISTORY_SECONDS)
                 ++count;
@@ -49,7 +52,7 @@ namespace SQM
                 return 0.0f;
             float sum = 0.0f;
             for (size_t i = 0; i < n; ++i)
-                sum += speeds[indexBack(i)];
+                sum += speedAt(indexBack(i));
             return sum / static_cast<float>(n);
         }
 
@@ -61,16 +64,16 @@ namespace SQM
             {
                 float sum = 0.0f;
                 for (size_t i = 0; i < count; ++i)
-                    sum += speeds[indexBack(i)];
+                    sum += speedAt(indexBack(i));
                 return sum / static_cast<float>(count);
             }
             float window = 0.0f;
             for (size_t i = 0; i < GUST_WINDOW_SECONDS; ++i)
-                window += speeds[indexBack(i)];
+                window += speedAt(indexBack(i));
             float best = window;
             for (size_t i = GUST_WINDOW_SECONDS; i < count; ++i)
             {
-                window += speeds[indexBack(i)] - speeds[indexBack(i - GUST_WINDOW_SECONDS)];
+                window += speedAt(indexBack(i)) - speedAt(indexBack(i - GUST_WINDOW_SECONDS));
                 if (window > best)
                     best = window;
             }
@@ -85,11 +88,11 @@ namespace SQM
             for (size_t i = 0; i < n; ++i)
             {
                 const size_t idx = indexBack(i);
-                if (directions[idx] < 0.0f || speeds[idx] <= 0.0f)
+                if (directions[idx] == NO_DIRECTION || speeds[idx] == 0)
                     continue;
-                const float rad = directions[idx] * PI_F / 180.0f;
-                x += speeds[idx] * std::sin(rad);
-                y += speeds[idx] * std::cos(rad);
+                const float rad = (directions[idx] / 10.0f) * PI_F / 180.0f;
+                x += speedAt(idx) * std::sin(rad);
+                y += speedAt(idx) * std::cos(rad);
             }
             if (std::fabs(x) < 1e-6f && std::fabs(y) < 1e-6f)
                 return false;

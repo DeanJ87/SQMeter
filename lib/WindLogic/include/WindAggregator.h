@@ -35,8 +35,13 @@ namespace SQM
             bool directionDeg(float &out) const;
 
         private:
-            float speeds[HISTORY_SECONDS] = {};
-            float directions[HISTORY_SECONDS] = {};
+            // Stored as 16-bit fixed point (2.4 KB instead of 4.8 KB):
+            // speed in cm/s, direction in 0.1 degree, NO_DIRECTION = none.
+            static constexpr uint16_t NO_DIRECTION = 0xFFFF;
+            float speedAt(size_t index) const { return speeds[index] / 100.0f; }
+
+            uint16_t speeds[HISTORY_SECONDS] = {};
+            uint16_t directions[HISTORY_SECONDS] = {};
             size_t head = 0; // next write index
             size_t count = 0;
 

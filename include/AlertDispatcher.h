@@ -5,6 +5,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -76,6 +77,9 @@ namespace SQM
         static constexpr size_t MAX_RECORDS = 20;
         static constexpr size_t QUEUE_LENGTH = 8;
         static constexpr uint32_t TASK_STACK_WORDS = 8192;
+        // The HTTPS task only exists while there's something to send: its
+        // 8 KB stack is too much heap to hold for alerts that come hours apart.
+        static constexpr uint32_t TASK_IDLE_EXIT_MS = 30000;
 
         struct Job
         {
@@ -89,6 +93,7 @@ namespace SQM
         static void taskEntry(void *arg);
         void run();
         void deliver(const Job &job);
+        void ensureTask();
         void setStatus(uint32_t recordId, AlertChannel channel, DeliveryStatus status, const std::string &detail);
 
         bool sendPushover(const Job &job, std::string &detail);
@@ -98,6 +103,7 @@ namespace SQM
         MQTTClient *mqtt;
         BusyCheck networkBusy;
         QueueHandle_t queue = nullptr;
+        std::atomic<bool> taskRunning{false};
         SemaphoreHandle_t mutex = nullptr;
         std::vector<AlertRecord> records;
         uint32_t nextId = 1;

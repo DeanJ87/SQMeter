@@ -3,6 +3,7 @@
 #include "Logger.h"
 #include <ArduinoJson.h>
 #include <Preferences.h>
+#include <nvs.h>
 #include <cmath>
 #include <cstring>
 
@@ -135,61 +136,86 @@ namespace SQM
         }
     } // namespace
 
-    std::optional<Config> Config::load()
+    namespace
+    {
+        // Reads an NVS string straight into heap memory. Preferences::getString()
+        // copies through a variable-length array on the stack - ~2 KB for the
+        // config JSON, which nearly overflowed the 8 KB loop task during setup().
+        bool readNvsString(const char *key, std::string &out)
+        {
+            nvs_handle_t handle;
+            if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK)
+                return false;
+            size_t length = 0;
+            bool ok = nvs_get_str(handle, key, nullptr, &length) == ESP_OK && length > 0;
+            if (ok)
+            {
+                out.assign(length, '\0');
+                ok = nvs_get_str(handle, key, &out[0], &length) == ESP_OK;
+                out.resize(length > 0 ? length - 1 : 0); // drop the terminator
+            }
+            nvs_close(handle);
+            return ok;
+        }
+
+        size_t nvsStringLength(const char *key)
+        {
+            nvs_handle_t handle;
+            if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK)
+                return 0;
+            size_t length = 0;
+            if (nvs_get_str(handle, key, nullptr, &length) != ESP_OK)
+                length = 0;
+            nvs_close(handle);
+            return length > 0 ? length - 1 : 0;
+        }
+    }
+
+    bool Config::load(Config &out)
     {
         Logger::info(TAG, "Loading configuration from NVS");
 
-        Preferences prefs;
-        if (!prefs.begin(NVS_NAMESPACE, true))
-        {
-            Logger::error(TAG, "Failed to open NVS namespace");
-            return std::nullopt;
-        }
-
-        String jsonStr = prefs.getString(NVS_CONFIG_KEY, "");
-        prefs.end();
-
-        if (jsonStr.length() == 0)
+        std::string json;
+        if (!readNvsString(NVS_CONFIG_KEY, json) || json.empty())
         {
             Logger::warn(TAG, "No config found in NVS, creating default");
-            Config defaultCfg = createDefault();
-            if (defaultCfg.save())
+            out = createDefault();
+            if (out.save())
             {
                 Logger::info(TAG, "Default config saved successfully");
-                return defaultCfg;
+                return true;
             }
             Logger::error(TAG, "Failed to save default config");
-            return std::nullopt;
+            return false;
         }
 
-        Logger::info(TAG, "Loaded config JSON (%u bytes)", static_cast<unsigned>(jsonStr.length()));
+        Logger::info(TAG, "Loaded config JSON (%u bytes)", static_cast<unsigned>(json.length()));
 
-        std::string json = jsonStr.c_str();
-        auto config = fromJson(json);
-        if (config)
+        // Alerts live under their own NVS key; splice them into the main
+        // document and parse once, straight into the caller's Config.
+        std::string alertsJson;
+        const size_t close = json.rfind('}');
+        const bool haveAlerts = readNvsString(NVS_ALERTS_KEY, alertsJson) && !alertsJson.empty() && close != std::string::npos;
+        if (haveAlerts)
+            json.insert(close, std::string(",\"alerts\":") + alertsJson);
+
+        out = createDefault();
+        bool ok = applyJson(json, out, false);
+        if (!ok && haveAlerts)
         {
-            Preferences alertPrefs;
-            if (alertPrefs.begin(NVS_NAMESPACE, true))
-            {
-                String alertsJson = alertPrefs.isKey(NVS_ALERTS_KEY) ? alertPrefs.getString(NVS_ALERTS_KEY, "") : String();
-                alertPrefs.end();
-                if (alertsJson.length() > 0)
-                {
-                    auto withAlerts = fromJson(std::string("{\"alerts\":") + alertsJson.c_str() + "}", &*config);
-                    if (withAlerts)
-                        config = withAlerts;
-                    else
-                        Logger::error(TAG, "Failed to parse stored alerts config - using defaults");
-                }
-            }
-            Logger::info(TAG, "Config parsed successfully - SSID: '%s'", config->wifi.ssid.c_str());
+            // A corrupt alerts entry mustn't take the whole config down.
+            Logger::error(TAG, "Failed to parse config JSON with alerts - retrying without them");
+            json.erase(close, std::string(",\"alerts\":").size() + alertsJson.size());
+            out = createDefault();
+            ok = applyJson(json, out, false);
         }
+
+        if (ok)
+            Logger::info(TAG, "Config parsed successfully - SSID: '%s'", out.wifi.ssid.c_str());
         else
-        {
             Logger::error(TAG, "Failed to parse config JSON");
-        }
 
-        return config;
+        return ok;
     }
 
     bool Config::save() const
@@ -241,14 +267,7 @@ namespace SQM
 
         Logger::info(TAG, "Configuration saved successfully to NVS (%u bytes)", static_cast<unsigned>(written));
 
-        // Verify by reading back
-        Preferences verifyPrefs;
-        if (verifyPrefs.begin(NVS_NAMESPACE, true))
-        {
-            String verified = verifyPrefs.getString(NVS_CONFIG_KEY, "");
-            verifyPrefs.end();
-            Logger::info(TAG, "Verification: NVS contains %u bytes", static_cast<unsigned>(verified.length()));
-        }
+        Logger::info(TAG, "Verification: NVS contains %u bytes", static_cast<unsigned>(nvsStringLength(NVS_CONFIG_KEY)));
 
         return true;
     }
@@ -822,17 +841,22 @@ namespace SQM
 
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig)
     {
+        std::optional<Config> cfg(baseConfig != nullptr ? *baseConfig : createDefault());
+        if (!applyJson(json, *cfg, baseConfig != nullptr))
+            return std::nullopt;
+        return cfg;
+    }
+
+    bool Config::applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders)
+    {
         DynamicJsonDocument doc(8192);
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
         {
             Logger::error(TAG, "JSON parse error: %s", error.c_str());
-            return std::nullopt;
+            return false;
         }
-
-        Config cfg = baseConfig != nullptr ? *baseConfig : createDefault();
-        const bool preserveSecretPlaceholders = baseConfig != nullptr;
 
         if (doc.containsKey("deviceName"))
             cfg.deviceName = doc["deviceName"] | "SQM-ESP32";
@@ -1155,10 +1179,10 @@ namespace SQM
         if (!cfg.validate(&validationError))
         {
             Logger::error(TAG, "Configuration validation failed: %s", validationError.c_str());
-            return std::nullopt;
+            return false;
         }
 
-        return cfg;
+        return true;
     }
 
 } // namespace SQM

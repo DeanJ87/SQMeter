@@ -3,6 +3,7 @@
 #include "SensorBase.h"
 #include "WindAggregator.h"
 #include <cstdint>
+#include <memory>
 
 namespace SQM
 {
@@ -63,7 +64,8 @@ namespace SQM
         void detach();
 
         WindSensorSettings settings;
-        Wind::WindAggregator aggregator;
+        // Only allocated while the anemometer is enabled (2.4 KB of history).
+        std::unique_ptr<Wind::WindAggregator> aggregator;
         WindReading reading;
         bool attached = false;
         uint32_t lastSampleAt = 0;
