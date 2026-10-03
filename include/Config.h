@@ -142,6 +142,13 @@ namespace SQM
         bool rainUnsafeEnabled;        // raining (incl. the rainClearDelayMs hold-off) => unsafe
         bool rainSensorRequired;       // rain sensor enabled but offline/stale/lens fault => unsafe
 
+        // Wind (anemometer). Like rain, checked regardless of the other
+        // sensors' freshness.
+        bool windSpeedUnsafeEnabled;
+        float windSpeedUnsafeMs;       // 2-minute mean wind speed
+        bool windGustUnsafeEnabled;
+        float windGustUnsafeMs;        // 10-minute peak gust
+
         // Conditions must stay continuously safe this long before IsSafe
         // flips back to true (0 = report safe immediately).
         uint32_t safeDelaySeconds;
@@ -184,6 +191,18 @@ namespace SQM
         bool mqttEnabled;           // publish to <mqtt topic>/alerts and retained <mqtt topic>/safety
     };
 
+    // Cup anemometer + optional wind vane (see docs/hardware/wind.md).
+    struct WindConfig
+    {
+        bool enabled;
+        uint8_t speedPin;          // reed-switch anemometer, internal pull-up
+        bool directionEnabled;
+        uint8_t directionPin;      // resistor-ladder vane, must be an ADC1 pin (32-39)
+        float kmhPerHz;            // 2.4 Misol/Argent/SparkFun, 3.621 Davis 6410
+        float directionOffsetDeg;  // added to the vane reading to correct mounting
+        float vanePullupOhms;      // vane divider pull-up to 3.3 V
+    };
+
     // Only used by the esp32dev-ble firmware build; ignored elsewhere.
     struct BleConfig
     {
@@ -206,6 +225,7 @@ namespace SQM
         AlpacaConfig alpaca;
         AlertsConfig alerts;
         BleConfig ble;
+        WindConfig wind;
         std::string deviceName;
         std::string timezone;
         TimeSource primaryTimeSource;   // Primary time source

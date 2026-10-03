@@ -37,6 +37,23 @@ namespace SQM
                 }
             }
 
+            const bool windRulesEnabled = t.windSpeedUnsafeEnabled || t.windGustUnsafeEnabled;
+            if (windRulesEnabled)
+            {
+                if (!in.windSensorEnabled || !in.windSensorHealthy)
+                {
+                    // A wind limit you can't measure is a limit you can't trust.
+                    addReason(result, UNSAFE_WIND_SENSOR_FAULT, "Wind limit set but the anemometer is disabled or not reporting");
+                }
+                else
+                {
+                    if (t.windSpeedUnsafeEnabled && in.windSpeedMs >= t.windSpeedUnsafeMs)
+                        addReason(result, UNSAFE_WIND, "Wind speed at or above unsafe threshold");
+                    if (t.windGustUnsafeEnabled && in.windGustMs >= t.windGustUnsafeMs)
+                        addReason(result, UNSAFE_WIND_GUST, "Wind gust at or above unsafe threshold");
+                }
+            }
+
             if (!in.hasEverHadGoodData)
             {
                 addReason(result, UNSAFE_NO_DATA, "No successful sensor data yet");

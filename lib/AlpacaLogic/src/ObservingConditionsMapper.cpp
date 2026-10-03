@@ -61,9 +61,9 @@ namespace SQM
                 {"skytemperature", &ObservingConditionsSnapshot::irSky, "MLX90614 IR thermometer"},
                 {"starfwhm", nullptr, ""},
                 {"temperature", &ObservingConditionsSnapshot::environment, "BME280 ambient temperature"},
-                {"winddirection", &ObservingConditionsSnapshot::wind, "Wind vane"},
+                {"winddirection", &ObservingConditionsSnapshot::windVane, "Resistor-ladder wind vane, speed-weighted 2 min mean"},
                 {"windgust", &ObservingConditionsSnapshot::wind, "Cup anemometer, peak 3 s mean over 10 min"},
-                {"windspeed", &ObservingConditionsSnapshot::wind, "Cup anemometer"},
+                {"windspeed", &ObservingConditionsSnapshot::wind, "Cup anemometer, 2 min mean"},
             };
 
             const PropertyInfo *findProperty(const std::string &lowerName)
@@ -150,7 +150,7 @@ namespace SQM
             {
                 bool any = false;
                 double youngest = 0.0;
-                for (const SourceState *source : {&snapshot.skyLight, &snapshot.irSky, &snapshot.environment, &snapshot.rain, &snapshot.wind})
+                for (const SourceState *source : {&snapshot.skyLight, &snapshot.irSky, &snapshot.environment, &snapshot.rain, &snapshot.wind, &snapshot.windVane})
                 {
                     if (!source->present || !source->valid)
                         continue;

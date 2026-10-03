@@ -81,6 +81,7 @@ nav:
   - Hardware:
     - Overview: hardware/overview.md
     - RG-15 Rain Sensor: hardware/rg15.md
+    - Wind (anemometer): hardware/wind.md
     - Schematic: hardware/schematic.md
     - PCB: hardware/pcb.md
     - Enclosure: hardware/enclosure.md

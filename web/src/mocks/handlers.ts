@@ -52,6 +52,9 @@ export const handlers = [
       { Name: "Humidity", Value: data.environment?.humidity ?? 0 },
       { Name: "SkyQuality", Value: data.skyQuality?.sqm ?? 0 },
       { Name: "Temperature", Value: data.environment?.temperature ?? 0 },
+      { Name: "WindDirection", Value: data.wind?.directionDeg ?? 0 },
+      { Name: "WindGust", Value: data.wind?.gustMs ?? 0 },
+      { Name: "WindSpeed", Value: data.wind?.speedMs ?? 0 },
       { Name: "TimeStamp", Value: new Date().toISOString() },
     ]));
   }),

@@ -14,6 +14,7 @@
 #include "sensors/MLX90614Sensor.h"
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
+#include "sensors/WindSensor.h"
 
 using namespace SQM;
 
@@ -25,6 +26,7 @@ static std::unique_ptr<BME280Sensor> bmeSensor;
 static std::unique_ptr<MLX90614Sensor> mlxSensor;
 static std::unique_ptr<GPSSensor> gpsSensor;
 static std::unique_ptr<RG15Sensor> rg15Sensor;
+static std::unique_ptr<WindSensor> windSensor;
 static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
@@ -35,6 +37,19 @@ RTC_DATA_ATTR uint32_t bootCount = 0;
 static uint32_t lastSensorUpdate = 0;
 static uint32_t lastTslUpdate = 0;
 static constexpr uint32_t TSL_SAMPLE_INTERVAL_MS = 650;
+
+static WindSensorSettings toWindSettings(const WindConfig &wind)
+{
+    WindSensorSettings settings;
+    settings.enabled = wind.enabled;
+    settings.speedPin = wind.speedPin;
+    settings.directionEnabled = wind.directionEnabled;
+    settings.directionPin = wind.directionPin;
+    settings.kmhPerHz = wind.kmhPerHz;
+    settings.directionOffsetDeg = wind.directionOffsetDeg;
+    settings.vanePullupOhms = wind.vanePullupOhms;
+    return settings;
+}
 
 // Callbacks for WebServer
 const Config &getConfigCallback()
@@ -87,6 +102,11 @@ bool saveConfigCallback(const Config &newConfig)
             {
                 rg15Sensor->stop();
             }
+        }
+
+        if (windSensor)
+        {
+            windSensor->configure(toWindSettings(config.wind));
         }
     }
 
@@ -169,6 +189,10 @@ void setupSensors()
         rg15Sensor = std::make_unique<RG15Sensor>();
         Logger::info("Main", "RG-15 rain sensor disabled in configuration");
     }
+
+    windSensor = std::make_unique<WindSensor>();
+    windSensor->configure(toWindSettings(config.wind));
+    windSensor->begin();
 }
 
 void setup()
@@ -304,6 +328,7 @@ void setup()
         *mlxSensor,
         *gpsSensor,
         *rg15Sensor,
+        *windSensor,
         timeManager.get(),
         mqttClient.get(),
         getConfigCallback,
@@ -344,6 +369,9 @@ void loop()
     {
         mqttClient->handle();
     }
+
+    // Anemometer samples itself once a second.
+    windSensor->update();
 
     // Update TSL2591 on its own cadence so dark-sky rolling averages are based on 600ms samples.
     const uint32_t now = millis();

@@ -51,7 +51,8 @@ namespace SQM
             SourceState irSky;       // MLX90614: skytemperature, cloudcover
             SourceState environment; // BME280: temperature, humidity, dewpoint, pressure
             SourceState rain;        // RG-15: rainrate
-            SourceState wind;        // anemometer/vane: windspeed, windgust, winddirection
+            SourceState wind;        // anemometer: windspeed, windgust
+            SourceState windVane;    // wind vane: winddirection
 
             float cloudCoverPercent = 0.0f;
             float dewpointC = 0.0f;

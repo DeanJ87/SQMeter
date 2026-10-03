@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Config, WiFiNetwork } from '../types';
 import AlertsSettings, { mergeAlertsConfig } from './AlertsSettings';
 import BleSettings from './BleSettings';
+import WindSettings, { defaultWindConfig } from './WindSettings';
 import {
   getConfigValidationErrors,
   getConfigValidationMessage,
@@ -67,6 +68,10 @@ const defaultAlpacaConfig: NonNullable<Config['alpaca']> = {
   rainUnsafeEnabled: true,
   rainSensorRequired: true,
   safeDelaySeconds: 0,
+  windSpeedUnsafeEnabled: false,
+  windSpeedUnsafeMs: 10,
+  windGustUnsafeEnabled: false,
+  windGustUnsafeMs: 15,
 };
 
 const fieldErrorAliases: Record<string, string> = {
@@ -138,6 +143,7 @@ const toConfigPayload = (source: Config): Config => {
     alpaca: { ...defaultAlpacaConfig, ...source.alpaca },
     alerts: mergeAlertsConfig(source.alerts),
     ble: { enabled: false, ...source.ble },
+    wind: { ...defaultWindConfig, ...source.wind },
   };
 
   return {
@@ -1409,6 +1415,59 @@ const Settings: FunctionalComponent = () => {
             <p class="text-xs text-gray-500 -mt-2 ml-7">Covers no response, stale readings and the RG-15's lens-fault flag.</p>
           </div>
 
+          <div class="border-t border-gray-700 pt-4 space-y-3">
+            <h3 class="text-sm font-semibold text-gray-200">Wind (anemometer)</h3>
+            {!config.wind?.enabled && (
+              <p class="text-xs text-amber-300">
+                No anemometer is enabled - turning on a wind limit makes the SafetyMonitor unsafe until one is reporting.
+              </p>
+            )}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="flex items-center gap-3 mb-2">
+                  <input
+                    type="checkbox"
+                    checked={alpaca.windSpeedUnsafeEnabled}
+                    onChange={(e) => updateConfig(['alpaca', 'windSpeedUnsafeEnabled'], (e.target as HTMLInputElement).checked)}
+                  />
+                  <span class="text-white">Maximum wind speed (m/s)</span>
+                </label>
+                <input
+                  type="number"
+                  value={alpaca.windSpeedUnsafeMs}
+                  onChange={(e) => updateConfig(['alpaca', 'windSpeedUnsafeMs'], parseFloat((e.target as HTMLInputElement).value))}
+                  disabled={!alpaca.windSpeedUnsafeEnabled}
+                  min="0.1"
+                  max="60"
+                  step="0.5"
+                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                />
+                <p class="mt-1 text-xs text-gray-500">2-minute mean. {(alpaca.windSpeedUnsafeMs * 3.6).toFixed(0)} km/h.</p>
+              </div>
+              <div>
+                <label class="flex items-center gap-3 mb-2">
+                  <input
+                    type="checkbox"
+                    checked={alpaca.windGustUnsafeEnabled}
+                    onChange={(e) => updateConfig(['alpaca', 'windGustUnsafeEnabled'], (e.target as HTMLInputElement).checked)}
+                  />
+                  <span class="text-white">Maximum gust (m/s)</span>
+                </label>
+                <input
+                  type="number"
+                  value={alpaca.windGustUnsafeMs}
+                  onChange={(e) => updateConfig(['alpaca', 'windGustUnsafeMs'], parseFloat((e.target as HTMLInputElement).value))}
+                  disabled={!alpaca.windGustUnsafeEnabled}
+                  min="0.1"
+                  max="80"
+                  step="0.5"
+                  class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                />
+                <p class="mt-1 text-xs text-gray-500">Peak 3-second mean over 10 minutes. {(alpaca.windGustUnsafeMs * 3.6).toFixed(0)} km/h.</p>
+              </div>
+            </div>
+          </div>
+
           <div class="border-t border-gray-700 pt-4">
             <label class="block text-sm font-medium text-gray-300 mb-2">Safe delay (seconds)</label>
             <input
@@ -1430,6 +1489,8 @@ const Settings: FunctionalComponent = () => {
       <AlertsSettings config={config} updateConfig={updateConfig} validationErrors={validationErrors} />
 
       <BleSettings config={config} updateConfig={updateConfig} />
+
+      <WindSettings config={config} updateConfig={updateConfig} validationErrors={validationErrors} />
 
       {/* Rain Sensor Settings */}
       <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">

@@ -4,6 +4,7 @@ import {
   authConfigSchema,
   alpacaConfigSchema,
   alertsConfigSchema,
+  windConfigSchema,
   getConfigValidationErrors,
   getConfigValidationMessage,
   hasConfigValidationErrors,
@@ -238,6 +239,10 @@ describe("alpacaConfigSchema", () => {
     rainUnsafeEnabled: true,
     rainSensorRequired: true,
     safeDelaySeconds: 0,
+    windSpeedUnsafeEnabled: false,
+    windSpeedUnsafeMs: 10,
+    windGustUnsafeEnabled: false,
+    windGustUnsafeMs: 15,
   };
 
   it("rejects a safe delay outside 0-3600 seconds", () => {
@@ -359,5 +364,29 @@ describe("alertsConfigSchema", () => {
 
   it("caps the cooldown at 24 hours", () => {
     expect(alertsConfigSchema.safeParse({ ...validAlerts, cooldownSeconds: 86401 }).success).toBe(false);
+  });
+});
+
+describe("windConfigSchema", () => {
+  const validWind = {
+    enabled: true,
+    speedPin: 27,
+    directionEnabled: true,
+    directionPin: 35,
+    kmhPerHz: 2.4,
+    directionOffsetDeg: 0,
+    vanePullupOhms: 10000,
+  };
+
+  it("passes with valid defaults", () => {
+    expect(windConfigSchema.safeParse(validWind).success).toBe(true);
+  });
+
+  it("requires the vane on an ADC1 pin", () => {
+    expect(windConfigSchema.safeParse({ ...validWind, directionPin: 25 }).success).toBe(false);
+  });
+
+  it("rejects the same pin for anemometer and vane", () => {
+    expect(windConfigSchema.safeParse({ ...validWind, speedPin: 34, directionPin: 34 }).success).toBe(false);
   });
 });

@@ -55,6 +55,9 @@ const rssiTone = (rssi?: number) => {
   return { tone: 'pill-red', label: 'Poor' };
 };
 
+const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+const compassPoint = (degrees: number) => COMPASS[Math.round(degrees / 22.5) % 16];
+
 const StatusDot: FunctionalComponent<{ ok: boolean }> = ({ ok }) => (
   <span class={`status-dot ${ok ? 'is-ok' : 'is-bad'}`} aria-hidden="true" />
 );
@@ -302,6 +305,29 @@ const Dashboard: FunctionalComponent = () => {
                 label="Ambient"
                 value={`${sensors.irTemperature.status === 0 ? formatNumber(sensors.irTemperature.ambientTemp, 1) : '--'} C`}
               />
+            </Card>
+          )}
+
+          {sensors.wind && (
+            <Card
+              title="Wind"
+              icon="cloud"
+              tone="cyan"
+              actions={
+                <Pill tone={sensors.wind.status === 0 ? 'pill-green' : 'pill-red'}>
+                  {sensors.wind.status === 0 ? 'Online' : 'Offline'}
+                </Pill>
+              }
+            >
+              <div class="metric-grid">
+                <MetricTile label="Speed" value={formatNumber(sensors.wind.speedMs, 1)} unit={`m/s · ${formatNumber(sensors.wind.speedMs * 3.6, 0)} km/h`} tone="tone-cyan" />
+                <MetricTile label="Gust" value={formatNumber(sensors.wind.gustMs, 1)} unit={`m/s · ${formatNumber(sensors.wind.gustMs * 3.6, 0)} km/h`} tone={sensors.wind.gustMs >= 10 ? 'tone-amber' : ''} />
+                <MetricTile
+                  label="Direction"
+                  value={sensors.wind.directionValid ? compassPoint(sensors.wind.directionDeg) : '--'}
+                  unit={sensors.wind.directionValid ? `${formatNumber(sensors.wind.directionDeg, 0)}°` : sensors.wind.vaneFault ? 'vane fault' : 'calm'}
+                />
+              </div>
             </Card>
           )}
 

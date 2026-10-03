@@ -364,6 +364,18 @@ namespace SQM
 
         cfg.ble.enabled = false;
 
+        cfg.wind.enabled = false;
+        cfg.wind.speedPin = 27;
+        cfg.wind.directionEnabled = false;
+        cfg.wind.directionPin = 35;
+        cfg.wind.kmhPerHz = 2.4f;
+        cfg.wind.directionOffsetDeg = 0.0f;
+        cfg.wind.vanePullupOhms = 10000.0f;
+        cfg.alpaca.windSpeedUnsafeEnabled = false;
+        cfg.alpaca.windSpeedUnsafeMs = 10.0f;
+        cfg.alpaca.windGustUnsafeEnabled = false;
+        cfg.alpaca.windGustUnsafeMs = 15.0f;
+
         return cfg;
     }
 
@@ -522,9 +534,22 @@ namespace SQM
         alpaca["rainUnsafeEnabled"] = this->alpaca.rainUnsafeEnabled;
         alpaca["rainSensorRequired"] = this->alpaca.rainSensorRequired;
         alpaca["safeDelaySeconds"] = this->alpaca.safeDelaySeconds;
+        alpaca["windSpeedUnsafeEnabled"] = this->alpaca.windSpeedUnsafeEnabled;
+        alpaca["windSpeedUnsafeMs"] = this->alpaca.windSpeedUnsafeMs;
+        alpaca["windGustUnsafeEnabled"] = this->alpaca.windGustUnsafeEnabled;
+        alpaca["windGustUnsafeMs"] = this->alpaca.windGustUnsafeMs;
 
         JsonObject ble = doc.createNestedObject("ble");
         ble["enabled"] = this->ble.enabled;
+
+        JsonObject wind = doc.createNestedObject("wind");
+        wind["enabled"] = this->wind.enabled;
+        wind["speedPin"] = this->wind.speedPin;
+        wind["directionEnabled"] = this->wind.directionEnabled;
+        wind["directionPin"] = this->wind.directionPin;
+        wind["kmhPerHz"] = this->wind.kmhPerHz;
+        wind["directionOffsetDeg"] = this->wind.directionOffsetDeg;
+        wind["vanePullupOhms"] = this->wind.vanePullupOhms;
 
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), this->alerts, redactSecrets);
@@ -729,6 +754,34 @@ namespace SQM
         {
             return setError(error, "Alpaca: safe delay must be between 0 and 3600 seconds");
         }
+
+        if (!std::isfinite(alpaca.windSpeedUnsafeMs) || alpaca.windSpeedUnsafeMs <= 0.0F || alpaca.windSpeedUnsafeMs > 60.0F)
+            return setError(error, "Alpaca: wind speed threshold must be between 0 and 60 m/s");
+        if (!std::isfinite(alpaca.windGustUnsafeMs) || alpaca.windGustUnsafeMs <= 0.0F || alpaca.windGustUnsafeMs > 80.0F)
+            return setError(error, "Alpaca: wind gust threshold must be between 0 and 80 m/s");
+
+        if (wind.enabled)
+        {
+            if (!isValidGpio(wind.speedPin))
+                return setError(error, "Wind: anemometer pin is not a valid GPIO");
+            if (wind.directionEnabled && (wind.directionPin < 32 || wind.directionPin > 39))
+                return setError(error, "Wind: vane pin must be an ADC1 pin (GPIO 32-39)");
+            const int used[] = {sensor.i2cSDA, sensor.i2cSCL, gps.enabled ? gps.rxPin : -1, gps.enabled ? gps.txPin : -1,
+                                rain.enabled ? rain.rxPin : -1, rain.enabled ? rain.txPin : -1};
+            for (int pin : used)
+            {
+                if (pin == wind.speedPin || (wind.directionEnabled && pin == wind.directionPin))
+                    return setError(error, "Wind: pin is already used by I2C, GPS or the rain sensor");
+            }
+            if (wind.directionEnabled && wind.directionPin == wind.speedPin)
+                return setError(error, "Wind: anemometer and vane need different pins");
+        }
+        if (!std::isfinite(wind.kmhPerHz) || wind.kmhPerHz <= 0.0F || wind.kmhPerHz > 20.0F)
+            return setError(error, "Wind: km/h per Hz must be between 0 and 20");
+        if (!std::isfinite(wind.directionOffsetDeg) || wind.directionOffsetDeg < -360.0F || wind.directionOffsetDeg > 360.0F)
+            return setError(error, "Wind: direction offset must be between -360 and 360 degrees");
+        if (!std::isfinite(wind.vanePullupOhms) || wind.vanePullupOhms < 1000.0F || wind.vanePullupOhms > 100000.0F)
+            return setError(error, "Wind: vane pull-up must be between 1k and 100k ohms");
 
         auto isHttpUrl = [](const std::string &url)
         {
@@ -973,6 +1026,14 @@ namespace SQM
                 cfg.alpaca.rainSensorRequired = alpacaObj["rainSensorRequired"] | true;
             if (alpacaObj.containsKey("safeDelaySeconds"))
                 cfg.alpaca.safeDelaySeconds = alpacaObj["safeDelaySeconds"] | 0U;
+            if (alpacaObj.containsKey("windSpeedUnsafeEnabled"))
+                cfg.alpaca.windSpeedUnsafeEnabled = alpacaObj["windSpeedUnsafeEnabled"] | false;
+            if (alpacaObj.containsKey("windSpeedUnsafeMs"))
+                cfg.alpaca.windSpeedUnsafeMs = alpacaObj["windSpeedUnsafeMs"] | 10.0f;
+            if (alpacaObj.containsKey("windGustUnsafeEnabled"))
+                cfg.alpaca.windGustUnsafeEnabled = alpacaObj["windGustUnsafeEnabled"] | false;
+            if (alpacaObj.containsKey("windGustUnsafeMs"))
+                cfg.alpaca.windGustUnsafeMs = alpacaObj["windGustUnsafeMs"] | 15.0f;
         }
 
         JsonObject alertsObj = doc["alerts"];
@@ -1038,6 +1099,25 @@ namespace SQM
             JsonObject mqtt = alertsObj["mqtt"];
             if (!mqtt.isNull() && mqtt.containsKey("enabled"))
                 a.mqttEnabled = mqtt["enabled"] | false;
+        }
+
+        JsonObject windObj = doc["wind"];
+        if (!windObj.isNull())
+        {
+            if (windObj.containsKey("enabled"))
+                cfg.wind.enabled = windObj["enabled"] | false;
+            if (windObj.containsKey("speedPin"))
+                cfg.wind.speedPin = windObj["speedPin"] | 27;
+            if (windObj.containsKey("directionEnabled"))
+                cfg.wind.directionEnabled = windObj["directionEnabled"] | false;
+            if (windObj.containsKey("directionPin"))
+                cfg.wind.directionPin = windObj["directionPin"] | 35;
+            if (windObj.containsKey("kmhPerHz"))
+                cfg.wind.kmhPerHz = windObj["kmhPerHz"] | 2.4f;
+            if (windObj.containsKey("directionOffsetDeg"))
+                cfg.wind.directionOffsetDeg = windObj["directionOffsetDeg"] | 0.0f;
+            if (windObj.containsKey("vanePullupOhms"))
+                cfg.wind.vanePullupOhms = windObj["vanePullupOhms"] | 10000.0f;
         }
 
         JsonObject bleObj = doc["ble"];

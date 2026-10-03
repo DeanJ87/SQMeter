@@ -6,6 +6,7 @@
 #include "sensors/MLX90614Sensor.h"
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
+#include "sensors/WindSensor.h"
 #include "calculations/SkyQuality.h"
 #include "TimeManager.h"
 #include "MQTTClient.h"
@@ -43,6 +44,7 @@ namespace SQM
             MLX90614Sensor &mlx,
             GPSSensor &gps,
             RG15Sensor &rg15,
+            WindSensor &wind,
             TimeManager *timeMgr,
             MQTTClient *mqtt,
             GetConfigCallback getConfig,
@@ -95,6 +97,7 @@ namespace SQM
             uint32_t mlxLastUpdate = 0;
             uint32_t gpsLastUpdate = 0;
             uint32_t rg15LastUpdate = 0;
+            WindReading wind;
             uint32_t dataTimestamp = 0;
             uint32_t capturedAt = 0;
         };
@@ -108,6 +111,7 @@ namespace SQM
         MLX90614Sensor &mlxSensor;
         GPSSensor &gpsSensor;
         RG15Sensor &rg15Sensor;
+        WindSensor &windSensor;
         TimeManager *timeManager;
         MQTTClient *mqttClient;
         GetConfigCallback getConfigCallback;

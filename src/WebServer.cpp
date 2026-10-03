@@ -224,6 +224,7 @@ namespace SQM
         MLX90614Sensor &mlx,
         GPSSensor &gps,
         RG15Sensor &rg15,
+        WindSensor &wind,
         TimeManager *timeMgr,
         MQTTClient *mqtt,
         GetConfigCallback getConfig,
@@ -236,6 +237,7 @@ namespace SQM
           mlxSensor(mlx),
           gpsSensor(gps),
           rg15Sensor(rg15),
+          windSensor(wind),
           timeManager(timeMgr),
           mqttClient(mqtt),
           getConfigCallback(getConfig),
@@ -401,6 +403,7 @@ namespace SQM
         next.mlxLastUpdate = mlxSensor.getLastUpdateTime();
         next.gpsLastUpdate = gpsSensor.getLastUpdateTime();
         next.rg15LastUpdate = rg15Sensor.getLastUpdateTime();
+        next.wind = windSensor.getReading();
         next.dataTimestamp = dataTimestampMs;
         next.capturedAt = millis();
 
@@ -1000,6 +1003,13 @@ namespace SQM
         // the hold-off before a roof should re-open.
         in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
 
+        constexpr uint32_t WIND_STALE_MS = 5000;
+        in.windSensorEnabled = cfg.wind.enabled;
+        in.windSensorHealthy = snapshot.wind.status == SensorStatus::OK && snapshot.wind.timestamp != 0 &&
+                               ageMs(now, snapshot.wind.timestamp) <= WIND_STALE_MS;
+        in.windSpeedMs = snapshot.wind.speedMs;
+        in.windGustMs = snapshot.wind.gustMs;
+
         return in;
     }
 
@@ -1018,6 +1028,10 @@ namespace SQM
         thresholds.dewpointMarginMinC = cfg.alpaca.dewpointMarginMinC;
         thresholds.rainUnsafeEnabled = cfg.alpaca.rainUnsafeEnabled;
         thresholds.rainSensorRequired = cfg.alpaca.rainSensorRequired;
+        thresholds.windSpeedUnsafeEnabled = cfg.alpaca.windSpeedUnsafeEnabled;
+        thresholds.windSpeedUnsafeMs = cfg.alpaca.windSpeedUnsafeMs;
+        thresholds.windGustUnsafeEnabled = cfg.alpaca.windGustUnsafeEnabled;
+        thresholds.windGustUnsafeMs = cfg.alpaca.windGustUnsafeMs;
         return thresholds;
     }
 
@@ -1121,6 +1135,8 @@ namespace SQM
             put("hum", obs.environment.valid, obs.humidityPercent);
             put("dew", obs.environment.valid, obs.dewpointC);
             put("press", obs.environment.valid, obs.pressureHPa);
+            put("wind", obs.wind.valid, obs.windSpeedMs);
+            put("gust", obs.wind.valid, obs.windGustMs);
             std::string summaryJson;
             serializeJson(summary, summaryJson);
             ble.update(bleState, summaryJson);
@@ -1267,6 +1283,21 @@ namespace SQM
         snap.rain.ageSeconds = ageMs(now, snapshot.rg15.timestamp) / 1000.0;
         snap.rain.valid = cfg.rain.enabled && snapshot.rg15.online && !snapshot.rg15.stale &&
                           snapshot.rg15.status == SensorStatus::OK && snapshot.rg15.timestamp != 0;
+
+        // The anemometer samples every second; allow a few missed ticks.
+        constexpr uint32_t WIND_STALE_MS = 5000;
+        const bool windFresh = snapshot.wind.status == SensorStatus::OK && snapshot.wind.timestamp != 0 &&
+                               ageMs(now, snapshot.wind.timestamp) <= WIND_STALE_MS;
+        snap.wind.present = cfg.wind.enabled;
+        snap.wind.valid = cfg.wind.enabled && windFresh;
+        snap.wind.ageSeconds = ageMs(now, snapshot.wind.timestamp) / 1000.0;
+        snap.windVane.present = cfg.wind.enabled && cfg.wind.directionEnabled;
+        // Calm is valid (direction reported as 0); only a vane fault isn't.
+        snap.windVane.valid = snap.windVane.present && windFresh && !snapshot.wind.vaneFault;
+        snap.windVane.ageSeconds = snap.wind.ageSeconds;
+        snap.windSpeedMs = snapshot.wind.speedMs;
+        snap.windGustMs = snapshot.wind.gustMs;
+        snap.windDirectionDeg = snapshot.wind.directionValid ? snapshot.wind.directionDeg : 0.0f;
 
         // Cloud cover may use a nominal humidity when the BME280 is down -
         // it only shifts the correction term - but Alpaca's Humidity
@@ -1488,10 +1519,10 @@ namespace SQM
 
         registerCommonRoutes("/api/v1/safetymonitor/0", ALPACA_SAFETY_MONITOR, SAFETY_MONITOR_INTERFACE_VERSION,
                              "SQMeter SafetyMonitor",
-                             "Reports observatory safety from rain (RG-15), cloud cover, sky brightness, humidity and dew-point margin measured by the onboard SQMeter sensors.");
+                             "Reports observatory safety from rain (RG-15), wind (optional anemometer), cloud cover, sky brightness, humidity and dew-point margin measured by the onboard SQMeter sensors.");
         registerCommonRoutes("/api/v1/observingconditions/0", ALPACA_OBSERVING_CONDITIONS, OBSERVING_CONDITIONS_INTERFACE_VERSION,
                              "SQMeter ObservingConditions",
-                             "Reports sky quality, sky brightness, cloud cover, sky temperature, temperature, humidity, dew point, pressure and (with an RG-15 fitted) rain rate from the onboard SQMeter sensors.");
+                             "Reports sky quality, sky brightness, cloud cover, sky temperature, temperature, humidity, dew point, pressure, and - when fitted - rain rate (RG-15) and wind speed, gust and direction (anemometer/vane).");
 
         // --- SafetyMonitor-specific ---
         server.on("/api/v1/safetymonitor/0/issafe", HTTP_GET, [this](AsyncWebServerRequest *request)
@@ -2156,6 +2187,20 @@ namespace SQM
         {
             JsonObject rain = doc.createNestedObject("rainSensor");
             appendRG15Diagnostics(rain, snapshot.rg15, snapshot.rg15Diagnostics, now);
+        }
+
+        if (getConfigCallback().wind.enabled)
+        {
+            JsonObject wind = doc.createNestedObject("wind");
+            wind["status"] = static_cast<int>(snapshot.wind.status);
+            wind["speedMs"] = snapshot.wind.speedMs;
+            wind["gustMs"] = snapshot.wind.gustMs;
+            wind["instantMs"] = snapshot.wind.instantMs;
+            wind["directionValid"] = snapshot.wind.directionValid;
+            wind["directionDeg"] = snapshot.wind.directionDeg;
+            wind["vaneFault"] = snapshot.wind.vaneFault;
+            wind["samples"] = snapshot.wind.samples;
+            wind["ageMs"] = ageMs(now, snapshot.wind.timestamp);
         }
 
         JsonObject safety = doc.createNestedObject("safety");

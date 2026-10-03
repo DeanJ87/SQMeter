@@ -59,16 +59,17 @@ The safety verdict is re-evaluated every second from the current sensor readings
 1. **Manual override** - the "Force SafetyMonitor unsafe" checkbox is on
 2. **Rain** - the RG-15 reports rain, *or* it rained within the rain sensor's "rain clear delay" (default 15 min). Enabled by default whenever the rain sensor is enabled
 3. **Rain sensor offline/faulty** - the rain sensor is enabled but not responding, its data is stale, or it reports a lens fault (fail safe; enabled by default)
-4. **No data yet** - the device hasn't completed a sensor read since boot
-5. **Stale data** - the last successful read is older than the stale-data threshold (default 30s)
-6. **Sensor fault** - the light sensor (TSL2591) or IR temperature sensor (MLX90614) is reporting a non-OK status
-7. **Cloud cover** - at or above the configured threshold (default 90%, if enabled)
-8. **Sky brightness (SQM)** - below the configured minimum (disabled by default)
-9. **Humidity** - above the configured maximum (disabled by default)
-10. **Temperature-dewpoint margin** - below the configured minimum (disabled by default)
-11. **Humidity sensor fault** - the humidity or dew-point rule is enabled but the BME280 isn't reporting, so it can't be evaluated
+4. **Wind / gust** - the 2-minute mean wind speed or the 10-minute peak gust is at or above its limit (both disabled by default). If a wind limit is enabled but the [anemometer](../hardware/wind.md) is disabled or not reporting, that's unsafe too
+5. **No data yet** - the device hasn't completed a sensor read since boot
+6. **Stale data** - the last successful read is older than the stale-data threshold (default 30s)
+7. **Sensor fault** - the light sensor (TSL2591) or IR temperature sensor (MLX90614) is reporting a non-OK status
+8. **Cloud cover** - at or above the configured threshold (default 90%, if enabled)
+9. **Sky brightness (SQM)** - below the configured minimum (disabled by default)
+10. **Humidity** - above the configured maximum (disabled by default)
+11. **Temperature-dewpoint margin** - below the configured minimum (disabled by default)
+12. **Humidity sensor fault** - the humidity or dew-point rule is enabled but the BME280 isn't reporting, so it can't be evaluated
 
-Rain rules (2-3) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining. Rules 7-11 only apply to fresh data.
+Rain and wind rules (2-4) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining or blowing a gale. Rules 8-12 only apply to fresh data.
 
 Each threshold has its own enable/disable toggle - a disabled threshold never contributes to the verdict.
 
@@ -92,7 +93,9 @@ Each threshold has its own enable/disable toggle - a disabled threshold never co
 | `skytemperature` | MLX90614 IR object temperature |
 | `temperature` | BME280 |
 | `averageperiod` | Always `0`. `PUT` accepts only `0`; other values return `InvalidValue` (`0x401`) |
-| `winddirection`, `windgust`, `windspeed` | Not implemented until an anemometer is fitted - Alpaca error `0x400` |
+| `windspeed` | Anemometer, 2-minute mean in m/s ([wiring](../hardware/wind.md)). `NotImplemented` when the anemometer is disabled |
+| `windgust` | Anemometer, highest 3-second mean in the last 10 minutes, m/s |
+| `winddirection` | Wind vane, degrees clockwise from north (`0` when calm). `NotImplemented` when no vane is enabled |
 | `starfwhm` | Never implemented. Star FWHM needs a camera imaging real stars; N.I.N.A. measures HFR from your own frames |
 
 Each property is tied to the sensor that produces it, so a fault in one sensor (say the BME280) only makes *its* properties return a driver error (`0x500`) - the others keep reporting. A stale or never-read sensor is treated the same way.

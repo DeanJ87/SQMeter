@@ -281,6 +281,8 @@ void test_wind_direction_zero_when_calm(void)
     ObservingConditionsSnapshot snap = allValidSnapshot();
     snap.wind.present = true;
     snap.wind.valid = true;
+    snap.windVane.present = true;
+    snap.windVane.valid = true;
     snap.windDirectionDeg = 270.0f;
     snap.windSpeedMs = 0.0f;
     TEST_ASSERT_EQUAL_FLOAT(0.0f, getObservingConditionsProperty("winddirection", snap).value);
@@ -508,6 +510,41 @@ void test_safe_delay_filter(void)
     TEST_ASSERT_TRUE(immediate.update(true, 5, 0));
 }
 
+// --- Wind safety ---
+
+void test_wind_limits(void)
+{
+    SafetyThresholds t;
+    t.windSpeedUnsafeEnabled = true;
+    t.windSpeedUnsafeMs = 10.0f;
+    t.windGustUnsafeEnabled = true;
+    t.windGustUnsafeMs = 15.0f;
+    SafetyInputs in = freshSafeInputs();
+    in.windSensorEnabled = true;
+    in.windSensorHealthy = true;
+    in.windSpeedMs = 5.0f;
+    in.windGustMs = 9.0f;
+    TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe);
+
+    in.windSpeedMs = 10.0f;
+    TEST_ASSERT_EQUAL_UINT32(UNSAFE_WIND, evaluateSafety(in, t).reasonFlags);
+
+    in.windSpeedMs = 5.0f;
+    in.windGustMs = 16.0f;
+    TEST_ASSERT_EQUAL_UINT32(UNSAFE_WIND_GUST, evaluateSafety(in, t).reasonFlags);
+}
+
+void test_wind_limit_without_sensor_is_unsafe(void)
+{
+    SafetyThresholds t;
+    t.windGustUnsafeEnabled = true;
+    SafetyInputs in = freshSafeInputs();
+    TEST_ASSERT_EQUAL_UINT32(UNSAFE_WIND_SENSOR_FAULT, evaluateSafety(in, t).reasonFlags);
+
+    t.windGustUnsafeEnabled = false; // no wind rules -> anemometer irrelevant
+    TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe);
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -529,6 +566,8 @@ int main(int argc, char **argv)
     RUN_TEST(test_rain_sensor_required);
     RUN_TEST(test_environment_fault_blocks_humidity_rules);
     RUN_TEST(test_safe_delay_filter);
+    RUN_TEST(test_wind_limits);
+    RUN_TEST(test_wind_limit_without_sensor_is_unsafe);
 
     RUN_TEST(test_observing_conditions_maps_known_property);
     RUN_TEST(test_observing_conditions_case_insensitive);

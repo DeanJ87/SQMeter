@@ -51,6 +51,17 @@ export function generateSensorData(): SensorData {
       hdop: 1.1,
       age: Math.round(jitter(800, 100)),
     },
+    wind: {
+      status: 0,
+      speedMs: parseFloat(jitter(3.2, 0.4).toFixed(1)),
+      gustMs: parseFloat(jitter(6.8, 0.3).toFixed(1)),
+      instantMs: parseFloat(jitter(3.5, 1.0).toFixed(1)),
+      directionValid: true,
+      directionDeg: Math.round(jitter(247, 8)),
+      vaneFault: false,
+      samples: 600,
+      ageMs: 400,
+    },
     // Demo data shows rain, so the SafetyMonitor reports unsafe.
     safety: {
       isSafe: false,
@@ -365,6 +376,10 @@ export const mockConfig: Config = {
     rainUnsafeEnabled: true,
     rainSensorRequired: true,
     safeDelaySeconds: 0,
+    windSpeedUnsafeEnabled: true,
+    windSpeedUnsafeMs: 10,
+    windGustUnsafeEnabled: true,
+    windGustUnsafeMs: 15,
   },
   alerts: {
     enabled: true,
@@ -382,6 +397,15 @@ export const mockConfig: Config = {
     mqtt: { enabled: false },
   },
   ble: { enabled: false },
+  wind: {
+    enabled: true,
+    speedPin: 27,
+    directionEnabled: true,
+    directionPin: 35,
+    kmhPerHz: 2.4,
+    directionOffsetDeg: 0,
+    vanePullupOhms: 10000,
+  },
   rain: {
     enabled: true,
     rxPin: 18,

@@ -187,7 +187,26 @@ export const alpacaConfigSchema = z.object({
   rainUnsafeEnabled: z.boolean(),
   rainSensorRequired: z.boolean(),
   safeDelaySeconds: z.number().int().min(0, "Must be 0 or more").max(3600, "Must be at most 1 hour"),
+  windSpeedUnsafeEnabled: z.boolean(),
+  windSpeedUnsafeMs: z.number().gt(0, "Must be above 0").max(60, "Must be at most 60 m/s"),
+  windGustUnsafeEnabled: z.boolean(),
+  windGustUnsafeMs: z.number().gt(0, "Must be above 0").max(80, "Must be at most 80 m/s"),
 });
+
+export const windConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    speedPin: z.number().int().refine((pin) => validGPIOs.includes(pin), { message: "Must be a valid GPIO" }),
+    directionEnabled: z.boolean(),
+    directionPin: z.number().int().min(32, "Vane needs an ADC1 pin (GPIO 32-39)").max(39, "Vane needs an ADC1 pin (GPIO 32-39)"),
+    kmhPerHz: z.number().gt(0).max(20),
+    directionOffsetDeg: z.number().min(-360).max(360),
+    vanePullupOhms: z.number().min(1000).max(100000),
+  })
+  .refine((data) => !data.enabled || !data.directionEnabled || data.speedPin !== data.directionPin, {
+    message: "Anemometer and vane need different pins",
+    path: ["directionPin"],
+  });
 
 export const rainSensorConfigSchema = z
   .object({
@@ -286,6 +305,7 @@ export const configSchema = z
     alpaca: alpacaConfigSchema.optional(),
     alerts: alertsConfigSchema.optional(),
     ble: z.object({ enabled: z.boolean() }).optional(),
+    wind: windConfigSchema.optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.ntp.enabled && !data.gps.enabled) {

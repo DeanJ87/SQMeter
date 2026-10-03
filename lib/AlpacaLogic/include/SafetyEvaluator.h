@@ -34,6 +34,11 @@ namespace SQM
 
             bool rainUnsafeEnabled = true;
             bool rainSensorRequired = true;
+
+            bool windSpeedUnsafeEnabled = false;
+            float windSpeedUnsafeMs = 10.0f;
+            bool windGustUnsafeEnabled = false;
+            float windGustUnsafeMs = 15.0f;
         };
 
         // Current sensor/data-freshness state to evaluate against the
@@ -59,6 +64,12 @@ namespace SQM
             bool rainSensorEnabled = false;
             bool rainSensorHealthy = false; // online, fresh, no lens fault
             bool raining = false;           // includes the post-rain hold-off latch
+
+            // Anemometer. Like rain, evaluated independently of the others.
+            bool windSensorEnabled = false;
+            bool windSensorHealthy = false;
+            float windSpeedMs = 0.0f;
+            float windGustMs = 0.0f;
         };
 
         // One bit per distinct unsafe reason, so callers (alerts, BLE) can

@@ -39,6 +39,7 @@ export interface CloudConditions {
 export interface SensorData {
   dataTimestamp?: number;
   safety?: SafetyStatus;
+  wind?: WindReading;
   lightSensor?: LightSensorReading;
   environment?: EnvironmentReading;
   irTemperature?: IRTemperatureReading;
@@ -353,6 +354,32 @@ export interface AlpacaConfig {
   rainUnsafeEnabled: boolean;
   rainSensorRequired: boolean;
   safeDelaySeconds: number;
+  windSpeedUnsafeEnabled: boolean;
+  windSpeedUnsafeMs: number;
+  windGustUnsafeEnabled: boolean;
+  windGustUnsafeMs: number;
+}
+
+export interface WindConfig {
+  enabled: boolean;
+  speedPin: number;
+  directionEnabled: boolean;
+  directionPin: number;
+  kmhPerHz: number;
+  directionOffsetDeg: number;
+  vanePullupOhms: number;
+}
+
+export interface WindReading {
+  status: number;
+  speedMs: number;
+  gustMs: number;
+  instantMs: number;
+  directionValid: boolean;
+  directionDeg: number;
+  vaneFault: boolean;
+  samples: number;
+  ageMs: number;
 }
 
 // Live SafetyMonitor verdict (GET /api/safety, and `safety` on /ws/sensors)
@@ -415,6 +442,7 @@ export interface Config {
   alpaca?: AlpacaConfig;
   alerts?: AlertsConfig;
   ble?: { enabled: boolean };
+  wind?: WindConfig;
 }
 
 export interface RainSensorReading {
