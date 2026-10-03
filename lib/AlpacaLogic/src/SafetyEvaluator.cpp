@@ -59,12 +59,12 @@ namespace SQM
 
             if (haveFreshData)
             {
-                if (t.cloudCoverEnabled && in.cloudCoverPercent >= t.cloudCoverUnsafePercent)
+                if (t.cloudCoverEnabled && !in.irSkyFault && in.cloudCoverPercent >= t.cloudCoverUnsafePercent)
                 {
                     addReason(result, UNSAFE_CLOUD_COVER, "Cloud cover at or above unsafe threshold");
                 }
 
-                if (t.sqmMinEnabled && in.sqm < t.sqmMinSafe)
+                if (t.sqmMinEnabled && !in.skyLightFault && in.sqm < t.sqmMinSafe)
                 {
                     addReason(result, UNSAFE_SKY_BRIGHT, "Sky brightness (SQM) below minimum safe value");
                 }
