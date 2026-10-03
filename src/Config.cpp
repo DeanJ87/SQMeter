@@ -362,6 +362,8 @@ namespace SQM
         cfg.alerts.webhookInsecureTls = false;
         cfg.alerts.mqttEnabled = false;
 
+        cfg.ble.enabled = false;
+
         return cfg;
     }
 
@@ -520,6 +522,9 @@ namespace SQM
         alpaca["rainUnsafeEnabled"] = this->alpaca.rainUnsafeEnabled;
         alpaca["rainSensorRequired"] = this->alpaca.rainSensorRequired;
         alpaca["safeDelaySeconds"] = this->alpaca.safeDelaySeconds;
+
+        JsonObject ble = doc.createNestedObject("ble");
+        ble["enabled"] = this->ble.enabled;
 
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), this->alerts, redactSecrets);
@@ -1034,6 +1039,10 @@ namespace SQM
             if (!mqtt.isNull() && mqtt.containsKey("enabled"))
                 a.mqttEnabled = mqtt["enabled"] | false;
         }
+
+        JsonObject bleObj = doc["ble"];
+        if (!bleObj.isNull() && bleObj.containsKey("enabled"))
+            cfg.ble.enabled = bleObj["enabled"] | false;
 
         normalizeTimeSources(cfg);
 

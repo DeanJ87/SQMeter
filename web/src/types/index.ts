@@ -142,7 +142,9 @@ export interface SystemStatus {
     version: string;
     buildDate: string;
     buildTime: string;
+    variant?: 'standard' | 'ble';
   };
+  ble?: { available: boolean; active: boolean; clients: number };
   uptime: number;
   freeHeap: number;
   heapSize: number;
@@ -412,6 +414,7 @@ export interface Config {
   rain?: RainSensorConfig;
   alpaca?: AlpacaConfig;
   alerts?: AlertsConfig;
+  ble?: { enabled: boolean };
 }
 
 export interface RainSensorReading {

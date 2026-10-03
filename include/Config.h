@@ -184,6 +184,12 @@ namespace SQM
         bool mqttEnabled;           // publish to <mqtt topic>/alerts and retained <mqtt topic>/safety
     };
 
+    // Only used by the esp32dev-ble firmware build; ignored elsewhere.
+    struct BleConfig
+    {
+        bool enabled; // advertise the SQMeter GATT service (takes effect after a restart)
+    };
+
     struct Config
     {
         WiFiConfig wifi;
@@ -199,6 +205,7 @@ namespace SQM
         CloudDetectionConfig cloudDetection;
         AlpacaConfig alpaca;
         AlertsConfig alerts;
+        BleConfig ble;
         std::string deviceName;
         std::string timezone;
         TimeSource primaryTimeSource;   // Primary time source

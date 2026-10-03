@@ -298,6 +298,9 @@ namespace SQM
 
         alertDispatcher->begin();
 
+        if (BleService::available() && getConfigCallback().ble.enabled)
+            ble.begin(getConfigCallback().deviceName);
+
         if (getConfigCallback().alpaca.enabled)
         {
             if (alpacaDiscoveryUdp.begin(Alpaca::DISCOVERY_UDP_PORT))
@@ -1091,13 +1094,48 @@ namespace SQM
         rules.clearSkyCloudPercent = cfg.alerts.clearSkyCloudPercent;
         rules.cooldownSeconds = cfg.alerts.cooldownSeconds;
 
+        if (ble.isActive())
+        {
+            Ble::State bleState;
+            bleState.safetyKnown = in.safetyKnown;
+            bleState.isSafe = status.isSafe;
+            bleState.rawSafe = status.rawSafe;
+            bleState.reasonFlags = status.reasonFlags;
+            bleState.rainEnabled = cfg.rain.enabled;
+            bleState.rainHealthy = obs.rain.valid;
+            bleState.raining = in.raining;
+            bleState.rainRateMmPerHour = obs.rainRateMmPerHour;
+            bleState.sqmValid = obs.skyLight.valid;
+            bleState.sqm = obs.skyQualityMagArcsec2;
+
+            StaticJsonDocument<256> summary;
+            auto put = [&summary](const char *key, bool valid, float value)
+            {
+                if (valid)
+                    summary[key] = serialized(String(value, 2));
+            };
+            put("sqm", obs.skyLight.valid, obs.skyQualityMagArcsec2);
+            put("cloud", obs.irSky.valid, obs.cloudCoverPercent);
+            put("skyT", obs.irSky.valid, obs.skyTemperatureC);
+            put("temp", obs.environment.valid, obs.temperatureC);
+            put("hum", obs.environment.valid, obs.humidityPercent);
+            put("dew", obs.environment.valid, obs.dewpointC);
+            put("press", obs.environment.valid, obs.pressureHPa);
+            std::string summaryJson;
+            serializeJson(summary, summaryJson);
+            ble.update(bleState, summaryJson);
+        }
+
         // Always run the engine so its state tracks reality while alerts are
         // off; only deliver when the master switch is on.
         const std::vector<Alerts::Alert> alerts = alertEngine.update(in, rules);
         if (!cfg.alerts.enabled)
             return;
         for (const Alerts::Alert &alert : alerts)
+        {
             alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName);
+            ble.publishAlert(alert);
+        }
     }
 
     void WebServer::publishMqttSafety(const SafetyStatus &status)
@@ -2140,6 +2178,12 @@ namespace SQM
         firmware["version"] = FIRMWARE_VERSION;
         firmware["buildDate"] = FIRMWARE_BUILD_DATE;
         firmware["buildTime"] = FIRMWARE_BUILD_TIME;
+        firmware["variant"] = BleService::available() ? "ble" : "standard";
+
+        JsonObject bleStatus = doc.createNestedObject("ble");
+        bleStatus["available"] = BleService::available();
+        bleStatus["active"] = ble.isActive();
+        bleStatus["clients"] = ble.connectedClients();
 
         // System stats
         doc["uptime"] = millis() / 1000;

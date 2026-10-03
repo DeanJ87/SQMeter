@@ -152,7 +152,14 @@ namespace SQM
                 continue;
 
             JsonArrayConst assets = release["assets"].as<JsonArrayConst>();
-            const bool hasFirmware = findAsset(assets, "sqmeter-firmware-", entry.firmwareAssetUrl, entry.firmwareAssetSize);
+            // BLE builds use larger app partitions and ship as their own asset;
+            // installing the standard firmware would silently drop BLE.
+#if SQM_ENABLE_BLE
+            const char *firmwarePrefix = "sqmeter-ble-firmware-";
+#else
+            const char *firmwarePrefix = "sqmeter-firmware-";
+#endif
+            const bool hasFirmware = findAsset(assets, firmwarePrefix, entry.firmwareAssetUrl, entry.firmwareAssetSize);
             const bool hasFs = findAsset(assets, "sqmeter-littlefs-", entry.fsAssetUrl, entry.fsAssetSize);
 
             // Firmware and web UI must always ship as a matched pair - a

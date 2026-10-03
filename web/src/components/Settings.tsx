@@ -2,6 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Config, WiFiNetwork } from '../types';
 import AlertsSettings, { mergeAlertsConfig } from './AlertsSettings';
+import BleSettings from './BleSettings';
 import {
   getConfigValidationErrors,
   getConfigValidationMessage,
@@ -136,6 +137,7 @@ const toConfigPayload = (source: Config): Config => {
     // Merge defaults so configs from older firmware gain newly added fields.
     alpaca: { ...defaultAlpacaConfig, ...source.alpaca },
     alerts: mergeAlertsConfig(source.alerts),
+    ble: { enabled: false, ...source.ble },
   };
 
   return {
@@ -1426,6 +1428,8 @@ const Settings: FunctionalComponent = () => {
       </section>
 
       <AlertsSettings config={config} updateConfig={updateConfig} validationErrors={validationErrors} />
+
+      <BleSettings config={config} updateConfig={updateConfig} />
 
       {/* Rain Sensor Settings */}
       <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">

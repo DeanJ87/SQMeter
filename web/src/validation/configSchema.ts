@@ -285,6 +285,7 @@ export const configSchema = z
     cloudDetection: cloudDetectionConfigSchema,
     alpaca: alpacaConfigSchema.optional(),
     alerts: alertsConfigSchema.optional(),
+    ble: z.object({ enabled: z.boolean() }).optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.ntp.enabled && !data.gps.enabled) {
