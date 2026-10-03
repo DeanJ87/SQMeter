@@ -157,6 +157,16 @@ const Settings: FunctionalComponent = () => {
     loadConfig();
   }, []);
 
+  // Deep link from ASCOM Alpaca clients: /setup/v1/<device>/0/setup redirects
+  // to /settings?section=alpaca. Sections only render once config has loaded.
+  useEffect(() => {
+    if (!config) return;
+    const section = new URLSearchParams(window.location.search).get('section');
+    if (section) {
+      document.getElementById(section)?.scrollIntoView({ block: 'start' });
+    }
+  }, [config === null]);
+
   const loadConfig = async () => {
     try {
       const response = await fetch('/api/config');
@@ -1236,7 +1246,7 @@ const Settings: FunctionalComponent = () => {
       </section>
 
       {/* ASCOM Alpaca Settings */}
-      <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <section id="alpaca" class="bg-gray-800 rounded-lg p-6 border border-gray-700 scroll-mt-4">
         <h2 class="text-xl font-semibold text-white mb-4">ASCOM Alpaca</h2>
         <p class="text-sm text-gray-400 mb-4">
           Exposes this device directly as an ASCOM Alpaca SafetyMonitor and ObservingConditions device (HTTP + UDP discovery on port 32227), for use with N.I.N.A. and other ASCOM Alpaca clients. Requires a restart to start/stop the UDP discovery listener.
