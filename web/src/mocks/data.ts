@@ -1,4 +1,4 @@
-import type { SensorData, SystemStatus, Config, GithubRelease, AlpacaConfiguredDevice } from "../types";
+import type { SensorData, SystemStatus, Config, GithubRelease, AlpacaConfiguredDevice, AlertRecord } from "../types";
 
 const jitter = (base: number, range: number) =>
   base + (Math.random() - 0.5) * range;
@@ -366,6 +366,21 @@ export const mockConfig: Config = {
     rainSensorRequired: true,
     safeDelaySeconds: 0,
   },
+  alerts: {
+    enabled: true,
+    onSafetyChange: true,
+    onRain: true,
+    onSensorFault: true,
+    onDewRisk: false,
+    dewRiskMarginC: 2,
+    onClearSky: false,
+    clearSkyCloudPercent: 20,
+    cooldownSeconds: 300,
+    pushover: { enabled: true, userKey: "********", appToken: "********", highPriority: 1, sound: "" },
+    ntfy: { enabled: false, server: "https://ntfy.sh", topic: "", token: "" },
+    webhook: { enabled: false, url: "", authHeader: "", insecureTls: false },
+    mqtt: { enabled: false },
+  },
   rain: {
     enabled: true,
     rxPin: 18,
@@ -415,4 +430,25 @@ export const mockGithubReleases: GithubRelease[] = [
 export const mockAlpacaDevices: AlpacaConfiguredDevice[] = [
   { DeviceName: "SQMeter SafetyMonitor", DeviceType: "SafetyMonitor", DeviceNumber: 0, UniqueID: "sqmeter-a1b2c3d4e5f6-safetymonitor-0" },
   { DeviceName: "SQMeter ObservingConditions", DeviceType: "ObservingConditions", DeviceNumber: 0, UniqueID: "sqmeter-a1b2c3d4e5f6-observingconditions-0" },
+];
+
+export const mockRecentAlerts: AlertRecord[] = [
+  {
+    id: 2,
+    event: "unsafe",
+    title: "Observatory UNSAFE",
+    message: "Rain detected",
+    priority: 1,
+    ageSeconds: 1260,
+    channels: { pushover: { status: "sent", detail: "HTTP 200" } },
+  },
+  {
+    id: 1,
+    event: "rain_started",
+    title: "Rain detected",
+    message: "The rain sensor reports rain (2.4 mm/h).",
+    priority: 1,
+    ageSeconds: 1261,
+    channels: { pushover: { status: "sent", detail: "HTTP 200" } },
+  },
 ];

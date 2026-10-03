@@ -76,6 +76,7 @@ nav:
     - MQTT Integration: user-guide/mqtt.md
     - OTA Updates: user-guide/ota.md
     - ASCOM Alpaca: user-guide/alpaca.md
+    - Alerts: user-guide/alerts.md
   - Hardware:
     - Overview: hardware/overview.md
     - RG-15 Rain Sensor: hardware/rg15.md

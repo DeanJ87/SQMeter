@@ -107,6 +107,17 @@ Published to `{topic}` every `publishIntervalMs` milliseconds:
 
 ---
 
+## Alert and safety topics
+
+With **Settings → Alerts → MQTT** enabled, two more topics are published under the configured topic:
+
+| Topic | Retained | Payload |
+|---|---|---|
+| `<topic>/safety` | Yes | `{"isSafe": false, "reasons": ["Rain detected"]}` - on every change, refreshed every minute |
+| `<topic>/alerts` | No | One message per alert: `{"event":"rain_started","title":"Rain detected","message":"...","priority":1,"device":"SQM-ESP32","timestamp":1759500000}` |
+
+See [Alerts](alerts.md) for the event list.
+
 ## Home Assistant
 
 Add to your `configuration.yaml`:

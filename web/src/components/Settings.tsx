@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import type { Config, WiFiNetwork } from '../types';
+import AlertsSettings, { mergeAlertsConfig } from './AlertsSettings';
 import {
   getConfigValidationErrors,
   getConfigValidationMessage,
@@ -134,6 +135,7 @@ const toConfigPayload = (source: Config): Config => {
       : { ...defaultCloudDetectionConfig },
     // Merge defaults so configs from older firmware gain newly added fields.
     alpaca: { ...defaultAlpacaConfig, ...source.alpaca },
+    alerts: mergeAlertsConfig(source.alerts),
   };
 
   return {
@@ -344,7 +346,9 @@ const Settings: FunctionalComponent = () => {
     };
     let current: any = newConfig;
     
+    // Copy each nested object along the path so state is never mutated in place.
     for (let i = 0; i < path.length - 1; i++) {
+      current[path[i]] = { ...current[path[i]] };
       current = current[path[i]];
     }
     
@@ -1420,6 +1424,8 @@ const Settings: FunctionalComponent = () => {
           </div>
         </div>
       </section>
+
+      <AlertsSettings config={config} updateConfig={updateConfig} validationErrors={validationErrors} />
 
       {/* Rain Sensor Settings */}
       <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">

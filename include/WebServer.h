@@ -13,6 +13,9 @@
 #include "SafetyEvaluator.h"
 #include "ObservingConditionsMapper.h"
 #include "AlpacaProtocol.h"
+#include "AlertDispatcher.h"
+#include "AlertEngine.h"
+#include <atomic>
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
 #include <ArduinoJson.h>
@@ -147,6 +150,18 @@ namespace SQM
         uint32_t lastSafetyEvaluation = 0;
         static constexpr uint32_t SAFETY_EVALUATION_INTERVAL_MS = 1000;
         void updateSafetyStatus();
+
+        // Alerts
+        Alerts::AlertEngine alertEngine;
+        std::unique_ptr<AlertDispatcher> alertDispatcher;
+        std::atomic<uint8_t> pendingAlertTestMask{0}; // set by HTTP handler, sent from the loop task
+        bool mqttSafetyPublished = false;
+        bool mqttLastPublishedSafe = false;
+        uint32_t mqttSafetyPublishedAt = 0;
+        static constexpr uint32_t MQTT_SAFETY_REPUBLISH_MS = 60000;
+        void processAlerts(const SafetyStatus &status);
+        void publishMqttSafety(const SafetyStatus &status);
+        void setupAlertRoutes();
 
         // Setup route handlers
         void setupStaticRoutes();

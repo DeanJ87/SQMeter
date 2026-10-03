@@ -147,6 +147,43 @@ namespace SQM
         uint32_t safeDelaySeconds;
     };
 
+    // Push notifications for safety/rain/sensor events. Persisted under its
+    // own NVS key (see Config::save) - ESP-IDF caps NVS strings at 4000
+    // bytes, and the main config JSON is already close to that.
+    struct AlertsConfig
+    {
+        bool enabled; // master switch
+
+        // Events
+        bool onSafetyChange;        // SafetyMonitor unsafe / safe again
+        bool onRain;                // rain started / cleared
+        bool onSensorFault;         // a sensor goes offline / recovers, RG-15 lens fault
+        bool onDewRisk;             // temperature within dewRiskMarginC of the dew point
+        float dewRiskMarginC;
+        bool onClearSky;            // cloud cover drops below clearSkyCloudPercent
+        float clearSkyCloudPercent;
+        uint32_t cooldownSeconds;   // min time between notifications of the same kind
+
+        // Channels
+        bool pushoverEnabled;
+        std::string pushoverUserKey;
+        std::string pushoverAppToken;
+        int pushoverHighPriority;   // Pushover priority for urgent events: 0, 1 (high) or 2 (emergency)
+        std::string pushoverSound;  // optional Pushover sound name
+
+        bool ntfyEnabled;
+        std::string ntfyServer;     // e.g. https://ntfy.sh
+        std::string ntfyTopic;
+        std::string ntfyToken;      // optional access token
+
+        bool webhookEnabled;
+        std::string webhookUrl;
+        std::string webhookAuthHeader; // optional Authorization header value
+        bool webhookInsecureTls;       // skip certificate checks (self-signed LAN servers only)
+
+        bool mqttEnabled;           // publish to <mqtt topic>/alerts and retained <mqtt topic>/safety
+    };
+
     struct Config
     {
         WiFiConfig wifi;
@@ -161,6 +198,7 @@ namespace SQM
         SkyCalibrationConfig skyCalibration;
         CloudDetectionConfig cloudDetection;
         AlpacaConfig alpaca;
+        AlertsConfig alerts;
         std::string deviceName;
         std::string timezone;
         TimeSource primaryTimeSource;   // Primary time source
@@ -173,7 +211,8 @@ namespace SQM
         bool save() const;
         static Config createDefault();
 
-        std::string toJson(bool redactSecrets = false) const;
+        std::string toJson(bool redactSecrets = false, bool includeAlerts = true) const;
+        std::string alertsToJson(bool redactSecrets = false) const;
         bool validate(std::string *error = nullptr) const;
         static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr);
     };

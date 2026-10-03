@@ -365,6 +365,35 @@ export interface SafetyStatus {
   changedAgeMs: number;
 }
 
+export interface AlertsConfig {
+  enabled: boolean;
+  onSafetyChange: boolean;
+  onRain: boolean;
+  onSensorFault: boolean;
+  onDewRisk: boolean;
+  dewRiskMarginC: number;
+  onClearSky: boolean;
+  clearSkyCloudPercent: number;
+  cooldownSeconds: number;
+  pushover: { enabled: boolean; userKey: string; appToken: string; highPriority: number; sound: string };
+  ntfy: { enabled: boolean; server: string; topic: string; token: string };
+  webhook: { enabled: boolean; url: string; authHeader: string; insecureTls: boolean };
+  mqtt: { enabled: boolean };
+}
+
+export type AlertChannelName = 'mqtt' | 'pushover' | 'ntfy' | 'webhook';
+
+export interface AlertRecord {
+  id: number;
+  event: string;
+  title: string;
+  message: string;
+  priority: number;
+  ageSeconds: number;
+  timestamp?: number;
+  channels: Partial<Record<AlertChannelName, { status: 'pending' | 'sent' | 'failed' | 'skipped'; detail: string }>>;
+}
+
 export interface Config {
   deviceName: string;
   timezone: string;
@@ -382,6 +411,7 @@ export interface Config {
   cloudDetection: CloudDetectionConfig;
   rain?: RainSensorConfig;
   alpaca?: AlpacaConfig;
+  alerts?: AlertsConfig;
 }
 
 export interface RainSensorReading {

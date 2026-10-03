@@ -9,6 +9,7 @@ namespace SQM
 {
     static const char *NVS_NAMESPACE = "sqm";
     static const char *NVS_CONFIG_KEY = "config";
+    static const char *NVS_ALERTS_KEY = "alerts";
     static const char *SECRET_MASK = "********";
 
     namespace
@@ -166,6 +167,20 @@ namespace SQM
         auto config = fromJson(json);
         if (config)
         {
+            Preferences alertPrefs;
+            if (alertPrefs.begin(NVS_NAMESPACE, true))
+            {
+                String alertsJson = alertPrefs.isKey(NVS_ALERTS_KEY) ? alertPrefs.getString(NVS_ALERTS_KEY, "") : String();
+                alertPrefs.end();
+                if (alertsJson.length() > 0)
+                {
+                    auto withAlerts = fromJson(std::string("{\"alerts\":") + alertsJson.c_str() + "}", &*config);
+                    if (withAlerts)
+                        config = withAlerts;
+                    else
+                        Logger::error(TAG, "Failed to parse stored alerts config - using defaults");
+                }
+            }
             Logger::info(TAG, "Config parsed successfully - SSID: '%s'", config->wifi.ssid.c_str());
         }
         else
@@ -187,8 +202,10 @@ namespace SQM
             return false;
         }
 
-        std::string json = toJson();
-        Logger::info(TAG, "Config JSON to save (%u bytes)", static_cast<unsigned>(json.length()));
+        std::string json = toJson(false, false);
+        const std::string alertsJson = alertsToJson(false);
+        Logger::info(TAG, "Config JSON to save (%u bytes, alerts %u bytes)", static_cast<unsigned>(json.length()),
+                     static_cast<unsigned>(alertsJson.length()));
 
         if (json.length() > MAX_PERSISTED_JSON_BYTES)
         {
@@ -206,7 +223,14 @@ namespace SQM
         }
 
         size_t written = prefs.putString(NVS_CONFIG_KEY, json.c_str());
+        const size_t alertsWritten = prefs.putString(NVS_ALERTS_KEY, alertsJson.c_str());
         prefs.end();
+
+        if (alertsWritten == 0)
+        {
+            Logger::error(TAG, "Failed to write alerts config to NVS");
+            return false;
+        }
 
         if (written == 0)
         {
@@ -321,12 +345,81 @@ namespace SQM
         cfg.alpaca.rainSensorRequired = true;
         cfg.alpaca.safeDelaySeconds = 0;
 
+        cfg.alerts.enabled = false;
+        cfg.alerts.onSafetyChange = true;
+        cfg.alerts.onRain = true;
+        cfg.alerts.onSensorFault = true;
+        cfg.alerts.onDewRisk = false;
+        cfg.alerts.dewRiskMarginC = 2.0f;
+        cfg.alerts.onClearSky = false;
+        cfg.alerts.clearSkyCloudPercent = 20.0f;
+        cfg.alerts.cooldownSeconds = 300;
+        cfg.alerts.pushoverEnabled = false;
+        cfg.alerts.pushoverHighPriority = 1;
+        cfg.alerts.ntfyEnabled = false;
+        cfg.alerts.ntfyServer = "https://ntfy.sh";
+        cfg.alerts.webhookEnabled = false;
+        cfg.alerts.webhookInsecureTls = false;
+        cfg.alerts.mqttEnabled = false;
+
         return cfg;
     }
 
-    std::string Config::toJson(bool redactSecrets) const
+    namespace
     {
-        DynamicJsonDocument doc(5120);
+        void appendAlerts(JsonObject alerts, const AlertsConfig &a, bool redactSecrets)
+        {
+            auto secret = [redactSecrets](const std::string &value) -> const char *
+            {
+                return redactSecrets && !value.empty() ? SECRET_MASK : value.c_str();
+            };
+
+            alerts["enabled"] = a.enabled;
+            alerts["onSafetyChange"] = a.onSafetyChange;
+            alerts["onRain"] = a.onRain;
+            alerts["onSensorFault"] = a.onSensorFault;
+            alerts["onDewRisk"] = a.onDewRisk;
+            alerts["dewRiskMarginC"] = a.dewRiskMarginC;
+            alerts["onClearSky"] = a.onClearSky;
+            alerts["clearSkyCloudPercent"] = a.clearSkyCloudPercent;
+            alerts["cooldownSeconds"] = a.cooldownSeconds;
+
+            JsonObject pushover = alerts.createNestedObject("pushover");
+            pushover["enabled"] = a.pushoverEnabled;
+            pushover["userKey"] = secret(a.pushoverUserKey);
+            pushover["appToken"] = secret(a.pushoverAppToken);
+            pushover["highPriority"] = a.pushoverHighPriority;
+            pushover["sound"] = a.pushoverSound.c_str();
+
+            JsonObject ntfy = alerts.createNestedObject("ntfy");
+            ntfy["enabled"] = a.ntfyEnabled;
+            ntfy["server"] = a.ntfyServer.c_str();
+            ntfy["topic"] = a.ntfyTopic.c_str();
+            ntfy["token"] = secret(a.ntfyToken);
+
+            JsonObject webhook = alerts.createNestedObject("webhook");
+            webhook["enabled"] = a.webhookEnabled;
+            webhook["url"] = a.webhookUrl.c_str();
+            webhook["authHeader"] = secret(a.webhookAuthHeader);
+            webhook["insecureTls"] = a.webhookInsecureTls;
+
+            JsonObject mqtt = alerts.createNestedObject("mqtt");
+            mqtt["enabled"] = a.mqttEnabled;
+        }
+    }
+
+    std::string Config::alertsToJson(bool redactSecrets) const
+    {
+        DynamicJsonDocument doc(1536);
+        appendAlerts(doc.to<JsonObject>(), alerts, redactSecrets);
+        std::string json;
+        serializeJson(doc, json);
+        return json;
+    }
+
+    std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
+    {
+        DynamicJsonDocument doc(8192);
 
         doc["deviceName"] = deviceName;
         doc["timezone"] = timezone;
@@ -427,6 +520,9 @@ namespace SQM
         alpaca["rainUnsafeEnabled"] = this->alpaca.rainUnsafeEnabled;
         alpaca["rainSensorRequired"] = this->alpaca.rainSensorRequired;
         alpaca["safeDelaySeconds"] = this->alpaca.safeDelaySeconds;
+
+        if (includeAlerts)
+            appendAlerts(doc.createNestedObject("alerts"), this->alerts, redactSecrets);
 
         std::string output;
         serializeJson(doc, output);
@@ -629,12 +725,31 @@ namespace SQM
             return setError(error, "Alpaca: safe delay must be between 0 and 3600 seconds");
         }
 
+        auto isHttpUrl = [](const std::string &url)
+        {
+            return url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0;
+        };
+        if (alerts.cooldownSeconds > 86400)
+            return setError(error, "Alerts: cooldown must be between 0 and 86400 seconds");
+        if (!std::isfinite(alerts.dewRiskMarginC) || alerts.dewRiskMarginC < 0.0F || alerts.dewRiskMarginC > 10.0F)
+            return setError(error, "Alerts: dew risk margin must be between 0 and 10 degrees C");
+        if (!std::isfinite(alerts.clearSkyCloudPercent) || alerts.clearSkyCloudPercent < 0.0F || alerts.clearSkyCloudPercent > 100.0F)
+            return setError(error, "Alerts: clear sky threshold must be between 0 and 100 percent");
+        if (alerts.pushoverHighPriority < 0 || alerts.pushoverHighPriority > 2)
+            return setError(error, "Alerts: Pushover priority must be 0, 1 or 2");
+        if (alerts.pushoverEnabled && (alerts.pushoverUserKey.empty() || alerts.pushoverAppToken.empty()))
+            return setError(error, "Alerts: Pushover needs both a user key and an application token");
+        if (alerts.ntfyEnabled && (!isHttpUrl(alerts.ntfyServer) || alerts.ntfyTopic.empty()))
+            return setError(error, "Alerts: ntfy needs an http(s):// server and a topic");
+        if (alerts.webhookEnabled && !isHttpUrl(alerts.webhookUrl))
+            return setError(error, "Alerts: webhook URL must start with http:// or https://");
+
         return true;
     }
 
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig)
     {
-        DynamicJsonDocument doc(5120);
+        DynamicJsonDocument doc(8192);
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
@@ -853,6 +968,71 @@ namespace SQM
                 cfg.alpaca.rainSensorRequired = alpacaObj["rainSensorRequired"] | true;
             if (alpacaObj.containsKey("safeDelaySeconds"))
                 cfg.alpaca.safeDelaySeconds = alpacaObj["safeDelaySeconds"] | 0U;
+        }
+
+        JsonObject alertsObj = doc["alerts"];
+        if (!alertsObj.isNull())
+        {
+            AlertsConfig &a = cfg.alerts;
+            if (alertsObj.containsKey("enabled"))
+                a.enabled = alertsObj["enabled"] | false;
+            if (alertsObj.containsKey("onSafetyChange"))
+                a.onSafetyChange = alertsObj["onSafetyChange"] | true;
+            if (alertsObj.containsKey("onRain"))
+                a.onRain = alertsObj["onRain"] | true;
+            if (alertsObj.containsKey("onSensorFault"))
+                a.onSensorFault = alertsObj["onSensorFault"] | true;
+            if (alertsObj.containsKey("onDewRisk"))
+                a.onDewRisk = alertsObj["onDewRisk"] | false;
+            if (alertsObj.containsKey("dewRiskMarginC"))
+                a.dewRiskMarginC = alertsObj["dewRiskMarginC"] | 2.0f;
+            if (alertsObj.containsKey("onClearSky"))
+                a.onClearSky = alertsObj["onClearSky"] | false;
+            if (alertsObj.containsKey("clearSkyCloudPercent"))
+                a.clearSkyCloudPercent = alertsObj["clearSkyCloudPercent"] | 20.0f;
+            if (alertsObj.containsKey("cooldownSeconds"))
+                a.cooldownSeconds = alertsObj["cooldownSeconds"] | 300U;
+
+            JsonObject pushover = alertsObj["pushover"];
+            if (!pushover.isNull())
+            {
+                if (pushover.containsKey("enabled"))
+                    a.pushoverEnabled = pushover["enabled"] | false;
+                assignSecret(pushover, "userKey", a.pushoverUserKey, preserveSecretPlaceholders);
+                assignSecret(pushover, "appToken", a.pushoverAppToken, preserveSecretPlaceholders);
+                if (pushover.containsKey("highPriority"))
+                    a.pushoverHighPriority = pushover["highPriority"] | 1;
+                if (pushover.containsKey("sound"))
+                    a.pushoverSound = pushover["sound"] | "";
+            }
+
+            JsonObject ntfy = alertsObj["ntfy"];
+            if (!ntfy.isNull())
+            {
+                if (ntfy.containsKey("enabled"))
+                    a.ntfyEnabled = ntfy["enabled"] | false;
+                if (ntfy.containsKey("server"))
+                    a.ntfyServer = ntfy["server"] | "https://ntfy.sh";
+                if (ntfy.containsKey("topic"))
+                    a.ntfyTopic = ntfy["topic"] | "";
+                assignSecret(ntfy, "token", a.ntfyToken, preserveSecretPlaceholders);
+            }
+
+            JsonObject webhook = alertsObj["webhook"];
+            if (!webhook.isNull())
+            {
+                if (webhook.containsKey("enabled"))
+                    a.webhookEnabled = webhook["enabled"] | false;
+                if (webhook.containsKey("url"))
+                    a.webhookUrl = webhook["url"] | "";
+                assignSecret(webhook, "authHeader", a.webhookAuthHeader, preserveSecretPlaceholders);
+                if (webhook.containsKey("insecureTls"))
+                    a.webhookInsecureTls = webhook["insecureTls"] | false;
+            }
+
+            JsonObject mqtt = alertsObj["mqtt"];
+            if (!mqtt.isNull() && mqtt.containsKey("enabled"))
+                a.mqttEnabled = mqtt["enabled"] | false;
         }
 
         normalizeTimeSources(cfg);

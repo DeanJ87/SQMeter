@@ -460,6 +460,27 @@ The current SafetyMonitor verdict - the same value served to Alpaca clients as `
 
 ---
 
+## Alerts
+
+See [Alerts](../user-guide/alerts.md) for setup.
+
+### `POST /api/alerts/test?channel=<mqtt|pushover|ntfy|webhook|all>`
+
+Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. `400` if the channel is unknown or not enabled. Requires HTTP auth when enabled.
+
+### `GET /api/alerts/recent`
+
+The last 20 alerts since boot, newest first:
+
+```json
+[{"id":2,"event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.4 mm/h).","priority":1,"ageSeconds":42,"timestamp":1759500000,
+  "channels":{"pushover":{"status":"sent","detail":"HTTP 200"},"mqtt":{"status":"failed","detail":"MQTT not connected"}}}]
+```
+
+`status` is `pending`, `sent`, `failed` or `skipped`.
+
+---
+
 ## ASCOM Alpaca API
 
 SQMeter can emit itself directly as an ASCOM Alpaca **SafetyMonitor** and **ObservingConditions** device - see [ASCOM Alpaca](../user-guide/alpaca.md) for the full setup guide, N.I.N.A. configuration, and safety-rule reference. Summary of the HTTP surface (all under the same port-80 server as the rest of the API, response envelope per the [ASCOM Alpaca API spec](https://ascom-standards.org/api/)):

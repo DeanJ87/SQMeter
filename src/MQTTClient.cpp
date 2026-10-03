@@ -200,6 +200,14 @@ namespace SQM
         return std::string(id);
     }
 
+    bool MQTTClient::publishSubtopic(const std::string &subtopic, const std::string &payload, bool retained)
+    {
+        if (!config.enabled || !mqttClient || !mqttClient->connected())
+            return false;
+        const std::string topic = config.topic + "/" + subtopic;
+        return mqttClient->publish(topic.c_str(), payload.c_str(), retained);
+    }
+
     std::string MQTTClient::getAvailabilityTopic() const
     {
         return config.topic + "/availability";

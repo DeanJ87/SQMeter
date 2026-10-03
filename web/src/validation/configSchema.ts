@@ -225,6 +225,47 @@ export const rainSensorConfigSchema = z
     path: ["rxPin"],
   });
 
+const httpUrl = z.string().regex(/^https?:\/\/.+/, "Must start with http:// or https://");
+
+export const alertsConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    onSafetyChange: z.boolean(),
+    onRain: z.boolean(),
+    onSensorFault: z.boolean(),
+    onDewRisk: z.boolean(),
+    dewRiskMarginC: z.number().min(0).max(10),
+    onClearSky: z.boolean(),
+    clearSkyCloudPercent: z.number().min(0).max(100),
+    cooldownSeconds: z.number().int().min(0).max(86400, "Must be at most 24 hours"),
+    pushover: z.object({
+      enabled: z.boolean(),
+      userKey: z.string(),
+      appToken: z.string(),
+      highPriority: z.number().int().min(0).max(2),
+      sound: z.string(),
+    }),
+    ntfy: z.object({ enabled: z.boolean(), server: z.string(), topic: z.string(), token: z.string() }),
+    webhook: z.object({ enabled: z.boolean(), url: z.string(), authHeader: z.string(), insecureTls: z.boolean() }),
+    mqtt: z.object({ enabled: z.boolean() }),
+  })
+  .superRefine((data, ctx) => {
+    if (data.pushover.enabled && (!data.pushover.userKey || !data.pushover.appToken)) {
+      ctx.addIssue({ code: "custom", path: ["pushover", "userKey"], message: "Pushover needs a user key and an application token" });
+    }
+    if (data.ntfy.enabled) {
+      if (!httpUrl.safeParse(data.ntfy.server).success) {
+        ctx.addIssue({ code: "custom", path: ["ntfy", "server"], message: "Server must start with http:// or https://" });
+      }
+      if (!data.ntfy.topic) {
+        ctx.addIssue({ code: "custom", path: ["ntfy", "topic"], message: "Topic is required" });
+      }
+    }
+    if (data.webhook.enabled && !httpUrl.safeParse(data.webhook.url).success) {
+      ctx.addIssue({ code: "custom", path: ["webhook", "url"], message: "Webhook URL must start with http:// or https://" });
+    }
+  });
+
 export const configSchema = z
   .object({
     deviceName: z.string().min(1, "Device name is required"),
@@ -243,11 +284,12 @@ export const configSchema = z
     rain: rainSensorConfigSchema.optional(),
     cloudDetection: cloudDetectionConfigSchema,
     alpaca: alpacaConfigSchema.optional(),
+    alerts: alertsConfigSchema.optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.ntp.enabled && !data.gps.enabled) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Enable at least one time source: NTP or GPS",
         path: ["ntp", "enabled"],
       });
@@ -259,7 +301,7 @@ export const configSchema = z
 
     if (!sourceEnabled(data.primaryTimeSource)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `Primary time source ${sourceName(data.primaryTimeSource)} is disabled`,
         path: ["primaryTimeSource"],
       });
@@ -267,7 +309,7 @@ export const configSchema = z
 
     if (data.ntp.enabled && data.gps.enabled && !sourceEnabled(data.secondaryTimeSource)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `Secondary time source ${sourceName(data.secondaryTimeSource)} is disabled`,
         path: ["secondaryTimeSource"],
       });
@@ -275,7 +317,7 @@ export const configSchema = z
 
     if (data.ntp.enabled && data.gps.enabled && data.primaryTimeSource === data.secondaryTimeSource) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Primary and secondary time sources must be different",
         path: ["secondaryTimeSource"],
       });

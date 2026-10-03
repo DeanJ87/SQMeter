@@ -3,6 +3,7 @@ import {
   configSchema,
   authConfigSchema,
   alpacaConfigSchema,
+  alertsConfigSchema,
   getConfigValidationErrors,
   getConfigValidationMessage,
   hasConfigValidationErrors,
@@ -313,5 +314,50 @@ describe("mockConfig", () => {
 
   it("does not expose a real password value in mqtt mock", () => {
     expect(mockConfig.mqtt.password).toBe("");
+  });
+});
+
+describe("alertsConfigSchema", () => {
+  const validAlerts = {
+    enabled: true,
+    onSafetyChange: true,
+    onRain: true,
+    onSensorFault: true,
+    onDewRisk: false,
+    dewRiskMarginC: 2,
+    onClearSky: false,
+    clearSkyCloudPercent: 20,
+    cooldownSeconds: 300,
+    pushover: { enabled: false, userKey: "", appToken: "", highPriority: 1, sound: "" },
+    ntfy: { enabled: false, server: "https://ntfy.sh", topic: "", token: "" },
+    webhook: { enabled: false, url: "", authHeader: "", insecureTls: false },
+    mqtt: { enabled: false },
+  };
+
+  it("passes with valid defaults", () => {
+    expect(alertsConfigSchema.safeParse(validAlerts).success).toBe(true);
+  });
+
+  it("requires Pushover credentials when Pushover is enabled", () => {
+    const result = alertsConfigSchema.safeParse({ ...validAlerts, pushover: { ...validAlerts.pushover, enabled: true } });
+    expect(result.success).toBe(false);
+  });
+
+  it("requires an ntfy topic and http(s) server", () => {
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, ntfy: { ...validAlerts.ntfy, enabled: true } }).success).toBe(false);
+    expect(
+      alertsConfigSchema.safeParse({ ...validAlerts, ntfy: { ...validAlerts.ntfy, enabled: true, topic: "x", server: "ntfy.sh" } }).success
+    ).toBe(false);
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, ntfy: { ...validAlerts.ntfy, enabled: true, topic: "x" } }).success).toBe(true);
+  });
+
+  it("requires an http(s) webhook URL", () => {
+    expect(
+      alertsConfigSchema.safeParse({ ...validAlerts, webhook: { ...validAlerts.webhook, enabled: true, url: "ftp://x" } }).success
+    ).toBe(false);
+  });
+
+  it("caps the cooldown at 24 hours", () => {
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, cooldownSeconds: 86401 }).success).toBe(false);
   });
 });

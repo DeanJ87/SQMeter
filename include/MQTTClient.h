@@ -50,6 +50,10 @@ namespace SQM
         // Publish sensor data
         void publishSensorData(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15);
 
+        // Publish to <configured topic>/<subtopic>. Must be called from the
+        // same task that runs handle() - PubSubClient isn't thread-safe.
+        bool publishSubtopic(const std::string &subtopic, const std::string &payload, bool retained);
+
         // Update configuration
         void updateConfig(const MQTTConfig &newConfig);
 

@@ -24,7 +24,7 @@ namespace SQM
 {
     namespace
     {
-        constexpr size_t CONFIG_JSON_BUFFER_SIZE = 4096;
+        constexpr size_t CONFIG_JSON_BUFFER_SIZE = 8192;
 
         esp_timer_handle_t restartTimer = nullptr;
 
@@ -249,6 +249,14 @@ namespace SQM
     {
         refreshSensorSnapshot(0);
 
+        alertDispatcher = std::make_unique<AlertDispatcher>(
+            mqttClient,
+            [this]
+            {
+                const OtaUpdater::Phase phase = otaUpdater ? otaUpdater->phase() : OtaUpdater::Phase::Idle;
+                return phase == OtaUpdater::Phase::Downloading || phase == OtaUpdater::Phase::Writing;
+            });
+
         otaUpdater = std::make_unique<OtaUpdater>(
             [this](int percent)
             { setOTAProgress(percent); },
@@ -285,7 +293,10 @@ namespace SQM
         setupOTA();
         setupGithubUpdates();
         setupAlpacaRoutes();
+        setupAlertRoutes();
         setupStaticRoutes(); // Must be last - has catch-all serveStatic
+
+        alertDispatcher->begin();
 
         if (getConfigCallback().alpaca.enabled)
         {
@@ -338,6 +349,18 @@ namespace SQM
         {
             updateSafetyStatus();
             lastSafetyEvaluation = now;
+        }
+
+        const uint8_t testMask = pendingAlertTestMask.exchange(0);
+        if (testMask != 0)
+        {
+            const Config &cfg = getConfigCallback();
+            Alerts::Alert test;
+            test.type = Alerts::AlertType::Test;
+            test.priority = Alerts::AlertPriority::Normal;
+            test.title = "Test notification";
+            test.message = "Alerts from this SQMeter are working.";
+            alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, testMask);
         }
 
         // Broadcast sensor data every 1 second (for Dashboard)
@@ -1022,6 +1045,151 @@ namespace SQM
             safetyStatus.evaluatedAtMs = now;
             xSemaphoreGive(safetyMutex);
         }
+
+        processAlerts(getSafetyStatus());
+    }
+
+    void WebServer::processAlerts(const SafetyStatus &status)
+    {
+        const Config &cfg = getConfigCallback();
+        if (cfg.alerts.mqttEnabled)
+            publishMqttSafety(status);
+
+        const SensorSnapshot snapshot = getSensorSnapshot();
+        const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
+
+        Alerts::AlertInputs in;
+        in.nowSeconds = millis() / 1000;
+        in.safetyKnown = status.evaluatedAtMs != 0;
+        in.isSafe = status.isSafe;
+        in.unsafeReasons = status.reasons;
+
+        in.rainEnabled = cfg.rain.enabled;
+        in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
+        in.rainRateMmPerHour = obs.rainRateMmPerHour;
+        in.lensFault = snapshot.rg15.lensBad;
+
+        in.sensors[0] = {"TSL2591 light", true, obs.skyLight.valid};
+        in.sensors[1] = {"MLX90614 IR", true, obs.irSky.valid};
+        in.sensors[2] = {"BME280 environment", true, obs.environment.valid};
+        in.sensors[3] = {"RG-15 rain", cfg.rain.enabled, obs.rain.valid};
+        in.sensors[4] = {"Wind", obs.wind.present, obs.wind.valid};
+
+        in.environmentValid = obs.environment.valid;
+        in.temperatureC = obs.temperatureC;
+        in.dewpointC = obs.dewpointC;
+        in.skyValid = obs.irSky.valid;
+        in.cloudCoverPercent = obs.cloudCoverPercent;
+
+        Alerts::AlertRules rules;
+        rules.onSafetyChange = cfg.alerts.onSafetyChange;
+        rules.onRain = cfg.alerts.onRain;
+        rules.onSensorFault = cfg.alerts.onSensorFault;
+        rules.onDewRisk = cfg.alerts.onDewRisk;
+        rules.dewRiskMarginC = cfg.alerts.dewRiskMarginC;
+        rules.onClearSky = cfg.alerts.onClearSky;
+        rules.clearSkyCloudPercent = cfg.alerts.clearSkyCloudPercent;
+        rules.cooldownSeconds = cfg.alerts.cooldownSeconds;
+
+        // Always run the engine so its state tracks reality while alerts are
+        // off; only deliver when the master switch is on.
+        const std::vector<Alerts::Alert> alerts = alertEngine.update(in, rules);
+        if (!cfg.alerts.enabled)
+            return;
+        for (const Alerts::Alert &alert : alerts)
+            alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName);
+    }
+
+    void WebServer::publishMqttSafety(const SafetyStatus &status)
+    {
+        const uint32_t now = millis();
+        const bool changed = !mqttSafetyPublished || status.isSafe != mqttLastPublishedSafe;
+        if (!changed && now - mqttSafetyPublishedAt < MQTT_SAFETY_REPUBLISH_MS)
+            return;
+
+        DynamicJsonDocument doc(1024);
+        doc["isSafe"] = status.isSafe;
+        JsonArray reasons = doc.createNestedArray("reasons");
+        for (const std::string &reason : status.reasons)
+            reasons.add(reason);
+        std::string payload;
+        serializeJson(doc, payload);
+
+        if (mqttClient != nullptr && mqttClient->publishSubtopic("safety", payload, true))
+        {
+            mqttSafetyPublished = true;
+            mqttLastPublishedSafe = status.isSafe;
+            mqttSafetyPublishedAt = now;
+        }
+    }
+
+    void WebServer::setupAlertRoutes()
+    {
+        server.on("/api/alerts/test", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+
+            const String channel = request->hasParam("channel") ? request->getParam("channel")->value() : String("all");
+            const AlertsConfig &alerts = getConfigCallback().alerts;
+            uint8_t mask = 0;
+            if (channel == "all")
+                mask = ALERT_CHANNELS_ALL;
+            else if (channel == "mqtt")
+                mask = alertChannelBit(AlertChannel::Mqtt);
+            else if (channel == "pushover")
+                mask = alertChannelBit(AlertChannel::Pushover);
+            else if (channel == "ntfy")
+                mask = alertChannelBit(AlertChannel::Ntfy);
+            else if (channel == "webhook")
+                mask = alertChannelBit(AlertChannel::Webhook);
+            else {
+                request->send(400, "application/json", createErrorJson("Unknown channel (expected mqtt, pushover, ntfy, webhook or all)").c_str());
+                return;
+            }
+
+            const uint8_t enabledMask =
+                (alerts.mqttEnabled ? alertChannelBit(AlertChannel::Mqtt) : 0) |
+                (alerts.pushoverEnabled ? alertChannelBit(AlertChannel::Pushover) : 0) |
+                (alerts.ntfyEnabled ? alertChannelBit(AlertChannel::Ntfy) : 0) |
+                (alerts.webhookEnabled ? alertChannelBit(AlertChannel::Webhook) : 0);
+            if ((mask & enabledMask) == 0) {
+                request->send(400, "application/json", createErrorJson("That channel isn't enabled - enable it and save settings first").c_str());
+                return;
+            }
+
+            pendingAlertTestMask.fetch_or(mask & enabledMask);
+            request->send(202, "application/json", "{\"success\":true,\"message\":\"Test notification queued\"}"); });
+
+        server.on("/api/alerts/recent", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            const std::vector<AlertRecord> records = alertDispatcher->recent();
+            DynamicJsonDocument doc(8192);
+            JsonArray arr = doc.to<JsonArray>();
+            const uint32_t nowSeconds = millis() / 1000;
+            // Newest first
+            for (auto it = records.rbegin(); it != records.rend(); ++it) {
+                JsonObject item = arr.createNestedObject();
+                item["id"] = it->id;
+                item["event"] = Alerts::alertTypeName(it->alert.type);
+                item["title"] = it->alert.title;
+                item["message"] = it->alert.message;
+                item["priority"] = static_cast<int>(it->alert.priority);
+                item["ageSeconds"] = nowSeconds - it->uptimeSeconds;
+                if (it->epochSeconds != 0)
+                    item["timestamp"] = it->epochSeconds;
+                JsonObject channels = item.createNestedObject("channels");
+                for (size_t i = 0; i < ALERT_CHANNEL_COUNT; ++i) {
+                    if (it->status[i] == DeliveryStatus::NotSent)
+                        continue;
+                    JsonObject ch = channels.createNestedObject(alertChannelName(static_cast<AlertChannel>(i)));
+                    ch["status"] = deliveryStatusName(it->status[i]);
+                    ch["detail"] = it->detail[i];
+                }
+            }
+            std::string json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json.c_str()); });
     }
 
     SafetyStatus WebServer::getSafetyStatus() const

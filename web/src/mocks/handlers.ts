@@ -6,6 +6,7 @@ import {
   mockWifiNetworks,
   mockGithubReleases,
   mockAlpacaDevices,
+  mockRecentAlerts,
 } from "./data";
 
 const alpacaEnvelope = <T,>(Value: T) => ({
@@ -57,6 +58,12 @@ export const handlers = [
 
   // REST — SafetyMonitor verdict
   http.get("/api/safety", () => HttpResponse.json(generateSensorData().safety)),
+
+  // REST — alerts
+  http.get("/api/alerts/recent", () => HttpResponse.json(mockRecentAlerts)),
+  http.post("/api/alerts/test", () =>
+    HttpResponse.json({ success: true, message: "Test notification queued" }, { status: 202 })
+  ),
 
   // REST — config
   http.get("/api/config", () => HttpResponse.json(mockConfig)),
