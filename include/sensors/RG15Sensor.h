@@ -39,11 +39,12 @@ namespace SQM
         float rInt;     // Rain intensity (mm/h or in/h)
         bool lensBad;   // Hardware / lens fault
         bool emSat;     // Emitter saturation
+        bool imperial;  // Last response reported inches ("iph") rather than mm ("mmph")
         uint32_t ageMs;
 
         RG15Reading() : isRaining(false), rainLatched(false), online(false), stale(true), acc(0.0f),
                         eventAcc(0.0f), localEventAcc(0.0f), totalAcc(0.0f), rInt(0.0f), lensBad(false),
-                        emSat(false), ageMs(0)
+                        emSat(false), imperial(false), ageMs(0)
         {
             timestamp = 0;
             status = SensorStatus::NOT_INITIALIZED;

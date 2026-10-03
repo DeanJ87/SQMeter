@@ -446,7 +446,9 @@ SQMeter can emit itself directly as an ASCOM Alpaca **SafetyMonitor** and **Obse
 | `GET /api/v1/<device>/0/name`, `description`, `driverinfo`, `driverversion`, `interfaceversion`, `supportedactions` | Common ASCOM device API |
 | `PUT /api/v1/<device>/0/action`, `commandblind`, `commandbool`, `commandstring` | Not supported - Alpaca error `0x400` (NotImplemented) |
 | `GET /api/v1/safetymonitor/0/issafe` | `true`/`false` from the safety-rule evaluation |
-| `GET /api/v1/observingconditions/0/<property>` | One route per Alpaca property (`cloudcover`, `dewpoint`, `humidity`, `skybrightness`, `skyquality`, `skytemperature`, `temperature`, `averageperiod`); unsupported properties (`pressure`, `rainrate`, `starfwhm`, `wind*`) return Alpaca error `0x400` (NotImplemented) |
+| `GET /api/v1/observingconditions/0/<property>` | One route per Alpaca property: `cloudcover`, `dewpoint`, `humidity`, `pressure`, `rainrate` (RG-15, mm/h), `skybrightness`, `skyquality`, `skytemperature`, `temperature`, `averageperiod`. `starfwhm` and `wind*` return Alpaca error `0x400` (NotImplemented) |
+| `PUT /api/v1/observingconditions/0/averageperiod`, `refresh` | `AveragePeriod` must be `0`; `refresh` is a no-op |
+| `GET /api/v1/observingconditions/0/sensordescription`, `timesincelastupdate` | Require `SensorName` (a property name; empty = any sensor for `timesincelastupdate`) |
 
 `<device>` is `safetymonitor` or `observingconditions`. Parameter names (`ClientTransactionID`, `Connected`, ...) are case-insensitive, per the Alpaca spec. Any other path under `/api/v1/` (unknown device type/number, method, or HTTP verb) returns HTTP `400` with a plain-text message.
 

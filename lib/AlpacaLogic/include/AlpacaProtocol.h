@@ -24,6 +24,10 @@ namespace SQM
         // can reply with InvalidValue.
         bool parseAlpacaBool(const std::string &raw, bool &out);
 
+        // Parses an Alpaca numeric parameter (invariant culture: '.' decimal
+        // separator). Rejects empty, partial ("1.5x"), NaN and infinite input.
+        bool parseAlpacaDouble(const std::string &raw, double &out);
+
         // Builds a per-device UniqueID from the chip's 48-bit MAC, e.g.
         // "sqmeter-a1b2c3d4e5f6-observingconditions-0", so two SQMeters on
         // the same network don't advertise colliding IDs.

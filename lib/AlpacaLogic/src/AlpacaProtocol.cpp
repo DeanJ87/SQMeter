@@ -1,6 +1,8 @@
 #include "AlpacaProtocol.h"
 
+#include <cmath>
 #include <cstdio>
+#include <cstdlib>
 
 namespace SQM
 {
@@ -54,6 +56,18 @@ namespace SQM
                 return true;
             }
             return false;
+        }
+
+        bool parseAlpacaDouble(const std::string &raw, double &out)
+        {
+            if (raw.empty())
+                return false;
+            char *end = nullptr;
+            const double value = std::strtod(raw.c_str(), &end);
+            if (end == raw.c_str() || *end != '\0' || !std::isfinite(value))
+                return false;
+            out = value;
+            return true;
         }
 
         std::string buildUniqueId(uint64_t mac48, const std::string &deviceTypeLower, uint32_t deviceNumber)

@@ -76,14 +76,19 @@ Each threshold has its own enable/disable toggle - a disabled threshold never co
 | `cloudcover` | Cloud detection (IR sky temperature vs. ambient, humidity-corrected) |
 | `dewpoint` | BME280 |
 | `humidity` | BME280 |
+| `pressure` | BME280 (hPa, station level) |
+| `rainrate` | Hydreon RG-15 rain intensity, in mm/h (converted if the RG-15 reports inches). `NotImplemented` when the rain sensor is disabled in Settings |
 | `skybrightness` | TSL2591 lux |
 | `skyquality` | Calculated SQM (mag/arcsec²) |
 | `skytemperature` | MLX90614 IR object temperature |
 | `temperature` | BME280 |
-| `averageperiod` | Always `0` (no averaging is performed) |
-| `pressure`, `rainrate`, `starfwhm`, `winddirection`, `windgust`, `windspeed` | Not implemented - no sensor for these; returns Alpaca error `0x400` |
+| `averageperiod` | Always `0`. `PUT` accepts only `0`; other values return `InvalidValue` (`0x401`) |
+| `winddirection`, `windgust`, `windspeed` | Not implemented until an anemometer is fitted - Alpaca error `0x400` |
+| `starfwhm` | Never implemented. Star FWHM needs a camera imaging real stars; N.I.N.A. measures HFR from your own frames |
 
-If sensor data is stale or hasn't been read yet, implemented properties return a driver error instead of a stale/zeroed value.
+Each property is tied to the sensor that produces it, so a fault in one sensor (say the BME280) only makes *its* properties return a driver error (`0x500`) - the others keep reporting. A stale or never-read sensor is treated the same way.
+
+`sensordescription` and `timesincelastupdate` take a `SensorName` (any property name above) and report which sensor serves it and how many seconds ago it last updated; an empty `SensorName` to `timesincelastupdate` returns the age of the most recent update from any sensor. `PUT refresh` is accepted and does nothing - readings already refresh every sensor cycle.
 
 ---
 

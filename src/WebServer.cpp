@@ -861,6 +861,19 @@ namespace SQM
             return json;
         }
 
+        std::string buildAlpacaResponseStringWithError(AsyncWebServerRequest *request, const std::string &value, int errorNumber, const std::string &errorMessage, uint32_t &txnCounter)
+        {
+            StaticJsonDocument<384> doc;
+            doc["Value"] = value;
+            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
+            doc["ServerTransactionID"] = ++txnCounter;
+            doc["ErrorNumber"] = errorNumber;
+            doc["ErrorMessage"] = errorMessage;
+            std::string json;
+            serializeJson(doc, json);
+            return json;
+        }
+
         std::string buildAlpacaResponseInt(AsyncWebServerRequest *request, int value, uint32_t &txnCounter)
         {
             StaticJsonDocument<192> doc;
@@ -962,19 +975,37 @@ namespace SQM
     {
         const SensorSnapshot snapshot = getSensorSnapshot();
         const uint32_t now = millis();
-        const uint32_t staleAfter = getConfigCallback().sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
-        const bool stale = snapshot.dataTimestamp == 0 || ageMs(now, snapshot.dataTimestamp) > staleAfter;
+        const Config &cfg = getConfigCallback();
+        const uint32_t staleAfter = cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
+
+        auto sourceState = [now, staleAfter](bool present, SensorStatus status, uint32_t lastUpdate)
+        {
+            Alpaca::SourceState state;
+            state.present = present;
+            state.ageSeconds = ageMs(now, lastUpdate) / 1000.0;
+            state.valid = present && status == SensorStatus::OK && lastUpdate != 0 && ageMs(now, lastUpdate) <= staleAfter;
+            return state;
+        };
 
         Alpaca::ObservingConditionsSnapshot snap;
-        snap.dataValid = !stale;
+        snap.skyLight = sourceState(true, snapshot.tsl.status, snapshot.tslLastUpdate);
+        snap.irSky = sourceState(true, snapshot.mlx.status, snapshot.mlxLastUpdate);
+        snap.environment = sourceState(true, snapshot.bme.status, snapshot.bmeLastUpdate);
 
-        const Config &cfg = getConfigCallback();
-        bool usingHumidityFallback = snapshot.bme.status != SensorStatus::OK;
-        float humidity = usingHumidityFallback ? 53.0f : snapshot.bme.humidity;
+        // The RG-15 polls on its own interval and tracks its own staleness.
+        snap.rain.present = cfg.rain.enabled;
+        snap.rain.ageSeconds = ageMs(now, snapshot.rg15.timestamp) / 1000.0;
+        snap.rain.valid = cfg.rain.enabled && snapshot.rg15.online && !snapshot.rg15.stale &&
+                          snapshot.rg15.status == SensorStatus::OK && snapshot.rg15.timestamp != 0;
+
+        // Cloud cover may use a nominal humidity when the BME280 is down -
+        // it only shifts the correction term - but Alpaca's Humidity
+        // property must never report that made-up value.
+        const float humidityForCloud = snap.environment.valid ? snapshot.bme.humidity : 53.0f;
         CloudMetrics cloudMetrics = CloudDetection::calculate(
             snapshot.mlx.objectTemp,
             snapshot.mlx.ambientTemp,
-            humidity,
+            humidityForCloud,
             cfg.cloudDetection.clearSkyThreshold,
             cfg.cloudDetection.cloudyThreshold,
             cfg.cloudDetection.humidityCorrection);
@@ -985,8 +1016,10 @@ namespace SQM
         snap.skyBrightnessLux = snapshot.tsl.lux;
         snap.skyTemperatureC = snapshot.mlx.objectTemp;
         snap.temperatureC = snapshot.bme.temperature;
-        snap.humidityPercent = humidity;
+        snap.humidityPercent = snapshot.bme.humidity;
         snap.dewpointC = snapshot.bme.dewpoint;
+        snap.pressureHPa = snapshot.bme.pressure;
+        snap.rainRateMmPerHour = Alpaca::rainRateToMmPerHour(snapshot.rg15.rInt, snapshot.rg15.imperial);
 
         return snap;
     }
@@ -1188,7 +1221,7 @@ namespace SQM
                              "Reports observatory safety based on cloud cover, sky brightness, humidity, and dew-point margin from the onboard SQMeter sensors.");
         registerCommonRoutes("/api/v1/observingconditions/0", ALPACA_OBSERVING_CONDITIONS, OBSERVING_CONDITIONS_INTERFACE_VERSION,
                              "SQMeter ObservingConditions",
-                             "Reports sky quality, cloud cover, sky temperature, humidity, dew point, and ambient temperature from the onboard SQMeter sensors.");
+                             "Reports sky quality, sky brightness, cloud cover, sky temperature, temperature, humidity, dew point, pressure and (with an RG-15 fitted) rain rate from the onboard SQMeter sensors.");
 
         // --- SafetyMonitor-specific ---
         server.on("/api/v1/safetymonitor/0/issafe", HTTP_GET, [this](AsyncWebServerRequest *request)
@@ -1211,6 +1244,41 @@ namespace SQM
         // --- ObservingConditions-specific: one route per Alpaca property ---
         server.on("/api/v1/observingconditions/0/averageperiod", HTTP_GET, [this](AsyncWebServerRequest *request)
                   { request->send(200, "application/json", buildAlpacaResponseDouble(request, 0.0, 0, "").c_str()); });
+
+        server.on("/api/v1/observingconditions/0/averageperiod", HTTP_PUT, [this](AsyncWebServerRequest *request)
+                  {
+            const AsyncWebParameter *param = findAlpacaParam(request, "AveragePeriod");
+            double hours = 0.0;
+            if (param == nullptr || !Alpaca::parseAlpacaDouble(param->value().c_str(), hours)) {
+                sendAlpacaBadRequest(request, "Missing or invalid AveragePeriod parameter");
+                return;
+            }
+            Alpaca::PropertyResult result = Alpaca::validateAveragePeriod(hours);
+            request->send(200, "application/json", buildAlpacaResponseVoid(request, result.ok ? 0 : result.errorNumber, result.errorMessage).c_str()); });
+
+        // Readings refresh every sensor cycle already; nothing to force.
+        server.on("/api/v1/observingconditions/0/refresh", HTTP_PUT, [this](AsyncWebServerRequest *request)
+                  { request->send(200, "application/json", buildAlpacaResponseVoid(request, 0, "").c_str()); });
+
+        server.on("/api/v1/observingconditions/0/sensordescription", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            const AsyncWebParameter *param = findAlpacaParam(request, "SensorName");
+            if (param == nullptr) {
+                sendAlpacaBadRequest(request, "Missing SensorName parameter");
+                return;
+            }
+            Alpaca::StringResult result = Alpaca::getSensorDescription(param->value().c_str(), buildAlpacaObservingConditionsSnapshot());
+            request->send(200, "application/json", buildAlpacaResponseStringWithError(request, result.value, result.ok ? 0 : result.errorNumber, result.errorMessage, alpacaServerTransactionId).c_str()); });
+
+        server.on("/api/v1/observingconditions/0/timesincelastupdate", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            const AsyncWebParameter *param = findAlpacaParam(request, "SensorName");
+            if (param == nullptr) {
+                sendAlpacaBadRequest(request, "Missing SensorName parameter");
+                return;
+            }
+            Alpaca::PropertyResult result = Alpaca::getTimeSinceLastUpdate(param->value().c_str(), buildAlpacaObservingConditionsSnapshot());
+            request->send(200, "application/json", buildAlpacaResponseDouble(request, result.ok ? result.value : 0.0, result.ok ? 0 : result.errorNumber, result.errorMessage).c_str()); });
 
         for (const ObservingPropertyName &property : OBSERVING_PROPERTIES)
         {

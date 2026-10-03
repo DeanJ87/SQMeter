@@ -158,10 +158,23 @@ void test_stale_data_suppresses_threshold_checks(void)
 
 // --- ObservingConditionsMapper ---
 
+namespace
+{
+    ObservingConditionsSnapshot allValidSnapshot()
+    {
+        ObservingConditionsSnapshot snap;
+        for (SourceState *source : {&snap.skyLight, &snap.irSky, &snap.environment})
+        {
+            source->present = true;
+            source->valid = true;
+        }
+        return snap;
+    }
+}
+
 void test_observing_conditions_maps_known_property(void)
 {
-    ObservingConditionsSnapshot snap;
-    snap.dataValid = true;
+    ObservingConditionsSnapshot snap = allValidSnapshot();
     snap.skyQualityMagArcsec2 = 21.3f;
 
     PropertyResult r = getObservingConditionsProperty("SkyQuality", snap);
@@ -171,8 +184,7 @@ void test_observing_conditions_maps_known_property(void)
 
 void test_observing_conditions_case_insensitive(void)
 {
-    ObservingConditionsSnapshot snap;
-    snap.dataValid = true;
+    ObservingConditionsSnapshot snap = allValidSnapshot();
     snap.temperatureC = 12.5f;
 
     PropertyResult r = getObservingConditionsProperty("TEMPERATURE", snap);
@@ -181,17 +193,19 @@ void test_observing_conditions_case_insensitive(void)
 
 void test_observing_conditions_not_implemented_property(void)
 {
-    ObservingConditionsSnapshot snap;
-    snap.dataValid = true;
+    ObservingConditionsSnapshot snap = allValidSnapshot(); // wind not present
 
     PropertyResult r = getObservingConditionsProperty("windspeed", snap);
     TEST_ASSERT_FALSE(r.ok);
+    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, r.errorNumber);
+
+    r = getObservingConditionsProperty("starfwhm", snap);
     TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, r.errorNumber);
 }
 
 void test_observing_conditions_average_period_always_zero(void)
 {
-    ObservingConditionsSnapshot snap; // dataValid false - shouldn't matter
+    ObservingConditionsSnapshot snap; // nothing valid - shouldn't matter
     PropertyResult r = getObservingConditionsProperty("averageperiod", snap);
     TEST_ASSERT_TRUE(r.ok);
     TEST_ASSERT_EQUAL_FLOAT(0.0, r.value);
@@ -199,22 +213,133 @@ void test_observing_conditions_average_period_always_zero(void)
 
 void test_observing_conditions_no_data_error(void)
 {
-    ObservingConditionsSnapshot snap;
-    snap.dataValid = false;
+    ObservingConditionsSnapshot snap = allValidSnapshot();
+    snap.environment.valid = false;
 
     PropertyResult r = getObservingConditionsProperty("humidity", snap);
     TEST_ASSERT_FALSE(r.ok);
     TEST_ASSERT_EQUAL(ALPACA_ERR_DRIVER_BASE, r.errorNumber);
 }
 
+void test_observing_conditions_one_sensor_down_others_ok(void)
+{
+    ObservingConditionsSnapshot snap = allValidSnapshot();
+    snap.environment.valid = false;
+    snap.skyTemperatureC = -20.0f;
+
+    TEST_ASSERT_FALSE(getObservingConditionsProperty("pressure", snap).ok);
+    PropertyResult r = getObservingConditionsProperty("skytemperature", snap);
+    TEST_ASSERT_TRUE(r.ok);
+    TEST_ASSERT_EQUAL_FLOAT(-20.0f, r.value);
+}
+
 void test_observing_conditions_unknown_property(void)
 {
-    ObservingConditionsSnapshot snap;
-    snap.dataValid = true;
+    ObservingConditionsSnapshot snap = allValidSnapshot();
 
     PropertyResult r = getObservingConditionsProperty("bogus", snap);
     TEST_ASSERT_FALSE(r.ok);
     TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, r.errorNumber);
+}
+
+void test_observing_conditions_pressure(void)
+{
+    ObservingConditionsSnapshot snap = allValidSnapshot();
+    snap.pressureHPa = 1013.2f;
+
+    PropertyResult r = getObservingConditionsProperty("pressure", snap);
+    TEST_ASSERT_TRUE(r.ok);
+    TEST_ASSERT_EQUAL_FLOAT(1013.2f, r.value);
+}
+
+void test_observing_conditions_rainrate_depends_on_rain_sensor(void)
+{
+    ObservingConditionsSnapshot snap = allValidSnapshot();
+    snap.rainRateMmPerHour = 2.5f;
+
+    // Rain sensor disabled -> NotImplemented
+    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, getObservingConditionsProperty("rainrate", snap).errorNumber);
+
+    // Enabled but offline -> driver error
+    snap.rain.present = true;
+    TEST_ASSERT_EQUAL(ALPACA_ERR_DRIVER_BASE, getObservingConditionsProperty("rainrate", snap).errorNumber);
+
+    snap.rain.valid = true;
+    PropertyResult r = getObservingConditionsProperty("rainrate", snap);
+    TEST_ASSERT_TRUE(r.ok);
+    TEST_ASSERT_EQUAL_FLOAT(2.5f, r.value);
+}
+
+void test_rain_rate_imperial_conversion(void)
+{
+    TEST_ASSERT_EQUAL_FLOAT(25.4f, rainRateToMmPerHour(1.0f, true));
+    TEST_ASSERT_EQUAL_FLOAT(3.0f, rainRateToMmPerHour(3.0f, false));
+}
+
+void test_wind_direction_zero_when_calm(void)
+{
+    ObservingConditionsSnapshot snap = allValidSnapshot();
+    snap.wind.present = true;
+    snap.wind.valid = true;
+    snap.windDirectionDeg = 270.0f;
+    snap.windSpeedMs = 0.0f;
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, getObservingConditionsProperty("winddirection", snap).value);
+    snap.windSpeedMs = 3.0f;
+    TEST_ASSERT_EQUAL_FLOAT(270.0f, getObservingConditionsProperty("winddirection", snap).value);
+}
+
+void test_sensor_description(void)
+{
+    ObservingConditionsSnapshot snap = allValidSnapshot();
+
+    StringResult r = getSensorDescription("Pressure", snap);
+    TEST_ASSERT_TRUE(r.ok);
+    TEST_ASSERT_TRUE(r.value.find("BME280") != std::string::npos);
+
+    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, getSensorDescription("StarFWHM", snap).errorNumber);
+    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, getSensorDescription("RainRate", snap).errorNumber);
+    TEST_ASSERT_EQUAL(ALPACA_ERR_INVALID_VALUE, getSensorDescription("bogus", snap).errorNumber);
+}
+
+void test_time_since_last_update(void)
+{
+    ObservingConditionsSnapshot snap = allValidSnapshot();
+    snap.skyLight.ageSeconds = 0.4;
+    snap.irSky.ageSeconds = 3.0;
+    snap.environment.ageSeconds = 2.0;
+
+    PropertyResult r = getTimeSinceLastUpdate("", snap);
+    TEST_ASSERT_TRUE(r.ok);
+    TEST_ASSERT_EQUAL_FLOAT(0.4, r.value);
+
+    r = getTimeSinceLastUpdate("humidity", snap);
+    TEST_ASSERT_TRUE(r.ok);
+    TEST_ASSERT_EQUAL_FLOAT(2.0, r.value);
+
+    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, getTimeSinceLastUpdate("windspeed", snap).errorNumber);
+    TEST_ASSERT_EQUAL(ALPACA_ERR_INVALID_VALUE, getTimeSinceLastUpdate("bogus", snap).errorNumber);
+
+    ObservingConditionsSnapshot empty;
+    TEST_ASSERT_EQUAL(ALPACA_ERR_DRIVER_BASE, getTimeSinceLastUpdate("", empty).errorNumber);
+}
+
+void test_average_period_validation(void)
+{
+    TEST_ASSERT_TRUE(validateAveragePeriod(0.0).ok);
+    TEST_ASSERT_EQUAL(ALPACA_ERR_INVALID_VALUE, validateAveragePeriod(1.0).errorNumber);
+    TEST_ASSERT_EQUAL(ALPACA_ERR_INVALID_VALUE, validateAveragePeriod(-1.0).errorNumber);
+}
+
+void test_alpaca_double_parsing(void)
+{
+    double v = -1.0;
+    TEST_ASSERT_TRUE(parseAlpacaDouble("0", v));
+    TEST_ASSERT_EQUAL_FLOAT(0.0, v);
+    TEST_ASSERT_TRUE(parseAlpacaDouble("1.5", v));
+    TEST_ASSERT_EQUAL_FLOAT(1.5, v);
+    TEST_ASSERT_FALSE(parseAlpacaDouble("", v));
+    TEST_ASSERT_FALSE(parseAlpacaDouble("1.5x", v));
+    TEST_ASSERT_FALSE(parseAlpacaDouble("nan", v));
 }
 
 // --- AlpacaDiscovery ---
@@ -310,6 +435,15 @@ int main(int argc, char **argv)
     RUN_TEST(test_observing_conditions_average_period_always_zero);
     RUN_TEST(test_observing_conditions_no_data_error);
     RUN_TEST(test_observing_conditions_unknown_property);
+    RUN_TEST(test_observing_conditions_one_sensor_down_others_ok);
+    RUN_TEST(test_observing_conditions_pressure);
+    RUN_TEST(test_observing_conditions_rainrate_depends_on_rain_sensor);
+    RUN_TEST(test_rain_rate_imperial_conversion);
+    RUN_TEST(test_wind_direction_zero_when_calm);
+    RUN_TEST(test_sensor_description);
+    RUN_TEST(test_time_since_last_update);
+    RUN_TEST(test_average_period_validation);
+    RUN_TEST(test_alpaca_double_parsing);
 
     RUN_TEST(test_discovery_valid_packet);
     RUN_TEST(test_discovery_rejects_wrong_payload);
