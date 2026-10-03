@@ -55,6 +55,9 @@ export const handlers = [
     ]));
   }),
 
+  // REST — SafetyMonitor verdict
+  http.get("/api/safety", () => HttpResponse.json(generateSensorData().safety)),
+
   // REST — config
   http.get("/api/config", () => HttpResponse.json(mockConfig)),
   http.post("/api/config", () => HttpResponse.json({ success: true })),

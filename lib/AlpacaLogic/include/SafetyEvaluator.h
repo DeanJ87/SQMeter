@@ -31,6 +31,9 @@ namespace SQM
 
             bool dewpointMarginEnabled = false;
             float dewpointMarginMinC = 0.0f;
+
+            bool rainUnsafeEnabled = true;
+            bool rainSensorRequired = true;
         };
 
         // Current sensor/data-freshness state to evaluate against the
@@ -47,12 +50,42 @@ namespace SQM
             float humidityPercent = 0.0f;
             float temperatureC = 0.0f;
             float dewpointC = 0.0f;
+
+            // BME280 not OK: humidity/dew point rules can't be evaluated.
+            bool environmentSensorFault = false;
+
+            // Rain sensor (RG-15). Evaluated independently of the freshness
+            // of the other sensors above.
+            bool rainSensorEnabled = false;
+            bool rainSensorHealthy = false; // online, fresh, no lens fault
+            bool raining = false;           // includes the post-rain hold-off latch
+        };
+
+        // One bit per distinct unsafe reason, so callers (alerts, BLE) can
+        // detect which reasons appeared/cleared without string matching.
+        enum UnsafeReasonFlag : uint32_t
+        {
+            UNSAFE_MANUAL_OVERRIDE = 1u << 0,
+            UNSAFE_NO_DATA = 1u << 1,
+            UNSAFE_STALE_DATA = 1u << 2,
+            UNSAFE_SENSOR_FAULT = 1u << 3,
+            UNSAFE_CLOUD_COVER = 1u << 4,
+            UNSAFE_SKY_BRIGHT = 1u << 5,
+            UNSAFE_HUMIDITY = 1u << 6,
+            UNSAFE_DEWPOINT = 1u << 7,
+            UNSAFE_ENVIRONMENT_FAULT = 1u << 8,
+            UNSAFE_RAIN = 1u << 9,
+            UNSAFE_RAIN_SENSOR_FAULT = 1u << 10,
+            UNSAFE_WIND = 1u << 11,
+            UNSAFE_WIND_GUST = 1u << 12,
+            UNSAFE_WIND_SENSOR_FAULT = 1u << 13,
         };
 
         struct SafetyResult
         {
             bool isSafe = false;
             std::vector<std::string> unsafeReasons; // empty when isSafe is true
+            uint32_t reasonFlags = 0;               // UnsafeReasonFlag bits, 0 when safe
         };
 
         // Pure evaluation, no I/O - matches the Go bridge's rule precedence:
@@ -61,6 +94,24 @@ namespace SQM
         // reasons are collected, not just the first one, so the diagnostics
         // endpoint can show everything that's wrong at once.
         SafetyResult evaluateSafety(const SafetyInputs &inputs, const SafetyThresholds &thresholds);
+
+        // Holds a "safe" verdict back until conditions have been continuously
+        // safe for delaySeconds, so a roof doesn't open on a momentary gap in
+        // the clouds. Unsafe is always reported immediately. The timer also
+        // starts at boot, so a reboot never reports safe early.
+        class SafeDelayFilter
+        {
+        public:
+            bool update(bool rawSafe, uint32_t nowSeconds, uint32_t delaySeconds);
+            // Seconds left before a currently-safe raw verdict is reported
+            // safe; 0 when already reported safe or currently unsafe.
+            uint32_t secondsUntilSafe() const { return remaining; }
+
+        private:
+            bool rawSafeRunning = false;
+            uint32_t safeSince = 0;
+            uint32_t remaining = 0;
+        };
 
     } // namespace Alpaca
 } // namespace SQM

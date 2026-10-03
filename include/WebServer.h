@@ -26,6 +26,19 @@
 namespace SQM
 {
 
+    // Latest SafetyMonitor verdict, re-evaluated every second so the safe
+    // delay, alerts and the dashboard all see one consistent state.
+    struct SafetyStatus
+    {
+        bool isSafe = false;  // reported verdict (after the safe delay)
+        bool rawSafe = false; // instantaneous rule evaluation
+        uint32_t reasonFlags = 0;
+        std::vector<std::string> reasons;
+        uint32_t secondsUntilSafe = 0;
+        uint32_t evaluatedAtMs = 0;
+        uint32_t changedAtMs = 0; // when isSafe last changed
+    };
+
     class WebServer
     {
     public:
@@ -51,6 +64,7 @@ namespace SQM
         void begin();
         void handle();
         void refreshSensorSnapshot(uint32_t dataTimestampMs);
+        SafetyStatus getSafetyStatus() const;
 
         // Broadcast sensor data to Dashboard WebSocket clients
         void broadcastSensorData();
@@ -127,6 +141,13 @@ namespace SQM
         // only reflects what clients last set via Connect/Disconnect/Connected.
         bool alpacaConnected[2] = {false, false};
 
+        SafetyStatus safetyStatus;
+        Alpaca::SafeDelayFilter safeDelayFilter;
+        SemaphoreHandle_t safetyMutex = xSemaphoreCreateMutex();
+        uint32_t lastSafetyEvaluation = 0;
+        static constexpr uint32_t SAFETY_EVALUATION_INTERVAL_MS = 1000;
+        void updateSafetyStatus();
+
         // Setup route handlers
         void setupStaticRoutes();
         void setupAPIRoutes();
@@ -170,6 +191,7 @@ namespace SQM
         bool requireAuth(AsyncWebServerRequest *request) const;
         SensorSnapshot getSensorSnapshot() const;
         std::string createSensorDataJson() const;
+        void appendSafetyStatus(JsonObject target) const;
         std::string createStatusJson() const;
         static std::string createErrorJson(const char *error);
         static bool scheduleRestart(uint32_t delayMs);

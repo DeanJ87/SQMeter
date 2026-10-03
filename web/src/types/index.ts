@@ -38,6 +38,7 @@ export interface CloudConditions {
 
 export interface SensorData {
   dataTimestamp?: number;
+  safety?: SafetyStatus;
   lightSensor?: LightSensorReading;
   environment?: EnvironmentReading;
   irTemperature?: IRTemperatureReading;
@@ -347,6 +348,21 @@ export interface AlpacaConfig {
   humidityMaxSafe: number;
   dewpointMarginEnabled: boolean;
   dewpointMarginMinC: number;
+  rainUnsafeEnabled: boolean;
+  rainSensorRequired: boolean;
+  safeDelaySeconds: number;
+}
+
+// Live SafetyMonitor verdict (GET /api/safety, and `safety` on /ws/sensors)
+export interface SafetyStatus {
+  isSafe: boolean;
+  rawSafe: boolean;
+  alpacaEnabled: boolean;
+  reasonFlags: number;
+  reasons: string[];
+  secondsUntilSafe: number;
+  evaluatedAgeMs: number;
+  changedAgeMs: number;
 }
 
 export interface Config {

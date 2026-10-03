@@ -267,6 +267,11 @@ namespace SQM
             vSemaphoreDelete(sensorSnapshotMutex);
             sensorSnapshotMutex = nullptr;
         }
+        if (safetyMutex)
+        {
+            vSemaphoreDelete(safetyMutex);
+            safetyMutex = nullptr;
+        }
     }
 
     void WebServer::begin()
@@ -328,6 +333,12 @@ namespace SQM
         handleAlpacaDiscovery();
 
         const uint32_t now = millis();
+
+        if (now - lastSafetyEvaluation >= SAFETY_EVALUATION_INTERVAL_MS)
+        {
+            updateSafetyStatus();
+            lastSafetyEvaluation = now;
+        }
 
         // Broadcast sensor data every 1 second (for Dashboard)
         if (now - lastSensorBroadcast >= WS_SENSOR_BROADCAST_INTERVAL_MS)
@@ -422,6 +433,14 @@ namespace SQM
         // Sensors endpoint
         server.on("/api/sensors", HTTP_GET, [this](AsyncWebServerRequest *request)
                   { handleGetSensors(request); });
+
+        server.on("/api/safety", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            DynamicJsonDocument doc(1536);
+            appendSafetyStatus(doc.to<JsonObject>());
+            std::string json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json.c_str()); });
 
         server.on("/api/sensors/tsl2591/calibrate-dark", HTTP_POST, [this](AsyncWebServerRequest *request)
                   { handleTSL2591DarkCalibration(request); });
@@ -946,6 +965,14 @@ namespace SQM
         in.humidityPercent = humidity;
         in.temperatureC = snapshot.bme.temperature;
         in.dewpointC = snapshot.bme.dewpoint;
+        in.environmentSensorFault = usingHumidityFallback;
+
+        in.rainSensorEnabled = cfg.rain.enabled;
+        in.rainSensorHealthy = snapshot.rg15.online && !snapshot.rg15.stale &&
+                               snapshot.rg15.status == SensorStatus::OK && !snapshot.rg15.lensBad;
+        // rainLatched holds for rain.rainClearDelayMs after the last drop -
+        // the hold-off before a roof should re-open.
+        in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
 
         return in;
     }
@@ -963,12 +990,49 @@ namespace SQM
         thresholds.humidityMaxSafe = cfg.alpaca.humidityMaxSafe;
         thresholds.dewpointMarginEnabled = cfg.alpaca.dewpointMarginEnabled;
         thresholds.dewpointMarginMinC = cfg.alpaca.dewpointMarginMinC;
+        thresholds.rainUnsafeEnabled = cfg.alpaca.rainUnsafeEnabled;
+        thresholds.rainSensorRequired = cfg.alpaca.rainSensorRequired;
         return thresholds;
     }
 
     Alpaca::SafetyResult WebServer::evaluateAlpacaSafety() const
     {
         return Alpaca::evaluateSafety(buildAlpacaSafetyInputs(), buildAlpacaSafetyThresholds(getConfigCallback()));
+    }
+
+    void WebServer::updateSafetyStatus()
+    {
+        const Alpaca::SafetyResult result = evaluateAlpacaSafety();
+        const uint32_t now = millis();
+        const bool reportedSafe = safeDelayFilter.update(result.isSafe, now / 1000, getConfigCallback().alpaca.safeDelaySeconds);
+
+        if (safetyMutex && xSemaphoreTake(safetyMutex, pdMS_TO_TICKS(100)) == pdTRUE)
+        {
+            if (reportedSafe != safetyStatus.isSafe || safetyStatus.evaluatedAtMs == 0)
+            {
+                if (safetyStatus.evaluatedAtMs != 0)
+                    Logger::info(TAG, "SafetyMonitor now %s", reportedSafe ? "SAFE" : "UNSAFE");
+                safetyStatus.changedAtMs = now;
+            }
+            safetyStatus.isSafe = reportedSafe;
+            safetyStatus.rawSafe = result.isSafe;
+            safetyStatus.reasonFlags = result.reasonFlags;
+            safetyStatus.reasons = result.unsafeReasons;
+            safetyStatus.secondsUntilSafe = safeDelayFilter.secondsUntilSafe();
+            safetyStatus.evaluatedAtMs = now;
+            xSemaphoreGive(safetyMutex);
+        }
+    }
+
+    SafetyStatus WebServer::getSafetyStatus() const
+    {
+        SafetyStatus copy;
+        if (safetyMutex && xSemaphoreTake(safetyMutex, pdMS_TO_TICKS(100)) == pdTRUE)
+        {
+            copy = safetyStatus;
+            xSemaphoreGive(safetyMutex);
+        }
+        return copy;
     }
 
     Alpaca::ObservingConditionsSnapshot WebServer::buildAlpacaObservingConditionsSnapshot() const
@@ -1218,7 +1282,7 @@ namespace SQM
 
         registerCommonRoutes("/api/v1/safetymonitor/0", ALPACA_SAFETY_MONITOR, SAFETY_MONITOR_INTERFACE_VERSION,
                              "SQMeter SafetyMonitor",
-                             "Reports observatory safety based on cloud cover, sky brightness, humidity, and dew-point margin from the onboard SQMeter sensors.");
+                             "Reports observatory safety from rain (RG-15), cloud cover, sky brightness, humidity and dew-point margin measured by the onboard SQMeter sensors.");
         registerCommonRoutes("/api/v1/observingconditions/0", ALPACA_OBSERVING_CONDITIONS, OBSERVING_CONDITIONS_INTERFACE_VERSION,
                              "SQMeter ObservingConditions",
                              "Reports sky quality, sky brightness, cloud cover, sky temperature, temperature, humidity, dew point, pressure and (with an RG-15 fitted) rain rate from the onboard SQMeter sensors.");
@@ -1230,11 +1294,11 @@ namespace SQM
                 request->send(200, "application/json", buildAlpacaResponseBool(request, false, Alpaca::ALPACA_ERR_NOT_CONNECTED, "Alpaca support is disabled in device settings").c_str());
                 return;
             }
-            request->send(200, "application/json", buildAlpacaResponseBool(request, evaluateAlpacaSafety().isSafe, 0, "").c_str()); });
+            request->send(200, "application/json", buildAlpacaResponseBool(request, getSafetyStatus().isSafe, 0, "").c_str()); });
 
         server.on("/api/v1/safetymonitor/0/devicestate", HTTP_GET, [this](AsyncWebServerRequest *request)
                   {
-            const bool isSafe = getConfigCallback().alpaca.enabled && evaluateAlpacaSafety().isSafe;
+            const bool isSafe = getConfigCallback().alpaca.enabled && getSafetyStatus().isSafe;
             request->send(200, "application/json", buildAlpacaResponseDeviceState(request, [isSafe](JsonArray &arr) {
                 JsonObject item = arr.createNestedObject();
                 item["Name"] = "IsSafe";
@@ -1757,9 +1821,25 @@ namespace SQM
         return timestamp == 0 ? 0 : now - timestamp;
     }
 
+    void WebServer::appendSafetyStatus(JsonObject target) const
+    {
+        const SafetyStatus status = getSafetyStatus();
+        const uint32_t now = millis();
+        target["isSafe"] = status.isSafe;
+        target["rawSafe"] = status.rawSafe;
+        target["alpacaEnabled"] = getConfigCallback().alpaca.enabled;
+        target["reasonFlags"] = status.reasonFlags;
+        JsonArray reasons = target.createNestedArray("reasons");
+        for (const std::string &reason : status.reasons)
+            reasons.add(reason);
+        target["secondsUntilSafe"] = status.secondsUntilSafe;
+        target["evaluatedAgeMs"] = ageMs(now, status.evaluatedAtMs);
+        target["changedAgeMs"] = ageMs(now, status.changedAtMs);
+    }
+
     std::string WebServer::createSensorDataJson() const
     {
-        DynamicJsonDocument doc(5120);
+        DynamicJsonDocument doc(6144);
         const SensorSnapshot snapshot = getSensorSnapshot();
         const uint32_t now = millis();
         const uint32_t dataAge = ageMs(now, snapshot.dataTimestamp);
@@ -1871,6 +1951,9 @@ namespace SQM
             JsonObject rain = doc.createNestedObject("rainSensor");
             appendRG15Diagnostics(rain, snapshot.rg15, snapshot.rg15Diagnostics, now);
         }
+
+        JsonObject safety = doc.createNestedObject("safety");
+        appendSafetyStatus(safety);
 
         std::string json;
         serializeJson(doc, json);

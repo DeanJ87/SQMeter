@@ -62,6 +62,9 @@ const defaultAlpacaConfig: NonNullable<Config['alpaca']> = {
   humidityMaxSafe: 100,
   dewpointMarginEnabled: false,
   dewpointMarginMinC: 0,
+  rainUnsafeEnabled: true,
+  rainSensorRequired: true,
+  safeDelaySeconds: 0,
 };
 
 const fieldErrorAliases: Record<string, string> = {
@@ -129,7 +132,8 @@ const toConfigPayload = (source: Config): Config => {
     cloudDetection: source.cloudDetection
       ? { ...source.cloudDetection }
       : { ...defaultCloudDetectionConfig },
-    alpaca: source.alpaca ? { ...source.alpaca } : { ...defaultAlpacaConfig },
+    // Merge defaults so configs from older firmware gain newly added fields.
+    alpaca: { ...defaultAlpacaConfig, ...source.alpaca },
   };
 
   return {
@@ -1247,7 +1251,7 @@ const Settings: FunctionalComponent = () => {
 
       {/* ASCOM Alpaca Settings */}
       <section id="alpaca" class="bg-gray-800 rounded-lg p-6 border border-gray-700 scroll-mt-4">
-        <h2 class="text-xl font-semibold text-white mb-4">ASCOM Alpaca</h2>
+        <h2 class="text-xl font-semibold text-white mb-4">ASCOM Alpaca &amp; Safety</h2>
         <p class="text-sm text-gray-400 mb-4">
           Exposes this device directly as an ASCOM Alpaca SafetyMonitor and ObservingConditions device (HTTP + UDP discovery on port 32227), for use with N.I.N.A. and other ASCOM Alpaca clients. Requires a restart to start/stop the UDP discovery listener.{' '}
           <a href="/alpaca" class="text-cyan-300 hover:underline">View Alpaca devices, URLs and live state</a>
@@ -1370,6 +1374,49 @@ const Settings: FunctionalComponent = () => {
               class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
             />
             <p class="mt-1 text-xs text-gray-500">Unsafe when (temperature - dewpoint) drops below this margin, in °C</p>
+          </div>
+
+          <div class="border-t border-gray-700 pt-4 space-y-3">
+            <h3 class="text-sm font-semibold text-gray-200">Rain (RG-15)</h3>
+            {!config.rain?.enabled && (
+              <p class="text-xs text-amber-300">The rain sensor is disabled below, so these rules have no effect until it is enabled.</p>
+            )}
+            <label class="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={alpaca.rainUnsafeEnabled}
+                onChange={(e) => updateConfig(['alpaca', 'rainUnsafeEnabled'], (e.target as HTMLInputElement).checked)}
+              />
+              <span class="text-white">Unsafe while raining</span>
+            </label>
+            <p class="text-xs text-gray-500 -mt-2 ml-7">
+              Stays unsafe until the rain sensor's "rain clear delay" ({Math.round((config.rain?.rainClearDelayMs ?? 900000) / 60000)} min) has passed with no rain. Checked even when other sensor data is stale.
+            </p>
+            <label class="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={alpaca.rainSensorRequired}
+                onChange={(e) => updateConfig(['alpaca', 'rainSensorRequired'], (e.target as HTMLInputElement).checked)}
+              />
+              <span class="text-white">Unsafe if the rain sensor is offline or faulty (fail safe)</span>
+            </label>
+            <p class="text-xs text-gray-500 -mt-2 ml-7">Covers no response, stale readings and the RG-15's lens-fault flag.</p>
+          </div>
+
+          <div class="border-t border-gray-700 pt-4">
+            <label class="block text-sm font-medium text-gray-300 mb-2">Safe delay (seconds)</label>
+            <input
+              type="number"
+              name="alpaca.safeDelaySeconds"
+              value={alpaca.safeDelaySeconds}
+              onChange={(e) => updateConfig(['alpaca', 'safeDelaySeconds'], parseInt((e.target as HTMLInputElement).value, 10))}
+              min="0"
+              max="3600"
+              class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+            />
+            <p class="mt-1 text-xs text-gray-500">
+              Conditions must stay safe this long before IsSafe reports safe again, so a brief gap in the clouds doesn't reopen the roof. Unsafe is always reported immediately. 0 = no delay.
+            </p>
           </div>
         </div>
       </section>

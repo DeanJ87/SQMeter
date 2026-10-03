@@ -1,7 +1,8 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { route } from 'preact-router';
-import type { AlpacaConfiguredDevice, AlpacaDeviceStateItem, AlpacaResponse, Config } from '../types';
+import type { AlpacaConfiguredDevice, AlpacaDeviceStateItem, AlpacaResponse, Config, SafetyStatus } from '../types';
+import SafetyCard from './SafetyCard';
 import { Card, Pill, ReadingRow } from './ui';
 
 const POLL_INTERVAL_MS = 5000;
@@ -59,6 +60,7 @@ const Alpaca: FunctionalComponent = () => {
   const [devices, setDevices] = useState<AlpacaConfiguredDevice[] | null>(null);
   const [deviceStates, setDeviceStates] = useState<Record<string, AlpacaDeviceStateItem[] | null>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [safety, setSafety] = useState<SafetyStatus | null>(null);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
@@ -73,6 +75,17 @@ const Alpaca: FunctionalComponent = () => {
     alpacaGet<AlpacaConfiguredDevice[]>('/management/v1/configureddevices').then((response) =>
       setDevices(response?.Value ?? [])
     );
+  }, []);
+
+  useEffect(() => {
+    const pollSafety = () =>
+      fetch('/api/safety')
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => setSafety(data))
+        .catch(() => setSafety(null));
+    pollSafety();
+    const timer = setInterval(pollSafety, POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -133,6 +146,8 @@ const Alpaca: FunctionalComponent = () => {
           </button>
         </div>
       </Card>
+
+      <SafetyCard safety={safety} />
 
       {devices?.map((device) => {
         const base = deviceBasePath(device);

@@ -136,6 +136,15 @@ namespace SQM
 
         bool dewpointMarginEnabled;
         float dewpointMarginMinC;
+
+        // Rain (RG-15). Rain is checked even when the other sensors are
+        // stale - nothing should ever mask "it's raining".
+        bool rainUnsafeEnabled;        // raining (incl. the rainClearDelayMs hold-off) => unsafe
+        bool rainSensorRequired;       // rain sensor enabled but offline/stale/lens fault => unsafe
+
+        // Conditions must stay continuously safe this long before IsSafe
+        // flips back to true (0 = report safe immediately).
+        uint32_t safeDelaySeconds;
     };
 
     struct Config

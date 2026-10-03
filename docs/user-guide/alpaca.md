@@ -54,18 +54,27 @@ The **Setup** (cog) button next to either device in N.I.N.A. opens `http://<devi
 
 ## Safety rules
 
-`SafetyMonitor.IsSafe` is computed fresh on every request from the current sensor readings against the thresholds configured in **Settings → ASCOM Alpaca**. In order, any of the following makes it unsafe:
+The safety verdict is re-evaluated every second from the current sensor readings against the rules in **Settings → ASCOM Alpaca & Safety**. It is shown on the Dashboard's **Safety Monitor** card, on the **Alpaca** page, from `GET /api/safety`, and served to Alpaca clients as `SafetyMonitor.IsSafe`. Any of the following makes it unsafe:
 
 1. **Manual override** - the "Force SafetyMonitor unsafe" checkbox is on
-2. **No data yet** - the device hasn't completed a sensor read since boot
-3. **Stale data** - the last successful read is older than the stale-data threshold (default 30s)
-4. **Sensor fault** - the light sensor (TSL2591) or IR temperature sensor (MLX90614) is reporting a non-OK status
-5. **Cloud cover** - at or above the configured threshold (default 90%, if enabled)
-6. **Sky brightness (SQM)** - below the configured minimum (disabled by default)
-7. **Humidity** - above the configured maximum (disabled by default)
-8. **Temperature-dewpoint margin** - below the configured minimum (disabled by default)
+2. **Rain** - the RG-15 reports rain, *or* it rained within the rain sensor's "rain clear delay" (default 15 min). Enabled by default whenever the rain sensor is enabled
+3. **Rain sensor offline/faulty** - the rain sensor is enabled but not responding, its data is stale, or it reports a lens fault (fail safe; enabled by default)
+4. **No data yet** - the device hasn't completed a sensor read since boot
+5. **Stale data** - the last successful read is older than the stale-data threshold (default 30s)
+6. **Sensor fault** - the light sensor (TSL2591) or IR temperature sensor (MLX90614) is reporting a non-OK status
+7. **Cloud cover** - at or above the configured threshold (default 90%, if enabled)
+8. **Sky brightness (SQM)** - below the configured minimum (disabled by default)
+9. **Humidity** - above the configured maximum (disabled by default)
+10. **Temperature-dewpoint margin** - below the configured minimum (disabled by default)
+11. **Humidity sensor fault** - the humidity or dew-point rule is enabled but the BME280 isn't reporting, so it can't be evaluated
 
-Each threshold has its own enable/disable toggle - a disabled threshold never contributes to the verdict. This mirrors the rule set from the standalone bridge it replaces, so behavior should feel identical if you're migrating.
+Rain rules (2-3) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining. Rules 7-11 only apply to fresh data.
+
+Each threshold has its own enable/disable toggle - a disabled threshold never contributes to the verdict.
+
+### Safe delay
+
+**Safe delay** (seconds, default `0`) holds a "safe" verdict back until conditions have been continuously safe for that long, so a brief gap in the clouds doesn't reopen the roof. Unsafe is always reported immediately, and the delay also applies after a reboot. While the delay is running, the Safety Monitor card shows "Safe in Ns".
 
 ---
 

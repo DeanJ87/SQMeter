@@ -5,27 +5,50 @@ namespace SQM
     namespace Alpaca
     {
 
+        namespace
+        {
+            void addReason(SafetyResult &result, UnsafeReasonFlag flag, const char *reason)
+            {
+                result.reasonFlags |= flag;
+                result.unsafeReasons.push_back(reason);
+            }
+        }
+
         SafetyResult evaluateSafety(const SafetyInputs &in, const SafetyThresholds &t)
         {
             SafetyResult result;
 
             if (t.manualOverrideUnsafe)
             {
-                result.unsafeReasons.push_back("Manual override forces unsafe");
+                addReason(result, UNSAFE_MANUAL_OVERRIDE, "Manual override forces unsafe");
+            }
+
+            // Rain first and regardless of the other sensors' freshness - a
+            // stale sky sensor must never hide the fact that it's raining.
+            if (in.rainSensorEnabled)
+            {
+                if (t.rainUnsafeEnabled && in.raining)
+                {
+                    addReason(result, UNSAFE_RAIN, "Rain detected");
+                }
+                if (t.rainSensorRequired && !in.rainSensorHealthy)
+                {
+                    addReason(result, UNSAFE_RAIN_SENSOR_FAULT, "Rain sensor offline, stale or reporting a lens fault");
+                }
             }
 
             if (!in.hasEverHadGoodData)
             {
-                result.unsafeReasons.push_back("No successful sensor data yet");
+                addReason(result, UNSAFE_NO_DATA, "No successful sensor data yet");
             }
             else if (in.secondsSinceLastGoodData > t.staleAfterSeconds)
             {
-                result.unsafeReasons.push_back("Sensor data is stale");
+                addReason(result, UNSAFE_STALE_DATA, "Sensor data is stale");
             }
 
             if (in.requiredSensorFault)
             {
-                result.unsafeReasons.push_back("A required sensor is reporting a fault");
+                addReason(result, UNSAFE_SENSOR_FAULT, "A required sensor is reporting a fault");
             }
 
             // Threshold checks only apply once we have fresh data - an unsafe
@@ -38,27 +61,53 @@ namespace SQM
             {
                 if (t.cloudCoverEnabled && in.cloudCoverPercent >= t.cloudCoverUnsafePercent)
                 {
-                    result.unsafeReasons.push_back("Cloud cover at or above unsafe threshold");
+                    addReason(result, UNSAFE_CLOUD_COVER, "Cloud cover at or above unsafe threshold");
                 }
 
                 if (t.sqmMinEnabled && in.sqm < t.sqmMinSafe)
                 {
-                    result.unsafeReasons.push_back("Sky brightness (SQM) below minimum safe value");
+                    addReason(result, UNSAFE_SKY_BRIGHT, "Sky brightness (SQM) below minimum safe value");
                 }
 
-                if (t.humidityMaxEnabled && in.humidityPercent > t.humidityMaxSafe)
+                const bool environmentRulesEnabled = t.humidityMaxEnabled || t.dewpointMarginEnabled;
+                if (environmentRulesEnabled && in.environmentSensorFault)
                 {
-                    result.unsafeReasons.push_back("Humidity above maximum safe value");
+                    addReason(result, UNSAFE_ENVIRONMENT_FAULT, "Humidity sensor fault - humidity/dew point rules can't be evaluated");
                 }
-
-                if (t.dewpointMarginEnabled && (in.temperatureC - in.dewpointC) < t.dewpointMarginMinC)
+                else
                 {
-                    result.unsafeReasons.push_back("Temperature-dewpoint margin below minimum");
+                    if (t.humidityMaxEnabled && in.humidityPercent > t.humidityMaxSafe)
+                    {
+                        addReason(result, UNSAFE_HUMIDITY, "Humidity above maximum safe value");
+                    }
+
+                    if (t.dewpointMarginEnabled && (in.temperatureC - in.dewpointC) < t.dewpointMarginMinC)
+                    {
+                        addReason(result, UNSAFE_DEWPOINT, "Temperature-dewpoint margin below minimum");
+                    }
                 }
             }
 
             result.isSafe = result.unsafeReasons.empty();
             return result;
+        }
+
+        bool SafeDelayFilter::update(bool rawSafe, uint32_t nowSeconds, uint32_t delaySeconds)
+        {
+            if (!rawSafe)
+            {
+                rawSafeRunning = false;
+                remaining = 0;
+                return false;
+            }
+            if (!rawSafeRunning)
+            {
+                rawSafeRunning = true;
+                safeSince = nowSeconds;
+            }
+            const uint32_t elapsed = nowSeconds - safeSince;
+            remaining = elapsed >= delaySeconds ? 0 : delaySeconds - elapsed;
+            return remaining == 0;
         }
 
     } // namespace Alpaca

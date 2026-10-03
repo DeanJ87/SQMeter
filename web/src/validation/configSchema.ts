@@ -184,6 +184,9 @@ export const alpacaConfigSchema = z.object({
   humidityMaxSafe: z.number().min(0).max(100),
   dewpointMarginEnabled: z.boolean(),
   dewpointMarginMinC: z.number().min(0).max(20),
+  rainUnsafeEnabled: z.boolean(),
+  rainSensorRequired: z.boolean(),
+  safeDelaySeconds: z.number().int().min(0, "Must be 0 or more").max(3600, "Must be at most 1 hour"),
 });
 
 export const rainSensorConfigSchema = z

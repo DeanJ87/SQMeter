@@ -317,6 +317,9 @@ namespace SQM
         cfg.alpaca.humidityMaxSafe = 100.0f;
         cfg.alpaca.dewpointMarginEnabled = false;
         cfg.alpaca.dewpointMarginMinC = 0.0f;
+        cfg.alpaca.rainUnsafeEnabled = true;
+        cfg.alpaca.rainSensorRequired = true;
+        cfg.alpaca.safeDelaySeconds = 0;
 
         return cfg;
     }
@@ -421,6 +424,9 @@ namespace SQM
         alpaca["humidityMaxSafe"] = this->alpaca.humidityMaxSafe;
         alpaca["dewpointMarginEnabled"] = this->alpaca.dewpointMarginEnabled;
         alpaca["dewpointMarginMinC"] = this->alpaca.dewpointMarginMinC;
+        alpaca["rainUnsafeEnabled"] = this->alpaca.rainUnsafeEnabled;
+        alpaca["rainSensorRequired"] = this->alpaca.rainSensorRequired;
+        alpaca["safeDelaySeconds"] = this->alpaca.safeDelaySeconds;
 
         std::string output;
         serializeJson(doc, output);
@@ -616,6 +622,11 @@ namespace SQM
         if (!std::isfinite(alpaca.dewpointMarginMinC) || alpaca.dewpointMarginMinC < 0.0F || alpaca.dewpointMarginMinC > 20.0F)
         {
             return setError(error, "Alpaca: dewpoint margin threshold must be between 0 and 20 degrees C");
+        }
+
+        if (alpaca.safeDelaySeconds > 3600)
+        {
+            return setError(error, "Alpaca: safe delay must be between 0 and 3600 seconds");
         }
 
         return true;
@@ -836,6 +847,12 @@ namespace SQM
                 cfg.alpaca.dewpointMarginEnabled = alpacaObj["dewpointMarginEnabled"] | false;
             if (alpacaObj.containsKey("dewpointMarginMinC"))
                 cfg.alpaca.dewpointMarginMinC = alpacaObj["dewpointMarginMinC"] | 0.0f;
+            if (alpacaObj.containsKey("rainUnsafeEnabled"))
+                cfg.alpaca.rainUnsafeEnabled = alpacaObj["rainUnsafeEnabled"] | true;
+            if (alpacaObj.containsKey("rainSensorRequired"))
+                cfg.alpaca.rainSensorRequired = alpacaObj["rainSensorRequired"] | true;
+            if (alpacaObj.containsKey("safeDelaySeconds"))
+                cfg.alpaca.safeDelaySeconds = alpacaObj["safeDelaySeconds"] | 0U;
         }
 
         normalizeTimeSources(cfg);

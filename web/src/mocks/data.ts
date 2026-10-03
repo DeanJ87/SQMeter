@@ -51,6 +51,17 @@ export function generateSensorData(): SensorData {
       hdop: 1.1,
       age: Math.round(jitter(800, 100)),
     },
+    // Demo data shows rain, so the SafetyMonitor reports unsafe.
+    safety: {
+      isSafe: false,
+      rawSafe: false,
+      alpacaEnabled: true,
+      reasonFlags: 1 << 9,
+      reasons: ["Rain detected"],
+      secondsUntilSafe: 0,
+      evaluatedAgeMs: 400,
+      changedAgeMs: 1260000,
+    },
     rainSensor: {
       enabled: true,
       sensor: "hydreon_rg15",
@@ -351,6 +362,9 @@ export const mockConfig: Config = {
     humidityMaxSafe: 100,
     dewpointMarginEnabled: false,
     dewpointMarginMinC: 0,
+    rainUnsafeEnabled: true,
+    rainSensorRequired: true,
+    safeDelaySeconds: 0,
   },
   rain: {
     enabled: true,

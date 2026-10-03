@@ -431,6 +431,35 @@ Returns immediately with `{"success":true,"message":"Update started"}` - the dow
 
 ---
 
+## Safety
+
+### `GET /api/safety`
+
+The current SafetyMonitor verdict - the same value served to Alpaca clients as `IsSafe` - with the reasons behind it. The same object is included as `safety` in every `/ws/sensors` message.
+
+```json
+{
+  "isSafe": false,
+  "rawSafe": false,
+  "alpacaEnabled": true,
+  "reasonFlags": 512,
+  "reasons": ["Rain detected"],
+  "secondsUntilSafe": 0,
+  "evaluatedAgeMs": 412,
+  "changedAgeMs": 1260000
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `isSafe` | Reported verdict, after the safe delay |
+| `rawSafe` | Instantaneous rule evaluation, before the safe delay |
+| `reasons` / `reasonFlags` | Why it's unsafe (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault) |
+| `secondsUntilSafe` | Remaining safe-delay countdown while `rawSafe` is true but `isSafe` isn't yet |
+| `changedAgeMs` | Time since `isSafe` last changed |
+
+---
+
 ## ASCOM Alpaca API
 
 SQMeter can emit itself directly as an ASCOM Alpaca **SafetyMonitor** and **ObservingConditions** device - see [ASCOM Alpaca](../user-guide/alpaca.md) for the full setup guide, N.I.N.A. configuration, and safety-rule reference. Summary of the HTTP surface (all under the same port-80 server as the rest of the API, response envelope per the [ASCOM Alpaca API spec](https://ascom-standards.org/api/)):

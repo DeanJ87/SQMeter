@@ -413,6 +413,101 @@ void test_unique_id_includes_mac(void)
                              buildUniqueId(0xFFFF000000000001ULL, "safetymonitor", 0).c_str());
 }
 
+// --- Rain safety ---
+
+namespace
+{
+    SafetyInputs freshSafeInputs()
+    {
+        SafetyInputs in;
+        in.hasEverHadGoodData = true;
+        in.secondsSinceLastGoodData = 1;
+        in.cloudCoverPercent = 5.0f;
+        in.rainSensorEnabled = true;
+        in.rainSensorHealthy = true;
+        return in;
+    }
+}
+
+void test_rain_makes_unsafe(void)
+{
+    SafetyThresholds t;
+    SafetyInputs in = freshSafeInputs();
+    TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe);
+
+    in.raining = true;
+    SafetyResult r = evaluateSafety(in, t);
+    TEST_ASSERT_FALSE(r.isSafe);
+    TEST_ASSERT_EQUAL_UINT32(UNSAFE_RAIN, r.reasonFlags);
+}
+
+void test_rain_checked_even_when_other_data_stale(void)
+{
+    SafetyThresholds t;
+    SafetyInputs in = freshSafeInputs();
+    in.secondsSinceLastGoodData = 9999;
+    in.raining = true;
+    SafetyResult r = evaluateSafety(in, t);
+    TEST_ASSERT_TRUE(r.reasonFlags & UNSAFE_RAIN);
+    TEST_ASSERT_TRUE(r.reasonFlags & UNSAFE_STALE_DATA);
+}
+
+void test_rain_rule_disabled_or_sensor_absent(void)
+{
+    SafetyThresholds t;
+    t.rainUnsafeEnabled = false;
+    SafetyInputs in = freshSafeInputs();
+    in.raining = true;
+    TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe);
+
+    t.rainUnsafeEnabled = true;
+    in.rainSensorEnabled = false; // no RG-15 fitted
+    TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe);
+}
+
+void test_rain_sensor_required(void)
+{
+    SafetyThresholds t;
+    SafetyInputs in = freshSafeInputs();
+    in.rainSensorHealthy = false;
+    SafetyResult r = evaluateSafety(in, t);
+    TEST_ASSERT_FALSE(r.isSafe);
+    TEST_ASSERT_EQUAL_UINT32(UNSAFE_RAIN_SENSOR_FAULT, r.reasonFlags);
+
+    t.rainSensorRequired = false;
+    TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe);
+}
+
+void test_environment_fault_blocks_humidity_rules(void)
+{
+    SafetyThresholds t;
+    SafetyInputs in = freshSafeInputs();
+    in.environmentSensorFault = true;
+    in.humidityPercent = 53.0f; // fallback value must not be trusted
+    TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe); // rules disabled -> irrelevant
+
+    t.humidityMaxEnabled = true;
+    t.humidityMaxSafe = 90.0f;
+    SafetyResult r = evaluateSafety(in, t);
+    TEST_ASSERT_FALSE(r.isSafe);
+    TEST_ASSERT_EQUAL_UINT32(UNSAFE_ENVIRONMENT_FAULT, r.reasonFlags);
+}
+
+void test_safe_delay_filter(void)
+{
+    SafeDelayFilter f;
+    TEST_ASSERT_FALSE(f.update(true, 100, 60)); // timer starts at first safe
+    TEST_ASSERT_EQUAL_UINT32(60, f.secondsUntilSafe());
+    TEST_ASSERT_FALSE(f.update(true, 159, 60));
+    TEST_ASSERT_TRUE(f.update(true, 160, 60));
+    TEST_ASSERT_FALSE(f.update(false, 161, 60)); // unsafe is immediate
+    TEST_ASSERT_FALSE(f.update(true, 162, 60));  // and restarts the delay
+    TEST_ASSERT_TRUE(f.update(true, 222, 60));
+
+    SafeDelayFilter immediate;
+    TEST_ASSERT_TRUE(immediate.update(true, 5, 0));
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -428,6 +523,12 @@ int main(int argc, char **argv)
     RUN_TEST(test_humidity_max_threshold);
     RUN_TEST(test_dewpoint_margin_threshold);
     RUN_TEST(test_stale_data_suppresses_threshold_checks);
+    RUN_TEST(test_rain_makes_unsafe);
+    RUN_TEST(test_rain_checked_even_when_other_data_stale);
+    RUN_TEST(test_rain_rule_disabled_or_sensor_absent);
+    RUN_TEST(test_rain_sensor_required);
+    RUN_TEST(test_environment_fault_blocks_humidity_rules);
+    RUN_TEST(test_safe_delay_filter);
 
     RUN_TEST(test_observing_conditions_maps_known_property);
     RUN_TEST(test_observing_conditions_case_insensitive);

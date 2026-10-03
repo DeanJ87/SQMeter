@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { Config, SensorData, SystemStatus } from '../types';
 import { Card, Icon, MetricTile, Pill, ReadingRow, SensorReadingRow } from './ui';
+import SafetyCard from './SafetyCard';
 
 const formatNumber = (value: number | undefined, digits: number) =>
   typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '--';
@@ -167,6 +168,8 @@ const Dashboard: FunctionalComponent = () => {
     <div class="dashboard page-enter">
       <div class="dashboard-layout">
         <div class="dashboard-left">
+          <SafetyCard safety={sensors.safety} />
+
           <section class={`hero-card ${skyTone}`}>
             <div class="hero-topline">
               <div class="card-title flat">
