@@ -6,6 +6,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <NimBLEDevice.h>
+#include <esp_coexist.h>
 
 namespace SQM
 {
@@ -15,6 +16,11 @@ namespace SQM
         constexpr uint32_t SUMMARY_NOTIFY_INTERVAL_MS = 30000;
         constexpr uint32_t ADVERT_REFRESH_INTERVAL_MS = 60000;
         constexpr size_t MAX_ADVERTISED_NAME = 20;
+        // Advertising interval in 0.625 ms units: 500-1000 ms. NimBLE's default
+        // (20-40 ms) hogs the shared 2.4 GHz radio and starves WiFi (seconds
+        // of ping latency, HTTP timeouts); a status beacon doesn't need it.
+        constexpr uint16_t ADVERT_INTERVAL_MIN = 800;
+        constexpr uint16_t ADVERT_INTERVAL_MAX = 1600;
 
         // Keep advertising while a client is connected so several phones /
         // a Home Assistant proxy can all see the device.
@@ -40,7 +46,9 @@ namespace SQM
 
         const std::string name = deviceName.substr(0, MAX_ADVERTISED_NAME);
         NimBLEDevice::init(name);
-        NimBLEDevice::setPower(ESP_PWR_LVL_P9);
+        // WiFi (web UI, Alpaca, alerts) is the primary interface; BLE gets
+        // what's left of the radio.
+        esp_coex_preference_set(ESP_COEX_PREFER_WIFI);
 
         NimBLEServer *bleServer = NimBLEDevice::createServer();
         static ServerCallbacks callbacks;
@@ -59,6 +67,8 @@ namespace SQM
         NimBLEAdvertising *advertising = NimBLEDevice::getAdvertising();
         advertising->addServiceUUID(Ble::SERVICE_UUID);
         advertising->setScanResponse(true);
+        advertising->setMinInterval(ADVERT_INTERVAL_MIN);
+        advertising->setMaxInterval(ADVERT_INTERVAL_MAX);
         advertising->start();
 
         active = true;
