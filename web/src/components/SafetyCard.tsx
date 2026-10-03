@@ -49,7 +49,7 @@ const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null }> = ({ saf
       <button
         type="button"
         class="mt-2 text-xs text-cyan-300 hover:underline"
-        onClick={() => route('/settings?section=alpaca')}
+        onClick={() => route('/settings?tab=safety')}
       >
         Safety rules
       </button>

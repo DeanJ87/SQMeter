@@ -227,6 +227,12 @@ export interface SystemStatus {
       status: number;
       lastUpdate: number;
     };
+    wind?: {
+      enabled: boolean;
+      status: number;
+      vaneFault: boolean;
+      ageMs: number;
+    };
     rg15?: {
       enabled: boolean;
       initialized: boolean;

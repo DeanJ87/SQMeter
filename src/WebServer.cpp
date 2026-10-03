@@ -2215,7 +2215,7 @@ namespace SQM
 
     std::string WebServer::createStatusJson() const
     {
-        StaticJsonDocument<4096> doc; // Includes MQTT, partition, and boot diagnostics
+        DynamicJsonDocument doc(6144); // Includes MQTT, partition, boot, sensor and BLE diagnostics
         const SensorSnapshot snapshot = getSensorSnapshot();
         const uint32_t now = millis();
 
@@ -2371,6 +2371,12 @@ namespace SQM
         appendRG15Diagnostics(rg15, snapshot.rg15, snapshot.rg15Diagnostics, now);
         rg15["initialized"] = snapshot.rg15Initialized;
         rg15["lastUpdate"] = snapshot.rg15LastUpdate;
+
+        JsonObject windStatus = sensors.createNestedObject("wind");
+        windStatus["enabled"] = getConfigCallback().wind.enabled;
+        windStatus["status"] = static_cast<int>(snapshot.wind.status);
+        windStatus["vaneFault"] = snapshot.wind.vaneFault;
+        windStatus["ageMs"] = ageMs(now, snapshot.wind.timestamp);
 
         // GPS data
         if (snapshot.gpsInitialized)

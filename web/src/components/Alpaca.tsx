@@ -130,7 +130,7 @@ const Alpaca: FunctionalComponent = () => {
         {!enabled && (
           <p class="mt-4 text-sm text-amber-300">
             Alpaca is disabled, so no devices are advertised.{' '}
-            <button type="button" class="underline" onClick={() => route('/settings?section=alpaca')}>
+            <button type="button" class="underline" onClick={() => route('/settings?tab=safety')}>
               Enable it in Settings
             </button>{' '}
             and restart to start discovery.
@@ -139,7 +139,7 @@ const Alpaca: FunctionalComponent = () => {
         <div class="mt-4">
           <button
             type="button"
-            onClick={() => route('/settings?section=alpaca')}
+            onClick={() => route('/settings?tab=safety')}
             class="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm"
           >
             Alpaca &amp; safety settings
