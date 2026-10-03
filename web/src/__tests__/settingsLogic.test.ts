@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { deriveHardware, unavailableReason } from '../components/settings/hardware';
 import { tabForErrorPath, tabFromLocation } from '../components/settings/tabs';
 import { toConfigPayload } from '../components/settings/payload';
+import { listReasons, restartReasons } from '../components/settings/restart';
 import { mockConfig, mockStatus } from '../mocks/data';
 
 describe('tabFromLocation', () => {
@@ -56,5 +57,25 @@ describe('deriveHardware', () => {
   it('only judges rain sensor health when the device is running it', () => {
     const status = { ...mockStatus, sensors: { ...mockStatus.sensors!, rg15: { ...mockStatus.sensors!.rg15!, enabled: false } } };
     expect(deriveHardware(config, status).rain.detected).toBeNull();
+  });
+});
+
+describe('restartReasons', () => {
+  const base = toConfigPayload(mockConfig);
+
+  it('is empty for settings applied live', () => {
+    const next = { ...base, mqtt: { ...base.mqtt, topic: 'x' }, rain: { ...base.rain!, enabled: !base.rain!.enabled } };
+    expect(restartReasons(base, next)).toEqual([]);
+  });
+
+  it('lists boot-time settings that changed', () => {
+    const next = {
+      ...base,
+      alpaca: { ...base.alpaca!, enabled: !base.alpaca!.enabled },
+      sensor: { ...base.sensor, i2cFrequency: 400000 },
+      ble: { ...base.ble!, enabled: true },
+    };
+    expect(restartReasons(base, next)).toEqual(['I2C', 'Alpaca discovery', 'Bluetooth']);
+    expect(listReasons(['I2C', 'Alpaca discovery', 'Bluetooth'])).toBe('I2C, Alpaca discovery and Bluetooth');
   });
 });

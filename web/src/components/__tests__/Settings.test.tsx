@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import Settings from '../Settings';
+import { Toaster } from '../toast';
 import { mockConfig, mockStatus } from '../../mocks/data';
 import { server } from '../../test/mswServer';
 
@@ -38,11 +39,11 @@ describe('Settings', () => {
     window.history.replaceState(null, '', '/settings?tab=safety');
     render(<Settings />);
 
-    const toggle = (await screen.findByText('Unsafe while raining')).closest('label')!.querySelector('input')!;
+    const toggle = await screen.findByLabelText('Unsafe while raining');
     expect(toggle).toBeDisabled();
-    expect(screen.getAllByText('The rain sensor is turned off.').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Rain sensor is off\./).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getAllByText(/Set up the rain sensor/)[0]);
+    fireEvent.click(screen.getAllByText('Set up')[0]);
     expect(await screen.findByRole('tab', { name: 'Sensors', selected: true })).toBeInTheDocument();
   });
 
@@ -51,9 +52,9 @@ describe('Settings', () => {
     window.history.replaceState(null, '', '/settings?tab=safety');
     render(<Settings />);
 
-    const toggle = (await screen.findByText('Unsafe while raining')).closest('label')!.querySelector('input')!;
+    const toggle = await screen.findByLabelText('Unsafe while raining');
     expect(toggle).not.toBeDisabled();
-    expect(screen.getAllByText(/While this rule is on, the SafetyMonitor reports unsafe/).length).toBe(2);
+    expect(screen.getAllByText(/Reports unsafe while on/).length).toBe(2);
   });
 
   it('greys out sky rules when the MLX90614 was not detected', async () => {
@@ -67,25 +68,50 @@ describe('Settings', () => {
     render(<Settings />);
 
     await waitFor(() => {
-      const toggle = screen.getByText('Maximum cloud cover').closest('label')!.querySelector('input')!;
-      expect(toggle).toBeDisabled();
+      expect(screen.getByLabelText('Max cloud cover', { selector: 'input[type=checkbox]' })).toBeDisabled();
     });
   });
 
-  it('tracks unsaved changes and blocks alert tests until saved', async () => {
+  it('shows the save bar only with unsaved changes, and blocks alert tests until saved', async () => {
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);
 
-    expect(await screen.findByText('All changes saved')).toBeInTheDocument();
-    const pushoverTest = () => screen.getAllByText('Send test')[0];
-    expect(pushoverTest()).not.toBeDisabled();
+    const pushoverTest = async () => (await screen.findAllByText('Send test'))[0];
+    expect(await pushoverTest()).not.toBeDisabled();
+    expect(screen.queryByText('Unsaved changes')).toBeNull();
 
     fireEvent.click(screen.getByLabelText('ntfy'));
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
-    expect(pushoverTest()).toBeDisabled();
+    expect(await pushoverTest()).toBeDisabled();
 
     fireEvent.click(screen.getByText('Discard'));
-    expect(screen.getByText('All changes saved')).toBeInTheDocument();
+    expect(screen.queryByText('Unsaved changes')).toBeNull();
+  });
+
+  it('offers a restart when a saved change only applies after one', async () => {
+    window.history.replaceState(null, '', '/settings?tab=safety');
+    render(<Toaster />);
+    render(<Settings />);
+
+    fireEvent.click(await screen.findByLabelText('Serve Alpaca devices'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved. Restart to apply Alpaca discovery.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Restart' })).toBeInTheDocument();
+  });
+
+  it('just confirms saves that apply immediately', async () => {
+    window.history.replaceState(null, '', '/settings?tab=alerts');
+    render(<Toaster />);
+    render(<Settings />);
+
+    fireEvent.click(await screen.findByLabelText('ntfy'));
+    fireEvent.input(screen.getByDisplayValue('https://ntfy.sh').closest('.card-group')!.querySelector('[name="alerts.ntfy.topic"]')!, {
+      target: { value: 'my-topic' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved.')).toBeInTheDocument();
   });
 
   it('jumps to the tab holding the first validation error on save', async () => {
@@ -95,7 +121,7 @@ describe('Settings', () => {
     fireEvent.click(await screen.findByRole('tab', { name: 'Alerts' }));
     fireEvent.input(screen.getByDisplayValue('x'), { target: { value: '' } });
     fireEvent.click(screen.getByRole('tab', { name: 'Device' }));
-    fireEvent.click(screen.getByText('Save settings'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByRole('tab', { name: 'Alerts', selected: true })).toBeInTheDocument();
     expect(screen.getByText('Topic is required')).toBeInTheDocument();
@@ -103,6 +129,6 @@ describe('Settings', () => {
 
   it('explains Bluetooth needs the BLE build on standard firmware', async () => {
     render(<Settings />);
-    expect(await screen.findByText(/Bluetooth isn't in this firmware/)).toBeInTheDocument();
+    expect(await screen.findByText(/Needs the Bluetooth firmware build/)).toBeInTheDocument();
   });
 });

@@ -2284,7 +2284,8 @@ namespace SQM
             gps["ageMs"] = ageMs(now, gpsReading.timestamp);
         }
 
-        // RG-15 rain sensor data
+        // RG-15 rain sensor data (only when it's switched on)
+        if (getConfigCallback().rain.enabled)
         {
             JsonObject rain = doc.createNestedObject("rainSensor");
             appendRG15Diagnostics(rain, snapshot.rg15, snapshot.rg15Diagnostics, now);

@@ -39,7 +39,7 @@ describe('Device tab - Bluetooth phone alarm', () => {
 
     fireEvent.click(await screen.findByText('Unpair all phones'));
     expect(forgot).toBe(false);
-    fireEvent.click(screen.getByText('Yes, unpair all'));
+    fireEvent.click(screen.getByText('Unpair every phone'));
     await waitFor(() => expect(forgot).toBe(true));
   });
 
@@ -48,9 +48,9 @@ describe('Device tab - Bluetooth phone alarm', () => {
     render(<Settings />);
 
     fireEvent.click(await screen.findByText('Generate'));
-    const shown = await screen.findByText(/^\d{6}$/);
-    expect(shown.textContent).toMatch(/^[1-9]\d{5}$/);
-    expect(screen.getByText(/needs a restart, and paired phones must be unpaired/)).toBeInTheDocument();
+    const shown = await screen.findByText(/New passkey \d{6}/);
+    expect(shown.textContent).toMatch(/New passkey [1-9]\d{5}/);
+    expect(shown.textContent).toMatch(/re-pairing/);
   });
 
   it('turns the alarm off without a passkey', async () => {

@@ -2,7 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { Config, SensorData, SystemStatus } from '../types';
-import { Card, Icon, MetricTile, Pill, ReadingRow, SensorReadingRow } from './ui';
+import { Card, Icon, MetricTile, Note, Pill, ReadingRow, SensorReadingRow } from './ui';
 import SafetyCard from './SafetyCard';
 
 const formatNumber = (value: number | undefined, digits: number) =>
@@ -146,6 +146,9 @@ const Dashboard: FunctionalComponent = () => {
     : false;
   const live = connected && Boolean(sensors) && !isStale;
   const skyTone = bortleTone(sensors?.skyQuality?.bortle);
+  // Cards only show for sensors that are switched on and responding.
+  const lightOk = sensors?.lightSensor?.status === 0;
+  const irOk = sensors?.irTemperature?.status === 0;
   const cloudCover = sensors?.cloudConditions?.cloudCoverPercent;
   const rssi = rssiTone(status?.wifi?.rssi);
 
@@ -173,6 +176,11 @@ const Dashboard: FunctionalComponent = () => {
         <div class="dashboard-left">
           <SafetyCard safety={sensors.safety} />
 
+          {!lightOk ? (
+            <Card title="Sky Quality" icon="star" tone="muted" actions={<Pill tone="pill-red">Not detected</Pill>}>
+              <Note>The TSL2591 light sensor isn't responding - check its wiring, then restart.</Note>
+            </Card>
+          ) : (
           <section class={`hero-card ${skyTone}`}>
             <div class="hero-topline">
               <div class="card-title flat">
@@ -203,8 +211,9 @@ const Dashboard: FunctionalComponent = () => {
               <MetricTile label="Illuminance" value={formatNumber(sensors.lightSensor?.lux, 5)} unit="lux" />
             </div>
           </section>
+          )}
 
-          {sensors.cloudConditions && (
+          {irOk && sensors.cloudConditions && (
             <Card
               title="Cloud Conditions"
               icon="cloud"
@@ -263,12 +272,12 @@ const Dashboard: FunctionalComponent = () => {
             </Card>
           )}
 
-          {sensors.lightSensor && (
+          {lightOk && sensors.lightSensor && (
             <Card title="Light Sensor" icon="eye" tone="cyan">
-              <SensorReadingRow label="Illuminance" value={sensors.lightSensor.status === 0 ? formatNumber(sensors.lightSensor.lux, 5) : '--'} unit="lux" />
-              <SensorReadingRow label="Visible" value={sensors.lightSensor.status === 0 ? String(sensors.lightSensor.visible) : '--'} unit="raw" />
-              <SensorReadingRow label="Infrared" value={sensors.lightSensor.status === 0 ? String(sensors.lightSensor.infrared) : '--'} unit="raw" />
-              <SensorReadingRow label="Full spectrum" value={sensors.lightSensor.status === 0 ? String(sensors.lightSensor.full) : '--'} unit="raw" />
+              <SensorReadingRow label="Illuminance" value={formatNumber(sensors.lightSensor.lux, 5)} unit="lux" />
+              <SensorReadingRow label="Visible" value={String(sensors.lightSensor.visible)} unit="raw" />
+              <SensorReadingRow label="Infrared" value={String(sensors.lightSensor.infrared)} unit="raw" />
+              <SensorReadingRow label="Full spectrum" value={String(sensors.lightSensor.full)} unit="raw" />
             </Card>
           )}
 
@@ -295,15 +304,15 @@ const Dashboard: FunctionalComponent = () => {
             )}
           </Card>
 
-          {sensors.irTemperature && (
+          {irOk && sensors.irTemperature && (
             <Card title="IR Temperature" icon="therm" tone="violet">
               <ReadingRow
                 label="Sky temperature"
-                value={`${sensors.irTemperature.status === 0 ? formatNumber(sensors.irTemperature.objectTemp, 1) : '--'} C`}
+                value={`${formatNumber(sensors.irTemperature.objectTemp, 1)} C`}
               />
               <ReadingRow
                 label="Ambient"
-                value={`${sensors.irTemperature.status === 0 ? formatNumber(sensors.irTemperature.ambientTemp, 1) : '--'} C`}
+                value={`${formatNumber(sensors.irTemperature.ambientTemp, 1)} C`}
               />
             </Card>
           )}
@@ -331,7 +340,7 @@ const Dashboard: FunctionalComponent = () => {
             </Card>
           )}
 
-          {rain && (
+          {rain?.enabled && (
             <Card
               title="Rain Sensor"
               icon="rain"
