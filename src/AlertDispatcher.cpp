@@ -123,6 +123,8 @@ namespace SQM
                 return "droplet";
             case Alerts::AlertType::ClearSky:
                 return "star";
+            case Alerts::AlertType::Acknowledged:
+                return "ok_hand";
             case Alerts::AlertType::Test:
                 return "test_tube";
             }

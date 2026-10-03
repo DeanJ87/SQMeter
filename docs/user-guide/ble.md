@@ -39,7 +39,7 @@ The flags are updated within a second of a change, so a scanner can watch safe/r
 
 ### GATT service `c5a10000-7d1e-4b8a-9f3c-2e5d6a7b8c90`
 
-All characteristics are read + notify; there are no writable characteristics, so no pairing is required.
+The characteristics below are read + notify and need no pairing; the phone alarm characteristics (next section) do.
 
 | Characteristic | UUID | Format | Notifies |
 |---|---|---|---|
@@ -51,3 +51,22 @@ All characteristics are read + notify; there are no writable characteristics, so
 The `…` suffix is `-7d1e-4b8a-9f3c-2e5d6a7b8c90` throughout.
 
 Up to two clients can be connected at once; the device keeps advertising while connected.
+
+## Phone alarm (pairing required)
+
+Set a 6-digit **pairing passkey** in **Settings → Device → Bluetooth** (or press Generate), save, and restart. The device then also offers three secured characteristics, used by a phone app to wake you up:
+
+| Characteristic | UUID | Access | Format |
+|---|---|---|---|
+| Alarm | `c5a10005-…` | read + **indicate**, encrypted + authenticated | `[seq u32][level u8][reasonFlags u32][epoch u32]` |
+| Ack | `c5a10006-…` | write, encrypted + authenticated | `[seq u32]` |
+| Heartbeat | `c5a10007-…` | read + notify, encrypted + authenticated | `[seq u32][uptime seconds u32]`, every 60 s |
+
+- **Pairing** uses LE Secure Connections with bonding and the static passkey (the device "displays" it via Settings; you type it on the phone). Bonds are stored on the device; **Unpair all phones** removes them. Links that aren't paired this way never receive alarm or heartbeat data - the device doesn't send them to unencrypted connections.
+- **Levels:** `2` = alarm (wake someone), `1` = information (e.g. safe again, rain cleared), `0` = nothing active / acknowledged.
+- **Which events alarm** is set under "Wake me when": the safety verdict going unsafe and rain starting (on by default), and sensor faults (off by default). These are independent of the push-notification settings on the Alerts tab.
+- **An alarm repeats** (re-indicated every 30 s) **until a phone writes its `seq` to Ack** - even if the condition clears meanwhile, since someone should still know it rained with the roof open. Information events never overwrite an active alarm. An ack with an old `seq` is ignored, so it can't cancel a newer alarm. After an ack the alarm is re-sent with level `0`, so every paired phone stops ringing.
+- An alarm can also be acknowledged from **Settings → Device → Bluetooth**. Acknowledgements appear in the recent alerts and are sent to the alert channels when alerts are on.
+- **Heartbeat:** if a phone hears nothing for a few minutes, the link or the device is down - an app should alarm on that too.
+
+`GET /api/status` reports `ble.alarm` (`serviceActive`, `active`, `sequence`, `acknowledgedSequence`, `bondedPhones`). `POST /api/ble/ack` acknowledges the active alarm and `POST /api/ble/forget-bonds` unpairs all phones (both require HTTP auth when it's enabled).

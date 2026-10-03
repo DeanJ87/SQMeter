@@ -1,4 +1,4 @@
-import type { AlertsConfig, AlpacaConfig, Config, WindConfig } from '../../types';
+import type { AlertsConfig, AlpacaConfig, BleConfig, Config, WindConfig } from '../../types';
 
 // Defaults for every settings section - used to fill in fields that configs
 // from older firmware don't have yet.
@@ -87,3 +87,11 @@ export const mergeAlertsConfig = (source?: Partial<AlertsConfig>): AlertsConfig 
   webhook: { ...defaultAlertsConfig.webhook, ...source?.webhook },
   mqtt: { ...defaultAlertsConfig.mqtt, ...source?.mqtt },
 });
+
+export const defaultBleConfig: BleConfig = {
+  enabled: false,
+  passkey: '',
+  alarmOnUnsafe: true,
+  alarmOnRain: true,
+  alarmOnSensorFault: false,
+};

@@ -67,6 +67,8 @@ export const tabForErrorPath = (path: string): SettingsTabId => {
       return 'safety';
     case 'alerts':
       return 'alerts';
+    case 'ble':
+      return 'device';
     default:
       return 'device';
   }

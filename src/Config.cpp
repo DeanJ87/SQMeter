@@ -1,4 +1,5 @@
 #include "Config.h"
+#include "BleAlarm.h"
 #include "Logger.h"
 #include <ArduinoJson.h>
 #include <Preferences.h>
@@ -363,6 +364,9 @@ namespace SQM
         cfg.alerts.mqttEnabled = false;
 
         cfg.ble.enabled = false;
+        cfg.ble.alarmOnUnsafe = true;
+        cfg.ble.alarmOnRain = true;
+        cfg.ble.alarmOnSensorFault = false;
 
         cfg.wind.enabled = false;
         cfg.wind.speedPin = 27;
@@ -541,6 +545,10 @@ namespace SQM
 
         JsonObject ble = doc.createNestedObject("ble");
         ble["enabled"] = this->ble.enabled;
+        ble["passkey"] = redactSecrets && !this->ble.passkey.empty() ? SECRET_MASK : this->ble.passkey.c_str();
+        ble["alarmOnUnsafe"] = this->ble.alarmOnUnsafe;
+        ble["alarmOnRain"] = this->ble.alarmOnRain;
+        ble["alarmOnSensorFault"] = this->ble.alarmOnSensorFault;
 
         JsonObject wind = doc.createNestedObject("wind");
         wind["enabled"] = this->wind.enabled;
@@ -782,6 +790,13 @@ namespace SQM
             return setError(error, "Wind: direction offset must be between -360 and 360 degrees");
         if (!std::isfinite(wind.vanePullupOhms) || wind.vanePullupOhms < 1000.0F || wind.vanePullupOhms > 100000.0F)
             return setError(error, "Wind: vane pull-up must be between 1k and 100k ohms");
+
+        if (!ble.passkey.empty())
+        {
+            uint32_t passkey = 0;
+            if (!Ble::parsePasskey(ble.passkey, passkey))
+                return setError(error, "Bluetooth: pairing passkey must be 6 digits (not 000000)");
+        }
 
         auto isHttpUrl = [](const std::string &url)
         {
@@ -1121,8 +1136,18 @@ namespace SQM
         }
 
         JsonObject bleObj = doc["ble"];
-        if (!bleObj.isNull() && bleObj.containsKey("enabled"))
-            cfg.ble.enabled = bleObj["enabled"] | false;
+        if (!bleObj.isNull())
+        {
+            if (bleObj.containsKey("enabled"))
+                cfg.ble.enabled = bleObj["enabled"] | false;
+            assignSecret(bleObj, "passkey", cfg.ble.passkey, preserveSecretPlaceholders);
+            if (bleObj.containsKey("alarmOnUnsafe"))
+                cfg.ble.alarmOnUnsafe = bleObj["alarmOnUnsafe"] | true;
+            if (bleObj.containsKey("alarmOnRain"))
+                cfg.ble.alarmOnRain = bleObj["alarmOnRain"] | true;
+            if (bleObj.containsKey("alarmOnSensorFault"))
+                cfg.ble.alarmOnSensorFault = bleObj["alarmOnSensorFault"] | false;
+        }
 
         normalizeTimeSources(cfg);
 

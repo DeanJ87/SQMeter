@@ -2,6 +2,7 @@ import type { Config } from '../../types';
 import {
   defaultAlpacaConfig,
   defaultAuthConfig,
+  defaultBleConfig,
   defaultCloudDetectionConfig,
   defaultRainConfig,
   defaultWindConfig,
@@ -80,7 +81,7 @@ export const toConfigPayload = (source: Config): Config => {
     // Merge defaults so configs from older firmware gain newly added fields.
     alpaca: { ...defaultAlpacaConfig, ...source.alpaca },
     alerts: mergeAlertsConfig(source.alerts),
-    ble: { enabled: false, ...source.ble },
+    ble: { ...defaultBleConfig, ...source.ble },
     wind: { ...defaultWindConfig, ...source.wind },
   };
 

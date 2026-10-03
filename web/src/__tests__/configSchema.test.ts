@@ -390,3 +390,14 @@ describe("windConfigSchema", () => {
     expect(windConfigSchema.safeParse({ ...validWind, speedPin: 34, directionPin: 34 }).success).toBe(false);
   });
 });
+
+describe("ble passkey", () => {
+  const base = { enabled: true, alarmOnUnsafe: true, alarmOnRain: true, alarmOnSensorFault: false };
+  const ble = configSchema.shape.ble.unwrap();
+  it("accepts empty, 6 digits, or the stored mask", () => {
+    for (const passkey of ["", "482913", "********"]) expect(ble.safeParse({ ...base, passkey }).success).toBe(true);
+  });
+  it("rejects anything else", () => {
+    for (const passkey of ["12345", "1234567", "abcdef", "000000"]) expect(ble.safeParse({ ...base, passkey }).success).toBe(false);
+  });
+});
