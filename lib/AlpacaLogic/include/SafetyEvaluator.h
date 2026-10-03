@@ -44,6 +44,10 @@ namespace SQM
             bool hasEverHadGoodData = false;
             uint32_t secondsSinceLastGoodData = 0;
             bool requiredSensorFault = false; // any required sensor reporting a non-OK status
+            // Which one: a faulted sensor's zeroed readings mustn't also
+            // produce a misleading threshold reason (e.g. 100% cloud).
+            bool skyLightFault = false; // TSL2591 -> SQM rule skipped
+            bool irSkyFault = false;    // MLX90614 -> cloud cover rule skipped
 
             float cloudCoverPercent = 0.0f;
             float sqm = 0.0f;
