@@ -48,8 +48,8 @@ const BleSettings: FunctionalComponent<Props> = ({ config, updateConfig }) => {
             {ble.active !== enabled && ' - restart to apply'}
           </p>
           <p class="text-xs text-amber-300">
-            WiFi and Bluetooth share one radio: with Bluetooth on, the web UI and Alpaca respond noticeably slower (around
-            0.3-3.6 s instead of under 0.2 s).
+            WiFi and Bluetooth share one radio: with Bluetooth on, the web UI and Alpaca respond noticeably slower,
+            especially on a weak WiFi link.
           </p>
           <p class="text-xs text-gray-500">Alerts appear on the BLE alert characteristic when "Enable alerts" is on above.</p>
         </div>
