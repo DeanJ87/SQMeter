@@ -12,9 +12,9 @@ import {
   SKY_PHASE_LABEL,
   skyPhase,
   sunPosition,
-  SUN_HORIZON,
 } from '../lib/astro';
-import { Card, MetricTile, Pill, ReadingRow } from './ui';
+import NightChart from './NightChart';
+import { Card, Pill } from './ui';
 
 const PHASE_TONE = { day: 'pill-amber', civil: 'pill-amber', nautical: 'pill-cyan', astronomical: 'pill-cyan', night: 'pill-green' } as const;
 
@@ -38,10 +38,6 @@ const MoonDisc: FunctionalComponent<{ phase: number; southern: boolean }> = ({ p
   );
 };
 
-// Upcoming events soonest first; ones that don't happen in the next 36 h last.
-const inOrder = (events: [string, Date | null][]) =>
-  [...events].sort(([, a], [, b]) => (a?.valueOf() ?? Infinity) - (b?.valueOf() ?? Infinity));
-
 const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number }> = ({ latitude, longitude }) => {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -50,42 +46,40 @@ const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number }> 
   }, []);
 
   const sun = sunPosition(now, latitude, longitude);
-  const moon = moonPosition(now, latitude, longitude);
   const illumination = moonIllumination(now);
   const phase = skyPhase(sun.altitude);
-  const sunAt = (date: Date) => sunPosition(date, latitude, longitude).altitude;
   const moonAt = (date: Date) => moonPosition(date, latitude, longitude).altitude;
-  const sunset = nextCrossing(sunAt, SUN_HORIZON, now, false);
-  const sunrise = nextCrossing(sunAt, SUN_HORIZON, now, true);
   const moonrise = nextCrossing(moonAt, MOON_HORIZON, now, true);
   const moonset = nextCrossing(moonAt, MOON_HORIZON, now, false);
   const dark = darkness(latitude, longitude, -18, now);
 
   const darkLabel = dark.darkNow
-    ? `now, until ${formatClock(dark.end)}`
+    ? `Dark now, until ${formatClock(dark.end)}`
     : dark.start
-      ? `${formatClock(dark.start)} - ${formatClock(dark.end)}${dark.end ? ` (${formatDuration(dark.end.valueOf() - dark.start.valueOf())})` : ''}`
-      : 'none tonight';
+      ? `Dark ${formatClock(dark.start)} - ${formatClock(dark.end)}${dark.end ? ` · ${formatDuration(dark.end.valueOf() - dark.start.valueOf())}` : ''}`
+      : 'No astronomical dark tonight';
+  const moonTimes = [
+    moonrise && { time: moonrise, text: `rises ${formatClock(moonrise)}` },
+    moonset && { time: moonset, text: `sets ${formatClock(moonset)}` },
+  ]
+    .filter((event): event is { time: Date; text: string } => Boolean(event))
+    .sort((a, b) => a.time.valueOf() - b.time.valueOf())
+    .map((event) => event.text)
+    .join(', ');
 
   return (
     <Card title="Sun & Moon" icon="moon" tone="violet" actions={<Pill tone={PHASE_TONE[phase]}>{SKY_PHASE_LABEL[phase]}</Pill>}>
       <div class="sun-moon">
         <MoonDisc phase={illumination.phase} southern={latitude < 0} />
-        <div class="metric-grid">
-          <MetricTile label="Sun" value={sun.altitude.toFixed(1)} unit="°" tone={sun.altitude < -18 ? 'tone-green' : sun.altitude < 0 ? 'tone-cyan' : 'tone-amber'} />
-          <MetricTile label="Moon" value={(illumination.fraction * 100).toFixed(0)} unit={`% · ${moonPhaseName(illumination.phase)}`} tone="tone-violet" />
-          <MetricTile label="Moon altitude" value={moon.altitude.toFixed(0)} unit={moon.altitude > 0 ? '° up' : '° down'} />
+        <div class="sun-moon-summary">
+          <strong>
+            {moonPhaseName(illumination.phase)} · {(illumination.fraction * 100).toFixed(0)}% lit
+          </strong>
+          <span>{darkLabel}</span>
+          {moonTimes && <span>Moon {moonTimes}</span>}
         </div>
       </div>
-      <ReadingRow label="Astronomical dark" value={darkLabel} />
-      {inOrder([
-        ['Sunset', sunset],
-        ['Sunrise', sunrise],
-        ['Moonrise', moonrise],
-        ['Moonset', moonset],
-      ]).map(([label, time]) => (
-        <ReadingRow key={label} label={label} value={formatClock(time)} />
-      ))}
+      <NightChart latitude={latitude} longitude={longitude} now={now} />
     </Card>
   );
 };
