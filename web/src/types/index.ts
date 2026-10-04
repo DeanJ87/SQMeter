@@ -381,9 +381,6 @@ export interface AlpacaConfig {
 export interface BleConfig {
   enabled: boolean;
   passkey: string;
-  alarmOnUnsafe: boolean;
-  alarmOnRain: boolean;
-  alarmOnSensorFault: boolean;
 }
 
 export interface WindConfig {
@@ -420,21 +417,36 @@ export interface SafetyStatus {
   changedAgeMs: number;
 }
 
+// 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me
+export type AlertLevel = 0 | 1 | 2 | 3 | 4;
+
+export type AlertEventKey =
+  | 'unsafe'
+  | 'safe'
+  | 'rain_started'
+  | 'rain_stopped'
+  | 'sensor_fault'
+  | 'sensor_recovered'
+  | 'dew_risk'
+  | 'clear_sky'
+  | 'clouded_over';
+
+// sound: Pushover sound name; empty uses the Pushover default.
+export interface AlertEventSetting {
+  level: AlertLevel;
+  sound: string;
+}
+
 export interface AlertsConfig {
   enabled: boolean;
-  onSafetyChange: boolean;
-  onRain: boolean;
-  onSensorFault: boolean;
-  onDewRisk: boolean;
+  events: Record<AlertEventKey, AlertEventSetting>;
   dewRiskMarginC: number;
-  onClearSky: boolean;
   clearSkyCloudPercent: number;
-  onCloudedOver: boolean;
   cloudedOverCloudPercent: number;
   skyNightOnly: boolean;
   nightSunAltitudeDeg: number;
   cooldownSeconds: number;
-  pushover: { enabled: boolean; userKey: string; appToken: string; highPriority: number; sound: string };
+  pushover: { enabled: boolean; userKey: string; appToken: string; sound: string };
   ntfy: { enabled: boolean; server: string; topic: string; token: string };
   webhook: { enabled: boolean; url: string; authHeader: string; insecureTls: boolean };
   mqtt: { enabled: boolean };
@@ -447,7 +459,7 @@ export interface AlertRecord {
   event: string;
   title: string;
   message: string;
-  priority: number;
+  level: 'quiet' | 'normal' | 'urgent' | 'wake' | 'off';
   ageSeconds: number;
   timestamp?: number;
   channels: Partial<Record<AlertChannelName, { status: 'pending' | 'sent' | 'failed' | 'skipped'; detail: string }>>;

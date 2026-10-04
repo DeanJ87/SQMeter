@@ -169,10 +169,7 @@ namespace SQM
         void setupAlertRoutes();
 
         BleService ble;
-        // Separate from alertEngine: phone alarms follow the Bluetooth alarm
-        // settings, not the push-notification ones.
-        Alerts::AlertEngine bleAlarmEngine;
-        void processBleAlarms(const Alerts::AlertInputs &inputs, const SafetyStatus &status, const Config &cfg);
+        static const AlertsConfig::EventSetting *eventSettingFor(const AlertsConfig &alerts, Alerts::AlertType type);
 
         // Setup route handlers
         void setupStaticRoutes();

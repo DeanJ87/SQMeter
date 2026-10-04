@@ -161,16 +161,26 @@ namespace SQM
     {
         bool enabled; // master switch
 
-        // Events
-        bool onSafetyChange;        // SafetyMonitor unsafe / safe again
-        bool onRain;                // rain started / cleared
-        bool onSensorFault;         // a sensor goes offline / recovers, RG-15 lens fault
-        bool onDewRisk;             // temperature within dewRiskMarginC of the dew point
-        float dewRiskMarginC;
-        bool onClearSky;            // cloud cover drops below clearSkyCloudPercent
-        float clearSkyCloudPercent;
-        bool onCloudedOver;         // cloud cover rises above cloudedOverCloudPercent
-        float cloudedOverCloudPercent;
+        // Per event: how loudly to alert (0 off, 1 quiet, 2 normal, 3 urgent,
+        // 4 wake me - also rings paired phones) and an optional Pushover sound.
+        struct EventSetting
+        {
+            uint8_t level;
+            std::string sound;
+        };
+        EventSetting unsafe;
+        EventSetting safe;
+        EventSetting rainStarted;
+        EventSetting rainStopped;
+        EventSetting sensorFault;      // includes the RG-15 lens fault
+        EventSetting sensorRecovered;
+        EventSetting dewRisk;
+        EventSetting clearSky;
+        EventSetting cloudedOver;
+
+        float dewRiskMarginC;          // temperature within this of the dew point
+        float clearSkyCloudPercent;    // clear below this
+        float cloudedOverCloudPercent; // clouded over above this
         bool skyNightOnly;          // sky alerts only while the sun is below nightSunAltitudeDeg
         float nightSunAltitudeDeg;  // -0.833 sunset, -12 nautical, -18 astronomical
         uint32_t cooldownSeconds;   // min time between notifications of the same kind
@@ -179,8 +189,7 @@ namespace SQM
         bool pushoverEnabled;
         std::string pushoverUserKey;
         std::string pushoverAppToken;
-        int pushoverHighPriority;   // Pushover priority for urgent events: 0, 1 (high) or 2 (emergency)
-        std::string pushoverSound;  // optional Pushover sound name
+        std::string pushoverSound;  // default Pushover sound for events without their own
 
         bool ntfyEnabled;
         std::string ntfyServer;     // e.g. https://ntfy.sh
@@ -222,11 +231,9 @@ namespace SQM
         bool enabled; // advertise the SQMeter GATT service (takes effect after a restart)
 
         // Phone alarm service (pairing required). Without a passkey the
-        // alarm/ack/heartbeat characteristics aren't offered at all.
-        std::string passkey;     // 6 digits, entered on the phone when pairing
-        bool alarmOnUnsafe;      // SafetyMonitor goes unsafe
-        bool alarmOnRain;        // rain starts
-        bool alarmOnSensorFault; // a sensor stops responding / RG-15 lens fault
+        // alarm/ack/heartbeat characteristics aren't offered at all. Events
+        // set to "wake me" in the alert settings ring paired phones.
+        std::string passkey; // 6 digits, entered on the phone when pairing
     };
 
     struct Config

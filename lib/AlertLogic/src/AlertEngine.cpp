@@ -13,11 +13,10 @@ namespace SQM
             // re-trigger the same condition.
             constexpr float DEW_HYSTERESIS_C = 0.5f;
 
-            Alert make(AlertType type, AlertPriority priority, std::string title, std::string message)
+            Alert make(AlertType type, std::string title, std::string message)
             {
                 Alert alert;
                 alert.type = type;
-                alert.priority = priority;
                 alert.title = std::move(title);
                 alert.message = std::move(message);
                 return alert;
@@ -28,6 +27,23 @@ namespace SQM
                 char buffer[160];
                 std::snprintf(buffer, sizeof(buffer), fmt, a, b, c);
                 return buffer;
+            }
+        }
+
+        const char *alertLevelName(AlertLevel level)
+        {
+            switch (level)
+            {
+            case AlertLevel::Quiet:
+                return "quiet";
+            case AlertLevel::Normal:
+                return "normal";
+            case AlertLevel::Urgent:
+                return "urgent";
+            case AlertLevel::Wake:
+                return "wake";
+            default:
+                return "off";
             }
         }
 
@@ -126,10 +142,10 @@ namespace SQM
                 if (sync(safety, unsafe, now, cooldown, pastGrace && rules.onSafetyChange))
                 {
                     if (unsafe)
-                        alerts.push_back(make(AlertType::Unsafe, AlertPriority::High, "Observatory UNSAFE",
+                        alerts.push_back(make(AlertType::Unsafe, "Observatory UNSAFE",
                                               in.unsafeReasons.empty() ? std::string("Safety rules failing") : joinReasons(in.unsafeReasons)));
                     else
-                        alerts.push_back(make(AlertType::Safe, AlertPriority::Normal, "Observatory safe",
+                        alerts.push_back(make(AlertType::Safe, "Observatory safe",
                                               "All enabled safety rules pass."));
                 }
             }
@@ -140,16 +156,16 @@ namespace SQM
                 if (sync(rain, in.raining, now, cooldown, pastGrace && rules.onRain))
                 {
                     if (in.raining)
-                        alerts.push_back(make(AlertType::RainStarted, AlertPriority::High, "Rain detected",
+                        alerts.push_back(make(AlertType::RainStarted, "Rain detected",
                                               format("The rain sensor reports rain (%.1f mm/h).", in.rainRateMmPerHour)));
                     else
-                        alerts.push_back(make(AlertType::RainStopped, AlertPriority::Normal, "Rain cleared",
+                        alerts.push_back(make(AlertType::RainStopped, "Rain cleared",
                                               "No rain for the configured rain clear delay."));
                 }
 
                 if (sync(lens, in.lensFault, now, cooldown, pastGrace && rules.onSensorFault, rules.sensorSettleSeconds) && in.lensFault)
                 {
-                    alerts.push_back(make(AlertType::LensFault, AlertPriority::Normal, "Rain sensor lens fault",
+                    alerts.push_back(make(AlertType::LensFault, "Rain sensor lens fault",
                                           "The RG-15 reports a lens fault - clean or inspect the lens."));
                 }
             }
@@ -167,10 +183,10 @@ namespace SQM
                 if (sync(sensors[i], faulted, now, cooldown, pastGrace && rules.onSensorFault, rules.sensorSettleSeconds))
                 {
                     if (faulted)
-                        alerts.push_back(make(AlertType::SensorFault, AlertPriority::High, std::string(sensor.name) + " sensor fault",
+                        alerts.push_back(make(AlertType::SensorFault, std::string(sensor.name) + " sensor fault",
                                               std::string(sensor.name) + " is offline or reporting errors."));
                     else
-                        alerts.push_back(make(AlertType::SensorRecovered, AlertPriority::Normal, std::string(sensor.name) + " sensor recovered",
+                        alerts.push_back(make(AlertType::SensorRecovered, std::string(sensor.name) + " sensor recovered",
                                               std::string(sensor.name) + " is reporting normally again."));
                 }
             }
@@ -183,7 +199,7 @@ namespace SQM
                                           : margin < rules.dewRiskMarginC;
                 if (sync(dew, dewObserved, now, cooldown, pastGrace && rules.onDewRisk) && dewObserved)
                 {
-                    alerts.push_back(make(AlertType::DewRisk, AlertPriority::Normal, "Dew risk",
+                    alerts.push_back(make(AlertType::DewRisk, "Dew risk",
                                           format("Temperature %.1f C is within %.1f C of the dew point (%.1f C).",
                                                  in.temperatureC, margin, in.dewpointC)));
                 }
@@ -209,10 +225,10 @@ namespace SQM
                 else if (sync(sky, skyClear, now, cooldown, pastGrace && (rules.onClearSky || rules.onCloudedOver), rules.skySettleSeconds))
                 {
                     if (skyClear && rules.onClearSky)
-                        alerts.push_back(make(AlertType::ClearSky, AlertPriority::Normal, rules.skyNightOnly ? "Dark and clear" : "Skies clear",
+                        alerts.push_back(make(AlertType::ClearSky, rules.skyNightOnly ? "Dark and clear" : "Skies clear",
                                               format("Cloud cover is down to %.0f%%.", in.cloudCoverPercent)));
                     else if (!skyClear && rules.onCloudedOver)
-                        alerts.push_back(make(AlertType::CloudedOver, AlertPriority::Normal, "Clouded over",
+                        alerts.push_back(make(AlertType::CloudedOver, "Clouded over",
                                               format("Cloud cover is up to %.0f%%.", in.cloudCoverPercent)));
                 }
             }

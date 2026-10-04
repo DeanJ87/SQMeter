@@ -1,10 +1,34 @@
-import { FunctionalComponent } from 'preact';
+import { ComponentChildren, FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
-import type { AlertChannelName, AlertRecord } from '../../types';
+import type { AlertChannelName, AlertEventKey, AlertRecord } from '../../types';
 import { mergeAlertsConfig } from './defaults';
 import type { SettingsTabProps } from './context';
-import { Note } from '../ui';
+import { InfoTip, Note } from '../ui';
 import { ActionButton, Field, Group, NumberInput, Requires, ResultNote, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
+
+const LEVEL_OPTIONS = [
+  { value: '0', label: 'Off' },
+  { value: '1', label: 'Quiet' },
+  { value: '2', label: 'Normal' },
+  { value: '3', label: 'Urgent' },
+  { value: '4', label: 'Wake me' },
+];
+
+const LEVEL_HINT =
+  'Quiet: no sound. Urgent: breaks through quiet hours. Wake me: repeats until acknowledged (Pushover emergency, ntfy max) and rings paired phones over Bluetooth.';
+
+// Pushover's built-in sounds; a custom one already saved stays selectable.
+const PUSHOVER_SOUNDS = [
+  'pushover', 'bike', 'bugle', 'cashregister', 'classical', 'cosmic', 'falling', 'gamelan', 'incoming', 'intermission', 'magic',
+  'mechanical', 'pianobar', 'siren', 'spacealarm', 'tugboat', 'alien', 'climb', 'persistent', 'echo', 'updown', 'vibrate', 'none',
+];
+const LONG_SOUNDS = new Set(['alien', 'climb', 'persistent', 'echo', 'updown']);
+const soundLabel = (sound: string) =>
+  sound === 'none' ? 'Silent' : sound === 'vibrate' ? 'Vibrate only' : `${sound[0].toUpperCase()}${sound.slice(1)}${LONG_SOUNDS.has(sound) ? ' (long)' : ''}`;
+const soundOptions = (current: string, defaultLabel: string) => [
+  { value: '', label: defaultLabel },
+  ...(current && !PUSHOVER_SOUNDS.includes(current) ? [current] : []).concat(PUSHOVER_SOUNDS).map((sound) => ({ value: sound, label: soundLabel(sound) })),
+];
 
 const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, status, dirty, goTo }) => {
   const alerts = mergeAlertsConfig(config.alerts);
@@ -66,7 +90,49 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
 
   const rainReason = !hw.rain.enabled ? 'Rain sensor is off.' : null;
   const dewReason = hw.environment.detected === false ? 'BME280 not detected.' : null;
-  const clearReason = hw.irSky.detected === false ? 'MLX90614 not detected.' : null;
+  const skyReason = hw.irSky.detected === false ? 'MLX90614 not detected.' : null;
+  const pushoverOn = alerts.pushover.enabled;
+
+  // Render function (not a nested component) so re-renders don't remount it.
+  const eventRow = (
+    key: AlertEventKey,
+    label: string,
+    opts: { hint?: string; blocked?: string | null; fix?: () => void; threshold?: ComponentChildren } = {}
+  ) => {
+    const event = alerts.events[key];
+    const locked = Boolean(opts.blocked) && event.level === 0;
+    return (
+      <>
+        <div class="event-row" data-event={key}>
+          <span class="event-label">
+            <span>
+              {label}
+              {opts.hint && <InfoTip text={opts.hint} />}
+            </span>
+            {opts.threshold}
+          </span>
+          <SelectInput
+            value={String(event.level)}
+            ariaLabel={`${label}: level`}
+            options={LEVEL_OPTIONS}
+            disabled={off || locked}
+            onChange={(v) => set(['events', key, 'level'], parseInt(v, 10))}
+          />
+          {pushoverOn &&
+            (event.level >= 2 ? (
+              <SelectInput value={event.sound} ariaLabel={`${label}: sound`} options={soundOptions(event.sound, 'Default')} disabled={off} onChange={(v) => set(['events', key, 'sound'], v)} />
+            ) : (
+              <span />
+            ))}
+        </div>
+        {opts.blocked && (
+          <Requires tone={event.level > 0 ? 'warn' : 'info'} onFix={opts.fix}>
+            {opts.blocked}
+          </Requires>
+        )}
+      </>
+    );
+  };
   // Unknown until status loads; a location typed but not yet saved counts.
   const noLocation = status !== null && status.sky?.locationSource === 'none' && !config.location?.set;
   const channelCount = [alerts.pushover.enabled, alerts.ntfy.enabled, alerts.webhook.enabled, alerts.mqtt.enabled].filter(Boolean).length;
@@ -88,75 +154,74 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         {!off && channelCount === 0 && <Requires tone="warn">Turn on a channel below.</Requires>}
       </SettingsCard>
 
-      <SettingsCard title="Notify me when">
+      <SettingsCard title="Notify me when" hint={LEVEL_HINT}>
         <fieldset class="card-body" disabled={off}>
-          <Toggle
-            label="Safety changes"
-            checked={alerts.onSafetyChange}
-            onChange={(v) => set(['onSafetyChange'], v)}
-            hint="Unsafe, and safe again. Unsafe alerts list the reasons."
-            disabled={off}
-          />
-          <Toggle
-            label="Rain starts or clears"
-            checked={alerts.onRain}
-            onChange={(v) => set(['onRain'], v)}
-            blockedReason={rainReason}
-            onFix={() => goTo('sensors', 'rain')}
-            disabled={off}
-          />
-          <Toggle
-            label="A sensor fails or recovers"
-            checked={alerts.onSensorFault}
-            onChange={(v) => set(['onSensorFault'], v)}
-            hint="Includes the RG-15 lens fault."
-            disabled={off}
-          />
-          <div class="rule-row">
-            <Toggle label="Dew risk" checked={alerts.onDewRisk} onChange={(v) => set(['onDewRisk'], v)} blockedReason={dewReason} disabled={off} hint="Temperature within this margin of the dew point." />
-            <NumberInput min={0} max={10} step={0.5} unit="°C" ariaLabel="Dew risk margin" value={alerts.dewRiskMarginC} disabled={off || !alerts.onDewRisk} onChange={(v) => set(['dewRiskMarginC'], v)} />
+          <div class={`event-table${pushoverOn ? ' with-sound' : ''}`}>
+            <div class="event-row event-head" aria-hidden="true">
+              <span />
+              <span>Level</span>
+              {pushoverOn && <span>Pushover sound</span>}
+            </div>
+            {eventRow('unsafe', 'It turns unsafe', { hint: 'Lists the reasons.' })}
+            {eventRow('safe', "It's safe again")}
+            {eventRow('rain_started', 'Rain starts', { blocked: rainReason, fix: () => goTo('sensors', 'rain') })}
+            {eventRow('rain_stopped', 'Rain stops', { blocked: rainReason, fix: () => goTo('sensors', 'rain') })}
+            {eventRow('sensor_fault', 'A sensor fails', { hint: 'Includes the RG-15 lens fault.' })}
+            {eventRow('sensor_recovered', 'A sensor recovers')}
+            {eventRow('dew_risk', 'Dew risk within', {
+              blocked: dewReason,
+              threshold: (
+                <NumberInput min={0} max={10} step={0.5} unit="°C" ariaLabel="Dew risk margin" value={alerts.dewRiskMarginC} disabled={off} onChange={(v) => set(['dewRiskMarginC'], v)} />
+              ),
+              hint: 'Temperature within this margin of the dew point.',
+            })}
+            {eventRow('clear_sky', 'Skies clear up below', {
+              blocked: skyReason,
+              threshold: (
+                <NumberInput min={0} max={100} step={1} unit="%" ariaLabel="Clear below" value={alerts.clearSkyCloudPercent} disabled={off} onChange={(v) => set(['clearSkyCloudPercent'], v)} />
+              ),
+              hint: 'Cloud cover.',
+            })}
+            {eventRow('clouded_over', 'Skies cloud over above', {
+              blocked: skyReason,
+              threshold: (
+                <NumberInput
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                  ariaLabel="Clouded over above"
+                  value={alerts.cloudedOverCloudPercent}
+                  error={err('cloudedOverCloudPercent')}
+                  disabled={off}
+                  onChange={(v) => set(['cloudedOverCloudPercent'], v)}
+                />
+              ),
+              hint: 'Cloud cover.',
+            })}
           </div>
-          <Group title="Sky">
-            <div class="rule-row">
-              <Toggle label="Skies clear up" checked={alerts.onClearSky} onChange={(v) => set(['onClearSky'], v)} blockedReason={clearReason} disabled={off} hint="Cloud cover drops below this." />
-              <NumberInput min={0} max={100} step={1} unit="%" ariaLabel="Clear below" value={alerts.clearSkyCloudPercent} disabled={off || !alerts.onClearSky} onChange={(v) => set(['clearSkyCloudPercent'], v)} />
-            </div>
-            <div class="rule-row">
-              <Toggle label="Skies cloud over" checked={alerts.onCloudedOver} onChange={(v) => set(['onCloudedOver'], v)} blockedReason={clearReason} disabled={off} hint="Cloud cover rises above this." />
-              <NumberInput
-                min={0}
-                max={100}
-                step={1}
-                unit="%"
-                ariaLabel="Clouded over above"
-                value={alerts.cloudedOverCloudPercent}
-                error={err('cloudedOverCloudPercent')}
-                disabled={off || !alerts.onCloudedOver}
-                onChange={(v) => set(['cloudedOverCloudPercent'], v)}
-              />
-            </div>
-            <div class="rule-row">
-              <Toggle
-                label="Only when it's dark"
-                checked={alerts.skyNightOnly}
-                onChange={(v) => set(['skyNightOnly'], v)}
-                disabled={off}
-                hint="From the sun's position at your location. If it's already clear at nightfall, you get one 'Dark and clear' alert."
-                blockedReason={noLocation ? 'Needs your location.' : null}
-                onFix={() => goTo('time', 'location')}
-              />
-              <SelectInput
-                value={String(alerts.nightSunAltitudeDeg)}
-                disabled={off || !alerts.skyNightOnly}
-                options={[
-                  { value: '-0.833', label: 'After sunset' },
-                  { value: '-12', label: 'Nautical dark (-12°)' },
-                  { value: '-18', label: 'Astronomical dark (-18°)' },
-                ]}
-                onChange={(v) => set(['nightSunAltitudeDeg'], parseFloat(v))}
-              />
-            </div>
-          </Group>
+          {err('cloudedOverCloudPercent') && <Note tone="bad">{err('cloudedOverCloudPercent')}</Note>}
+          <div class="rule-row">
+            <Toggle
+              label="Sky alerts only when it's dark"
+              checked={alerts.skyNightOnly}
+              onChange={(v) => set(['skyNightOnly'], v)}
+              disabled={off}
+              hint="From the sun's position at your location. If it's already clear at nightfall, you get one 'Dark and clear' alert."
+              blockedReason={noLocation ? 'Needs your location.' : null}
+              onFix={() => goTo('time', 'location')}
+            />
+            <SelectInput
+              value={String(alerts.nightSunAltitudeDeg)}
+              disabled={off || !alerts.skyNightOnly}
+              options={[
+                { value: '-0.833', label: 'After sunset' },
+                { value: '-12', label: 'Nautical dark (-12°)' },
+                { value: '-18', label: 'Astronomical dark (-18°)' },
+              ]}
+              onChange={(v) => set(['nightSunAltitudeDeg'], parseFloat(v))}
+            />
+          </div>
           <div class="form-grid">
             <Field label="Cooldown" error={err('cooldownSeconds')} hint="Minimum gap between alerts of the same kind. A change held back is sent when it ends.">
               <NumberInput integer min={0} max={86400} unit="s" value={alerts.cooldownSeconds} disabled={off} onChange={(v) => set(['cooldownSeconds'], v)} />
@@ -177,19 +242,8 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
                 <Field label="App token" error={err('pushover.appToken')} hint="Create an application at pushover.net.">
                   <TextInput type="password" value={alerts.pushover.appToken} onInput={(v) => set(['pushover', 'appToken'], v)} />
                 </Field>
-                <Field label="Urgent priority" hint="Used for rain, unsafe and sensor faults.">
-                  <SelectInput
-                    value={String(alerts.pushover.highPriority)}
-                    options={[
-                      { value: '0', label: 'Normal' },
-                      { value: '1', label: 'High' },
-                      { value: '2', label: 'Emergency' },
-                    ]}
-                    onChange={(v) => set(['pushover', 'highPriority'], parseInt(v, 10))}
-                  />
-                </Field>
-                <Field label="Sound">
-                  <TextInput value={alerts.pushover.sound} placeholder="Default" onInput={(v) => set(['pushover', 'sound'], v)} />
+                <Field label="Default sound" hint="Used where an event's sound is Default.">
+                  <SelectInput value={alerts.pushover.sound} options={soundOptions(alerts.pushover.sound, 'Pushover default')} onChange={(v) => set(['pushover', 'sound'], v)} />
                 </Field>
               </div>
               {testButton('pushover')}
@@ -218,7 +272,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         </Group>
 
         <Group>
-          <Toggle label="Webhook" checked={alerts.webhook.enabled} onChange={(v) => set(['webhook', 'enabled'], v)} hint="POSTs JSON: device, event, title, message, priority, timestamp." />
+          <Toggle label="Webhook" checked={alerts.webhook.enabled} onChange={(v) => set(['webhook', 'enabled'], v)} hint="POSTs JSON: device, event, title, message, level, timestamp." />
           {alerts.webhook.enabled && (
             <>
               <div class="form-grid">
