@@ -154,6 +154,17 @@ namespace SQM
         uint32_t mqttSafetyPublishedAt = 0;
         static constexpr uint32_t MQTT_SAFETY_REPUBLISH_MS = 60000;
         void processAlerts(const SafetyStatus &status);
+
+        struct NightState
+        {
+            const char *source = nullptr; // "gps", "manual" or null
+            double latitude = 0.0;
+            double longitude = 0.0;
+            bool known = false;
+            bool isNight = false;
+            double sunAltitudeDeg = 0.0;
+        };
+        static NightState computeNight(const SensorSnapshot &snapshot, const Config &cfg);
         void publishMqttSafety(const SafetyStatus &status);
         void setupAlertRoutes();
 

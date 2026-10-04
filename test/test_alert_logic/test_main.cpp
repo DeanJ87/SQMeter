@@ -14,6 +14,8 @@ namespace
         rules.startupGraceSeconds = 0;
         rules.cooldownSeconds = 60;
         rules.sensorSettleSeconds = 0;
+        rules.skySettleSeconds = 0;
+        rules.skyNightOnly = false;
         return rules;
     }
 
@@ -210,22 +212,95 @@ void test_dew_risk_with_hysteresis(void)
     TEST_ASSERT_TRUE(hasType(engine.update(in, rules), AlertType::DewRisk));
 }
 
-void test_clear_sky(void)
+AlertInputs skyAt(uint32_t now, float cloud, bool night = true)
+{
+    AlertInputs in = safeInputs(now);
+    in.cloudCoverPercent = cloud;
+    in.nightKnown = true;
+    in.isNight = night;
+    return in;
+}
+
+void test_sky_clears_and_clouds_over(void)
 {
     AlertEngine engine;
     AlertRules rules = noGraceRules();
     rules.onClearSky = true;
-    engine.update(safeInputs(0), rules);
+    rules.onCloudedOver = true;
+    rules.cooldownSeconds = 0;
+    engine.update(skyAt(0, 80), rules); // baseline: cloudy
 
-    AlertInputs in = safeInputs(10);
-    in.cloudCoverPercent = 10.0f;
-    TEST_ASSERT_TRUE(hasType(engine.update(in, rules), AlertType::ClearSky));
+    TEST_ASSERT_TRUE(hasType(engine.update(skyAt(10, 10), rules), AlertType::ClearSky));
+    // Between the thresholds (20..70): nothing changes
+    TEST_ASSERT_EQUAL(0, engine.update(skyAt(20, 50), rules).size());
+    TEST_ASSERT_TRUE(hasType(engine.update(skyAt(30, 85), rules), AlertType::CloudedOver));
+}
+
+void test_sky_only_enabled_direction(void)
+{
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    rules.onClearSky = true; // clouding over not wanted
+    rules.cooldownSeconds = 0;
+    engine.update(skyAt(0, 80), rules);
+    TEST_ASSERT_TRUE(hasType(engine.update(skyAt(10, 10), rules), AlertType::ClearSky));
+    TEST_ASSERT_EQUAL(0, engine.update(skyAt(20, 90), rules).size());
+    TEST_ASSERT_TRUE(hasType(engine.update(skyAt(30, 5), rules), AlertType::ClearSky));
+}
+
+void test_sky_settle(void)
+{
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    rules.onClearSky = true;
+    rules.skySettleSeconds = 120;
+    engine.update(skyAt(0, 80), rules);
+    TEST_ASSERT_EQUAL(0, engine.update(skyAt(10, 10), rules).size());
+    TEST_ASSERT_EQUAL(0, engine.update(skyAt(60, 80), rules).size()); // a gap closes again
+    TEST_ASSERT_EQUAL(0, engine.update(skyAt(100, 10), rules).size());
+    TEST_ASSERT_TRUE(hasType(engine.update(skyAt(220, 10), rules), AlertType::ClearSky));
+}
+
+void test_sky_night_only(void)
+{
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    rules.onClearSky = true;
+    rules.onCloudedOver = true;
+    rules.skyNightOnly = true;
+    rules.cooldownSeconds = 0;
+    engine.update(skyAt(0, 80, false), rules);
+
+    // Clears up in the afternoon: held
+    TEST_ASSERT_EQUAL(0, engine.update(skyAt(10, 5, false), rules).size());
+    // Still clear when it gets dark: announced once, as "Dark and clear"
+    std::vector<Alert> alerts = engine.update(skyAt(20, 5, true), rules);
+    TEST_ASSERT_TRUE(hasType(alerts, AlertType::ClearSky));
+    TEST_ASSERT_EQUAL_STRING("Dark and clear", alerts[0].title.c_str());
+    TEST_ASSERT_EQUAL(0, engine.update(skyAt(30, 5, true), rules).size());
+    // Clouds over at night: announced
+    TEST_ASSERT_TRUE(hasType(engine.update(skyAt(40, 90, true), rules), AlertType::CloudedOver));
+    // Dawn: nothing
+    TEST_ASSERT_EQUAL(0, engine.update(skyAt(50, 5, false), rules).size());
+}
+
+void test_night_only_without_location_does_not_block(void)
+{
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    rules.onClearSky = true;
+    rules.skyNightOnly = true;
+    engine.update(skyAt(0, 80), rules);
+    AlertInputs unknown = skyAt(10, 5, false);
+    unknown.nightKnown = false;
+    TEST_ASSERT_TRUE(hasType(engine.update(unknown, rules), AlertType::ClearSky));
 }
 
 void test_alert_type_names(void)
 {
     TEST_ASSERT_EQUAL_STRING("rain_started", alertTypeName(AlertType::RainStarted));
     TEST_ASSERT_EQUAL_STRING("unsafe", alertTypeName(AlertType::Unsafe));
+    TEST_ASSERT_EQUAL_STRING("clouded_over", alertTypeName(AlertType::CloudedOver));
     TEST_ASSERT_EQUAL_STRING("a; b", joinReasons({"a", "b"}).c_str());
 }
 
@@ -265,7 +340,11 @@ int main(int argc, char **argv)
     RUN_TEST(test_sensor_fault_and_recovery);
     RUN_TEST(test_disabled_sensor_never_alerts);
     RUN_TEST(test_dew_risk_with_hysteresis);
-    RUN_TEST(test_clear_sky);
+    RUN_TEST(test_sky_clears_and_clouds_over);
+    RUN_TEST(test_sky_only_enabled_direction);
+    RUN_TEST(test_sky_settle);
+    RUN_TEST(test_sky_night_only);
+    RUN_TEST(test_night_only_without_location_does_not_block);
     RUN_TEST(test_alert_type_names);
     RUN_TEST(test_sensor_blip_is_not_announced);
     return UNITY_END();

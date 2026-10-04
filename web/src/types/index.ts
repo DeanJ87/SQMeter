@@ -145,6 +145,7 @@ export interface SystemStatus {
     buildTime: string;
     variant?: 'standard' | 'ble';
   };
+  sky?: { locationSource: 'gps' | 'manual' | 'none'; nightKnown: boolean; isNight?: boolean; sunAltitudeDeg?: number };
   ble?: {
     available: boolean;
     active: boolean;
@@ -428,6 +429,10 @@ export interface AlertsConfig {
   dewRiskMarginC: number;
   onClearSky: boolean;
   clearSkyCloudPercent: number;
+  onCloudedOver: boolean;
+  cloudedOverCloudPercent: number;
+  skyNightOnly: boolean;
+  nightSunAltitudeDeg: number;
   cooldownSeconds: number;
   pushover: { enabled: boolean; userKey: string; appToken: string; highPriority: number; sound: string };
   ntfy: { enabled: boolean; server: string; topic: string; token: string };
@@ -473,6 +478,13 @@ export interface Config {
   alerts?: AlertsConfig;
   ble?: BleConfig;
   wind?: WindConfig;
+  location?: LocationConfig;
+}
+
+export interface LocationConfig {
+  set: boolean;
+  latitude: number;
+  longitude: number;
 }
 
 export interface RainSensorReading {

@@ -14,7 +14,7 @@ Configure everything in **Settings → Alerts**, then **Save** and use **Send te
 | Rain detected / cleared | The RG-15 starts reporting rain / the rain clear delay passes with no rain | Rain: yes |
 | Sensor fault / recovered | A sensor (TSL2591, MLX90614, BME280, RG-15) goes offline or stale, or recovers. Also the RG-15 lens-fault flag | Fault: yes |
 | Dew risk | Temperature comes within the configured margin of the dew point (off by default) | No |
-| Clear skies | Cloud cover drops below the configured percentage (off by default) | No |
+| Skies clear up / cloud over | Cloud cover drops below the "clear" percentage (default 20%) / rises above the "clouded over" percentage (default 70%). Between the two nothing changes, and a change has to hold for 2 minutes (off by default) | No |
 
 "Urgent" alerts use Pushover's **Priority for urgent alerts** setting (High by default, which bypasses quiet hours; Emergency repeats every minute for up to an hour until acknowledged) and ntfy's `high` priority.
 
@@ -23,6 +23,12 @@ Configure everything in **Settings → Alerts**, then **Save** and use **Send te
 Nothing is sent in the first minute after boot, so a restart doesn't announce the device's startup state. Sensor faults and recoveries must also last 30 seconds before they're sent, so brief blips (saving settings, a sensor being reconfigured, an OTA upload) don't page anyone.
 
 ---
+
+### Only when it's dark
+
+Sky alerts are limited to darkness by default: **after sunset**, **nautical dark** (sun 12° below the horizon, the default) or **astronomical dark** (18°). Darkness comes from the sun's position, so the device needs to know where it is - a GPS fix if there is one, otherwise the coordinates under **Settings → Time & Location → Location** (paste "latitude, longitude" from any maps app). If the sky is already clear when it gets dark, you get one "Dark and clear" alert. Without a clock or a location, sky alerts aren't held back.
+
+The browser's own location can't be used on the device's plain-HTTP pages - browsers only share it with HTTPS sites - so the "Use my location" button only appears where it works.
 
 ## Channels
 

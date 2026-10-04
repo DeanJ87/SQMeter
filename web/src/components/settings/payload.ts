@@ -4,6 +4,7 @@ import {
   defaultAuthConfig,
   defaultBleConfig,
   defaultCloudDetectionConfig,
+  defaultLocationConfig,
   defaultRainConfig,
   defaultWindConfig,
   mergeAlertsConfig,
@@ -83,6 +84,7 @@ export const toConfigPayload = (source: Config): Config => {
     alerts: mergeAlertsConfig(source.alerts),
     ble: { ...defaultBleConfig, ...source.ble },
     wind: { ...defaultWindConfig, ...source.wind },
+    location: { ...defaultLocationConfig, ...source.location },
   };
 
   return {

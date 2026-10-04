@@ -133,6 +133,8 @@ namespace SQM
                 return "droplet";
             case Alerts::AlertType::ClearSky:
                 return "star";
+            case Alerts::AlertType::CloudedOver:
+                return "cloud";
             case Alerts::AlertType::Acknowledged:
                 return "ok_hand";
             case Alerts::AlertType::Test:
