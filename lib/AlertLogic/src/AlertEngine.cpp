@@ -74,7 +74,7 @@ namespace SQM
             return out;
         }
 
-        bool AlertEngine::sync(Tracker &tracker, bool current, uint32_t now, uint32_t cooldown, bool emitAllowed)
+        bool AlertEngine::sync(Tracker &tracker, bool current, uint32_t now, uint32_t cooldown, bool emitAllowed, uint32_t settle)
         {
             if (!tracker.initialized || !emitAllowed)
             {
@@ -82,13 +82,25 @@ namespace SQM
                 // of the startup grace) doesn't announce a stale transition.
                 tracker.initialized = true;
                 tracker.notified = current;
+                tracker.pending = false;
                 return false;
             }
             if (current == tracker.notified)
+            {
+                tracker.pending = false;
+                return false;
+            }
+            if (!tracker.pending)
+            {
+                tracker.pending = true;
+                tracker.pendingSince = now;
+            }
+            if (now - tracker.pendingSince < settle)
                 return false;
             if (tracker.hasNotified && now - tracker.lastNotifiedAt < cooldown)
                 return false; // retried on a later update
             tracker.notified = current;
+            tracker.pending = false;
             tracker.hasNotified = true;
             tracker.lastNotifiedAt = now;
             return true;
@@ -134,7 +146,7 @@ namespace SQM
                                               "No rain for the configured rain clear delay."));
                 }
 
-                if (sync(lens, in.lensFault, now, cooldown, pastGrace && rules.onSensorFault) && in.lensFault)
+                if (sync(lens, in.lensFault, now, cooldown, pastGrace && rules.onSensorFault, rules.sensorSettleSeconds) && in.lensFault)
                 {
                     alerts.push_back(make(AlertType::LensFault, AlertPriority::Normal, "Rain sensor lens fault",
                                           "The RG-15 reports a lens fault - clean or inspect the lens."));
@@ -151,7 +163,7 @@ namespace SQM
                     continue;
                 }
                 const bool faulted = !sensor.healthy;
-                if (sync(sensors[i], faulted, now, cooldown, pastGrace && rules.onSensorFault))
+                if (sync(sensors[i], faulted, now, cooldown, pastGrace && rules.onSensorFault, rules.sensorSettleSeconds))
                 {
                     if (faulted)
                         alerts.push_back(make(AlertType::SensorFault, AlertPriority::High, std::string(sensor.name) + " sensor fault",

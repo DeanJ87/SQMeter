@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <nvs.h>
+#include <cctype>
 #include <cmath>
 #include <cstring>
 
@@ -16,6 +17,17 @@ namespace SQM
 
     namespace
     {
+        void trimInPlace(std::string &value)
+        {
+            const size_t start = value.find_first_not_of(" \t\r\n");
+            if (start == std::string::npos)
+            {
+                value.clear();
+                return;
+            }
+            value = value.substr(start, value.find_last_not_of(" \t\r\n") - start + 1);
+        }
+
         bool isPlaceholderSecret(const char *value)
         {
             return value == nullptr || value[0] == '\0' ||
@@ -1105,6 +1117,10 @@ namespace SQM
                     a.pushoverEnabled = pushover["enabled"] | false;
                 assignSecret(pushover, "userKey", a.pushoverUserKey, preserveSecretPlaceholders);
                 assignSecret(pushover, "appToken", a.pushoverAppToken, preserveSecretPlaceholders);
+                // Pasted keys often carry a stray space or newline, which
+                // Pushover rejects as "not a valid user".
+                trimInPlace(a.pushoverUserKey);
+                trimInPlace(a.pushoverAppToken);
                 if (pushover.containsKey("highPriority"))
                     a.pushoverHighPriority = pushover["highPriority"] | 1;
                 if (pushover.containsKey("sound"))
@@ -1180,6 +1196,31 @@ namespace SQM
         {
             Logger::error(TAG, "Configuration validation failed: %s", validationError.c_str());
             return false;
+        }
+
+        // Key format is only enforced for changes coming from the UI/API, so a
+        // key stored by older firmware never stops the config from loading.
+        if (preserveSecretPlaceholders && cfg.alerts.pushoverEnabled)
+        {
+            auto isPushoverKey = [](const std::string &key)
+            {
+                if (key.size() != 30)
+                    return false;
+                for (char c : key)
+                    if (!std::isalnum(static_cast<unsigned char>(c)))
+                        return false;
+                return true;
+            };
+            if (!isPushoverKey(cfg.alerts.pushoverUserKey))
+            {
+                Logger::error(TAG, "Pushover user key must be 30 letters and digits");
+                return false;
+            }
+            if (!isPushoverKey(cfg.alerts.pushoverAppToken))
+            {
+                Logger::error(TAG, "Pushover app token must be 30 letters and digits");
+                return false;
+            }
         }
 
         return true;

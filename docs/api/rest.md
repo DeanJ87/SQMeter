@@ -470,11 +470,11 @@ Queues a test notification on the given (saved and enabled) channel(s). Returns 
 
 ### `GET /api/alerts/recent`
 
-The last 20 alerts since boot, newest first:
+Whether alerts are on, and the last 20 alerts since boot, newest first:
 
 ```json
-[{"id":2,"event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.4 mm/h).","priority":1,"ageSeconds":42,"timestamp":1759500000,
-  "channels":{"pushover":{"status":"sent","detail":"HTTP 200"},"mqtt":{"status":"failed","detail":"MQTT not connected"}}}]
+{"enabled":true,"alerts":[{"id":2,"event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.4 mm/h).","priority":1,"ageSeconds":42,"timestamp":1759500000,
+  "channels":{"pushover":{"status":"sent","detail":"HTTP 200"},"mqtt":{"status":"failed","detail":"MQTT not connected"}}}]}
 ```
 
 `status` is `pending`, `sent`, `failed` or `skipped`.

@@ -788,7 +788,8 @@ namespace SQM
             }
 
             DynamicJsonDocument doc(8192);
-            JsonArray arr = doc.to<JsonArray>();
+            doc["enabled"] = getConfigCallback().alerts.enabled;
+            JsonArray arr = doc.createNestedArray("alerts");
             for (const GithubRelease &r : releases) {
                 JsonObject o = arr.createNestedObject();
                 o["tag"] = r.tag;

@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { route, useRouter } from 'preact-router';
 import { Toaster } from './toast';
+import AlertsBell from './AlertsBell';
 
 interface LayoutProps {
   path?: string;
@@ -65,6 +66,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
                 <span>{item.label}</span>
               </button>
             ))}
+            <AlertsBell />
           </nav>
         </div>
       </header>

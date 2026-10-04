@@ -2,6 +2,7 @@
 #include "AlertRootCA.h"
 #include "Logger.h"
 #include "MQTTClient.h"
+#include "TlsLock.h"
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
@@ -95,6 +96,15 @@ namespace SQM
             if (!ok)
             {
                 String response = http.getString();
+                // Pushover (and ntfy) explain failures in JSON: show the
+                // message itself rather than truncated raw JSON.
+                StaticJsonDocument<512> errorDoc;
+                if (!deserializeJson(errorDoc, response))
+                {
+                    const char *message = errorDoc["errors"][0] | errorDoc["error"] | static_cast<const char *>(nullptr);
+                    if (message != nullptr)
+                        response = message;
+                }
                 if (response.length() > 0)
                     detail += ": " + std::string(response.substring(0, MAX_ERROR_BODY_CHARS).c_str());
             }
@@ -328,8 +338,21 @@ namespace SQM
                 continue;
             }
 
+            TlsLock::Guard tls(30000);
+            if (!tls.ok())
+            {
+                setStatus(job.recordId, sender.channel, DeliveryStatus::Skipped, "Another HTTPS request is in progress");
+                continue;
+            }
+
             std::string detail;
-            const bool ok = (this->*sender.send)(job, detail);
+            bool ok = (this->*sender.send)(job, detail);
+            if (!ok && detail.rfind("HTTP ", 0) != 0)
+            {
+                // Connection-level failure (DNS, TCP, TLS memory): one retry.
+                vTaskDelay(pdMS_TO_TICKS(3000));
+                ok = (this->*sender.send)(job, detail);
+            }
             setStatus(job.recordId, sender.channel, ok ? DeliveryStatus::Sent : DeliveryStatus::Failed, detail);
             if (!ok)
                 Logger::warn(TAG, "%s delivery failed: %s", alertChannelName(sender.channel), detail.c_str());
