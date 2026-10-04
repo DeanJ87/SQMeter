@@ -34,6 +34,10 @@ static std::unique_ptr<MQTTClient> mqttClient;
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 
+// Default is 8 KB, which left only ~1.5 KB spare at peak (alert processing,
+// config saves). 4 KB more heap is cheap insurance against a stack-overflow reboot.
+SET_LOOP_TASK_STACK_SIZE(12 * 1024);
+
 // Timing
 static uint32_t lastSensorUpdate = 0;
 static uint32_t lastTslUpdate = 0;
