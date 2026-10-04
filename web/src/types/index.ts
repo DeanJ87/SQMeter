@@ -145,7 +145,14 @@ export interface SystemStatus {
     buildTime: string;
     variant?: 'standard' | 'ble';
   };
-  sky?: { locationSource: 'gps' | 'manual' | 'none'; nightKnown: boolean; isNight?: boolean; sunAltitudeDeg?: number };
+  sky?: {
+    locationSource: 'gps' | 'manual' | 'none';
+    nightKnown: boolean;
+    isNight?: boolean;
+    sunAltitudeDeg?: number;
+    latitude?: number;
+    longitude?: number;
+  };
   ble?: {
     available: boolean;
     active: boolean;
@@ -497,6 +504,7 @@ export interface LocationConfig {
   set: boolean;
   latitude: number;
   longitude: number;
+  showSunMoon?: boolean;
 }
 
 export interface RainSensorReading {

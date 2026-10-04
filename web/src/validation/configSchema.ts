@@ -332,6 +332,7 @@ export const configSchema = z
         set: z.boolean(),
         latitude: z.number().min(-90, "Latitude is -90 to 90").max(90, "Latitude is -90 to 90"),
         longitude: z.number().min(-180, "Longitude is -180 to 180").max(180, "Longitude is -180 to 180"),
+        showSunMoon: z.boolean().optional(),
       })
       .optional(),
   })

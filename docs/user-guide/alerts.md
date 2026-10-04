@@ -26,6 +26,8 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | Urgent | priority 1, bypasses quiet hours | `high` | - |
 | Wake me | priority 2 (emergency): repeats every minute for up to an hour until acknowledged | `max` | rings paired phones |
 
+**Test** on an event row sends a sample of that event ("Test: Clouded over") to every enabled channel at the level and sound currently picked - no need to save first - and shows each channel's result. A Wake me test also rings paired phones, and a Pushover emergency test keeps repeating until you acknowledge it in the app.
+
 So "skies cloud over" can be Wake me with a loud sound while "skies clear up" stays Normal, and dew risk can be Quiet. A sound left on **Default** uses the Pushover channel's default sound. Webhook and MQTT payloads carry the level as `"level": "quiet" | "normal" | "urgent" | "wake"`.
 
 **Cooldown** (default 5 min) is the minimum time between alerts of the same kind, so a flapping condition doesn't spam you. A change held back by the cooldown isn't lost: if the condition still differs from what you were last told when the cooldown ends, that alert is sent then - the most recent alert always matches reality.
@@ -37,6 +39,8 @@ Nothing is sent in the first minute after boot, so a restart doesn't announce th
 ### Only when it's dark
 
 Sky alerts are limited to darkness by default: **after sunset**, **nautical dark** (sun 12° below the horizon, the default) or **astronomical dark** (18°). Darkness comes from the sun's position, so the device needs to know where it is - a GPS fix if there is one, otherwise the coordinates under **Settings → Time & Location → Location** (paste "latitude, longitude" from any maps app). If the sky is already clear when it gets dark, you get one "Dark and clear" alert. Without a clock or a location, sky alerts aren't held back.
+
+Below the setting, the tab shows where the sun is now and when the chosen darkness starts and ends tonight, worked out in the browser from the same location.
 
 The browser's own location can't be used on the device's plain-HTTP pages - browsers only share it with HTTPS sites - so the "Use my location" button only appears where it works.
 

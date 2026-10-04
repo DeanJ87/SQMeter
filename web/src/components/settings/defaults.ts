@@ -103,4 +103,4 @@ export const defaultBleConfig: BleConfig = {
   passkey: '',
 };
 
-export const defaultLocationConfig: LocationConfig = { set: false, latitude: 0, longitude: 0 };
+export const defaultLocationConfig: LocationConfig = { set: false, latitude: 0, longitude: 0, showSunMoon: true };

@@ -406,7 +406,7 @@ export const mockConfig: Config = {
     webhook: { enabled: false, url: "", authHeader: "", insecureTls: false },
     mqtt: { enabled: false },
   },
-  location: { set: false, latitude: 0, longitude: 0 },
+  location: { set: false, latitude: 0, longitude: 0, showSunMoon: true },
   ble: { enabled: false, passkey: '' },
   wind: {
     enabled: true,

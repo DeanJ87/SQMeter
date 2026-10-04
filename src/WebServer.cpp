@@ -28,6 +28,30 @@ namespace SQM
     {
         constexpr size_t CONFIG_JSON_BUFFER_SIZE = 8192;
 
+        // Test sends that only ring paired phones (no push channel enabled).
+        constexpr uint8_t BLE_ONLY_TEST = 0x80;
+
+        // Samples for "Test" on each event row of the Alerts settings.
+        struct SampleAlert
+        {
+            const char *key;
+            Alerts::AlertType type;
+            const char *title;
+            const char *label;
+            uint32_t bleFlags;
+        };
+        constexpr SampleAlert SAMPLE_ALERTS[] = {
+            {"unsafe", Alerts::AlertType::Unsafe, "Observatory UNSAFE", "It turns unsafe", Alpaca::UNSAFE_CLOUD_COVER},
+            {"safe", Alerts::AlertType::Safe, "Observatory safe", "It's safe again", 0},
+            {"rain_started", Alerts::AlertType::RainStarted, "Rain detected", "Rain starts", Alpaca::UNSAFE_RAIN},
+            {"rain_stopped", Alerts::AlertType::RainStopped, "Rain cleared", "Rain stops", 0},
+            {"sensor_fault", Alerts::AlertType::SensorFault, "Sensor fault", "A sensor fails", Alpaca::UNSAFE_SENSOR_FAULT},
+            {"sensor_recovered", Alerts::AlertType::SensorRecovered, "Sensor recovered", "A sensor recovers", 0},
+            {"dew_risk", Alerts::AlertType::DewRisk, "Dew risk", "Dew risk", Alpaca::UNSAFE_DEWPOINT},
+            {"clear_sky", Alerts::AlertType::ClearSky, "Dark and clear", "Skies clear up", 0},
+            {"clouded_over", Alerts::AlertType::CloudedOver, "Clouded over", "Skies cloud over", Alpaca::UNSAFE_CLOUD_COVER},
+        };
+
         esp_timer_handle_t restartTimer = nullptr;
 
         void restartTimerCallback(void *)
@@ -369,16 +393,38 @@ namespace SQM
             lastSafetyEvaluation = now;
         }
 
-        const uint8_t testMask = pendingAlertTestMask.exchange(0);
-        if (testMask != 0)
+        PendingAlertTest pendingTest;
+        portENTER_CRITICAL(&pendingAlertTestLock);
+        pendingTest = pendingAlertTest;
+        pendingAlertTest.mask = 0;
+        portEXIT_CRITICAL(&pendingAlertTestLock);
+        if (pendingTest.mask != 0)
         {
             const Config &cfg = getConfigCallback();
             Alerts::Alert test;
-            test.type = Alerts::AlertType::Test;
-            test.level = Alerts::AlertLevel::Normal;
-            test.title = "Test notification";
-            test.message = "Alerts from this SQMeter are working.";
-            alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, testMask);
+            if (pendingTest.event < 0)
+            {
+                test.type = Alerts::AlertType::Test;
+                test.level = Alerts::AlertLevel::Normal;
+                test.title = "Test notification";
+                test.message = "Alerts from this SQMeter are working.";
+            }
+            else
+            {
+                const SampleAlert &sample = SAMPLE_ALERTS[pendingTest.event];
+                test.type = sample.type;
+                test.level = static_cast<Alerts::AlertLevel>(pendingTest.level);
+                test.sound = pendingTest.sound;
+                test.title = std::string("Test: ") + sample.title;
+                test.message = std::string("This is how a \"") + sample.label + "\" alert arrives.";
+                if (test.level == Alerts::AlertLevel::Wake)
+                {
+                    const time_t wallClock = time(nullptr);
+                    ble.raiseAlarm(sample.bleFlags, wallClock >= 1704067200 ? static_cast<uint32_t>(wallClock) : 0);
+                }
+            }
+            if (pendingTest.mask != BLE_ONLY_TEST)
+                alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, pendingTest.mask);
         }
 
         // Broadcast sensor data every 1 second (for Dashboard)
@@ -1312,12 +1358,48 @@ namespace SQM
                 (alerts.pushoverEnabled ? alertChannelBit(AlertChannel::Pushover) : 0) |
                 (alerts.ntfyEnabled ? alertChannelBit(AlertChannel::Ntfy) : 0) |
                 (alerts.webhookEnabled ? alertChannelBit(AlertChannel::Webhook) : 0);
-            if ((mask & enabledMask) == 0) {
+            // ?event=rain_started&level=4&sound=siren sends a sample of that
+            // event at the given level, so unsaved choices can be tried out.
+            int8_t event = -1;
+            uint8_t level = 2;
+            String sound;
+            if (request->hasParam("event"))
+            {
+                const String key = request->getParam("event")->value();
+                for (size_t i = 0; i < sizeof(SAMPLE_ALERTS) / sizeof(SAMPLE_ALERTS[0]); ++i)
+                    if (key == SAMPLE_ALERTS[i].key)
+                        event = static_cast<int8_t>(i);
+                if (event < 0) {
+                    request->send(400, "application/json", createErrorJson("Unknown event").c_str());
+                    return;
+                }
+                level = request->hasParam("level") ? static_cast<uint8_t>(request->getParam("level")->value().toInt()) : 2;
+                if (level < 1 || level > 4) {
+                    request->send(400, "application/json", createErrorJson("Level must be 1-4").c_str());
+                    return;
+                }
+                sound = request->hasParam("sound") ? request->getParam("sound")->value() : String();
+                if (sound.length() > 32) {
+                    request->send(400, "application/json", createErrorJson("Sound name too long").c_str());
+                    return;
+                }
+            }
+
+            uint8_t sendMask = mask & enabledMask;
+            const bool ringsPhone = event >= 0 && level == 4 && ble.alarmStatus().serviceActive;
+            if (sendMask == 0 && ringsPhone)
+                sendMask = BLE_ONLY_TEST;
+            if (sendMask == 0) {
                 request->send(400, "application/json", createErrorJson("That channel isn't enabled - enable it and save settings first").c_str());
                 return;
             }
 
-            pendingAlertTestMask.fetch_or(mask & enabledMask);
+            portENTER_CRITICAL(&pendingAlertTestLock);
+            pendingAlertTest.mask |= sendMask;
+            pendingAlertTest.event = event;
+            pendingAlertTest.level = level;
+            strlcpy(pendingAlertTest.sound, sound.c_str(), sizeof(pendingAlertTest.sound));
+            portEXIT_CRITICAL(&pendingAlertTestLock);
             request->send(202, "application/json", "{\"success\":true,\"message\":\"Test notification queued\"}"); });
 
         server.on("/api/ble/ack", HTTP_POST, [this](AsyncWebServerRequest *request)
@@ -2393,6 +2475,11 @@ namespace SQM
         JsonObject sky = doc.createNestedObject("sky");
         sky["locationSource"] = night.source != nullptr ? night.source : "none";
         sky["nightKnown"] = night.known;
+        if (night.source != nullptr)
+        {
+            sky["latitude"] = serialized(String(night.latitude, 4));
+            sky["longitude"] = serialized(String(night.longitude, 4));
+        }
         if (night.known)
         {
             sky["isNight"] = night.isNight;
