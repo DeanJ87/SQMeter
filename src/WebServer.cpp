@@ -2662,11 +2662,11 @@ namespace SQM
             mqtt["state"] = mqttStatus.state;
             mqtt["lastPublish"] = mqttStatus.lastPublishMs;
             mqtt["lastReconnectAttempt"] = mqttStatus.lastReconnectAttemptMs;
-            mqtt["broker"] = mqttStatus.broker.c_str(); // Explicitly convert std::string
+            mqtt["broker"] = mqttStatus.broker; // std::string: copied into the doc (mqttStatus dies before serializing)
             mqtt["port"] = mqttStatus.port;
-            mqtt["topic"] = mqttStatus.topic.c_str(); // Explicitly convert std::string
-            mqtt["availabilityTopic"] = mqttStatus.availabilityTopic.c_str();
-            mqtt["clientId"] = mqttStatus.clientId.c_str();
+            mqtt["topic"] = mqttStatus.topic;
+            mqtt["availabilityTopic"] = mqttStatus.availabilityTopic;
+            mqtt["clientId"] = mqttStatus.clientId;
         }
 
         std::string json;
