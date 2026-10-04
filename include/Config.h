@@ -169,6 +169,10 @@ namespace SQM
         float dewRiskMarginC;
         bool onClearSky;            // cloud cover drops below clearSkyCloudPercent
         float clearSkyCloudPercent;
+        bool onCloudedOver;         // cloud cover rises above cloudedOverCloudPercent
+        float cloudedOverCloudPercent;
+        bool skyNightOnly;          // sky alerts only while the sun is below nightSunAltitudeDeg
+        float nightSunAltitudeDeg;  // -0.833 sunset, -12 nautical, -18 astronomical
         uint32_t cooldownSeconds;   // min time between notifications of the same kind
 
         // Channels
@@ -203,6 +207,15 @@ namespace SQM
         float vanePullupOhms;      // vane divider pull-up to 3.3 V
     };
 
+    // Observing site, for working out when it's dark. A GPS fix takes
+    // precedence; this is the fallback.
+    struct LocationConfig
+    {
+        bool set;
+        double latitude;
+        double longitude;
+    };
+
     // Only used by the esp32dev-ble firmware build; ignored elsewhere.
     struct BleConfig
     {
@@ -233,6 +246,7 @@ namespace SQM
         AlertsConfig alerts;
         BleConfig ble;
         WindConfig wind;
+        LocationConfig location;
         std::string deviceName;
         std::string timezone;
         TimeSource primaryTimeSource;   // Primary time source

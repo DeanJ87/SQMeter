@@ -6,7 +6,7 @@ import type { SettingsTabProps } from './context';
 import { Note } from '../ui';
 import { ActionButton, Field, Group, NumberInput, Requires, ResultNote, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
 
-const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, dirty, goTo }) => {
+const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, status, dirty, goTo }) => {
   const alerts = mergeAlertsConfig(config.alerts);
   const [testResult, setTestResult] = useState<{ channel: AlertChannelName; type: 'success' | 'error' | 'pending'; text: string } | null>(null);
 
@@ -67,6 +67,8 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
   const rainReason = !hw.rain.enabled ? 'Rain sensor is off.' : null;
   const dewReason = hw.environment.detected === false ? 'BME280 not detected.' : null;
   const clearReason = hw.irSky.detected === false ? 'MLX90614 not detected.' : null;
+  // Unknown until status loads; a location typed but not yet saved counts.
+  const noLocation = status !== null && status.sky?.locationSource === 'none' && !config.location?.set;
   const channelCount = [alerts.pushover.enabled, alerts.ntfy.enabled, alerts.webhook.enabled, alerts.mqtt.enabled].filter(Boolean).length;
 
   return (
@@ -114,10 +116,47 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
             <Toggle label="Dew risk" checked={alerts.onDewRisk} onChange={(v) => set(['onDewRisk'], v)} blockedReason={dewReason} disabled={off} hint="Temperature within this margin of the dew point." />
             <NumberInput min={0} max={10} step={0.5} unit="°C" ariaLabel="Dew risk margin" value={alerts.dewRiskMarginC} disabled={off || !alerts.onDewRisk} onChange={(v) => set(['dewRiskMarginC'], v)} />
           </div>
-          <div class="rule-row">
-            <Toggle label="Skies clear" checked={alerts.onClearSky} onChange={(v) => set(['onClearSky'], v)} blockedReason={clearReason} disabled={off} hint="Cloud cover drops below this." />
-            <NumberInput min={0} max={100} step={1} unit="%" ariaLabel="Clear sky cloud cover" value={alerts.clearSkyCloudPercent} disabled={off || !alerts.onClearSky} onChange={(v) => set(['clearSkyCloudPercent'], v)} />
-          </div>
+          <Group title="Sky">
+            <div class="rule-row">
+              <Toggle label="Skies clear up" checked={alerts.onClearSky} onChange={(v) => set(['onClearSky'], v)} blockedReason={clearReason} disabled={off} hint="Cloud cover drops below this." />
+              <NumberInput min={0} max={100} step={1} unit="%" ariaLabel="Clear below" value={alerts.clearSkyCloudPercent} disabled={off || !alerts.onClearSky} onChange={(v) => set(['clearSkyCloudPercent'], v)} />
+            </div>
+            <div class="rule-row">
+              <Toggle label="Skies cloud over" checked={alerts.onCloudedOver} onChange={(v) => set(['onCloudedOver'], v)} blockedReason={clearReason} disabled={off} hint="Cloud cover rises above this." />
+              <NumberInput
+                min={0}
+                max={100}
+                step={1}
+                unit="%"
+                ariaLabel="Clouded over above"
+                value={alerts.cloudedOverCloudPercent}
+                error={err('cloudedOverCloudPercent')}
+                disabled={off || !alerts.onCloudedOver}
+                onChange={(v) => set(['cloudedOverCloudPercent'], v)}
+              />
+            </div>
+            <div class="rule-row">
+              <Toggle
+                label="Only when it's dark"
+                checked={alerts.skyNightOnly}
+                onChange={(v) => set(['skyNightOnly'], v)}
+                disabled={off}
+                hint="From the sun's position at your location. If it's already clear at nightfall, you get one 'Dark and clear' alert."
+                blockedReason={noLocation ? 'Needs your location.' : null}
+                onFix={() => goTo('time', 'location')}
+              />
+              <SelectInput
+                value={String(alerts.nightSunAltitudeDeg)}
+                disabled={off || !alerts.skyNightOnly}
+                options={[
+                  { value: '-0.833', label: 'After sunset' },
+                  { value: '-12', label: 'Nautical dark (-12°)' },
+                  { value: '-18', label: 'Astronomical dark (-18°)' },
+                ]}
+                onChange={(v) => set(['nightSunAltitudeDeg'], parseFloat(v))}
+              />
+            </div>
+          </Group>
           <div class="form-grid">
             <Field label="Cooldown" error={err('cooldownSeconds')} hint="Minimum gap between alerts of the same kind. A change held back is sent when it ends.">
               <NumberInput integer min={0} max={86400} unit="s" value={alerts.cooldownSeconds} disabled={off} onChange={(v) => set(['cooldownSeconds'], v)} />

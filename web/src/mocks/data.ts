@@ -153,6 +153,7 @@ export function generateSensorData(): SensorData {
 }
 
 export const mockStatus: SystemStatus = {
+  sky: { locationSource: "gps", nightKnown: true, isNight: true, sunAltitudeDeg: -24.3 },
   firmware: {
     name: "SQMeter",
     version: "0.0.1",
@@ -388,14 +389,19 @@ export const mockConfig: Config = {
     onSensorFault: true,
     onDewRisk: false,
     dewRiskMarginC: 2,
-    onClearSky: false,
+    onClearSky: true,
     clearSkyCloudPercent: 20,
+    onCloudedOver: true,
+    cloudedOverCloudPercent: 70,
+    skyNightOnly: true,
+    nightSunAltitudeDeg: -12,
     cooldownSeconds: 300,
     pushover: { enabled: true, userKey: "********", appToken: "********", highPriority: 1, sound: "" },
     ntfy: { enabled: false, server: "https://ntfy.sh", topic: "", token: "" },
     webhook: { enabled: false, url: "", authHeader: "", insecureTls: false },
     mqtt: { enabled: false },
   },
+  location: { set: false, latitude: 0, longitude: 0 },
   ble: { enabled: false, passkey: '', alarmOnUnsafe: true, alarmOnRain: true, alarmOnSensorFault: false },
   wind: {
     enabled: true,

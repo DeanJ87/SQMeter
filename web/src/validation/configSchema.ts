@@ -256,6 +256,10 @@ export const alertsConfigSchema = z
     dewRiskMarginC: z.number().min(0).max(10),
     onClearSky: z.boolean(),
     clearSkyCloudPercent: z.number().min(0).max(100),
+    onCloudedOver: z.boolean(),
+    cloudedOverCloudPercent: z.number().min(0).max(100),
+    skyNightOnly: z.boolean(),
+    nightSunAltitudeDeg: z.number().min(-20).max(0),
     cooldownSeconds: z.number().int().min(0).max(86400, "Must be at most 24 hours"),
     pushover: z.object({
       enabled: z.boolean(),
@@ -269,6 +273,9 @@ export const alertsConfigSchema = z
     mqtt: z.object({ enabled: z.boolean() }),
   })
   .superRefine((data, ctx) => {
+    if (data.cloudedOverCloudPercent <= data.clearSkyCloudPercent) {
+      ctx.addIssue({ code: "custom", path: ["cloudedOverCloudPercent"], message: "Must be above the clear threshold" });
+    }
     // Pushover keys are exactly 30 letters/digits; "********" is the stored, masked value.
     const pushoverKey = /^([A-Za-z0-9]{30}|\*{8})$/;
     if (data.pushover.enabled && !pushoverKey.test(data.pushover.userKey.trim())) {
@@ -323,6 +330,13 @@ export const configSchema = z
       })
       .optional(),
     wind: windConfigSchema.optional(),
+    location: z
+      .object({
+        set: z.boolean(),
+        latitude: z.number().min(-90, "Latitude is -90 to 90").max(90, "Latitude is -90 to 90"),
+        longitude: z.number().min(-180, "Longitude is -180 to 180").max(180, "Longitude is -180 to 180"),
+      })
+      .optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.ntp.enabled && !data.gps.enabled) {

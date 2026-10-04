@@ -21,6 +21,7 @@ namespace SQM
             LensFault,
             DewRisk,
             ClearSky,
+            CloudedOver,
             Acknowledged, // someone acknowledged a phone alarm
             Test,
         };
@@ -50,8 +51,17 @@ namespace SQM
             bool onSensorFault = true;
             bool onDewRisk = false;
             float dewRiskMarginC = 2.0f;
+            // Sky changes. Clear below clearSkyCloudPercent, clouded over
+            // above cloudedOverCloudPercent; in between nothing changes, so a
+            // sky hovering near one threshold doesn't flip-flop.
             bool onClearSky = false;
             float clearSkyCloudPercent = 20.0f;
+            bool onCloudedOver = false;
+            float cloudedOverCloudPercent = 70.0f;
+            uint32_t skySettleSeconds = 120;
+            // Only announce sky changes while it's dark. Becoming dark while
+            // the sky is already clear counts as "clear" (once).
+            bool skyNightOnly = true;
             uint32_t cooldownSeconds = 300;
             // A sensor fault (or recovery) must hold this long before it's
             // announced, so blips - saving settings, reconfiguring a sensor,
@@ -92,6 +102,11 @@ namespace SQM
 
             bool skyValid = false;
             float cloudCoverPercent = 0.0f;
+
+            // From the sun's position; nightKnown is false without a clock or
+            // a location, in which case night-only rules don't hold alerts back.
+            bool nightKnown = false;
+            bool isNight = false;
         };
 
         // Edge-triggered, rate-limited event detection. Each condition is a
@@ -127,12 +142,12 @@ namespace SQM
             Tracker rain;
             Tracker lens;
             Tracker dew;
-            Tracker clear;
+            Tracker sky; // notified value = "clear"
             Tracker sensors[SENSOR_COUNT];
 
             // Observed (hysteresis) state for threshold conditions.
             bool dewObserved = false;
-            bool clearObserved = false;
+            bool skyClear = false;
         };
 
         // Formatting helpers shared with the dispatcher's test alerts.

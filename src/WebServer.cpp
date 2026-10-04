@@ -18,6 +18,7 @@
 #include "sensors/RG15Sensor.h"
 #include "AlpacaDiscovery.h"
 #include "HeapTrace.h"
+#include "SunPosition.h"
 
 extern uint32_t bootCount;
 
@@ -1082,6 +1083,30 @@ namespace SQM
         processAlerts(getSafetyStatus());
     }
 
+    WebServer::NightState WebServer::computeNight(const SensorSnapshot &snapshot, const Config &cfg)
+    {
+        NightState night;
+        const time_t now = time(nullptr);
+        if (snapshot.gps.hasFix)
+        {
+            night.source = "gps";
+            night.latitude = snapshot.gps.latitude;
+            night.longitude = snapshot.gps.longitude;
+        }
+        else if (cfg.location.set)
+        {
+            night.source = "manual";
+            night.latitude = cfg.location.latitude;
+            night.longitude = cfg.location.longitude;
+        }
+        if (now < 1704067200 || night.source == nullptr)
+            return night; // no clock or no location: unknown
+        night.known = true;
+        night.sunAltitudeDeg = Astro::sunElevationDeg(static_cast<int64_t>(now), night.latitude, night.longitude);
+        night.isNight = night.sunAltitudeDeg < cfg.alerts.nightSunAltitudeDeg;
+        return night;
+    }
+
     void WebServer::processAlerts(const SafetyStatus &status)
     {
         const Config &cfg = getConfigCallback();
@@ -1113,6 +1138,9 @@ namespace SQM
         in.dewpointC = obs.dewpointC;
         in.skyValid = obs.irSky.valid;
         in.cloudCoverPercent = obs.cloudCoverPercent;
+        const NightState night = computeNight(snapshot, cfg);
+        in.nightKnown = night.known;
+        in.isNight = night.isNight;
 
         Alerts::AlertRules rules;
         rules.onSafetyChange = cfg.alerts.onSafetyChange;
@@ -1122,6 +1150,9 @@ namespace SQM
         rules.dewRiskMarginC = cfg.alerts.dewRiskMarginC;
         rules.onClearSky = cfg.alerts.onClearSky;
         rules.clearSkyCloudPercent = cfg.alerts.clearSkyCloudPercent;
+        rules.onCloudedOver = cfg.alerts.onCloudedOver;
+        rules.cloudedOverCloudPercent = cfg.alerts.cloudedOverCloudPercent;
+        rules.skyNightOnly = cfg.alerts.skyNightOnly;
         rules.cooldownSeconds = cfg.alerts.cooldownSeconds;
 
         if (ble.isActive())
@@ -2351,6 +2382,16 @@ namespace SQM
         stacks["asyncTcp"] = uxTaskGetStackHighWaterMark(nullptr);
         stacks["loop"] = loopTaskHandle != nullptr ? uxTaskGetStackHighWaterMark(loopTaskHandle) : 0;
         doc["sensorSnapshotBytes"] = sizeof(SensorSnapshot);
+
+        const NightState night = computeNight(snapshot, getConfigCallback());
+        JsonObject sky = doc.createNestedObject("sky");
+        sky["locationSource"] = night.source != nullptr ? night.source : "none";
+        sky["nightKnown"] = night.known;
+        if (night.known)
+        {
+            sky["isNight"] = night.isNight;
+            sky["sunAltitudeDeg"] = serialized(String(night.sunAltitudeDeg, 1));
+        }
 
         JsonArray heapStages = doc.createNestedArray("heapStages");
         for (size_t i = 0; i < HeapTrace::count(); ++i)

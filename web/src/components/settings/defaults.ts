@@ -1,4 +1,4 @@
-import type { AlertsConfig, AlpacaConfig, BleConfig, Config, WindConfig } from '../../types';
+import type { AlertsConfig, AlpacaConfig, BleConfig, Config, LocationConfig, WindConfig } from '../../types';
 
 // Defaults for every settings section - used to fill in fields that configs
 // from older firmware don't have yet.
@@ -71,6 +71,10 @@ export const defaultAlertsConfig: AlertsConfig = {
   dewRiskMarginC: 2,
   onClearSky: false,
   clearSkyCloudPercent: 20,
+  onCloudedOver: false,
+  cloudedOverCloudPercent: 70,
+  skyNightOnly: true,
+  nightSunAltitudeDeg: -12,
   cooldownSeconds: 300,
   pushover: { enabled: false, userKey: '', appToken: '', highPriority: 1, sound: '' },
   ntfy: { enabled: false, server: 'https://ntfy.sh', topic: '', token: '' },
@@ -95,3 +99,5 @@ export const defaultBleConfig: BleConfig = {
   alarmOnRain: true,
   alarmOnSensorFault: false,
 };
+
+export const defaultLocationConfig: LocationConfig = { set: false, latitude: 0, longitude: 0 };

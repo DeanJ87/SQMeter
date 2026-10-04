@@ -12,7 +12,6 @@ namespace SQM
             // Hysteresis bands so a reading hovering on a threshold doesn't
             // re-trigger the same condition.
             constexpr float DEW_HYSTERESIS_C = 0.5f;
-            constexpr float CLEAR_HYSTERESIS_PERCENT = 10.0f;
 
             Alert make(AlertType type, AlertPriority priority, std::string title, std::string message)
             {
@@ -54,6 +53,8 @@ namespace SQM
                 return "dew_risk";
             case AlertType::ClearSky:
                 return "clear_sky";
+            case AlertType::CloudedOver:
+                return "clouded_over";
             case AlertType::Acknowledged:
                 return "acknowledged";
             case AlertType::Test:
@@ -188,15 +189,31 @@ namespace SQM
                 }
             }
 
-            // Clear sky (with hysteresis), only alert on onset
+            // Sky clear / clouded over
             if (in.skyValid)
             {
-                clearObserved = clearObserved ? in.cloudCoverPercent < rules.clearSkyCloudPercent + CLEAR_HYSTERESIS_PERCENT
-                                              : in.cloudCoverPercent < rules.clearSkyCloudPercent;
-                if (sync(clear, clearObserved, now, cooldown, pastGrace && rules.onClearSky) && clearObserved)
+                if (in.cloudCoverPercent < rules.clearSkyCloudPercent)
+                    skyClear = true;
+                else if (in.cloudCoverPercent > rules.cloudedOverCloudPercent)
+                    skyClear = false;
+
+                const bool dark = !rules.skyNightOnly || !in.nightKnown || in.isNight;
+                if (!dark)
                 {
-                    alerts.push_back(make(AlertType::ClearSky, AlertPriority::Normal, "Clear skies",
-                                          format("Cloud cover has dropped to %.0f%%.", in.cloudCoverPercent)));
+                    // Daylight: hold everything, and treat the sky as not
+                    // clear so a clear sky at nightfall is announced.
+                    sky = Tracker{};
+                    sky.initialized = true;
+                    sky.notified = false;
+                }
+                else if (sync(sky, skyClear, now, cooldown, pastGrace && (rules.onClearSky || rules.onCloudedOver), rules.skySettleSeconds))
+                {
+                    if (skyClear && rules.onClearSky)
+                        alerts.push_back(make(AlertType::ClearSky, AlertPriority::Normal, rules.skyNightOnly ? "Dark and clear" : "Skies clear",
+                                              format("Cloud cover is down to %.0f%%.", in.cloudCoverPercent)));
+                    else if (!skyClear && rules.onCloudedOver)
+                        alerts.push_back(make(AlertType::CloudedOver, AlertPriority::Normal, "Clouded over",
+                                              format("Cloud cover is up to %.0f%%.", in.cloudCoverPercent)));
                 }
             }
 

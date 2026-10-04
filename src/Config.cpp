@@ -385,6 +385,10 @@ namespace SQM
         cfg.alerts.dewRiskMarginC = 2.0f;
         cfg.alerts.onClearSky = false;
         cfg.alerts.clearSkyCloudPercent = 20.0f;
+        cfg.alerts.onCloudedOver = false;
+        cfg.alerts.cloudedOverCloudPercent = 70.0f;
+        cfg.alerts.skyNightOnly = true;
+        cfg.alerts.nightSunAltitudeDeg = -12.0f;
         cfg.alerts.cooldownSeconds = 300;
         cfg.alerts.pushoverEnabled = false;
         cfg.alerts.pushoverHighPriority = 1;
@@ -398,6 +402,10 @@ namespace SQM
         cfg.ble.alarmOnUnsafe = true;
         cfg.ble.alarmOnRain = true;
         cfg.ble.alarmOnSensorFault = false;
+
+        cfg.location.set = false;
+        cfg.location.latitude = 0.0;
+        cfg.location.longitude = 0.0;
 
         cfg.wind.enabled = false;
         cfg.wind.speedPin = 27;
@@ -431,6 +439,10 @@ namespace SQM
             alerts["dewRiskMarginC"] = a.dewRiskMarginC;
             alerts["onClearSky"] = a.onClearSky;
             alerts["clearSkyCloudPercent"] = a.clearSkyCloudPercent;
+            alerts["onCloudedOver"] = a.onCloudedOver;
+            alerts["cloudedOverCloudPercent"] = a.cloudedOverCloudPercent;
+            alerts["skyNightOnly"] = a.skyNightOnly;
+            alerts["nightSunAltitudeDeg"] = a.nightSunAltitudeDeg;
             alerts["cooldownSeconds"] = a.cooldownSeconds;
 
             JsonObject pushover = alerts.createNestedObject("pushover");
@@ -580,6 +592,11 @@ namespace SQM
         ble["alarmOnUnsafe"] = this->ble.alarmOnUnsafe;
         ble["alarmOnRain"] = this->ble.alarmOnRain;
         ble["alarmOnSensorFault"] = this->ble.alarmOnSensorFault;
+
+        JsonObject location = doc.createNestedObject("location");
+        location["set"] = this->location.set;
+        location["latitude"] = this->location.latitude;
+        location["longitude"] = this->location.longitude;
 
         JsonObject wind = doc.createNestedObject("wind");
         wind["enabled"] = this->wind.enabled;
@@ -839,6 +856,14 @@ namespace SQM
             return setError(error, "Alerts: dew risk margin must be between 0 and 10 degrees C");
         if (!std::isfinite(alerts.clearSkyCloudPercent) || alerts.clearSkyCloudPercent < 0.0F || alerts.clearSkyCloudPercent > 100.0F)
             return setError(error, "Alerts: clear sky threshold must be between 0 and 100 percent");
+        if (!std::isfinite(alerts.cloudedOverCloudPercent) || alerts.cloudedOverCloudPercent < 0.0F || alerts.cloudedOverCloudPercent > 100.0F ||
+            alerts.cloudedOverCloudPercent <= alerts.clearSkyCloudPercent)
+            return setError(error, "Alerts: the clouded-over threshold must be above the clear threshold");
+        if (!std::isfinite(alerts.nightSunAltitudeDeg) || alerts.nightSunAltitudeDeg < -20.0F || alerts.nightSunAltitudeDeg > 0.0F)
+            return setError(error, "Alerts: night must start with the sun between 0 and -20 degrees");
+        if (location.set && (!std::isfinite(location.latitude) || std::fabs(location.latitude) > 90.0 ||
+                             !std::isfinite(location.longitude) || std::fabs(location.longitude) > 180.0))
+            return setError(error, "Location: latitude must be -90..90 and longitude -180..180");
         if (alerts.pushoverHighPriority < 0 || alerts.pushoverHighPriority > 2)
             return setError(error, "Alerts: Pushover priority must be 0, 1 or 2");
         if (alerts.pushoverEnabled && (alerts.pushoverUserKey.empty() || alerts.pushoverAppToken.empty()))
@@ -1107,6 +1132,14 @@ namespace SQM
                 a.onClearSky = alertsObj["onClearSky"] | false;
             if (alertsObj.containsKey("clearSkyCloudPercent"))
                 a.clearSkyCloudPercent = alertsObj["clearSkyCloudPercent"] | 20.0f;
+            if (alertsObj.containsKey("onCloudedOver"))
+                a.onCloudedOver = alertsObj["onCloudedOver"] | false;
+            if (alertsObj.containsKey("cloudedOverCloudPercent"))
+                a.cloudedOverCloudPercent = alertsObj["cloudedOverCloudPercent"] | 70.0f;
+            if (alertsObj.containsKey("skyNightOnly"))
+                a.skyNightOnly = alertsObj["skyNightOnly"] | true;
+            if (alertsObj.containsKey("nightSunAltitudeDeg"))
+                a.nightSunAltitudeDeg = alertsObj["nightSunAltitudeDeg"] | -12.0f;
             if (alertsObj.containsKey("cooldownSeconds"))
                 a.cooldownSeconds = alertsObj["cooldownSeconds"] | 300U;
 
@@ -1154,6 +1187,17 @@ namespace SQM
             JsonObject mqtt = alertsObj["mqtt"];
             if (!mqtt.isNull() && mqtt.containsKey("enabled"))
                 a.mqttEnabled = mqtt["enabled"] | false;
+        }
+
+        JsonObject locationObj = doc["location"];
+        if (!locationObj.isNull())
+        {
+            if (locationObj.containsKey("set"))
+                cfg.location.set = locationObj["set"] | false;
+            if (locationObj.containsKey("latitude"))
+                cfg.location.latitude = locationObj["latitude"] | 0.0;
+            if (locationObj.containsKey("longitude"))
+                cfg.location.longitude = locationObj["longitude"] | 0.0;
         }
 
         JsonObject windObj = doc["wind"];
