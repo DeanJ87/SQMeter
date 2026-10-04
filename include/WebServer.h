@@ -148,7 +148,17 @@ namespace SQM
         // Alerts
         Alerts::AlertEngine alertEngine;
         std::unique_ptr<AlertDispatcher> alertDispatcher;
-        std::atomic<uint8_t> pendingAlertTestMask{0}; // set by HTTP handler, sent from the loop task
+        // Set by the HTTP handler, sent from the loop task. event < 0 is the
+        // plain channel test; otherwise an index into the sample events.
+        struct PendingAlertTest
+        {
+            uint8_t mask = 0;
+            int8_t event = -1;
+            uint8_t level = 2;
+            char sound[33] = {};
+        };
+        PendingAlertTest pendingAlertTest;
+        portMUX_TYPE pendingAlertTestLock = portMUX_INITIALIZER_UNLOCKED;
         bool mqttSafetyPublished = false;
         bool mqttLastPublishedSafe = false;
         uint32_t mqttSafetyPublishedAt = 0;

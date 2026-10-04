@@ -123,6 +123,12 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
             Sun at {sky.sunAltitudeDeg}° - {sky.isNight ? 'dark now' : 'not dark yet'}.
           </Note>
         )}
+        <Toggle
+          label="Sun & Moon card on the dashboard"
+          checked={location.showSunMoon !== false}
+          onChange={(v) => update(['location', 'showSunMoon'], v)}
+          hint="Twilight, darkness, moon phase and rise/set times, worked out in the browser."
+        />
       </SettingsCard>
 
       <SettingsCard title="Time sources">

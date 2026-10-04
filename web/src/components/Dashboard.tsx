@@ -4,6 +4,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import type { Config, SensorData, SystemStatus } from '../types';
 import { Card, Icon, MetricTile, Note, Pill, ReadingRow, SensorReadingRow } from './ui';
 import SafetyCard from './SafetyCard';
+import SunMoonCard from './SunMoonCard';
 
 const formatNumber = (value: number | undefined, digits: number) =>
   typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '--';
@@ -151,6 +152,13 @@ const Dashboard: FunctionalComponent = () => {
   const irOk = sensors?.irTemperature?.status === 0;
   const cloudCover = sensors?.cloudConditions?.cloudCoverPercent;
   const rssi = rssiTone(status?.wifi?.rssi);
+  // A GPS fix wins over the location typed into Settings.
+  const location = sensors?.gps?.hasFix
+    ? { latitude: sensors.gps.latitude, longitude: sensors.gps.longitude }
+    : config?.location?.set
+      ? config.location
+      : null;
+  const showSunMoon = location !== null && config?.location?.showSunMoon !== false;
 
   const rainStatus = !rain?.enabled
     ? { text: 'Disabled', tone: 'pill-dim' }
@@ -212,6 +220,8 @@ const Dashboard: FunctionalComponent = () => {
             </div>
           </section>
           )}
+
+          {showSunMoon && location && <SunMoonCard latitude={location.latitude} longitude={location.longitude} />}
 
           {irOk && sensors.cloudConditions && (
             <Card

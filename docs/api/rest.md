@@ -468,6 +468,8 @@ See [Alerts](../user-guide/alerts.md) for setup.
 
 Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. `400` if the channel is unknown or not enabled. Requires HTTP auth when enabled.
 
+Add `event=<unsafe|safe|rain_started|rain_stopped|sensor_fault|sensor_recovered|dew_risk|clear_sky|clouded_over>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Level 4 (wake me) also rings paired Bluetooth phones; with no push channel enabled, it only rings the phones.
+
 ### `GET /api/alerts/recent`
 
 Whether alerts are on, and the last 20 alerts since boot, newest first:

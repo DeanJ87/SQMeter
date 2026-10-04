@@ -12,7 +12,7 @@ const recentAfterTest = (status: string, detail: string) => {
       const alerts =
         calls === 1
           ? []
-          : [{ id: 7, event: 'test', title: 'Test notification', message: '', priority: 0, ageSeconds: 1, channels: { pushover: { status, detail } } }];
+          : [{ id: 7, event: 'test', title: 'Test notification', message: '', level: 'normal', ageSeconds: 1, channels: { pushover: { status, detail } } }];
       return HttpResponse.json({ enabled: true, alerts });
     })
   );

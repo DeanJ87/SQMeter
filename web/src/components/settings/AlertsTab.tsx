@@ -2,6 +2,7 @@ import { ComponentChildren, FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
 import type { AlertChannelName, AlertEventKey, AlertRecord } from '../../types';
 import { mergeAlertsConfig } from './defaults';
+import { darkness, formatClock, formatDuration, sunPosition } from '../../lib/astro';
 import type { SettingsTabProps } from './context';
 import { InfoTip, Note } from '../ui';
 import { ActionButton, Field, Group, NumberInput, Requires, ResultNote, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
@@ -30,9 +31,21 @@ const soundOptions = (current: string, defaultLabel: string) => [
   ...(current && !PUSHOVER_SOUNDS.includes(current) ? [current] : []).concat(PUSHOVER_SOUNDS).map((sound) => ({ value: sound, label: soundLabel(sound) })),
 ];
 
+const CHANNEL_LABEL: Record<AlertChannelName, string> = { pushover: 'Pushover', ntfy: 'ntfy', webhook: 'Webhook', mqtt: 'MQTT' };
+
+const describeDarkness = (latitude: number, longitude: number, darkAltitude: number) => {
+  const now = new Date();
+  const sun = sunPosition(now, latitude, longitude).altitude;
+  const { darkNow, start, end } = darkness(latitude, longitude, darkAltitude, now);
+  const sunNow = `Sun at ${sun.toFixed(1)}° now`;
+  if (darkNow) return `${sunNow} - dark until ${formatClock(end)}.`;
+  if (!start) return `${sunNow} - it doesn't get that dark in the next day and a half.`;
+  return `${sunNow} - dark in ${formatDuration(start.valueOf() - now.valueOf())}, ${formatClock(start)} to ${formatClock(end)}.`;
+};
+
 const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, status, dirty, goTo }) => {
   const alerts = mergeAlertsConfig(config.alerts);
-  const [testResult, setTestResult] = useState<{ channel: AlertChannelName; type: 'success' | 'error' | 'pending'; text: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ target: string; type: 'success' | 'error' | 'pending'; text: string } | null>(null);
 
   const set = (path: string[], value: unknown) => update(['alerts', ...path], value);
   const err = (key: string) => error(`alerts.${key}`);
@@ -46,36 +59,71 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
   };
 
   // The device sends the test in the background; follow its delivery
-  // status until the channel reports sent / failed / skipped.
-  const sendTest = async (channel: AlertChannelName) => {
-    setTestResult({ channel, type: 'pending', text: 'Sending...' });
+  // status until every channel reports sent / failed / skipped.
+  const runTest = async (target: string, query: string, matches: (record: AlertRecord) => boolean, pick: (record: AlertRecord) => string | null) => {
+    setTestResult({ target, type: 'pending', text: 'Sending...' });
     try {
       const before = (await fetchRecent())[0]?.id ?? 0;
-      const response = await fetch(`/api/alerts/test?channel=${channel}`, { method: 'POST' });
+      const response = await fetch(`/api/alerts/test?${query}`, { method: 'POST' });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setTestResult({ channel, type: 'error', text: body.error ?? 'Test failed' });
+        setTestResult({ target, type: 'error', text: body.error ?? 'Test failed' });
         return;
       }
       const deadline = Date.now() + 30000;
       while (Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        const record = (await fetchRecent()).find((r) => r.id > before && r.event === 'test');
-        const result = record?.channels[channel];
-        if (result && result.status !== 'pending') {
-          setTestResult(
-            result.status === 'sent'
-              ? { channel, type: 'success', text: 'Delivered.' }
-              : { channel, type: 'error', text: `${result.status === 'skipped' ? 'Skipped' : 'Failed'}: ${result.detail}` }
-          );
+        const record = (await fetchRecent()).find((r) => r.id > before && matches(r));
+        const result = record ? pick(record) : null;
+        if (result !== null) {
+          const failed = result.startsWith('!');
+          setTestResult({ target, type: failed ? 'error' : 'success', text: failed ? result.slice(1) : result });
           return;
         }
       }
-      setTestResult({ channel, type: 'error', text: 'No result from the device after 30 s.' });
+      setTestResult({ target, type: 'error', text: 'No result from the device after 30 s.' });
     } catch {
-      setTestResult({ channel, type: 'error', text: 'Could not reach the device' });
+      setTestResult({ target, type: 'error', text: 'Could not reach the device' });
     }
   };
+
+  // null while pending; a leading "!" marks a failure.
+  const channelResult = (channel: AlertChannelName) => (record: AlertRecord) => {
+    const result = record.channels[channel];
+    if (!result || result.status === 'pending') return null;
+    if (result.status === 'sent') return 'Delivered.';
+    return `!${result.status === 'skipped' ? 'Skipped' : 'Failed'}: ${result.detail}`;
+  };
+
+  const allChannelsResult = (record: AlertRecord) => {
+    const entries = Object.entries(record.channels) as [AlertChannelName, { status: string; detail: string }][];
+    if (entries.some(([, r]) => r.status === 'pending')) return null;
+    const summary = entries.map(([channel, r]) => `${CHANNEL_LABEL[channel]} ${r.status}${r.status === 'sent' ? '' : `: ${r.detail}`}`).join(' · ');
+    return entries.every(([, r]) => r.status === 'sent') ? summary : `!${summary}`;
+  };
+
+  const sendTest = (channel: AlertChannelName) => runTest(channel, `channel=${channel}`, (r) => r.event === 'test', channelResult(channel));
+
+  const sendEventTest = (key: AlertEventKey) => {
+    const event = alerts.events[key];
+    const query = `channel=all&event=${key}&level=${event.level}&sound=${encodeURIComponent(event.sound)}`;
+    if (channelCount === 0) {
+      // Only paired phones to ring; nothing to follow.
+      setTestResult({ target: key, type: 'pending', text: 'Sending...' });
+      fetch(`/api/alerts/test?${query}`, { method: 'POST' })
+        .then(async (response) => {
+          const body = await response.json().catch(() => ({}));
+          setTestResult(response.ok ? { target: key, type: 'success', text: 'Ringing paired phones.' } : { target: key, type: 'error', text: body.error ?? 'Test failed' });
+        })
+        .catch(() => setTestResult({ target: key, type: 'error', text: 'Could not reach the device' }));
+      return;
+    }
+    return runTest(key, query, (r) => r.event === key && r.title.startsWith('Test'), allChannelsResult);
+  };
+
+  const resultNote = (target: string) =>
+    testResult?.target === target &&
+    (testResult.type === 'pending' ? <Note>{testResult.text}</Note> : <ResultNote result={{ type: testResult.type, text: testResult.text }} />);
 
   // Render function (not a nested component) so re-renders don't remount it.
   const testButton = (channel: AlertChannelName) => (
@@ -83,8 +131,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
       <ActionButton onClick={() => sendTest(channel)} disabled={dirty || testResult?.type === 'pending'} title={dirty ? 'Save first' : undefined}>
         Send test
       </ActionButton>
-      {testResult?.channel === channel &&
-        (testResult.type === 'pending' ? <Note>{testResult.text}</Note> : <ResultNote result={{ type: testResult.type, text: testResult.text }} />)}
+      {resultNote(channel)}
     </div>
   );
 
@@ -124,7 +171,15 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
             ) : (
               <span />
             ))}
+          <ActionButton
+            onClick={() => sendEventTest(key)}
+            disabled={off || event.level === 0 || testResult?.type === 'pending'}
+            title={event.level === 0 ? 'Off' : `Send a sample "${label}" alert at this level`}
+          >
+            Test
+          </ActionButton>
         </div>
+        {resultNote(key)}
         {opts.blocked && (
           <Requires tone={event.level > 0 ? 'warn' : 'info'} onFix={opts.fix}>
             {opts.blocked}
@@ -135,6 +190,14 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
   };
   // Unknown until status loads; a location typed but not yet saved counts.
   const noLocation = status !== null && status.sky?.locationSource === 'none' && !config.location?.set;
+  // A GPS fix wins over the location in Settings (saved or not).
+  const location =
+    status?.sky?.locationSource === 'gps' && status.sky.latitude !== undefined && status.sky.longitude !== undefined
+      ? { latitude: status.sky.latitude, longitude: status.sky.longitude }
+      : config.location?.set
+        ? config.location
+        : null;
+  const darknessNote = location ? describeDarkness(location.latitude, location.longitude, alerts.nightSunAltitudeDeg) : null;
   const channelCount = [alerts.pushover.enabled, alerts.ntfy.enabled, alerts.webhook.enabled, alerts.mqtt.enabled].filter(Boolean).length;
 
   return (
@@ -161,6 +224,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
               <span />
               <span>Level</span>
               {pushoverOn && <span>Pushover sound</span>}
+              <span />
             </div>
             {eventRow('unsafe', 'It turns unsafe', { hint: 'Lists the reasons.' })}
             {eventRow('safe', "It's safe again")}
@@ -222,6 +286,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
               onChange={(v) => set(['nightSunAltitudeDeg'], parseFloat(v))}
             />
           </div>
+          {darknessNote && <Note>{darknessNote}</Note>}
           <div class="form-grid">
             <Field label="Cooldown" error={err('cooldownSeconds')} hint="Minimum gap between alerts of the same kind. A change held back is sent when it ends.">
               <NumberInput integer min={0} max={86400} unit="s" value={alerts.cooldownSeconds} disabled={off} onChange={(v) => set(['cooldownSeconds'], v)} />

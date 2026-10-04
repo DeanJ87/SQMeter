@@ -150,6 +150,14 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
 
 When GPS is enabled and has a fix, it can serve as the primary time source for accurate timestamps independent of network connectivity.
 
+### Location
+
+| Field | Default | Description |
+|---|---|---|
+| `location.set` | `false` | Whether coordinates have been entered. A GPS fix takes precedence |
+| `location.latitude` / `location.longitude` | `0` | Decimal degrees, used for darkness (sky alerts) and the Sun & Moon card |
+| `location.showSunMoon` | `true` | Show the Sun & Moon card on the dashboard: twilight phase, tonight's astronomical dark, moon phase and illumination, and the next sunrise/sunset and moonrise/moonset. Computed in the browser |
+
 ### MQTT
 
 | Field | Type | Default | Description |
