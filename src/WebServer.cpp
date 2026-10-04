@@ -605,69 +605,6 @@ namespace SQM
 
     void WebServer::setupOTA()
     {
-        // Firmware OTA update (app partition)
-        server.on("/api/update", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  {
-            if (!requireAuth(request))
-                return;
-            bool success = !Update.hasError();
-            String response_json;
-            
-            if (success) {
-                response_json = "{\"success\":true}";
-            } else {
-                // Get detailed error message
-                String error_msg = "Unknown error";
-                uint8_t error = Update.getError();
-                switch(error) {
-                    case UPDATE_ERROR_OK: error_msg = "No error"; break;
-                    case UPDATE_ERROR_WRITE: error_msg = "Flash write failed"; break;
-                    case UPDATE_ERROR_ERASE: error_msg = "Flash erase failed"; break;
-                    case UPDATE_ERROR_READ: error_msg = "Flash read failed"; break;
-                    case UPDATE_ERROR_SPACE: error_msg = "Not enough space"; break;
-                    case UPDATE_ERROR_SIZE: error_msg = "Bad size given"; break;
-                    case UPDATE_ERROR_STREAM: error_msg = "Stream read timeout"; break;
-                    case UPDATE_ERROR_MD5: error_msg = "MD5 check failed"; break;
-                    case UPDATE_ERROR_MAGIC_BYTE: error_msg = "Wrong magic byte"; break;
-                    case UPDATE_ERROR_ACTIVATE: error_msg = "Could not activate partition"; break;
-                    case UPDATE_ERROR_NO_PARTITION: error_msg = "Partition not found"; break;
-                    case UPDATE_ERROR_BAD_ARGUMENT: error_msg = "Bad argument"; break;
-                    case UPDATE_ERROR_ABORT: error_msg = "Update aborted"; break;
-                    default: error_msg = "Error code: " + String(error); break;
-                }
-                response_json = "{\"success\":false,\"error\":\"" + error_msg + "\"}";
-            }
-            
-            AsyncWebServerResponse* response = request->beginResponse(200, "application/json", response_json);
-            response->addHeader("Connection", "close");
-            request->send(response);
-            
-            if (success) {
-                WebServer::scheduleRestart(1000);
-            } }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-                  {
-            if (!index) {
-                Logger::info("OTA", "Firmware update started: %s", filename.c_str());
-                if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
-                    Logger::error("OTA", "Update.begin failed: %d", Update.getError());
-                    Update.printError(Serial);
-                }
-            }
-            
-            if (Update.write(data, len) != len) {
-                Logger::error("OTA", "Update.write failed: %d", Update.getError());
-                Update.printError(Serial);
-            }
-            
-            if (final) {
-                if (Update.end(true)) {
-                    Logger::info("OTA", "Firmware update success, rebooting...");
-                } else {
-                    Logger::error("OTA", "Update.end failed: %d", Update.getError());
-                    Update.printError(Serial);
-                }
-            } });
-
         // Filesystem OTA update (LittleFS partition)
         // Static variables to track filesystem update progress
         static const esp_partition_t *fs_partition = nullptr;
@@ -757,6 +694,71 @@ namespace SQM
                     Logger::info("OTA", "Filesystem update success: %u bytes written", static_cast<unsigned>(fs_bytes_written));
                 } else {
                     Logger::error("OTA", "Filesystem update failed: %s", fs_error_msg.c_str());
+                }
+            } });
+
+        // Firmware OTA update (app partition). Registered after /api/update/fs:
+        // this server also matches "/api/update" as a prefix of
+        // "/api/update/fs", so registered first it took filesystem uploads too.
+        server.on("/api/update", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+            bool success = !Update.hasError();
+            String response_json;
+            
+            if (success) {
+                response_json = "{\"success\":true}";
+            } else {
+                // Get detailed error message
+                String error_msg = "Unknown error";
+                uint8_t error = Update.getError();
+                switch(error) {
+                    case UPDATE_ERROR_OK: error_msg = "No error"; break;
+                    case UPDATE_ERROR_WRITE: error_msg = "Flash write failed"; break;
+                    case UPDATE_ERROR_ERASE: error_msg = "Flash erase failed"; break;
+                    case UPDATE_ERROR_READ: error_msg = "Flash read failed"; break;
+                    case UPDATE_ERROR_SPACE: error_msg = "Not enough space"; break;
+                    case UPDATE_ERROR_SIZE: error_msg = "Bad size given"; break;
+                    case UPDATE_ERROR_STREAM: error_msg = "Stream read timeout"; break;
+                    case UPDATE_ERROR_MD5: error_msg = "MD5 check failed"; break;
+                    case UPDATE_ERROR_MAGIC_BYTE: error_msg = "Wrong magic byte"; break;
+                    case UPDATE_ERROR_ACTIVATE: error_msg = "Could not activate partition"; break;
+                    case UPDATE_ERROR_NO_PARTITION: error_msg = "Partition not found"; break;
+                    case UPDATE_ERROR_BAD_ARGUMENT: error_msg = "Bad argument"; break;
+                    case UPDATE_ERROR_ABORT: error_msg = "Update aborted"; break;
+                    default: error_msg = "Error code: " + String(error); break;
+                }
+                response_json = "{\"success\":false,\"error\":\"" + error_msg + "\"}";
+            }
+            
+            AsyncWebServerResponse* response = request->beginResponse(200, "application/json", response_json);
+            response->addHeader("Connection", "close");
+            request->send(response);
+            
+            if (success) {
+                WebServer::scheduleRestart(1000);
+            } }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+                  {
+            if (!index) {
+                Logger::info("OTA", "Firmware update started: %s", filename.c_str());
+                if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+                    Logger::error("OTA", "Update.begin failed: %d", Update.getError());
+                    Update.printError(Serial);
+                }
+            }
+            
+            if (Update.write(data, len) != len) {
+                Logger::error("OTA", "Update.write failed: %d", Update.getError());
+                Update.printError(Serial);
+            }
+            
+            if (final) {
+                if (Update.end(true)) {
+                    Logger::info("OTA", "Firmware update success, rebooting...");
+                } else {
+                    Logger::error("OTA", "Update.end failed: %d", Update.getError());
+                    Update.printError(Serial);
                 }
             } });
     }
