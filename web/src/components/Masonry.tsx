@@ -52,10 +52,19 @@ const Masonry: FunctionalComponent<{
         return same ? previous : next;
       });
     };
-    const observer = new ResizeObserver(measure);
+    // Measure on the next frame: re-laying out inside the observer callback
+    // would trigger "ResizeObserver loop" warnings.
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    });
     container.querySelectorAll('[data-masonry-id]').forEach((el) => observer.observe(el));
     measure();
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [items.map((item) => item.id).join(','), editing]);
 
   const columns = Math.max(1, Math.floor((width + gap) / (minColumnWidth + gap)));
