@@ -788,8 +788,7 @@ namespace SQM
             }
 
             DynamicJsonDocument doc(8192);
-            doc["enabled"] = getConfigCallback().alerts.enabled;
-            JsonArray arr = doc.createNestedArray("alerts");
+            JsonArray arr = doc.to<JsonArray>();
             for (const GithubRelease &r : releases) {
                 JsonObject o = arr.createNestedObject();
                 o["tag"] = r.tag;
@@ -1308,7 +1307,8 @@ namespace SQM
                   {
             const std::vector<AlertRecord> records = alertDispatcher->recent();
             DynamicJsonDocument doc(8192);
-            JsonArray arr = doc.to<JsonArray>();
+            doc["enabled"] = getConfigCallback().alerts.enabled;
+            JsonArray arr = doc.createNestedArray("alerts");
             const uint32_t nowSeconds = millis() / 1000;
             // Newest first
             for (auto it = records.rbegin(); it != records.rend(); ++it) {
