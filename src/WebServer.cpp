@@ -375,7 +375,7 @@ namespace SQM
             const Config &cfg = getConfigCallback();
             Alerts::Alert test;
             test.type = Alerts::AlertType::Test;
-            test.priority = Alerts::AlertPriority::Normal;
+            test.level = Alerts::AlertLevel::Normal;
             test.title = "Test notification";
             test.message = "Alerts from this SQMeter are working.";
             alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, testMask);
@@ -1143,14 +1143,15 @@ namespace SQM
         in.isNight = night.isNight;
 
         Alerts::AlertRules rules;
-        rules.onSafetyChange = cfg.alerts.onSafetyChange;
-        rules.onRain = cfg.alerts.onRain;
-        rules.onSensorFault = cfg.alerts.onSensorFault;
-        rules.onDewRisk = cfg.alerts.onDewRisk;
-        rules.dewRiskMarginC = cfg.alerts.dewRiskMarginC;
-        rules.onClearSky = cfg.alerts.onClearSky;
-        rules.clearSkyCloudPercent = cfg.alerts.clearSkyCloudPercent;
-        rules.onCloudedOver = cfg.alerts.onCloudedOver;
+        const AlertsConfig &a = cfg.alerts;
+        rules.onSafetyChange = a.unsafe.level || a.safe.level;
+        rules.onRain = a.rainStarted.level || a.rainStopped.level;
+        rules.onSensorFault = a.sensorFault.level || a.sensorRecovered.level;
+        rules.onDewRisk = a.dewRisk.level != 0;
+        rules.dewRiskMarginC = a.dewRiskMarginC;
+        rules.onClearSky = a.clearSky.level != 0;
+        rules.clearSkyCloudPercent = a.clearSkyCloudPercent;
+        rules.onCloudedOver = a.cloudedOver.level != 0;
         rules.cloudedOverCloudPercent = cfg.alerts.cloudedOverCloudPercent;
         rules.skyNightOnly = cfg.alerts.skyNightOnly;
         rules.cooldownSeconds = cfg.alerts.cooldownSeconds;
@@ -1189,54 +1190,31 @@ namespace SQM
             ble.update(bleState, summaryJson);
         }
 
-        processBleAlarms(in, status, cfg);
 
         // Always run the engine so its state tracks reality while alerts are
-        // off; only deliver when the master switch is on.
-        const std::vector<Alerts::Alert> alerts = alertEngine.update(in, rules);
-        if (!cfg.alerts.enabled)
-            return;
-        for (const Alerts::Alert &alert : alerts)
+        // off. Each alert gets its configured level and sound; push channels
+        // need the master switch, paired phones only need Bluetooth.
+        const time_t wallClock = time(nullptr);
+        const uint32_t epoch = wallClock >= 1704067200 ? static_cast<uint32_t>(wallClock) : 0;
+        for (Alerts::Alert alert : alertEngine.update(in, rules))
         {
-            alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName);
-            ble.publishAlert(alert);
-        }
-    }
+            const AlertsConfig::EventSetting *setting = eventSettingFor(a, alert.type);
+            if (setting == nullptr || setting->level == 0)
+                continue;
+            alert.level = static_cast<Alerts::AlertLevel>(setting->level);
+            alert.sound = setting->sound;
 
-    void WebServer::processBleAlarms(const Alerts::AlertInputs &inputs, const SafetyStatus &status, const Config &cfg)
-    {
-        if (!ble.isActive())
-            return;
-
-        const time_t now = time(nullptr);
-        const uint32_t epoch = now >= 1704067200 ? static_cast<uint32_t>(now) : 0;
-
-        Alerts::AlertRules rules;
-        rules.onSafetyChange = cfg.ble.alarmOnUnsafe;
-        rules.onRain = cfg.ble.alarmOnRain;
-        rules.onSensorFault = cfg.ble.alarmOnSensorFault;
-        rules.onDewRisk = false;
-        rules.onClearSky = false;
-        rules.cooldownSeconds = 60;
-
-        for (const Alerts::Alert &alert : bleAlarmEngine.update(inputs, rules))
-        {
-            switch (alert.type)
+            if (cfg.alerts.enabled)
             {
-            case Alerts::AlertType::Unsafe:
-                ble.raiseAlarm(status.reasonFlags, epoch);
-                break;
-            case Alerts::AlertType::RainStarted:
-                ble.raiseAlarm(status.reasonFlags | Alpaca::UNSAFE_RAIN, epoch);
-                break;
-            case Alerts::AlertType::SensorFault:
-            case Alerts::AlertType::LensFault:
-                ble.raiseAlarm(status.reasonFlags | Alpaca::UNSAFE_SENSOR_FAULT, epoch);
-                break;
-            default:
-                ble.raiseInfo(status.reasonFlags, epoch);
-                break;
+                alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName);
+                ble.publishAlert(alert);
             }
+            if (alert.level == Alerts::AlertLevel::Wake)
+                ble.raiseAlarm(status.reasonFlags | (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UNSAFE_RAIN : 0u) |
+                                   (alert.type == Alerts::AlertType::SensorFault || alert.type == Alerts::AlertType::LensFault ? Alpaca::UNSAFE_SENSOR_FAULT : 0u),
+                               epoch);
+            else
+                ble.raiseInfo(status.reasonFlags, epoch);
         }
 
         uint32_t acknowledged = 0;
@@ -1245,11 +1223,39 @@ namespace SQM
         {
             Alerts::Alert ack;
             ack.type = Alerts::AlertType::Acknowledged;
-            ack.priority = Alerts::AlertPriority::Low;
+            ack.level = Alerts::AlertLevel::Quiet;
             ack.title = "Alarm acknowledged";
             ack.message = std::string("Phone alarm #") + std::to_string(acknowledged) + " was acknowledged " +
                           (fromPhone ? "on a phone." : "in the web UI.");
             alertDispatcher->dispatch(ack, cfg.alerts, cfg.deviceName);
+        }
+    }
+
+    const AlertsConfig::EventSetting *WebServer::eventSettingFor(const AlertsConfig &a, Alerts::AlertType type)
+    {
+        switch (type)
+        {
+        case Alerts::AlertType::Unsafe:
+            return &a.unsafe;
+        case Alerts::AlertType::Safe:
+            return &a.safe;
+        case Alerts::AlertType::RainStarted:
+            return &a.rainStarted;
+        case Alerts::AlertType::RainStopped:
+            return &a.rainStopped;
+        case Alerts::AlertType::SensorFault:
+        case Alerts::AlertType::LensFault:
+            return &a.sensorFault;
+        case Alerts::AlertType::SensorRecovered:
+            return &a.sensorRecovered;
+        case Alerts::AlertType::DewRisk:
+            return &a.dewRisk;
+        case Alerts::AlertType::ClearSky:
+            return &a.clearSky;
+        case Alerts::AlertType::CloudedOver:
+            return &a.cloudedOver;
+        default:
+            return nullptr;
         }
     }
 
@@ -1350,7 +1356,7 @@ namespace SQM
                 item["event"] = Alerts::alertTypeName(it->alert.type);
                 item["title"] = it->alert.title;
                 item["message"] = it->alert.message;
-                item["priority"] = static_cast<int>(it->alert.priority);
+                item["level"] = Alerts::alertLevelName(it->alert.level);
                 item["ageSeconds"] = nowSeconds - it->uptimeSeconds;
                 if (it->epochSeconds != 0)
                     item["timestamp"] = it->epochSeconds;

@@ -69,7 +69,6 @@ void test_unsafe_then_safe(void)
     std::vector<Alert> alerts = engine.update(in, rules);
     TEST_ASSERT_EQUAL(1, alerts.size());
     TEST_ASSERT_TRUE(alerts[0].type == AlertType::Unsafe);
-    TEST_ASSERT_TRUE(alerts[0].priority == AlertPriority::High);
     TEST_ASSERT_EQUAL_STRING("Cloud cover at or above unsafe threshold", alerts[0].message.c_str());
 
     // Still unsafe -> nothing new

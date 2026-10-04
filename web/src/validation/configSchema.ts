@@ -249,14 +249,15 @@ const httpUrl = z.string().regex(/^https?:\/\/.+/, "Must start with http:// or h
 export const alertsConfigSchema = z
   .object({
     enabled: z.boolean(),
-    onSafetyChange: z.boolean(),
-    onRain: z.boolean(),
-    onSensorFault: z.boolean(),
-    onDewRisk: z.boolean(),
+    events: z.record(
+      z.string(),
+      z.object({
+        level: z.number().int().min(0).max(4),
+        sound: z.string().max(32).regex(/^[a-z0-9_-]*$/i, "Not a Pushover sound name"),
+      })
+    ),
     dewRiskMarginC: z.number().min(0).max(10),
-    onClearSky: z.boolean(),
     clearSkyCloudPercent: z.number().min(0).max(100),
-    onCloudedOver: z.boolean(),
     cloudedOverCloudPercent: z.number().min(0).max(100),
     skyNightOnly: z.boolean(),
     nightSunAltitudeDeg: z.number().min(-20).max(0),
@@ -265,7 +266,6 @@ export const alertsConfigSchema = z
       enabled: z.boolean(),
       userKey: z.string(),
       appToken: z.string(),
-      highPriority: z.number().int().min(0).max(2),
       sound: z.string(),
     }),
     ntfy: z.object({ enabled: z.boolean(), server: z.string(), topic: z.string(), token: z.string() }),
@@ -324,9 +324,6 @@ export const configSchema = z
           .string()
           .regex(/^(\d{6}|\*{8})?$/, "Passkey must be 6 digits")
           .refine((value) => value !== "000000", "Passkey can't be 000000"),
-        alarmOnUnsafe: z.boolean(),
-        alarmOnRain: z.boolean(),
-        alarmOnSensorFault: z.boolean(),
       })
       .optional(),
     wind: windConfigSchema.optional(),

@@ -8,15 +8,25 @@ Configure everything in **Settings → Alerts**, then **Save** and use **Send te
 
 ## Events
 
-| Event | When | Urgent |
-|---|---|---|
-| Observatory UNSAFE / safe | The SafetyMonitor verdict changes (after the safe delay). Unsafe alerts list the reasons | Unsafe: yes |
-| Rain detected / cleared | The RG-15 starts reporting rain / the rain clear delay passes with no rain | Rain: yes |
-| Sensor fault / recovered | A sensor (TSL2591, MLX90614, BME280, RG-15) goes offline or stale, or recovers. Also the RG-15 lens-fault flag | Fault: yes |
-| Dew risk | Temperature comes within the configured margin of the dew point (off by default) | No |
-| Skies clear up / cloud over | Cloud cover drops below the "clear" percentage (default 20%) / rises above the "clouded over" percentage (default 70%). Between the two nothing changes, and a change has to hold for 2 minutes (off by default) | No |
+Every event has its own **level**, and with Pushover on, its own **sound**:
 
-"Urgent" alerts use Pushover's **Priority for urgent alerts** setting (High by default, which bypasses quiet hours; Emergency repeats every minute for up to an hour until acknowledged) and ntfy's `high` priority.
+| Event | When | Default level |
+|---|---|---|
+| It turns unsafe / safe again | The SafetyMonitor verdict changes (after the safe delay). Unsafe alerts list the reasons | Urgent / Normal |
+| Rain starts / stops | The RG-15 starts reporting rain / the rain clear delay passes with no rain | Wake me / Normal |
+| A sensor fails / recovers | A sensor (TSL2591, MLX90614, BME280, RG-15) goes offline or stale, or recovers. Also the RG-15 lens-fault flag | Wake me / Quiet |
+| Dew risk | Temperature comes within the configured margin of the dew point | Off |
+| Skies clear up / cloud over | Cloud cover drops below the "clear" percentage (default 20%) / rises above the "clouded over" percentage (default 70%). Between the two nothing changes, and a change has to hold for 2 minutes | Off |
+
+| Level | Pushover | ntfy | Bluetooth phone alarm |
+|---|---|---|---|
+| Off | not sent | not sent | - |
+| Quiet | priority -1, no sound | `low` | - |
+| Normal | priority 0 | `default` | - |
+| Urgent | priority 1, bypasses quiet hours | `high` | - |
+| Wake me | priority 2 (emergency): repeats every minute for up to an hour until acknowledged | `max` | rings paired phones |
+
+So "skies cloud over" can be Wake me with a loud sound while "skies clear up" stays Normal, and dew risk can be Quiet. A sound left on **Default** uses the Pushover channel's default sound. Webhook and MQTT payloads carry the level as `"level": "quiet" | "normal" | "urgent" | "wake"`.
 
 **Cooldown** (default 5 min) is the minimum time between alerts of the same kind, so a flapping condition doesn't spam you. A change held back by the cooldown isn't lost: if the condition still differs from what you were last told when the cooldown ends, that alert is sent then - the most recent alert always matches reality.
 
@@ -36,7 +46,7 @@ The browser's own location can't be used on the device's plain-HTTP pages - brow
 
 1. Create an application at [pushover.net](https://pushover.net/apps/build) and copy its **API token**
 2. Copy your **user key** from the Pushover dashboard
-3. Enable **Pushover**, paste both, pick the urgent priority (and optionally a sound), **Save**, **Send test**
+3. Enable **Pushover**, paste both, optionally pick a default sound, **Save**, **Send test**
 
 ### ntfy
 
@@ -47,7 +57,7 @@ Enable **ntfy** and set a topic. The server defaults to `https://ntfy.sh`; use y
 POSTs a JSON body to any `http://` or `https://` URL - e.g. a Home Assistant webhook trigger, Node-RED, or a relay to Discord/Slack:
 
 ```json
-{"device":"SQM-ESP32","event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.4 mm/h).","priority":1,"timestamp":1759500000}
+{"device":"SQM-ESP32","event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.4 mm/h).","level":"wake","timestamp":1759500000}
 ```
 
 `event` is one of `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `lens_fault`, `dew_risk`, `clear_sky`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
@@ -58,7 +68,7 @@ HTTPS webhooks are verified against a built-in set of common root CAs (Let's Enc
 
 Uses the broker from the MQTT settings. Publishes:
 
-- `<topic>/alerts` - each alert as JSON (`event`, `title`, `message`, `priority`, `device`, `timestamp`), not retained
+- `<topic>/alerts` - each alert as JSON (`event`, `title`, `message`, `level`, `device`, `timestamp`), not retained
 - `<topic>/safety` - retained `{"isSafe": bool, "reasons": [...]}`, published on every change and refreshed every minute
 
 ---

@@ -325,19 +325,14 @@ describe("mockConfig", () => {
 describe("alertsConfigSchema", () => {
   const validAlerts = {
     enabled: true,
-    onSafetyChange: true,
-    onRain: true,
-    onSensorFault: true,
-    onDewRisk: false,
+    events: { unsafe: { level: 3, sound: "" }, rain_started: { level: 4, sound: "siren" } },
     dewRiskMarginC: 2,
-    onClearSky: false,
     clearSkyCloudPercent: 20,
-    onCloudedOver: false,
     cloudedOverCloudPercent: 70,
     skyNightOnly: true,
     nightSunAltitudeDeg: -12,
     cooldownSeconds: 300,
-    pushover: { enabled: false, userKey: "", appToken: "", highPriority: 1, sound: "" },
+    pushover: { enabled: false, userKey: "", appToken: "", sound: "" },
     ntfy: { enabled: false, server: "https://ntfy.sh", topic: "", token: "" },
     webhook: { enabled: false, url: "", authHeader: "", insecureTls: false },
     mqtt: { enabled: false },
@@ -345,6 +340,14 @@ describe("alertsConfigSchema", () => {
 
   it("passes with valid defaults", () => {
     expect(alertsConfigSchema.safeParse(validAlerts).success).toBe(true);
+  });
+
+  it("rejects out-of-range levels and odd sound names", () => {
+    const withEvent = (level: number, sound: string) =>
+      alertsConfigSchema.safeParse({ ...validAlerts, events: { unsafe: { level, sound } } }).success;
+    expect(withEvent(5, "")).toBe(false);
+    expect(withEvent(2, "not a sound!")).toBe(false);
+    expect(withEvent(4, "persistent")).toBe(true);
   });
 
   it("requires 30-character Pushover keys (or the stored mask)", () => {
@@ -411,7 +414,7 @@ describe("windConfigSchema", () => {
 });
 
 describe("ble passkey", () => {
-  const base = { enabled: true, alarmOnUnsafe: true, alarmOnRain: true, alarmOnSensorFault: false };
+  const base = { enabled: true };
   const ble = configSchema.shape.ble.unwrap();
   it("accepts empty, 6 digits, or the stored mask", () => {
     for (const passkey of ["", "482913", "********"]) expect(ble.safeParse({ ...base, passkey }).success).toBe(true);

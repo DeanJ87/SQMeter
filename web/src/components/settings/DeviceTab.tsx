@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
 import type { SettingsTabProps } from './context';
+import { Note } from '../ui';
 import { ActionButton, Field, Group, Requires, ResultNote, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
 import { defaultBleConfig } from './defaults';
 
@@ -112,21 +113,7 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
                 </Field>
 
                 {hasPasskey ? (
-                  <>
-                    <Toggle label="Wake me when it's unsafe" checked={bleConfig.alarmOnUnsafe} onChange={(v) => update(['ble', 'alarmOnUnsafe'], v)} />
-                    <Toggle
-                      label="Wake me when rain starts"
-                      checked={bleConfig.alarmOnRain}
-                      onChange={(v) => update(['ble', 'alarmOnRain'], v)}
-                      blockedReason={!hw.rain.enabled ? 'Rain sensor is off.' : null}
-                      onFix={() => goTo('sensors', 'rain')}
-                    />
-                    <Toggle
-                      label="Wake me when a sensor fails"
-                      checked={bleConfig.alarmOnSensorFault}
-                      onChange={(v) => update(['ble', 'alarmOnSensorFault'], v)}
-                    />
-                  </>
+                  <Note action={{ label: 'Choose events', onClick: () => goTo('alerts', 'alerts') }}>Events set to Wake me ring paired phones.</Note>
                 ) : (
                   <Requires>Set a passkey to turn on the phone alarm.</Requires>
                 )}
