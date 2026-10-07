@@ -56,6 +56,43 @@ describe('Alert levels', () => {
     fireEvent.click(row.querySelector('button')!);
 
     expect(await screen.findByText('Pushover sent', {}, { timeout: 4000 })).toBeInTheDocument();
-    expect(query).toBe('?channel=all&event=clouded_over&level=4&sound=siren');
+    expect(query).toBe('?channel=all&event=clouded_over&level=4&sound=siren&title=&message=');
+  });
+});
+
+describe('Alert wording', () => {
+  it('writes a custom message with variables and sends it with the test', async () => {
+    let query = '';
+    let saved: any = null;
+    server.use(
+      http.post('/api/alerts/test', ({ request }) => {
+        query = new URL(request.url).search;
+        return HttpResponse.json({ success: true }, { status: 202 });
+      }),
+      http.post('/api/config', async ({ request }) => {
+        saved = await request.json();
+        return HttpResponse.json({ success: true });
+      })
+    );
+    window.history.replaceState(null, '', '/settings?tab=alerts');
+    render(<Settings />);
+
+    const row = (await screen.findByLabelText('It turns unsafe: level')).closest('.event-row')!;
+    fireEvent.click(Array.from(row.querySelectorAll('button')).find((b) => b.textContent === 'Text')!);
+
+    const message = screen.getByLabelText('Alert message') as HTMLTextAreaElement;
+    expect(message.placeholder).toBe('{reasons}');
+    fireEvent.input(message, { target: { value: 'Unsafe x' } });
+    fireEvent.focus(message);
+    message.setSelectionRange(8, 8);
+    fireEvent.click(screen.getByRole('button', { name: '{reason_count}' }));
+    await waitFor(() => expect((screen.getByLabelText('Alert message') as HTMLTextAreaElement).value).toBe('Unsafe x{reason_count}'));
+
+    fireEvent.click(Array.from(row.querySelectorAll('button')).find((b) => b.textContent === 'Test')!);
+    await waitFor(() => expect(query).toContain('message=Unsafe%20x%7Breason_count%7D'));
+
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(saved).not.toBeNull());
+    expect(saved.alerts.events.unsafe.message).toBe('Unsafe x{reason_count}');
   });
 });

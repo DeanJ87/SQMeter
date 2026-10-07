@@ -473,7 +473,7 @@ export const mockRecentAlerts: AlertRecord[] = [
     id: 2,
     event: "unsafe",
     title: "Observatory UNSAFE",
-    message: "Rain detected",
+    message: "\u2022 SQM 18.21 < 19.50\n\u2022 Cloud 62% >= 35%\n\u2022 Humidity 92% > 90%",
     level: "urgent",
     ageSeconds: 1260,
     channels: { pushover: { status: "sent", detail: "HTTP 200" } },

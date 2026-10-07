@@ -65,11 +65,11 @@ void test_unsafe_then_safe(void)
 
     AlertInputs in = safeInputs(10);
     in.isSafe = false;
-    in.unsafeReasons = {"Cloud cover at or above unsafe threshold"};
+    in.unsafeReasons = {"Cloud 62% >= 35%"};
     std::vector<Alert> alerts = engine.update(in, rules);
     TEST_ASSERT_EQUAL(1, alerts.size());
     TEST_ASSERT_TRUE(alerts[0].type == AlertType::Unsafe);
-    TEST_ASSERT_EQUAL_STRING("Cloud cover at or above unsafe threshold", alerts[0].message.c_str());
+    TEST_ASSERT_EQUAL_STRING("\u2022 Cloud 62% >= 35%", alerts[0].message.c_str());
 
     // Still unsafe -> nothing new
     TEST_ASSERT_EQUAL(0, engine.update(in, rules).size());
@@ -300,7 +300,7 @@ void test_alert_type_names(void)
     TEST_ASSERT_EQUAL_STRING("rain_started", alertTypeName(AlertType::RainStarted));
     TEST_ASSERT_EQUAL_STRING("unsafe", alertTypeName(AlertType::Unsafe));
     TEST_ASSERT_EQUAL_STRING("clouded_over", alertTypeName(AlertType::CloudedOver));
-    TEST_ASSERT_EQUAL_STRING("a; b", joinReasons({"a", "b"}).c_str());
+    TEST_ASSERT_EQUAL_STRING("\u2022 a\n\u2022 b", joinReasons({"a", "b"}).c_str());
 }
 
 void test_sensor_blip_is_not_announced(void)
@@ -326,6 +326,58 @@ void test_sensor_blip_is_not_announced(void)
     TEST_ASSERT_TRUE(hasType(engine.update(real, rules), AlertType::SensorFault));
 }
 
+void test_render_template(void)
+{
+    const std::vector<std::pair<std::string, std::string>> vars = {{"sqm", "18.21"}, {"device", "Roof"}};
+    TEST_ASSERT_EQUAL_STRING("Roof: SQM 18.21", renderTemplate("{device}: SQM {sqm}", vars).c_str());
+    // Unknown names and stray braces stay visible.
+    TEST_ASSERT_EQUAL_STRING("{nope} { x", renderTemplate("{nope} { x", vars).c_str());
+    TEST_ASSERT_EQUAL_STRING("", renderTemplate("", vars).c_str());
+}
+
+void test_unsafe_alert_lists_every_reason(void)
+{
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    engine.update(safeInputs(0), rules);
+    AlertInputs in = safeInputs(10);
+    in.isSafe = false;
+    in.unsafeReasons = {"SQM 18.21 < 19.50", "Cloud 62% >= 35%", "Humidity 92% > 90%"};
+    const std::vector<Alert> alerts = engine.update(in, rules);
+    TEST_ASSERT_EQUAL(1, alerts.size());
+    TEST_ASSERT_EQUAL_STRING("\u2022 SQM 18.21 < 19.50\n\u2022 Cloud 62% >= 35%\n\u2022 Humidity 92% > 90%", alerts[0].message.c_str());
+    TEST_ASSERT_EQUAL_STRING("3", renderTemplate("{reason_count}", alerts[0].vars).c_str());
+    TEST_ASSERT_EQUAL_STRING("SQM 18.21 < 19.50; Cloud 62% >= 35%; Humidity 92% > 90%", renderTemplate("{reasons_inline}", alerts[0].vars).c_str());
+}
+
+void test_stack_alerts(void)
+{
+    Alert unsafe;
+    unsafe.type = AlertType::Unsafe;
+    unsafe.level = AlertLevel::Urgent;
+    unsafe.title = "Observatory UNSAFE";
+    unsafe.message = "reasons";
+    Alert rain;
+    rain.type = AlertType::RainStarted;
+    rain.level = AlertLevel::Wake;
+    rain.sound = "siren";
+    rain.title = "Rain detected";
+    rain.message = "rain";
+
+    const Alert one = stackAlerts({unsafe});
+    TEST_ASSERT_EQUAL_STRING("Observatory UNSAFE", one.title.c_str());
+    TEST_ASSERT_EQUAL(0, one.stacked.size());
+
+    const Alert both = stackAlerts({unsafe, rain});
+    TEST_ASSERT_EQUAL(static_cast<int>(AlertType::RainStarted), static_cast<int>(both.type));
+    TEST_ASSERT_EQUAL(static_cast<int>(AlertLevel::Wake), static_cast<int>(both.level));
+    TEST_ASSERT_EQUAL_STRING("siren", both.sound.c_str());
+    TEST_ASSERT_EQUAL_STRING("Rain detected \u00b7 Observatory UNSAFE", both.title.c_str());
+    TEST_ASSERT_EQUAL_STRING("rain\n\nreasons", both.message.c_str());
+    TEST_ASSERT_EQUAL(1, both.stacked.size());
+    TEST_ASSERT_EQUAL(static_cast<int>(AlertType::Unsafe), static_cast<int>(both.stacked[0]));
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -346,5 +398,8 @@ int main(int argc, char **argv)
     RUN_TEST(test_night_only_without_location_does_not_block);
     RUN_TEST(test_alert_type_names);
     RUN_TEST(test_sensor_blip_is_not_announced);
+    RUN_TEST(test_render_template);
+    RUN_TEST(test_unsafe_alert_lists_every_reason);
+    RUN_TEST(test_stack_alerts);
     return UNITY_END();
 }

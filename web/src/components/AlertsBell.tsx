@@ -92,6 +92,11 @@ const AlertsBell: FunctionalComponent = () => {
   const newest = data.alerts[0]?.id ?? 0;
   const unread = data.alerts.filter((record) => record.id > seen && record.event !== 'test').length;
 
+  const clear = () =>
+    fetch('/api/alerts/clear', { method: 'POST' })
+      .then((response) => response.ok && setData({ ...data, alerts: [] }))
+      .catch(() => undefined);
+
   const toggle = () => {
     if (!open && newest > seen) {
       writeSeen(newest);
@@ -113,6 +118,11 @@ const AlertsBell: FunctionalComponent = () => {
         <div class="alerts-flyout" role="dialog" aria-label="Recent alerts" style={{ top: `${anchorBottom + 6}px` }}>
           <div class="alerts-flyout-head">
             <h2>Alerts</h2>
+            {data.alerts.length > 0 && (
+              <Button variant="link" onClick={clear}>
+                Clear
+              </Button>
+            )}
             <Button
               variant="link"
               onClick={() => {
@@ -123,7 +133,7 @@ const AlertsBell: FunctionalComponent = () => {
               Settings
             </Button>
           </div>
-          {data.alerts.length === 0 ? <Note>Nothing since the device started.</Note> : <AlertList alerts={data.alerts} />}
+          {data.alerts.length === 0 ? <Note>No alerts.</Note> : <AlertList alerts={data.alerts} />}
         </div>
       )}
     </div>
