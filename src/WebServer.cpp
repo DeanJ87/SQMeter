@@ -1218,7 +1218,14 @@ namespace SQM
         Alerts::AlertInputs in;
         in.nowSeconds = millis() / 1000;
         in.safetyKnown = status.evaluatedAtMs != 0;
-        in.safetyHeld = !status.isSafe && status.rawSafe;
+        in.safetySettling = (!status.isSafe && status.rawSafe) || (status.reasonFlags & Alpaca::UNSAFE_NO_DATA) != 0;
+        if (!alertEngineSeeded)
+        {
+            alertEngineSeeded = true;
+            bool toldSafe = false;
+            if (SafetyHistory::lastAlert(toldSafe))
+                alertEngine.seedSafety(!toldSafe);
+        }
         in.isSafe = status.isSafe;
         in.unsafeReasons = status.reasons;
 

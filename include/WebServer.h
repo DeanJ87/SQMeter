@@ -147,6 +147,7 @@ namespace SQM
 
         // Alerts
         Alerts::AlertEngine alertEngine;
+        bool alertEngineSeeded = false;
         std::unique_ptr<AlertDispatcher> alertDispatcher;
         // Set by the HTTP handler, sent from the loop task. event < 0 is the
         // plain channel test; otherwise an index into the sample events.
