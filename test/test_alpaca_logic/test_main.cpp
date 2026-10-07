@@ -1,3 +1,5 @@
+#include "AlpacaRouter.h"
+#include <cstring>
 #include <unity.h>
 #include <cstring>
 #include "SafetyEvaluator.h"
@@ -592,6 +594,88 @@ void test_wind_limit_without_sensor_is_unsafe(void)
     TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe);
 }
 
+// --- AlpacaRouter ---
+
+namespace
+{
+    class FakeBackend : public SQM::Alpaca::Backend
+    {
+    public:
+        bool enabled = true;
+        bool safe = true;
+        ObservingConditionsSnapshot snapshot;
+        bool alpacaEnabled() const override { return enabled; }
+        bool isSafe() const override { return safe; }
+        ObservingConditionsSnapshot observingConditions() const override { return snapshot; }
+        std::string location() const override { return "Roof"; }
+        std::string timestampUtc() const override { return ""; }
+    };
+
+    SQM::Alpaca::Response route(SQM::Alpaca::Router &router, bool put, const std::string &path,
+                                std::vector<std::pair<std::string, std::string>> params = {})
+    {
+        SQM::Alpaca::Request request;
+        request.get = !put;
+        request.put = put;
+        request.path = path;
+        request.params = std::move(params);
+        SQM::Alpaca::Response response;
+        TEST_ASSERT_TRUE(router.handle(request, response));
+        return response;
+    }
+}
+
+void test_router_issafe_and_transaction_ids(void)
+{
+    FakeBackend backend;
+    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
+    SQM::Alpaca::Response r = route(router, false, "/api/v1/safetymonitor/0/issafe", {{"clienttransactionid", "7"}});
+    TEST_ASSERT_EQUAL(200, r.status);
+    TEST_ASSERT_EQUAL_STRING("{\"Value\":true,\"ClientTransactionID\":7,\"ServerTransactionID\":1,\"ErrorNumber\":0,\"ErrorMessage\":\"\"}", r.body.c_str());
+    backend.safe = false;
+    r = route(router, false, "/api/v1/safetymonitor/0/issafe");
+    TEST_ASSERT_NOT_NULL(strstr(r.body.c_str(), "\"Value\":false"));
+    TEST_ASSERT_NOT_NULL(strstr(r.body.c_str(), "\"ServerTransactionID\":2"));
+}
+
+void test_router_bad_requests_are_plain_400(void)
+{
+    FakeBackend backend;
+    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
+    TEST_ASSERT_EQUAL(400, route(router, false, "/api/v1/telescope/0/name").status);
+    TEST_ASSERT_EQUAL(400, route(router, false, "/api/v1/safetymonitor/1/name").status);
+    TEST_ASSERT_EQUAL(400, route(router, true, "/api/v1/safetymonitor/0/issafe").status);
+    const SQM::Alpaca::Response r = route(router, false, "/api/v1/safetymonitor/0/bogus");
+    TEST_ASSERT_EQUAL_STRING("text/plain", r.contentType);
+    SQM::Alpaca::Request other;
+    other.get = true;
+    other.path = "/api/sensors";
+    SQM::Alpaca::Response unused;
+    TEST_ASSERT_FALSE(router.handle(other, unused));
+}
+
+void test_router_put_parameter_casing(void)
+{
+    FakeBackend backend;
+    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
+    TEST_ASSERT_EQUAL(200, route(router, true, "/api/v1/observingconditions/0/averageperiod", {{"AveragePeriod", "0"}}).status);
+    TEST_ASSERT_EQUAL(400, route(router, true, "/api/v1/observingconditions/0/averageperiod", {{"averageperiod", "0"}}).status);
+    const SQM::Alpaca::Response r = route(router, true, "/api/v1/observingconditions/0/refresh", {{"clienttransactionid", "9"}});
+    TEST_ASSERT_NOT_NULL(strstr(r.body.c_str(), "\"ClientTransactionID\":0"));
+}
+
+void test_router_connected_and_disabled(void)
+{
+    FakeBackend backend;
+    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
+    route(router, true, "/api/v1/observingconditions/0/connected", {{"Connected", "True"}});
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/observingconditions/0/connected").body.c_str(), "\"Value\":true"));
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/safetymonitor/0/connected").body.c_str(), "\"Value\":false"));
+    backend.enabled = false;
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/safetymonitor/0/issafe").body.c_str(), "\"ErrorNumber\":1031"));
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/management/v1/configureddevices").body.c_str(), "\"Value\":[]"));
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -642,6 +726,10 @@ int main(int argc, char **argv)
 
     RUN_TEST(test_param_name_case_insensitive);
     RUN_TEST(test_put_param_names_are_case_sensitive);
+    RUN_TEST(test_router_issafe_and_transaction_ids);
+    RUN_TEST(test_router_bad_requests_are_plain_400);
+    RUN_TEST(test_router_put_parameter_casing);
+    RUN_TEST(test_router_connected_and_disabled);
     RUN_TEST(test_client_transaction_id_parsing);
     RUN_TEST(test_alpaca_bool_parsing);
     RUN_TEST(test_unique_id_includes_mac);

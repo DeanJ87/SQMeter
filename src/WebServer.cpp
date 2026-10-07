@@ -951,141 +951,6 @@ namespace SQM
         server.addHandler(applyHandler);
     }
 
-    namespace
-    {
-        // Alpaca parameters arrive in the query string (GET, names
-        // case-insensitive) or the form-encoded body (PUT, names
-        // case-sensitive) - see Alpaca::paramNameMatches.
-        const AsyncWebParameter *findAlpacaParam(AsyncWebServerRequest *request, const char *name)
-        {
-            const bool isPut = request->method() == HTTP_PUT;
-            const size_t count = request->params();
-            for (size_t i = 0; i < count; ++i)
-            {
-                const AsyncWebParameter *param = request->getParam(i);
-                if (param != nullptr && !param->isFile() && Alpaca::paramNameMatches(param->name().c_str(), name, isPut))
-                    return param;
-            }
-            return nullptr;
-        }
-
-        uint32_t getAlpacaClientTransactionId(AsyncWebServerRequest *request)
-        {
-            const AsyncWebParameter *param = findAlpacaParam(request, "ClientTransactionID");
-            return param != nullptr ? Alpaca::parseClientTransactionId(param->value().c_str()) : 0;
-        }
-    }
-
-    std::string WebServer::buildAlpacaResponseBool(AsyncWebServerRequest *request, bool value, int errorNumber, const std::string &errorMessage) const
-    {
-        StaticJsonDocument<192> doc;
-        doc["Value"] = value;
-        doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-        doc["ServerTransactionID"] = ++alpacaServerTransactionId;
-        doc["ErrorNumber"] = errorNumber;
-        doc["ErrorMessage"] = errorMessage;
-        std::string json;
-        serializeJson(doc, json);
-        return json;
-    }
-
-    std::string WebServer::buildAlpacaResponseDouble(AsyncWebServerRequest *request, double value, int errorNumber, const std::string &errorMessage) const
-    {
-        StaticJsonDocument<192> doc;
-        doc["Value"] = value;
-        doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-        doc["ServerTransactionID"] = ++alpacaServerTransactionId;
-        doc["ErrorNumber"] = errorNumber;
-        doc["ErrorMessage"] = errorMessage;
-        std::string json;
-        serializeJson(doc, json);
-        return json;
-    }
-
-    std::string WebServer::buildAlpacaResponseVoid(AsyncWebServerRequest *request, int errorNumber, const std::string &errorMessage) const
-    {
-        StaticJsonDocument<192> doc;
-        doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-        doc["ServerTransactionID"] = ++alpacaServerTransactionId;
-        doc["ErrorNumber"] = errorNumber;
-        doc["ErrorMessage"] = errorMessage;
-        std::string json;
-        serializeJson(doc, json);
-        return json;
-    }
-
-    namespace
-    {
-        std::string buildAlpacaResponseString(AsyncWebServerRequest *request, const std::string &value, uint32_t &txnCounter)
-        {
-            StaticJsonDocument<256> doc;
-            doc["Value"] = value;
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++txnCounter;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            return json;
-        }
-
-        std::string buildAlpacaResponseStringWithError(AsyncWebServerRequest *request, const std::string &value, int errorNumber, const std::string &errorMessage, uint32_t &txnCounter)
-        {
-            StaticJsonDocument<384> doc;
-            doc["Value"] = value;
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++txnCounter;
-            doc["ErrorNumber"] = errorNumber;
-            doc["ErrorMessage"] = errorMessage;
-            std::string json;
-            serializeJson(doc, json);
-            return json;
-        }
-
-        std::string buildAlpacaResponseInt(AsyncWebServerRequest *request, int value, uint32_t &txnCounter)
-        {
-            StaticJsonDocument<192> doc;
-            doc["Value"] = value;
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++txnCounter;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            return json;
-        }
-
-        std::string buildAlpacaResponseIntArray(AsyncWebServerRequest *request, const std::vector<int> &values, uint32_t &txnCounter)
-        {
-            DynamicJsonDocument doc(256);
-            JsonArray arr = doc.createNestedArray("Value");
-            for (int v : values)
-                arr.add(v);
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++txnCounter;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            return json;
-        }
-
-        std::string buildAlpacaResponseStringArray(AsyncWebServerRequest *request, const std::vector<std::string> &values, uint32_t &txnCounter)
-        {
-            DynamicJsonDocument doc(256);
-            JsonArray arr = doc.createNestedArray("Value");
-            for (const auto &v : values)
-                arr.add(v);
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++txnCounter;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            return json;
-        }
-    }
-
     Alpaca::SafetyInputs WebServer::buildAlpacaSafetyInputs() const
     {
         const SensorSnapshot snapshot = getSensorSnapshot();
@@ -1704,79 +1569,6 @@ namespace SQM
         return snap;
     }
 
-    namespace
-    {
-        constexpr size_t ALPACA_SAFETY_MONITOR = 0;
-        constexpr size_t ALPACA_OBSERVING_CONDITIONS = 1;
-
-        // Interface versions advertised via InterfaceVersion. These are the
-        // ASCOM Platform 7 versions, which add Connect/Disconnect/Connecting/
-        // DeviceState to every device.
-        constexpr int SAFETY_MONITOR_INTERFACE_VERSION = 3;
-        constexpr int OBSERVING_CONDITIONS_INTERFACE_VERSION = 2;
-
-        struct ObservingPropertyName
-        {
-            const char *route;      // lowercase Alpaca method name
-            const char *stateName;  // PascalCase name used in DeviceState
-        };
-
-        constexpr ObservingPropertyName OBSERVING_PROPERTIES[] = {
-            {"cloudcover", "CloudCover"},
-            {"dewpoint", "DewPoint"},
-            {"humidity", "Humidity"},
-            {"pressure", "Pressure"},
-            {"rainrate", "RainRate"},
-            {"skybrightness", "SkyBrightness"},
-            {"skyquality", "SkyQuality"},
-            {"skytemperature", "SkyTemperature"},
-            {"starfwhm", "StarFWHM"},
-            {"temperature", "Temperature"},
-            {"winddirection", "WindDirection"},
-            {"windgust", "WindGust"},
-            {"windspeed", "WindSpeed"}};
-
-        // ISO 8601 UTC timestamp for DeviceState, or empty if the clock has
-        // never been set (NTP/GPS) - a 1970 timestamp would be worse than none.
-        std::string alpacaTimestampNow()
-        {
-            const time_t now = time(nullptr);
-            if (now < 1704067200)
-                return "";
-            struct tm utc;
-            gmtime_r(&now, &utc);
-            char buffer[32];
-            strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &utc);
-            return buffer;
-        }
-
-        std::string buildAlpacaResponseDeviceState(AsyncWebServerRequest *request, const std::function<void(JsonArray &)> &fill, uint32_t &txnCounter)
-        {
-            DynamicJsonDocument doc(1536);
-            JsonArray arr = doc.createNestedArray("Value");
-            fill(arr);
-            const std::string timestamp = alpacaTimestampNow();
-            if (!timestamp.empty())
-            {
-                JsonObject item = arr.createNestedObject();
-                item["Name"] = "TimeStamp";
-                item["Value"] = timestamp;
-            }
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++txnCounter;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            return json;
-        }
-
-        void sendAlpacaBadRequest(AsyncWebServerRequest *request, const char *message)
-        {
-            request->send(400, "text/plain", message);
-        }
-    }
-
     void WebServer::setupAlpacaRoutes()
     {
         // --- Setup pages ---
@@ -1788,226 +1580,62 @@ namespace SQM
         server.on("/setup", HTTP_GET, [](AsyncWebServerRequest *request)
                   { request->redirect("/settings?section=alpaca"); });
 
-        // --- Management API ---
-        server.on("/management/apiversions", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  { request->send(200, "application/json", buildAlpacaResponseIntArray(request, {1}, alpacaServerTransactionId).c_str()); });
-
-        server.on("/management/v1/description", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  {
-            DynamicJsonDocument doc(384);
-            JsonObject value = doc.createNestedObject("Value");
-            value["ServerName"] = FIRMWARE_NAME;
-            value["Manufacturer"] = "SQMeter";
-            value["ManufacturerVersion"] = FIRMWARE_VERSION;
-            value["Location"] = getConfigCallback().deviceName;
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++alpacaServerTransactionId;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            request->send(200, "application/json", json.c_str()); });
-
-        server.on("/management/v1/configureddevices", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  {
-            const uint64_t mac = ESP.getEfuseMac();
-            DynamicJsonDocument doc(768);
-            JsonArray value = doc.createNestedArray("Value");
-            if (getConfigCallback().alpaca.enabled) {
-                JsonObject safety = value.createNestedObject();
-                safety["DeviceName"] = "SQMeter SafetyMonitor";
-                safety["DeviceType"] = "SafetyMonitor";
-                safety["DeviceNumber"] = 0;
-                safety["UniqueID"] = Alpaca::buildUniqueId(mac, "safetymonitor", 0);
-
-                JsonObject obsCond = value.createNestedObject();
-                obsCond["DeviceName"] = "SQMeter ObservingConditions";
-                obsCond["DeviceType"] = "ObservingConditions";
-                obsCond["DeviceNumber"] = 0;
-                obsCond["UniqueID"] = Alpaca::buildUniqueId(mac, "observingconditions", 0);
-            }
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++alpacaServerTransactionId;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            request->send(200, "application/json", json.c_str()); });
-
-        // --- Device API ---
-        // One handler for every /api/v1/<devicetype>/<n>/<method> route.
-        // Registering ~50 routes separately cost ~10 KB of heap (each handler
-        // holds its own URI string and std::function); dispatching here costs
-        // a few string compares per request.
+        // --- Management + device API ---
+        // Everything is handled by Alpaca::Router (lib/AlpacaLogic), which the
+        // native simulator ConformU tests in CI also runs. One handler per
+        // prefix: registering ~50 routes separately cost ~10 KB of heap.
+        server.on("/management", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  { handleAlpacaRequest(request); });
         server.on("/api/v1", HTTP_ANY, [this](AsyncWebServerRequest *request)
-                  { handleAlpacaDeviceRequest(request); });
+                  { handleAlpacaRequest(request); });
     }
 
-    void WebServer::handleAlpacaDeviceRequest(AsyncWebServerRequest *request)
+    Alpaca::ServerIdentity WebServer::alpacaIdentity()
     {
-        static const char *SAFETY_NAME = "SQMeter SafetyMonitor";
-        static const char *SAFETY_DESCRIPTION =
-            "Reports observatory safety from rain (RG-15), wind (optional anemometer), cloud cover, sky brightness, humidity and dew-point margin measured by the onboard SQMeter sensors.";
-        static const char *CONDITIONS_NAME = "SQMeter ObservingConditions";
-        static const char *CONDITIONS_DESCRIPTION =
-            "Reports sky quality, sky brightness, cloud cover, sky temperature, temperature, humidity, dew point, pressure, and - when fitted - rain rate (RG-15) and wind speed, gust and direction (anemometer/vane).";
-        static const char *ALPACA_DISABLED_MESSAGE = "Alpaca support is disabled in device settings";
+        return {FIRMWARE_NAME, "SQMeter", FIRMWARE_VERSION, ESP.getEfuseMac()};
+    }
 
-        // /api/v1/<type>/<number>/<method>
-        const String &url = request->url();
-        const int typeStart = 8; // strlen("/api/v1/")
-        const int numberStart = url.indexOf('/', typeStart) + 1;
-        const int methodStart = numberStart > 0 ? url.indexOf('/', numberStart) + 1 : 0;
-        if (numberStart <= 0 || methodStart <= 0 || url.indexOf('/', methodStart) >= 0)
-        {
-            sendAlpacaBadRequest(request, "Invalid Alpaca device type, device number, method or HTTP verb");
-            return;
-        }
-        const String type = url.substring(typeStart, numberStart - 1);
-        const String number = url.substring(numberStart, methodStart - 1);
-        const String method = url.substring(methodStart);
-        const bool isSafetyMonitor = type == "safetymonitor";
-        if (number != "0" || (!isSafetyMonitor && type != "observingconditions") || method.isEmpty())
-        {
-            sendAlpacaBadRequest(request, "Invalid Alpaca device type, device number, method or HTTP verb");
-            return;
-        }
+    bool WebServer::AlpacaBackend::alpacaEnabled() const { return owner.getConfigCallback().alpaca.enabled; }
+    bool WebServer::AlpacaBackend::isSafe() const { return owner.getSafetyStatus().isSafe; }
+    Alpaca::ObservingConditionsSnapshot WebServer::AlpacaBackend::observingConditions() const { return owner.buildAlpacaObservingConditionsSnapshot(); }
+    std::string WebServer::AlpacaBackend::location() const { return owner.getConfigCallback().deviceName; }
 
-        const bool get = request->method() == HTTP_GET;
-        const bool put = request->method() == HTTP_PUT;
-        const size_t deviceIndex = isSafetyMonitor ? ALPACA_SAFETY_MONITOR : ALPACA_OBSERVING_CONDITIONS;
-        const bool enabled = getConfigCallback().alpaca.enabled;
-        auto reply = [request](const std::string &json)
-        { request->send(200, "application/json", json.c_str()); };
+    // ISO 8601 UTC for DeviceState, or empty if the clock has never been set
+    // (NTP/GPS) - a 1970 timestamp would be worse than none.
+    std::string WebServer::AlpacaBackend::timestampUtc() const
+    {
+        const time_t now = time(nullptr);
+        if (now < 1704067200)
+            return "";
+        struct tm utc;
+        gmtime_r(&now, &utc);
+        char buffer[32];
+        strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &utc);
+        return buffer;
+    }
 
-        // --- Common ASCOM device API ---
-        if (method == "connected" && get)
-            return reply(buildAlpacaResponseBool(request, enabled && alpacaConnected[deviceIndex], 0, ""));
-        if (method == "connected" && put)
+    void WebServer::handleAlpacaRequest(AsyncWebServerRequest *request)
+    {
+        Alpaca::Request alpaca;
+        alpaca.get = request->method() == HTTP_GET;
+        alpaca.put = request->method() == HTTP_PUT;
+        alpaca.path = request->url().c_str();
+        const size_t count = request->params();
+        alpaca.params.reserve(count);
+        for (size_t i = 0; i < count; ++i)
         {
-            const AsyncWebParameter *param = findAlpacaParam(request, "Connected");
-            bool connected = false;
-            if (param == nullptr || !Alpaca::parseAlpacaBool(param->value().c_str(), connected))
-                return sendAlpacaBadRequest(request, "Missing or invalid Connected parameter (expected true or false)");
-            if (connected && !enabled)
-                return reply(buildAlpacaResponseVoid(request, Alpaca::ALPACA_ERR_NOT_CONNECTED, ALPACA_DISABLED_MESSAGE));
-            alpacaConnected[deviceIndex] = connected;
-            return reply(buildAlpacaResponseVoid(request, 0, ""));
+            const AsyncWebParameter *param = request->getParam(i);
+            if (param != nullptr && !param->isFile())
+                alpaca.params.emplace_back(param->name().c_str(), param->value().c_str());
         }
-        // Platform 7 asynchronous connect: connecting completes instantly,
-        // so Connecting is always false.
-        if (method == "connect" && put)
+        Alpaca::Response response;
+        if (!alpacaRouter.handle(alpaca, response))
         {
-            if (!enabled)
-                return reply(buildAlpacaResponseVoid(request, Alpaca::ALPACA_ERR_NOT_CONNECTED, ALPACA_DISABLED_MESSAGE));
-            alpacaConnected[deviceIndex] = true;
-            return reply(buildAlpacaResponseVoid(request, 0, ""));
+            response.status = 400;
+            response.contentType = "text/plain";
+            response.body = "Invalid Alpaca device type, device number, method or HTTP verb";
         }
-        if (method == "disconnect" && put)
-        {
-            alpacaConnected[deviceIndex] = false;
-            return reply(buildAlpacaResponseVoid(request, 0, ""));
-        }
-        if (method == "connecting" && get)
-            return reply(buildAlpacaResponseBool(request, false, 0, ""));
-        if (method == "name" && get)
-            return reply(buildAlpacaResponseString(request, isSafetyMonitor ? SAFETY_NAME : CONDITIONS_NAME, alpacaServerTransactionId));
-        if (method == "description" && get)
-            return reply(buildAlpacaResponseString(request, isSafetyMonitor ? SAFETY_DESCRIPTION : CONDITIONS_DESCRIPTION, alpacaServerTransactionId));
-        if (method == "driverinfo" && get)
-            return reply(buildAlpacaResponseString(request, "Native ESP32 firmware, no external bridge - https://github.com/DeanJ87/SQMeter", alpacaServerTransactionId));
-        if (method == "driverversion" && get)
-            return reply(buildAlpacaResponseString(request, FIRMWARE_VERSION, alpacaServerTransactionId));
-        if (method == "interfaceversion" && get)
-            return reply(buildAlpacaResponseInt(request, isSafetyMonitor ? SAFETY_MONITOR_INTERFACE_VERSION : OBSERVING_CONDITIONS_INTERFACE_VERSION,
-                                                alpacaServerTransactionId));
-        if (method == "supportedactions" && get)
-            return reply(buildAlpacaResponseStringArray(request, {}, alpacaServerTransactionId));
-        // No custom actions or raw commands are supported.
-        if (put && (method == "action" || method == "commandblind" || method == "commandbool" || method == "commandstring"))
-            return reply(buildAlpacaResponseVoid(request, Alpaca::ALPACA_ERR_NOT_IMPLEMENTED, "Custom actions and commands are not supported"));
-
-        // --- SafetyMonitor ---
-        if (isSafetyMonitor)
-        {
-            if (method == "issafe" && get)
-            {
-                if (!enabled)
-                    return reply(buildAlpacaResponseBool(request, false, Alpaca::ALPACA_ERR_NOT_CONNECTED, ALPACA_DISABLED_MESSAGE));
-                return reply(buildAlpacaResponseBool(request, getSafetyStatus().isSafe, 0, ""));
-            }
-            if (method == "devicestate" && get)
-            {
-                const bool isSafe = enabled && getSafetyStatus().isSafe;
-                return reply(buildAlpacaResponseDeviceState(request, [isSafe](JsonArray &arr)
-                                                            {
-                    JsonObject item = arr.createNestedObject();
-                    item["Name"] = "IsSafe";
-                    item["Value"] = isSafe; }, alpacaServerTransactionId));
-            }
-            return sendAlpacaBadRequest(request, "Invalid Alpaca device type, device number, method or HTTP verb");
-        }
-
-        // --- ObservingConditions ---
-        if (method == "averageperiod" && get)
-            return reply(buildAlpacaResponseDouble(request, 0.0, 0, ""));
-        if (method == "averageperiod" && put)
-        {
-            const AsyncWebParameter *param = findAlpacaParam(request, "AveragePeriod");
-            double hours = 0.0;
-            if (param == nullptr || !Alpaca::parseAlpacaDouble(param->value().c_str(), hours))
-                return sendAlpacaBadRequest(request, "Missing or invalid AveragePeriod parameter");
-            Alpaca::PropertyResult result = Alpaca::validateAveragePeriod(hours);
-            return reply(buildAlpacaResponseVoid(request, result.ok ? 0 : result.errorNumber, result.errorMessage));
-        }
-        // Readings refresh every sensor cycle already; nothing to force.
-        if (method == "refresh" && put)
-            return reply(buildAlpacaResponseVoid(request, 0, ""));
-        if ((method == "sensordescription" || method == "timesincelastupdate") && get)
-        {
-            const AsyncWebParameter *param = findAlpacaParam(request, "SensorName");
-            if (param == nullptr)
-                return sendAlpacaBadRequest(request, "Missing SensorName parameter");
-            if (method == "sensordescription")
-            {
-                Alpaca::StringResult result = Alpaca::getSensorDescription(param->value().c_str(), buildAlpacaObservingConditionsSnapshot());
-                return reply(buildAlpacaResponseStringWithError(request, result.value, result.ok ? 0 : result.errorNumber, result.errorMessage,
-                                                               alpacaServerTransactionId));
-            }
-            Alpaca::PropertyResult result = Alpaca::getTimeSinceLastUpdate(param->value().c_str(), buildAlpacaObservingConditionsSnapshot());
-            return reply(buildAlpacaResponseDouble(request, result.ok ? result.value : 0.0, result.ok ? 0 : result.errorNumber, result.errorMessage));
-        }
-        if (method == "devicestate" && get)
-        {
-            const Alpaca::ObservingConditionsSnapshot snapshot = buildAlpacaObservingConditionsSnapshot();
-            return reply(buildAlpacaResponseDeviceState(request, [enabled, &snapshot](JsonArray &arr)
-                                                        {
-                if (!enabled)
-                    return;
-                // DeviceState lists only properties that currently have a value.
-                for (const ObservingPropertyName &property : OBSERVING_PROPERTIES) {
-                    Alpaca::PropertyResult result = Alpaca::getObservingConditionsProperty(property.route, snapshot);
-                    if (!result.ok)
-                        continue;
-                    JsonObject item = arr.createNestedObject();
-                    item["Name"] = property.stateName;
-                    item["Value"] = result.value;
-                } }, alpacaServerTransactionId));
-        }
-        if (get)
-        {
-            for (const ObservingPropertyName &property : OBSERVING_PROPERTIES)
-            {
-                if (method != property.route)
-                    continue;
-                if (!enabled)
-                    return reply(buildAlpacaResponseDouble(request, 0, Alpaca::ALPACA_ERR_NOT_CONNECTED, ALPACA_DISABLED_MESSAGE));
-                Alpaca::PropertyResult result = Alpaca::getObservingConditionsProperty(property.route, buildAlpacaObservingConditionsSnapshot());
-                return reply(result.ok ? buildAlpacaResponseDouble(request, result.value, 0, "")
-                                       : buildAlpacaResponseDouble(request, 0, result.errorNumber, result.errorMessage));
-            }
-        }
-        sendAlpacaBadRequest(request, "Invalid Alpaca device type, device number, method or HTTP verb");
+        request->send(response.status, response.contentType, response.body.c_str());
     }
 
     void WebServer::handleAlpacaDiscovery()

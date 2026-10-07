@@ -14,6 +14,7 @@
 #include "SafetyEvaluator.h"
 #include "ObservingConditionsMapper.h"
 #include "AlpacaProtocol.h"
+#include "AlpacaRouter.h"
 #include "AlertDispatcher.h"
 #include "AlertEngine.h"
 #include "SafetyStatus.h"
@@ -131,11 +132,24 @@ namespace SQM
 
         WiFiUDP alpacaDiscoveryUdp;
         bool alpacaDiscoveryStarted = false;
-        mutable uint32_t alpacaServerTransactionId = 0;
-        // Per-device Connected state (index 0 = SafetyMonitor, 1 = ObservingConditions).
-        // Shared by all clients - the device is always reachable, so this
-        // only reflects what clients last set via Connect/Disconnect/Connected.
-        bool alpacaConnected[2] = {false, false};
+        // The Alpaca HTTP API lives in lib/AlpacaLogic (Alpaca::Router) so the
+        // CI simulator runs the same code; this feeds it the device's state.
+        class AlpacaBackend : public Alpaca::Backend
+        {
+        public:
+            explicit AlpacaBackend(WebServer &owner) : owner(owner) {}
+            bool alpacaEnabled() const override;
+            bool isSafe() const override;
+            Alpaca::ObservingConditionsSnapshot observingConditions() const override;
+            std::string location() const override;
+            std::string timestampUtc() const override;
+
+        private:
+            WebServer &owner;
+        };
+        static Alpaca::ServerIdentity alpacaIdentity();
+        AlpacaBackend alpacaBackend{*this};
+        Alpaca::Router alpacaRouter{alpacaBackend, alpacaIdentity()};
 
         SafetyStatus safetyStatus;
         Alpaca::SafeDelayFilter safeDelayFilter;
@@ -195,7 +209,7 @@ namespace SQM
         void setupOTA();
         void setupGithubUpdates();
         void setupAlpacaRoutes();
-        void handleAlpacaDeviceRequest(AsyncWebServerRequest *request);
+        void handleAlpacaRequest(AsyncWebServerRequest *request);
         void handleAlpacaDiscovery();
 
         // API endpoint handlers
@@ -243,9 +257,6 @@ namespace SQM
         static Alpaca::SafetyThresholds buildAlpacaSafetyThresholds(const Config &cfg);
         Alpaca::SafetyResult evaluateAlpacaSafety() const;
         Alpaca::ObservingConditionsSnapshot buildAlpacaObservingConditionsSnapshot() const;
-        std::string buildAlpacaResponseBool(AsyncWebServerRequest *request, bool value, int errorNumber, const std::string &errorMessage) const;
-        std::string buildAlpacaResponseDouble(AsyncWebServerRequest *request, double value, int errorNumber, const std::string &errorMessage) const;
-        std::string buildAlpacaResponseVoid(AsyncWebServerRequest *request, int errorNumber, const std::string &errorMessage) const;
     };
 
 } // namespace SQM

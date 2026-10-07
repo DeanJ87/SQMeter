@@ -1,0 +1,101 @@
+name: Alpaca conformance (ConformU)
+
+# Runs ASCOM ConformU against tools/alpaca-sim, which serves the firmware's
+# Alpaca API (Alpaca::Router in lib/AlpacaLogic) with fixed sensor readings.
+# Any error, issue or configuration alert fails the job.
+
+on:
+  pull_request:
+    paths:
+      - 'lib/AlpacaLogic/**'
+      - 'tools/alpaca-sim/**'
+      - 'platformio.ini'
+      - '.github/workflows/alpaca-conformance.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'lib/AlpacaLogic/**'
+      - 'tools/alpaca-sim/**'
+      - 'platformio.ini'
+      - '.github/workflows/alpaca-conformance.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CONFORMU_VERSION: v4.5.0
+
+jobs:
+  conformu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build the Alpaca simulator
+        run: tools/alpaca-sim/build.sh
+
+      - name: Download ConformU
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$CONFORMU_VERSION" --repo ASCOMInitiative/ConformU -p conformu.linux-x64.tar.xz -D "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TEMP/conformu"
+          tar -xf "$RUNNER_TEMP/conformu.linux-x64.tar.xz" -C "$RUNNER_TEMP/conformu"
+
+      - name: Run ConformU
+        run: |
+          mkdir -p conformu-results
+          ./alpaca-sim 11111 > conformu-results/simulator.log 2>&1 &
+          sleep 1
+          failed=0
+          {
+            echo "## ConformU $CONFORMU_VERSION against the Alpaca simulator"
+            echo
+            echo "| Device | Check | Result |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for device in safetymonitor observingconditions; do
+            url="http://127.0.0.1:11111/api/v1/$device/0"
+            for check in conformance alpacaprotocol; do
+              out="conformu-results/$device-$check.txt"
+              if "$RUNNER_TEMP/conformu/conformu" "$check" "$url" --resultsfile "conformu-results/$device-$check.json" > "$out" 2>&1; then
+                result="passed"
+              else
+                result="**failed** (exit $?)"
+                failed=1
+              fi
+              echo "| $device | $check | $result |" >> "$GITHUB_STEP_SUMMARY"
+              # Show what went wrong right in the job log.
+              grep -E " (ERROR|ISSUE|INFO) " "$out" || true
+            done
+          done
+          exit $failed
+
+      - name: Upload ConformU logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformu-results
+          path: conformu-results/
+          retention-days: 14

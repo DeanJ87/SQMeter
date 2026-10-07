@@ -104,6 +104,21 @@ Each property is tied to the sensor that produces it, so a fault in one sensor (
 
 ---
 
+## Conformance testing
+
+The Alpaca API is implemented once, in `lib/AlpacaLogic` (`Alpaca::Router`), and used by both the firmware and a small desktop simulator, `tools/alpaca-sim`, which serves it with fixed, healthy sensor readings. Every pull request that touches it runs [ASCOM ConformU](https://github.com/ASCOMInitiative/ConformU) against the simulator - full conformance and the Alpaca protocol check, for both devices - and fails on any error, issue or configuration alert. The logs are attached to the run as `conformu-results`.
+
+To run it yourself (Linux or macOS):
+
+```bash
+tools/alpaca-sim/build.sh
+./alpaca-sim 11111
+conformu conformance http://127.0.0.1:11111/api/v1/observingconditions/0
+conformu alpacaprotocol http://127.0.0.1:11111/api/v1/safetymonitor/0
+```
+
+To test a real device, point ConformU at `http://<device-ip>:80/api/v1/<safetymonitor|observingconditions>/0`.
+
 ## Reference
 
 See the [REST API reference](../api/rest.md#ascom-alpaca-api) for the full endpoint list and the [ASCOM Alpaca API spec](https://ascom-standards.org/api/) for the response envelope and standard error codes.
