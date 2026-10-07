@@ -177,9 +177,11 @@ export const SelectInput: FunctionalComponent<{
   error?: string;
   dataField?: string;
   id?: string;
-}> = ({ value, onChange, options, disabled, error, dataField, id }) => (
+  ariaLabel?: string;
+}> = ({ value, onChange, options, disabled, error, dataField, id, ariaLabel }) => (
   <select
     id={id}
+    aria-label={ariaLabel}
     data-field={dataField}
     class={inputClass(error)}
     value={value}

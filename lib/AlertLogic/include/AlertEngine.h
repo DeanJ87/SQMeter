@@ -26,23 +26,29 @@ namespace SQM
             Test,
         };
 
-        // Maps onto Pushover / ntfy priorities by the dispatcher.
-        enum class AlertPriority : int8_t
+        // How loudly an alert is delivered; set per event in the alert
+        // settings. The dispatcher maps it to each channel's priority, and
+        // Wake also rings paired phones over Bluetooth.
+        enum class AlertLevel : uint8_t
         {
-            Low = -1,
-            Normal = 0,
-            High = 1, // urgent: rain, unsafe, sensor fault
+            Off = 0,
+            Quiet = 1,
+            Normal = 2,
+            Urgent = 3,
+            Wake = 4,
         };
 
         struct Alert
         {
             AlertType type = AlertType::Test;
-            AlertPriority priority = AlertPriority::Normal;
+            AlertLevel level = AlertLevel::Normal;
             std::string title;
             std::string message;
+            std::string sound; // Pushover sound; empty = channel default
         };
 
         const char *alertTypeName(AlertType type);
+        const char *alertLevelName(AlertLevel level);
 
         struct AlertRules
         {

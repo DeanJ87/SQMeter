@@ -295,7 +295,7 @@ namespace SQM
         doc["event"] = Alerts::alertTypeName(alert.type);
         doc["title"] = alert.title;
         doc["message"] = alert.message;
-        doc["priority"] = static_cast<int>(alert.priority);
+        doc["level"] = Alerts::alertLevelName(alert.level);
         std::string json;
         serializeJson(doc, json);
         auto *c = static_cast<NimBLECharacteristic *>(alertChar);

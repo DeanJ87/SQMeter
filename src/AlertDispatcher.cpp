@@ -233,7 +233,7 @@ namespace SQM
             doc["event"] = Alerts::alertTypeName(alert.type);
             doc["title"] = alert.title;
             doc["message"] = alert.message;
-            doc["priority"] = static_cast<int>(alert.priority);
+            doc["level"] = Alerts::alertLevelName(alert.level);
             doc["device"] = deviceName;
             if (record.epochSeconds != 0)
                 doc["timestamp"] = record.epochSeconds;
@@ -363,11 +363,9 @@ namespace SQM
 
     bool AlertDispatcher::sendPushover(const Job &job, std::string &detail)
     {
-        int priority = 0;
-        if (job.alert.priority == Alerts::AlertPriority::High)
-            priority = job.cfg.pushoverHighPriority;
-        else if (job.alert.priority == Alerts::AlertPriority::Low)
-            priority = -1;
+        // quiet -1 (no sound), normal 0, urgent 1 (bypasses quiet hours),
+        // wake 2 (emergency: repeats until acknowledged).
+        const int priority = static_cast<int>(job.alert.level) - 2;
 
         std::string body = "token=" + urlEncode(job.cfg.pushoverAppToken) +
                            "&user=" + urlEncode(job.cfg.pushoverUserKey) +
@@ -376,8 +374,9 @@ namespace SQM
                            "&priority=" + std::to_string(priority);
         if (priority == 2)
             body += "&retry=60&expire=3600"; // emergency: repeat every minute for up to an hour until acknowledged
-        if (!job.cfg.pushoverSound.empty())
-            body += "&sound=" + urlEncode(job.cfg.pushoverSound);
+        const std::string &sound = job.alert.sound.empty() ? job.cfg.pushoverSound : job.alert.sound;
+        if (!sound.empty())
+            body += "&sound=" + urlEncode(sound);
 
         return httpPost("https://api.pushover.net/1/messages.json", "application/x-www-form-urlencoded", body, {}, false, detail,
                         PUSHOVER_ROOT_CA_PEM);
@@ -389,9 +388,8 @@ namespace SQM
         while (!server.empty() && server.back() == '/')
             server.pop_back();
 
-        const char *priority = job.alert.priority == Alerts::AlertPriority::High  ? "high"
-                               : job.alert.priority == Alerts::AlertPriority::Low ? "low"
-                                                                                  : "default";
+        static const char *const NTFY_PRIORITY[] = {"min", "low", "default", "high", "max"};
+        const char *priority = NTFY_PRIORITY[static_cast<uint8_t>(job.alert.level) <= 4 ? static_cast<uint8_t>(job.alert.level) : 2];
         std::vector<std::pair<std::string, std::string>> headers = {
             {"Title", fullTitle(job.deviceName, job.alert.title)},
             {"Priority", priority},
@@ -412,7 +410,7 @@ namespace SQM
         doc["event"] = Alerts::alertTypeName(job.alert.type);
         doc["title"] = job.alert.title;
         doc["message"] = job.alert.message;
-        doc["priority"] = static_cast<int>(job.alert.priority);
+        doc["level"] = Alerts::alertLevelName(job.alert.level);
         const int64_t epoch = epochNow();
         if (epoch != 0)
             doc["timestamp"] = epoch;
