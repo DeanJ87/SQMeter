@@ -111,7 +111,7 @@ describe("frontend settings validation", () => {
     for (const part of parts.slice(0, -1)) {
       target = target[part] as Record<string, unknown>;
     }
-    target[parts.at(-1)!] = value;
+    target[parts[parts.length - 1]] = value;
     return candidate;
   };
 
