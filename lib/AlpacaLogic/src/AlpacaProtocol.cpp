@@ -29,6 +29,11 @@ namespace SQM
             return true;
         }
 
+        bool paramNameMatches(const std::string &actual, const std::string &expected, bool isPut)
+        {
+            return isPut ? actual == expected : paramNameEquals(actual, expected);
+        }
+
         uint32_t parseClientTransactionId(const std::string &raw)
         {
             if (raw.empty() || raw.size() > 10)
