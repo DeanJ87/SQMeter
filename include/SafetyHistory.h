@@ -38,5 +38,7 @@ namespace SQM
         // Oldest first; returns how many were written.
         size_t entries(Entry *out, size_t max);
         uint16_t currentBoot();
+        // The newest safe/unsafe alert sent, from any boot; false if none.
+        bool lastAlert(bool &safe);
     } // namespace SafetyHistory
 } // namespace SQM

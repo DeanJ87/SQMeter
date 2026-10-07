@@ -105,5 +105,22 @@ namespace SQM
         }
 
         uint16_t currentBoot() { return store.boot; }
+
+        bool lastAlert(bool &safe)
+        {
+            bool found = false;
+            portENTER_CRITICAL(&lock);
+            for (uint32_t i = 0; i < store.count && !found; ++i)
+            {
+                const Entry &entry = store.entries[(store.head + CAPACITY - 1 - i) % CAPACITY];
+                if (entry.kind == Kind::Alert)
+                {
+                    safe = entry.safe;
+                    found = true;
+                }
+            }
+            portEXIT_CRITICAL(&lock);
+            return found;
+        }
     } // namespace SafetyHistory
 } // namespace SQM

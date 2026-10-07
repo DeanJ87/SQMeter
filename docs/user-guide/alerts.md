@@ -64,7 +64,7 @@ Titles are up to 80 characters and messages up to 240. An unknown `{name}` is le
 
 **Cooldown** (default 5 min) is the minimum time between alerts of the same kind, so a flapping condition doesn't spam you. A change held back by the cooldown isn't lost: if the condition still differs from what you were last told when the cooldown ends, that alert is sent then - the most recent alert always matches reality.
 
-The safe delay also runs from boot, so for that long after a restart the device reports unsafe with nothing failing. That isn't announced, and neither is the "safe" when it ends - nobody was told it went unsafe. The same goes for the delay at the end of a real unsafe spell: you hear "unsafe" when it starts and "safe" once the delay is over.
+**Restarts.** While the device starts up it reports unsafe (no data yet, then the safe delay, which also runs from boot). None of that is announced. Once the first minute is over, the verdict is compared with the last safe/unsafe alert actually sent before the restart: if it was "unsafe" and it's still unsafe, you hear nothing; if it changed, you get the alert. The safe delay at the end of a real unsafe spell isn't news either - you hear "unsafe" when it starts and "safe" once the delay is over.
 
 **History** on the dashboard's safety card lists the last 32 safety changes, restarts (and why the device restarted) and the safe/unsafe alerts actually sent. It survives restarts, crashes and updates, but not a power cut - so when an alert seems missing, it shows whether the device restarted, was only waiting out the safe delay, or held the alert back for the cooldown.
 
