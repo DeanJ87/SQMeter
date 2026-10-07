@@ -378,6 +378,33 @@ void test_stack_alerts(void)
     TEST_ASSERT_EQUAL(static_cast<int>(AlertType::Unsafe), static_cast<int>(both.stacked[0]));
 }
 
+void test_safe_delay_hold_after_restart_is_not_news(void)
+{
+    // Boot: the safe delay reports unsafe with nothing failing, then safe.
+    // Nobody was told "unsafe", so "safe" mustn't be sent either.
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    AlertInputs held = safeInputs(0);
+    held.isSafe = false;
+    held.safetyHeld = true;
+    TEST_ASSERT_EQUAL(0, engine.update(held, rules).size());
+    held.nowSeconds = 100;
+    TEST_ASSERT_EQUAL(0, engine.update(held, rules).size());
+    TEST_ASSERT_EQUAL(0, engine.update(safeInputs(180), rules).size());
+
+    // Mid-run: a real unsafe spell is announced, the hold that follows
+    // it is not, and safe is announced once the delay is over.
+    AlertInputs unsafe = safeInputs(400);
+    unsafe.isSafe = false;
+    unsafe.unsafeReasons = {"Cloud 62% >= 35%"};
+    TEST_ASSERT_TRUE(hasType(engine.update(unsafe, rules), AlertType::Unsafe));
+    AlertInputs tail = safeInputs(800);
+    tail.isSafe = false;
+    tail.safetyHeld = true;
+    TEST_ASSERT_EQUAL(0, engine.update(tail, rules).size());
+    TEST_ASSERT_TRUE(hasType(engine.update(safeInputs(990), rules), AlertType::Safe));
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -401,5 +428,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_render_template);
     RUN_TEST(test_unsafe_alert_lists_every_reason);
     RUN_TEST(test_stack_alerts);
+    RUN_TEST(test_safe_delay_hold_after_restart_is_not_news);
     return UNITY_END();
 }

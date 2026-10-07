@@ -203,7 +203,7 @@ namespace SQM
             const uint32_t cooldown = rules.cooldownSeconds;
 
             // Safety verdict
-            if (in.safetyKnown)
+            if (in.safetyKnown && !in.safetyHeld)
             {
                 const bool unsafe = !in.isSafe;
                 if (sync(safety, unsafe, now, cooldown, pastGrace && rules.onSafetyChange))
