@@ -1627,16 +1627,16 @@ input[type="file"].input::file-selector-button {
 
 .event-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 8rem auto;
+  grid-template-columns: minmax(0, 1fr) 8rem auto auto;
   gap: 0.5rem 0.75rem;
   align-items: center;
 }
 
 .with-sound .event-row {
-  grid-template-columns: minmax(0, 1fr) 8rem 10rem auto;
+  grid-template-columns: minmax(0, 1fr) 8rem 10rem auto auto;
 }
 
-.event-head {
+.event-table-head {
   font-size: 0.75rem;
   color: var(--muted);
 }
@@ -1654,14 +1654,14 @@ input[type="file"].input::file-selector-button {
 
 @media (max-width: 640px) {
   .with-sound .event-row {
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr auto auto;
   }
 
   .with-sound .event-label {
     grid-column: 1 / -1;
   }
 
-  .event-head {
+  .event-table-head {
     display: none;
   }
 }
@@ -1686,7 +1686,8 @@ input[type="file"].input::file-selector-button {
   }
 
   .rule-row > .input-row,
-.rule-row > .input {
+  .rule-row > .input {
+    width: auto;
     margin-left: 2.95rem;
   }
 }
@@ -1733,6 +1734,7 @@ input[type="file"].input::file-selector-button {
 
 .event-list p {
   margin: 0.15rem 0 0.3rem;
+  white-space: pre-line;
   color: var(--muted);
   font-size: 0.78rem;
 }
@@ -1869,8 +1871,12 @@ input[type="file"].input::file-selector-button {
 .alerts-flyout-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 0.4rem;
+}
+
+.alerts-flyout-head h2 {
+  margin-right: auto;
 }
 
 .alerts-flyout-head h2 {
@@ -2040,4 +2046,39 @@ input[type="file"].input::file-selector-button {
 
 .moon-lit {
   fill: #e8e4d8;
+}
+
+.template-editor {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+
+.template-editor textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+  font: inherit;
+}
+
+.var-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.var-chip {
+  padding: 0.125rem 0.375rem;
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.var-chip:hover {
+  color: var(--text);
 }

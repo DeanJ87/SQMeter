@@ -1,5 +1,5 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import type { AlertChannelName, AlertEventKey, AlertRecord } from '../../types';
 import { mergeAlertsConfig } from './defaults';
 import { darkness, formatClock, formatDuration, sunPosition } from '../../lib/astro';
@@ -43,7 +43,57 @@ const describeDarkness = (latitude: number, longitude: number, darkAltitude: num
   return `${sunNow} - dark in ${formatDuration(start.valueOf() - now.valueOf())}, ${formatClock(start)} to ${formatClock(end)}.`;
 };
 
-const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, status, dirty, goTo }) => {
+// The firmware's built-in wording, written as templates; shown as the
+// placeholder until you write your own.
+const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = {
+  unsafe: { title: 'Observatory UNSAFE', message: '{reasons}' },
+  safe: { title: 'Observatory safe', message: 'All enabled safety rules pass.' },
+  rain_started: { title: 'Rain detected', message: 'The rain sensor reports rain ({rain_rate} mm/h).' },
+  rain_stopped: { title: 'Rain cleared', message: 'No rain for the configured rain clear delay.' },
+  sensor_fault: { title: '{sensor} sensor fault', message: '{sensor} is offline or reporting errors.' },
+  sensor_recovered: { title: '{sensor} sensor recovered', message: '{sensor} is reporting normally again.' },
+  dew_risk: { title: 'Dew risk', message: 'Temperature {temp} C is within {dew_margin} C of the dew point ({dewpoint} C).' },
+  clear_sky: { title: 'Dark and clear', message: 'Cloud cover is down to {cloud}% (clear below {clear_below}%).' },
+  clouded_over: { title: 'Clouded over', message: 'Cloud cover is up to {cloud}% (cloudy above {cloudy_above}%).' },
+};
+
+const VAR_HELP: Record<string, string> = {
+  reasons: 'Every failing rule with its value and limit, one per line',
+  reasons_inline: 'The same, on one line',
+  reason_count: 'How many rules are failing',
+  sensor: 'Which sensor',
+  dew_margin_min: 'Dew risk margin setting',
+  device: 'Device name',
+  time: 'Local time',
+  date: 'Local date',
+  level: 'Alert level',
+  sqm: 'Sky quality, mag/arcsec²',
+  sqm_min: 'SQM safety minimum',
+  cloud: 'Cloud cover %',
+  cloud_max: 'Cloud cover safety limit %',
+  clear_below: '"Clear" threshold %',
+  cloudy_above: '"Clouded over" threshold %',
+  sky_temp: 'Sky temperature °C',
+  temp: 'Temperature °C',
+  humidity: 'Humidity %',
+  humidity_max: 'Humidity safety limit %',
+  dewpoint: 'Dew point °C',
+  dew_margin: 'Temperature minus dew point °C',
+  pressure: 'Pressure hPa',
+  rain_rate: 'Rain rate mm/h',
+  wind: 'Wind m/s',
+  gust: 'Gust m/s',
+  sun_alt: 'Sun altitude °',
+};
+const COMMON_VARS = ['device', 'time', 'date', 'level', 'sqm', 'sqm_min', 'cloud', 'cloud_max', 'clear_below', 'cloudy_above', 'sky_temp', 'temp', 'humidity', 'humidity_max', 'dewpoint', 'dew_margin', 'pressure', 'rain_rate', 'wind', 'gust', 'sun_alt'];
+const EVENT_VARS: Partial<Record<AlertEventKey, string[]>> = {
+  unsafe: ['reasons', 'reasons_inline', 'reason_count'],
+  sensor_fault: ['sensor'],
+  sensor_recovered: ['sensor'],
+  dew_risk: ['dew_margin_min'],
+};
+
+const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw, status, dirty, goTo }) => {
   const alerts = mergeAlertsConfig(config.alerts);
   const [testResult, setTestResult] = useState<{ target: string; type: 'success' | 'error' | 'pending'; text: string } | null>(null);
 
@@ -106,7 +156,9 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
 
   const sendEventTest = (key: AlertEventKey) => {
     const event = alerts.events[key];
-    const query = `channel=all&event=${key}&level=${event.level}&sound=${encodeURIComponent(event.sound)}`;
+    const query =
+      `channel=all&event=${key}&level=${event.level}&sound=${encodeURIComponent(event.sound)}` +
+      `&title=${encodeURIComponent(event.title ?? '')}&message=${encodeURIComponent(event.message ?? '')}`;
     if (channelCount === 0) {
       // Only paired phones to ring; nothing to follow.
       setTestResult({ target: key, type: 'pending', text: 'Sending...' });
@@ -139,6 +191,90 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
   const dewReason = hw.environment.detected === false ? 'BME280 not detected.' : null;
   const skyReason = hw.irSky.detected === false ? 'MLX90614 not detected.' : null;
   const pushoverOn = alerts.pushover.enabled;
+  const [editing, setEditing] = useState<AlertEventKey | null>(null);
+  // Where a clicked {variable} goes: the last focused title/message field.
+  const lastField = useRef<{ key: AlertEventKey; field: 'title' | 'message'; el: HTMLInputElement | HTMLTextAreaElement } | null>(null);
+
+  const insertVar = (key: AlertEventKey, name: string) => {
+    const target = lastField.current?.key === key ? lastField.current : null;
+    const field = target?.field ?? 'message';
+    const current = alerts.events[key][field] ?? '';
+    const start = target?.el.selectionStart ?? current.length;
+    const end = target?.el.selectionEnd ?? current.length;
+    const token = `{${name}}`;
+    set(['events', key, field], current.slice(0, start) + token + current.slice(end));
+    if (target) {
+      requestAnimationFrame(() => {
+        target.el.focus();
+        target.el.setSelectionRange(start + token.length, start + token.length);
+      });
+    }
+  };
+
+  const templateEditor = (key: AlertEventKey) => {
+    const event = alerts.events[key];
+    const track = (field: 'title' | 'message') => (e: Event) => {
+      lastField.current = { key, field, el: e.currentTarget as HTMLInputElement | HTMLTextAreaElement };
+    };
+    return (
+      <div class="template-editor" data-template={key}>
+        <Field label="Title" error={(event.title ?? '').length > 80 ? 'Up to 80 characters' : undefined}>
+          <input
+            class="input"
+            aria-label="Alert title"
+            value={event.title ?? ''}
+            placeholder={DEFAULT_TEXT[key].title}
+            maxLength={80}
+            onFocus={track('title')}
+            onKeyUp={track('title')}
+            onClick={track('title')}
+            onInput={(e) => set(['events', key, 'title'], (e.target as HTMLInputElement).value)}
+          />
+        </Field>
+        <Field label="Message" error={(event.message ?? '').length > 240 ? 'Up to 240 characters' : undefined}>
+          <textarea
+            class="input"
+            aria-label="Alert message"
+            value={event.message ?? ''}
+            placeholder={DEFAULT_TEXT[key].message}
+            maxLength={240}
+            onFocus={track('message')}
+            onKeyUp={track('message')}
+            onClick={track('message')}
+            onInput={(e) => set(['events', key, 'message'], (e.target as HTMLTextAreaElement).value)}
+          />
+        </Field>
+        <div class="var-chips" aria-label="Insert a value">
+          {[...(EVENT_VARS[key] ?? []), ...COMMON_VARS].map((name) => (
+            <button
+              key={name}
+              type="button"
+              class="var-chip"
+              title={VAR_HELP[name]}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => insertVar(key, name)}
+            >
+              {`{${name}}`}
+            </button>
+          ))}
+        </div>
+        {(event.title || event.message) && (
+          <div class="btn-row">
+            <ActionButton
+              onClick={() =>
+                updateMany([
+                  [['alerts', 'events', key, 'title'], ''],
+                  [['alerts', 'events', key, 'message'], ''],
+                ])
+              }
+            >
+              Use the default wording
+            </ActionButton>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render function (not a nested component) so re-renders don't remount it.
   const eventRow = (
@@ -178,8 +314,16 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
           >
             Test
           </ActionButton>
+          <ActionButton
+            onClick={() => setEditing(editing === key ? null : key)}
+            disabled={off}
+            title="Write your own title and message"
+          >
+            {event.title || event.message ? 'Text •' : 'Text'}
+          </ActionButton>
         </div>
         {resultNote(key)}
+        {editing === key && templateEditor(key)}
         {opts.blocked && (
           <Requires tone={event.level > 0 ? 'warn' : 'info'} onFix={opts.fix}>
             {opts.blocked}
@@ -220,10 +364,11 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
       <SettingsCard title="Notify me when" hint={LEVEL_HINT}>
         <fieldset class="card-body" disabled={off}>
           <div class={`event-table${pushoverOn ? ' with-sound' : ''}`}>
-            <div class="event-row event-head" aria-hidden="true">
+            <div class="event-row event-table-head" aria-hidden="true">
               <span />
               <span>Level</span>
               {pushoverOn && <span>Pushover sound</span>}
+              <span />
               <span />
             </div>
             {eventRow('unsafe', 'It turns unsafe', { hint: 'Lists the reasons.' })}

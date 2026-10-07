@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace SQM
@@ -45,6 +46,11 @@ namespace SQM
             std::string title;
             std::string message;
             std::string sound; // Pushover sound; empty = channel default
+            // Values for message templates ({name} -> value), e.g. "reasons",
+            // "sensor", "cloud". The firmware adds readings and settings.
+            std::vector<std::pair<std::string, std::string>> vars;
+            // Other events sent in this same notification (see stackAlerts).
+            std::vector<AlertType> stacked;
         };
 
         const char *alertTypeName(AlertType type);
@@ -157,7 +163,17 @@ namespace SQM
         };
 
         // Formatting helpers shared with the dispatcher's test alerts.
+        // One reason per line, bulleted.
         std::string joinReasons(const std::vector<std::string> &reasons);
+
+        // Replaces each {name} in `text` with its value from `vars`. Unknown
+        // names are left as they are, so a typo shows up in the alert.
+        std::string renderTemplate(const std::string &text, const std::vector<std::pair<std::string, std::string>> &vars);
+
+        // Several alerts raised at once become one notification: the
+        // loudest one leads (its type, level and sound), titles are joined
+        // with " · " and messages one after another.
+        Alert stackAlerts(const std::vector<Alert> &alerts);
 
     } // namespace Alerts
 } // namespace SQM

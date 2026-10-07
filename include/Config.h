@@ -167,7 +167,12 @@ namespace SQM
         {
             uint8_t level;
             std::string sound;
+            // Custom text with {variables}; empty uses the built-in wording.
+            std::string title;
+            std::string message;
         };
+        static constexpr size_t MAX_TEMPLATE_TITLE = 80;
+        static constexpr size_t MAX_TEMPLATE_MESSAGE = 240;
         EventSetting unsafe;
         EventSetting safe;
         EventSetting rainStarted;

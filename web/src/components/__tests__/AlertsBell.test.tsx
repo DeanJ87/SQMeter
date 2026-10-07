@@ -29,4 +29,19 @@ describe('AlertsBell', () => {
     expect(screen.getAllByText(/pushover: sent/).length).toBe(2);
     expect(screen.getByRole('button', { name: 'Alerts' })).toBeInTheDocument();
   });
+
+  it('clears the list on the device', async () => {
+    let cleared = false;
+    server.use(
+      http.post('/api/alerts/clear', () => {
+        cleared = true;
+        return HttpResponse.json({ success: true });
+      })
+    );
+    render(<AlertsBell />);
+    fireEvent.click(await screen.findByRole('button', { name: /Alerts, 2 new/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(await screen.findByText('No alerts.')).toBeInTheDocument();
+    expect(cleared).toBe(true);
+  });
 });

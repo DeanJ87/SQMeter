@@ -64,6 +64,10 @@ export const handlers = [
 
   // REST — alerts
   http.get("/api/alerts/recent", () => HttpResponse.json({ enabled: true, alerts: mockRecentAlerts })),
+  http.post("/api/alerts/clear", () => {
+    mockRecentAlerts.splice(0, mockRecentAlerts.length);
+    return HttpResponse.json({ success: true });
+  }),
   http.post("/api/alerts/test", () =>
     HttpResponse.json({ success: true, message: "Test notification queued" }, { status: 202 })
   ),

@@ -254,6 +254,8 @@ export const alertsConfigSchema = z
       z.object({
         level: z.number().int().min(0).max(4),
         sound: z.string().max(32).regex(/^[a-z0-9_-]*$/i, "Not a Pushover sound name"),
+        title: z.string().max(80, "Titles are up to 80 characters").optional(),
+        message: z.string().max(240, "Messages are up to 240 characters").optional(),
       })
     ),
     dewRiskMarginC: z.number().min(0).max(10),

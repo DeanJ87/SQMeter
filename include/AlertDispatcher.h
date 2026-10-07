@@ -72,6 +72,7 @@ namespace SQM
                       uint8_t channelMask = ALERT_CHANNELS_ALL);
 
         std::vector<AlertRecord> recent() const;
+        void clearRecent();
 
     private:
         static constexpr size_t MAX_RECORDS = 20;
