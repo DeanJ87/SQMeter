@@ -2,9 +2,10 @@ import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { Config, SensorData, SystemStatus } from '../types';
-import { Card, Icon, MetricTile, Note, Pill, ReadingRow, SensorReadingRow } from './ui';
+import { Button, Card, Icon, MetricTile, Note, Pill, ReadingRow, SensorReadingRow } from './ui';
 import SafetyCard from './SafetyCard';
 import SunMoonCard from './SunMoonCard';
+import Masonry, { MasonryItem, mergeOrder, moveInOrder } from './Masonry';
 
 const formatNumber = (value: number | undefined, digits: number) =>
   typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '--';
@@ -109,7 +110,30 @@ const MiniSpark: FunctionalComponent<{ values: number[]; tone: string }> = ({ va
   );
 };
 
+const DEFAULT_ORDER = ['safety', 'sky', 'sunmoon', 'cloud', 'environment', 'gps', 'light', 'device', 'ir', 'wind', 'rain'];
+const ORDER_KEY = 'sqm.dashboard.order';
+
+// Card order is a per-browser preference.
+const loadOrder = (): string[] => {
+  try {
+    const value = JSON.parse(localStorage.getItem(ORDER_KEY) ?? '[]');
+    return Array.isArray(value) ? value.filter((id) => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+const saveOrder = (order: string[]) => {
+  try {
+    if (order.length) localStorage.setItem(ORDER_KEY, JSON.stringify(order));
+    else localStorage.removeItem(ORDER_KEY);
+  } catch {
+    // storage unavailable: the order just isn't remembered
+  }
+};
+
 const Dashboard: FunctionalComponent = () => {
+  const [savedOrder, setSavedOrder] = useState<string[]>(loadOrder);
+  const [arranging, setArranging] = useState(false);
   const { data: sensors, connected, lastMessageAt } = useWebSocket<SensorData>('/ws/sensors');
   const { data: status } = useWebSocket<SystemStatus>('/ws/status');
   const [config, setConfig] = useState<Config | null>(null);
@@ -178,13 +202,9 @@ const Dashboard: FunctionalComponent = () => {
     );
   }
 
-  return (
-    <div class="dashboard page-enter">
-      <div class="dashboard-layout">
-        <div class="dashboard-left">
-          <SafetyCard safety={sensors.safety} />
-
-          {!lightOk ? (
+  const cards: (MasonryItem | false | null | undefined)[] = [
+    { id: 'safety', title: 'Safety', node: <SafetyCard safety={sensors.safety} /> },
+    { id: 'sky', title: 'Sky Quality', node: !lightOk ? (
             <Card title="Sky Quality" icon="star" tone="muted" actions={<Pill tone="pill-red">Not detected</Pill>}>
               <Note>The TSL2591 light sensor isn't responding - check its wiring, then restart.</Note>
             </Card>
@@ -219,12 +239,10 @@ const Dashboard: FunctionalComponent = () => {
               <MetricTile label="Illuminance" value={formatNumber(sensors.lightSensor?.lux, 5)} unit="lux" />
             </div>
           </section>
-          )}
-
-          {showSunMoon && location && <SunMoonCard latitude={location.latitude} longitude={location.longitude} />}
-
-          {irOk && sensors.cloudConditions && (
-            <Card
+          ) },
+    showSunMoon && location && { id: 'sunmoon', title: 'Sun & Moon', node: <SunMoonCard latitude={location.latitude} longitude={location.longitude} /> },
+    irOk && sensors.cloudConditions && { id: 'cloud', title: 'Cloud Conditions', node: (
+<Card
               title="Cloud Conditions"
               icon="cloud"
               tone="violet"
@@ -240,12 +258,9 @@ const Dashboard: FunctionalComponent = () => {
                 <MetricTile label="Corrected" value={formatNumber(sensors.cloudConditions.correctedDelta, 1)} unit="C" />
               </div>
             </Card>
-          )}
-        </div>
-
-        <div class="dashboard-right">
-          {sensors.environment && sensors.environment.status === 0 && (
-            <Card title="Environment" icon="therm" tone="amber">
+    ) },
+    sensors.environment && sensors.environment.status === 0 && { id: 'environment', title: 'Environment', node: (
+<Card title="Environment" icon="therm" tone="amber">
               <div class="tile-grid two">
                 <MetricTile label="Temperature" value={formatNumber(sensors.environment.temperature, 1)} unit="C" tone="tone-amber" />
                 <MetricTile label="Humidity" value={formatNumber(sensors.environment.humidity, 1)} unit="%" tone={sensors.environment.humidity > 80 ? 'tone-amber' : 'tone-cyan'} />
@@ -253,10 +268,9 @@ const Dashboard: FunctionalComponent = () => {
                 <MetricTile label="Dew Point" value={formatNumber(sensors.environment.dewpoint, 1)} unit="C" tone="tone-violet" />
               </div>
             </Card>
-          )}
-
-          {sensors.gps && (
-            <Card
+    ) },
+    sensors.gps && { id: 'gps', title: 'GPS', node: (
+<Card
               title="GPS Location"
               icon="gps"
               tone={sensors.gps.hasFix ? 'green' : 'muted'}
@@ -280,18 +294,17 @@ const Dashboard: FunctionalComponent = () => {
                 <MetricTile label="Fix Age" value={formatAgeMs(sensors.gps.age)} />
               </div>
             </Card>
-          )}
-
-          {lightOk && sensors.lightSensor && (
-            <Card title="Light Sensor" icon="eye" tone="cyan">
+    ) },
+    lightOk && sensors.lightSensor && { id: 'light', title: 'Light Sensor', node: (
+<Card title="Light Sensor" icon="eye" tone="cyan">
               <SensorReadingRow label="Illuminance" value={formatNumber(sensors.lightSensor.lux, 5)} unit="lux" />
               <SensorReadingRow label="Visible" value={String(sensors.lightSensor.visible)} unit="raw" />
               <SensorReadingRow label="Infrared" value={String(sensors.lightSensor.infrared)} unit="raw" />
               <SensorReadingRow label="Full spectrum" value={String(sensors.lightSensor.full)} unit="raw" />
             </Card>
-          )}
-
-          <Card title="Device & Network" icon="wifi" tone="cyan">
+    ) },
+    { id: 'device', title: 'Device & Network', node: (
+<Card title="Device & Network" icon="wifi" tone="cyan">
             <div class="tile-grid two">
               <div class="metric-tile left">
                 <div class="metric-label">Wi-Fi</div>
@@ -313,9 +326,9 @@ const Dashboard: FunctionalComponent = () => {
               </div>
             )}
           </Card>
-
-          {irOk && sensors.irTemperature && (
-            <Card title="IR Temperature" icon="therm" tone="violet">
+    ) },
+    irOk && sensors.irTemperature && { id: 'ir', title: 'IR Temperature', node: (
+<Card title="IR Temperature" icon="therm" tone="violet">
               <ReadingRow
                 label="Sky temperature"
                 value={`${formatNumber(sensors.irTemperature.objectTemp, 1)} C`}
@@ -325,10 +338,9 @@ const Dashboard: FunctionalComponent = () => {
                 value={`${formatNumber(sensors.irTemperature.ambientTemp, 1)} C`}
               />
             </Card>
-          )}
-
-          {sensors.wind && (
-            <Card
+    ) },
+    sensors.wind && { id: 'wind', title: 'Wind', node: (
+<Card
               title="Wind"
               icon="cloud"
               tone="cyan"
@@ -348,10 +360,9 @@ const Dashboard: FunctionalComponent = () => {
                 />
               </div>
             </Card>
-          )}
-
-          {rain?.enabled && (
-            <Card
+    ) },
+    rain?.enabled && { id: 'rain', title: 'Rain Sensor', node: (
+<Card
               title="Rain Sensor"
               icon="rain"
               tone="cyan"
@@ -374,9 +385,31 @@ const Dashboard: FunctionalComponent = () => {
                 </div>
               )}
             </Card>
-          )}
-        </div>
+    ) },
+  ];
+  const visible = cards.filter((card): card is MasonryItem => Boolean(card));
+  const fullOrder = mergeOrder(savedOrder, DEFAULT_ORDER);
+  const ordered = fullOrder.map((id) => visible.find((card) => card.id === id)).filter((card): card is MasonryItem => Boolean(card));
+
+  const move = (id: string, toIndex: number) => {
+    const next = moveInOrder(fullOrder, ordered.map((card) => card.id), id, toIndex);
+    setSavedOrder(next);
+    saveOrder(next);
+  };
+
+  return (
+    <div class="dashboard page-enter">
+      <div class="dashboard-toolbar">
+        {arranging && (
+          <Button small variant="ghost" onClick={() => { setSavedOrder([]); saveOrder([]); }}>
+            Reset order
+          </Button>
+        )}
+        <Button small variant={arranging ? 'primary' : 'ghost'} onClick={() => setArranging(!arranging)}>
+          {arranging ? 'Done' : 'Arrange'}
+        </Button>
       </div>
+      <Masonry items={ordered} editing={arranging} onMove={move} />
     </div>
   );
 };
