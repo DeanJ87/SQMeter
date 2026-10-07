@@ -948,15 +948,17 @@ namespace SQM
 
     namespace
     {
-        // Alpaca parameter names are case-insensitive, and may arrive in the
-        // query string (GET) or the form-encoded body (PUT) - search both.
+        // Alpaca parameters arrive in the query string (GET, names
+        // case-insensitive) or the form-encoded body (PUT, names
+        // case-sensitive) - see Alpaca::paramNameMatches.
         const AsyncWebParameter *findAlpacaParam(AsyncWebServerRequest *request, const char *name)
         {
+            const bool isPut = request->method() == HTTP_PUT;
             const size_t count = request->params();
             for (size_t i = 0; i < count; ++i)
             {
                 const AsyncWebParameter *param = request->getParam(i);
-                if (param != nullptr && !param->isFile() && Alpaca::paramNameEquals(param->name().c_str(), name))
+                if (param != nullptr && !param->isFile() && Alpaca::paramNameMatches(param->name().c_str(), name, isPut))
                     return param;
             }
             return nullptr;

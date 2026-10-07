@@ -407,6 +407,17 @@ void test_param_name_case_insensitive(void)
     TEST_ASSERT_FALSE(paramNameEquals("Connected", "Connecte"));
 }
 
+void test_put_param_names_are_case_sensitive(void)
+{
+    // GET query strings: any casing.
+    TEST_ASSERT_TRUE(paramNameMatches("averageperiod", "AveragePeriod", false));
+    TEST_ASSERT_TRUE(paramNameMatches("ClientTransactionID", "ClientTransactionID", false));
+    // PUT form bodies: exact casing only (ConformU "Bad casing" checks).
+    TEST_ASSERT_TRUE(paramNameMatches("AveragePeriod", "AveragePeriod", true));
+    TEST_ASSERT_FALSE(paramNameMatches("averageperiod", "AveragePeriod", true));
+    TEST_ASSERT_FALSE(paramNameMatches("clienttransactionid", "ClientTransactionID", true));
+}
+
 void test_client_transaction_id_parsing(void)
 {
     TEST_ASSERT_EQUAL_UINT32(42, parseClientTransactionId("42"));
@@ -630,6 +641,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_discovery_response_body);
 
     RUN_TEST(test_param_name_case_insensitive);
+    RUN_TEST(test_put_param_names_are_case_sensitive);
     RUN_TEST(test_client_transaction_id_parsing);
     RUN_TEST(test_alpaca_bool_parsing);
     RUN_TEST(test_unique_id_includes_mac);
