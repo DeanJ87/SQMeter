@@ -332,6 +332,10 @@ describe("alertsConfigSchema", () => {
     dewRiskMarginC: 2,
     onClearSky: false,
     clearSkyCloudPercent: 20,
+    onCloudedOver: false,
+    cloudedOverCloudPercent: 70,
+    skyNightOnly: true,
+    nightSunAltitudeDeg: -12,
     cooldownSeconds: 300,
     pushover: { enabled: false, userKey: "", appToken: "", highPriority: 1, sound: "" },
     ntfy: { enabled: false, server: "https://ntfy.sh", topic: "", token: "" },
@@ -371,6 +375,10 @@ describe("alertsConfigSchema", () => {
     expect(
       alertsConfigSchema.safeParse({ ...validAlerts, webhook: { ...validAlerts.webhook, enabled: true, url: "ftp://x" } }).success
     ).toBe(false);
+  });
+
+  it("needs the clouded-over threshold above the clear one", () => {
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, clearSkyCloudPercent: 60, cloudedOverCloudPercent: 50 }).success).toBe(false);
   });
 
   it("caps the cooldown at 24 hours", () => {

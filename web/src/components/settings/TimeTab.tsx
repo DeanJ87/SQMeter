@@ -1,6 +1,9 @@
 import { FunctionalComponent } from 'preact';
+import { useState } from 'preact/hooks';
+import { Note } from '../ui';
+import { defaultLocationConfig } from './defaults';
 import type { SettingsTabProps } from './context';
-import { Field, Group, NumberInput, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
+import { ActionButton, Field, Group, NumberInput, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
 
 // Common time zones in POSIX TZ format
 export const TIMEZONE_OPTIONS = [
@@ -16,12 +19,60 @@ export const TIMEZONE_OPTIONS = [
   { label: 'Asia/Tokyo (JST)', value: 'JST-9' },
 ];
 
+// "51.4779, -0.0015" (or space separated) -> [lat, lon]; null if it isn't that.
+export const parseCoordinates = (text: string): [number, number] | null => {
+  const match = text.trim().match(/^(-?\d+(?:\.\d+)?)\s*[,\s]\s*(-?\d+(?:\.\d+)?)$/);
+  if (!match) return null;
+  const lat = parseFloat(match[1]);
+  const lon = parseFloat(match[2]);
+  return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? [lat, lon] : null;
+};
+
 const NTP = 0;
 const GPS = 1;
 const SOURCE_LABEL: Record<number, string> = { [NTP]: 'NTP', [GPS]: 'GPS' };
 const LAST_SOURCE = 'At least one time source has to stay on.';
 
-const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw }) => {
+const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw, status }) => {
+  const location = { ...defaultLocationConfig, ...config.location };
+  const [coords, setCoords] = useState(location.set ? `${location.latitude}, ${location.longitude}` : '');
+  const [coordsError, setCoordsError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const canUseBrowserLocation = typeof window !== 'undefined' && window.isSecureContext && 'geolocation' in navigator;
+  const sky = status?.sky;
+
+  const applyCoords = (text: string) => {
+    setCoords(text);
+    if (text.trim() === '') {
+      setCoordsError(null);
+      update(['location', 'set'], false);
+      return;
+    }
+    const parsed = parseCoordinates(text);
+    setCoordsError(parsed ? null : 'Enter latitude, longitude - e.g. 51.4779, -0.0015');
+    if (parsed) {
+      updateMany([
+        [['location', 'set'], true],
+        [['location', 'latitude'], Math.round(parsed[0] * 1e4) / 1e4],
+        [['location', 'longitude'], Math.round(parsed[1] * 1e4) / 1e4],
+      ]);
+    }
+  };
+
+  const useBrowserLocation = () => {
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        applyCoords(`${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+      },
+      () => {
+        setLocating(false);
+        setCoordsError('The browser didn\'t share a location.');
+      },
+      { timeout: 15000 }
+    );
+  };
   const knownZone = TIMEZONE_OPTIONS.some((tz) => tz.value === config.ntp.timezone);
   const bothSources = config.ntp.enabled && config.gps.enabled;
 
@@ -49,6 +100,29 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
             </Field>
           )}
         </div>
+      </SettingsCard>
+
+      <SettingsCard
+        id="location"
+        title="Location"
+        hint="Used to work out when it's dark. A GPS fix takes precedence."
+        badge={sky?.locationSource === 'gps' ? <StatusBadge tone="ok" label="Using GPS" /> : undefined}
+      >
+        <Field class="field-wide" label="Coordinates" error={coordsError ?? error('location.latitude') ?? error('location.longitude')} hint="Latitude, longitude in decimal degrees. Paste from any maps app.">
+          <div class="input-row">
+            <TextInput dataField="location.latitude" value={coords} placeholder="51.4779, -0.0015" onInput={applyCoords} />
+            {canUseBrowserLocation && (
+              <ActionButton onClick={useBrowserLocation} busy={locating} busyLabel="Locating...">
+                Use my location
+              </ActionButton>
+            )}
+          </div>
+        </Field>
+        {sky?.nightKnown && sky.sunAltitudeDeg !== undefined && (
+          <Note>
+            Sun at {sky.sunAltitudeDeg}° - {sky.isNight ? 'dark now' : 'not dark yet'}.
+          </Note>
+        )}
       </SettingsCard>
 
       <SettingsCard title="Time sources">
