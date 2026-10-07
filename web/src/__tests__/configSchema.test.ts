@@ -343,6 +343,17 @@ describe("alertsConfigSchema", () => {
     expect(alertsConfigSchema.safeParse(validAlerts).success).toBe(true);
   });
 
+  it("requires 30-character Pushover keys (or the stored mask)", () => {
+    const key = "a".repeat(30);
+    const withKeys = (userKey: string, appToken: string) =>
+      alertsConfigSchema.safeParse({ ...validAlerts, pushover: { ...validAlerts.pushover, enabled: true, userKey, appToken } }).success;
+    expect(withKeys(key, key)).toBe(true);
+    expect(withKeys("********", "********")).toBe(true);
+    expect(withKeys(`${key} `, key)).toBe(true); // trailing space from a paste is trimmed
+    expect(withKeys("me@example.com", key)).toBe(false);
+    expect(withKeys(key, "short")).toBe(false);
+  });
+
   it("requires Pushover credentials when Pushover is enabled", () => {
     const result = alertsConfigSchema.safeParse({ ...validAlerts, pushover: { ...validAlerts.pushover, enabled: true } });
     expect(result.success).toBe(false);

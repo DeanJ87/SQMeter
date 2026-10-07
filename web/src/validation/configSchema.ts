@@ -269,8 +269,13 @@ export const alertsConfigSchema = z
     mqtt: z.object({ enabled: z.boolean() }),
   })
   .superRefine((data, ctx) => {
-    if (data.pushover.enabled && (!data.pushover.userKey || !data.pushover.appToken)) {
-      ctx.addIssue({ code: "custom", path: ["pushover", "userKey"], message: "Pushover needs a user key and an application token" });
+    // Pushover keys are exactly 30 letters/digits; "********" is the stored, masked value.
+    const pushoverKey = /^([A-Za-z0-9]{30}|\*{8})$/;
+    if (data.pushover.enabled && !pushoverKey.test(data.pushover.userKey.trim())) {
+      ctx.addIssue({ code: "custom", path: ["pushover", "userKey"], message: "The user key is the 30-character key on your Pushover dashboard" });
+    }
+    if (data.pushover.enabled && !pushoverKey.test(data.pushover.appToken.trim())) {
+      ctx.addIssue({ code: "custom", path: ["pushover", "appToken"], message: "The app token is the 30-character API token of your Pushover application" });
     }
     if (data.ntfy.enabled) {
       if (!httpUrl.safeParse(data.ntfy.server).success) {

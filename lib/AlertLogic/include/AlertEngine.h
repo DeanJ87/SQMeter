@@ -53,6 +53,10 @@ namespace SQM
             bool onClearSky = false;
             float clearSkyCloudPercent = 20.0f;
             uint32_t cooldownSeconds = 300;
+            // A sensor fault (or recovery) must hold this long before it's
+            // announced, so blips - saving settings, reconfiguring a sensor,
+            // an OTA upload stalling the loop - don't page anyone.
+            uint32_t sensorSettleSeconds = 30;
             // Nothing is sent this soon after boot; state is still tracked,
             // so a reboot doesn't announce whatever the startup state is.
             uint32_t startupGraceSeconds = 60;
@@ -108,10 +112,13 @@ namespace SQM
                 bool notified = false;
                 bool hasNotified = false;
                 uint32_t lastNotifiedAt = 0;
+                bool pending = false; // value differs from notified, waiting to settle
+                uint32_t pendingSince = 0;
             };
 
             // Returns true when a transition to `current` should be emitted now.
-            static bool sync(Tracker &tracker, bool current, uint32_t now, uint32_t cooldown, bool emitAllowed);
+            // `settle`: seconds `current` must hold before it counts.
+            static bool sync(Tracker &tracker, bool current, uint32_t now, uint32_t cooldown, bool emitAllowed, uint32_t settle = 0);
 
             bool started = false;
             uint32_t startedAt = 0;

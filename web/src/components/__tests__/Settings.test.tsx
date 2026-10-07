@@ -31,7 +31,7 @@ describe('Settings', () => {
     fireEvent.click(await screen.findByRole('tab', { name: 'Alerts' }));
     expect(screen.getByRole('tab', { name: 'Alerts', selected: true })).toBeInTheDocument();
     expect(window.location.search).toBe('?tab=alerts');
-    expect(await screen.findByText('Observatory UNSAFE')).toBeInTheDocument();
+    expect(await screen.findByText('Notify me when')).toBeInTheDocument();
   });
 
   it('greys out rain rules when the rain sensor is off, with a link to set it up', async () => {

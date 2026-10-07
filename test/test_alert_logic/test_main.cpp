@@ -13,6 +13,7 @@ namespace
         AlertRules rules;
         rules.startupGraceSeconds = 0;
         rules.cooldownSeconds = 60;
+        rules.sensorSettleSeconds = 0;
         return rules;
     }
 
@@ -228,6 +229,29 @@ void test_alert_type_names(void)
     TEST_ASSERT_EQUAL_STRING("a; b", joinReasons({"a", "b"}).c_str());
 }
 
+void test_sensor_blip_is_not_announced(void)
+{
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    rules.sensorSettleSeconds = 30;
+    engine.update(safeInputs(0), rules);
+
+    AlertInputs blip = safeInputs(10);
+    blip.sensors[1].healthy = false; // e.g. saving settings reconfigures it
+    TEST_ASSERT_EQUAL(0, engine.update(blip, rules).size());
+    blip.nowSeconds = 15;
+    TEST_ASSERT_EQUAL(0, engine.update(blip, rules).size());
+    TEST_ASSERT_EQUAL(0, engine.update(safeInputs(16), rules).size()); // recovered: nothing sent
+
+    AlertInputs real = safeInputs(100);
+    real.sensors[1].healthy = false;
+    TEST_ASSERT_EQUAL(0, engine.update(real, rules).size());
+    real.nowSeconds = 129;
+    TEST_ASSERT_EQUAL(0, engine.update(real, rules).size());
+    real.nowSeconds = 130;
+    TEST_ASSERT_TRUE(hasType(engine.update(real, rules), AlertType::SensorFault));
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -243,5 +267,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_dew_risk_with_hysteresis);
     RUN_TEST(test_clear_sky);
     RUN_TEST(test_alert_type_names);
+    RUN_TEST(test_sensor_blip_is_not_announced);
     return UNITY_END();
 }

@@ -63,7 +63,7 @@ export const handlers = [
   http.get("/api/safety", () => HttpResponse.json(generateSensorData().safety)),
 
   // REST — alerts
-  http.get("/api/alerts/recent", () => HttpResponse.json(mockRecentAlerts)),
+  http.get("/api/alerts/recent", () => HttpResponse.json({ enabled: true, alerts: mockRecentAlerts })),
   http.post("/api/alerts/test", () =>
     HttpResponse.json({ success: true, message: "Test notification queued" }, { status: 202 })
   ),

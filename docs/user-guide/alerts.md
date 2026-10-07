@@ -20,7 +20,7 @@ Configure everything in **Settings → Alerts**, then **Save** and use **Send te
 
 **Cooldown** (default 5 min) is the minimum time between alerts of the same kind, so a flapping condition doesn't spam you. A change held back by the cooldown isn't lost: if the condition still differs from what you were last told when the cooldown ends, that alert is sent then - the most recent alert always matches reality.
 
-Nothing is sent in the first minute after boot, so a restart doesn't announce the device's startup state.
+Nothing is sent in the first minute after boot, so a restart doesn't announce the device's startup state. Sensor faults and recoveries must also last 30 seconds before they're sent, so brief blips (saving settings, a sensor being reconfigured, an OTA upload) don't page anyone.
 
 ---
 
@@ -59,4 +59,8 @@ Uses the broker from the MQTT settings. Publishes:
 
 ## Recent alerts
 
-The last 20 alerts since boot are listed at the bottom of the Alerts settings, with each channel's delivery status (`sent`, `failed` with the error, or `skipped` - e.g. no WiFi, or an OTA update in progress). The same list is available from `GET /api/alerts/recent`.
+While alerts are on, a bell in the header shows how many alerts arrived since you last looked, and opens the last 20 alerts since boot with each channel's delivery status (`sent`, `failed` with the reason, or `skipped` - e.g. no WiFi, or an OTA update in progress). **Send test** waits for that status and shows the actual result. The list is also available from `GET /api/alerts/recent`.
+
+## Pushover keys
+
+The **user key** is the 30-character key at the top of your Pushover dashboard; the **app token** is the 30-character API token of an application you create there. Settings rejects anything else - a pasted email address, or the token in the user field, is the usual cause of Pushover's "user identifier is not a valid user" error.

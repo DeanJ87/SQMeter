@@ -1,48 +1,53 @@
 import { FunctionalComponent } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import type { AlertChannelName, AlertRecord } from '../../types';
 import { mergeAlertsConfig } from './defaults';
 import type { SettingsTabProps } from './context';
-import { Button, Note } from '../ui';
+import { Note } from '../ui';
 import { ActionButton, Field, Group, NumberInput, Requires, ResultNote, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
-
-const formatAge = (seconds: number) => {
-  if (seconds < 60) return `${seconds}s ago`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-};
 
 const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, dirty, goTo }) => {
   const alerts = mergeAlertsConfig(config.alerts);
-  const [recent, setRecent] = useState<AlertRecord[] | null>(null);
-  const [testResult, setTestResult] = useState<{ channel: AlertChannelName; type: 'success' | 'error'; text: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ channel: AlertChannelName; type: 'success' | 'error' | 'pending'; text: string } | null>(null);
 
   const set = (path: string[], value: unknown) => update(['alerts', ...path], value);
   const err = (key: string) => error(`alerts.${key}`);
   const off = !alerts.enabled;
 
-  const loadRecent = () =>
-    fetch('/api/alerts/recent')
-      .then((response) => (response.ok ? response.json() : []))
-      .then((data: AlertRecord[]) => setRecent(Array.isArray(data) ? data : []))
-      .catch(() => setRecent([]));
+  const fetchRecent = async (): Promise<AlertRecord[]> => {
+    const response = await fetch('/api/alerts/recent');
+    if (!response.ok) return [];
+    const body = await response.json();
+    return Array.isArray(body?.alerts) ? body.alerts : [];
+  };
 
-  useEffect(() => {
-    loadRecent();
-  }, []);
-
+  // The device sends the test in the background; follow its delivery
+  // status until the channel reports sent / failed / skipped.
   const sendTest = async (channel: AlertChannelName) => {
-    setTestResult(null);
+    setTestResult({ channel, type: 'pending', text: 'Sending...' });
     try {
+      const before = (await fetchRecent())[0]?.id ?? 0;
       const response = await fetch(`/api/alerts/test?channel=${channel}`, { method: 'POST' });
-      const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setTestResult({ channel, type: 'error', text: result.error ?? 'Test failed' });
+        const body = await response.json().catch(() => ({}));
+        setTestResult({ channel, type: 'error', text: body.error ?? 'Test failed' });
         return;
       }
-      setTestResult({ channel, type: 'success', text: 'Sent - delivery shows under Recent alerts.' });
-      [1500, 5000, 12000].forEach((delay) => setTimeout(loadRecent, delay));
+      const deadline = Date.now() + 30000;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const record = (await fetchRecent()).find((r) => r.id > before && r.event === 'test');
+        const result = record?.channels[channel];
+        if (result && result.status !== 'pending') {
+          setTestResult(
+            result.status === 'sent'
+              ? { channel, type: 'success', text: 'Delivered.' }
+              : { channel, type: 'error', text: `${result.status === 'skipped' ? 'Skipped' : 'Failed'}: ${result.detail}` }
+          );
+          return;
+        }
+      }
+      setTestResult({ channel, type: 'error', text: 'No result from the device after 30 s.' });
     } catch {
       setTestResult({ channel, type: 'error', text: 'Could not reach the device' });
     }
@@ -51,10 +56,11 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
   // Render function (not a nested component) so re-renders don't remount it.
   const testButton = (channel: AlertChannelName) => (
     <div class="btn-row">
-      <ActionButton onClick={() => sendTest(channel)} disabled={dirty} title={dirty ? 'Save first' : undefined}>
+      <ActionButton onClick={() => sendTest(channel)} disabled={dirty || testResult?.type === 'pending'} title={dirty ? 'Save first' : undefined}>
         Send test
       </ActionButton>
-      {testResult?.channel === channel && <ResultNote result={testResult} />}
+      {testResult?.channel === channel &&
+        (testResult.type === 'pending' ? <Note>{testResult.text}</Note> : <ResultNote result={{ type: testResult.type, text: testResult.text }} />)}
     </div>
   );
 
@@ -120,16 +126,16 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         </fieldset>
       </SettingsCard>
 
-      <SettingsCard title="Channels" hint="Tests use the saved settings and work while alerts are off.">
+      <SettingsCard title="Channels" hint="Tests use the saved settings and work while alerts are off. Sent alerts appear under the bell in the header.">
         <Group>
           <Toggle label="Pushover" checked={alerts.pushover.enabled} onChange={(v) => set(['pushover', 'enabled'], v)} />
           {alerts.pushover.enabled && (
             <>
               <div class="form-grid">
-                <Field label="User key" error={err('pushover.userKey')}>
+                <Field label="User key" error={err('pushover.userKey')} hint="Your user key, top of the Pushover dashboard - not the app token or your email.">
                   <TextInput dataField="alerts.pushover.userKey" type="password" value={alerts.pushover.userKey} onInput={(v) => set(['pushover', 'userKey'], v)} />
                 </Field>
-                <Field label="App token" hint="Create an application at pushover.net.">
+                <Field label="App token" error={err('pushover.appToken')} hint="Create an application at pushover.net.">
                   <TextInput type="password" value={alerts.pushover.appToken} onInput={(v) => set(['pushover', 'appToken'], v)} />
                 </Field>
                 <Field label="Urgent priority" hint="Used for rain, unsafe and sensor faults.">
@@ -210,38 +216,6 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         </Group>
       </SettingsCard>
 
-      <SettingsCard
-        title="Recent alerts"
-        badge={
-          <Button variant="ghost" small onClick={loadRecent}>
-            Refresh
-          </Button>
-        }
-      >
-        {recent === null && <Note>Loading...</Note>}
-        {recent?.length === 0 && <Note>None since the device started.</Note>}
-        {recent && recent.length > 0 && (
-          <ul class="event-list" aria-label="Recent alerts">
-            {recent.map((record) => (
-              <li key={record.id}>
-                <div class="event-head">
-                  <strong>{record.title}</strong>
-                  <span>{formatAge(record.ageSeconds)}</span>
-                </div>
-                <p>{record.message}</p>
-                <div class="event-channels">
-                  {Object.entries(record.channels).map(([channel, result]) => (
-                    <span key={channel} class={`event-${result?.status ?? 'pending'}`} title={result?.detail}>
-                      {channel}: {result?.status}
-                      {result?.status === 'failed' && result.detail ? ` (${result.detail})` : ''}
-                    </span>
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </SettingsCard>
     </>
   );
 };

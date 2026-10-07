@@ -448,6 +448,11 @@ export interface AlertRecord {
   channels: Partial<Record<AlertChannelName, { status: 'pending' | 'sent' | 'failed' | 'skipped'; detail: string }>>;
 }
 
+export interface AlertsRecent {
+  enabled: boolean;
+  alerts: AlertRecord[];
+}
+
 export interface Config {
   deviceName: string;
   timezone: string;
