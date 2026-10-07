@@ -1604,13 +1604,13 @@ input[type="file"].input::file-selector-button {
 
 .event-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 8rem;
+  grid-template-columns: minmax(0, 1fr) 8rem auto;
   gap: 0.5rem 0.75rem;
   align-items: center;
 }
 
 .with-sound .event-row {
-  grid-template-columns: minmax(0, 1fr) 8rem 10rem;
+  grid-template-columns: minmax(0, 1fr) 8rem 10rem auto;
 }
 
 .event-head {
@@ -1631,7 +1631,7 @@ input[type="file"].input::file-selector-button {
 
 @media (max-width: 640px) {
   .with-sound .event-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr auto;
   }
 
   .with-sound .event-label {
@@ -1860,4 +1860,27 @@ input[type="file"].input::file-selector-button {
 
 .field-wide {
   max-width: 28rem;
+}
+
+.sun-moon {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.sun-moon .metric-grid {
+  flex: 1;
+}
+
+.moon-disc {
+  flex: none;
+}
+
+.moon-dark {
+  fill: #1c2633;
+}
+
+.moon-lit {
+  fill: #e8e4d8;
 }

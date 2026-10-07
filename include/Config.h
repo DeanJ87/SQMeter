@@ -223,6 +223,7 @@ namespace SQM
         bool set;
         double latitude;
         double longitude;
+        bool showSunMoon; // Sun & Moon card on the dashboard
     };
 
     // Only used by the esp32dev-ble firmware build; ignored elsewhere.

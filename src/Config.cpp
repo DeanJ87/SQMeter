@@ -406,6 +406,7 @@ namespace SQM
         cfg.location.set = false;
         cfg.location.latitude = 0.0;
         cfg.location.longitude = 0.0;
+        cfg.location.showSunMoon = true;
 
         cfg.wind.enabled = false;
         cfg.wind.speedPin = 27;
@@ -608,6 +609,7 @@ namespace SQM
         location["set"] = this->location.set;
         location["latitude"] = this->location.latitude;
         location["longitude"] = this->location.longitude;
+        location["showSunMoon"] = this->location.showSunMoon;
 
         JsonObject wind = doc.createNestedObject("wind");
         wind["enabled"] = this->wind.enabled;
@@ -1235,6 +1237,8 @@ namespace SQM
                 cfg.location.latitude = locationObj["latitude"] | 0.0;
             if (locationObj.containsKey("longitude"))
                 cfg.location.longitude = locationObj["longitude"] | 0.0;
+            if (locationObj.containsKey("showSunMoon"))
+                cfg.location.showSunMoon = locationObj["showSunMoon"] | true;
         }
 
         JsonObject windObj = doc["wind"];
