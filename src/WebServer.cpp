@@ -541,6 +541,11 @@ namespace SQM
         server.on("/api/sensors", HTTP_GET, [this](AsyncWebServerRequest *request)
                   { handleGetSensors(request); });
 
+        // Plain-text "1" (safe) or "0" (unsafe) - the SafetyMonitor verdict
+        // for scripts and loggers.
+        server.on("/api/safe", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  { request->send(200, "text/plain", getSafetyStatus().isSafe ? "1" : "0"); });
+
         // Before /api/safety, which would otherwise match this path too.
         server.on("/api/safety/history", HTTP_GET, [](AsyncWebServerRequest *request)
                   {
@@ -1211,7 +1216,7 @@ namespace SQM
     void WebServer::processAlerts(const SafetyStatus &status)
     {
         const Config &cfg = getConfigCallback();
-        if (cfg.alerts.mqttEnabled)
+        if (cfg.mqtt.enabled && status.evaluatedAtMs != 0)
             publishMqttSafety(status);
 
         const SensorSnapshot snapshot = getSensorSnapshot();
@@ -1453,15 +1458,21 @@ namespace SQM
         if (!changed && now - mqttSafetyPublishedAt < MQTT_SAFETY_REPUBLISH_MS)
             return;
 
+        if (mqttClient != nullptr)
+            mqttClient->setSafety(status.isSafe);
+
         DynamicJsonDocument doc(1024);
         doc["isSafe"] = status.isSafe;
+        doc["safe"] = status.isSafe ? 1 : 0;
         JsonArray reasons = doc.createNestedArray("reasons");
         for (const std::string &reason : status.reasons)
             reasons.add(reason);
         std::string payload;
         serializeJson(doc, payload);
 
-        if (mqttClient != nullptr && mqttClient->publishSubtopic("safety", payload, true))
+        // <topic>/safe is the bare 1/0 for loggers and simple automations.
+        if (mqttClient != nullptr && mqttClient->publishSubtopic("safety", payload, true) &&
+            mqttClient->publishSubtopic("safe", status.isSafe ? "1" : "0", true))
         {
             mqttSafetyPublished = true;
             mqttLastPublishedSafe = status.isSafe;
@@ -2444,6 +2455,7 @@ namespace SQM
         const SafetyStatus status = getSafetyStatus();
         const uint32_t now = millis();
         target["isSafe"] = status.isSafe;
+        target["safe"] = status.isSafe ? 1 : 0; // numeric, for loggers
         target["rawSafe"] = status.rawSafe;
         target["alpacaEnabled"] = getConfigCallback().alpaca.enabled;
         target["reasonFlags"] = status.reasonFlags;

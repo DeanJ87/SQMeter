@@ -433,13 +433,18 @@ Returns immediately with `{"success":true,"message":"Update started"}` - the dow
 
 ## Safety
 
+### `GET /api/safe`
+
+Plain text `1` (safe) or `0` (unsafe) - the SafetyMonitor verdict, for scripts and loggers (`curl -s http://sqmeter.local/api/safe`).
+
 ### `GET /api/safety`
 
-The current SafetyMonitor verdict - the same value served to Alpaca clients as `IsSafe` - with the reasons behind it. The same object is included as `safety` in every `/ws/sensors` message.
+The current SafetyMonitor verdict - the same value served to Alpaca clients as `IsSafe`, also as a numeric `safe` (1/0) - with the reasons behind it. The same object is included as `safety` in every `/ws/sensors` message.
 
 ```json
 {
   "isSafe": false,
+  "safe": 0,
   "rawSafe": false,
   "alpacaEnabled": true,
   "reasonFlags": 512,
