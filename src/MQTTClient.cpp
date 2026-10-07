@@ -222,6 +222,8 @@ namespace SQM
         const bool timeValid = epochSeconds >= 1704067200; // 2024-01-01T00:00:00Z
         doc["timestamp"] = timeValid ? static_cast<int64_t>(epochSeconds) : static_cast<int64_t>(millis());
         doc["timeValid"] = timeValid;
+        if (safeState >= 0)
+            doc["safe"] = safeState;
 
         // TSL2591 data
         const auto &tslReading = tsl.getReading();

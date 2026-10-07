@@ -415,6 +415,7 @@ export interface WindReading {
 // Live SafetyMonitor verdict (GET /api/safety, and `safety` on /ws/sensors)
 export interface SafetyStatus {
   isSafe: boolean;
+  safe?: 0 | 1;
   rawSafe: boolean;
   alpacaEnabled: boolean;
   reasonFlags: number;

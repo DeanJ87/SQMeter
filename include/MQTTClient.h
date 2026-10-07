@@ -57,7 +57,12 @@ namespace SQM
         // Update configuration
         void updateConfig(const MQTTConfig &newConfig);
 
+        // The SafetyMonitor verdict, added to the readings payload as
+        // "safe": 1/0 so it's logged alongside them.
+        void setSafety(bool safe) { safeState = safe ? 1 : 0; }
+
     private:
+        int8_t safeState = -1; // -1 until the first verdict
         static constexpr const char *TAG = "MQTT";
         static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
 
