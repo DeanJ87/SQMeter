@@ -44,3 +44,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Root CA source certificates (already embedded in include/GithubRootCA.h)
+/*.pem

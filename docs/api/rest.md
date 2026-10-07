@@ -440,9 +440,14 @@ SQMeter can emit itself directly as an ASCOM Alpaca **SafetyMonitor** and **Obse
 | `GET /management/apiversions` | Supported Alpaca API versions |
 | `GET /management/v1/description` | Server description |
 | `GET /management/v1/configureddevices` | Lists the two devices (empty if Alpaca is disabled in settings) |
-| `GET/PUT /api/v1/safetymonitor/0/connected` | Common ASCOM device API |
+| `GET /setup`, `GET /setup/v1/<devicetype>/0/setup` | Redirects to **Settings → ASCOM Alpaca** in the web UI |
+| `GET/PUT /api/v1/<device>/0/connected` | Common ASCOM device API. `PUT` requires a `Connected=true\|false` form parameter |
+| `PUT /api/v1/<device>/0/connect`, `disconnect`; `GET connecting`, `devicestate` | ASCOM Platform 7 members (SafetyMonitor interface v3, ObservingConditions interface v2). `connecting` is always `false` |
+| `GET /api/v1/<device>/0/name`, `description`, `driverinfo`, `driverversion`, `interfaceversion`, `supportedactions` | Common ASCOM device API |
+| `PUT /api/v1/<device>/0/action`, `commandblind`, `commandbool`, `commandstring` | Not supported - Alpaca error `0x400` (NotImplemented) |
 | `GET /api/v1/safetymonitor/0/issafe` | `true`/`false` from the safety-rule evaluation |
-| `GET/PUT /api/v1/observingconditions/0/connected` | Common ASCOM device API |
 | `GET /api/v1/observingconditions/0/<property>` | One route per Alpaca property (`cloudcover`, `dewpoint`, `humidity`, `skybrightness`, `skyquality`, `skytemperature`, `temperature`, `averageperiod`); unsupported properties (`pressure`, `rainrate`, `starfwhm`, `wind*`) return Alpaca error `0x400` (NotImplemented) |
+
+`<device>` is `safetymonitor` or `observingconditions`. Parameter names (`ClientTransactionID`, `Connected`, ...) are case-insensitive, per the Alpaca spec. Any other path under `/api/v1/` (unknown device type/number, method, or HTTP verb) returns HTTP `400` with a plain-text message.
 
 A UDP listener on port `32227` answers Alpaca discovery broadcasts (`alpacadiscovery1` → `{"AlpacaPort":80}`) whenever Alpaca is enabled in settings - this requires a device restart to start/stop, unlike the HTTP routes above which reflect the setting live.
