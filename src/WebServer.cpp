@@ -19,6 +19,7 @@
 #include "AlpacaDiscovery.h"
 #include "HeapTrace.h"
 #include "SunPosition.h"
+#include "SafetyHistory.h"
 
 extern uint32_t bootCount;
 
@@ -539,6 +540,39 @@ namespace SQM
         // Sensors endpoint
         server.on("/api/sensors", HTTP_GET, [this](AsyncWebServerRequest *request)
                   { handleGetSensors(request); });
+
+        // Before /api/safety, which would otherwise match this path too.
+        server.on("/api/safety/history", HTTP_GET, [](AsyncWebServerRequest *request)
+                  {
+            static SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
+            const size_t n = SafetyHistory::entries(entries, SafetyHistory::CAPACITY);
+            static const char *const KIND[] = {"boot", "change", "alert"};
+            DynamicJsonDocument doc(256 + n * 160);
+            doc["boot"] = SafetyHistory::currentBoot();
+            doc["uptime"] = millis() / 1000;
+            JsonArray list = doc.createNestedArray("entries");
+            for (size_t i = n; i-- > 0;) // newest first
+            {
+                const SafetyHistory::Entry &e = entries[i];
+                JsonObject item = list.createNestedObject();
+                item["kind"] = KIND[static_cast<uint8_t>(e.kind) <= 2 ? static_cast<uint8_t>(e.kind) : 1];
+                item["boot"] = e.boot;
+                item["uptime"] = e.uptimeS;
+                if (e.epoch != 0)
+                    item["timestamp"] = e.epoch;
+                if (e.kind == SafetyHistory::Kind::Boot)
+                    item["resetReason"] = e.resetReason;
+                else
+                    item["safe"] = static_cast<bool>(e.safe);
+                if (e.kind == SafetyHistory::Kind::Change)
+                {
+                    item["held"] = static_cast<bool>(e.held);
+                    item["reasonFlags"] = e.flags;
+                }
+            }
+            std::string json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json.c_str()); });
 
         server.on("/api/safety", HTTP_GET, [this](AsyncWebServerRequest *request)
                   {
@@ -1134,6 +1168,7 @@ namespace SQM
                 if (safetyStatus.evaluatedAtMs != 0)
                     Logger::info(TAG, "SafetyMonitor now %s", reportedSafe ? "SAFE" : "UNSAFE");
                 safetyStatus.changedAtMs = now;
+                SafetyHistory::recordChange(reportedSafe, !reportedSafe && result.isSafe, result.reasonFlags);
             }
             safetyStatus.isSafe = reportedSafe;
             safetyStatus.rawSafe = result.isSafe;
@@ -1183,6 +1218,7 @@ namespace SQM
         Alerts::AlertInputs in;
         in.nowSeconds = millis() / 1000;
         in.safetyKnown = status.evaluatedAtMs != 0;
+        in.safetyHeld = !status.isSafe && status.rawSafe;
         in.isSafe = status.isSafe;
         in.unsafeReasons = status.reasons;
 
@@ -1283,6 +1319,9 @@ namespace SQM
             {
                 alertDispatcher->dispatch(notification, cfg.alerts, cfg.deviceName);
                 ble.publishAlert(notification);
+                for (const Alerts::Alert &sent : outgoing)
+                    if (sent.type == Alerts::AlertType::Unsafe || sent.type == Alerts::AlertType::Safe)
+                        SafetyHistory::recordAlert(sent.type == Alerts::AlertType::Safe);
             }
             if (notification.level == Alerts::AlertLevel::Wake)
                 ble.raiseAlarm(alarmFlags, epoch);

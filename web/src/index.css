@@ -2082,3 +2082,35 @@ input[type="file"].input::file-selector-button {
 .var-chip:hover {
   color: var(--text);
 }
+
+.history-list {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.history-list li {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.history-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.history-list .is-unsafe {
+  color: #f26b62;
+}
+
+.history-list .is-safe {
+  color: #5ee0a0;
+}
+
+.history-list .history-alert {
+  color: var(--text);
+}

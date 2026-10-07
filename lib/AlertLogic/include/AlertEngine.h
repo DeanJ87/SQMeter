@@ -99,6 +99,11 @@ namespace SQM
 
             bool safetyKnown = false;
             bool isSafe = false;
+            // Reported unsafe only because the safe delay hasn't run out
+            // (nothing is failing). It isn't a new state: after a restart
+            // it's the delay running from boot, and mid-run it's the tail
+            // of an unsafe spell already announced. Treated as no news.
+            bool safetyHeld = false;
             std::vector<std::string> unsafeReasons;
 
             bool rainEnabled = false;

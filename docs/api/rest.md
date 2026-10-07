@@ -474,6 +474,19 @@ Add `event=<unsafe|safe|rain_started|rain_stopped|sensor_fault|sensor_recovered|
 
 Empties the recent-alerts list. Requires HTTP auth when enabled.
 
+### `GET /api/safety/history`
+
+The last 32 safety changes, device restarts and safe/unsafe alerts sent, newest first. Kept in RTC memory, so it survives software restarts, crashes and OTA updates, not power cuts.
+
+```json
+{"boot":3,"uptime":4000,"entries":[
+  {"kind":"alert","boot":3,"uptime":3900,"timestamp":1759500000,"safe":false},
+  {"kind":"change","boot":3,"uptime":3899,"timestamp":1759499999,"safe":false,"held":false,"reasonFlags":48},
+  {"kind":"boot","boot":3,"uptime":0,"resetReason":3}]}
+```
+
+`held` marks unsafe only because of the safe delay. `resetReason` is ESP-IDF's `esp_reset_reason_t` (1 power on, 3 software restart, 4 crash, 5-7 watchdog, 9 brownout). `timestamp` is missing for entries from before the clock was set.
+
 ### `GET /api/alerts/recent`
 
 Whether alerts are on, and the last 20 alerts since boot, newest first:
