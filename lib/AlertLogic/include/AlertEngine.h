@@ -99,6 +99,11 @@ namespace SQM
 
             bool safetyKnown = false;
             bool isSafe = false;
+            // The verdict isn't a real one yet: no sensor data since boot,
+            // or unsafe only because the safe delay hasn't run out (after a
+            // restart the delay runs from boot; mid-run it's the tail of an
+            // unsafe spell already announced). Treated as no news.
+            bool safetySettling = false;
             std::vector<std::string> unsafeReasons;
 
             bool rainEnabled = false;
@@ -132,6 +137,12 @@ namespace SQM
         public:
             std::vector<Alert> update(const AlertInputs &inputs, const AlertRules &rules);
 
+            // What the user was last told before a restart (true = unsafe).
+            // After the startup grace the verdict is compared with this, so
+            // a change across a restart is announced and a restart that
+            // changes nothing isn't. Call before the first update().
+            void seedSafety(bool unsafe);
+
         private:
             struct Tracker
             {
@@ -151,6 +162,7 @@ namespace SQM
             uint32_t startedAt = 0;
 
             Tracker safety;
+            bool safetySeeded = false;
             Tracker rain;
             Tracker lens;
             Tracker dew;

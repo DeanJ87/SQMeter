@@ -378,6 +378,69 @@ void test_stack_alerts(void)
     TEST_ASSERT_EQUAL(static_cast<int>(AlertType::Unsafe), static_cast<int>(both.stacked[0]));
 }
 
+void test_safe_delay_hold_after_restart_is_not_news(void)
+{
+    // Boot: the safe delay reports unsafe with nothing failing, then safe.
+    // Nobody was told "unsafe", so "safe" mustn't be sent either.
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    AlertInputs held = safeInputs(0);
+    held.isSafe = false;
+    held.safetySettling = true;
+    TEST_ASSERT_EQUAL(0, engine.update(held, rules).size());
+    held.nowSeconds = 100;
+    TEST_ASSERT_EQUAL(0, engine.update(held, rules).size());
+    TEST_ASSERT_EQUAL(0, engine.update(safeInputs(180), rules).size());
+
+    // Mid-run: a real unsafe spell is announced, the hold that follows
+    // it is not, and safe is announced once the delay is over.
+    AlertInputs unsafe = safeInputs(400);
+    unsafe.isSafe = false;
+    unsafe.unsafeReasons = {"Cloud 62% >= 35%"};
+    TEST_ASSERT_TRUE(hasType(engine.update(unsafe, rules), AlertType::Unsafe));
+    AlertInputs tail = safeInputs(800);
+    tail.isSafe = false;
+    tail.safetySettling = true;
+    TEST_ASSERT_EQUAL(0, engine.update(tail, rules).size());
+    TEST_ASSERT_TRUE(hasType(engine.update(safeInputs(990), rules), AlertType::Safe));
+}
+
+void test_restart_compares_with_what_was_last_sent(void)
+{
+    AlertRules rules = noGraceRules();
+    rules.startupGraceSeconds = 60;
+
+    // Told "unsafe" before the restart; booting unsafe changes nothing.
+    {
+        AlertEngine engine;
+        engine.seedSafety(true);
+        AlertInputs noData = safeInputs(1);
+        noData.isSafe = false;
+        noData.safetySettling = true;
+        TEST_ASSERT_EQUAL(0, engine.update(noData, rules).size());
+        AlertInputs cloudy = safeInputs(10);
+        cloudy.isSafe = false;
+        cloudy.unsafeReasons = {"Cloud 62% >= 35%"};
+        TEST_ASSERT_EQUAL(0, engine.update(cloudy, rules).size());
+        cloudy.nowSeconds = 70;
+        TEST_ASSERT_EQUAL(0, engine.update(cloudy, rules).size());
+        // ...and when it clears, "safe" is real news.
+        TEST_ASSERT_TRUE(hasType(engine.update(safeInputs(400), rules), AlertType::Safe));
+    }
+
+    // Told "safe" before the restart; it's unsafe now -> announced once the grace ends.
+    {
+        AlertEngine engine;
+        engine.seedSafety(false);
+        AlertInputs cloudy = safeInputs(10);
+        cloudy.isSafe = false;
+        cloudy.unsafeReasons = {"Cloud 62% >= 35%"};
+        TEST_ASSERT_EQUAL(0, engine.update(cloudy, rules).size());
+        cloudy.nowSeconds = 71; // grace counts from the first update
+        TEST_ASSERT_TRUE(hasType(engine.update(cloudy, rules), AlertType::Unsafe));
+    }
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -401,5 +464,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_render_template);
     RUN_TEST(test_unsafe_alert_lists_every_reason);
     RUN_TEST(test_stack_alerts);
+    RUN_TEST(test_safe_delay_hold_after_restart_is_not_news);
+    RUN_TEST(test_restart_compares_with_what_was_last_sent);
     return UNITY_END();
 }

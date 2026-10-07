@@ -190,6 +190,14 @@ namespace SQM
             return true;
         }
 
+        void AlertEngine::seedSafety(bool unsafe)
+        {
+            safety = Tracker{};
+            safety.initialized = true;
+            safety.notified = unsafe;
+            safetySeeded = true;
+        }
+
         std::vector<Alert> AlertEngine::update(const AlertInputs &in, const AlertRules &rules)
         {
             std::vector<Alert> alerts;
@@ -203,7 +211,10 @@ namespace SQM
             const uint32_t cooldown = rules.cooldownSeconds;
 
             // Safety verdict
-            if (in.safetyKnown)
+            // A seeded verdict waits out the startup grace instead of being
+            // overwritten by whatever the sensors say while starting up.
+            const bool holdSeed = safetySeeded && !pastGrace;
+            if (in.safetyKnown && !in.safetySettling && !holdSeed)
             {
                 const bool unsafe = !in.isSafe;
                 if (sync(safety, unsafe, now, cooldown, pastGrace && rules.onSafetyChange))

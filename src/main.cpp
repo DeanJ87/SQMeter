@@ -4,6 +4,7 @@
 #include <LittleFS.h>
 #include <ArduinoOTA.h>
 #include "Logger.h"
+#include "SafetyHistory.h"
 #include "HeapTrace.h"
 #include "Config.h"
 #include "WiFiManager.h"
@@ -205,6 +206,7 @@ void setup()
     Serial.begin(115200);
     delay(100);
     bootCount++;
+    SQM::SafetyHistory::begin(static_cast<uint8_t>(esp_reset_reason()));
 
     // Initialize logging
     Logger::init();

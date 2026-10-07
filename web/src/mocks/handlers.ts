@@ -60,6 +60,21 @@ export const handlers = [
   }),
 
   // REST — SafetyMonitor verdict
+  http.get("/api/safety/history", () => {
+    const now = Math.floor(Date.now() / 1000);
+    return HttpResponse.json({
+      boot: 3,
+      uptime: 4000,
+      entries: [
+        { kind: "alert", boot: 3, uptime: 3900, timestamp: now - 100, safe: false },
+        { kind: "change", boot: 3, uptime: 3899, timestamp: now - 101, safe: false, held: false, reasonFlags: 0x30 },
+        { kind: "change", boot: 3, uptime: 181, timestamp: now - 3819, safe: true },
+        { kind: "change", boot: 3, uptime: 1, safe: false, held: true, reasonFlags: 0 },
+        { kind: "boot", boot: 3, uptime: 0, resetReason: 3 },
+        { kind: "alert", boot: 2, uptime: 900, timestamp: now - 5000, safe: false },
+      ],
+    });
+  }),
   http.get("/api/safety", () => HttpResponse.json(generateSensorData().safety)),
 
   // REST — alerts
