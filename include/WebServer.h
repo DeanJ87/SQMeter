@@ -156,6 +156,8 @@ namespace SQM
             int8_t event = -1;
             uint8_t level = 2;
             char sound[33] = {};
+            char title[AlertsConfig::MAX_TEMPLATE_TITLE + 1] = {};
+            char message[AlertsConfig::MAX_TEMPLATE_MESSAGE + 1] = {};
         };
         PendingAlertTest pendingAlertTest;
         portMUX_TYPE pendingAlertTestLock = portMUX_INITIALIZER_UNLOCKED;
@@ -180,6 +182,10 @@ namespace SQM
 
         BleService ble;
         static const AlertsConfig::EventSetting *eventSettingFor(const AlertsConfig &alerts, Alerts::AlertType type);
+        static std::vector<std::pair<std::string, std::string>> alertVars(const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs,
+                                                                         const NightState &night, const Alerts::Alert &alert);
+        static void applyAlertTemplate(Alerts::Alert &alert, const AlertsConfig::EventSetting &setting,
+                                       const std::vector<std::pair<std::string, std::string>> &vars);
 
         // Setup route handlers
         void setupStaticRoutes();

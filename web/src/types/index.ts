@@ -442,6 +442,9 @@ export type AlertEventKey =
 export interface AlertEventSetting {
   level: AlertLevel;
   sound: string;
+  // Custom wording with {variables}; empty or missing uses the default.
+  title?: string;
+  message?: string;
 }
 
 export interface AlertsConfig {

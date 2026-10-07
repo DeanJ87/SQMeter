@@ -13,6 +13,17 @@
 
 namespace SQM
 {
+    // Several events sent as one notification: list them all, lead first.
+    static void appendStackedEvents(JsonDocument &doc, const Alerts::Alert &alert)
+    {
+        if (alert.stacked.empty())
+            return;
+        JsonArray events = doc.createNestedArray("events");
+        events.add(Alerts::alertTypeName(alert.type));
+        for (Alerts::AlertType type : alert.stacked)
+            events.add(Alerts::alertTypeName(type));
+    }
+
     namespace
     {
         constexpr const char *TAG = "Alerts";
@@ -231,6 +242,7 @@ namespace SQM
         {
             DynamicJsonDocument doc(768);
             doc["event"] = Alerts::alertTypeName(alert.type);
+            appendStackedEvents(doc, alert);
             doc["title"] = alert.title;
             doc["message"] = alert.message;
             doc["level"] = Alerts::alertLevelName(alert.level);
@@ -408,6 +420,7 @@ namespace SQM
         DynamicJsonDocument doc(768);
         doc["device"] = job.deviceName;
         doc["event"] = Alerts::alertTypeName(job.alert.type);
+        appendStackedEvents(doc, job.alert);
         doc["title"] = job.alert.title;
         doc["message"] = job.alert.message;
         doc["level"] = Alerts::alertLevelName(job.alert.level);
@@ -439,6 +452,16 @@ namespace SQM
             }
         }
         xSemaphoreGive(mutex);
+    }
+
+    void AlertDispatcher::clearRecent()
+    {
+        if (mutex && xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE)
+        {
+            records.clear();
+            records.shrink_to_fit();
+            xSemaphoreGive(mutex);
+        }
     }
 
     std::vector<AlertRecord> AlertDispatcher::recent() const

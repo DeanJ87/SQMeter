@@ -1,5 +1,8 @@
 #include "SafetyEvaluator.h"
 
+#include <cstdarg>
+#include <cstdio>
+
 namespace SQM
 {
     namespace Alpaca
@@ -11,6 +14,18 @@ namespace SQM
             {
                 result.reasonFlags |= flag;
                 result.unsafeReasons.push_back(reason);
+            }
+
+            // Reasons say what was measured and what the limit is, e.g.
+            // "SQM 18.21 < 19.50", so an alert explains itself.
+            void addReasonf(SafetyResult &result, UnsafeReasonFlag flag, const char *format, ...)
+            {
+                char buffer[96];
+                va_list args;
+                va_start(args, format);
+                vsnprintf(buffer, sizeof(buffer), format, args);
+                va_end(args);
+                addReason(result, flag, buffer);
             }
         }
 
@@ -48,9 +63,9 @@ namespace SQM
                 else
                 {
                     if (t.windSpeedUnsafeEnabled && in.windSpeedMs >= t.windSpeedUnsafeMs)
-                        addReason(result, UNSAFE_WIND, "Wind speed at or above unsafe threshold");
+                        addReasonf(result, UNSAFE_WIND, "Wind %.1f m/s >= %.1f m/s", in.windSpeedMs, t.windSpeedUnsafeMs);
                     if (t.windGustUnsafeEnabled && in.windGustMs >= t.windGustUnsafeMs)
-                        addReason(result, UNSAFE_WIND_GUST, "Wind gust at or above unsafe threshold");
+                        addReasonf(result, UNSAFE_WIND_GUST, "Gust %.1f m/s >= %.1f m/s", in.windGustMs, t.windGustUnsafeMs);
                 }
             }
 
@@ -60,12 +75,20 @@ namespace SQM
             }
             else if (in.secondsSinceLastGoodData > t.staleAfterSeconds)
             {
-                addReason(result, UNSAFE_STALE_DATA, "Sensor data is stale");
+                addReasonf(result, UNSAFE_STALE_DATA, "Sensor data is stale (%us old, limit %us)",
+                           static_cast<unsigned>(in.secondsSinceLastGoodData), static_cast<unsigned>(t.staleAfterSeconds));
             }
 
             if (in.requiredSensorFault)
             {
-                addReason(result, UNSAFE_SENSOR_FAULT, "A required sensor is reporting a fault");
+                if (in.skyLightFault && in.irSkyFault)
+                    addReason(result, UNSAFE_SENSOR_FAULT, "Sensor fault: TSL2591 light and MLX90614 IR");
+                else if (in.skyLightFault)
+                    addReason(result, UNSAFE_SENSOR_FAULT, "Sensor fault: TSL2591 light");
+                else if (in.irSkyFault)
+                    addReason(result, UNSAFE_SENSOR_FAULT, "Sensor fault: MLX90614 IR");
+                else
+                    addReason(result, UNSAFE_SENSOR_FAULT, "A required sensor is reporting a fault");
             }
 
             // Threshold checks only apply once we have fresh data - an unsafe
@@ -78,12 +101,12 @@ namespace SQM
             {
                 if (t.cloudCoverEnabled && !in.irSkyFault && in.cloudCoverPercent >= t.cloudCoverUnsafePercent)
                 {
-                    addReason(result, UNSAFE_CLOUD_COVER, "Cloud cover at or above unsafe threshold");
+                    addReasonf(result, UNSAFE_CLOUD_COVER, "Cloud %.0f%% >= %.0f%%", in.cloudCoverPercent, t.cloudCoverUnsafePercent);
                 }
 
                 if (t.sqmMinEnabled && !in.skyLightFault && in.sqm < t.sqmMinSafe)
                 {
-                    addReason(result, UNSAFE_SKY_BRIGHT, "Sky brightness (SQM) below minimum safe value");
+                    addReasonf(result, UNSAFE_SKY_BRIGHT, "SQM %.2f < %.2f", in.sqm, t.sqmMinSafe);
                 }
 
                 const bool environmentRulesEnabled = t.humidityMaxEnabled || t.dewpointMarginEnabled;
@@ -95,12 +118,13 @@ namespace SQM
                 {
                     if (t.humidityMaxEnabled && in.humidityPercent > t.humidityMaxSafe)
                     {
-                        addReason(result, UNSAFE_HUMIDITY, "Humidity above maximum safe value");
+                        addReasonf(result, UNSAFE_HUMIDITY, "Humidity %.0f%% > %.0f%%", in.humidityPercent, t.humidityMaxSafe);
                     }
 
                     if (t.dewpointMarginEnabled && (in.temperatureC - in.dewpointC) < t.dewpointMarginMinC)
                     {
-                        addReason(result, UNSAFE_DEWPOINT, "Temperature-dewpoint margin below minimum");
+                        addReasonf(result, UNSAFE_DEWPOINT, "Dew margin %.1f C < %.1f C (temp %.1f C, dew point %.1f C)",
+                                   in.temperatureC - in.dewpointC, t.dewpointMarginMinC, in.temperatureC, in.dewpointC);
                     }
                 }
             }

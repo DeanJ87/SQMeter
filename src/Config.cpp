@@ -379,15 +379,15 @@ namespace SQM
         cfg.alpaca.safeDelaySeconds = 0;
 
         cfg.alerts.enabled = false;
-        cfg.alerts.unsafe = {3, ""};
-        cfg.alerts.safe = {2, ""};
-        cfg.alerts.rainStarted = {4, ""};
-        cfg.alerts.rainStopped = {2, ""};
-        cfg.alerts.sensorFault = {4, ""};
-        cfg.alerts.sensorRecovered = {1, ""};
-        cfg.alerts.dewRisk = {0, ""};
-        cfg.alerts.clearSky = {0, ""};
-        cfg.alerts.cloudedOver = {0, ""};
+        cfg.alerts.unsafe = {3, "", "", ""};
+        cfg.alerts.safe = {2, "", "", ""};
+        cfg.alerts.rainStarted = {4, "", "", ""};
+        cfg.alerts.rainStopped = {2, "", "", ""};
+        cfg.alerts.sensorFault = {4, "", "", ""};
+        cfg.alerts.sensorRecovered = {1, "", "", ""};
+        cfg.alerts.dewRisk = {0, "", "", ""};
+        cfg.alerts.clearSky = {0, "", "", ""};
+        cfg.alerts.cloudedOver = {0, "", "", ""};
         cfg.alerts.dewRiskMarginC = 2.0f;
         cfg.alerts.clearSkyCloudPercent = 20.0f;
         cfg.alerts.cloudedOverCloudPercent = 70.0f;
@@ -453,6 +453,8 @@ namespace SQM
                 JsonObject event = events.createNestedObject(entry.first);
                 event["level"] = entry.second->level;
                 event["sound"] = entry.second->sound.c_str();
+                event["title"] = entry.second->title.c_str();
+                event["message"] = entry.second->message.c_str();
             }
             alerts["dewRiskMarginC"] = a.dewRiskMarginC;
             alerts["clearSkyCloudPercent"] = a.clearSkyCloudPercent;
@@ -486,7 +488,7 @@ namespace SQM
 
     std::string Config::alertsToJson(bool redactSecrets) const
     {
-        DynamicJsonDocument doc(1536);
+        DynamicJsonDocument doc(2048); // strings are referenced, not copied
         appendAlerts(doc.to<JsonObject>(), alerts, redactSecrets);
         std::string json;
         serializeJson(doc, json);
@@ -881,7 +883,12 @@ namespace SQM
         {
             if (entry.second->level > 4)
                 return setError(error, "Alerts: event levels are 0 (off) to 4 (wake me)");
+            if (entry.second->title.size() > AlertsConfig::MAX_TEMPLATE_TITLE || entry.second->message.size() > AlertsConfig::MAX_TEMPLATE_MESSAGE)
+                return setError(error, "Alerts: custom titles are up to 80 characters and messages up to 240");
         }
+        // NVS strings top out just under 4000 bytes.
+        if (alertsToJson(false).size() > 3900)
+            return setError(error, "Alerts: the custom alert texts are too long in total - shorten some");
         if (alerts.pushoverEnabled && (alerts.pushoverUserKey.empty() || alerts.pushoverAppToken.empty()))
             return setError(error, "Alerts: Pushover needs both a user key and an application token");
         if (alerts.ntfyEnabled && (!isHttpUrl(alerts.ntfyServer) || alerts.ntfyTopic.empty()))
@@ -902,7 +909,9 @@ namespace SQM
 
     bool Config::applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders)
     {
-        DynamicJsonDocument doc(8192);
+        // Parsing copies every string; custom alert texts can make the JSON
+        // bigger than the old fixed 8 KB.
+        DynamicJsonDocument doc(json.size() + 6144 > 8192 ? json.size() + 6144 : 8192);
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
@@ -1149,6 +1158,10 @@ namespace SQM
                             targets[i]->level = event["level"] | targets[i]->level;
                         if (event.containsKey("sound"))
                             targets[i]->sound = event["sound"] | "";
+                        if (event.containsKey("title"))
+                            targets[i]->title = event["title"] | "";
+                        if (event.containsKey("message"))
+                            targets[i]->message = event["message"] | "";
                     }
                     ++i;
                 }

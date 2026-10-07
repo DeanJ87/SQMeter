@@ -26,7 +26,7 @@ namespace SQM
 {
     namespace
     {
-        constexpr size_t CONFIG_JSON_BUFFER_SIZE = 8192;
+        constexpr size_t CONFIG_JSON_BUFFER_SIZE = 12288; // full config incl. custom alert texts
 
         // Test sends that only ring paired phones (no push channel enabled).
         constexpr uint8_t BLE_ONLY_TEST = 0x80;
@@ -415,8 +415,26 @@ namespace SQM
                 test.type = sample.type;
                 test.level = static_cast<Alerts::AlertLevel>(pendingTest.level);
                 test.sound = pendingTest.sound;
-                test.title = std::string("Test: ") + sample.title;
+                test.title = sample.title;
                 test.message = std::string("This is how a \"") + sample.label + "\" alert arrives.";
+
+                // Custom wording is filled in from live readings; values
+                // only a real event has (the reasons, which sensor) are
+                // examples unless they apply right now.
+                const SafetyStatus safety = getSafetyStatus();
+                if (sample.type == Alerts::AlertType::Unsafe)
+                {
+                    std::vector<std::string> reasons = safety.isSafe ? std::vector<std::string>{"Cloud 62% >= 35% (example)"} : safety.reasons;
+                    std::string inline_;
+                    for (const std::string &reason : reasons)
+                        inline_ += (inline_.empty() ? "" : "; ") + reason;
+                    test.vars = {{"reasons", Alerts::joinReasons(reasons)}, {"reasons_inline", inline_}, {"reason_count", std::to_string(reasons.size())}};
+                }
+                else if (sample.type == Alerts::AlertType::SensorFault || sample.type == Alerts::AlertType::SensorRecovered)
+                    test.vars = {{"sensor", "TSL2591 light (example)"}};
+                AlertsConfig::EventSetting custom{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
+                applyAlertTemplate(test, custom, alertVars(cfg, buildAlpacaObservingConditionsSnapshot(), computeNight(getSensorSnapshot(), cfg), test));
+                test.title = "Test: " + test.title;
                 if (test.level == Alerts::AlertLevel::Wake)
                 {
                     const time_t wallClock = time(nullptr);
@@ -1238,10 +1256,13 @@ namespace SQM
 
 
         // Always run the engine so its state tracks reality while alerts are
-        // off. Each alert gets its configured level and sound; push channels
-        // need the master switch, paired phones only need Bluetooth.
+        // off. Each alert gets its configured level, sound and wording;
+        // everything raised in the same pass goes out as one notification.
+        // Push channels need the master switch, paired phones only Bluetooth.
         const time_t wallClock = time(nullptr);
         const uint32_t epoch = wallClock >= 1704067200 ? static_cast<uint32_t>(wallClock) : 0;
+        std::vector<Alerts::Alert> outgoing;
+        uint32_t alarmFlags = 0;
         for (Alerts::Alert alert : alertEngine.update(in, rules))
         {
             const AlertsConfig::EventSetting *setting = eventSettingFor(a, alert.type);
@@ -1249,16 +1270,22 @@ namespace SQM
                 continue;
             alert.level = static_cast<Alerts::AlertLevel>(setting->level);
             alert.sound = setting->sound;
-
+            applyAlertTemplate(alert, *setting, alertVars(cfg, obs, night, alert));
+            if (alert.level == Alerts::AlertLevel::Wake)
+                alarmFlags |= status.reasonFlags | (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UNSAFE_RAIN : 0u) |
+                              (alert.type == Alerts::AlertType::SensorFault || alert.type == Alerts::AlertType::LensFault ? Alpaca::UNSAFE_SENSOR_FAULT : 0u);
+            outgoing.push_back(std::move(alert));
+        }
+        if (!outgoing.empty())
+        {
+            const Alerts::Alert notification = Alerts::stackAlerts(outgoing);
             if (cfg.alerts.enabled)
             {
-                alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName);
-                ble.publishAlert(alert);
+                alertDispatcher->dispatch(notification, cfg.alerts, cfg.deviceName);
+                ble.publishAlert(notification);
             }
-            if (alert.level == Alerts::AlertLevel::Wake)
-                ble.raiseAlarm(status.reasonFlags | (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UNSAFE_RAIN : 0u) |
-                                   (alert.type == Alerts::AlertType::SensorFault || alert.type == Alerts::AlertType::LensFault ? Alpaca::UNSAFE_SENSOR_FAULT : 0u),
-                               epoch);
+            if (notification.level == Alerts::AlertLevel::Wake)
+                ble.raiseAlarm(alarmFlags, epoch);
             else
                 ble.raiseInfo(status.reasonFlags, epoch);
         }
@@ -1275,6 +1302,72 @@ namespace SQM
                           (fromPhone ? "on a phone." : "in the web UI.");
             alertDispatcher->dispatch(ack, cfg.alerts, cfg.deviceName);
         }
+    }
+
+    std::vector<std::pair<std::string, std::string>> WebServer::alertVars(const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs,
+                                                                           const NightState &night, const Alerts::Alert &alert)
+    {
+        auto num = [](bool valid, double value, int decimals) -> std::string
+        {
+            if (!valid)
+                return "--";
+            char buffer[24];
+            snprintf(buffer, sizeof(buffer), "%.*f", decimals, value);
+            return buffer;
+        };
+        const AlertsConfig &a = cfg.alerts;
+        const AlpacaConfig &limits = cfg.alpaca;
+        char clock[8] = "--:--";
+        char date[12] = "--";
+        const time_t now = time(nullptr);
+        if (now >= 1704067200)
+        {
+            struct tm local;
+            localtime_r(&now, &local);
+            strftime(clock, sizeof(clock), "%H:%M", &local);
+            strftime(date, sizeof(date), "%Y-%m-%d", &local);
+        }
+
+        // Readings and settings first; the event's own values (reasons,
+        // sensor, ...) come after and win on a name clash.
+        std::vector<std::pair<std::string, std::string>> vars = {
+            {"device", cfg.deviceName},
+            {"event", Alerts::alertTypeName(alert.type)},
+            {"level", Alerts::alertLevelName(alert.level)},
+            {"time", clock},
+            {"date", date},
+            {"sqm", num(obs.skyLight.valid, obs.skyQualityMagArcsec2, 2)},
+            {"sqm_min", num(true, limits.sqmMinSafe, 2)},
+            {"cloud", num(obs.irSky.valid, obs.cloudCoverPercent, 0)},
+            {"cloud_max", num(true, limits.cloudCoverUnsafePercent, 0)},
+            {"clear_below", num(true, a.clearSkyCloudPercent, 0)},
+            {"cloudy_above", num(true, a.cloudedOverCloudPercent, 0)},
+            {"sky_temp", num(obs.irSky.valid, obs.skyTemperatureC, 1)},
+            {"temp", num(obs.environment.valid, obs.temperatureC, 1)},
+            {"humidity", num(obs.environment.valid, obs.humidityPercent, 0)},
+            {"humidity_max", num(true, limits.humidityMaxSafe, 0)},
+            {"dewpoint", num(obs.environment.valid, obs.dewpointC, 1)},
+            {"dew_margin", num(obs.environment.valid, obs.temperatureC - obs.dewpointC, 1)},
+            {"pressure", num(obs.environment.valid, obs.pressureHPa, 0)},
+            {"rain_rate", num(obs.rain.valid, obs.rainRateMmPerHour, 1)},
+            {"wind", num(obs.wind.valid, obs.windSpeedMs, 1)},
+            {"gust", num(obs.wind.valid, obs.windGustMs, 1)},
+            {"sun_alt", num(night.known, night.sunAltitudeDeg, 1)},
+        };
+        vars.insert(vars.end(), alert.vars.begin(), alert.vars.end());
+        return vars;
+    }
+
+    void WebServer::applyAlertTemplate(Alerts::Alert &alert, const AlertsConfig::EventSetting &setting,
+                                       const std::vector<std::pair<std::string, std::string>> &vars)
+    {
+        if (!setting.title.empty())
+            alert.title = Alerts::renderTemplate(setting.title, vars);
+        if (!setting.message.empty())
+            alert.message = Alerts::renderTemplate(setting.message, vars);
+        // Not needed past this point, and the recent-alerts list keeps alerts.
+        alert.vars.clear();
+        alert.vars.shrink_to_fit();
     }
 
     const AlertsConfig::EventSetting *WebServer::eventSettingFor(const AlertsConfig &a, Alerts::AlertType type)
@@ -1363,6 +1456,8 @@ namespace SQM
             int8_t event = -1;
             uint8_t level = 2;
             String sound;
+            String title;
+            String message;
             if (request->hasParam("event"))
             {
                 const String key = request->getParam("event")->value();
@@ -1383,6 +1478,12 @@ namespace SQM
                     request->send(400, "application/json", createErrorJson("Sound name too long").c_str());
                     return;
                 }
+                title = request->hasParam("title") ? request->getParam("title")->value() : String();
+                message = request->hasParam("message") ? request->getParam("message")->value() : String();
+                if (title.length() > AlertsConfig::MAX_TEMPLATE_TITLE || message.length() > AlertsConfig::MAX_TEMPLATE_MESSAGE) {
+                    request->send(400, "application/json", createErrorJson("Title is up to 80 characters and message up to 240").c_str());
+                    return;
+                }
             }
 
             uint8_t sendMask = mask & enabledMask;
@@ -1399,8 +1500,17 @@ namespace SQM
             pendingAlertTest.event = event;
             pendingAlertTest.level = level;
             strlcpy(pendingAlertTest.sound, sound.c_str(), sizeof(pendingAlertTest.sound));
+            strlcpy(pendingAlertTest.title, title.c_str(), sizeof(pendingAlertTest.title));
+            strlcpy(pendingAlertTest.message, message.c_str(), sizeof(pendingAlertTest.message));
             portEXIT_CRITICAL(&pendingAlertTestLock);
             request->send(202, "application/json", "{\"success\":true,\"message\":\"Test notification queued\"}"); });
+
+        server.on("/api/alerts/clear", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+            alertDispatcher->clearRecent();
+            request->send(200, "application/json", "{\"success\":true}"); });
 
         server.on("/api/ble/ack", HTTP_POST, [this](AsyncWebServerRequest *request)
                   {

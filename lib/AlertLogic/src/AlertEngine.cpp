@@ -85,10 +85,77 @@ namespace SQM
             for (const std::string &reason : reasons)
             {
                 if (!out.empty())
-                    out += "; ";
-                out += reason;
+                    out += "\n";
+                out += "\u2022 " + reason;
             }
             return out;
+        }
+
+        std::string renderTemplate(const std::string &text, const std::vector<std::pair<std::string, std::string>> &vars)
+        {
+            std::string out;
+            out.reserve(text.size() + 32);
+            size_t i = 0;
+            while (i < text.size())
+            {
+                const size_t open = text.find('{', i);
+                if (open == std::string::npos)
+                {
+                    out.append(text, i, std::string::npos);
+                    break;
+                }
+                out.append(text, i, open - i);
+                const size_t close = text.find('}', open + 1);
+                if (close == std::string::npos)
+                {
+                    out.append(text, open, std::string::npos);
+                    break;
+                }
+                const std::string name = text.substr(open + 1, close - open - 1);
+                const std::string *value = nullptr;
+                for (const auto &var : vars)
+                    if (var.first == name)
+                        value = &var.second;
+                if (value != nullptr)
+                    out += *value;
+                else
+                    out.append(text, open, close - open + 1);
+                i = close + 1;
+            }
+            return out;
+        }
+
+        Alert stackAlerts(const std::vector<Alert> &alerts)
+        {
+            if (alerts.empty())
+                return Alert{};
+            size_t lead = 0;
+            for (size_t i = 1; i < alerts.size(); ++i)
+                if (alerts[i].level > alerts[lead].level)
+                    lead = i;
+            Alert stacked = alerts[lead];
+            if (alerts.size() == 1)
+                return stacked;
+            stacked.title.clear();
+            stacked.message.clear();
+            // Lead first, the rest in the order they were raised.
+            std::vector<size_t> order{lead};
+            for (size_t i = 0; i < alerts.size(); ++i)
+                if (i != lead)
+                {
+                    order.push_back(i);
+                    stacked.stacked.push_back(alerts[i].type);
+                }
+            for (size_t i : order)
+            {
+                if (!stacked.title.empty())
+                    stacked.title += " \u00b7 ";
+                stacked.title += alerts[i].title;
+                if (!stacked.message.empty())
+                    stacked.message += "\n\n";
+                stacked.message += alerts[i].message;
+            }
+            return stacked;
         }
 
         bool AlertEngine::sync(Tracker &tracker, bool current, uint32_t now, uint32_t cooldown, bool emitAllowed, uint32_t settle)
@@ -142,8 +209,16 @@ namespace SQM
                 if (sync(safety, unsafe, now, cooldown, pastGrace && rules.onSafetyChange))
                 {
                     if (unsafe)
-                        alerts.push_back(make(AlertType::Unsafe, "Observatory UNSAFE",
-                                              in.unsafeReasons.empty() ? std::string("Safety rules failing") : joinReasons(in.unsafeReasons)));
+                    {
+                        const std::string reasons = in.unsafeReasons.empty() ? std::string("Safety rules failing") : joinReasons(in.unsafeReasons);
+                        alerts.push_back(make(AlertType::Unsafe, "Observatory UNSAFE", reasons));
+                        std::string inline_;
+                        for (const std::string &reason : in.unsafeReasons)
+                            inline_ += (inline_.empty() ? "" : "; ") + reason;
+                        alerts.back().vars = {{"reasons", reasons},
+                                              {"reasons_inline", inline_},
+                                              {"reason_count", std::to_string(in.unsafeReasons.size())}};
+                    }
                     else
                         alerts.push_back(make(AlertType::Safe, "Observatory safe",
                                               "All enabled safety rules pass."));
@@ -156,8 +231,11 @@ namespace SQM
                 if (sync(rain, in.raining, now, cooldown, pastGrace && rules.onRain))
                 {
                     if (in.raining)
+                    {
                         alerts.push_back(make(AlertType::RainStarted, "Rain detected",
                                               format("The rain sensor reports rain (%.1f mm/h).", in.rainRateMmPerHour)));
+                        alerts.back().vars = {{"rain_rate", format("%.1f", in.rainRateMmPerHour)}};
+                    }
                     else
                         alerts.push_back(make(AlertType::RainStopped, "Rain cleared",
                                               "No rain for the configured rain clear delay."));
@@ -167,6 +245,7 @@ namespace SQM
                 {
                     alerts.push_back(make(AlertType::LensFault, "Rain sensor lens fault",
                                           "The RG-15 reports a lens fault - clean or inspect the lens."));
+                    alerts.back().vars = {{"sensor", "RG-15 lens"}};
                 }
             }
 
@@ -188,6 +267,7 @@ namespace SQM
                     else
                         alerts.push_back(make(AlertType::SensorRecovered, std::string(sensor.name) + " sensor recovered",
                                               std::string(sensor.name) + " is reporting normally again."));
+                    alerts.back().vars = {{"sensor", sensor.name}};
                 }
             }
 
@@ -202,6 +282,7 @@ namespace SQM
                     alerts.push_back(make(AlertType::DewRisk, "Dew risk",
                                           format("Temperature %.1f C is within %.1f C of the dew point (%.1f C).",
                                                  in.temperatureC, margin, in.dewpointC)));
+                    alerts.back().vars = {{"dew_margin", format("%.1f", margin)}, {"dew_margin_min", format("%.1f", rules.dewRiskMarginC)}};
                 }
             }
 
@@ -226,10 +307,10 @@ namespace SQM
                 {
                     if (skyClear && rules.onClearSky)
                         alerts.push_back(make(AlertType::ClearSky, rules.skyNightOnly ? "Dark and clear" : "Skies clear",
-                                              format("Cloud cover is down to %.0f%%.", in.cloudCoverPercent)));
+                                              format("Cloud cover is down to %.0f%% (clear below %.0f%%).", in.cloudCoverPercent, rules.clearSkyCloudPercent)));
                     else if (!skyClear && rules.onCloudedOver)
                         alerts.push_back(make(AlertType::CloudedOver, "Clouded over",
-                                              format("Cloud cover is up to %.0f%%.", in.cloudCoverPercent)));
+                                              format("Cloud cover is up to %.0f%% (cloudy above %.0f%%).", in.cloudCoverPercent, rules.cloudedOverCloudPercent)));
                 }
             }
 

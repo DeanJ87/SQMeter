@@ -30,6 +30,38 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 
 So "skies cloud over" can be Wake me with a loud sound while "skies clear up" stays Normal, and dew risk can be Quiet. A sound left on **Default** uses the Pushover channel's default sound. Webhook and MQTT payloads carry the level as `"level": "quiet" | "normal" | "urgent" | "wake"`.
 
+### Why it's unsafe
+
+An unsafe alert lists every failing rule with the reading and your limit, one per line:
+
+```
+Observatory UNSAFE
+• SQM 18.21 < 19.50
+• Cloud 62% >= 35%
+• Humidity 92% > 90%
+```
+
+The same wording shows on the dashboard's safety card and in `GET /api/safety`.
+
+### Several at once
+
+Alerts raised at the same moment - rain starting usually makes the observatory unsafe too - arrive as one notification ("Rain detected · Observatory UNSAFE") at the loudest of their levels, using that event's sound. Webhook and MQTT payloads then also carry `"events": ["rain_started", "unsafe"]`.
+
+### Your own wording
+
+**Text** on an event row lets you write the title and message yourself. Click a `{variable}` to insert it at the cursor; anything left empty keeps the built-in wording, shown greyed out. **Test** sends your wording filled in with the current readings, before you save.
+
+| Variable | Value |
+|---|---|
+| `{reasons}`, `{reasons_inline}`, `{reason_count}` | Unsafe only: each failing rule with value and limit (one per line / on one line), and how many |
+| `{sensor}` | Sensor events: which sensor |
+| `{device}`, `{time}`, `{date}`, `{level}` | Device name, local time and date, alert level |
+| `{sqm}`, `{cloud}`, `{sky_temp}`, `{temp}`, `{humidity}`, `{dewpoint}`, `{dew_margin}`, `{pressure}`, `{rain_rate}`, `{wind}`, `{gust}`, `{sun_alt}` | Current readings (`--` if that sensor isn't reporting) |
+| `{sqm_min}`, `{cloud_max}`, `{humidity_max}` | Your safety limits |
+| `{clear_below}`, `{cloudy_above}`, `{dew_margin_min}` | Your alert thresholds |
+
+Titles are up to 80 characters and messages up to 240. An unknown `{name}` is left as typed, so a typo shows up in the test.
+
 **Cooldown** (default 5 min) is the minimum time between alerts of the same kind, so a flapping condition doesn't spam you. A change held back by the cooldown isn't lost: if the condition still differs from what you were last told when the cooldown ends, that alert is sent then - the most recent alert always matches reality.
 
 Nothing is sent in the first minute after boot, so a restart doesn't announce the device's startup state. Sensor faults and recoveries must also last 30 seconds before they're sent, so brief blips (saving settings, a sensor being reconfigured, an OTA upload) don't page anyone.
@@ -78,6 +110,8 @@ Uses the broker from the MQTT settings. Publishes:
 ---
 
 ## Recent alerts
+
+**Clear** in the flyout empties the list on the device.
 
 While alerts are on, a bell in the header shows how many alerts arrived since you last looked, and opens the last 20 alerts since boot with each channel's delivery status (`sent`, `failed` with the reason, or `skipped` - e.g. no WiFi, or an OTA update in progress). **Send test** waits for that status and shows the actual result. The list is also available from `GET /api/alerts/recent`.
 
