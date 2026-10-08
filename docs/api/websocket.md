@@ -101,8 +101,11 @@ ws.onclose = () => {
 !!! note "GPS field"
     `gps` is only included in the message when a GPS module is connected and initialised.
 
-!!! note "Rain sensor field"
-    `rainSensor` is included whenever the RG-15 path is compiled into the firmware. Check `enabled`, `initialized`, and `online` to distinguish disabled, UART-opened, and live sensor states. Values use the RG-15 configured units; the payload also includes UART diagnostics for bring-up debugging.
+!!! note "Rain and wind fields"
+    `rainSensor` is only included while the RG-15 is enabled in settings, and `wind` only while the anemometer is. Check `initialized` and `online` on `rainSensor` to tell a UART that's open from a live sensor. Rain values use the RG-15's configured units; the payload also carries UART diagnostics for bring-up debugging.
+
+!!! note "Safety field"
+    Every message includes `safety` - the SafetyMonitor verdict, the same object as [`GET /api/safety`](rest.md#get-apisafety): `isSafe`, `safe` (1/0), `rawSafe`, `reasons` (e.g. `"SQM 18.21 < 19.50"`), `reasonFlags`, `secondsUntilSafe` and ages.
 
 ### `status` values
 
@@ -138,6 +141,7 @@ asyncio.run(stream())
 
 ## Notes
 
+- `/ws/status` streams the same object as [`GET /api/status`](rest.md#get-apistatus) every 2 seconds (WiFi, memory, MQTT, Bluetooth, darkness/sun position)
 - The server broadcasts to all connected clients simultaneously
 - There is no authentication on the WebSocket endpoint
 - Broadcasts happen every 1 second regardless of `sensor.readIntervalMs`

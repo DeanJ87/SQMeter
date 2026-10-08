@@ -1,6 +1,6 @@
 # Configuration
 
-All settings are stored in NVS (Non-Volatile Storage) and survive firmware and filesystem updates. Configure via the web UI Settings page or the REST API.
+All settings are stored in NVS (Non-Volatile Storage) and survive firmware and filesystem updates. Configure via the web UI (**Settings**) or the REST API.
 
 ---
 
@@ -95,9 +95,87 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
     "darkIrOffset": 0,
     "darkSampleCount": 0,
     "darkCalibratedAt": 0
+  },
+
+  "cloudDetection": {
+    "clearSkyThreshold": -13,
+    "cloudyThreshold": -3,
+    "humidityCorrection": 0.75
+  },
+
+  "location": {
+    "set": false,
+    "latitude": 0,
+    "longitude": 0,
+    "showSunMoon": true
+  },
+
+  "alpaca": {
+    "enabled": false,
+    "manualOverrideUnsafe": false,
+    "staleAfterSeconds": 30,
+    "safeDelaySeconds": 0,
+    "cloudCoverEnabled": true,
+    "cloudCoverUnsafePercent": 90,
+    "sqmMinEnabled": false,
+    "sqmMinSafe": 0,
+    "humidityMaxEnabled": false,
+    "humidityMaxSafe": 100,
+    "dewpointMarginEnabled": false,
+    "dewpointMarginMinC": 0,
+    "rainUnsafeEnabled": true,
+    "rainSensorRequired": true,
+    "windSpeedUnsafeEnabled": false,
+    "windSpeedUnsafeMs": 10,
+    "windGustUnsafeEnabled": false,
+    "windGustUnsafeMs": 15
+  },
+
+  "alerts": {
+    "enabled": false,
+    "events": {
+      "unsafe": { "level": 3, "sound": "", "title": "", "message": "" },
+      "safe": { "level": 2, "sound": "", "title": "", "message": "" },
+      "rain_started": { "level": 4, "sound": "", "title": "", "message": "" },
+      "rain_stopped": { "level": 2, "sound": "", "title": "", "message": "" },
+      "sensor_fault": { "level": 4, "sound": "", "title": "", "message": "" },
+      "sensor_recovered": { "level": 1, "sound": "", "title": "", "message": "" },
+      "dew_risk": { "level": 0, "sound": "", "title": "", "message": "" },
+      "clear_sky": { "level": 0, "sound": "", "title": "", "message": "" },
+      "clouded_over": { "level": 0, "sound": "", "title": "", "message": "" }
+    },
+    "dewRiskMarginC": 2,
+    "clearSkyCloudPercent": 20,
+    "cloudedOverCloudPercent": 70,
+    "skyNightOnly": true,
+    "safetyNightOnly": true,
+    "nightSunAltitudeDeg": -12,
+    "armWithAlpaca": false,
+    "cooldownSeconds": 300,
+    "pushover": { "enabled": false, "userKey": "", "appToken": "", "sound": "" },
+    "ntfy": { "enabled": false, "server": "https://ntfy.sh", "topic": "", "token": "" },
+    "webhook": { "enabled": false, "url": "", "authHeader": "", "insecureTls": false },
+    "mqtt": { "enabled": false }
+  },
+
+  "ble": {
+    "enabled": false,
+    "passkey": ""
+  },
+
+  "wind": {
+    "enabled": false,
+    "speedPin": 27,
+    "directionEnabled": false,
+    "directionPin": 35,
+    "kmhPerHz": 2.4,
+    "directionOffsetDeg": 0,
+    "vanePullupOhms": 10000
   }
 }
 ```
+
+In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth), Network (WiFi, MQTT), Time & Location, Sensors (sensors, rain, wind, calibration), Safety (`alpaca`) and Alerts.
 
 ---
 
@@ -251,6 +329,78 @@ The TSL2591 light sensor is sampled separately at approximately 600 ms cadence s
 | `darkCalibratedAt` | int | `0` | Epoch timestamp when available, otherwise device milliseconds |
 
 To set the dark floor, cover the lens/baffle aperture with an opaque cap, wait for `skyAveraging.windowSeconds`, then call `POST /api/sensors/tsl2591/calibrate-dark`.
+
+### Cloud Detection
+
+Cloud cover comes from the MLX90614: how much colder the sky is than the air (sky minus ambient, °C), corrected for humidity.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `clearSkyThreshold` | float | `-13` | Corrected delta at or below this is clear (0%) |
+| `cloudyThreshold` | float | `-3` | Corrected delta at or above this is overcast (100%); linear in between |
+| `humidityCorrection` | float | `0.75` | How strongly humidity is corrected for |
+
+### Safety rules (`alpaca`)
+
+The SafetyMonitor verdict served to N.I.N.A., shown on the dashboard and used for alerts. See [ASCOM Alpaca](alpaca.md#safety-rules) for how the rules combine.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Serve the Alpaca SafetyMonitor and ObservingConditions devices |
+| `manualOverrideUnsafe` | bool | `false` | Force unsafe |
+| `staleAfterSeconds` | int | `30` | Sensor data older than this is unsafe (1-3600) |
+| `safeDelaySeconds` | int | `0` | Conditions must stay safe this long before reporting safe; also runs from boot (0-3600) |
+| `cloudCoverEnabled` / `cloudCoverUnsafePercent` | bool / float | `true` / `90` | Unsafe at or above this cloud cover (0-100) |
+| `sqmMinEnabled` / `sqmMinSafe` | bool / float | `false` / `0` | Unsafe below this SQM (0-30) |
+| `humidityMaxEnabled` / `humidityMaxSafe` | bool / float | `false` / `100` | Unsafe above this humidity (0-100) |
+| `dewpointMarginEnabled` / `dewpointMarginMinC` | bool / float | `false` / `0` | Unsafe when temperature minus dew point is below this (0-20 °C) |
+| `rainUnsafeEnabled` | bool | `true` | Unsafe while the RG-15 reports rain, and until `rain.rainClearDelayMs` after it stops |
+| `rainSensorRequired` | bool | `true` | Unsafe if the enabled RG-15 is offline, stale or reports a lens fault |
+| `windSpeedUnsafeEnabled` / `windSpeedUnsafeMs` | bool / float | `false` / `10` | Unsafe at or above this wind speed (m/s, up to 60) |
+| `windGustUnsafeEnabled` / `windGustUnsafeMs` | bool / float | `false` / `15` | Unsafe at or above this gust (m/s, up to 80) |
+
+### Alerts
+
+See [Alerts](alerts.md) for events, levels and channels.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Send alerts at all |
+| `events.<event>.level` | int | see above | 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me |
+| `events.<event>.sound` | string | `""` | Pushover sound; empty uses `pushover.sound` |
+| `events.<event>.title` / `.message` | string | `""` | Your own wording with `{variables}` (up to 80 / 240 characters); empty uses the default |
+| `dewRiskMarginC` | float | `2` | Dew risk when temperature is within this of the dew point |
+| `clearSkyCloudPercent` / `cloudedOverCloudPercent` | float | `20` / `70` | "Skies clear up" below / "cloud over" above |
+| `skyNightOnly` / `safetyNightOnly` | bool | `true` / `true` | Sky / safe-unsafe alerts only while it's dark |
+| `nightSunAltitudeDeg` | float | `-12` | "Dark" means the sun below this (-0.833 sunset, -12 nautical, -18 astronomical) |
+| `armWithAlpaca` | bool | `false` | Switch alerts on/off as N.I.N.A. connects/disconnects |
+| `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
+| `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
+
+Alerts on/off (for when you're not imaging) is live state, not a setting - see [Alerts](alerts.md#turning-alerts-off-when-youre-not-imaging).
+
+### Bluetooth (`ble`)
+
+Only used by the Bluetooth firmware build. See [Bluetooth](ble.md).
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Turn on Bluetooth (slows WiFi - one shared radio) |
+| `passkey` | string | `""` | 6-digit pairing passkey for the phone alarm; empty turns the alarm off. Masked in `GET /api/config` |
+
+### Wind
+
+See [Wind (anemometer)](../hardware/wind.md).
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Anemometer fitted |
+| `speedPin` | int | `27` | Anemometer pulse input |
+| `directionEnabled` | bool | `false` | Wind vane fitted |
+| `directionPin` | int | `35` | Vane input - must be an ADC1 pin |
+| `kmhPerHz` | float | `2.4` | Anemometer calibration (2.4 km/h per Hz for the common Misol/Davis-style cups) |
+| `directionOffsetDeg` | float | `0` | Rotate the vane reading to true north |
+| `vanePullupOhms` | float | `10000` | Pull-up resistor in the vane divider |
 
 ---
 

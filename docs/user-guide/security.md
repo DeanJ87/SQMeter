@@ -33,8 +33,16 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/restart` | POST | Reboot device |
 | `/api/update` | POST | Flash firmware OTA |
 | `/api/update/fs` | POST | Flash filesystem OTA |
+| `/api/updates/check` | GET | Check GitHub for updates |
+| `/api/updates/apply` | POST | Install an update from GitHub |
 | `/api/wifi/connect` | POST | Change WiFi network |
 | `/api/mqtt/test` | POST | Test MQTT broker connection |
+| `/api/alerts/test` | POST | Send a test alert |
+| `/api/alerts/arm`, `/api/alerts/disarm` | POST | Switch alerts on/off |
+| `/api/alerts/clear` | POST | Clear the recent-alerts list |
+| `/api/ble/ack`, `/api/ble/forget-bonds` | POST | Acknowledge the phone alarm / unpair phones |
+| `/api/sensors/tsl2591/calibrate-dark` | POST | Store the light sensor dark offset |
+| `/api/sensors/rg15/test`, `/reset-total`, `/reboot` | POST | RG-15 commands |
 
 ### Unprotected endpoints (always accessible)
 
@@ -42,8 +50,11 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 |----------|--------|---------|
 | `/api/sensors` | GET | Current sensor readings |
 | `/api/status` | GET | System status |
-| `/api/config` | GET | Read config (secrets masked) |
+| `/api/config` | GET | Read config (passwords, keys and tokens masked) |
+| `/api/safe`, `/api/safety`, `/api/safety/history` | GET | Safety verdict, reasons and history |
+| `/api/alerts/recent`, `/api/alerts/armed` | GET | Recent alerts, alerts on/off |
 | `/api/wifi/scan` | GET | Scan WiFi networks |
+| `/api/v1/...`, `/management/...` | GET / PUT | ASCOM Alpaca (the Alpaca spec has no auth) |
 | `/ws/sensors` | WS | Live sensor stream |
 | `/ws/status` | WS | Live status stream |
 
@@ -51,16 +62,16 @@ Read-only integrations (Home Assistant, scripts polling sensor data) continue to
 
 ### Setup
 
-1. Open the Settings page in the web UI.
-2. Under **HTTP Authentication**, enable the toggle.
+1. Open **Settings → Device** in the web UI.
+2. Under **Security**, turn on **Password-protect changes**.
 3. Set a username (default `admin`) and a strong password.
-4. Save configuration.
+4. **Save**.
 
 Once saved, the browser will prompt for credentials on the next mutation request. Most browsers remember credentials per origin for the session.
 
 ### Password masking and preservation
 
-`GET /api/config` returns `********` for the auth password. When you POST config back, sending `********` or an empty string preserves the stored password unchanged. Send `null` only to intentionally clear the password.
+`GET /api/config` returns `********` for the auth password (and likewise for the WiFi/MQTT/OTA passwords, Pushover keys, ntfy token, webhook auth header and Bluetooth passkey). When you POST config back, sending `********` or an empty string preserves the stored password unchanged. Send `null` only to intentionally clear the password.
 
 ### Password reset / lockout
 
