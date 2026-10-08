@@ -7,7 +7,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceCore.cpp#runAlerts src/WebServer.cpp#WebServer::processAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: unconfirmed
+fingerprint: 79ca59f59d0fbe29
 -->
 <figure class="diagram" markdown>
 
@@ -15,9 +15,9 @@ fingerprint: unconfirmed
 flowchart TB
     accTitle: Why an alert does or doesn't arrive
     accDescr: Each second the device compares every condition with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on, sent to every enabled channel, with each channel's result recorded.
-    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky"]) --> SILENT{"First minute after boot,<br/>or the event's rule switched off?"}
+    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky"]) --> SILENT{"First minute after boot,<br/>the event's rule off,<br/>or the sensor switched off?"}
     SILENT -->|yes| TRACKED["Tracked silently,<br/>never announced"]
-    SILENT -->|no| HELD{"Held back for now?<br/>safety while it's light or still settling,<br/>a fault not yet 30 s old,<br/>a sky change not yet 2 min old,<br/>the 5 min cooldown not over"}
+    SILENT -->|no| HELD{"Held back for now?<br/>safety or sky changes while it's light,<br/>safety still settling,<br/>a fault not yet 30 s old,<br/>a sky change not yet 2 min old,<br/>the 5 min cooldown not over"}
     HELD -->|yes| LATER["Checked again every second,<br/>sent later if it still differs"]
     HELD -->|no| LEVEL{"Event level Off?"}
     LEVEL -->|yes| DROPPED["Not sent"]
@@ -43,9 +43,10 @@ flowchart TB
 ??? info "Diagram in words"
 
     1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, each sensor, dew risk, the sky) with what you were last told, every second.
-    2. **Tracked silently, never announced**: changes in the first minute after boot, and changes while that event's rule is switched off.
+    2. **Tracked silently, never announced**: changes in the first minute after boot, changes while that event's rule is switched off, and anything from a sensor that is switched off.
     3. **Held back for now, sent later if still true**:
         - safe/unsafe while it's light (with "Safety alerts only when it's dark"), or while the verdict is still settling (no data yet, or waiting out the safe delay);
+        - sky changes while it's light (with sky alerts limited to darkness): at nightfall a clear sky is announced once;
         - a sensor fault or recovery not yet 30 seconds old;
         - a sky change not yet 2 minutes old;
         - within the 5-minute cooldown since that condition's last alert.

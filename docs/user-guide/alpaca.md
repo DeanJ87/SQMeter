@@ -26,7 +26,7 @@ Alpaca support is disabled by default. With it off, every Alpaca endpoint still 
 <!-- diagram: DIA-10
 sources: lib/AlpacaLogic/src/AlpacaDiscovery.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp src/WebServer.cpp#WebServer::setupAlpacaRoutes
 blocking: false
-fingerprint: unconfirmed
+fingerprint: b1bd3eaa302bd982
 -->
 <figure class="diagram" markdown>
 
@@ -118,7 +118,7 @@ Each threshold has its own enable/disable toggle - a disabled threshold never co
 <!-- diagram: DIA-02
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#evaluateSafety lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceCore.cpp#safetyThresholds
 blocking: true
-fingerprint: unconfirmed
+fingerprint: 530d1cc418d5bceb
 -->
 <figure class="diagram" markdown>
 
@@ -175,7 +175,7 @@ The Safety Monitor card's **History** lists recent safe/unsafe changes, restarts
 <!-- diagram: DIA-03
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#SafeDelayFilter::update lib/DeviceCore/src/DeviceCore.cpp#updateSafety
 blocking: true
-fingerprint: unconfirmed
+fingerprint: dd6b408744ee8cc3
 -->
 <figure class="diagram" markdown>
 
