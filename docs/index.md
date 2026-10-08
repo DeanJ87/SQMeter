@@ -12,6 +12,54 @@ SQMeter is an open-source sky quality meter built on the ESP32. It measures ligh
 [Try the Live Demo :material-arrow-right:](https://demo.sqmeter.dev/){ .md-button .md-button--primary }
 [View on GitHub :fontawesome-brands-github:](https://github.com/DeanJ87/SQMeter){ .md-button }
 
+<!-- diagram: DIA-01
+sources: src/main.cpp#setup include/sensors/ include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h include/OtaUpdater.h include/TimeManager.h
+blocking: false
+fingerprint: unconfirmed
+-->
+<figure class="diagram" markdown>
+
+```mermaid
+flowchart LR
+    accTitle: What SQMeter connects to
+    accDescr: Sensors feed the ESP32. It keeps its settings and web UI on the device, serves a dashboard and APIs to browsers, publishes to an MQTT broker, answers ASCOM Alpaca clients such as N.I.N.A., and sends alerts to push services and paired phones.
+    I2C["<b>Sky and air</b><br/>TSL2591 brightness<br/>MLX90614 IR sky temperature<br/>BME280 temperature, humidity, pressure"]
+    OPT["<b>Optional</b><br/>GPS: location and time<br/>RG-15: rain<br/>Anemometer and vane: wind"]
+    ESP["<b>ESP32 running SQMeter</b><br/>readings, cloud cover,<br/>safety verdict, alerts<br/><i>settings in NVS,<br/>web UI in LittleFS</i>"]
+    WEB["Browser<br/>dashboard, REST, WebSocket"]
+    MQTT["MQTT broker<br/>Home Assistant discovery"]
+    ALPACA["ASCOM Alpaca client<br/>e.g. N.I.N.A."]
+    PUSH["Push alerts<br/>ntfy, Pushover, webhook"]
+    PHONE["Phone over Bluetooth<br/>BLE build only"]
+    NET["Internet<br/>NTP time, GitHub releases"]
+    I2C -->|I²C| ESP
+    OPT -->|UART, pulses, analogue| ESP
+    NET -.->|time, updates| ESP
+    ESP <--> WEB
+    ESP <-->|readings, safety, alerts| MQTT
+    ESP <--> ALPACA
+    ESP --> PUSH
+    ESP <--> PHONE
+```
+
+<figcaption>What SQMeter connects to: sensors in, the ESP32 in the middle, and everything it talks to.</figcaption>
+</figure>
+
+??? info "Diagram in words"
+
+    - **Sensors** (into the ESP32):
+        - TSL2591 sky brightness, MLX90614 IR sky temperature and BME280 air temperature, humidity and pressure, on the I²C bus.
+        - Optional GPS (location and time) and RG-15 rain gauge on serial (UART).
+        - Optional anemometer (pulses) and wind vane (analogue).
+    - **The ESP32** works out the readings, cloud cover, the safety verdict and alerts. It keeps its settings in NVS and the web UI's files in LittleFS.
+    - **Outputs:**
+        - Browsers get the dashboard, the REST API and live WebSocket updates.
+        - An MQTT broker gets readings, the safety verdict and alerts, with Home Assistant discovery; it can also switch alerts on and off.
+        - ASCOM Alpaca clients such as N.I.N.A. read the SafetyMonitor and ObservingConditions devices.
+        - Alerts go to ntfy, Pushover, a webhook or MQTT.
+        - On the Bluetooth (BLE) build, a paired phone gets the safety state and alarms, and can acknowledge them.
+    - **From the internet:** NTP time and, when you ask for an update, GitHub releases.
+
 ![The SQMeter dashboard](assets/screenshots/dashboard.png)
 
 ---

@@ -347,6 +347,19 @@
   text-align: center;
 }
 
+/* Material draws each diagram scaled to the column, which leaves phone text
+   unreadable. On narrow screens give it a minimum canvas and let the figure
+   scroll sideways instead (the page itself never does). */
+@media screen and (max-width: 44.9375em) {
+  .md-typeset figure.diagram {
+    overflow-x: auto;
+  }
+
+  .md-typeset figure.diagram .mermaid {
+    min-width: 38rem;
+  }
+}
+
 .md-typeset figure.diagram figcaption {
   max-width: none;
   margin: 0.75em 0 0;

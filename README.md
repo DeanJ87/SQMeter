@@ -19,6 +19,46 @@ SQMeter measures light pollution in real time using an ESP32. It gives you SQM m
 - **Demo:** https://demo.sqmeter.dev/
 - **Releases:** https://github.com/DeanJ87/SQMeter/releases
 
+## How it fits together
+
+<!-- diagram: DIA-01
+sources: src/main.cpp#setup include/sensors/ include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h include/OtaUpdater.h include/TimeManager.h
+blocking: false
+fingerprint: unconfirmed
+-->
+```mermaid
+flowchart LR
+    accTitle: What SQMeter connects to
+    accDescr: Sensors feed the ESP32. It keeps its settings and web UI on the device, serves a dashboard and APIs to browsers, publishes to an MQTT broker, answers ASCOM Alpaca clients such as N.I.N.A., and sends alerts to push services and paired phones.
+    I2C["<b>Sky and air</b><br/>TSL2591 brightness<br/>MLX90614 IR sky temperature<br/>BME280 temperature, humidity, pressure"]
+    OPT["<b>Optional</b><br/>GPS: location and time<br/>RG-15: rain<br/>Anemometer and vane: wind"]
+    ESP["<b>ESP32 running SQMeter</b><br/>readings, cloud cover,<br/>safety verdict, alerts<br/><i>settings in NVS,<br/>web UI in LittleFS</i>"]
+    WEB["Browser<br/>dashboard, REST, WebSocket"]
+    MQTT["MQTT broker<br/>Home Assistant discovery"]
+    ALPACA["ASCOM Alpaca client<br/>e.g. N.I.N.A."]
+    PUSH["Push alerts<br/>ntfy, Pushover, webhook"]
+    PHONE["Phone over Bluetooth<br/>BLE build only"]
+    NET["Internet<br/>NTP time, GitHub releases"]
+    I2C -->|I²C| ESP
+    OPT -->|UART, pulses, analogue| ESP
+    NET -.->|time, updates| ESP
+    ESP <--> WEB
+    ESP <-->|readings, safety, alerts| MQTT
+    ESP <--> ALPACA
+    ESP --> PUSH
+    ESP <--> PHONE
+```
+*Figure: What SQMeter connects to: sensors in, the ESP32 in the middle, and everything it talks to.*
+
+<details><summary>Diagram in words</summary>
+
+- **Sensors** into the ESP32: TSL2591 sky brightness, MLX90614 IR sky temperature and BME280 temperature, humidity and pressure on I²C; optional GPS and RG-15 rain gauge on serial (UART); optional anemometer (pulses) and wind vane (analogue).
+- **The ESP32** works out the readings, cloud cover, the safety verdict and alerts, with settings in NVS and the web UI in LittleFS.
+- **Outputs**: browsers (dashboard, REST, WebSocket); an MQTT broker (readings, safety, alerts, Home Assistant discovery, alerts on/off); ASCOM Alpaca clients such as N.I.N.A.; push alerts (ntfy, Pushover, webhook, MQTT); a phone over Bluetooth on the BLE build.
+- **From the internet**: NTP time and GitHub releases for updates.
+
+</details>
+
 ## Highlights
 
 - TSL2591 light sensor — SQM, NELM, Bortle 1–9
