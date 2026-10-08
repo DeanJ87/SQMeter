@@ -21,14 +21,14 @@ describe('SunMoonCard', () => {
     render(<SunMoonCard latitude={51.4779} longitude={-0.0015} />);
     expect(screen.getByText(/Full moon · 100% lit/)).toBeInTheDocument();
     expect(screen.getByText(/^Dark now, until/)).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: /noon to noon/ })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /^Night chart, .* Moon \d+% lit\.$/ })).toBeInTheDocument();
   });
 
   it('shows the values under the pointer', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-03-03T23:00:00Z'));
     render(<SunMoonCard latitude={51.4779} longitude={-0.0015} />);
-    const chart = screen.getByRole('img', { name: /noon to noon/ });
+    const chart = screen.getByRole('img', { name: /^Night chart, .* Moon \d+% lit\.$/ });
     chart.getBoundingClientRect = () => ({ left: 0, top: 0, width: 320, height: 170 }) as DOMRect;
     // Middle of the plot is around local midnight.
     fireEvent.pointerMove(chart, { clientX: 26 + (320 - 32) / 2 });

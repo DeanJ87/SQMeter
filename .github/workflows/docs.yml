@@ -77,6 +77,12 @@ jobs:
         run: npm run screenshots
         working-directory: web
 
+      # Every page and state of the device UI, at desktop and 320 px, against
+      # web/tests/a11y/baseline.json (spec 022).
+      - name: Accessibility checks (device UI)
+        run: npx playwright test tests/a11y.spec.ts tests/a11y-announce.spec.ts
+        working-directory: web
+
       # Diagrams (spec 024): the site serves its own pinned mermaid, every
       # diagram must parse and render, and no page may use a CDN.
       - name: Vendor mermaid for the docs
@@ -89,6 +95,10 @@ jobs:
 
       - name: Build MkDocs site
         run: mkdocs build --strict
+
+      - name: Accessibility checks (docs)
+        run: npx playwright test -c playwright.docs.config.ts
+        working-directory: web
 
       - name: Site serves its own mermaid
         run: python3 tools/docs/diagrams.py --site site

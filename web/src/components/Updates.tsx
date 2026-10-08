@@ -1,5 +1,6 @@
 import { FunctionalComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
+import { useAnnounceChange } from '../lib/a11y';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { compareVersions, isVersionStale } from '../utils/versionCompare';
 import type { GithubRelease, SystemStatus } from '../types';
@@ -23,6 +24,9 @@ const GithubUpdates: FunctionalComponent = () => {
   const [applyProgress, setApplyProgress] = useState(0);
   const [applyStatus, setApplyStatus] = useState('');
   const [waitingForReboot, setWaitingForReboot] = useState(false);
+
+  // Announce how an update ended, once (spec 022 FR-009 edge case).
+  useAnnounceChange(applyStatus, (text) => (/complete|successful|fail|error/i.test(text) ? text : null));
 
   const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -211,7 +215,7 @@ const GithubUpdates: FunctionalComponent = () => {
             {noOtaCheck && ' It also can’t check for updates itself, so you would update it by uploading the firmware here.'}
           </Note>
         )}
-        {applying && <ProgressMeter value={applyProgress} />}
+        {applying && <ProgressMeter value={applyProgress} label="Update progress" announceSteps />}
         {applyStatus && <Note tone={statusTone(applyStatus)}>{applyStatus}</Note>}
 
         {releases.length > 0 && (
@@ -243,6 +247,9 @@ const Updates: FunctionalComponent = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [status, setStatus] = useState<string>('');
   const [waitingForReboot, setWaitingForReboot] = useState(false);
+
+  // Announce how an update ended, once (spec 022 FR-009 edge case).
+  useAnnounceChange(status, (text) => (/complete|successful|fail|error/i.test(text) ? text : null));
 
   useEffect(() => {
     let checkInterval: number | undefined;
@@ -416,7 +423,7 @@ const Updates: FunctionalComponent = () => {
               {file.name}, {(file.size / 1024).toFixed(0)} KB
             </Note>
           )}
-          {uploading && <ProgressMeter value={uploadProgress} />}
+          {uploading && <ProgressMeter value={uploadProgress} label="Upload progress" announceSteps />}
           {status && <Note tone={statusTone}>{status}</Note>}
           <div class="btn-row">
             <Button onClick={handleUpload} disabled={!file || waitingForReboot} busy={uploading} busyLabel="Uploading...">
