@@ -109,7 +109,7 @@ class DemoDevice {
     if (this.restarting) return;
     const cfg = this.config();
     const now = this.now;
-    const inputs = simulate(this.demoMs, now, { location: cfg.location, gpsEnabled: cfg.gps?.enabled ?? false }, this.scenario);
+    const inputs = simulate(this.demoMs, now, { location: cfg.location, gpsEnabled: cfg.gps?.enabled ?? false, cloudDetection: cfg.cloudDetection }, this.scenario);
     const pad = (n: number) => String(n).padStart(2, '0');
     const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
     const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
