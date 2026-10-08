@@ -58,7 +58,7 @@ describe('Alert schedule wording (FR-017, SC-004)', () => {
       http.post('/api/config', async ({ request }) => {
         saved = await request.json();
         return HttpResponse.json({ success: true });
-      })
+      }),
     );
     await openAlerts();
     fireEvent.change(screen.getByRole('combobox', { name: 'When to send' }), { target: { value: 'whileConnected' } });
@@ -83,9 +83,9 @@ describe('Alert schedule status line', () => {
         HttpResponse.json(
           armed
             ? { armed: true, mode: 'any', reason: 'none', since: null, sinceAgeMs: null }
-            : { armed: false, mode: 'any', reason: 'user-ui', since: '2026-10-08T21:04:00Z', sinceAgeMs: 1000 }
-        )
-      )
+            : { armed: false, mode: 'any', reason: 'user-ui', since: '2026-10-08T21:04:00Z', sinceAgeMs: 1000 },
+        ),
+      ),
     );
     await openAlerts();
     expect(await screen.findByText('Sending alerts.')).toBeInTheDocument();
@@ -102,8 +102,8 @@ describe('Alert schedule status line', () => {
         HttpResponse.json({
           ...mockStatus,
           alerts: { armed: false, armWithAlpaca: false, mode: 'any', reason: 'user-mqtt', since: null, sinceAgeMs: 120000 },
-        })
-      )
+        }),
+      ),
     );
     await openAlerts();
     expect(await screen.findByText('Paused from Home Assistant or MQTT 2m ago. Alerts resume when you resume them.')).toBeInTheDocument();
@@ -122,17 +122,15 @@ describe('Alert schedule status line', () => {
               observingconditions: { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null },
             },
           },
-        })
-      )
+        }),
+      ),
     );
     await openAlerts();
     expect(await screen.findByText('The imaging app has gone quiet - safety monitor last checked 4m ago.')).toBeInTheDocument();
   });
 
   it('warns when imaging-app mode needs Alpaca, which is off', async () => {
-    server.use(
-      http.get('/api/config', () => HttpResponse.json({ ...mockConfig, alpaca: { ...mockConfig.alpaca, enabled: false } }))
-    );
+    server.use(http.get('/api/config', () => HttpResponse.json({ ...mockConfig, alpaca: { ...mockConfig.alpaca, enabled: false } })));
     await openAlerts();
     fireEvent.change(screen.getByRole('combobox', { name: 'When to send' }), { target: { value: 'whileConnected' } });
     expect(await screen.findByText('Imaging apps connect over Alpaca, which is switched off.')).toBeInTheDocument();
@@ -146,14 +144,18 @@ describe('describeSchedule', () => {
   const at = (schedule: Partial<AlertSchedule>) => describeSchedule({ armed: false, since: null, sinceAgeMs: null, ...schedule });
   it('states each reason in words', () => {
     expect(at({ armed: true })).toBe('Sending alerts.');
-    expect(at({ armed: true, mode: 'whileConnected', reason: 'client-connected', sinceAgeMs: 60000 })).toBe('Sending alerts - an imaging app connected 1m ago.');
-    expect(at({ mode: 'whileConnected', reason: 'client-disconnected', sinceAgeMs: 300000 })).toBe(
-      'Paused - the imaging app disconnected 5m ago. Alerts resume when it connects again.'
+    expect(at({ armed: true, mode: 'whileConnected', reason: 'client-connected', sinceAgeMs: 60000 })).toBe(
+      'Sending alerts - an imaging app connected 1m ago.',
     );
-    expect(at({ mode: 'whileConnected', reason: 'waiting-for-client' })).toBe('Waiting for an imaging app to connect - nothing is sent until then.');
+    expect(at({ mode: 'whileConnected', reason: 'client-disconnected', sinceAgeMs: 300000 })).toBe(
+      'Paused - the imaging app disconnected 5m ago. Alerts resume when it connects again.',
+    );
+    expect(at({ mode: 'whileConnected', reason: 'waiting-for-client' })).toBe(
+      'Waiting for an imaging app to connect - nothing is sent until then.',
+    );
     expect(at({ reason: 'user-rest' })).toBe('Paused by a script (REST). Alerts resume when you resume them.');
     expect(at({ mode: 'whileConnected', reason: 'user-ui' })).toBe(
-      'Paused by you (Pause button). Alerts resume when an imaging app connects, or when you resume them.'
+      'Paused by you (Pause button). Alerts resume when an imaging app connects, or when you resume them.',
     );
     expect(at({ reason: 'migrated' })).toBe('Paused (before the update). Alerts resume when you resume them.');
     expect(at({})).toBe('Paused. Alerts resume when you resume them.');

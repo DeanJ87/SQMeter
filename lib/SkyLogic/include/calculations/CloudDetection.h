@@ -27,7 +27,9 @@ namespace SQM
               correctedDelta(0.0f),
               cloudCoverPercent(0.0f),
               condition(CloudCondition::UNKNOWN),
-              description("Unknown") {}
+              description("Unknown")
+        {
+        }
     };
 
     class CloudDetection
@@ -50,8 +52,7 @@ namespace SQM
             float relativeHumidity = 53.0f,
             float clearSkyThreshold = CLEAR_SKY_THRESHOLD,
             float cloudyThreshold = CLOUDY_THRESHOLD,
-            float humidityCorrection = HUMIDITY_CORRECTION_FACTOR
-        );
+            float humidityCorrection = HUMIDITY_CORRECTION_FACTOR);
 
         /**
          * Apply humidity correction to temperature delta
@@ -84,7 +85,8 @@ namespace SQM
          * @param cloudyThreshold corrected delta above which sky is overcast
          * @return Cloud condition classification
          */
-        static CloudCondition classifyCondition(float correctedDelta, float clearThreshold = CLEAR_SKY_THRESHOLD, float cloudyThreshold = CLOUDY_THRESHOLD);
+        static CloudCondition classifyCondition(
+            float correctedDelta, float clearThreshold = CLEAR_SKY_THRESHOLD, float cloudyThreshold = CLOUDY_THRESHOLD);
 
         /**
          * Estimate cloud cover percentage
@@ -97,7 +99,8 @@ namespace SQM
          * @param cloudyThreshold corrected delta above which sky is overcast
          * @return Estimated cloud cover (0-100%)
          */
-        static float estimateCloudCover(float correctedDelta, float clearThreshold = CLEAR_SKY_THRESHOLD, float cloudyThreshold = CLOUDY_THRESHOLD);
+        static float estimateCloudCover(
+            float correctedDelta, float clearThreshold = CLEAR_SKY_THRESHOLD, float cloudyThreshold = CLOUDY_THRESHOLD);
 
         /**
          * Get human-readable description of cloud condition

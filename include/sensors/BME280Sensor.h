@@ -7,8 +7,6 @@
 namespace SQM
 {
 
-
-
     class BME280Sensor : public SensorBase
     {
     public:

@@ -95,14 +95,15 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
     setHoverTime(fraction < 0 || fraction > 1 ? null : start.valueOf() + fraction * span);
   };
 
-  const hover = hoverTime !== null
-    ? (() => {
-        const date = new Date(hoverTime);
-        const sun = sunPosition(date, latitude, longitude).altitude;
-        const moon = moonPosition(date, latitude, longitude).altitude;
-        return { date, sun, moon, lit: moonIllumination(date).fraction };
-      })()
-    : null;
+  const hover =
+    hoverTime !== null
+      ? (() => {
+          const date = new Date(hoverTime);
+          const sun = sunPosition(date, latitude, longitude).altitude;
+          const moon = moonPosition(date, latitude, longitude).altitude;
+          return { date, sun, moon, lit: moonIllumination(date).fraction };
+        })()
+      : null;
   const nowInside = now.valueOf() >= start.valueOf() && now.valueOf() <= end.valueOf();
 
   return (
@@ -117,7 +118,14 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
         onPointerLeave={() => setHoverTime(null)}
       >
         {bands.map((band) => (
-          <rect key={band.from} class={BAND_CLASS[band.phase]} x={x(band.from)} y={PAD.top} width={Math.max(0, x(band.to) - x(band.from))} height={plotHeight} />
+          <rect
+            key={band.from}
+            class={BAND_CLASS[band.phase]}
+            x={x(band.from)}
+            y={PAD.top}
+            width={Math.max(0, x(band.to) - x(band.from))}
+            height={plotHeight}
+          />
         ))}
         {[30, 60].map((altitude) => (
           <line key={altitude} class="chart-grid" x1={PAD.left} x2={PAD.left + plotWidth} y1={y(altitude)} y2={y(altitude)} />
@@ -159,10 +167,7 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
         )}
       </svg>
       {hover && (
-        <div
-          class="chart-tip"
-          style={{ left: `${Math.min(Math.max(x(hover.date.valueOf()), 70), width - 70)}px` }}
-        >
+        <div class="chart-tip" style={{ left: `${Math.min(Math.max(x(hover.date.valueOf()), 70), width - 70)}px` }}>
           <strong>{formatClock(hover.date)}</strong>
           <span>
             Sun {hover.sun.toFixed(1)}° · {SKY_PHASE_LABEL[skyPhase(hover.sun)]}

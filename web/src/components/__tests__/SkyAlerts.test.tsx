@@ -35,7 +35,7 @@ describe('Safety alerts at night', () => {
       http.post('/api/config', async ({ request }) => {
         saved = await request.json();
         return HttpResponse.json({ success: true });
-      })
+      }),
     );
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);

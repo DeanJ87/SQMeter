@@ -8,7 +8,10 @@ namespace SQM
 {
 
     MQTTClient::MQTTClient(const MQTTConfig &config)
-        : config(config), mqttClient(std::make_unique<PubSubClient>(wifiClient)), lastReconnectAttempt(0), lastPublish(0)
+        : config(config),
+          mqttClient(std::make_unique<PubSubClient>(wifiClient)),
+          lastReconnectAttempt(0),
+          lastPublish(0)
     {
     }
 
@@ -33,10 +36,12 @@ namespace SQM
     {
         commandSubtopic = subtopic;
         commandHandler = std::move(handler);
-        mqttClient->setCallback([this](char *topic, uint8_t *payload, unsigned int length)
-                                {
-            if (commandHandler && config.topic + "/" + commandSubtopic == topic)
-                commandHandler(std::string(reinterpret_cast<const char *>(payload), length)); });
+        mqttClient->setCallback(
+            [this](char *topic, uint8_t *payload, unsigned int length)
+            {
+                if (commandHandler && config.topic + "/" + commandSubtopic == topic)
+                    commandHandler(std::string(reinterpret_cast<const char *>(payload), length));
+            });
         if (config.enabled && mqttClient->connected())
         {
             const std::string topic = config.topic + "/" + commandSubtopic;
@@ -118,22 +123,11 @@ namespace SQM
         if (!config.username.empty())
         {
             connected = mqttClient->connect(
-                clientId.c_str(),
-                config.username.c_str(),
-                config.password.c_str(),
-                availabilityTopic.c_str(),
-                1,
-                true,
-                "offline");
+                clientId.c_str(), config.username.c_str(), config.password.c_str(), availabilityTopic.c_str(), 1, true, "offline");
         }
         else
         {
-            connected = mqttClient->connect(
-                clientId.c_str(),
-                availabilityTopic.c_str(),
-                1,
-                true,
-                "offline");
+            connected = mqttClient->connect(clientId.c_str(), availabilityTopic.c_str(), 1, true, "offline");
         }
 
         if (connected)
@@ -211,6 +205,5 @@ namespace SQM
     {
         return config.topic + "/availability";
     }
-
 
 } // namespace SQM

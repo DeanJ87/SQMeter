@@ -172,8 +172,8 @@ void test_discovery_messages(void)
     Groups groups;
     groups.wind = false;
     std::vector<std::pair<std::string, std::string>> messages;
-    forEachDiscovery(device, groups, true, [&](const std::string &topic, const std::string &payload)
-                     { messages.emplace_back(topic, payload); });
+    forEachDiscovery(
+        device, groups, true, [&](const std::string &topic, const std::string &payload) { messages.emplace_back(topic, payload); });
 
     TEST_ASSERT_EQUAL(17, messages.size());
     bool sawSqm = false, sawWindRemoval = false, sawSafety = false, sawSwitch = false;

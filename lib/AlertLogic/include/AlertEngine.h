@@ -32,6 +32,8 @@ namespace SQM
             ClientBack,
             ClientDisconnected,
         };
+        // Keep in step with the enum: alertTypeName() is a table indexed by it.
+        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::ClientDisconnected) + 1;
 
         // How loudly an alert is delivered; set per event in the alert
         // settings. The dispatcher maps it to each channel's priority, and
@@ -111,13 +113,13 @@ namespace SQM
         // One Alpaca device as the imaging app sees it (from Alpaca::ClientWatch).
         struct ClientInputs
         {
-            const char *device = "";     // "safety monitor" / "weather device"
-            bool watching = false;       // a session since the restart
-            bool silent = false;         // no request for the silence time
+            const char *device = "";      // "safety monitor" / "weather device"
+            bool watching = false;        // a session since the restart
+            bool silent = false;          // no request for the silence time
             bool disconnectedNow = false; // disconnected cleanly since the last pass
-            std::string silentFor;       // the silence time, e.g. "2 min"
-            std::string lastChecked;     // "21:04", or "3 min ago" without a clock
-            std::string clientId;        // last Alpaca ClientID, or ""
+            std::string silentFor;        // the silence time, e.g. "2 min"
+            std::string lastChecked;      // "21:04", or "3 min ago" without a clock
+            std::string clientId;         // last Alpaca ClientID, or ""
         };
 
         struct SensorHealth

@@ -73,24 +73,34 @@ namespace SQM
             }
             const ScheduleState before = current;
             if (mode != lastMode)
-            {
-                const bool pausedByUser = !current.sending && (current.reason == ScheduleReason::UserUi || current.reason == ScheduleReason::UserRest ||
-                                                                current.reason == ScheduleReason::UserMqtt);
-                if (mode == SendMode::WhileConnected && anyConnected)
-                    set(true, ScheduleReason::ClientConnected, nowMs, epoch);
-                else if (mode == SendMode::WhileConnected && !pausedByUser)
-                    set(false, ScheduleReason::WaitingForClient, nowMs, epoch);
-                else if (!current.sending &&
-                         (current.reason == ScheduleReason::ClientDisconnected || current.reason == ScheduleReason::WaitingForClient))
-                    set(true, ScheduleReason::None, nowMs, epoch); // the pause came from the old mode
-            }
+                modeChanged(mode, anyConnected, nowMs, epoch);
             else if (mode == SendMode::WhileConnected && anyConnected != lastConnected)
-            {
                 set(anyConnected, anyConnected ? ScheduleReason::ClientConnected : ScheduleReason::ClientDisconnected, nowMs, epoch);
-            }
             lastMode = mode;
             lastConnected = anyConnected;
             return current.sending != before.sending || current.reason != before.reason;
+        }
+
+        void AlertSchedule::modeChanged(SendMode mode, bool anyConnected, uint32_t nowMs, int64_t epoch)
+        {
+            if (mode == SendMode::WhileConnected)
+            {
+                if (anyConnected)
+                    set(true, ScheduleReason::ClientConnected, nowMs, epoch);
+                else if (!pausedByUser())
+                    set(false, ScheduleReason::WaitingForClient, nowMs, epoch);
+                return;
+            }
+            // Back to "any time": a pause the old mode caused ends; a user's stays.
+            if (!current.sending &&
+                (current.reason == ScheduleReason::ClientDisconnected || current.reason == ScheduleReason::WaitingForClient))
+                set(true, ScheduleReason::None, nowMs, epoch);
+        }
+
+        bool AlertSchedule::pausedByUser() const
+        {
+            return !current.sending && (current.reason == ScheduleReason::UserUi || current.reason == ScheduleReason::UserRest ||
+                                        current.reason == ScheduleReason::UserMqtt);
         }
 
     } // namespace Alerts

@@ -8,6 +8,7 @@ Samples are named <source>-<document>.json (source = device | demo). A key is
 required when every sample of that object has it; any key no sample has is
 rejected (additionalProperties: false), so a renamed or added field shows up.
 Review the diff before committing: the schemas are the contract."""
+
 import glob
 import json
 import os

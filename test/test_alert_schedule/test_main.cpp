@@ -22,7 +22,7 @@ namespace
         schedule.update(mode, connected, 1000, 0);
         return schedule;
     }
-}
+} // namespace
 
 void test_any_mode_pause_and_resume(void)
 {

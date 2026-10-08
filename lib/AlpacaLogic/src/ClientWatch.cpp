@@ -4,8 +4,8 @@ namespace SQM
 {
     namespace Alpaca
     {
-        void ClientWatch::update(const DeviceActivity (&activity)[DEVICE_COUNT], const uint32_t (&silenceMs)[DEVICE_COUNT],
-                                 bool alpacaEnabled, uint32_t nowMs)
+        void ClientWatch::update(
+            const DeviceActivity (&activity)[DEVICE_COUNT], const uint32_t (&silenceMs)[DEVICE_COUNT], bool alpacaEnabled, uint32_t nowMs)
         {
             for (size_t i = 0; i < DEVICE_COUNT; ++i)
             {

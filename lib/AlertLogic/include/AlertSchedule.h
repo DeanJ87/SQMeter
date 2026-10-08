@@ -31,7 +31,7 @@ namespace SQM
         constexpr uint8_t SCHEDULE_REASON_MAX = 7;
 
         const char *scheduleReasonName(ScheduleReason reason); // "user-ui", "client-disconnected", ...
-        const char *sendModeName(SendMode mode);                // "any", "whileConnected"
+        const char *sendModeName(SendMode mode);               // "any", "whileConnected"
 
         struct ScheduleState
         {
@@ -64,6 +64,8 @@ namespace SQM
 
         private:
             void set(bool sending, ScheduleReason reason, uint32_t nowMs, int64_t epoch);
+            void modeChanged(SendMode mode, bool anyConnected, uint32_t nowMs, int64_t epoch);
+            bool pausedByUser() const;
 
             ScheduleState current;
             bool started = false;

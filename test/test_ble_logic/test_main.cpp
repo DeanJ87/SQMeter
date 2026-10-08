@@ -7,7 +7,10 @@ using namespace SQM::Ble;
 void setUp(void) {}
 void tearDown(void) {}
 
-static uint8_t byteAt(const std::string &s, size_t i) { return static_cast<uint8_t>(s[i]); }
+static uint8_t byteAt(const std::string &s, size_t i)
+{
+    return static_cast<uint8_t>(s[i]);
+}
 
 void test_safety_payload(void)
 {
@@ -81,9 +84,9 @@ void test_alarm_raise_encode(void)
     TEST_ASSERT_TRUE(alarm.active());
     std::string p = alarm.encode();
     TEST_ASSERT_EQUAL(13, p.size());
-    TEST_ASSERT_EQUAL_UINT8(1, byteAt(p, 0));            // seq 1
+    TEST_ASSERT_EQUAL_UINT8(1, byteAt(p, 0)); // seq 1
     TEST_ASSERT_EQUAL_UINT8(ALARM_ACTIVE, byteAt(p, 4));
-    TEST_ASSERT_EQUAL_UINT8(0x02, byteAt(p, 6));        // reason bit 9 -> byte 1 of flags
+    TEST_ASSERT_EQUAL_UINT8(0x02, byteAt(p, 6)); // reason bit 9 -> byte 1 of flags
 }
 
 void test_alarm_repeats_until_acknowledged(void)

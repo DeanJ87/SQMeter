@@ -10,19 +10,27 @@ const bleStatus = (alarm: Record<string, unknown>) =>
     http.get('/api/status', () =>
       HttpResponse.json({
         ...mockStatus,
-        ble: { available: true, active: true, clients: 1, alarm: { serviceActive: true, active: false, sequence: 0, acknowledgedSequence: 0, bondedPhones: 1, ...alarm } },
-      })
+        ble: {
+          available: true,
+          active: true,
+          clients: 1,
+          alarm: { serviceActive: true, active: false, sequence: 0, acknowledgedSequence: 0, bondedPhones: 1, ...alarm },
+        },
+      }),
     ),
-    http.get('/api/config', () =>
-      HttpResponse.json({ ...mockConfig, ble: { ...mockConfig.ble, enabled: true, passkey: '********' } })
-    )
+    http.get('/api/config', () => HttpResponse.json({ ...mockConfig, ble: { ...mockConfig.ble, enabled: true, passkey: '********' } })),
   );
 
 describe('Device tab - Bluetooth phone alarm', () => {
   it('shows a ringing alarm and acknowledges it', async () => {
     let acked = false;
     bleStatus({ active: true, sequence: 4 });
-    server.use(http.post('/api/ble/ack', () => { acked = true; return HttpResponse.json({ success: true }, { status: 202 }); }));
+    server.use(
+      http.post('/api/ble/ack', () => {
+        acked = true;
+        return HttpResponse.json({ success: true }, { status: 202 });
+      }),
+    );
     render(<Settings />);
 
     expect(await screen.findByText('Alarm #4 ringing')).toBeInTheDocument();
@@ -34,7 +42,12 @@ describe('Device tab - Bluetooth phone alarm', () => {
   it('asks before unpairing every phone', async () => {
     let forgot = false;
     bleStatus({});
-    server.use(http.post('/api/ble/forget-bonds', () => { forgot = true; return HttpResponse.json({ success: true }, { status: 202 }); }));
+    server.use(
+      http.post('/api/ble/forget-bonds', () => {
+        forgot = true;
+        return HttpResponse.json({ success: true }, { status: 202 });
+      }),
+    );
     render(<Settings />);
 
     fireEvent.click(await screen.findByText('Unpair all phones'));
@@ -56,7 +69,7 @@ describe('Device tab - Bluetooth phone alarm', () => {
   it('turns the alarm off without a passkey', async () => {
     server.use(
       http.get('/api/status', () => HttpResponse.json({ ...mockStatus, ble: { available: true, active: true, clients: 0 } })),
-      http.get('/api/config', () => HttpResponse.json({ ...mockConfig, ble: { ...mockConfig.ble, enabled: true, passkey: '' } }))
+      http.get('/api/config', () => HttpResponse.json({ ...mockConfig, ble: { ...mockConfig.ble, enabled: true, passkey: '' } })),
     );
     render(<Settings />);
     expect(await screen.findByText('Set a passkey to turn on the phone alarm.')).toBeInTheDocument();

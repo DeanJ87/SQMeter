@@ -1,0 +1,133 @@
+{
+  "about": "Existing coding-standard findings per rule per file (spec 017). New findings fail CI; burn these down and run `python3 tools/quality/check.py --update-baseline`.",
+  "counts": {
+    "LIMIT-01": {
+      "lib/AlertLogic/src/AlertEngine.cpp": 1,
+      "lib/AlpacaLogic/src/AlpacaRouter.cpp": 1,
+      "lib/AlpacaLogic/src/SafetyEvaluator.cpp": 1,
+      "lib/ConfigModel/src/ConfigModel.cpp": 4,
+      "lib/DeviceCore/src/DeviceCore.cpp": 1,
+      "lib/Readings/src/Readings.cpp": 2,
+      "src/AlertDispatcher.cpp": 1,
+      "src/OtaUpdater.cpp": 1,
+      "src/TimeManager.cpp": 1,
+      "src/WebServer.cpp": 8,
+      "src/main.cpp": 2,
+      "src/sensors/RG15Sensor.cpp": 2,
+      "src/sensors/TSL2591Sensor.cpp": 1,
+      "tools/demo-core/bridge.cpp": 1,
+      "web/src/components/Dashboard.tsx": 1,
+      "web/src/components/settings/AlertsTab.tsx": 1,
+      "web/src/components/settings/SensorsTab.tsx": 1,
+      "web/src/demo/DemoPanel.tsx": 1,
+      "web/src/hooks/useWebSocket.ts": 1,
+      "web/src/mocks/data.ts": 1
+    },
+    "LIMIT-02": {
+      "lib/AlertLogic/src/AlertEngine.cpp": 1,
+      "lib/AlpacaLogic/src/AlpacaRouter.cpp": 1,
+      "lib/AlpacaLogic/src/ObservingConditionsMapper.cpp": 1,
+      "lib/AlpacaLogic/src/SafetyEvaluator.cpp": 1,
+      "lib/ConfigModel/src/ConfigModel.cpp": 3,
+      "lib/DeviceCore/src/DeviceCore.cpp": 1,
+      "lib/RainLogic/src/RainLogic.cpp": 1,
+      "lib/Readings/src/Readings.cpp": 1,
+      "src/AlertDispatcher.cpp": 1,
+      "src/OtaUpdater.cpp": 1,
+      "src/WebServer.cpp": 5,
+      "src/main.cpp": 1,
+      "src/sensors/RG15Sensor.cpp": 2,
+      "tools/demo-core/bridge.cpp": 1,
+      "web/src/components/AlertsBell.tsx": 1,
+      "web/src/components/Dashboard.tsx": 1,
+      "web/src/components/NightChart.tsx": 1,
+      "web/src/components/System.tsx": 1,
+      "web/src/components/Updates.tsx": 1,
+      "web/src/components/WifiSetup.tsx": 1,
+      "web/src/components/settings/AlertsTab.tsx": 2,
+      "web/src/components/settings/DeviceTab.tsx": 1,
+      "web/src/components/settings/NetworkTab.tsx": 1,
+      "web/src/components/settings/SensorsTab.tsx": 1,
+      "web/src/components/settings/TimeTab.tsx": 1,
+      "web/src/components/settings/hardware.ts": 1,
+      "web/src/components/settings/restart.ts": 1,
+      "web/src/components/settings/tabs.ts": 1,
+      "web/src/demo/simulator.ts": 1,
+      "web/src/hooks/useWifiScan.ts": 1,
+      "web/src/utils/versionCompare.ts": 1
+    },
+    "LIMIT-03": {
+      "lib/AlertLogic/src/AlertEngine.cpp": 1,
+      "lib/DeviceCore/src/DeviceCore.cpp": 4,
+      "lib/SkyLogic/src/CloudDetection.cpp": 1,
+      "src/AlertDispatcher.cpp": 1,
+      "src/OtaUpdater.cpp": 1,
+      "src/WebServer.cpp": 3,
+      "src/sensors/RG15Sensor.cpp": 2
+    },
+    "LIMIT-04": {
+      "lib/ConfigModel/src/ConfigModel.cpp": 1,
+      "lib/DeviceCore/src/DeviceCore.cpp": 1,
+      "src/WebServer.cpp": 1,
+      "src/sensors/RG15Sensor.cpp": 1,
+      "test/test_alpaca_logic/test_main.cpp": 1,
+      "tools/demo-core/bridge.cpp": 1,
+      "web/src/components/Dashboard.tsx": 1,
+      "web/src/components/settings/AlertsTab.tsx": 1,
+      "web/src/components/settings/SensorsTab.tsx": 1,
+      "web/src/mocks/data.ts": 1,
+      "web/src/types/index.ts": 1
+    },
+    "LIMIT-05": {
+      "tools/contract-check.py": 1,
+      "web/src/hooks/useWifiScan.ts": 2
+    },
+    "LINT-01": {
+      "lib/DeviceCore/src/DeviceCore.cpp": 1,
+      "lib/SkyLogic/src/CloudDetection.cpp": 2,
+      "lib/SkyLogic/src/SkyQuality.cpp": 2,
+      "tools/contract-check.py": 1,
+      "tools/demo-core/source_hash.py": 1,
+      "web/src/components/Masonry.tsx": 1,
+      "web/src/components/NightChart.tsx": 1,
+      "web/src/components/Settings.tsx": 2,
+      "web/src/components/WifiSetup.tsx": 1
+    },
+    "NAME-02": {
+      "lib/AlertLogic/src/AlertEngine.cpp": 1,
+      "lib/DeviceCore/src/DeviceCore.cpp": 1
+    },
+    "NAME-03": {
+      "lib/AlpacaLogic/include/SafetyEvaluator.h": 14,
+      "lib/BleLogic/include/BleAlarm.h": 3,
+      "lib/BleLogic/include/BlePayloads.h": 5,
+      "lib/SensorTypes/include/SensorTypes.h": 15,
+      "lib/SkyLogic/src/Dewpoint.cpp": 2
+    },
+    "NAME-05": {
+      "web/src/components/__tests__/SkyCalibration.test.tsx": 1,
+      "web/tests/screenshots.spec.ts": 1
+    },
+    "SMELL-11": {
+      "web/src/components/Updates.tsx": 1
+    },
+    "SMELL-18": {
+      "web/src/components/Settings.tsx": 1
+    },
+    "STRUCT-04": {
+      "web/src/components/AlertsBell.tsx": 3,
+      "web/src/components/Alpaca.tsx": 3,
+      "web/src/components/Dashboard.tsx": 1,
+      "web/src/components/SafetyCard.tsx": 1,
+      "web/src/components/Settings.tsx": 4,
+      "web/src/components/System.tsx": 2,
+      "web/src/components/Updates.tsx": 5,
+      "web/src/components/WifiSetup.tsx": 2,
+      "web/src/components/settings/AlertsTab.tsx": 3,
+      "web/src/components/settings/DeviceTab.tsx": 1,
+      "web/src/components/settings/NetworkTab.tsx": 1,
+      "web/src/components/settings/SafetyTab.tsx": 1,
+      "web/src/components/settings/SensorsTab.tsx": 2
+    }
+  }
+}

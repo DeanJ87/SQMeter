@@ -36,7 +36,7 @@ describe('AlertsBell', () => {
       http.post('/api/alerts/clear', () => {
         cleared = true;
         return HttpResponse.json({ success: true });
-      })
+      }),
     );
     render(<AlertsBell />);
     fireEvent.click(await screen.findByRole('button', { name: /Alerts, 2 new/ }));
@@ -51,7 +51,7 @@ describe('AlertsBell', () => {
       http.post('/api/alerts/disarm', () => {
         disarmed = true;
         return HttpResponse.json({ armed: false }, { status: 202 });
-      })
+      }),
     );
     render(<AlertsBell />);
     fireEvent.click(await screen.findByRole('button', { name: /Alerts, 2 new/ }));

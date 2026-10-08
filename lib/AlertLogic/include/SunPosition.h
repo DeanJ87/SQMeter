@@ -13,7 +13,7 @@ namespace SQM
         double sunElevationDeg(int64_t unixSeconds, double latitudeDeg, double longitudeDeg);
 
         // Standard thresholds for the sun's centre.
-        constexpr double SUNSET_DEG = -0.833;      // upper limb at the horizon, with refraction
+        constexpr double SUNSET_DEG = -0.833; // upper limb at the horizon, with refraction
         constexpr double NAUTICAL_DARK_DEG = -12.0;
         constexpr double ASTRONOMICAL_DARK_DEG = -18.0;
 

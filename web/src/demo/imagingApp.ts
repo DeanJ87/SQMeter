@@ -21,7 +21,11 @@ class ImagingApp {
 
   private request(method: 'GET' | 'PUT', device: (typeof DEVICES)[number], action: string, params: [string, string][] = []) {
     this.transaction += 1;
-    demoDevice.alpaca(method, `/api/v1/${device}/0/${action}`, [...params, ['ClientID', CLIENT_ID], ['ClientTransactionID', String(this.transaction)]]);
+    demoDevice.alpaca(method, `/api/v1/${device}/0/${action}`, [
+      ...params,
+      ['ClientID', CLIENT_ID],
+      ['ClientTransactionID', String(this.transaction)],
+    ]);
   }
 
   private poll() {

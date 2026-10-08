@@ -116,7 +116,10 @@ namespace SQM
         class AlpacaBackend : public Alpaca::Backend
         {
         public:
-            explicit AlpacaBackend(WebServer &owner) : owner(owner) {}
+            explicit AlpacaBackend(WebServer &owner)
+                : owner(owner)
+            {
+            }
             bool alpacaEnabled() const override;
             bool isSafe() const override;
             Alpaca::ObservingConditionsSnapshot observingConditions() const override;
@@ -149,7 +152,10 @@ namespace SQM
         Alerts::AlertSchedule alertSchedule;
         // -1 none, else source * 2 + (resume ? 1 : 0), source an Alerts::ScheduleReason.
         std::atomic<int8_t> pendingArm{-1};
-        static int8_t encodeArm(bool resume, Alerts::ScheduleReason source) { return static_cast<int8_t>(static_cast<int>(source) * 2 + (resume ? 1 : 0)); }
+        static int8_t encodeArm(bool resume, Alerts::ScheduleReason source)
+        {
+            return static_cast<int8_t>(static_cast<int>(source) * 2 + (resume ? 1 : 0));
+        }
         // Whether the imaging app is still checking each Alpaca device.
         Alpaca::ClientWatch clientWatch;
         // Copies for the HTTP handlers, which run on the AsyncTCP task.
@@ -157,7 +163,7 @@ namespace SQM
         Alpaca::ClientWatch clientWatchShared;
         mutable portMUX_TYPE scheduleLock = portMUX_INITIALIZER_UNLOCKED;
         void shareSchedule();
-        Alerts::ScheduleState sharedSchedule() const;   // with any pending pause/resume applied
+        Alerts::ScheduleState sharedSchedule() const; // with any pending pause/resume applied
         Alpaca::ClientWatch sharedClientWatch() const;
         uint32_t mqttArmedConnection = 0xFFFFFFFF;
         void applyPendingArm();
@@ -226,20 +232,10 @@ namespace SQM
 
         // WebSocket handlers
         void onSensorWebSocketEvent(
-            AsyncWebSocket *server,
-            AsyncWebSocketClient *client,
-            AwsEventType type,
-            void *arg,
-            uint8_t *data,
-            size_t len);
+            AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 
         void onStatusWebSocketEvent(
-            AsyncWebSocket *server,
-            AsyncWebSocketClient *client,
-            AwsEventType type,
-            void *arg,
-            uint8_t *data,
-            size_t len);
+            AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 
         // Helper functions
         bool requireAuth(AsyncWebServerRequest *request) const;

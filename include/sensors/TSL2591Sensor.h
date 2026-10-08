@@ -9,10 +9,6 @@
 namespace SQM
 {
 
-
-
-
-
     class TSL2591Sensor : public SensorBase
     {
     public:

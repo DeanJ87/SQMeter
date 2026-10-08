@@ -34,10 +34,15 @@ namespace SQM
         // Streams an HTTPS GET body to `onChunk`, reporting progress scaled
         // into [progressFrom, progressTo]. Shared by the firmware and
         // filesystem downloads so both go through identical retry/EOF logic.
-        bool streamDownload(const std::string &url, size_t sizeHint, int progressFrom, int progressTo,
-                             const std::function<bool(const uint8_t *, size_t)> &onChunk,
-                             const OtaUpdater::ProgressCallback &progressCb,
-                             size_t &written, std::string &error)
+        bool streamDownload(
+            const std::string &url,
+            size_t sizeHint,
+            int progressFrom,
+            int progressTo,
+            const std::function<bool(const uint8_t *, size_t)> &onChunk,
+            const OtaUpdater::ProgressCallback &progressCb,
+            size_t &written,
+            std::string &error)
         {
             WiFiClientSecure client;
             client.setCACert(GITHUB_ROOT_CA_PEM);
@@ -95,8 +100,8 @@ namespace SQM
                 written += readBytes;
                 if (expectedSize > 0 && progressCb)
                 {
-                    int percent = progressFrom + static_cast<int>(
-                                                      (written * static_cast<uint64_t>(progressTo - progressFrom)) / expectedSize);
+                    int percent =
+                        progressFrom + static_cast<int>((written * static_cast<uint64_t>(progressTo - progressFrom)) / expectedSize);
                     if (percent != lastPercent)
                     {
                         lastPercent = percent;
@@ -114,10 +119,12 @@ namespace SQM
 
             return true;
         }
-    }
+    } // namespace
 
     OtaUpdater::OtaUpdater(ProgressCallback onProgress, ErrorCallback onError, RestartCallback onRestart)
-        : progressCb(std::move(onProgress)), errorCb(std::move(onError)), restartCb(std::move(onRestart))
+        : progressCb(std::move(onProgress)),
+          errorCb(std::move(onError)),
+          restartCb(std::move(onRestart))
     {
     }
 
@@ -247,10 +254,14 @@ namespace SQM
         size_t written = 0;
         std::string error;
         bool ok = streamDownload(
-            url, expectedSize, progressFrom, progressTo,
-            [](const uint8_t *data, size_t len)
-            { return Update.write(const_cast<uint8_t *>(data), len) == len; },
-            progressCb, written, error);
+            url,
+            expectedSize,
+            progressFrom,
+            progressTo,
+            [](const uint8_t *data, size_t len) { return Update.write(const_cast<uint8_t *>(data), len) == len; },
+            progressCb,
+            written,
+            error);
 
         if (!ok)
         {
@@ -282,8 +293,7 @@ namespace SQM
 
     bool OtaUpdater::downloadAndFlashFilesystem(const std::string &url, size_t expectedSize, int progressFrom, int progressTo)
     {
-        const esp_partition_t *fsPartition = esp_partition_find_first(
-            ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, NULL);
+        const esp_partition_t *fsPartition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, NULL);
 
         if (!fsPartition)
         {
@@ -295,8 +305,8 @@ namespace SQM
 
         if (expectedSize > fsPartition->size)
         {
-            Logger::error(TAG, "Filesystem image too large (%u > %u)",
-                           static_cast<unsigned>(expectedSize), static_cast<unsigned>(fsPartition->size));
+            Logger::error(
+                TAG, "Filesystem image too large (%u > %u)", static_cast<unsigned>(expectedSize), static_cast<unsigned>(fsPartition->size));
             if (errorCb)
                 errorCb("Filesystem image too large for partition");
             return false;
@@ -319,7 +329,10 @@ namespace SQM
         size_t written = 0;
         std::string error;
         bool ok = streamDownload(
-            url, expectedSize, progressFrom, progressTo,
+            url,
+            expectedSize,
+            progressFrom,
+            progressTo,
             [fsPartition, &writeOffset](const uint8_t *data, size_t len)
             {
                 if (esp_partition_write(fsPartition, writeOffset, data, len) != ESP_OK)
@@ -327,7 +340,9 @@ namespace SQM
                 writeOffset += len;
                 return true;
             },
-            progressCb, written, error);
+            progressCb,
+            written,
+            error);
 
         if (!ok)
         {

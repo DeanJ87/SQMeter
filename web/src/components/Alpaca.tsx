@@ -1,8 +1,9 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { route } from 'preact-router';
-import type { AlpacaConfiguredDevice, AlpacaDeviceStateItem, AlpacaResponse, Config, SafetyStatus, SystemStatus } from '../types';
+import type { AlpacaConfiguredDevice, AlpacaDeviceStateItem, AlpacaResponse, Config, SafetyStatus } from '../types';
 import { describeClient } from '../lib/alpacaClients';
+import { useAlpacaClients, type AlpacaClients } from '../hooks/useAlpacaClients';
 import SafetyCard from './SafetyCard';
 import { Button, Card, Note, Pill, ReadingRow } from './ui';
 
@@ -55,8 +56,26 @@ const CopyableUrl: FunctionalComponent<{ label: string; url: string; open?: bool
   );
 };
 
-const deviceBasePath = (device: AlpacaConfiguredDevice) =>
-  `/api/v1/${device.DeviceType.toLowerCase()}/${device.DeviceNumber}`;
+const deviceBasePath = (device: AlpacaConfiguredDevice) => `/api/v1/${device.DeviceType.toLowerCase()}/${device.DeviceNumber}`;
+
+const CLIENT_TONE = { ok: 'tone-green', warn: 'tone-amber', muted: '' } as const;
+
+// Whether an imaging app is checking each device (specs/021).
+const ImagingAppState: FunctionalComponent<{ clients: AlpacaClients | null; enabled: boolean }> = ({ clients, enabled }) =>
+  enabled && clients ? (
+    <div class="card-group">
+      <h3 class="card-group-title">Imaging app</h3>
+      {(
+        [
+          ['Safety monitor', clients.safetymonitor],
+          ['Weather device', clients.observingconditions],
+        ] as const
+      ).map(([label, state]) => {
+        const { text, tone } = describeClient(state);
+        return <ReadingRow key={label} label={label} value={text} valueClass={CLIENT_TONE[tone]} />;
+      })}
+    </div>
+  ) : null;
 
 const Alpaca: FunctionalComponent = () => {
   const [config, setConfig] = useState<Config | null>(null);
@@ -64,7 +83,7 @@ const Alpaca: FunctionalComponent = () => {
   const [deviceStates, setDeviceStates] = useState<Record<string, AlpacaDeviceStateItem[] | null>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [safety, setSafety] = useState<SafetyStatus | null>(null);
-  const [clients, setClients] = useState<NonNullable<SystemStatus['alpaca']>['clients'] | null>(null);
+  const clients = useAlpacaClients(POLL_INTERVAL_MS);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
@@ -76,9 +95,7 @@ const Alpaca: FunctionalComponent = () => {
       .then((data) => setConfig(data))
       .catch(() => setConfig(null));
 
-    alpacaGet<AlpacaConfiguredDevice[]>('/management/v1/configureddevices').then((response) =>
-      setDevices(response?.Value ?? [])
-    );
+    alpacaGet<AlpacaConfiguredDevice[]>('/management/v1/configureddevices').then((response) => setDevices(response?.Value ?? []));
   }, []);
 
   useEffect(() => {
@@ -87,18 +104,8 @@ const Alpaca: FunctionalComponent = () => {
         .then((response) => (response.ok ? response.json() : null))
         .then((data) => setSafety(data))
         .catch(() => setSafety(null));
-    // Whether an imaging app is checking each device (older firmware: not reported).
-    const pollClients = () =>
-      fetch('/api/status')
-        .then((response) => (response.ok ? response.json() : null))
-        .then((data: SystemStatus | null) => setClients(data?.alpaca?.clients ?? null))
-        .catch(() => setClients(null));
     pollSafety();
-    pollClients();
-    const timer = setInterval(() => {
-      pollSafety();
-      pollClients();
-    }, POLL_INTERVAL_MS);
+    const timer = setInterval(pollSafety, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
   }, []);
 
@@ -111,7 +118,7 @@ const Alpaca: FunctionalComponent = () => {
           // source=ui: this page isn't an imaging app watching the device.
           const response = await alpacaGet<AlpacaDeviceStateItem[]>(`${deviceBasePath(device)}/devicestate?source=ui`);
           return [device.UniqueID, response && response.ErrorNumber === 0 ? response.Value : null] as const;
-        })
+        }),
       );
       setDeviceStates(Object.fromEntries(entries));
       setLastUpdated(new Date());
@@ -145,20 +152,7 @@ const Alpaca: FunctionalComponent = () => {
             <CopyableUrl label="Description" url={`${origin}/management/v1/description`} open />
             <CopyableUrl label="Devices" url={`${origin}/management/v1/configureddevices`} open />
           </div>
-          {enabled && clients && (
-            <div class="card-group">
-              <h3 class="card-group-title">Imaging app</h3>
-              {(
-                [
-                  ['Safety monitor', clients.safetymonitor],
-                  ['Weather device', clients.observingconditions],
-                ] as const
-              ).map(([label, state]) => {
-                const { text, tone } = describeClient(state);
-                return <ReadingRow key={label} label={label} value={text} valueClass={tone === 'ok' ? 'tone-green' : tone === 'warn' ? 'tone-amber' : ''} />;
-              })}
-            </div>
-          )}
+          <ImagingAppState clients={clients} enabled={enabled} />
           <div>
             <Button variant="link" onClick={() => route('/settings?tab=safety')}>
               Alpaca and safety settings →
@@ -178,7 +172,11 @@ const Alpaca: FunctionalComponent = () => {
               <div>
                 <ReadingRow label="Type" value={`${device.DeviceType} #${device.DeviceNumber}`} />
                 <ReadingRow label="Unique ID" value={device.UniqueID} />
-                <CopyableUrl label="Setup page" url={`${origin}/setup/v1/${device.DeviceType.toLowerCase()}/${device.DeviceNumber}/setup`} open />
+                <CopyableUrl
+                  label="Setup page"
+                  url={`${origin}/setup/v1/${device.DeviceType.toLowerCase()}/${device.DeviceNumber}/setup`}
+                  open
+                />
                 <CopyableUrl label="API base" url={`${origin}${base}`} />
                 <CopyableUrl label="Device state" url={`${origin}${base}/devicestate`} open />
                 {device.DeviceType === 'SafetyMonitor' && <CopyableUrl label="IsSafe" url={`${origin}${base}/issafe`} open />}

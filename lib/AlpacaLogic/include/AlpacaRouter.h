@@ -68,7 +68,7 @@ namespace SQM
             uint32_t requests = 0;    // every device request, any method (except the web UI's, source=ui)
             uint32_t disconnects = 0; // clean disconnects of a connected device
             bool hasClientId = false;
-            uint32_t clientId = 0;    // ClientID of the latest request that sent one
+            uint32_t clientId = 0; // ClientID of the latest request that sent one
         };
 
         class Router

@@ -37,8 +37,8 @@ namespace SQM
             out.reserve(value.size() * 3);
             for (unsigned char c : value)
             {
-                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
-                    c == '-' || c == '_' || c == '.' || c == '~')
+                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' ||
+                    c == '~')
                 {
                     out += static_cast<char>(c);
                 }
@@ -63,9 +63,14 @@ namespace SQM
             return now >= 1704067200 ? static_cast<int64_t>(now) : 0;
         }
 
-        bool httpPost(const std::string &url, const char *contentType, const std::string &body,
-                      const std::vector<std::pair<std::string, std::string>> &headers, bool insecureTls,
-                      std::string &detail, const char *rootCa = ALERT_ROOT_CA_PEM)
+        bool httpPost(
+            const std::string &url,
+            const char *contentType,
+            const std::string &body,
+            const std::vector<std::pair<std::string, std::string>> &headers,
+            bool insecureTls,
+            std::string &detail,
+            const char *rootCa = ALERT_ROOT_CA_PEM)
         {
             std::unique_ptr<WiFiClient> client;
             if (url.rfind("https://", 0) == 0)
@@ -125,43 +130,30 @@ namespace SQM
 
         const char *ntfyTags(Alerts::AlertType type)
         {
-            switch (type)
-            {
-            case Alerts::AlertType::Unsafe:
-                return "warning";
-            case Alerts::AlertType::Safe:
-                return "white_check_mark";
-            case Alerts::AlertType::RainStarted:
-                return "cloud_with_rain";
-            case Alerts::AlertType::RainStopped:
-                return "sun_behind_small_cloud";
-            case Alerts::AlertType::SensorFault:
-            case Alerts::AlertType::LensFault:
-                return "rotating_light";
-            case Alerts::AlertType::SensorRecovered:
-                return "wrench";
-            case Alerts::AlertType::DewRisk:
-                return "droplet";
-            case Alerts::AlertType::ClearSky:
-                return "star";
-            case Alerts::AlertType::CloudedOver:
-                return "cloud";
-            case Alerts::AlertType::Acknowledged:
-                return "ok_hand";
-            case Alerts::AlertType::AlertsOn:
-                return "telescope";
-            case Alerts::AlertType::Test:
-                return "test_tube";
-            case Alerts::AlertType::ClientLost:
-                return "satellite";
-            case Alerts::AlertType::ClientBack:
-                return "link";
-            case Alerts::AlertType::ClientDisconnected:
-                return "electric_plug";
-            }
-            return "bell";
+            // In AlertType order (lib/AlertLogic/include/AlertEngine.h).
+            static constexpr const char *TAGS[] = {
+                "warning",                // Unsafe
+                "white_check_mark",       // Safe
+                "cloud_with_rain",        // RainStarted
+                "sun_behind_small_cloud", // RainStopped
+                "rotating_light",         // SensorFault
+                "wrench",                 // SensorRecovered
+                "rotating_light",         // LensFault
+                "droplet",                // DewRisk
+                "star",                   // ClearSky
+                "cloud",                  // CloudedOver
+                "ok_hand",                // Acknowledged
+                "telescope",              // AlertsOn
+                "test_tube",              // Test
+                "satellite",              // ClientLost
+                "link",                   // ClientBack
+                "electric_plug",          // ClientDisconnected
+            };
+            static_assert(sizeof(TAGS) / sizeof(TAGS[0]) == Alerts::ALERT_TYPE_COUNT, "a tag for every AlertType");
+            const size_t index = static_cast<size_t>(type);
+            return index < Alerts::ALERT_TYPE_COUNT ? TAGS[index] : "bell";
         }
-    }
+    } // namespace
 
     const char *alertChannelName(AlertChannel channel)
     {
@@ -198,7 +190,8 @@ namespace SQM
     }
 
     AlertDispatcher::AlertDispatcher(MQTTClient *mqttClient, BusyCheck busy)
-        : mqtt(mqttClient), networkBusy(std::move(busy))
+        : mqtt(mqttClient),
+          networkBusy(std::move(busy))
     {
     }
 
@@ -385,10 +378,8 @@ namespace SQM
     {
         const int priority = Alerts::pushoverPriority(job.alert.level);
 
-        std::string body = "token=" + urlEncode(job.cfg.pushoverAppToken) +
-                           "&user=" + urlEncode(job.cfg.pushoverUserKey) +
-                           "&title=" + urlEncode(fullTitle(job.deviceName, job.alert.title)) +
-                           "&message=" + urlEncode(job.alert.message) +
+        std::string body = "token=" + urlEncode(job.cfg.pushoverAppToken) + "&user=" + urlEncode(job.cfg.pushoverUserKey) +
+                           "&title=" + urlEncode(fullTitle(job.deviceName, job.alert.title)) + "&message=" + urlEncode(job.alert.message) +
                            "&priority=" + std::to_string(priority);
         if (priority == 2)
             body += "&retry=60&expire=3600"; // emergency: repeat every minute for up to an hour until acknowledged
@@ -396,8 +387,8 @@ namespace SQM
         if (!sound.empty())
             body += "&sound=" + urlEncode(sound);
 
-        return httpPost("https://api.pushover.net/1/messages.json", "application/x-www-form-urlencoded", body, {}, false, detail,
-                        PUSHOVER_ROOT_CA_PEM);
+        return httpPost(
+            "https://api.pushover.net/1/messages.json", "application/x-www-form-urlencoded", body, {}, false, detail, PUSHOVER_ROOT_CA_PEM);
     }
 
     bool AlertDispatcher::sendNtfy(const Job &job, std::string &detail)
@@ -416,8 +407,14 @@ namespace SQM
             headers.push_back({"Authorization", "Bearer " + job.cfg.ntfyToken});
 
         const bool ntfySh = server == "https://ntfy.sh";
-        return httpPost(server + "/" + urlEncode(job.cfg.ntfyTopic), "text/plain; charset=utf-8", job.alert.message, headers, false, detail,
-                        ntfySh ? NTFY_SH_ROOT_CA_PEM : ALERT_ROOT_CA_PEM);
+        return httpPost(
+            server + "/" + urlEncode(job.cfg.ntfyTopic),
+            "text/plain; charset=utf-8",
+            job.alert.message,
+            headers,
+            false,
+            detail,
+            ntfySh ? NTFY_SH_ROOT_CA_PEM : ALERT_ROOT_CA_PEM);
     }
 
     bool AlertDispatcher::sendWebhook(const Job &job, std::string &detail)

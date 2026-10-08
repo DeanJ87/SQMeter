@@ -128,15 +128,17 @@ void test_arm_with_alpaca_migrates_and_is_still_written()
     TEST_ASSERT_TRUE(main["sendMode"].isNull());
     TEST_ASSERT_TRUE(main["events"]["client_lost"].isNull());
 
-    TEST_ASSERT_EQUAL_STRING("Alerts: when to send must be any or whileConnected",
-                             rejectReason("{\"alerts\":{\"sendMode\":\"sometimes\"}}").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "Alerts: when to send must be any or whileConnected", rejectReason("{\"alerts\":{\"sendMode\":\"sometimes\"}}").c_str());
 }
 
 void test_client_silence_boundaries()
 {
-    TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"alerts\":{\"clientSilentSafetySeconds\":30,\"clientSilentWeatherSeconds\":3600}}").c_str());
-    TEST_ASSERT_EQUAL_STRING("Alerts: silence times must be between 30 and 3600 seconds",
-                             rejectReason("{\"alerts\":{\"clientSilentSafetySeconds\":29}}").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "", rejectReason("{\"alerts\":{\"clientSilentSafetySeconds\":30,\"clientSilentWeatherSeconds\":3600}}").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "Alerts: silence times must be between 30 and 3600 seconds",
+        rejectReason("{\"alerts\":{\"clientSilentSafetySeconds\":29}}").c_str());
     TEST_ASSERT_TRUE(rejectReason("{\"alerts\":{\"clientSilentWeatherSeconds\":3601}}").size() > 0);
 }
 

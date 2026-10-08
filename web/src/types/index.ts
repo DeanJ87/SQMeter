@@ -448,14 +448,7 @@ export type AlertChannelName = 'mqtt' | 'pushover' | 'ntfy' | 'webhook';
 export type AlertSendMode = 'any' | 'whileConnected';
 
 export type AlertScheduleReason =
-  | 'none'
-  | 'user-ui'
-  | 'user-rest'
-  | 'user-mqtt'
-  | 'client-connected'
-  | 'client-disconnected'
-  | 'waiting-for-client'
-  | 'migrated';
+  'none' | 'user-ui' | 'user-rest' | 'user-mqtt' | 'client-connected' | 'client-disconnected' | 'waiting-for-client' | 'migrated';
 
 // GET /api/alerts/armed, and /api/status "alerts". Older firmware sends only
 // armed and armWithAlpaca.

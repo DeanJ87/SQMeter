@@ -18,7 +18,7 @@ namespace SQM
             // polling across a device restart without connecting again).
             // After a clean disconnect only a new connect counts.
             bool watching = false;
-            bool silent = false;       // watching, but no request for the silence time
+            bool silent = false;        // watching, but no request for the silence time
             bool everRequested = false; // since the restart
             uint32_t lastRequestMs = 0;
             bool hasClientId = false;
@@ -31,8 +31,11 @@ namespace SQM
         public:
             // Call regularly (every alert pass). `silenceMs` per device, in
             // Device order. With Alpaca off nothing is watched.
-            void update(const DeviceActivity (&activity)[DEVICE_COUNT], const uint32_t (&silenceMs)[DEVICE_COUNT], bool alpacaEnabled,
-                        uint32_t nowMs);
+            void update(
+                const DeviceActivity (&activity)[DEVICE_COUNT],
+                const uint32_t (&silenceMs)[DEVICE_COUNT],
+                bool alpacaEnabled,
+                uint32_t nowMs);
 
             const ClientState &state(Device device) const { return states[static_cast<size_t>(device)]; }
 

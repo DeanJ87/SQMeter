@@ -33,7 +33,9 @@ export const describeSchedule = (schedule: AlertSchedule): string => {
     if (whileConnected && schedule.reason === 'client-connected') return `Sending alerts - an imaging app connected${at}.`;
     return 'Sending alerts.';
   }
-  const resume = whileConnected ? ' Alerts resume when an imaging app connects, or when you resume them.' : ' Alerts resume when you resume them.';
+  const resume = whileConnected
+    ? ' Alerts resume when an imaging app connects, or when you resume them.'
+    : ' Alerts resume when you resume them.';
   switch (schedule.reason) {
     case 'client-disconnected':
       return `Paused - the imaging app disconnected${at}. Alerts resume when it connects again.`;
@@ -62,7 +64,9 @@ export const describeSilentClients = (clients: { safetymonitor: AlpacaClientStat
     ] as const
   )
     .filter(([, state]) => state.silent)
-    .map(([name, state]) => (state.lastCheckedAgeMs === null ? name : `${name} last checked ${formatDuration(state.lastCheckedAgeMs)} ago`));
+    .map(([name, state]) =>
+      state.lastCheckedAgeMs === null ? name : `${name} last checked ${formatDuration(state.lastCheckedAgeMs)} ago`,
+    );
   return silent.length ? `The imaging app has gone quiet - ${silent.join(', ')}.` : null;
 };
 

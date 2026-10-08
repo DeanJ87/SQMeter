@@ -164,9 +164,8 @@ namespace
         }
         const char *reason = response.status == 200 ? "OK" : response.status == 400 ? "Bad Request" : "Not Found";
         std::string reply = "HTTP/1.1 " + std::to_string(response.status) + " " + reason + "\r\n" +
-                            "Content-Type: " + response.contentType + "\r\n" +
-                            "Content-Length: " + std::to_string(response.body.size()) + "\r\n" +
-                            "Connection: close\r\n\r\n" + response.body;
+                            "Content-Type: " + response.contentType + "\r\n" + "Content-Length: " + std::to_string(response.body.size()) +
+                            "\r\n" + "Connection: close\r\n\r\n" + response.body;
         sendAll(client, reply);
         std::printf("%s %s -> %d\n", method.c_str(), target.c_str(), response.status);
         std::fflush(stdout);

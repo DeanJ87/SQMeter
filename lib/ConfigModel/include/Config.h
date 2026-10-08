@@ -38,13 +38,13 @@ namespace SQM
         // specs/013-data-interfaces/contracts/mqtt-topics.md.
         struct Publish
         {
-            bool sky = true;         // light + sky quality
+            bool sky = true; // light + sky quality
             bool environment = true;
-            bool clouds = true;      // IR temperatures + cloud cover
+            bool clouds = true; // IR temperatures + cloud cover
             bool gps = true;
             bool rain = true;
             bool wind = true;
-            bool safety = true;      // <topic>/safe and <topic>/safety
+            bool safety = true;       // <topic>/safe and <topic>/safety
             bool diagnostics = false; // <topic>/diagnostics
         } publish;
         bool homeAssistant = false; // MQTT discovery
@@ -67,10 +67,10 @@ namespace SQM
     struct NTPConfig
     {
         bool enabled;
-        std::string server1;       // Primary NTP server (e.g., "pool.ntp.org")
-        std::string server2;       // Secondary NTP server (optional fallback)
-        std::string timezone;      // POSIX timezone string (e.g., "PST8PDT,M3.2.0,M11.1.0")
-        uint32_t syncIntervalMs;   // How often to sync with NTP (default: 1 hour)
+        std::string server1;     // Primary NTP server (e.g., "pool.ntp.org")
+        std::string server2;     // Secondary NTP server (optional fallback)
+        std::string timezone;    // POSIX timezone string (e.g., "PST8PDT,M3.2.0,M11.1.0")
+        uint32_t syncIntervalMs; // How often to sync with NTP (default: 1 hour)
     };
 
     struct GPSConfig
@@ -124,9 +124,9 @@ namespace SQM
 
     struct CloudDetectionConfig
     {
-        float clearSkyThreshold;    // °C, corrected delta below which sky is clear (default: -13.0)
-        float cloudyThreshold;      // °C, corrected delta above which sky is overcast (default: -3.0)
-        float humidityCorrection;   // k1 factor for humidity correction (default: 0.75)
+        float clearSkyThreshold;  // °C, corrected delta below which sky is clear (default: -13.0)
+        float cloudyThreshold;    // °C, corrected delta above which sky is overcast (default: -3.0)
+        float humidityCorrection; // k1 factor for humidity correction (default: 0.75)
     };
 
     // Thresholds for the native ASCOM Alpaca SafetyMonitor's "is it safe"
@@ -135,9 +135,9 @@ namespace SQM
     // disabled thresholds never contribute to an unsafe verdict.
     struct AlpacaConfig
     {
-        bool enabled;                  // master switch for the Alpaca HTTP+UDP endpoints
-        bool manualOverrideUnsafe;      // force SafetyMonitor.IsSafe = false regardless of readings
-        uint32_t staleAfterSeconds;    // sensor data older than this counts as unsafe
+        bool enabled;               // master switch for the Alpaca HTTP+UDP endpoints
+        bool manualOverrideUnsafe;  // force SafetyMonitor.IsSafe = false regardless of readings
+        uint32_t staleAfterSeconds; // sensor data older than this counts as unsafe
 
         bool cloudCoverEnabled;
         float cloudCoverUnsafePercent;
@@ -153,15 +153,15 @@ namespace SQM
 
         // Rain (RG-15). Rain is checked even when the other sensors are
         // stale - nothing should ever mask "it's raining".
-        bool rainUnsafeEnabled;        // raining (incl. the rainClearDelayMs hold-off) => unsafe
-        bool rainSensorRequired;       // rain sensor enabled but offline/stale/lens fault => unsafe
+        bool rainUnsafeEnabled;  // raining (incl. the rainClearDelayMs hold-off) => unsafe
+        bool rainSensorRequired; // rain sensor enabled but offline/stale/lens fault => unsafe
 
         // Wind (anemometer). Like rain, checked regardless of the other
         // sensors' freshness.
         bool windSpeedUnsafeEnabled;
-        float windSpeedUnsafeMs;       // 2-minute mean wind speed
+        float windSpeedUnsafeMs; // 2-minute mean wind speed
         bool windGustUnsafeEnabled;
-        float windGustUnsafeMs;        // 10-minute peak gust
+        float windGustUnsafeMs; // 10-minute peak gust
 
         // Conditions must stay continuously safe this long before IsSafe
         // flips back to true (0 = report safe immediately).
@@ -191,7 +191,7 @@ namespace SQM
         EventSetting safe;
         EventSetting rainStarted;
         EventSetting rainStopped;
-        EventSetting sensorFault;      // includes the RG-15 lens fault
+        EventSetting sensorFault; // includes the RG-15 lens fault
         EventSetting sensorRecovered;
         EventSetting dewRisk;
         EventSetting clearSky;
@@ -205,8 +205,8 @@ namespace SQM
         float dewRiskMarginC;          // temperature within this of the dew point
         float clearSkyCloudPercent;    // clear below this
         float cloudedOverCloudPercent; // clouded over above this
-        bool skyNightOnly;          // sky alerts only while the sun is below nightSunAltitudeDeg
-        bool safetyNightOnly;       // safe/unsafe alerts only then too
+        bool skyNightOnly;             // sky alerts only while the sun is below nightSunAltitudeDeg
+        bool safetyNightOnly;          // safe/unsafe alerts only then too
         // When alerts are sent: any time (unless paused), or only while an
         // imaging app has an Alpaca device connected.
         enum class SendMode : uint8_t
@@ -215,45 +215,45 @@ namespace SQM
             WhileConnected = 1,
         };
         SendMode sendMode;
-        bool armWithAlpaca;         // legacy form of sendMode, still written for older firmware
+        bool armWithAlpaca; // legacy form of sendMode, still written for older firmware
         // How long a device may go without a request before "the imaging app
         // stops checking" (seconds, 30-3600).
         uint32_t clientSilentSafetySeconds;
         uint32_t clientSilentWeatherSeconds;
         static constexpr uint32_t MIN_CLIENT_SILENT_SECONDS = 30;
         static constexpr uint32_t MAX_CLIENT_SILENT_SECONDS = 3600;
-        float nightSunAltitudeDeg;  // -0.833 sunset, -12 nautical, -18 astronomical
-        uint32_t cooldownSeconds;   // min time between notifications of the same kind
+        float nightSunAltitudeDeg; // -0.833 sunset, -12 nautical, -18 astronomical
+        uint32_t cooldownSeconds;  // min time between notifications of the same kind
 
         // Channels
         bool pushoverEnabled;
         std::string pushoverUserKey;
         std::string pushoverAppToken;
-        std::string pushoverSound;  // default Pushover sound for events without their own
+        std::string pushoverSound; // default Pushover sound for events without their own
 
         bool ntfyEnabled;
-        std::string ntfyServer;     // e.g. https://ntfy.sh
+        std::string ntfyServer; // e.g. https://ntfy.sh
         std::string ntfyTopic;
-        std::string ntfyToken;      // optional access token
+        std::string ntfyToken; // optional access token
 
         bool webhookEnabled;
         std::string webhookUrl;
         std::string webhookAuthHeader; // optional Authorization header value
         bool webhookInsecureTls;       // skip certificate checks (self-signed LAN servers only)
 
-        bool mqttEnabled;           // publish to <mqtt topic>/alerts and retained <mqtt topic>/safety
+        bool mqttEnabled; // publish to <mqtt topic>/alerts and retained <mqtt topic>/safety
     };
 
     // Cup anemometer + optional wind vane (see docs/hardware/wind.md).
     struct WindConfig
     {
         bool enabled;
-        uint8_t speedPin;          // reed-switch anemometer, internal pull-up
+        uint8_t speedPin; // reed-switch anemometer, internal pull-up
         bool directionEnabled;
-        uint8_t directionPin;      // resistor-ladder vane, must be an ADC1 pin (32-39)
-        float kmhPerHz;            // 2.4 Misol/Argent/SparkFun, 3.621 Davis 6410
-        float directionOffsetDeg;  // added to the vane reading to correct mounting
-        float vanePullupOhms;      // vane divider pull-up to 3.3 V
+        uint8_t directionPin;     // resistor-ladder vane, must be an ADC1 pin (32-39)
+        float kmhPerHz;           // 2.4 Misol/Argent/SparkFun, 3.621 Davis 6410
+        float directionOffsetDeg; // added to the vane reading to correct mounting
+        float vanePullupOhms;     // vane divider pull-up to 3.3 V
     };
 
     // Observing site, for working out when it's dark. A GPS fix takes
@@ -324,12 +324,10 @@ namespace SQM
         bool validate(std::string *error = nullptr) const;
         // `error` (if given) gets the reason a config is rejected - the same
         // message the web UI shows.
-        static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr,
-                                              std::string *error = nullptr);
+        static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr, std::string *error = nullptr);
         // Applies JSON on top of `cfg` in place and validates. On failure
         // `cfg` may be partially updated.
-        static bool applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders,
-                              std::string *error = nullptr);
+        static bool applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *error = nullptr);
     };
 
 } // namespace SQM

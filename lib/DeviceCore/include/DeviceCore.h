@@ -66,7 +66,10 @@ namespace SQM
         // A reading is stale this long after the read interval.
         constexpr uint32_t SENSOR_STALE_GRACE_MS = 1000;
 
-        inline uint32_t ageMs(uint32_t now, uint32_t timestamp) { return timestamp == 0 ? 0 : now - timestamp; }
+        inline uint32_t ageMs(uint32_t now, uint32_t timestamp)
+        {
+            return timestamp == 0 ? 0 : now - timestamp;
+        }
 
         // Fills the derived fields (sky quality, cloud model) from the raw readings.
         void derive(SensorSnapshot &snapshot, const Config &cfg);
@@ -88,8 +91,8 @@ namespace SQM
 
         // Applies the safe delay to a fresh evaluation and updates `status`.
         // Returns true if the reported verdict changed (or this is the first).
-        bool updateSafety(SafetyStatus &status, Alpaca::SafeDelayFilter &filter, const Alpaca::SafetyResult &result,
-                          const Config &cfg, uint32_t nowMs);
+        bool updateSafety(
+            SafetyStatus &status, Alpaca::SafeDelayFilter &filter, const Alpaca::SafetyResult &result, const Config &cfg, uint32_t nowMs);
         // The safety document (/api/safety, readings "safety", MQTT <base>/safety).
         void writeSafety(JsonObject target, const SafetyStatus &status, const Config &cfg, uint32_t nowMs);
 
@@ -108,24 +111,32 @@ namespace SQM
         void writeSky(JsonObject sky, const NightState &night);
 
         // Alerts.
-        Alerts::AlertInputs alertInputs(const SafetyStatus &status, const SensorSnapshot &snapshot,
-                                        const Alpaca::ObservingConditionsSnapshot &obs, const Config &cfg,
-                                        const NightState &night, uint32_t nowMs);
+        Alerts::AlertInputs alertInputs(
+            const SafetyStatus &status,
+            const SensorSnapshot &snapshot,
+            const Alpaca::ObservingConditionsSnapshot &obs,
+            const Config &cfg,
+            const NightState &night,
+            uint32_t nowMs);
         Alerts::AlertRules alertRules(const Config &cfg);
         const AlertsConfig::EventSetting *eventSettingFor(const AlertsConfig &alerts, Alerts::AlertType type);
         // Template variables for an alert: readings, settings, then the event's own.
-        std::vector<std::pair<std::string, std::string>> alertVars(const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs,
-                                                                   const NightState &night, const Alerts::Alert &alert,
-                                                                   const std::string &localTime, const std::string &localDate);
-        void applyAlertTemplate(Alerts::Alert &alert, const AlertsConfig::EventSetting &setting,
-                                const std::vector<std::pair<std::string, std::string>> &vars);
+        std::vector<std::pair<std::string, std::string>> alertVars(
+            const Config &cfg,
+            const Alpaca::ObservingConditionsSnapshot &obs,
+            const NightState &night,
+            const Alerts::Alert &alert,
+            const std::string &localTime,
+            const std::string &localDate);
+        void applyAlertTemplate(
+            Alerts::Alert &alert, const AlertsConfig::EventSetting &setting, const std::vector<std::pair<std::string, std::string>> &vars);
 
         // The imaging app (specs/021): silence time per Alpaca device, the
         // client state as alert inputs, and the documents that report it.
         void clientSilenceMs(const Config &cfg, uint32_t (&out)[Alpaca::DEVICE_COUNT]);
         // `localTime` is "HH:MM" when the clock is set (else anything else).
-        void addClientInputs(Alerts::AlertInputs &inputs, const Alpaca::ClientWatch &watch, const Config &cfg, uint32_t nowMs,
-                             const std::string &localTime);
+        void addClientInputs(
+            Alerts::AlertInputs &inputs, const Alpaca::ClientWatch &watch, const Config &cfg, uint32_t nowMs, const std::string &localTime);
         // /api/status "alpaca": {enabled, clients: {safetymonitor, observingconditions}}.
         void writeClientWatch(JsonObject alpaca, const Alpaca::ClientWatch &watch, const Config &cfg, uint32_t nowMs);
         // "2 min", "45 s", "1 h 5 min".
@@ -143,14 +154,21 @@ namespace SQM
             std::vector<Alerts::Alert> outgoing;
             uint32_t alarmFlags = 0; // Bluetooth alarm reasons for Wake-level alerts
         };
-        AlertStep runAlerts(Alerts::AlertEngine &engine, const Alerts::AlertInputs &inputs, const Alerts::AlertRules &rules,
-                            const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs, const NightState &night,
-                            const SafetyStatus &status, const std::string &localTime, const std::string &localDate);
+        AlertStep runAlerts(
+            Alerts::AlertEngine &engine,
+            const Alerts::AlertInputs &inputs,
+            const Alerts::AlertRules &rules,
+            const Config &cfg,
+            const Alpaca::ObservingConditionsSnapshot &obs,
+            const NightState &night,
+            const SafetyStatus &status,
+            const std::string &localTime,
+            const std::string &localDate);
 
         // "Test" on an event row of the Alerts settings: a sample of each event.
         struct SampleAlert
         {
-            const char *key;   // event key, e.g. "rain_started"
+            const char *key; // event key, e.g. "rain_started"
             Alerts::AlertType type;
             const char *title; // built-in title
             const char *label; // "Rain starts"
@@ -160,10 +178,18 @@ namespace SQM
         // The test notification: the generic one (sample == nullptr) or a
         // sample of an event in the given level, sound and wording, filled in
         // from live readings.
-        Alerts::Alert buildTestAlert(const SampleAlert *sample, uint8_t level, const std::string &sound, const std::string &title,
-                                     const std::string &message, const SafetyStatus &safety, const Config &cfg,
-                                     const Alpaca::ObservingConditionsSnapshot &obs, const NightState &night,
-                                     const std::string &localTime, const std::string &localDate);
+        Alerts::Alert buildTestAlert(
+            const SampleAlert *sample,
+            uint8_t level,
+            const std::string &sound,
+            const std::string &title,
+            const std::string &message,
+            const SafetyStatus &safety,
+            const Config &cfg,
+            const Alpaca::ObservingConditionsSnapshot &obs,
+            const NightState &night,
+            const std::string &localTime,
+            const std::string &localDate);
 
         // ISO 8601 UTC, or "" before the clock is set.
         std::string isoUtc(int64_t epoch);

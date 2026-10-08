@@ -25,8 +25,7 @@ const SECTION_TO_TAB: Record<string, SettingsTabId> = {
   location: 'time',
 };
 
-export const isSettingsTab = (value: string | null): value is SettingsTabId =>
-  SETTINGS_TABS.some((tab) => tab.id === value);
+export const isSettingsTab = (value: string | null): value is SettingsTabId => SETTINGS_TABS.some((tab) => tab.id === value);
 
 // The query string, also when it's inside a hash route (the demo uses
 // #/settings?tab=safety).

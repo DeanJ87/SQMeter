@@ -16,7 +16,13 @@ import {
 import NightChart from './NightChart';
 import { Card, Pill } from './ui';
 
-const PHASE_TONE = { day: 'pill-amber', civil: 'pill-amber', nautical: 'pill-cyan', astronomical: 'pill-cyan', night: 'pill-green' } as const;
+const PHASE_TONE = {
+  day: 'pill-amber',
+  civil: 'pill-amber',
+  nautical: 'pill-cyan',
+  astronomical: 'pill-cyan',
+  night: 'pill-green',
+} as const;
 
 // Lit part of the moon. phase 0 new .. 0.5 full .. 1 new; mirrored south of the equator.
 const MoonDisc: FunctionalComponent<{ phase: number; southern: boolean }> = ({ phase, southern }) => {
@@ -41,7 +47,11 @@ const MoonDisc: FunctionalComponent<{ phase: number; southern: boolean }> = ({ p
 // `deviceNow` is the device's clock when it has one; otherwise this browser's.
 const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; deviceNow?: Date }> = ({ latitude, longitude, deviceNow }) => {
+const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; deviceNow?: Date }> = ({
+  latitude,
+  longitude,
+  deviceNow,
+}) => {
   const [browserNow, setBrowserNow] = useState(() => new Date());
   useEffect(() => {
     const timer = setInterval(() => setBrowserNow(new Date()), 60000);

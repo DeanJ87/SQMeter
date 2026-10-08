@@ -64,7 +64,7 @@ namespace SQM
             ESP.restart();
         }
 
-    }
+    } // namespace
 
     WebServer::WebServer(
         TSL2591Sensor &tsl,
@@ -108,12 +108,9 @@ namespace SQM
             });
 
         otaUpdater = std::make_unique<OtaUpdater>(
-            [this](int percent)
-            { setOTAProgress(percent); },
-            [this](const char *message)
-            { setOTAError(message); },
-            []
-            { WebServer::scheduleRestart(1000); });
+            [this](int percent) { setOTAProgress(percent); },
+            [this](const char *message) { setOTAError(message); },
+            [] { WebServer::scheduleRestart(1000); });
     }
 
     WebServer::~WebServer()
@@ -141,8 +138,11 @@ namespace SQM
             if (prefs.begin(ARMED_NVS_NAMESPACE, true))
             {
                 // No "reason" key: saved by firmware from before reasons.
-                alertSchedule.restore(prefs.getBool("armed", true), prefs.isKey("reason"), prefs.getUChar("reason", 0),
-                                      static_cast<int64_t>(prefs.getUInt("since", 0)));
+                alertSchedule.restore(
+                    prefs.getBool("armed", true),
+                    prefs.isKey("reason"),
+                    prefs.getUChar("reason", 0),
+                    static_cast<int64_t>(prefs.getUInt("since", 0)));
                 prefs.end();
             }
             shareSchedule();
@@ -151,11 +151,14 @@ namespace SQM
         {
             // Home Assistant MQTT switch: command <topic>/alerts/armed/set,
             // state <topic>/alerts/armed.
-            mqttClient->onCommand("alerts/armed/set", [this](const std::string &payload)
-                                  {
-                bool armed = false;
-                if (parseArmPayload(payload, armed))
-                    pendingArm = encodeArm(armed, Alerts::ScheduleReason::UserMqtt); });
+            mqttClient->onCommand(
+                "alerts/armed/set",
+                [this](const std::string &payload)
+                {
+                    bool armed = false;
+                    if (parseArmPayload(payload, armed))
+                        pendingArm = encodeArm(armed, Alerts::ScheduleReason::UserMqtt);
+                });
         }
         Logger::info(TAG, "Starting web server on port %d", PORT);
 
@@ -190,12 +193,14 @@ namespace SQM
             {
                 // Replies straight from the UDP task: discovery answers
                 // within milliseconds instead of waiting for a main-loop pass.
-                alpacaDiscoveryUdp.onPacket([](AsyncUDPPacket &packet)
-                                            {
-                    if (!Alpaca::isValidDiscoveryRequest(packet.data(), packet.length()))
-                        return;
-                    const std::string response = Alpaca::buildDiscoveryResponse(PORT);
-                    packet.write(reinterpret_cast<const uint8_t *>(response.data()), response.size()); });
+                alpacaDiscoveryUdp.onPacket(
+                    [](AsyncUDPPacket &packet)
+                    {
+                        if (!Alpaca::isValidDiscoveryRequest(packet.data(), packet.length()))
+                            return;
+                        const std::string response = Alpaca::buildDiscoveryResponse(PORT);
+                        packet.write(reinterpret_cast<const uint8_t *>(response.data()), response.size());
+                    });
                 Logger::info(TAG, "Alpaca UDP discovery listening on port %u", Alpaca::DISCOVERY_UDP_PORT);
             }
             else
@@ -205,32 +210,38 @@ namespace SQM
         }
 
         // SPA fallback - serve index.html for any non-API routes
-        server.onNotFound([](AsyncWebServerRequest *request)
-                          { 
-            String path = request->url();
-            // Alpaca device API: the spec requires HTTP 400 with a plain-text
-            // body for an unknown device type/number, method, or HTTP verb.
-            if (path.startsWith("/api/v1/")) {
-                Logger::debug(TAG, "400 Invalid Alpaca request: %s %s", request->methodToString(), path.c_str());
-                request->send(400, "text/plain", "Invalid Alpaca device type, device number, method or HTTP verb");
-                return;
-            }
-            // In setup mode every hostname resolves here; send other sites'
-            // pages to the setup screen.
-            if ((WiFi.getMode() & WIFI_AP) && !path.startsWith("/api/") &&
-                request->host() != WiFi.softAPIP().toString()) {
-                request->redirect(setupScreenUrl().c_str());
-                return;
-            }
-            // If it's an API route, return 404 JSON
-            if (path.startsWith("/api/")) {
-                Logger::debug(TAG, "404 Not Found (API): %s", path.c_str());
-                request->send(404, "application/json", "{\"error\":\"Not found\"}");
-            } else {
-                // For all other routes, serve index.html (SPA routing)
-                Logger::debug(TAG, "SPA fallback for: %s", path.c_str());
-                request->send(LittleFS, "/index.html", "text/html");
-            } });
+        server.onNotFound(
+            [](AsyncWebServerRequest *request)
+            {
+                String path = request->url();
+                // Alpaca device API: the spec requires HTTP 400 with a plain-text
+                // body for an unknown device type/number, method, or HTTP verb.
+                if (path.startsWith("/api/v1/"))
+                {
+                    Logger::debug(TAG, "400 Invalid Alpaca request: %s %s", request->methodToString(), path.c_str());
+                    request->send(400, "text/plain", "Invalid Alpaca device type, device number, method or HTTP verb");
+                    return;
+                }
+                // In setup mode every hostname resolves here; send other sites'
+                // pages to the setup screen.
+                if ((WiFi.getMode() & WIFI_AP) && !path.startsWith("/api/") && request->host() != WiFi.softAPIP().toString())
+                {
+                    request->redirect(setupScreenUrl().c_str());
+                    return;
+                }
+                // If it's an API route, return 404 JSON
+                if (path.startsWith("/api/"))
+                {
+                    Logger::debug(TAG, "404 Not Found (API): %s", path.c_str());
+                    request->send(404, "application/json", "{\"error\":\"Not found\"}");
+                }
+                else
+                {
+                    // For all other routes, serve index.html (SPA routing)
+                    Logger::debug(TAG, "SPA fallback for: %s", path.c_str());
+                    request->send(LittleFS, "/index.html", "text/html");
+                }
+            });
 
         server.begin();
         Logger::info(TAG, "Web server started");
@@ -266,9 +277,18 @@ namespace SQM
             const Core::SampleAlert *sample = pendingTest.sample;
             std::string localTime, localDate;
             localClock(localTime, localDate);
-            const Alerts::Alert test = Core::buildTestAlert(sample, pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message,
-                                                            getSafetyStatus(), cfg, buildAlpacaObservingConditionsSnapshot(),
-                                                            computeNight(getSensorSnapshot(), cfg), localTime, localDate);
+            const Alerts::Alert test = Core::buildTestAlert(
+                sample,
+                pendingTest.level,
+                pendingTest.sound,
+                pendingTest.title,
+                pendingTest.message,
+                getSafetyStatus(),
+                cfg,
+                buildAlpacaObservingConditionsSnapshot(),
+                computeNight(getSensorSnapshot(), cfg),
+                localTime,
+                localDate);
             if (sample != nullptr && test.level == Alerts::AlertLevel::Wake)
             {
                 const time_t wallClock = time(nullptr);
@@ -339,83 +359,102 @@ namespace SQM
         // Captive portal detection (iOS/macOS, Android, Windows, Firefox):
         // answer every probe with a redirect so the OS opens its sign-in
         // window on the WiFi setup screen.
-        for (const char *probe : {"/hotspot-detect.html", "/library/test/success.html", "/generate_204", "/gen_204",
-                                  "/success.txt", "/connecttest.txt", "/ncsi.txt", "/redirect", "/canonical.html"})
+        for (const char *probe :
+             {"/hotspot-detect.html",
+              "/library/test/success.html",
+              "/generate_204",
+              "/gen_204",
+              "/success.txt",
+              "/connecttest.txt",
+              "/ncsi.txt",
+              "/redirect",
+              "/canonical.html"})
         {
-            server.on(probe, HTTP_GET, [](AsyncWebServerRequest *request)
-                      {
-                Logger::info(TAG, "Captive check %s%s -> setup screen", request->host().c_str(), request->url().c_str());
-                request->redirect(setupScreenUrl().c_str()); });
+            server.on(
+                probe,
+                HTTP_GET,
+                [](AsyncWebServerRequest *request)
+                {
+                    Logger::info(TAG, "Captive check %s%s -> setup screen", request->host().c_str(), request->url().c_str());
+                    request->redirect(setupScreenUrl().c_str());
+                });
         }
 
         // Serve files from LittleFS
-        server.serveStatic("/", LittleFS, "/")
-            .setDefaultFile("index.html")
-            .setCacheControl("no-cache, no-store, must-revalidate");
+        server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html").setCacheControl("no-cache, no-store, must-revalidate");
     }
 
     void WebServer::setupAPIRoutes()
     {
         // Status endpoint
-        server.on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  { handleGetStatus(request); });
+        server.on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetStatus(request); });
 
         // Sensors endpoint
-        server.on("/api/sensors", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  { handleGetSensors(request); });
+        server.on("/api/sensors", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetSensors(request); });
 
         // Plain-text "1" (safe) or "0" (unsafe) - the SafetyMonitor verdict
         // for scripts and loggers.
-        server.on("/api/safe", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  { request->send(200, "text/plain", getSafetyStatus().isSafe ? "1" : "0"); });
+        server.on(
+            "/api/safe",
+            HTTP_GET,
+            [this](AsyncWebServerRequest *request) { request->send(200, "text/plain", getSafetyStatus().isSafe ? "1" : "0"); });
 
         // Before /api/safety, which would otherwise match this path too.
-        server.on("/api/safety/history", HTTP_GET, [](AsyncWebServerRequest *request)
-                  {
-            static SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
-            const size_t n = SafetyHistory::entries(entries, SafetyHistory::CAPACITY);
-            static const char *const KIND[] = {"boot", "change", "alert", "armed"};
-            DynamicJsonDocument doc(256 + n * 160);
-            doc["boot"] = SafetyHistory::currentBoot();
-            doc["uptime"] = millis() / 1000;
-            JsonArray list = doc.createNestedArray("entries");
-            for (size_t i = n; i-- > 0;) // newest first
+        server.on(
+            "/api/safety/history",
+            HTTP_GET,
+            [](AsyncWebServerRequest *request)
             {
-                const SafetyHistory::Entry &e = entries[i];
-                JsonObject item = list.createNestedObject();
-                item["kind"] = KIND[static_cast<uint8_t>(e.kind) <= 3 ? static_cast<uint8_t>(e.kind) : 1];
-                item["boot"] = e.boot;
-                item["uptime"] = e.uptimeS;
-                if (e.epoch != 0)
-                    item["timestamp"] = e.epoch;
-                if (e.kind == SafetyHistory::Kind::Boot)
-                    item["resetReason"] = e.resetReason;
-                else
-                    item["safe"] = static_cast<bool>(e.safe);
-                if (e.kind == SafetyHistory::Kind::Change)
+                static SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
+                const size_t n = SafetyHistory::entries(entries, SafetyHistory::CAPACITY);
+                static const char *const KIND[] = {"boot", "change", "alert", "armed"};
+                DynamicJsonDocument doc(256 + n * 160);
+                doc["boot"] = SafetyHistory::currentBoot();
+                doc["uptime"] = millis() / 1000;
+                JsonArray list = doc.createNestedArray("entries");
+                for (size_t i = n; i-- > 0;) // newest first
                 {
-                    item["held"] = static_cast<bool>(e.held);
-                    item["reasonFlags"] = e.flags;
+                    const SafetyHistory::Entry &e = entries[i];
+                    JsonObject item = list.createNestedObject();
+                    item["kind"] = KIND[static_cast<uint8_t>(e.kind) <= 3 ? static_cast<uint8_t>(e.kind) : 1];
+                    item["boot"] = e.boot;
+                    item["uptime"] = e.uptimeS;
+                    if (e.epoch != 0)
+                        item["timestamp"] = e.epoch;
+                    if (e.kind == SafetyHistory::Kind::Boot)
+                        item["resetReason"] = e.resetReason;
+                    else
+                        item["safe"] = static_cast<bool>(e.safe);
+                    if (e.kind == SafetyHistory::Kind::Change)
+                    {
+                        item["held"] = static_cast<bool>(e.held);
+                        item["reasonFlags"] = e.flags;
+                    }
                 }
-            }
-            std::string json;
-            serializeJson(doc, json);
-            request->send(200, "application/json", json.c_str()); });
+                std::string json;
+                serializeJson(doc, json);
+                request->send(200, "application/json", json.c_str());
+            });
 
-        server.on("/api/safety", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  {
-            DynamicJsonDocument doc(1536);
-            appendSafetyStatus(doc.to<JsonObject>());
-            std::string json;
-            serializeJson(doc, json);
-            request->send(200, "application/json", json.c_str()); });
+        server.on(
+            "/api/safety",
+            HTTP_GET,
+            [this](AsyncWebServerRequest *request)
+            {
+                DynamicJsonDocument doc(1536);
+                appendSafetyStatus(doc.to<JsonObject>());
+                std::string json;
+                serializeJson(doc, json);
+                request->send(200, "application/json", json.c_str());
+            });
 
-        server.on("/api/sensors/tsl2591/calibrate-dark", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  { handleTSL2591DarkCalibration(request); });
+        server.on(
+            "/api/sensors/tsl2591/calibrate-dark",
+            HTTP_POST,
+            [this](AsyncWebServerRequest *request) { handleTSL2591DarkCalibration(request); });
 
         // Config endpoints
-        server.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  { handleGetConfig(request); });
+        server.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetConfig(request); });
 
         AsyncCallbackJsonWebHandler *configHandler = new AsyncCallbackJsonWebHandler(
             "/api/config",
@@ -433,7 +472,8 @@ namespace SQM
                 if (!configOpt)
                 {
                     Logger::warn(TAG, "Config rejected: %s", reason.c_str());
-                    request->send(400, "application/json", createErrorJson(reason.empty() ? "Invalid configuration" : reason.c_str()).c_str());
+                    request->send(
+                        400, "application/json", createErrorJson(reason.empty() ? "Invalid configuration" : reason.c_str()).c_str());
                     return;
                 }
 
@@ -452,27 +492,18 @@ namespace SQM
         server.addHandler(configHandler);
 
         // System endpoints
-        server.on("/api/restart", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  { handleRestart(request); });
+        server.on("/api/restart", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRestart(request); });
 
         // WiFi endpoints
-        server.on("/api/wifi/scan", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  { handleWiFiScan(request); });
+        server.on("/api/wifi/scan", HTTP_GET, [this](AsyncWebServerRequest *request) { handleWiFiScan(request); });
 
-        server.on("/api/sensors/rg15/test", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  { handleRG15Test(request); });
-        server.on("/api/sensors/rg15/reset-total", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  { handleRG15ResetTotal(request); });
-        server.on("/api/sensors/rg15/reboot", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  { handleRG15Reboot(request); });
+        server.on("/api/sensors/rg15/test", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRG15Test(request); });
+        server.on("/api/sensors/rg15/reset-total", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRG15ResetTotal(request); });
+        server.on("/api/sensors/rg15/reboot", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRG15Reboot(request); });
 
         // MQTT test endpoint
         AsyncCallbackJsonWebHandler *mqttTestHandler = new AsyncCallbackJsonWebHandler(
-            "/api/mqtt/test",
-            [this](AsyncWebServerRequest *request, JsonVariant &json)
-            {
-                handleMQTTTest(request, json);
-            });
+            "/api/mqtt/test", [this](AsyncWebServerRequest *request, JsonVariant &json) { handleMQTTTest(request, json); });
         server.addHandler(mqttTestHandler);
 
         // Use AsyncCallbackJsonWebHandler for POST with JSON body
@@ -519,14 +550,14 @@ namespace SQM
     void WebServer::setupWebSocket()
     {
         // Sensor WebSocket for Dashboard (/ws/sensors)
-        wsSensors.onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client,
-                                 AwsEventType type, void *arg, uint8_t *data, size_t len)
-                          { onSensorWebSocketEvent(server, client, type, arg, data, len); });
+        wsSensors.onEvent(
+            [this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+            { onSensorWebSocketEvent(server, client, type, arg, data, len); });
 
         // Status WebSocket for System page (/ws/status)
-        wsStatus.onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client,
-                                AwsEventType type, void *arg, uint8_t *data, size_t len)
-                         { onStatusWebSocketEvent(server, client, type, arg, data, len); });
+        wsStatus.onEvent(
+            [this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+            { onStatusWebSocketEvent(server, client, type, arg, data, len); });
 
         server.addHandler(&wsSensors);
         server.addHandler(&wsStatus);
@@ -541,91 +572,113 @@ namespace SQM
         static bool fs_update_error = false;
         static String fs_error_msg = "";
 
-        server.on("/api/update/fs", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  {
-            if (!requireAuth(request))
-                return;
-            String response_json;
-            
-            const bool fsFailed = fs_update_error;
-            if (fsFailed) {
-                response_json = createErrorJson(fs_error_msg.c_str()).c_str();
-            } else {
-                response_json = "{\"success\":true}";
-            }
-            
-            // Reset state
-            fs_partition = nullptr;
-            fs_bytes_written = 0;
-            fs_update_error = false;
-            fs_error_msg = "";
-            
-            AsyncWebServerResponse* response = request->beginResponse(fsFailed ? 500 : 200, "application/json", response_json);
-            response->addHeader("Connection", "close");
-            request->send(response);
-            
-            if (!fs_update_error) {
-                WebServer::scheduleRestart(1000);
-            } }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-                  {
-            if (!index) {
-                Logger::info("OTA", "Filesystem update started: %s", filename.c_str());
+        server.on(
+            "/api/update/fs",
+            HTTP_POST,
+            [this](AsyncWebServerRequest *request)
+            {
+                if (!requireAuth(request))
+                    return;
+                String response_json;
+
+                const bool fsFailed = fs_update_error;
+                if (fsFailed)
+                {
+                    response_json = createErrorJson(fs_error_msg.c_str()).c_str();
+                }
+                else
+                {
+                    response_json = "{\"success\":true}";
+                }
+
+                // Reset state
+                fs_partition = nullptr;
                 fs_bytes_written = 0;
                 fs_update_error = false;
                 fs_error_msg = "";
-                
-                // Find the LittleFS partition (labeled as "spiffs" in partition table)
-                fs_partition = esp_partition_find_first(
-                    ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, NULL);
-                
-                if (!fs_partition) {
-                    Logger::error("OTA", "Filesystem partition not found!");
-                    fs_update_error = true;
-                    fs_error_msg = "Filesystem partition not found";
-                    return;
+
+                AsyncWebServerResponse *response = request->beginResponse(fsFailed ? 500 : 200, "application/json", response_json);
+                response->addHeader("Connection", "close");
+                request->send(response);
+
+                if (!fs_update_error)
+                {
+                    WebServer::scheduleRestart(1000);
                 }
-                
-                Logger::info("OTA", "Found filesystem partition at 0x%x, size %u bytes",
-                    fs_partition->address, static_cast<unsigned>(fs_partition->size));
-                
-                // Unmount LittleFS before writing
-                LittleFS.end();
-                
-                // Erase the partition
-                Logger::info("OTA", "Erasing filesystem partition...");
-                esp_err_t err = esp_partition_erase_range(fs_partition, 0, fs_partition->size);
-                if (err != ESP_OK) {
-                    Logger::error("OTA", "Partition erase failed: %d", err);
-                    fs_update_error = true;
-                    fs_error_msg = "Failed to erase partition";
-                    return;
+            },
+            [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+            {
+                if (!index)
+                {
+                    Logger::info("OTA", "Filesystem update started: %s", filename.c_str());
+                    fs_bytes_written = 0;
+                    fs_update_error = false;
+                    fs_error_msg = "";
+
+                    // Find the LittleFS partition (labeled as "spiffs" in partition table)
+                    fs_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, NULL);
+
+                    if (!fs_partition)
+                    {
+                        Logger::error("OTA", "Filesystem partition not found!");
+                        fs_update_error = true;
+                        fs_error_msg = "Filesystem partition not found";
+                        return;
+                    }
+
+                    Logger::info(
+                        "OTA",
+                        "Found filesystem partition at 0x%x, size %u bytes",
+                        fs_partition->address,
+                        static_cast<unsigned>(fs_partition->size));
+
+                    // Unmount LittleFS before writing
+                    LittleFS.end();
+
+                    // Erase the partition
+                    Logger::info("OTA", "Erasing filesystem partition...");
+                    esp_err_t err = esp_partition_erase_range(fs_partition, 0, fs_partition->size);
+                    if (err != ESP_OK)
+                    {
+                        Logger::error("OTA", "Partition erase failed: %d", err);
+                        fs_update_error = true;
+                        fs_error_msg = "Failed to erase partition";
+                        return;
+                    }
+                    Logger::info("OTA", "Partition erased successfully");
                 }
-                Logger::info("OTA", "Partition erased successfully");
-            }
-            
-            if (!fs_update_error && fs_partition) {
-                // Write data directly to partition (no magic byte validation)
-                esp_err_t err = esp_partition_write(fs_partition, fs_bytes_written, data, len);
-                if (err != ESP_OK) {
-                    Logger::error("OTA", "Partition write failed at offset %u: %d", static_cast<unsigned>(fs_bytes_written), err);
-                    fs_update_error = true;
-                    fs_error_msg = "Failed to write to partition";
-                    return;
+
+                if (!fs_update_error && fs_partition)
+                {
+                    // Write data directly to partition (no magic byte validation)
+                    esp_err_t err = esp_partition_write(fs_partition, fs_bytes_written, data, len);
+                    if (err != ESP_OK)
+                    {
+                        Logger::error("OTA", "Partition write failed at offset %u: %d", static_cast<unsigned>(fs_bytes_written), err);
+                        fs_update_error = true;
+                        fs_error_msg = "Failed to write to partition";
+                        return;
+                    }
+                    fs_bytes_written += len;
+
+                    if (index % 10240 == 0)
+                    { // Log every ~10KB
+                        Logger::info("OTA", "Written %u bytes", static_cast<unsigned>(fs_bytes_written));
+                    }
                 }
-                fs_bytes_written += len;
-                
-                if (index % 10240 == 0) {  // Log every ~10KB
-                    Logger::info("OTA", "Written %u bytes", static_cast<unsigned>(fs_bytes_written));
+
+                if (final)
+                {
+                    if (!fs_update_error)
+                    {
+                        Logger::info("OTA", "Filesystem update success: %u bytes written", static_cast<unsigned>(fs_bytes_written));
+                    }
+                    else
+                    {
+                        Logger::error("OTA", "Filesystem update failed: %s", fs_error_msg.c_str());
+                    }
                 }
-            }
-            
-            if (final) {
-                if (!fs_update_error) {
-                    Logger::info("OTA", "Filesystem update success: %u bytes written", static_cast<unsigned>(fs_bytes_written));
-                } else {
-                    Logger::error("OTA", "Filesystem update failed: %s", fs_error_msg.c_str());
-                }
-            } });
+            });
 
         // Firmware OTA update (app partition). Registered after /api/update/fs:
         // this server also matches "/api/update" as a prefix of
@@ -633,85 +686,134 @@ namespace SQM
         // Set when the updater's own activation failed but a second
         // esp_ota_set_boot_partition() (which re-verifies the image) succeeded.
         static bool activatedOnRetry = false;
-        server.on("/api/update", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  {
-            if (!requireAuth(request))
-                return;
-            bool success = !Update.hasError() || activatedOnRetry;
-            String response_json;
-            
-            if (success) {
-                response_json = "{\"success\":true}";
-            } else {
-                // Get detailed error message
-                String error_msg = "Unknown error";
-                uint8_t error = Update.getError();
-                switch(error) {
-                    case UPDATE_ERROR_OK: error_msg = "No error"; break;
-                    case UPDATE_ERROR_WRITE: error_msg = "Flash write failed"; break;
-                    case UPDATE_ERROR_ERASE: error_msg = "Flash erase failed"; break;
-                    case UPDATE_ERROR_READ: error_msg = "Flash read failed"; break;
-                    case UPDATE_ERROR_SPACE: error_msg = "Not enough space"; break;
-                    case UPDATE_ERROR_SIZE: error_msg = "Bad size given"; break;
-                    case UPDATE_ERROR_STREAM: error_msg = "Stream read timeout"; break;
-                    case UPDATE_ERROR_MD5: error_msg = "MD5 check failed"; break;
-                    case UPDATE_ERROR_MAGIC_BYTE: error_msg = "Wrong magic byte"; break;
-                    case UPDATE_ERROR_ACTIVATE: error_msg = "Could not activate partition"; break;
-                    case UPDATE_ERROR_NO_PARTITION: error_msg = "Partition not found"; break;
-                    case UPDATE_ERROR_BAD_ARGUMENT: error_msg = "Bad argument"; break;
-                    case UPDATE_ERROR_ABORT: error_msg = "Update aborted"; break;
-                    default: error_msg = "Error code: " + String(error); break;
+        server.on(
+            "/api/update",
+            HTTP_POST,
+            [this](AsyncWebServerRequest *request)
+            {
+                if (!requireAuth(request))
+                    return;
+                bool success = !Update.hasError() || activatedOnRetry;
+                String response_json;
+
+                if (success)
+                {
+                    response_json = "{\"success\":true}";
                 }
-                response_json = createErrorJson(error_msg.c_str()).c_str();
-            }
-            
-            AsyncWebServerResponse* response = request->beginResponse(success ? 200 : 500, "application/json", response_json);
-            response->addHeader("Connection", "close");
-            request->send(response);
-            
-            if (success) {
-                WebServer::scheduleRestart(1000);
-            } }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-                  {
-            if (!index) {
-                Logger::info("OTA", "Firmware update started: %s", filename.c_str());
-                activatedOnRetry = false;
-                if (Update.isRunning()) {
-                    // An earlier upload was cut off; start clean.
-                    Logger::warn("OTA", "Aborting an unfinished update");
-                    Update.abort();
+                else
+                {
+                    // Get detailed error message
+                    String error_msg = "Unknown error";
+                    uint8_t error = Update.getError();
+                    switch (error)
+                    {
+                    case UPDATE_ERROR_OK:
+                        error_msg = "No error";
+                        break;
+                    case UPDATE_ERROR_WRITE:
+                        error_msg = "Flash write failed";
+                        break;
+                    case UPDATE_ERROR_ERASE:
+                        error_msg = "Flash erase failed";
+                        break;
+                    case UPDATE_ERROR_READ:
+                        error_msg = "Flash read failed";
+                        break;
+                    case UPDATE_ERROR_SPACE:
+                        error_msg = "Not enough space";
+                        break;
+                    case UPDATE_ERROR_SIZE:
+                        error_msg = "Bad size given";
+                        break;
+                    case UPDATE_ERROR_STREAM:
+                        error_msg = "Stream read timeout";
+                        break;
+                    case UPDATE_ERROR_MD5:
+                        error_msg = "MD5 check failed";
+                        break;
+                    case UPDATE_ERROR_MAGIC_BYTE:
+                        error_msg = "Wrong magic byte";
+                        break;
+                    case UPDATE_ERROR_ACTIVATE:
+                        error_msg = "Could not activate partition";
+                        break;
+                    case UPDATE_ERROR_NO_PARTITION:
+                        error_msg = "Partition not found";
+                        break;
+                    case UPDATE_ERROR_BAD_ARGUMENT:
+                        error_msg = "Bad argument";
+                        break;
+                    case UPDATE_ERROR_ABORT:
+                        error_msg = "Update aborted";
+                        break;
+                    default:
+                        error_msg = "Error code: " + String(error);
+                        break;
+                    }
+                    response_json = createErrorJson(error_msg.c_str()).c_str();
                 }
-                if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
-                    Logger::error("OTA", "Update.begin failed: %d", Update.getError());
+
+                AsyncWebServerResponse *response = request->beginResponse(success ? 200 : 500, "application/json", response_json);
+                response->addHeader("Connection", "close");
+                request->send(response);
+
+                if (success)
+                {
+                    WebServer::scheduleRestart(1000);
+                }
+            },
+            [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+            {
+                if (!index)
+                {
+                    Logger::info("OTA", "Firmware update started: %s", filename.c_str());
+                    activatedOnRetry = false;
+                    if (Update.isRunning())
+                    {
+                        // An earlier upload was cut off; start clean.
+                        Logger::warn("OTA", "Aborting an unfinished update");
+                        Update.abort();
+                    }
+                    if (!Update.begin(UPDATE_SIZE_UNKNOWN))
+                    {
+                        Logger::error("OTA", "Update.begin failed: %d", Update.getError());
+                        Update.printError(Serial);
+                    }
+                }
+
+                if (Update.write(data, len) != len)
+                {
+                    Logger::error("OTA", "Update.write failed: %d", Update.getError());
                     Update.printError(Serial);
                 }
-            }
-            
-            if (Update.write(data, len) != len) {
-                Logger::error("OTA", "Update.write failed: %d", Update.getError());
-                Update.printError(Serial);
-            }
-            
-            if (final) {
-                if (Update.end(true)) {
-                    Logger::info("OTA", "Firmware update success, rebooting...");
-                } else if (Update.getError() == UPDATE_ERROR_ACTIVATE) {
-                    // The image is fully written and its first block restored;
-                    // only switching the boot partition failed. Uploads used to
-                    // fail like this on the first attempt and succeed on a
-                    // retry, so retry the switch here. It verifies the image
-                    // again, so a bad image still can't be booted.
-                    const esp_partition_t *target = esp_ota_get_next_update_partition(nullptr);
-                    const esp_err_t first = esp_ota_set_boot_partition(target);
-                    Logger::warn("OTA", "Activating %s failed; retry: %s", target ? target->label : "?", esp_err_to_name(first));
-                    activatedOnRetry = first == ESP_OK;
-                    if (activatedOnRetry)
-                        Logger::info("OTA", "Firmware update success on retry, rebooting...");
-                } else {
-                    Logger::error("OTA", "Update.end failed: %d", Update.getError());
-                    Update.printError(Serial);
+
+                if (final)
+                {
+                    if (Update.end(true))
+                    {
+                        Logger::info("OTA", "Firmware update success, rebooting...");
+                    }
+                    else if (Update.getError() == UPDATE_ERROR_ACTIVATE)
+                    {
+                        // The image is fully written and its first block restored;
+                        // only switching the boot partition failed. Uploads used to
+                        // fail like this on the first attempt and succeed on a
+                        // retry, so retry the switch here. It verifies the image
+                        // again, so a bad image still can't be booted.
+                        const esp_partition_t *target = esp_ota_get_next_update_partition(nullptr);
+                        const esp_err_t first = esp_ota_set_boot_partition(target);
+                        Logger::warn("OTA", "Activating %s failed; retry: %s", target ? target->label : "?", esp_err_to_name(first));
+                        activatedOnRetry = first == ESP_OK;
+                        if (activatedOnRetry)
+                            Logger::info("OTA", "Firmware update success on retry, rebooting...");
+                    }
+                    else
+                    {
+                        Logger::error("OTA", "Update.end failed: %d", Update.getError());
+                        Update.printError(Serial);
+                    }
                 }
-            } });
+            });
     }
 
     void WebServer::setupGithubUpdates()
@@ -719,44 +821,52 @@ namespace SQM
         // Check for available releases on the given track (?track=stable|beta,
         // defaults to stable). Returns the filtered release list; staleness
         // relative to the running firmware is computed client-side.
-        server.on("/api/updates/check", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  {
-            if (!requireAuth(request))
-                return;
+        server.on(
+            "/api/updates/check",
+            HTTP_GET,
+            [this](AsyncWebServerRequest *request)
+            {
+                if (!requireAuth(request))
+                    return;
 
-            std::string track = "stable";
-            if (request->hasParam("track")) {
-                String t = request->getParam("track")->value();
-                if (t == "beta") track = "beta";
-            }
+                std::string track = "stable";
+                if (request->hasParam("track"))
+                {
+                    String t = request->getParam("track")->value();
+                    if (t == "beta")
+                        track = "beta";
+                }
 
-            std::string error;
-            std::vector<GithubRelease> releases = otaUpdater->checkForUpdate(track, error);
+                std::string error;
+                std::vector<GithubRelease> releases = otaUpdater->checkForUpdate(track, error);
 
-            if (!error.empty()) {
-                AsyncWebServerResponse *response = request->beginResponse(
-                    502, "application/json", createErrorJson(error.c_str()).c_str());
-                request->send(response);
-                return;
-            }
+                if (!error.empty())
+                {
+                    AsyncWebServerResponse *response =
+                        request->beginResponse(502, "application/json", createErrorJson(error.c_str()).c_str());
+                    request->send(response);
+                    return;
+                }
 
-            DynamicJsonDocument doc(8192);
-            JsonArray arr = doc.to<JsonArray>();
-            for (const GithubRelease &r : releases) {
-                JsonObject o = arr.createNestedObject();
-                o["tag"] = r.tag;
-                o["name"] = r.name;
-                o["prerelease"] = r.prerelease;
-                o["publishedAt"] = r.publishedAt;
-                o["firmwareAssetUrl"] = r.firmwareAssetUrl;
-                o["firmwareAssetSize"] = r.firmwareAssetSize;
-                o["fsAssetUrl"] = r.fsAssetUrl;
-                o["fsAssetSize"] = r.fsAssetSize;
-            }
+                DynamicJsonDocument doc(8192);
+                JsonArray arr = doc.to<JsonArray>();
+                for (const GithubRelease &r : releases)
+                {
+                    JsonObject o = arr.createNestedObject();
+                    o["tag"] = r.tag;
+                    o["name"] = r.name;
+                    o["prerelease"] = r.prerelease;
+                    o["publishedAt"] = r.publishedAt;
+                    o["firmwareAssetUrl"] = r.firmwareAssetUrl;
+                    o["firmwareAssetSize"] = r.firmwareAssetSize;
+                    o["fsAssetUrl"] = r.fsAssetUrl;
+                    o["fsAssetSize"] = r.fsAssetSize;
+                }
 
-            std::string json;
-            serializeJson(doc, json);
-            request->send(200, "application/json", json.c_str()); });
+                std::string json;
+                serializeJson(doc, json);
+                request->send(200, "application/json", json.c_str());
+            });
 
         // Starts a self-download+flash of the given release's firmware AND
         // filesystem assets as one atomic update (never just one, to avoid
@@ -781,8 +891,7 @@ namespace SQM
 
                 if (release.firmwareAssetUrl.empty() || release.fsAssetUrl.empty())
                 {
-                    request->send(400, "application/json",
-                                  createErrorJson("firmwareAssetUrl and fsAssetUrl are required").c_str());
+                    request->send(400, "application/json", createErrorJson("firmwareAssetUrl and fsAssetUrl are required").c_str());
                     return;
                 }
 
@@ -877,8 +986,8 @@ namespace SQM
 
         // The imaging app: is each Alpaca device still being checked?
         {
-            const Alpaca::DeviceActivity activity[Alpaca::DEVICE_COUNT] = {alpacaRouter.activity(Alpaca::Device::SafetyMonitor),
-                                                                          alpacaRouter.activity(Alpaca::Device::ObservingConditions)};
+            const Alpaca::DeviceActivity activity[Alpaca::DEVICE_COUNT] = {
+                alpacaRouter.activity(Alpaca::Device::SafetyMonitor), alpacaRouter.activity(Alpaca::Device::ObservingConditions)};
             uint32_t silenceMs[Alpaca::DEVICE_COUNT];
             Core::clientSilenceMs(cfg, silenceMs);
             clientWatch.update(activity, silenceMs, cfg.alpaca.enabled, millis());
@@ -919,7 +1028,6 @@ namespace SQM
             serializeJson(summary, summaryJson);
             ble.update(bleState, summaryJson);
         }
-
 
         // Always run the engine so its state tracks reality while alerts are
         // off. Each alert gets its configured level, sound and wording;
@@ -1047,7 +1155,8 @@ namespace SQM
             else if (safety.isSafe)
                 on.message = "Observatory safe.";
             else
-                on.message = "Observatory UNSAFE" + (safety.reasons.empty() ? std::string(".") : ":\n" + Alerts::joinReasons(safety.reasons));
+                on.message =
+                    "Observatory UNSAFE" + (safety.reasons.empty() ? std::string(".") : ":\n" + Alerts::joinReasons(safety.reasons));
             alertDispatcher->dispatch(on, cfg.alerts, cfg.deviceName);
         }
     }
@@ -1063,8 +1172,8 @@ namespace SQM
     void WebServer::publishMqttSafety(const SafetyStatus &status)
     {
         const uint32_t now = millis();
-        const bool changed = !mqttSafetyPublished || status.isSafe != mqttLastPublishedSafe ||
-                             mqttClient->connectionCount() != mqttSafetyConnection;
+        const bool changed =
+            !mqttSafetyPublished || status.isSafe != mqttLastPublishedSafe || mqttClient->connectionCount() != mqttSafetyConnection;
         if (!changed && now - mqttSafetyPublishedAt < MQTT_SAFETY_REPUBLISH_MS)
             return;
 
@@ -1074,8 +1183,7 @@ namespace SQM
         appendSafetyStatus(doc.to<JsonObject>());
         std::string payload;
         serializeJson(doc, payload);
-        if (mqttClient->publishSubtopic("safety", payload, true) &&
-            mqttClient->publishSubtopic("safe", status.isSafe ? "1" : "0", true))
+        if (mqttClient->publishSubtopic("safety", payload, true) && mqttClient->publishSubtopic("safe", status.isSafe ? "1" : "0", true))
         {
             mqttSafetyPublished = true;
             mqttLastPublishedSafe = status.isSafe;
@@ -1086,113 +1194,141 @@ namespace SQM
 
     void WebServer::setupAlertRoutes()
     {
-        server.on("/api/alerts/test", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  {
-            if (!requireAuth(request))
-                return;
-
-            const String channel = request->hasParam("channel") ? request->getParam("channel")->value() : String("all");
-            const AlertsConfig &alerts = getConfigCallback().alerts;
-            uint8_t mask = 0;
-            if (channel == "all")
-                mask = ALERT_CHANNELS_ALL;
-            else if (channel == "mqtt")
-                mask = alertChannelBit(AlertChannel::Mqtt);
-            else if (channel == "pushover")
-                mask = alertChannelBit(AlertChannel::Pushover);
-            else if (channel == "ntfy")
-                mask = alertChannelBit(AlertChannel::Ntfy);
-            else if (channel == "webhook")
-                mask = alertChannelBit(AlertChannel::Webhook);
-            else {
-                request->send(400, "application/json", createErrorJson("Unknown channel (expected mqtt, pushover, ntfy, webhook or all)").c_str());
-                return;
-            }
-
-            const uint8_t enabledMask =
-                (alerts.mqttEnabled ? alertChannelBit(AlertChannel::Mqtt) : 0) |
-                (alerts.pushoverEnabled ? alertChannelBit(AlertChannel::Pushover) : 0) |
-                (alerts.ntfyEnabled ? alertChannelBit(AlertChannel::Ntfy) : 0) |
-                (alerts.webhookEnabled ? alertChannelBit(AlertChannel::Webhook) : 0);
-            // ?event=rain_started&level=4&sound=siren sends a sample of that
-            // event at the given level, so unsaved choices can be tried out.
-            const Core::SampleAlert *eventSample = nullptr;
-            uint8_t level = 2;
-            String sound;
-            String title;
-            String message;
-            if (request->hasParam("event"))
+        server.on(
+            "/api/alerts/test",
+            HTTP_POST,
+            [this](AsyncWebServerRequest *request)
             {
-                eventSample = Core::sampleAlert(request->getParam("event")->value().c_str());
-                if (eventSample == nullptr) {
-                    request->send(400, "application/json", createErrorJson("Unknown event").c_str());
+                if (!requireAuth(request))
+                    return;
+
+                const String channel = request->hasParam("channel") ? request->getParam("channel")->value() : String("all");
+                const AlertsConfig &alerts = getConfigCallback().alerts;
+                uint8_t mask = 0;
+                if (channel == "all")
+                    mask = ALERT_CHANNELS_ALL;
+                else if (channel == "mqtt")
+                    mask = alertChannelBit(AlertChannel::Mqtt);
+                else if (channel == "pushover")
+                    mask = alertChannelBit(AlertChannel::Pushover);
+                else if (channel == "ntfy")
+                    mask = alertChannelBit(AlertChannel::Ntfy);
+                else if (channel == "webhook")
+                    mask = alertChannelBit(AlertChannel::Webhook);
+                else
+                {
+                    request->send(
+                        400,
+                        "application/json",
+                        createErrorJson("Unknown channel (expected mqtt, pushover, ntfy, webhook or all)").c_str());
                     return;
                 }
-                level = request->hasParam("level") ? static_cast<uint8_t>(request->getParam("level")->value().toInt()) : 2;
-                if (level < 1 || level > 4) {
-                    request->send(400, "application/json", createErrorJson("Level must be 1-4").c_str());
+
+                const uint8_t enabledMask = (alerts.mqttEnabled ? alertChannelBit(AlertChannel::Mqtt) : 0) |
+                                            (alerts.pushoverEnabled ? alertChannelBit(AlertChannel::Pushover) : 0) |
+                                            (alerts.ntfyEnabled ? alertChannelBit(AlertChannel::Ntfy) : 0) |
+                                            (alerts.webhookEnabled ? alertChannelBit(AlertChannel::Webhook) : 0);
+                // ?event=rain_started&level=4&sound=siren sends a sample of that
+                // event at the given level, so unsaved choices can be tried out.
+                const Core::SampleAlert *eventSample = nullptr;
+                uint8_t level = 2;
+                String sound;
+                String title;
+                String message;
+                if (request->hasParam("event"))
+                {
+                    eventSample = Core::sampleAlert(request->getParam("event")->value().c_str());
+                    if (eventSample == nullptr)
+                    {
+                        request->send(400, "application/json", createErrorJson("Unknown event").c_str());
+                        return;
+                    }
+                    level = request->hasParam("level") ? static_cast<uint8_t>(request->getParam("level")->value().toInt()) : 2;
+                    if (level < 1 || level > 4)
+                    {
+                        request->send(400, "application/json", createErrorJson("Level must be 1-4").c_str());
+                        return;
+                    }
+                    sound = request->hasParam("sound") ? request->getParam("sound")->value() : String();
+                    if (sound.length() > 32)
+                    {
+                        request->send(400, "application/json", createErrorJson("Sound name too long").c_str());
+                        return;
+                    }
+                    title = request->hasParam("title") ? request->getParam("title")->value() : String();
+                    message = request->hasParam("message") ? request->getParam("message")->value() : String();
+                    if (title.length() > AlertsConfig::MAX_TEMPLATE_TITLE || message.length() > AlertsConfig::MAX_TEMPLATE_MESSAGE)
+                    {
+                        request->send(
+                            400, "application/json", createErrorJson("Title is up to 80 characters and message up to 240").c_str());
+                        return;
+                    }
+                }
+
+                uint8_t sendMask = mask & enabledMask;
+                const bool ringsPhone = eventSample != nullptr && level == 4 && ble.alarmStatus().serviceActive;
+                if (sendMask == 0 && ringsPhone)
+                    sendMask = BLE_ONLY_TEST;
+                if (sendMask == 0)
+                {
+                    request->send(
+                        400, "application/json", createErrorJson("That channel isn't enabled - enable it and save settings first").c_str());
                     return;
                 }
-                sound = request->hasParam("sound") ? request->getParam("sound")->value() : String();
-                if (sound.length() > 32) {
-                    request->send(400, "application/json", createErrorJson("Sound name too long").c_str());
+
+                portENTER_CRITICAL(&pendingAlertTestLock);
+                pendingAlertTest.mask |= sendMask;
+                pendingAlertTest.sample = eventSample;
+                pendingAlertTest.level = level;
+                strlcpy(pendingAlertTest.sound, sound.c_str(), sizeof(pendingAlertTest.sound));
+                strlcpy(pendingAlertTest.title, title.c_str(), sizeof(pendingAlertTest.title));
+                strlcpy(pendingAlertTest.message, message.c_str(), sizeof(pendingAlertTest.message));
+                portEXIT_CRITICAL(&pendingAlertTestLock);
+                request->send(202, "application/json", "{\"success\":true,\"message\":\"Test notification queued\"}");
+            });
+
+        server.on(
+            "/api/alerts/clear",
+            HTTP_POST,
+            [this](AsyncWebServerRequest *request)
+            {
+                if (!requireAuth(request))
+                    return;
+                alertDispatcher->clearRecent();
+                request->send(200, "application/json", "{\"success\":true}");
+            });
+
+        server.on(
+            "/api/ble/ack",
+            HTTP_POST,
+            [this](AsyncWebServerRequest *request)
+            {
+                if (!requireAuth(request))
+                    return;
+                if (!ble.alarmStatus().alarmActive)
+                {
+                    request->send(409, "application/json", createErrorJson("No phone alarm is active").c_str());
                     return;
                 }
-                title = request->hasParam("title") ? request->getParam("title")->value() : String();
-                message = request->hasParam("message") ? request->getParam("message")->value() : String();
-                if (title.length() > AlertsConfig::MAX_TEMPLATE_TITLE || message.length() > AlertsConfig::MAX_TEMPLATE_MESSAGE) {
-                    request->send(400, "application/json", createErrorJson("Title is up to 80 characters and message up to 240").c_str());
+                ble.requestLocalAck();
+                request->send(202, "application/json", "{\"success\":true}");
+            });
+
+        server.on(
+            "/api/ble/forget-bonds",
+            HTTP_POST,
+            [this](AsyncWebServerRequest *request)
+            {
+                if (!requireAuth(request))
+                    return;
+                if (!ble.isActive())
+                {
+                    request->send(409, "application/json", createErrorJson("Bluetooth is off").c_str());
                     return;
                 }
-            }
-
-            uint8_t sendMask = mask & enabledMask;
-            const bool ringsPhone = eventSample != nullptr && level == 4 && ble.alarmStatus().serviceActive;
-            if (sendMask == 0 && ringsPhone)
-                sendMask = BLE_ONLY_TEST;
-            if (sendMask == 0) {
-                request->send(400, "application/json", createErrorJson("That channel isn't enabled - enable it and save settings first").c_str());
-                return;
-            }
-
-            portENTER_CRITICAL(&pendingAlertTestLock);
-            pendingAlertTest.mask |= sendMask;
-            pendingAlertTest.sample = eventSample;
-            pendingAlertTest.level = level;
-            strlcpy(pendingAlertTest.sound, sound.c_str(), sizeof(pendingAlertTest.sound));
-            strlcpy(pendingAlertTest.title, title.c_str(), sizeof(pendingAlertTest.title));
-            strlcpy(pendingAlertTest.message, message.c_str(), sizeof(pendingAlertTest.message));
-            portEXIT_CRITICAL(&pendingAlertTestLock);
-            request->send(202, "application/json", "{\"success\":true,\"message\":\"Test notification queued\"}"); });
-
-        server.on("/api/alerts/clear", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  {
-            if (!requireAuth(request))
-                return;
-            alertDispatcher->clearRecent();
-            request->send(200, "application/json", "{\"success\":true}"); });
-
-        server.on("/api/ble/ack", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  {
-            if (!requireAuth(request))
-                return;
-            if (!ble.alarmStatus().alarmActive) {
-                request->send(409, "application/json", createErrorJson("No phone alarm is active").c_str());
-                return;
-            }
-            ble.requestLocalAck();
-            request->send(202, "application/json", "{\"success\":true}"); });
-
-        server.on("/api/ble/forget-bonds", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  {
-            if (!requireAuth(request))
-                return;
-            if (!ble.isActive()) {
-                request->send(409, "application/json", createErrorJson("Bluetooth is off").c_str());
-                return;
-            }
-            ble.requestForgetBonds();
-            request->send(202, "application/json", "{\"success\":true}"); });
+                ble.requestForgetBonds();
+                request->send(202, "application/json", "{\"success\":true}");
+            });
 
         // Resume ("arm") and pause ("disarm") for automations (Home Assistant
         // rest_command, N.I.N.A. sequence scripts) and the web UI, which adds
@@ -1211,45 +1347,55 @@ namespace SQM
         };
         server.on("/api/alerts/arm", HTTP_POST, armRoute(true));
         server.on("/api/alerts/disarm", HTTP_POST, armRoute(false));
-        server.on("/api/alerts/armed", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  {
-            StaticJsonDocument<384> doc;
-            Core::writeAlertSchedule(doc.to<JsonObject>(), sharedSchedule(), getConfigCallback(), millis());
-            std::string json;
-            serializeJson(doc, json);
-            request->send(200, "application/json", json.c_str()); });
+        server.on(
+            "/api/alerts/armed",
+            HTTP_GET,
+            [this](AsyncWebServerRequest *request)
+            {
+                StaticJsonDocument<384> doc;
+                Core::writeAlertSchedule(doc.to<JsonObject>(), sharedSchedule(), getConfigCallback(), millis());
+                std::string json;
+                serializeJson(doc, json);
+                request->send(200, "application/json", json.c_str());
+            });
 
-        server.on("/api/alerts/recent", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  {
-            const std::vector<AlertRecord> records = alertDispatcher->recent();
-            DynamicJsonDocument doc(8192);
-            doc["enabled"] = getConfigCallback().alerts.enabled;
-            doc["armed"] = sharedSchedule().sending;
-            JsonArray arr = doc.createNestedArray("alerts");
-            const uint32_t nowSeconds = millis() / 1000;
-            // Newest first
-            for (auto it = records.rbegin(); it != records.rend(); ++it) {
-                JsonObject item = arr.createNestedObject();
-                item["id"] = it->id;
-                item["event"] = Alerts::alertTypeName(it->alert.type);
-                item["title"] = it->alert.title;
-                item["message"] = it->alert.message;
-                item["level"] = Alerts::alertLevelName(it->alert.level);
-                item["ageSeconds"] = nowSeconds - it->uptimeSeconds;
-                if (it->epochSeconds != 0)
-                    item["timestamp"] = it->epochSeconds;
-                JsonObject channels = item.createNestedObject("channels");
-                for (size_t i = 0; i < ALERT_CHANNEL_COUNT; ++i) {
-                    if (it->status[i] == DeliveryStatus::NotSent)
-                        continue;
-                    JsonObject ch = channels.createNestedObject(alertChannelName(static_cast<AlertChannel>(i)));
-                    ch["status"] = deliveryStatusName(it->status[i]);
-                    ch["detail"] = it->detail[i];
+        server.on(
+            "/api/alerts/recent",
+            HTTP_GET,
+            [this](AsyncWebServerRequest *request)
+            {
+                const std::vector<AlertRecord> records = alertDispatcher->recent();
+                DynamicJsonDocument doc(8192);
+                doc["enabled"] = getConfigCallback().alerts.enabled;
+                doc["armed"] = sharedSchedule().sending;
+                JsonArray arr = doc.createNestedArray("alerts");
+                const uint32_t nowSeconds = millis() / 1000;
+                // Newest first
+                for (auto it = records.rbegin(); it != records.rend(); ++it)
+                {
+                    JsonObject item = arr.createNestedObject();
+                    item["id"] = it->id;
+                    item["event"] = Alerts::alertTypeName(it->alert.type);
+                    item["title"] = it->alert.title;
+                    item["message"] = it->alert.message;
+                    item["level"] = Alerts::alertLevelName(it->alert.level);
+                    item["ageSeconds"] = nowSeconds - it->uptimeSeconds;
+                    if (it->epochSeconds != 0)
+                        item["timestamp"] = it->epochSeconds;
+                    JsonObject channels = item.createNestedObject("channels");
+                    for (size_t i = 0; i < ALERT_CHANNEL_COUNT; ++i)
+                    {
+                        if (it->status[i] == DeliveryStatus::NotSent)
+                            continue;
+                        JsonObject ch = channels.createNestedObject(alertChannelName(static_cast<AlertChannel>(i)));
+                        ch["status"] = deliveryStatusName(it->status[i]);
+                        ch["detail"] = it->detail[i];
+                    }
                 }
-            }
-            std::string json;
-            serializeJson(doc, json);
-            request->send(200, "application/json", json.c_str()); });
+                std::string json;
+                serializeJson(doc, json);
+                request->send(200, "application/json", json.c_str());
+            });
     }
 
     SafetyStatus WebServer::getSafetyStatus() const
@@ -1276,17 +1422,14 @@ namespace SQM
         // settings live on the SPA's Settings page, so send every setup URL
         // there. server.on() also matches "/setup/..." as a prefix in this
         // ESPAsyncWebServer version, so this single route covers them all.
-        server.on("/setup", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->redirect("/settings?section=alpaca"); });
+        server.on("/setup", HTTP_GET, [](AsyncWebServerRequest *request) { request->redirect("/settings?section=alpaca"); });
 
         // --- Management + device API ---
         // Everything is handled by Alpaca::Router (lib/AlpacaLogic), which the
         // native simulator ConformU tests in CI also runs. One handler per
         // prefix: registering ~50 routes separately cost ~10 KB of heap.
-        server.on("/management", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  { handleAlpacaRequest(request); });
-        server.on("/api/v1", HTTP_ANY, [this](AsyncWebServerRequest *request)
-                  { handleAlpacaRequest(request); });
+        server.on("/management", HTTP_GET, [this](AsyncWebServerRequest *request) { handleAlpacaRequest(request); });
+        server.on("/api/v1", HTTP_ANY, [this](AsyncWebServerRequest *request) { handleAlpacaRequest(request); });
     }
 
     Alpaca::ServerIdentity WebServer::alpacaIdentity()
@@ -1294,10 +1437,22 @@ namespace SQM
         return {FIRMWARE_NAME, "SQMeter", FIRMWARE_VERSION, ESP.getEfuseMac()};
     }
 
-    bool WebServer::AlpacaBackend::alpacaEnabled() const { return owner.getConfigCallback().alpaca.enabled; }
-    bool WebServer::AlpacaBackend::isSafe() const { return owner.getSafetyStatus().isSafe; }
-    Alpaca::ObservingConditionsSnapshot WebServer::AlpacaBackend::observingConditions() const { return owner.buildAlpacaObservingConditionsSnapshot(); }
-    std::string WebServer::AlpacaBackend::location() const { return owner.getConfigCallback().deviceName; }
+    bool WebServer::AlpacaBackend::alpacaEnabled() const
+    {
+        return owner.getConfigCallback().alpaca.enabled;
+    }
+    bool WebServer::AlpacaBackend::isSafe() const
+    {
+        return owner.getSafetyStatus().isSafe;
+    }
+    Alpaca::ObservingConditionsSnapshot WebServer::AlpacaBackend::observingConditions() const
+    {
+        return owner.buildAlpacaObservingConditionsSnapshot();
+    }
+    std::string WebServer::AlpacaBackend::location() const
+    {
+        return owner.getConfigCallback().deviceName;
+    }
 
     // ISO 8601 UTC for DeviceState, or empty if the clock has never been set
     // (NTP/GPS) - a 1970 timestamp would be worse than none.
@@ -1407,7 +1562,8 @@ namespace SQM
 
         if (!getConfigCallback().rain.enabled)
         {
-            request->send(409, "application/json", createErrorJson("The rain sensor is switched off (Settings → Sensors → Rain sensor)").c_str());
+            request->send(
+                409, "application/json", createErrorJson("The rain sensor is switched off (Settings → Sensors → Rain sensor)").c_str());
             return;
         }
 
@@ -1458,8 +1614,10 @@ namespace SQM
         // it's seeing light, and the offset would wipe out real readings.
         if (!diagnostics.nightMode)
         {
-            request->send(409, "application/json",
-                          createErrorJson("The sensor is seeing light. Cover it completely and wait for the averaging window to fill.").c_str());
+            request->send(
+                409,
+                "application/json",
+                createErrorJson("The sensor is seeing light. Cover it completely and wait for the averaging window to fill.").c_str());
             return;
         }
         // The offset is the window's average: wait until the window holds only
@@ -1484,7 +1642,8 @@ namespace SQM
         updated.skyCalibration.darkIrOffset = 0.0F;
         updated.skyCalibration.darkSampleCount = diagnostics.sampleCount;
         const time_t epochSeconds = time(nullptr);
-        updated.skyCalibration.darkCalibratedAt = epochSeconds >= 1704067200 ? static_cast<int64_t>(epochSeconds) : static_cast<int64_t>(millis());
+        updated.skyCalibration.darkCalibratedAt =
+            epochSeconds >= 1704067200 ? static_cast<int64_t>(epochSeconds) : static_cast<int64_t>(millis());
 
         if (!saveConfigCallback(updated))
         {
@@ -1516,7 +1675,8 @@ namespace SQM
             request->send(502, "application/json", createErrorJson("RG-15 total accumulation reset failed").c_str());
             return;
         }
-        request->send(200, "application/json", "{\"success\":true,\"command\":\"O\",\"message\":\"RG-15 total accumulation reset command sent\"}");
+        request->send(
+            200, "application/json", "{\"success\":true,\"command\":\"O\",\"message\":\"RG-15 total accumulation reset command sent\"}");
     }
 
     void WebServer::handleRG15Reboot(AsyncWebServerRequest *request)
@@ -1627,7 +1787,6 @@ namespace SQM
             int state = testMqtt.state();
             Logger::error(TAG, "MQTT test connection failed with state: %d", state);
 
-
             // Provide detailed error messages based on state
             switch (state)
             {
@@ -1691,12 +1850,7 @@ namespace SQM
     }
 
     void WebServer::onSensorWebSocketEvent(
-        AsyncWebSocket *server,
-        AsyncWebSocketClient *client,
-        AwsEventType type,
-        void *arg,
-        uint8_t *data,
-        size_t len)
+        AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
     {
         switch (type)
         {
@@ -1716,12 +1870,7 @@ namespace SQM
     }
 
     void WebServer::onStatusWebSocketEvent(
-        AsyncWebSocket *server,
-        AsyncWebSocketClient *client,
-        AwsEventType type,
-        void *arg,
-        uint8_t *data,
-        size_t len)
+        AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
     {
         switch (type)
         {
@@ -1825,21 +1974,21 @@ namespace SQM
         // Rebuilt from scratch when anything it depends on changes.
         char mac[13];
         snprintf(mac, sizeof(mac), "%012llx", static_cast<unsigned long long>(ESP.getEfuseMac()));
-        Readings::DiscoveryDevice device{std::string("sqmeter_") + mac, getConfigCallback().deviceName, FIRMWARE_VERSION, mqtt.topic,
-                                         mqtt.discoveryPrefix};
+        Readings::DiscoveryDevice device{
+            std::string("sqmeter_") + mac, getConfigCallback().deviceName, FIRMWARE_VERSION, mqtt.topic, mqtt.discoveryPrefix};
         std::string key = std::to_string(mqtt.homeAssistant) + device.name + device.baseTopic + device.prefix;
         for (bool on : {groups.sky, groups.environment, groups.clouds, groups.rain, groups.wind, mqtt.publish.safety})
             key += on ? '1' : '0';
         if (key == discoveryKey && mqttClient->connectionCount() == discoveryConnection)
             return;
 
-        auto publish = [this](const std::string &topic, const std::string &payload)
-        { mqttClient->publishTopic(topic, payload, true); };
-        if (!discoveryKey.empty() && discoveryWasOn && (!mqtt.homeAssistant || discoveryDevice.prefix != device.prefix || discoveryDevice.baseTopic != device.baseTopic))
+        auto publish = [this](const std::string &topic, const std::string &payload) { mqttClient->publishTopic(topic, payload, true); };
+        if (!discoveryKey.empty() && discoveryWasOn &&
+            (!mqtt.homeAssistant || discoveryDevice.prefix != device.prefix || discoveryDevice.baseTopic != device.baseTopic))
         {
             // Remove what was announced under the old settings.
-            Readings::forEachDiscovery(discoveryDevice, groups, true, [&](const std::string &topic, const std::string &)
-                                       { publish(topic, ""); });
+            Readings::forEachDiscovery(
+                discoveryDevice, groups, true, [&](const std::string &topic, const std::string &) { publish(topic, ""); });
         }
         if (mqtt.homeAssistant)
             Readings::forEachDiscovery(device, groups, mqtt.publish.safety, publish);
@@ -1971,8 +2120,7 @@ namespace SQM
         }
 
         // Get LittleFS partition info
-        const esp_partition_t *fs_partition = esp_partition_find_first(
-            ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, NULL);
+        const esp_partition_t *fs_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, NULL);
         if (fs_partition)
         {
             partitions["fsAddress"] = fs_partition->address;
