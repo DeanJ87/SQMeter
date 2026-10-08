@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Internationalisation
+# Specification Quality Checklist: Translations
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-08
@@ -31,6 +31,6 @@
 
 ## Notes
 
-- The spec names existing project constraints, because they are scope rather than implementation choices: the GitHub release source (spec 012), `requireAuth` (constitution VI), and the 512 KB file system and flash budgets (constitution IV).
-- Design decisions 1–4 in the spec record where translation happens, what stays English, how versions are handled, and where packs come from. Planning can revisit them with evidence.
-- Zero clarification markers. The informed defaults are in Assumptions: one device-wide language, PR-based JSON workflow, docs stay English, 80% minimum completeness to publish.
+- Revised 2026-10-08 to the maintainer's direction: complete AI-generated translations committed to the repo (one file per language), and the device downloads the one chosen file into its file system. Hosted translation platforms, completeness thresholds, the contributor workflow, full right-to-left support and docs translation were dropped.
+- The spec names existing project constraints because they define scope, not implementation: GitHub release assets and the OTA download path (spec 012), authentication (constitution VI), and the file system and flash budgets (constitution IV).
+- No clarification markers. Defaults are in Assumptions: the initial nine languages, device alerts staying English (custom wording covers other languages), and one device-wide language.
