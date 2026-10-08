@@ -12,3 +12,9 @@ describe('deviceTime', () => {
     expect(deviceTime(undefined)).toBeUndefined();
   });
 });
+
+describe('deviceTime offsets', () => {
+  it('reads the device format with a +hhmm offset', () => {
+    expect(deviceTime({ time: { iso: '2026-10-08T22:10:00+0100', timezone: 'GMT0BST' } })?.toISOString()).toBe('2026-10-08T21:10:00.000Z');
+  });
+});

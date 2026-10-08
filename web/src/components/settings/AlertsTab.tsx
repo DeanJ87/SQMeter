@@ -45,7 +45,7 @@ const describeDarkness = (latitude: number, longitude: number, darkAltitude: num
   const predicted = darkness(latitude, longitude, darkAltitude, now);
   const sunNow = `Sun at ${sun.toFixed(1)}° now${deviceSunAltitude === undefined ? '' : ' (device)'}`;
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const inZone = zone ? ` (${zone} time)` : '';
+  const inZone = zone ? ` (this browser's time, ${zone})` : " (this browser's time)";
   if (darkNow) return `${sunNow} - dark${predicted.end ? ` until ${formatClock(predicted.end)}${inZone}` : ''}.`;
   const start = predicted.darkNow ? null : predicted.start;
   if (!start) return `${sunNow} - not dark yet.`;

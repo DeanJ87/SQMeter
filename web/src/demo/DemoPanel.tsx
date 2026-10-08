@@ -18,6 +18,10 @@ const DemoPanel: FunctionalComponent = () => {
   const [, setTick] = useState(0);
 
   useEffect(() => demoDevice.onChange(() => setTick((n) => n + 1)), []);
+  useEffect(() => {
+    document.body.classList.add('has-demo-panel');
+    return () => document.body.classList.remove('has-demo-panel');
+  }, []);
 
   const active = scenarioActive(demoDevice.scenario, demoDevice.nowMs) ? demoDevice.scenario : null;
   const remaining = scenarioRemainingMs(active, demoDevice.nowMs);
