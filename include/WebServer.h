@@ -158,7 +158,7 @@ namespace SQM
         struct PendingAlertTest
         {
             uint8_t mask = 0;
-            int8_t event = -1;
+            const Core::SampleAlert *sample = nullptr; // nullptr: the generic test
             uint8_t level = 2;
             char sound[33] = {};
             char title[AlertsConfig::MAX_TEMPLATE_TITLE + 1] = {};

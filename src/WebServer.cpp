@@ -57,27 +57,6 @@ namespace SQM
         // Test sends that only ring paired phones (no push channel enabled).
         constexpr uint8_t BLE_ONLY_TEST = 0x80;
 
-        // Samples for "Test" on each event row of the Alerts settings.
-        struct SampleAlert
-        {
-            const char *key;
-            Alerts::AlertType type;
-            const char *title;
-            const char *label;
-            uint32_t bleFlags;
-        };
-        constexpr SampleAlert SAMPLE_ALERTS[] = {
-            {"unsafe", Alerts::AlertType::Unsafe, "Observatory UNSAFE", "It turns unsafe", Alpaca::UNSAFE_CLOUD_COVER},
-            {"safe", Alerts::AlertType::Safe, "Observatory safe", "It's safe again", 0},
-            {"rain_started", Alerts::AlertType::RainStarted, "Rain detected", "Rain starts", Alpaca::UNSAFE_RAIN},
-            {"rain_stopped", Alerts::AlertType::RainStopped, "Rain cleared", "Rain stops", 0},
-            {"sensor_fault", Alerts::AlertType::SensorFault, "Sensor fault", "A sensor fails", Alpaca::UNSAFE_SENSOR_FAULT},
-            {"sensor_recovered", Alerts::AlertType::SensorRecovered, "Sensor recovered", "A sensor recovers", 0},
-            {"dew_risk", Alerts::AlertType::DewRisk, "Dew risk", "Dew risk", Alpaca::UNSAFE_DEWPOINT},
-            {"clear_sky", Alerts::AlertType::ClearSky, "Dark and clear", "Skies clear up", 0},
-            {"clouded_over", Alerts::AlertType::CloudedOver, "Clouded over", "Skies cloud over", Alpaca::UNSAFE_CLOUD_COVER},
-        };
-
         esp_timer_handle_t restartTimer = nullptr;
 
         void restartTimerCallback(void *)
@@ -290,49 +269,16 @@ namespace SQM
         if (pendingTest.mask != 0)
         {
             const Config &cfg = getConfigCallback();
-            Alerts::Alert test;
-            if (pendingTest.event < 0)
+            const Core::SampleAlert *sample = pendingTest.sample;
+            std::string localTime, localDate;
+            localClock(localTime, localDate);
+            const Alerts::Alert test = Core::buildTestAlert(sample, pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message,
+                                                            getSafetyStatus(), cfg, buildAlpacaObservingConditionsSnapshot(),
+                                                            computeNight(getSensorSnapshot(), cfg), localTime, localDate);
+            if (sample != nullptr && test.level == Alerts::AlertLevel::Wake)
             {
-                test.type = Alerts::AlertType::Test;
-                test.level = Alerts::AlertLevel::Normal;
-                test.title = "Test notification";
-                test.message = "Alerts from this SQMeter are working.";
-            }
-            else
-            {
-                const SampleAlert &sample = SAMPLE_ALERTS[pendingTest.event];
-                test.type = sample.type;
-                test.level = static_cast<Alerts::AlertLevel>(pendingTest.level);
-                test.sound = pendingTest.sound;
-                test.title = sample.title;
-                test.message = std::string("This is how a \"") + sample.label + "\" alert arrives.";
-
-                // Custom wording is filled in from live readings; values
-                // only a real event has (the reasons, which sensor) are
-                // examples unless they apply right now.
-                const SafetyStatus safety = getSafetyStatus();
-                if (sample.type == Alerts::AlertType::Unsafe)
-                {
-                    std::vector<std::string> reasons = safety.isSafe ? std::vector<std::string>{"Cloud 62% >= 35% (example)"} : safety.reasons;
-                    std::string inline_;
-                    for (const std::string &reason : reasons)
-                        inline_ += (inline_.empty() ? "" : "; ") + reason;
-                    test.vars = {{"reasons", Alerts::joinReasons(reasons)}, {"reasons_inline", inline_}, {"reason_count", std::to_string(reasons.size())}};
-                }
-                else if (sample.type == Alerts::AlertType::SensorFault || sample.type == Alerts::AlertType::SensorRecovered)
-                    test.vars = {{"sensor", "TSL2591 light (example)"}};
-                AlertsConfig::EventSetting custom{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
-                std::string localTime, localDate;
-                localClock(localTime, localDate);
-                Core::applyAlertTemplate(test, custom,
-                                         Core::alertVars(cfg, buildAlpacaObservingConditionsSnapshot(), computeNight(getSensorSnapshot(), cfg),
-                                                         test, localTime, localDate));
-                test.title = "Test: " + test.title;
-                if (test.level == Alerts::AlertLevel::Wake)
-                {
-                    const time_t wallClock = time(nullptr);
-                    ble.raiseAlarm(sample.bleFlags, wallClock >= 1704067200 ? static_cast<uint32_t>(wallClock) : 0);
-                }
+                const time_t wallClock = time(nullptr);
+                ble.raiseAlarm(sample->bleFlags, wallClock >= Core::CLOCK_VALID_EPOCH ? static_cast<uint32_t>(wallClock) : 0);
             }
             if (pendingTest.mask != BLE_ONLY_TEST)
                 alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, pendingTest.mask);
@@ -1111,18 +1057,15 @@ namespace SQM
                 (alerts.webhookEnabled ? alertChannelBit(AlertChannel::Webhook) : 0);
             // ?event=rain_started&level=4&sound=siren sends a sample of that
             // event at the given level, so unsaved choices can be tried out.
-            int8_t event = -1;
+            const Core::SampleAlert *eventSample = nullptr;
             uint8_t level = 2;
             String sound;
             String title;
             String message;
             if (request->hasParam("event"))
             {
-                const String key = request->getParam("event")->value();
-                for (size_t i = 0; i < sizeof(SAMPLE_ALERTS) / sizeof(SAMPLE_ALERTS[0]); ++i)
-                    if (key == SAMPLE_ALERTS[i].key)
-                        event = static_cast<int8_t>(i);
-                if (event < 0) {
+                eventSample = Core::sampleAlert(request->getParam("event")->value().c_str());
+                if (eventSample == nullptr) {
                     request->send(400, "application/json", createErrorJson("Unknown event").c_str());
                     return;
                 }
@@ -1145,7 +1088,7 @@ namespace SQM
             }
 
             uint8_t sendMask = mask & enabledMask;
-            const bool ringsPhone = event >= 0 && level == 4 && ble.alarmStatus().serviceActive;
+            const bool ringsPhone = eventSample != nullptr && level == 4 && ble.alarmStatus().serviceActive;
             if (sendMask == 0 && ringsPhone)
                 sendMask = BLE_ONLY_TEST;
             if (sendMask == 0) {
@@ -1155,7 +1098,7 @@ namespace SQM
 
             portENTER_CRITICAL(&pendingAlertTestLock);
             pendingAlertTest.mask |= sendMask;
-            pendingAlertTest.event = event;
+            pendingAlertTest.sample = eventSample;
             pendingAlertTest.level = level;
             strlcpy(pendingAlertTest.sound, sound.c_str(), sizeof(pendingAlertTest.sound));
             strlcpy(pendingAlertTest.title, title.c_str(), sizeof(pendingAlertTest.title));

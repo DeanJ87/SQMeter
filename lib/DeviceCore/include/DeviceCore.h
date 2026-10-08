@@ -129,6 +129,24 @@ namespace SQM
                             const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs, const NightState &night,
                             const SafetyStatus &status, const std::string &localTime, const std::string &localDate);
 
+        // "Test" on an event row of the Alerts settings: a sample of each event.
+        struct SampleAlert
+        {
+            const char *key;   // event key, e.g. "rain_started"
+            Alerts::AlertType type;
+            const char *title; // built-in title
+            const char *label; // "Rain starts"
+            uint32_t bleFlags; // Bluetooth alarm reasons at Wake level
+        };
+        const SampleAlert *sampleAlert(const std::string &key); // nullptr if unknown
+        // The test notification: the generic one (sample == nullptr) or a
+        // sample of an event in the given level, sound and wording, filled in
+        // from live readings.
+        Alerts::Alert buildTestAlert(const SampleAlert *sample, uint8_t level, const std::string &sound, const std::string &title,
+                                     const std::string &message, const SafetyStatus &safety, const Config &cfg,
+                                     const Alpaca::ObservingConditionsSnapshot &obs, const NightState &night,
+                                     const std::string &localTime, const std::string &localDate);
+
         // ISO 8601 UTC, or "" before the clock is set.
         std::string isoUtc(int64_t epoch);
     } // namespace Core

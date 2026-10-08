@@ -636,6 +636,69 @@ namespace SQM
             return step;
         }
 
+        namespace
+        {
+            constexpr SampleAlert SAMPLE_ALERTS[] = {
+                {"unsafe", Alerts::AlertType::Unsafe, "Observatory UNSAFE", "It turns unsafe", Alpaca::UNSAFE_CLOUD_COVER},
+                {"safe", Alerts::AlertType::Safe, "Observatory safe", "It's safe again", 0},
+                {"rain_started", Alerts::AlertType::RainStarted, "Rain detected", "Rain starts", Alpaca::UNSAFE_RAIN},
+                {"rain_stopped", Alerts::AlertType::RainStopped, "Rain cleared", "Rain stops", 0},
+                {"sensor_fault", Alerts::AlertType::SensorFault, "Sensor fault", "A sensor fails", Alpaca::UNSAFE_SENSOR_FAULT},
+                {"sensor_recovered", Alerts::AlertType::SensorRecovered, "Sensor recovered", "A sensor recovers", 0},
+                {"dew_risk", Alerts::AlertType::DewRisk, "Dew risk", "Dew risk", Alpaca::UNSAFE_DEWPOINT},
+                {"clear_sky", Alerts::AlertType::ClearSky, "Dark and clear", "Skies clear up", 0},
+                {"clouded_over", Alerts::AlertType::CloudedOver, "Clouded over", "Skies cloud over", Alpaca::UNSAFE_CLOUD_COVER},
+            };
+        } // namespace
+
+        const SampleAlert *sampleAlert(const std::string &key)
+        {
+            for (const SampleAlert &sample : SAMPLE_ALERTS)
+                if (key == sample.key)
+                    return &sample;
+            return nullptr;
+        }
+
+        Alerts::Alert buildTestAlert(const SampleAlert *sample, uint8_t level, const std::string &sound, const std::string &title,
+                                     const std::string &message, const SafetyStatus &safety, const Config &cfg,
+                                     const Alpaca::ObservingConditionsSnapshot &obs, const NightState &n,
+                                     const std::string &localTime, const std::string &localDate)
+        {
+            Alerts::Alert test;
+            if (sample == nullptr)
+            {
+                test.type = Alerts::AlertType::Test;
+                test.level = Alerts::AlertLevel::Normal;
+                test.title = "Test notification";
+                test.message = "Alerts from this SQMeter are working.";
+                return test;
+            }
+            test.type = sample->type;
+            test.level = static_cast<Alerts::AlertLevel>(level);
+            test.sound = sound;
+            test.title = sample->title;
+            test.message = std::string("This is how a \"") + sample->label + "\" alert arrives.";
+
+            // Custom wording is filled in from live readings; values only a
+            // real event has (the reasons, which sensor) are examples unless
+            // they apply right now.
+            if (sample->type == Alerts::AlertType::Unsafe)
+            {
+                const std::vector<std::string> reasons =
+                    safety.isSafe ? std::vector<std::string>{"Cloud 62% >= 35% (example)"} : safety.reasons;
+                std::string inline_;
+                for (const std::string &reason : reasons)
+                    inline_ += (inline_.empty() ? "" : "; ") + reason;
+                test.vars = {{"reasons", Alerts::joinReasons(reasons)}, {"reasons_inline", inline_}, {"reason_count", std::to_string(reasons.size())}};
+            }
+            else if (sample->type == Alerts::AlertType::SensorFault || sample->type == Alerts::AlertType::SensorRecovered)
+                test.vars = {{"sensor", "TSL2591 light (example)"}};
+            AlertsConfig::EventSetting custom{level, sound, title, message};
+            applyAlertTemplate(test, custom, alertVars(cfg, obs, n, test, localTime, localDate));
+            test.title = "Test: " + test.title;
+            return test;
+        }
+
         std::string isoUtc(int64_t epoch)
         {
             if (epoch < CLOCK_VALID_EPOCH)
