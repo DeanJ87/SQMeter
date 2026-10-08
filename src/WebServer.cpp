@@ -18,6 +18,8 @@
 #include "sensors/RG15Sensor.h"
 #include "AlpacaDiscovery.h"
 #include "HeapTrace.h"
+#include "SunPosition.h"
+#include "SafetyHistory.h"
 
 extern uint32_t bootCount;
 
@@ -25,7 +27,31 @@ namespace SQM
 {
     namespace
     {
-        constexpr size_t CONFIG_JSON_BUFFER_SIZE = 8192;
+        constexpr size_t CONFIG_JSON_BUFFER_SIZE = 12288; // full config incl. custom alert texts
+
+        // Test sends that only ring paired phones (no push channel enabled).
+        constexpr uint8_t BLE_ONLY_TEST = 0x80;
+
+        // Samples for "Test" on each event row of the Alerts settings.
+        struct SampleAlert
+        {
+            const char *key;
+            Alerts::AlertType type;
+            const char *title;
+            const char *label;
+            uint32_t bleFlags;
+        };
+        constexpr SampleAlert SAMPLE_ALERTS[] = {
+            {"unsafe", Alerts::AlertType::Unsafe, "Observatory UNSAFE", "It turns unsafe", Alpaca::UNSAFE_CLOUD_COVER},
+            {"safe", Alerts::AlertType::Safe, "Observatory safe", "It's safe again", 0},
+            {"rain_started", Alerts::AlertType::RainStarted, "Rain detected", "Rain starts", Alpaca::UNSAFE_RAIN},
+            {"rain_stopped", Alerts::AlertType::RainStopped, "Rain cleared", "Rain stops", 0},
+            {"sensor_fault", Alerts::AlertType::SensorFault, "Sensor fault", "A sensor fails", Alpaca::UNSAFE_SENSOR_FAULT},
+            {"sensor_recovered", Alerts::AlertType::SensorRecovered, "Sensor recovered", "A sensor recovers", 0},
+            {"dew_risk", Alerts::AlertType::DewRisk, "Dew risk", "Dew risk", Alpaca::UNSAFE_DEWPOINT},
+            {"clear_sky", Alerts::AlertType::ClearSky, "Dark and clear", "Skies clear up", 0},
+            {"clouded_over", Alerts::AlertType::CloudedOver, "Clouded over", "Skies cloud over", Alpaca::UNSAFE_CLOUD_COVER},
+        };
 
         esp_timer_handle_t restartTimer = nullptr;
 
@@ -368,16 +394,56 @@ namespace SQM
             lastSafetyEvaluation = now;
         }
 
-        const uint8_t testMask = pendingAlertTestMask.exchange(0);
-        if (testMask != 0)
+        PendingAlertTest pendingTest;
+        portENTER_CRITICAL(&pendingAlertTestLock);
+        pendingTest = pendingAlertTest;
+        pendingAlertTest.mask = 0;
+        portEXIT_CRITICAL(&pendingAlertTestLock);
+        if (pendingTest.mask != 0)
         {
             const Config &cfg = getConfigCallback();
             Alerts::Alert test;
-            test.type = Alerts::AlertType::Test;
-            test.priority = Alerts::AlertPriority::Normal;
-            test.title = "Test notification";
-            test.message = "Alerts from this SQMeter are working.";
-            alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, testMask);
+            if (pendingTest.event < 0)
+            {
+                test.type = Alerts::AlertType::Test;
+                test.level = Alerts::AlertLevel::Normal;
+                test.title = "Test notification";
+                test.message = "Alerts from this SQMeter are working.";
+            }
+            else
+            {
+                const SampleAlert &sample = SAMPLE_ALERTS[pendingTest.event];
+                test.type = sample.type;
+                test.level = static_cast<Alerts::AlertLevel>(pendingTest.level);
+                test.sound = pendingTest.sound;
+                test.title = sample.title;
+                test.message = std::string("This is how a \"") + sample.label + "\" alert arrives.";
+
+                // Custom wording is filled in from live readings; values
+                // only a real event has (the reasons, which sensor) are
+                // examples unless they apply right now.
+                const SafetyStatus safety = getSafetyStatus();
+                if (sample.type == Alerts::AlertType::Unsafe)
+                {
+                    std::vector<std::string> reasons = safety.isSafe ? std::vector<std::string>{"Cloud 62% >= 35% (example)"} : safety.reasons;
+                    std::string inline_;
+                    for (const std::string &reason : reasons)
+                        inline_ += (inline_.empty() ? "" : "; ") + reason;
+                    test.vars = {{"reasons", Alerts::joinReasons(reasons)}, {"reasons_inline", inline_}, {"reason_count", std::to_string(reasons.size())}};
+                }
+                else if (sample.type == Alerts::AlertType::SensorFault || sample.type == Alerts::AlertType::SensorRecovered)
+                    test.vars = {{"sensor", "TSL2591 light (example)"}};
+                AlertsConfig::EventSetting custom{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
+                applyAlertTemplate(test, custom, alertVars(cfg, buildAlpacaObservingConditionsSnapshot(), computeNight(getSensorSnapshot(), cfg), test));
+                test.title = "Test: " + test.title;
+                if (test.level == Alerts::AlertLevel::Wake)
+                {
+                    const time_t wallClock = time(nullptr);
+                    ble.raiseAlarm(sample.bleFlags, wallClock >= 1704067200 ? static_cast<uint32_t>(wallClock) : 0);
+                }
+            }
+            if (pendingTest.mask != BLE_ONLY_TEST)
+                alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, pendingTest.mask);
         }
 
         // Broadcast sensor data every 1 second (for Dashboard)
@@ -474,6 +540,44 @@ namespace SQM
         // Sensors endpoint
         server.on("/api/sensors", HTTP_GET, [this](AsyncWebServerRequest *request)
                   { handleGetSensors(request); });
+
+        // Plain-text "1" (safe) or "0" (unsafe) - the SafetyMonitor verdict
+        // for scripts and loggers.
+        server.on("/api/safe", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  { request->send(200, "text/plain", getSafetyStatus().isSafe ? "1" : "0"); });
+
+        // Before /api/safety, which would otherwise match this path too.
+        server.on("/api/safety/history", HTTP_GET, [](AsyncWebServerRequest *request)
+                  {
+            static SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
+            const size_t n = SafetyHistory::entries(entries, SafetyHistory::CAPACITY);
+            static const char *const KIND[] = {"boot", "change", "alert"};
+            DynamicJsonDocument doc(256 + n * 160);
+            doc["boot"] = SafetyHistory::currentBoot();
+            doc["uptime"] = millis() / 1000;
+            JsonArray list = doc.createNestedArray("entries");
+            for (size_t i = n; i-- > 0;) // newest first
+            {
+                const SafetyHistory::Entry &e = entries[i];
+                JsonObject item = list.createNestedObject();
+                item["kind"] = KIND[static_cast<uint8_t>(e.kind) <= 2 ? static_cast<uint8_t>(e.kind) : 1];
+                item["boot"] = e.boot;
+                item["uptime"] = e.uptimeS;
+                if (e.epoch != 0)
+                    item["timestamp"] = e.epoch;
+                if (e.kind == SafetyHistory::Kind::Boot)
+                    item["resetReason"] = e.resetReason;
+                else
+                    item["safe"] = static_cast<bool>(e.safe);
+                if (e.kind == SafetyHistory::Kind::Change)
+                {
+                    item["held"] = static_cast<bool>(e.held);
+                    item["reasonFlags"] = e.flags;
+                }
+            }
+            std::string json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json.c_str()); });
 
         server.on("/api/safety", HTTP_GET, [this](AsyncWebServerRequest *request)
                   {
@@ -605,69 +709,6 @@ namespace SQM
 
     void WebServer::setupOTA()
     {
-        // Firmware OTA update (app partition)
-        server.on("/api/update", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  {
-            if (!requireAuth(request))
-                return;
-            bool success = !Update.hasError();
-            String response_json;
-            
-            if (success) {
-                response_json = "{\"success\":true}";
-            } else {
-                // Get detailed error message
-                String error_msg = "Unknown error";
-                uint8_t error = Update.getError();
-                switch(error) {
-                    case UPDATE_ERROR_OK: error_msg = "No error"; break;
-                    case UPDATE_ERROR_WRITE: error_msg = "Flash write failed"; break;
-                    case UPDATE_ERROR_ERASE: error_msg = "Flash erase failed"; break;
-                    case UPDATE_ERROR_READ: error_msg = "Flash read failed"; break;
-                    case UPDATE_ERROR_SPACE: error_msg = "Not enough space"; break;
-                    case UPDATE_ERROR_SIZE: error_msg = "Bad size given"; break;
-                    case UPDATE_ERROR_STREAM: error_msg = "Stream read timeout"; break;
-                    case UPDATE_ERROR_MD5: error_msg = "MD5 check failed"; break;
-                    case UPDATE_ERROR_MAGIC_BYTE: error_msg = "Wrong magic byte"; break;
-                    case UPDATE_ERROR_ACTIVATE: error_msg = "Could not activate partition"; break;
-                    case UPDATE_ERROR_NO_PARTITION: error_msg = "Partition not found"; break;
-                    case UPDATE_ERROR_BAD_ARGUMENT: error_msg = "Bad argument"; break;
-                    case UPDATE_ERROR_ABORT: error_msg = "Update aborted"; break;
-                    default: error_msg = "Error code: " + String(error); break;
-                }
-                response_json = "{\"success\":false,\"error\":\"" + error_msg + "\"}";
-            }
-            
-            AsyncWebServerResponse* response = request->beginResponse(200, "application/json", response_json);
-            response->addHeader("Connection", "close");
-            request->send(response);
-            
-            if (success) {
-                WebServer::scheduleRestart(1000);
-            } }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-                  {
-            if (!index) {
-                Logger::info("OTA", "Firmware update started: %s", filename.c_str());
-                if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
-                    Logger::error("OTA", "Update.begin failed: %d", Update.getError());
-                    Update.printError(Serial);
-                }
-            }
-            
-            if (Update.write(data, len) != len) {
-                Logger::error("OTA", "Update.write failed: %d", Update.getError());
-                Update.printError(Serial);
-            }
-            
-            if (final) {
-                if (Update.end(true)) {
-                    Logger::info("OTA", "Firmware update success, rebooting...");
-                } else {
-                    Logger::error("OTA", "Update.end failed: %d", Update.getError());
-                    Update.printError(Serial);
-                }
-            } });
-
         // Filesystem OTA update (LittleFS partition)
         // Static variables to track filesystem update progress
         static const esp_partition_t *fs_partition = nullptr;
@@ -759,6 +800,71 @@ namespace SQM
                     Logger::error("OTA", "Filesystem update failed: %s", fs_error_msg.c_str());
                 }
             } });
+
+        // Firmware OTA update (app partition). Registered after /api/update/fs:
+        // this server also matches "/api/update" as a prefix of
+        // "/api/update/fs", so registered first it took filesystem uploads too.
+        server.on("/api/update", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+            bool success = !Update.hasError();
+            String response_json;
+            
+            if (success) {
+                response_json = "{\"success\":true}";
+            } else {
+                // Get detailed error message
+                String error_msg = "Unknown error";
+                uint8_t error = Update.getError();
+                switch(error) {
+                    case UPDATE_ERROR_OK: error_msg = "No error"; break;
+                    case UPDATE_ERROR_WRITE: error_msg = "Flash write failed"; break;
+                    case UPDATE_ERROR_ERASE: error_msg = "Flash erase failed"; break;
+                    case UPDATE_ERROR_READ: error_msg = "Flash read failed"; break;
+                    case UPDATE_ERROR_SPACE: error_msg = "Not enough space"; break;
+                    case UPDATE_ERROR_SIZE: error_msg = "Bad size given"; break;
+                    case UPDATE_ERROR_STREAM: error_msg = "Stream read timeout"; break;
+                    case UPDATE_ERROR_MD5: error_msg = "MD5 check failed"; break;
+                    case UPDATE_ERROR_MAGIC_BYTE: error_msg = "Wrong magic byte"; break;
+                    case UPDATE_ERROR_ACTIVATE: error_msg = "Could not activate partition"; break;
+                    case UPDATE_ERROR_NO_PARTITION: error_msg = "Partition not found"; break;
+                    case UPDATE_ERROR_BAD_ARGUMENT: error_msg = "Bad argument"; break;
+                    case UPDATE_ERROR_ABORT: error_msg = "Update aborted"; break;
+                    default: error_msg = "Error code: " + String(error); break;
+                }
+                response_json = "{\"success\":false,\"error\":\"" + error_msg + "\"}";
+            }
+            
+            AsyncWebServerResponse* response = request->beginResponse(200, "application/json", response_json);
+            response->addHeader("Connection", "close");
+            request->send(response);
+            
+            if (success) {
+                WebServer::scheduleRestart(1000);
+            } }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+                  {
+            if (!index) {
+                Logger::info("OTA", "Firmware update started: %s", filename.c_str());
+                if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+                    Logger::error("OTA", "Update.begin failed: %d", Update.getError());
+                    Update.printError(Serial);
+                }
+            }
+            
+            if (Update.write(data, len) != len) {
+                Logger::error("OTA", "Update.write failed: %d", Update.getError());
+                Update.printError(Serial);
+            }
+            
+            if (final) {
+                if (Update.end(true)) {
+                    Logger::info("OTA", "Firmware update success, rebooting...");
+                } else {
+                    Logger::error("OTA", "Update.end failed: %d", Update.getError());
+                    Update.printError(Serial);
+                }
+            } });
     }
 
     void WebServer::setupGithubUpdates()
@@ -847,15 +953,17 @@ namespace SQM
 
     namespace
     {
-        // Alpaca parameter names are case-insensitive, and may arrive in the
-        // query string (GET) or the form-encoded body (PUT) - search both.
+        // Alpaca parameters arrive in the query string (GET, names
+        // case-insensitive) or the form-encoded body (PUT, names
+        // case-sensitive) - see Alpaca::paramNameMatches.
         const AsyncWebParameter *findAlpacaParam(AsyncWebServerRequest *request, const char *name)
         {
+            const bool isPut = request->method() == HTTP_PUT;
             const size_t count = request->params();
             for (size_t i = 0; i < count; ++i)
             {
                 const AsyncWebParameter *param = request->getParam(i);
-                if (param != nullptr && !param->isFile() && Alpaca::paramNameEquals(param->name().c_str(), name))
+                if (param != nullptr && !param->isFile() && Alpaca::paramNameMatches(param->name().c_str(), name, isPut))
                     return param;
             }
             return nullptr;
@@ -1067,6 +1175,7 @@ namespace SQM
                 if (safetyStatus.evaluatedAtMs != 0)
                     Logger::info(TAG, "SafetyMonitor now %s", reportedSafe ? "SAFE" : "UNSAFE");
                 safetyStatus.changedAtMs = now;
+                SafetyHistory::recordChange(reportedSafe, !reportedSafe && result.isSafe, result.reasonFlags);
             }
             safetyStatus.isSafe = reportedSafe;
             safetyStatus.rawSafe = result.isSafe;
@@ -1080,10 +1189,34 @@ namespace SQM
         processAlerts(getSafetyStatus());
     }
 
+    WebServer::NightState WebServer::computeNight(const SensorSnapshot &snapshot, const Config &cfg)
+    {
+        NightState night;
+        const time_t now = time(nullptr);
+        if (snapshot.gps.hasFix)
+        {
+            night.source = "gps";
+            night.latitude = snapshot.gps.latitude;
+            night.longitude = snapshot.gps.longitude;
+        }
+        else if (cfg.location.set)
+        {
+            night.source = "manual";
+            night.latitude = cfg.location.latitude;
+            night.longitude = cfg.location.longitude;
+        }
+        if (now < 1704067200 || night.source == nullptr)
+            return night; // no clock or no location: unknown
+        night.known = true;
+        night.sunAltitudeDeg = Astro::sunElevationDeg(static_cast<int64_t>(now), night.latitude, night.longitude);
+        night.isNight = night.sunAltitudeDeg < cfg.alerts.nightSunAltitudeDeg;
+        return night;
+    }
+
     void WebServer::processAlerts(const SafetyStatus &status)
     {
         const Config &cfg = getConfigCallback();
-        if (cfg.alerts.mqttEnabled)
+        if (cfg.mqtt.enabled && status.evaluatedAtMs != 0)
             publishMqttSafety(status);
 
         const SensorSnapshot snapshot = getSensorSnapshot();
@@ -1092,6 +1225,14 @@ namespace SQM
         Alerts::AlertInputs in;
         in.nowSeconds = millis() / 1000;
         in.safetyKnown = status.evaluatedAtMs != 0;
+        in.safetySettling = (!status.isSafe && status.rawSafe) || (status.reasonFlags & Alpaca::UNSAFE_NO_DATA) != 0;
+        if (!alertEngineSeeded)
+        {
+            alertEngineSeeded = true;
+            bool toldSafe = false;
+            if (SafetyHistory::lastAlert(toldSafe))
+                alertEngine.seedSafety(!toldSafe);
+        }
         in.isSafe = status.isSafe;
         in.unsafeReasons = status.reasons;
 
@@ -1111,15 +1252,22 @@ namespace SQM
         in.dewpointC = obs.dewpointC;
         in.skyValid = obs.irSky.valid;
         in.cloudCoverPercent = obs.cloudCoverPercent;
+        const NightState night = computeNight(snapshot, cfg);
+        in.nightKnown = night.known;
+        in.isNight = night.isNight;
 
         Alerts::AlertRules rules;
-        rules.onSafetyChange = cfg.alerts.onSafetyChange;
-        rules.onRain = cfg.alerts.onRain;
-        rules.onSensorFault = cfg.alerts.onSensorFault;
-        rules.onDewRisk = cfg.alerts.onDewRisk;
-        rules.dewRiskMarginC = cfg.alerts.dewRiskMarginC;
-        rules.onClearSky = cfg.alerts.onClearSky;
-        rules.clearSkyCloudPercent = cfg.alerts.clearSkyCloudPercent;
+        const AlertsConfig &a = cfg.alerts;
+        rules.onSafetyChange = a.unsafe.level || a.safe.level;
+        rules.onRain = a.rainStarted.level || a.rainStopped.level;
+        rules.onSensorFault = a.sensorFault.level || a.sensorRecovered.level;
+        rules.onDewRisk = a.dewRisk.level != 0;
+        rules.dewRiskMarginC = a.dewRiskMarginC;
+        rules.onClearSky = a.clearSky.level != 0;
+        rules.clearSkyCloudPercent = a.clearSkyCloudPercent;
+        rules.onCloudedOver = a.cloudedOver.level != 0;
+        rules.cloudedOverCloudPercent = cfg.alerts.cloudedOverCloudPercent;
+        rules.skyNightOnly = cfg.alerts.skyNightOnly;
         rules.cooldownSeconds = cfg.alerts.cooldownSeconds;
 
         if (ble.isActive())
@@ -1156,54 +1304,43 @@ namespace SQM
             ble.update(bleState, summaryJson);
         }
 
-        processBleAlarms(in, status, cfg);
 
         // Always run the engine so its state tracks reality while alerts are
-        // off; only deliver when the master switch is on.
-        const std::vector<Alerts::Alert> alerts = alertEngine.update(in, rules);
-        if (!cfg.alerts.enabled)
-            return;
-        for (const Alerts::Alert &alert : alerts)
+        // off. Each alert gets its configured level, sound and wording;
+        // everything raised in the same pass goes out as one notification.
+        // Push channels need the master switch, paired phones only Bluetooth.
+        const time_t wallClock = time(nullptr);
+        const uint32_t epoch = wallClock >= 1704067200 ? static_cast<uint32_t>(wallClock) : 0;
+        std::vector<Alerts::Alert> outgoing;
+        uint32_t alarmFlags = 0;
+        for (Alerts::Alert alert : alertEngine.update(in, rules))
         {
-            alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName);
-            ble.publishAlert(alert);
+            const AlertsConfig::EventSetting *setting = eventSettingFor(a, alert.type);
+            if (setting == nullptr || setting->level == 0)
+                continue;
+            alert.level = static_cast<Alerts::AlertLevel>(setting->level);
+            alert.sound = setting->sound;
+            applyAlertTemplate(alert, *setting, alertVars(cfg, obs, night, alert));
+            if (alert.level == Alerts::AlertLevel::Wake)
+                alarmFlags |= status.reasonFlags | (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UNSAFE_RAIN : 0u) |
+                              (alert.type == Alerts::AlertType::SensorFault || alert.type == Alerts::AlertType::LensFault ? Alpaca::UNSAFE_SENSOR_FAULT : 0u);
+            outgoing.push_back(std::move(alert));
         }
-    }
-
-    void WebServer::processBleAlarms(const Alerts::AlertInputs &inputs, const SafetyStatus &status, const Config &cfg)
-    {
-        if (!ble.isActive())
-            return;
-
-        const time_t now = time(nullptr);
-        const uint32_t epoch = now >= 1704067200 ? static_cast<uint32_t>(now) : 0;
-
-        Alerts::AlertRules rules;
-        rules.onSafetyChange = cfg.ble.alarmOnUnsafe;
-        rules.onRain = cfg.ble.alarmOnRain;
-        rules.onSensorFault = cfg.ble.alarmOnSensorFault;
-        rules.onDewRisk = false;
-        rules.onClearSky = false;
-        rules.cooldownSeconds = 60;
-
-        for (const Alerts::Alert &alert : bleAlarmEngine.update(inputs, rules))
+        if (!outgoing.empty())
         {
-            switch (alert.type)
+            const Alerts::Alert notification = Alerts::stackAlerts(outgoing);
+            if (cfg.alerts.enabled)
             {
-            case Alerts::AlertType::Unsafe:
-                ble.raiseAlarm(status.reasonFlags, epoch);
-                break;
-            case Alerts::AlertType::RainStarted:
-                ble.raiseAlarm(status.reasonFlags | Alpaca::UNSAFE_RAIN, epoch);
-                break;
-            case Alerts::AlertType::SensorFault:
-            case Alerts::AlertType::LensFault:
-                ble.raiseAlarm(status.reasonFlags | Alpaca::UNSAFE_SENSOR_FAULT, epoch);
-                break;
-            default:
-                ble.raiseInfo(status.reasonFlags, epoch);
-                break;
+                alertDispatcher->dispatch(notification, cfg.alerts, cfg.deviceName);
+                ble.publishAlert(notification);
+                for (const Alerts::Alert &sent : outgoing)
+                    if (sent.type == Alerts::AlertType::Unsafe || sent.type == Alerts::AlertType::Safe)
+                        SafetyHistory::recordAlert(sent.type == Alerts::AlertType::Safe);
             }
+            if (notification.level == Alerts::AlertLevel::Wake)
+                ble.raiseAlarm(alarmFlags, epoch);
+            else
+                ble.raiseInfo(status.reasonFlags, epoch);
         }
 
         uint32_t acknowledged = 0;
@@ -1212,11 +1349,105 @@ namespace SQM
         {
             Alerts::Alert ack;
             ack.type = Alerts::AlertType::Acknowledged;
-            ack.priority = Alerts::AlertPriority::Low;
+            ack.level = Alerts::AlertLevel::Quiet;
             ack.title = "Alarm acknowledged";
             ack.message = std::string("Phone alarm #") + std::to_string(acknowledged) + " was acknowledged " +
                           (fromPhone ? "on a phone." : "in the web UI.");
             alertDispatcher->dispatch(ack, cfg.alerts, cfg.deviceName);
+        }
+    }
+
+    std::vector<std::pair<std::string, std::string>> WebServer::alertVars(const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs,
+                                                                           const NightState &night, const Alerts::Alert &alert)
+    {
+        auto num = [](bool valid, double value, int decimals) -> std::string
+        {
+            if (!valid)
+                return "--";
+            char buffer[24];
+            snprintf(buffer, sizeof(buffer), "%.*f", decimals, value);
+            return buffer;
+        };
+        const AlertsConfig &a = cfg.alerts;
+        const AlpacaConfig &limits = cfg.alpaca;
+        char clock[8] = "--:--";
+        char date[12] = "--";
+        const time_t now = time(nullptr);
+        if (now >= 1704067200)
+        {
+            struct tm local;
+            localtime_r(&now, &local);
+            strftime(clock, sizeof(clock), "%H:%M", &local);
+            strftime(date, sizeof(date), "%Y-%m-%d", &local);
+        }
+
+        // Readings and settings first; the event's own values (reasons,
+        // sensor, ...) come after and win on a name clash.
+        std::vector<std::pair<std::string, std::string>> vars = {
+            {"device", cfg.deviceName},
+            {"event", Alerts::alertTypeName(alert.type)},
+            {"level", Alerts::alertLevelName(alert.level)},
+            {"time", clock},
+            {"date", date},
+            {"sqm", num(obs.skyLight.valid, obs.skyQualityMagArcsec2, 2)},
+            {"sqm_min", num(true, limits.sqmMinSafe, 2)},
+            {"cloud", num(obs.irSky.valid, obs.cloudCoverPercent, 0)},
+            {"cloud_max", num(true, limits.cloudCoverUnsafePercent, 0)},
+            {"clear_below", num(true, a.clearSkyCloudPercent, 0)},
+            {"cloudy_above", num(true, a.cloudedOverCloudPercent, 0)},
+            {"sky_temp", num(obs.irSky.valid, obs.skyTemperatureC, 1)},
+            {"temp", num(obs.environment.valid, obs.temperatureC, 1)},
+            {"humidity", num(obs.environment.valid, obs.humidityPercent, 0)},
+            {"humidity_max", num(true, limits.humidityMaxSafe, 0)},
+            {"dewpoint", num(obs.environment.valid, obs.dewpointC, 1)},
+            {"dew_margin", num(obs.environment.valid, obs.temperatureC - obs.dewpointC, 1)},
+            {"pressure", num(obs.environment.valid, obs.pressureHPa, 0)},
+            {"rain_rate", num(obs.rain.valid, obs.rainRateMmPerHour, 1)},
+            {"wind", num(obs.wind.valid, obs.windSpeedMs, 1)},
+            {"gust", num(obs.wind.valid, obs.windGustMs, 1)},
+            {"sun_alt", num(night.known, night.sunAltitudeDeg, 1)},
+        };
+        vars.insert(vars.end(), alert.vars.begin(), alert.vars.end());
+        return vars;
+    }
+
+    void WebServer::applyAlertTemplate(Alerts::Alert &alert, const AlertsConfig::EventSetting &setting,
+                                       const std::vector<std::pair<std::string, std::string>> &vars)
+    {
+        if (!setting.title.empty())
+            alert.title = Alerts::renderTemplate(setting.title, vars);
+        if (!setting.message.empty())
+            alert.message = Alerts::renderTemplate(setting.message, vars);
+        // Not needed past this point, and the recent-alerts list keeps alerts.
+        alert.vars.clear();
+        alert.vars.shrink_to_fit();
+    }
+
+    const AlertsConfig::EventSetting *WebServer::eventSettingFor(const AlertsConfig &a, Alerts::AlertType type)
+    {
+        switch (type)
+        {
+        case Alerts::AlertType::Unsafe:
+            return &a.unsafe;
+        case Alerts::AlertType::Safe:
+            return &a.safe;
+        case Alerts::AlertType::RainStarted:
+            return &a.rainStarted;
+        case Alerts::AlertType::RainStopped:
+            return &a.rainStopped;
+        case Alerts::AlertType::SensorFault:
+        case Alerts::AlertType::LensFault:
+            return &a.sensorFault;
+        case Alerts::AlertType::SensorRecovered:
+            return &a.sensorRecovered;
+        case Alerts::AlertType::DewRisk:
+            return &a.dewRisk;
+        case Alerts::AlertType::ClearSky:
+            return &a.clearSky;
+        case Alerts::AlertType::CloudedOver:
+            return &a.cloudedOver;
+        default:
+            return nullptr;
         }
     }
 
@@ -1227,15 +1458,21 @@ namespace SQM
         if (!changed && now - mqttSafetyPublishedAt < MQTT_SAFETY_REPUBLISH_MS)
             return;
 
+        if (mqttClient != nullptr)
+            mqttClient->setSafety(status.isSafe);
+
         DynamicJsonDocument doc(1024);
         doc["isSafe"] = status.isSafe;
+        doc["safe"] = status.isSafe ? 1 : 0;
         JsonArray reasons = doc.createNestedArray("reasons");
         for (const std::string &reason : status.reasons)
             reasons.add(reason);
         std::string payload;
         serializeJson(doc, payload);
 
-        if (mqttClient != nullptr && mqttClient->publishSubtopic("safety", payload, true))
+        // <topic>/safe is the bare 1/0 for loggers and simple automations.
+        if (mqttClient != nullptr && mqttClient->publishSubtopic("safety", payload, true) &&
+            mqttClient->publishSubtopic("safe", status.isSafe ? "1" : "0", true))
         {
             mqttSafetyPublished = true;
             mqttLastPublishedSafe = status.isSafe;
@@ -1273,13 +1510,66 @@ namespace SQM
                 (alerts.pushoverEnabled ? alertChannelBit(AlertChannel::Pushover) : 0) |
                 (alerts.ntfyEnabled ? alertChannelBit(AlertChannel::Ntfy) : 0) |
                 (alerts.webhookEnabled ? alertChannelBit(AlertChannel::Webhook) : 0);
-            if ((mask & enabledMask) == 0) {
+            // ?event=rain_started&level=4&sound=siren sends a sample of that
+            // event at the given level, so unsaved choices can be tried out.
+            int8_t event = -1;
+            uint8_t level = 2;
+            String sound;
+            String title;
+            String message;
+            if (request->hasParam("event"))
+            {
+                const String key = request->getParam("event")->value();
+                for (size_t i = 0; i < sizeof(SAMPLE_ALERTS) / sizeof(SAMPLE_ALERTS[0]); ++i)
+                    if (key == SAMPLE_ALERTS[i].key)
+                        event = static_cast<int8_t>(i);
+                if (event < 0) {
+                    request->send(400, "application/json", createErrorJson("Unknown event").c_str());
+                    return;
+                }
+                level = request->hasParam("level") ? static_cast<uint8_t>(request->getParam("level")->value().toInt()) : 2;
+                if (level < 1 || level > 4) {
+                    request->send(400, "application/json", createErrorJson("Level must be 1-4").c_str());
+                    return;
+                }
+                sound = request->hasParam("sound") ? request->getParam("sound")->value() : String();
+                if (sound.length() > 32) {
+                    request->send(400, "application/json", createErrorJson("Sound name too long").c_str());
+                    return;
+                }
+                title = request->hasParam("title") ? request->getParam("title")->value() : String();
+                message = request->hasParam("message") ? request->getParam("message")->value() : String();
+                if (title.length() > AlertsConfig::MAX_TEMPLATE_TITLE || message.length() > AlertsConfig::MAX_TEMPLATE_MESSAGE) {
+                    request->send(400, "application/json", createErrorJson("Title is up to 80 characters and message up to 240").c_str());
+                    return;
+                }
+            }
+
+            uint8_t sendMask = mask & enabledMask;
+            const bool ringsPhone = event >= 0 && level == 4 && ble.alarmStatus().serviceActive;
+            if (sendMask == 0 && ringsPhone)
+                sendMask = BLE_ONLY_TEST;
+            if (sendMask == 0) {
                 request->send(400, "application/json", createErrorJson("That channel isn't enabled - enable it and save settings first").c_str());
                 return;
             }
 
-            pendingAlertTestMask.fetch_or(mask & enabledMask);
+            portENTER_CRITICAL(&pendingAlertTestLock);
+            pendingAlertTest.mask |= sendMask;
+            pendingAlertTest.event = event;
+            pendingAlertTest.level = level;
+            strlcpy(pendingAlertTest.sound, sound.c_str(), sizeof(pendingAlertTest.sound));
+            strlcpy(pendingAlertTest.title, title.c_str(), sizeof(pendingAlertTest.title));
+            strlcpy(pendingAlertTest.message, message.c_str(), sizeof(pendingAlertTest.message));
+            portEXIT_CRITICAL(&pendingAlertTestLock);
             request->send(202, "application/json", "{\"success\":true,\"message\":\"Test notification queued\"}"); });
+
+        server.on("/api/alerts/clear", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+            alertDispatcher->clearRecent();
+            request->send(200, "application/json", "{\"success\":true}"); });
 
         server.on("/api/ble/ack", HTTP_POST, [this](AsyncWebServerRequest *request)
                   {
@@ -1307,7 +1597,8 @@ namespace SQM
                   {
             const std::vector<AlertRecord> records = alertDispatcher->recent();
             DynamicJsonDocument doc(8192);
-            JsonArray arr = doc.to<JsonArray>();
+            doc["enabled"] = getConfigCallback().alerts.enabled;
+            JsonArray arr = doc.createNestedArray("alerts");
             const uint32_t nowSeconds = millis() / 1000;
             // Newest first
             for (auto it = records.rbegin(); it != records.rend(); ++it) {
@@ -1316,7 +1607,7 @@ namespace SQM
                 item["event"] = Alerts::alertTypeName(it->alert.type);
                 item["title"] = it->alert.title;
                 item["message"] = it->alert.message;
-                item["priority"] = static_cast<int>(it->alert.priority);
+                item["level"] = Alerts::alertLevelName(it->alert.level);
                 item["ageSeconds"] = nowSeconds - it->uptimeSeconds;
                 if (it->epochSeconds != 0)
                     item["timestamp"] = it->epochSeconds;
@@ -2164,6 +2455,7 @@ namespace SQM
         const SafetyStatus status = getSafetyStatus();
         const uint32_t now = millis();
         target["isSafe"] = status.isSafe;
+        target["safe"] = status.isSafe ? 1 : 0; // numeric, for loggers
         target["rawSafe"] = status.rawSafe;
         target["alpacaEnabled"] = getConfigCallback().alpaca.enabled;
         target["reasonFlags"] = status.reasonFlags;
@@ -2284,7 +2576,8 @@ namespace SQM
             gps["ageMs"] = ageMs(now, gpsReading.timestamp);
         }
 
-        // RG-15 rain sensor data
+        // RG-15 rain sensor data (only when it's switched on)
+        if (getConfigCallback().rain.enabled)
         {
             JsonObject rain = doc.createNestedObject("rainSensor");
             appendRG15Diagnostics(rain, snapshot.rg15, snapshot.rg15Diagnostics, now);
@@ -2347,6 +2640,21 @@ namespace SQM
         stacks["asyncTcp"] = uxTaskGetStackHighWaterMark(nullptr);
         stacks["loop"] = loopTaskHandle != nullptr ? uxTaskGetStackHighWaterMark(loopTaskHandle) : 0;
         doc["sensorSnapshotBytes"] = sizeof(SensorSnapshot);
+
+        const NightState night = computeNight(snapshot, getConfigCallback());
+        JsonObject sky = doc.createNestedObject("sky");
+        sky["locationSource"] = night.source != nullptr ? night.source : "none";
+        sky["nightKnown"] = night.known;
+        if (night.source != nullptr)
+        {
+            sky["latitude"] = serialized(String(night.latitude, 4));
+            sky["longitude"] = serialized(String(night.longitude, 4));
+        }
+        if (night.known)
+        {
+            sky["isNight"] = night.isNight;
+            sky["sunAltitudeDeg"] = serialized(String(night.sunAltitudeDeg, 1));
+        }
 
         JsonArray heapStages = doc.createNestedArray("heapStages");
         for (size_t i = 0; i < HeapTrace::count(); ++i)
@@ -2524,11 +2832,11 @@ namespace SQM
             mqtt["state"] = mqttStatus.state;
             mqtt["lastPublish"] = mqttStatus.lastPublishMs;
             mqtt["lastReconnectAttempt"] = mqttStatus.lastReconnectAttemptMs;
-            mqtt["broker"] = mqttStatus.broker.c_str(); // Explicitly convert std::string
+            mqtt["broker"] = mqttStatus.broker; // std::string: copied into the doc (mqttStatus dies before serializing)
             mqtt["port"] = mqttStatus.port;
-            mqtt["topic"] = mqttStatus.topic.c_str(); // Explicitly convert std::string
-            mqtt["availabilityTopic"] = mqttStatus.availabilityTopic.c_str();
-            mqtt["clientId"] = mqttStatus.clientId.c_str();
+            mqtt["topic"] = mqttStatus.topic;
+            mqtt["availabilityTopic"] = mqttStatus.availabilityTopic;
+            mqtt["clientId"] = mqttStatus.clientId;
         }
 
         std::string json;

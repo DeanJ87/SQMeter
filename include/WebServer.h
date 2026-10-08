@@ -147,21 +147,46 @@ namespace SQM
 
         // Alerts
         Alerts::AlertEngine alertEngine;
+        bool alertEngineSeeded = false;
         std::unique_ptr<AlertDispatcher> alertDispatcher;
-        std::atomic<uint8_t> pendingAlertTestMask{0}; // set by HTTP handler, sent from the loop task
+        // Set by the HTTP handler, sent from the loop task. event < 0 is the
+        // plain channel test; otherwise an index into the sample events.
+        struct PendingAlertTest
+        {
+            uint8_t mask = 0;
+            int8_t event = -1;
+            uint8_t level = 2;
+            char sound[33] = {};
+            char title[AlertsConfig::MAX_TEMPLATE_TITLE + 1] = {};
+            char message[AlertsConfig::MAX_TEMPLATE_MESSAGE + 1] = {};
+        };
+        PendingAlertTest pendingAlertTest;
+        portMUX_TYPE pendingAlertTestLock = portMUX_INITIALIZER_UNLOCKED;
         bool mqttSafetyPublished = false;
         bool mqttLastPublishedSafe = false;
         uint32_t mqttSafetyPublishedAt = 0;
         static constexpr uint32_t MQTT_SAFETY_REPUBLISH_MS = 60000;
         void processAlerts(const SafetyStatus &status);
+
+        struct NightState
+        {
+            const char *source = nullptr; // "gps", "manual" or null
+            double latitude = 0.0;
+            double longitude = 0.0;
+            bool known = false;
+            bool isNight = false;
+            double sunAltitudeDeg = 0.0;
+        };
+        static NightState computeNight(const SensorSnapshot &snapshot, const Config &cfg);
         void publishMqttSafety(const SafetyStatus &status);
         void setupAlertRoutes();
 
         BleService ble;
-        // Separate from alertEngine: phone alarms follow the Bluetooth alarm
-        // settings, not the push-notification ones.
-        Alerts::AlertEngine bleAlarmEngine;
-        void processBleAlarms(const Alerts::AlertInputs &inputs, const SafetyStatus &status, const Config &cfg);
+        static const AlertsConfig::EventSetting *eventSettingFor(const AlertsConfig &alerts, Alerts::AlertType type);
+        static std::vector<std::pair<std::string, std::string>> alertVars(const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs,
+                                                                         const NightState &night, const Alerts::Alert &alert);
+        static void applyAlertTemplate(Alerts::Alert &alert, const AlertsConfig::EventSetting &setting,
+                                       const std::vector<std::pair<std::string, std::string>> &vars);
 
         // Setup route handlers
         void setupStaticRoutes();

@@ -145,6 +145,14 @@ export interface SystemStatus {
     buildTime: string;
     variant?: 'standard' | 'ble';
   };
+  sky?: {
+    locationSource: 'gps' | 'manual' | 'none';
+    nightKnown: boolean;
+    isNight?: boolean;
+    sunAltitudeDeg?: number;
+    latitude?: number;
+    longitude?: number;
+  };
   ble?: {
     available: boolean;
     active: boolean;
@@ -380,9 +388,6 @@ export interface AlpacaConfig {
 export interface BleConfig {
   enabled: boolean;
   passkey: string;
-  alarmOnUnsafe: boolean;
-  alarmOnRain: boolean;
-  alarmOnSensorFault: boolean;
 }
 
 export interface WindConfig {
@@ -410,6 +415,7 @@ export interface WindReading {
 // Live SafetyMonitor verdict (GET /api/safety, and `safety` on /ws/sensors)
 export interface SafetyStatus {
   isSafe: boolean;
+  safe?: 0 | 1;
   rawSafe: boolean;
   alpacaEnabled: boolean;
   reasonFlags: number;
@@ -419,17 +425,39 @@ export interface SafetyStatus {
   changedAgeMs: number;
 }
 
+// 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me
+export type AlertLevel = 0 | 1 | 2 | 3 | 4;
+
+export type AlertEventKey =
+  | 'unsafe'
+  | 'safe'
+  | 'rain_started'
+  | 'rain_stopped'
+  | 'sensor_fault'
+  | 'sensor_recovered'
+  | 'dew_risk'
+  | 'clear_sky'
+  | 'clouded_over';
+
+// sound: Pushover sound name; empty uses the Pushover default.
+export interface AlertEventSetting {
+  level: AlertLevel;
+  sound: string;
+  // Custom wording with {variables}; empty or missing uses the default.
+  title?: string;
+  message?: string;
+}
+
 export interface AlertsConfig {
   enabled: boolean;
-  onSafetyChange: boolean;
-  onRain: boolean;
-  onSensorFault: boolean;
-  onDewRisk: boolean;
+  events: Record<AlertEventKey, AlertEventSetting>;
   dewRiskMarginC: number;
-  onClearSky: boolean;
   clearSkyCloudPercent: number;
+  cloudedOverCloudPercent: number;
+  skyNightOnly: boolean;
+  nightSunAltitudeDeg: number;
   cooldownSeconds: number;
-  pushover: { enabled: boolean; userKey: string; appToken: string; highPriority: number; sound: string };
+  pushover: { enabled: boolean; userKey: string; appToken: string; sound: string };
   ntfy: { enabled: boolean; server: string; topic: string; token: string };
   webhook: { enabled: boolean; url: string; authHeader: string; insecureTls: boolean };
   mqtt: { enabled: boolean };
@@ -442,10 +470,15 @@ export interface AlertRecord {
   event: string;
   title: string;
   message: string;
-  priority: number;
+  level: 'quiet' | 'normal' | 'urgent' | 'wake' | 'off';
   ageSeconds: number;
   timestamp?: number;
   channels: Partial<Record<AlertChannelName, { status: 'pending' | 'sent' | 'failed' | 'skipped'; detail: string }>>;
+}
+
+export interface AlertsRecent {
+  enabled: boolean;
+  alerts: AlertRecord[];
 }
 
 export interface Config {
@@ -468,6 +501,14 @@ export interface Config {
   alerts?: AlertsConfig;
   ble?: BleConfig;
   wind?: WindConfig;
+  location?: LocationConfig;
+}
+
+export interface LocationConfig {
+  set: boolean;
+  latitude: number;
+  longitude: number;
+  showSunMoon?: boolean;
 }
 
 export interface RainSensorReading {

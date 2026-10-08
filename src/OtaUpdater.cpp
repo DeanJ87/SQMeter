@@ -1,6 +1,7 @@
 #include "OtaUpdater.h"
 #include "GithubRootCA.h"
 #include "Logger.h"
+#include "TlsLock.h"
 #include "version.h"
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -20,8 +21,8 @@ namespace SQM
         // response (and parse time over TLS) small.
         constexpr const char *RELEASES_URL = "https://api.github.com/repos/DeanJ87/SQMeter/releases?per_page=8";
         // Filtered, the current releases (6 releases x 3 assets) take 3.2 KB;
-        // 8 KB leaves room for 8 releases with the BLE assets added.
-        constexpr size_t JSON_DOC_CAPACITY = 8192;
+        // 6 KB leaves room for 8 releases with the BLE assets added.
+        constexpr size_t JSON_DOC_CAPACITY = 6144;
 
         // Keep only the fields parseReleases() reads. Release notes and
         // uploader details are most of each release's JSON.
@@ -215,6 +216,27 @@ namespace SQM
     {
         currentPhase = Phase::Checking;
 
+        // Allocate the parse buffer before the TLS session takes its ~45 KB:
+        // afterwards there may be no contiguous block left for it.
+        DynamicJsonDocument doc(JSON_DOC_CAPACITY);
+        StaticJsonDocument<256> filter;
+        buildReleaseFilter(filter);
+        if (doc.capacity() == 0)
+        {
+            error = "Not enough free memory to check for updates";
+            Logger::error(TAG, "%s (free %u, largest block %u)", error.c_str(), ESP.getFreeHeap(), ESP.getMaxAllocHeap());
+            currentPhase = Phase::Error;
+            return {};
+        }
+
+        TlsLock::Guard tls(15000);
+        if (!tls.ok())
+        {
+            error = "Busy sending alerts - try again in a moment";
+            currentPhase = Phase::Idle;
+            return {};
+        }
+
         WiFiClientSecure client;
         client.setCACert(GITHUB_ROOT_CA_PEM);
 
@@ -245,9 +267,6 @@ namespace SQM
         // Stream-parse with a filter instead of http.getString(): the full
         // releases body (tens of KB of release notes) used to be held twice,
         // on top of the TLS session, dropping free heap to ~10 KB.
-        StaticJsonDocument<256> filter;
-        buildReleaseFilter(filter);
-        DynamicJsonDocument doc(JSON_DOC_CAPACITY);
         // ArduinoJson reads through Stream::timedRead(), whose timeout (1 s
         // by default) is separate from the socket timeout above; a slow TLS
         // read on weak WiFi would otherwise end the parse early.
@@ -256,7 +275,8 @@ namespace SQM
         http.end();
         if (err)
         {
-            error = std::string("Couldn't read the GitHub releases list: ") + err.c_str();
+            error = err == DeserializationError::NoMemory ? std::string("Release list too large to read")
+                                                          : std::string("Couldn't read the GitHub releases list: ") + err.c_str();
             Logger::error(TAG, "%s", error.c_str());
             currentPhase = Phase::Error;
             return {};
@@ -407,6 +427,9 @@ namespace SQM
 
     void OtaUpdater::runApply(GithubRelease release)
     {
+        // Hold the TLS lock for the whole download so an alert send can't
+        // grab the heap the download sessions need.
+        TlsLock::Guard tls(60000);
         // Firmware first (0-50% of progress), then filesystem (50-100%).
         // Only reboot once both have succeeded, so the device never boots
         // with a firmware/web-UI version mismatch.

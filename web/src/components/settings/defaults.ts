@@ -1,4 +1,4 @@
-import type { AlertsConfig, AlpacaConfig, BleConfig, Config, WindConfig } from '../../types';
+import type { AlertsConfig, AlpacaConfig, BleConfig, Config, LocationConfig, WindConfig } from '../../types';
 
 // Defaults for every settings section - used to fill in fields that configs
 // from older firmware don't have yet.
@@ -64,15 +64,24 @@ export const defaultWindConfig: WindConfig = {
 
 export const defaultAlertsConfig: AlertsConfig = {
   enabled: false,
-  onSafetyChange: true,
-  onRain: true,
-  onSensorFault: true,
-  onDewRisk: false,
+  events: {
+    unsafe: { level: 3, sound: '' },
+    safe: { level: 2, sound: '' },
+    rain_started: { level: 4, sound: '' },
+    rain_stopped: { level: 2, sound: '' },
+    sensor_fault: { level: 4, sound: '' },
+    sensor_recovered: { level: 1, sound: '' },
+    dew_risk: { level: 0, sound: '' },
+    clear_sky: { level: 0, sound: '' },
+    clouded_over: { level: 0, sound: '' },
+  },
   dewRiskMarginC: 2,
-  onClearSky: false,
   clearSkyCloudPercent: 20,
+  cloudedOverCloudPercent: 70,
+  skyNightOnly: true,
+  nightSunAltitudeDeg: -12,
   cooldownSeconds: 300,
-  pushover: { enabled: false, userKey: '', appToken: '', highPriority: 1, sound: '' },
+  pushover: { enabled: false, userKey: '', appToken: '', sound: '' },
   ntfy: { enabled: false, server: 'https://ntfy.sh', topic: '', token: '' },
   webhook: { enabled: false, url: '', authHeader: '', insecureTls: false },
   mqtt: { enabled: false },
@@ -82,6 +91,7 @@ export const defaultAlertsConfig: AlertsConfig = {
 export const mergeAlertsConfig = (source?: Partial<AlertsConfig>): AlertsConfig => ({
   ...defaultAlertsConfig,
   ...source,
+  events: { ...defaultAlertsConfig.events, ...source?.events },
   pushover: { ...defaultAlertsConfig.pushover, ...source?.pushover },
   ntfy: { ...defaultAlertsConfig.ntfy, ...source?.ntfy },
   webhook: { ...defaultAlertsConfig.webhook, ...source?.webhook },
@@ -91,7 +101,6 @@ export const mergeAlertsConfig = (source?: Partial<AlertsConfig>): AlertsConfig 
 export const defaultBleConfig: BleConfig = {
   enabled: false,
   passkey: '',
-  alarmOnUnsafe: true,
-  alarmOnRain: true,
-  alarmOnSensorFault: false,
 };
+
+export const defaultLocationConfig: LocationConfig = { set: false, latitude: 0, longitude: 0, showSunMoon: true };

@@ -249,19 +249,25 @@ const httpUrl = z.string().regex(/^https?:\/\/.+/, "Must start with http:// or h
 export const alertsConfigSchema = z
   .object({
     enabled: z.boolean(),
-    onSafetyChange: z.boolean(),
-    onRain: z.boolean(),
-    onSensorFault: z.boolean(),
-    onDewRisk: z.boolean(),
+    events: z.record(
+      z.string(),
+      z.object({
+        level: z.number().int().min(0).max(4),
+        sound: z.string().max(32).regex(/^[a-z0-9_-]*$/i, "Not a Pushover sound name"),
+        title: z.string().max(80, "Titles are up to 80 characters").optional(),
+        message: z.string().max(240, "Messages are up to 240 characters").optional(),
+      })
+    ),
     dewRiskMarginC: z.number().min(0).max(10),
-    onClearSky: z.boolean(),
     clearSkyCloudPercent: z.number().min(0).max(100),
+    cloudedOverCloudPercent: z.number().min(0).max(100),
+    skyNightOnly: z.boolean(),
+    nightSunAltitudeDeg: z.number().min(-20).max(0),
     cooldownSeconds: z.number().int().min(0).max(86400, "Must be at most 24 hours"),
     pushover: z.object({
       enabled: z.boolean(),
       userKey: z.string(),
       appToken: z.string(),
-      highPriority: z.number().int().min(0).max(2),
       sound: z.string(),
     }),
     ntfy: z.object({ enabled: z.boolean(), server: z.string(), topic: z.string(), token: z.string() }),
@@ -269,8 +275,16 @@ export const alertsConfigSchema = z
     mqtt: z.object({ enabled: z.boolean() }),
   })
   .superRefine((data, ctx) => {
-    if (data.pushover.enabled && (!data.pushover.userKey || !data.pushover.appToken)) {
-      ctx.addIssue({ code: "custom", path: ["pushover", "userKey"], message: "Pushover needs a user key and an application token" });
+    if (data.cloudedOverCloudPercent <= data.clearSkyCloudPercent) {
+      ctx.addIssue({ code: "custom", path: ["cloudedOverCloudPercent"], message: "Must be above the clear threshold" });
+    }
+    // Pushover keys are exactly 30 letters/digits; "********" is the stored, masked value.
+    const pushoverKey = /^([A-Za-z0-9]{30}|\*{8})$/;
+    if (data.pushover.enabled && !pushoverKey.test(data.pushover.userKey.trim())) {
+      ctx.addIssue({ code: "custom", path: ["pushover", "userKey"], message: "The user key is the 30-character key on your Pushover dashboard" });
+    }
+    if (data.pushover.enabled && !pushoverKey.test(data.pushover.appToken.trim())) {
+      ctx.addIssue({ code: "custom", path: ["pushover", "appToken"], message: "The app token is the 30-character API token of your Pushover application" });
     }
     if (data.ntfy.enabled) {
       if (!httpUrl.safeParse(data.ntfy.server).success) {
@@ -312,12 +326,17 @@ export const configSchema = z
           .string()
           .regex(/^(\d{6}|\*{8})?$/, "Passkey must be 6 digits")
           .refine((value) => value !== "000000", "Passkey can't be 000000"),
-        alarmOnUnsafe: z.boolean(),
-        alarmOnRain: z.boolean(),
-        alarmOnSensorFault: z.boolean(),
       })
       .optional(),
     wind: windConfigSchema.optional(),
+    location: z
+      .object({
+        set: z.boolean(),
+        latitude: z.number().min(-90, "Latitude is -90 to 90").max(90, "Latitude is -90 to 90"),
+        longitude: z.number().min(-180, "Longitude is -180 to 180").max(180, "Longitude is -180 to 180"),
+        showSunMoon: z.boolean().optional(),
+      })
+      .optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.ntp.enabled && !data.gps.enabled) {

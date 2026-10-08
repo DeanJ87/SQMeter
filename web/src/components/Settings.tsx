@@ -17,6 +17,9 @@ import SafetyTab from './settings/SafetyTab';
 import SensorsTab from './settings/SensorsTab';
 import { SETTINGS_TABS, tabForErrorPath, tabFromLocation, type SettingsTabId } from './settings/tabs';
 import TimeTab from './settings/TimeTab';
+import { listReasons, restartReasons } from './settings/restart';
+import { showToast } from './toast';
+import { Button } from './ui';
 
 const STATUS_REFRESH_MS = 10000;
 
@@ -41,11 +44,9 @@ const Settings: FunctionalComponent = () => {
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [originalWifiSsid, setOriginalWifiSsid] = useState<string | null>(null);
   const pendingAnchor = useRef<string | undefined>(initial.anchor);
-  const messageRef = useRef<HTMLDivElement>(null);
 
   const loadStatus = () =>
     fetch('/api/status')
@@ -63,7 +64,7 @@ const Settings: FunctionalComponent = () => {
         setSaved(normalized);
         setOriginalWifiSsid(data.wifi?.ssid ?? '');
       } catch {
-        setMessage({ type: 'error', text: 'Failed to load configuration' });
+        // Rendered below as the load-failure state.
       } finally {
         setLoading(false);
       }
@@ -122,26 +123,33 @@ const Settings: FunctionalComponent = () => {
     setTimeout(() => {
       const alias = Object.entries(fieldErrorAliases).find(([, path]) => path === firstField)?.[0];
       const target = document.querySelector<HTMLElement>(`[data-field="${firstField}"]`)
-        ?? (alias ? document.querySelector<HTMLElement>(`[data-field="${alias}"]`) : null)
-        ?? messageRef.current;
+        ?? (alias ? document.querySelector<HTMLElement>(`[data-field="${alias}"]`) : null);
       target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) target.focus({ preventScroll: true });
     }, 60);
   };
 
+  const restart = async () => {
+    try {
+      await fetch('/api/restart', { method: 'POST' });
+      showToast({ message: 'Restarting...' });
+    } catch {
+      showToast({ message: 'Could not reach the device', tone: 'bad' });
+    }
+  };
+
   const save = async () => {
-    if (!config) return;
+    if (!config || !saved) return;
     const payload = toConfigPayload(config);
     const errors = getConfigValidationErrors(payload);
     setValidationErrors(errors);
     if (hasConfigValidationErrors(errors)) {
-      setMessage({ type: 'error', text: getConfigValidationMessage(errors) });
+      showToast({ message: getConfigValidationMessage(errors), tone: 'bad' });
       focusFirstError(errors);
       return;
     }
 
     setSaving(true);
-    setMessage(null);
     try {
       const response = await fetch('/api/config', {
         method: 'POST',
@@ -150,16 +158,21 @@ const Settings: FunctionalComponent = () => {
       });
       const body = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : null;
       if (response.ok && body?.success !== false) {
-        setMessage({ type: 'success', text: 'Settings saved.' });
+        const reasons = restartReasons(saved, payload);
+        showToast(
+          reasons.length > 0
+            ? { message: `Saved. Restart to apply ${listReasons(reasons)}.`, tone: 'warn', durationMs: 0, action: { label: 'Restart', onClick: restart } }
+            : { message: 'Saved.' }
+        );
         setSaved(payload);
         setConfig(payload);
         setValidationErrors({});
         loadStatus();
       } else {
-        setMessage({ type: 'error', text: body?.error || 'Failed to save settings' });
+        showToast({ message: body?.error || 'Failed to save settings', tone: 'bad' });
       }
     } catch {
-      setMessage({ type: 'error', text: 'Could not reach the device' });
+      showToast({ message: 'Could not reach the device', tone: 'bad' });
     } finally {
       setSaving(false);
     }
@@ -168,7 +181,6 @@ const Settings: FunctionalComponent = () => {
   const discard = () => {
     setConfig(saved);
     setValidationErrors({});
-    setMessage(null);
   };
 
   if (loading) {
@@ -195,7 +207,7 @@ const Settings: FunctionalComponent = () => {
   };
 
   return (
-    <div class="panel-page settings-page settings-tabbed page-enter">
+    <div class="panel-page settings-page page-enter">
       <nav class="settings-tabs" role="tablist" aria-label="Settings sections">
         {SETTINGS_TABS.map(({ id, label }) => (
           <button
@@ -212,15 +224,6 @@ const Settings: FunctionalComponent = () => {
         ))}
       </nav>
 
-      {message && (
-        <div
-          ref={messageRef}
-          class={`settings-message ${message.type === 'success' ? 'settings-message-success' : 'settings-message-error'}`}
-        >
-          <p>{message.text}</p>
-        </div>
-      )}
-
       <div class="settings-tab-panel" role="tabpanel">
         {tab === 'device' && <DeviceTab {...props} />}
         {tab === 'network' && <NetworkTab {...props} originalWifiSsid={originalWifiSsid} />}
@@ -230,17 +233,17 @@ const Settings: FunctionalComponent = () => {
         {tab === 'alerts' && <AlertsTab {...props} />}
       </div>
 
-      <div class={`settings-save-bar ${dirty ? 'is-dirty' : ''}`}>
-        <span class="settings-save-state">{dirty ? 'Unsaved changes' : 'All changes saved'}</span>
-        {dirty && (
-          <button type="button" class="settings-discard" onClick={discard}>
+      {dirty && (
+        <div class="save-bar">
+          <span class="save-bar-state">Unsaved changes</span>
+          <Button variant="ghost" onClick={discard}>
             Discard
-          </button>
-        )}
-        <button type="button" class="settings-save" onClick={save} disabled={saving || !dirty}>
-          {saving ? 'Saving...' : 'Save settings'}
-        </button>
-      </div>
+          </Button>
+          <Button variant="primary" onClick={save} busy={saving} busyLabel="Saving...">
+            Save
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

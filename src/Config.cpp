@@ -4,6 +4,8 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <nvs.h>
+#include <array>
+#include <cctype>
 #include <cmath>
 #include <cstring>
 
@@ -16,6 +18,17 @@ namespace SQM
 
     namespace
     {
+        void trimInPlace(std::string &value)
+        {
+            const size_t start = value.find_first_not_of(" \t\r\n");
+            if (start == std::string::npos)
+            {
+                value.clear();
+                return;
+            }
+            value = value.substr(start, value.find_last_not_of(" \t\r\n") - start + 1);
+        }
+
         bool isPlaceholderSecret(const char *value)
         {
             return value == nullptr || value[0] == '\0' ||
@@ -366,16 +379,22 @@ namespace SQM
         cfg.alpaca.safeDelaySeconds = 0;
 
         cfg.alerts.enabled = false;
-        cfg.alerts.onSafetyChange = true;
-        cfg.alerts.onRain = true;
-        cfg.alerts.onSensorFault = true;
-        cfg.alerts.onDewRisk = false;
+        cfg.alerts.unsafe = {3, "", "", ""};
+        cfg.alerts.safe = {2, "", "", ""};
+        cfg.alerts.rainStarted = {4, "", "", ""};
+        cfg.alerts.rainStopped = {2, "", "", ""};
+        cfg.alerts.sensorFault = {4, "", "", ""};
+        cfg.alerts.sensorRecovered = {1, "", "", ""};
+        cfg.alerts.dewRisk = {0, "", "", ""};
+        cfg.alerts.clearSky = {0, "", "", ""};
+        cfg.alerts.cloudedOver = {0, "", "", ""};
         cfg.alerts.dewRiskMarginC = 2.0f;
-        cfg.alerts.onClearSky = false;
         cfg.alerts.clearSkyCloudPercent = 20.0f;
+        cfg.alerts.cloudedOverCloudPercent = 70.0f;
+        cfg.alerts.skyNightOnly = true;
+        cfg.alerts.nightSunAltitudeDeg = -12.0f;
         cfg.alerts.cooldownSeconds = 300;
         cfg.alerts.pushoverEnabled = false;
-        cfg.alerts.pushoverHighPriority = 1;
         cfg.alerts.ntfyEnabled = false;
         cfg.alerts.ntfyServer = "https://ntfy.sh";
         cfg.alerts.webhookEnabled = false;
@@ -383,9 +402,11 @@ namespace SQM
         cfg.alerts.mqttEnabled = false;
 
         cfg.ble.enabled = false;
-        cfg.ble.alarmOnUnsafe = true;
-        cfg.ble.alarmOnRain = true;
-        cfg.ble.alarmOnSensorFault = false;
+
+        cfg.location.set = false;
+        cfg.location.latitude = 0.0;
+        cfg.location.longitude = 0.0;
+        cfg.location.showSunMoon = true;
 
         cfg.wind.enabled = false;
         cfg.wind.speedPin = 27;
@@ -404,6 +425,20 @@ namespace SQM
 
     namespace
     {
+        // JSON key for each configurable event, matching the alert event names.
+        std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, 9> eventSettings(const AlertsConfig &a)
+        {
+            return {{{"unsafe", &a.unsafe},
+                     {"safe", &a.safe},
+                     {"rain_started", &a.rainStarted},
+                     {"rain_stopped", &a.rainStopped},
+                     {"sensor_fault", &a.sensorFault},
+                     {"sensor_recovered", &a.sensorRecovered},
+                     {"dew_risk", &a.dewRisk},
+                     {"clear_sky", &a.clearSky},
+                     {"clouded_over", &a.cloudedOver}}};
+        }
+
         void appendAlerts(JsonObject alerts, const AlertsConfig &a, bool redactSecrets)
         {
             auto secret = [redactSecrets](const std::string &value) -> const char *
@@ -412,20 +447,26 @@ namespace SQM
             };
 
             alerts["enabled"] = a.enabled;
-            alerts["onSafetyChange"] = a.onSafetyChange;
-            alerts["onRain"] = a.onRain;
-            alerts["onSensorFault"] = a.onSensorFault;
-            alerts["onDewRisk"] = a.onDewRisk;
+            JsonObject events = alerts.createNestedObject("events");
+            for (const auto &entry : eventSettings(a))
+            {
+                JsonObject event = events.createNestedObject(entry.first);
+                event["level"] = entry.second->level;
+                event["sound"] = entry.second->sound.c_str();
+                event["title"] = entry.second->title.c_str();
+                event["message"] = entry.second->message.c_str();
+            }
             alerts["dewRiskMarginC"] = a.dewRiskMarginC;
-            alerts["onClearSky"] = a.onClearSky;
             alerts["clearSkyCloudPercent"] = a.clearSkyCloudPercent;
+            alerts["cloudedOverCloudPercent"] = a.cloudedOverCloudPercent;
+            alerts["skyNightOnly"] = a.skyNightOnly;
+            alerts["nightSunAltitudeDeg"] = a.nightSunAltitudeDeg;
             alerts["cooldownSeconds"] = a.cooldownSeconds;
 
             JsonObject pushover = alerts.createNestedObject("pushover");
             pushover["enabled"] = a.pushoverEnabled;
             pushover["userKey"] = secret(a.pushoverUserKey);
             pushover["appToken"] = secret(a.pushoverAppToken);
-            pushover["highPriority"] = a.pushoverHighPriority;
             pushover["sound"] = a.pushoverSound.c_str();
 
             JsonObject ntfy = alerts.createNestedObject("ntfy");
@@ -447,7 +488,7 @@ namespace SQM
 
     std::string Config::alertsToJson(bool redactSecrets) const
     {
-        DynamicJsonDocument doc(1536);
+        DynamicJsonDocument doc(2048); // strings are referenced, not copied
         appendAlerts(doc.to<JsonObject>(), alerts, redactSecrets);
         std::string json;
         serializeJson(doc, json);
@@ -565,9 +606,12 @@ namespace SQM
         JsonObject ble = doc.createNestedObject("ble");
         ble["enabled"] = this->ble.enabled;
         ble["passkey"] = redactSecrets && !this->ble.passkey.empty() ? SECRET_MASK : this->ble.passkey.c_str();
-        ble["alarmOnUnsafe"] = this->ble.alarmOnUnsafe;
-        ble["alarmOnRain"] = this->ble.alarmOnRain;
-        ble["alarmOnSensorFault"] = this->ble.alarmOnSensorFault;
+
+        JsonObject location = doc.createNestedObject("location");
+        location["set"] = this->location.set;
+        location["latitude"] = this->location.latitude;
+        location["longitude"] = this->location.longitude;
+        location["showSunMoon"] = this->location.showSunMoon;
 
         JsonObject wind = doc.createNestedObject("wind");
         wind["enabled"] = this->wind.enabled;
@@ -827,8 +871,24 @@ namespace SQM
             return setError(error, "Alerts: dew risk margin must be between 0 and 10 degrees C");
         if (!std::isfinite(alerts.clearSkyCloudPercent) || alerts.clearSkyCloudPercent < 0.0F || alerts.clearSkyCloudPercent > 100.0F)
             return setError(error, "Alerts: clear sky threshold must be between 0 and 100 percent");
-        if (alerts.pushoverHighPriority < 0 || alerts.pushoverHighPriority > 2)
-            return setError(error, "Alerts: Pushover priority must be 0, 1 or 2");
+        if (!std::isfinite(alerts.cloudedOverCloudPercent) || alerts.cloudedOverCloudPercent < 0.0F || alerts.cloudedOverCloudPercent > 100.0F ||
+            alerts.cloudedOverCloudPercent <= alerts.clearSkyCloudPercent)
+            return setError(error, "Alerts: the clouded-over threshold must be above the clear threshold");
+        if (!std::isfinite(alerts.nightSunAltitudeDeg) || alerts.nightSunAltitudeDeg < -20.0F || alerts.nightSunAltitudeDeg > 0.0F)
+            return setError(error, "Alerts: night must start with the sun between 0 and -20 degrees");
+        if (location.set && (!std::isfinite(location.latitude) || std::fabs(location.latitude) > 90.0 ||
+                             !std::isfinite(location.longitude) || std::fabs(location.longitude) > 180.0))
+            return setError(error, "Location: latitude must be -90..90 and longitude -180..180");
+        for (const auto &entry : eventSettings(alerts))
+        {
+            if (entry.second->level > 4)
+                return setError(error, "Alerts: event levels are 0 (off) to 4 (wake me)");
+            if (entry.second->title.size() > AlertsConfig::MAX_TEMPLATE_TITLE || entry.second->message.size() > AlertsConfig::MAX_TEMPLATE_MESSAGE)
+                return setError(error, "Alerts: custom titles are up to 80 characters and messages up to 240");
+        }
+        // NVS strings top out just under 4000 bytes.
+        if (alertsToJson(false).size() > 3900)
+            return setError(error, "Alerts: the custom alert texts are too long in total - shorten some");
         if (alerts.pushoverEnabled && (alerts.pushoverUserKey.empty() || alerts.pushoverAppToken.empty()))
             return setError(error, "Alerts: Pushover needs both a user key and an application token");
         if (alerts.ntfyEnabled && (!isHttpUrl(alerts.ntfyServer) || alerts.ntfyTopic.empty()))
@@ -849,7 +909,9 @@ namespace SQM
 
     bool Config::applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders)
     {
-        DynamicJsonDocument doc(8192);
+        // Parsing copies every string; custom alert texts can make the JSON
+        // bigger than the old fixed 8 KB.
+        DynamicJsonDocument doc(json.size() + 6144 > 8192 ? json.size() + 6144 : 8192);
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
@@ -1081,20 +1143,57 @@ namespace SQM
             AlertsConfig &a = cfg.alerts;
             if (alertsObj.containsKey("enabled"))
                 a.enabled = alertsObj["enabled"] | false;
-            if (alertsObj.containsKey("onSafetyChange"))
-                a.onSafetyChange = alertsObj["onSafetyChange"] | true;
-            if (alertsObj.containsKey("onRain"))
-                a.onRain = alertsObj["onRain"] | true;
-            if (alertsObj.containsKey("onSensorFault"))
-                a.onSensorFault = alertsObj["onSensorFault"] | true;
-            if (alertsObj.containsKey("onDewRisk"))
-                a.onDewRisk = alertsObj["onDewRisk"] | false;
+            JsonObject events = alertsObj["events"];
+            if (!events.isNull())
+            {
+                AlertsConfig::EventSetting *targets[] = {&a.unsafe, &a.safe, &a.rainStarted, &a.rainStopped, &a.sensorFault,
+                                                         &a.sensorRecovered, &a.dewRisk, &a.clearSky, &a.cloudedOver};
+                size_t i = 0;
+                for (const auto &entry : eventSettings(a))
+                {
+                    JsonObject event = events[entry.first];
+                    if (!event.isNull())
+                    {
+                        if (event.containsKey("level"))
+                            targets[i]->level = event["level"] | targets[i]->level;
+                        if (event.containsKey("sound"))
+                            targets[i]->sound = event["sound"] | "";
+                        if (event.containsKey("title"))
+                            targets[i]->title = event["title"] | "";
+                        if (event.containsKey("message"))
+                            targets[i]->message = event["message"] | "";
+                    }
+                    ++i;
+                }
+            }
+            else
+            {
+                // Settings saved before per-event levels: on/off toggles.
+                auto off = [&alertsObj](const char *key) { return alertsObj.containsKey(key) && !(alertsObj[key] | true); };
+                auto on = [&alertsObj](const char *key) { return alertsObj[key] | false; };
+                if (off("onSafetyChange"))
+                    a.unsafe.level = a.safe.level = 0;
+                if (off("onRain"))
+                    a.rainStarted.level = a.rainStopped.level = 0;
+                if (off("onSensorFault"))
+                    a.sensorFault.level = a.sensorRecovered.level = 0;
+                if (on("onDewRisk"))
+                    a.dewRisk.level = 2;
+                if (on("onClearSky"))
+                    a.clearSky.level = 2;
+                if (on("onCloudedOver"))
+                    a.cloudedOver.level = 3;
+            }
             if (alertsObj.containsKey("dewRiskMarginC"))
                 a.dewRiskMarginC = alertsObj["dewRiskMarginC"] | 2.0f;
-            if (alertsObj.containsKey("onClearSky"))
-                a.onClearSky = alertsObj["onClearSky"] | false;
             if (alertsObj.containsKey("clearSkyCloudPercent"))
                 a.clearSkyCloudPercent = alertsObj["clearSkyCloudPercent"] | 20.0f;
+            if (alertsObj.containsKey("cloudedOverCloudPercent"))
+                a.cloudedOverCloudPercent = alertsObj["cloudedOverCloudPercent"] | 70.0f;
+            if (alertsObj.containsKey("skyNightOnly"))
+                a.skyNightOnly = alertsObj["skyNightOnly"] | true;
+            if (alertsObj.containsKey("nightSunAltitudeDeg"))
+                a.nightSunAltitudeDeg = alertsObj["nightSunAltitudeDeg"] | -12.0f;
             if (alertsObj.containsKey("cooldownSeconds"))
                 a.cooldownSeconds = alertsObj["cooldownSeconds"] | 300U;
 
@@ -1105,8 +1204,10 @@ namespace SQM
                     a.pushoverEnabled = pushover["enabled"] | false;
                 assignSecret(pushover, "userKey", a.pushoverUserKey, preserveSecretPlaceholders);
                 assignSecret(pushover, "appToken", a.pushoverAppToken, preserveSecretPlaceholders);
-                if (pushover.containsKey("highPriority"))
-                    a.pushoverHighPriority = pushover["highPriority"] | 1;
+                // Pasted keys often carry a stray space or newline, which
+                // Pushover rejects as "not a valid user".
+                trimInPlace(a.pushoverUserKey);
+                trimInPlace(a.pushoverAppToken);
                 if (pushover.containsKey("sound"))
                     a.pushoverSound = pushover["sound"] | "";
             }
@@ -1140,6 +1241,19 @@ namespace SQM
                 a.mqttEnabled = mqtt["enabled"] | false;
         }
 
+        JsonObject locationObj = doc["location"];
+        if (!locationObj.isNull())
+        {
+            if (locationObj.containsKey("set"))
+                cfg.location.set = locationObj["set"] | false;
+            if (locationObj.containsKey("latitude"))
+                cfg.location.latitude = locationObj["latitude"] | 0.0;
+            if (locationObj.containsKey("longitude"))
+                cfg.location.longitude = locationObj["longitude"] | 0.0;
+            if (locationObj.containsKey("showSunMoon"))
+                cfg.location.showSunMoon = locationObj["showSunMoon"] | true;
+        }
+
         JsonObject windObj = doc["wind"];
         if (!windObj.isNull())
         {
@@ -1165,12 +1279,6 @@ namespace SQM
             if (bleObj.containsKey("enabled"))
                 cfg.ble.enabled = bleObj["enabled"] | false;
             assignSecret(bleObj, "passkey", cfg.ble.passkey, preserveSecretPlaceholders);
-            if (bleObj.containsKey("alarmOnUnsafe"))
-                cfg.ble.alarmOnUnsafe = bleObj["alarmOnUnsafe"] | true;
-            if (bleObj.containsKey("alarmOnRain"))
-                cfg.ble.alarmOnRain = bleObj["alarmOnRain"] | true;
-            if (bleObj.containsKey("alarmOnSensorFault"))
-                cfg.ble.alarmOnSensorFault = bleObj["alarmOnSensorFault"] | false;
         }
 
         normalizeTimeSources(cfg);
@@ -1180,6 +1288,31 @@ namespace SQM
         {
             Logger::error(TAG, "Configuration validation failed: %s", validationError.c_str());
             return false;
+        }
+
+        // Key format is only enforced for changes coming from the UI/API, so a
+        // key stored by older firmware never stops the config from loading.
+        if (preserveSecretPlaceholders && cfg.alerts.pushoverEnabled)
+        {
+            auto isPushoverKey = [](const std::string &key)
+            {
+                if (key.size() != 30)
+                    return false;
+                for (char c : key)
+                    if (!std::isalnum(static_cast<unsigned char>(c)))
+                        return false;
+                return true;
+            };
+            if (!isPushoverKey(cfg.alerts.pushoverUserKey))
+            {
+                Logger::error(TAG, "Pushover user key must be 30 letters and digits");
+                return false;
+            }
+            if (!isPushoverKey(cfg.alerts.pushoverAppToken))
+            {
+                Logger::error(TAG, "Pushover app token must be 30 letters and digits");
+                return false;
+            }
         }
 
         return true;

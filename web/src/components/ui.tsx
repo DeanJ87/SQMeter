@@ -33,6 +33,7 @@ export const Icon: FunctionalComponent<{ name: string; tone?: IconTone; size?: n
     rain: <><path {...common} d="M18 15H8.4a3.6 3.6 0 0 1 .9-7 5.2 5.2 0 0 1 9.5 2.9A2.4 2.4 0 0 1 18 15Z" /><path {...common} d="M8 19v1M12 18v2M16 19v1" /></>,
     cpu: <><rect {...common} x="5" y="5" width="14" height="14" rx="2" /><path {...common} d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4" /></>,
     upload: <><path {...common} d="M12 16V4M7 9l5-5 5 5" /><path {...common} d="M5 18v2h14v-2" /></>,
+    moon: <path {...common} d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />,
   };
 
   return (
@@ -46,18 +47,20 @@ export const Pill: FunctionalComponent<{ tone?: string }> = ({ tone = 'pill-dim'
   <span class={`pill ${tone}`}>{children}</span>
 );
 
-export const Card: FunctionalComponent<{ title: string; icon: string; tone?: IconTone; actions?: ComponentChildren }> = ({
-  title,
-  icon,
-  tone = 'cyan',
-  actions,
-  children,
-}) => (
-  <section class="sq-card">
+export const Card: FunctionalComponent<{
+  title: string;
+  icon?: string;
+  tone?: IconTone;
+  actions?: ComponentChildren;
+  hint?: ComponentChildren;
+  id?: string;
+}> = ({ title, icon, tone = 'cyan', actions, hint, id, children }) => (
+  <section class="sq-card" id={id}>
     <div class="card-topline">
       <div class="card-title">
-        <Icon name={icon} tone={tone} />
+        {icon && <Icon name={icon} tone={tone} />}
         <h2>{title}</h2>
+        {hint && <InfoTip text={hint} />}
       </div>
       {actions && <div class="card-actions">{actions}</div>}
     </div>
@@ -102,4 +105,60 @@ export const ProgressMeter: FunctionalComponent<{ value: number }> = ({ value })
   <div class="progress-meter">
     <div style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
   </div>
+);
+
+type ButtonVariant = 'default' | 'primary' | 'danger' | 'ghost' | 'link';
+
+// The only button style in the app. `default` is the tinted outline used for
+// most actions, `primary` the one main action on a page (Save, Update),
+// `danger` for destructive ones, `ghost` for quiet secondary actions and
+// `link` for navigation.
+export const Button: FunctionalComponent<{
+  onClick?: () => void;
+  variant?: ButtonVariant;
+  small?: boolean;
+  block?: boolean;
+  disabled?: boolean;
+  busy?: boolean;
+  busyLabel?: string;
+  title?: string;
+  type?: 'button' | 'submit';
+  ariaLabel?: string;
+}> = ({ onClick, variant = 'default', small, block, disabled, busy, busyLabel, title, type = 'button', ariaLabel, children }) => (
+  <button
+    type={type}
+    title={title}
+    aria-label={ariaLabel}
+    class={`btn btn-${variant}${small ? ' btn-sm' : ''}${block ? ' btn-block' : ''}`}
+    disabled={disabled || busy}
+    onClick={onClick}
+  >
+    {busy ? busyLabel ?? 'Working...' : children}
+  </button>
+);
+
+// "?" that reveals an explanation on hover, focus or tap - for detail that
+// would otherwise clutter the page as footnotes.
+export const InfoTip: FunctionalComponent<{ text: ComponentChildren }> = ({ text }) => (
+  <span class="info-tip" tabIndex={0} aria-label="More information">
+    ?
+    <span class="info-tip-body" role="tooltip">
+      {text}
+    </span>
+  </span>
+);
+
+// One-line status note under a control: no box, just tinted text.
+export const Note: FunctionalComponent<{
+  tone?: 'muted' | 'warn' | 'bad' | 'ok';
+  action?: { label: string; onClick: () => void };
+}> = ({ tone = 'muted', action, children }) => (
+  <p class={`note note-${tone}`}>
+    {children}
+    {action && (
+      <button type="button" class="note-action" onClick={action.onClick}>
+        {action.label}
+      </button>
+    )}
+  </p>
 );

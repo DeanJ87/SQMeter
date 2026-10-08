@@ -433,13 +433,18 @@ Returns immediately with `{"success":true,"message":"Update started"}` - the dow
 
 ## Safety
 
+### `GET /api/safe`
+
+Plain text `1` (safe) or `0` (unsafe) - the SafetyMonitor verdict, for scripts and loggers (`curl -s http://sqmeter.local/api/safe`).
+
 ### `GET /api/safety`
 
-The current SafetyMonitor verdict - the same value served to Alpaca clients as `IsSafe` - with the reasons behind it. The same object is included as `safety` in every `/ws/sensors` message.
+The current SafetyMonitor verdict - the same value served to Alpaca clients as `IsSafe`, also as a numeric `safe` (1/0) - with the reasons behind it. The same object is included as `safety` in every `/ws/sensors` message.
 
 ```json
 {
   "isSafe": false,
+  "safe": 0,
   "rawSafe": false,
   "alpacaEnabled": true,
   "reasonFlags": 512,
@@ -468,13 +473,32 @@ See [Alerts](../user-guide/alerts.md) for setup.
 
 Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. `400` if the channel is unknown or not enabled. Requires HTTP auth when enabled.
 
-### `GET /api/alerts/recent`
+Add `event=<unsafe|safe|rain_started|rain_stopped|sensor_fault|sensor_recovered|dew_risk|clear_sky|clouded_over>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Level 4 (wake me) also rings paired Bluetooth phones; with no push channel enabled, it only rings the phones. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`, filled in from current readings.
 
-The last 20 alerts since boot, newest first:
+### `POST /api/alerts/clear`
+
+Empties the recent-alerts list. Requires HTTP auth when enabled.
+
+### `GET /api/safety/history`
+
+The last 32 safety changes, device restarts and safe/unsafe alerts sent, newest first. Kept in RTC memory, so it survives software restarts, crashes and OTA updates, not power cuts.
 
 ```json
-[{"id":2,"event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.4 mm/h).","priority":1,"ageSeconds":42,"timestamp":1759500000,
-  "channels":{"pushover":{"status":"sent","detail":"HTTP 200"},"mqtt":{"status":"failed","detail":"MQTT not connected"}}}]
+{"boot":3,"uptime":4000,"entries":[
+  {"kind":"alert","boot":3,"uptime":3900,"timestamp":1759500000,"safe":false},
+  {"kind":"change","boot":3,"uptime":3899,"timestamp":1759499999,"safe":false,"held":false,"reasonFlags":48},
+  {"kind":"boot","boot":3,"uptime":0,"resetReason":3}]}
+```
+
+`held` marks unsafe only because of the safe delay. `resetReason` is ESP-IDF's `esp_reset_reason_t` (1 power on, 3 software restart, 4 crash, 5-7 watchdog, 9 brownout). `timestamp` is missing for entries from before the clock was set.
+
+### `GET /api/alerts/recent`
+
+Whether alerts are on, and the last 20 alerts since boot, newest first:
+
+```json
+{"enabled":true,"alerts":[{"id":2,"event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.4 mm/h).","level":"wake","ageSeconds":42,"timestamp":1759500000,
+  "channels":{"pushover":{"status":"sent","detail":"HTTP 200"},"mqtt":{"status":"failed","detail":"MQTT not connected"}}}]}
 ```
 
 `status` is `pending`, `sent`, `failed` or `skipped`.

@@ -111,7 +111,7 @@ describe("frontend settings validation", () => {
     for (const part of parts.slice(0, -1)) {
       target = target[part] as Record<string, unknown>;
     }
-    target[parts.at(-1)!] = value;
+    target[parts[parts.length - 1]] = value;
     return candidate;
   };
 
@@ -325,15 +325,14 @@ describe("mockConfig", () => {
 describe("alertsConfigSchema", () => {
   const validAlerts = {
     enabled: true,
-    onSafetyChange: true,
-    onRain: true,
-    onSensorFault: true,
-    onDewRisk: false,
+    events: { unsafe: { level: 3, sound: "" }, rain_started: { level: 4, sound: "siren" } },
     dewRiskMarginC: 2,
-    onClearSky: false,
     clearSkyCloudPercent: 20,
+    cloudedOverCloudPercent: 70,
+    skyNightOnly: true,
+    nightSunAltitudeDeg: -12,
     cooldownSeconds: 300,
-    pushover: { enabled: false, userKey: "", appToken: "", highPriority: 1, sound: "" },
+    pushover: { enabled: false, userKey: "", appToken: "", sound: "" },
     ntfy: { enabled: false, server: "https://ntfy.sh", topic: "", token: "" },
     webhook: { enabled: false, url: "", authHeader: "", insecureTls: false },
     mqtt: { enabled: false },
@@ -341,6 +340,25 @@ describe("alertsConfigSchema", () => {
 
   it("passes with valid defaults", () => {
     expect(alertsConfigSchema.safeParse(validAlerts).success).toBe(true);
+  });
+
+  it("rejects out-of-range levels and odd sound names", () => {
+    const withEvent = (level: number, sound: string) =>
+      alertsConfigSchema.safeParse({ ...validAlerts, events: { unsafe: { level, sound } } }).success;
+    expect(withEvent(5, "")).toBe(false);
+    expect(withEvent(2, "not a sound!")).toBe(false);
+    expect(withEvent(4, "persistent")).toBe(true);
+  });
+
+  it("requires 30-character Pushover keys (or the stored mask)", () => {
+    const key = "a".repeat(30);
+    const withKeys = (userKey: string, appToken: string) =>
+      alertsConfigSchema.safeParse({ ...validAlerts, pushover: { ...validAlerts.pushover, enabled: true, userKey, appToken } }).success;
+    expect(withKeys(key, key)).toBe(true);
+    expect(withKeys("********", "********")).toBe(true);
+    expect(withKeys(`${key} `, key)).toBe(true); // trailing space from a paste is trimmed
+    expect(withKeys("me@example.com", key)).toBe(false);
+    expect(withKeys(key, "short")).toBe(false);
   });
 
   it("requires Pushover credentials when Pushover is enabled", () => {
@@ -360,6 +378,10 @@ describe("alertsConfigSchema", () => {
     expect(
       alertsConfigSchema.safeParse({ ...validAlerts, webhook: { ...validAlerts.webhook, enabled: true, url: "ftp://x" } }).success
     ).toBe(false);
+  });
+
+  it("needs the clouded-over threshold above the clear one", () => {
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, clearSkyCloudPercent: 60, cloudedOverCloudPercent: 50 }).success).toBe(false);
   });
 
   it("caps the cooldown at 24 hours", () => {
@@ -392,7 +414,7 @@ describe("windConfigSchema", () => {
 });
 
 describe("ble passkey", () => {
-  const base = { enabled: true, alarmOnUnsafe: true, alarmOnRain: true, alarmOnSensorFault: false };
+  const base = { enabled: true };
   const ble = configSchema.shape.ble.unwrap();
   it("accepts empty, 6 digits, or the stored mask", () => {
     for (const passkey of ["", "482913", "********"]) expect(ble.safeParse({ ...base, passkey }).success).toBe(true);

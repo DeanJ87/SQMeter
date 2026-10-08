@@ -107,14 +107,17 @@ Published to `{topic}` every `publishIntervalMs` milliseconds:
 
 ---
 
-## Alert and safety topics
+## Safety and alert topics
 
-With **Settings → Alerts → MQTT** enabled, two more topics are published under the configured topic:
+The SafetyMonitor verdict is published whenever MQTT is on, on every change and refreshed every minute. The readings payload on `<topic>` also carries `"safe": 1` or `0`, so it's logged with the readings.
 
 | Topic | Retained | Payload |
 |---|---|---|
-| `<topic>/safety` | Yes | `{"isSafe": false, "reasons": ["Rain detected"]}` - on every change, refreshed every minute |
-| `<topic>/alerts` | No | One message per alert: `{"event":"rain_started","title":"Rain detected","message":"...","priority":1,"device":"SQM-ESP32","timestamp":1759500000}` |
+| `<topic>/safe` | Yes | `1` (safe) or `0` (unsafe) - for loggers, graphs and simple automations |
+| `<topic>/safety` | Yes | `{"isSafe": false, "safe": 0, "reasons": ["SQM 18.21 < 19.50", "Cloud 62% >= 35%"]}` |
+| `<topic>/alerts` | No | With **Settings → Alerts → MQTT** on: one message per alert, `{"event":"rain_started","title":"Rain detected","message":"...","level":"wake","device":"SQM-ESP32","timestamp":1759500000}` |
+
+For a Home Assistant binary sensor on `<topic>/safe` with `device_class: safety` (where "on" means unsafe), set `payload_on: "0"` and `payload_off: "1"`.
 
 See [Alerts](alerts.md) for the event list.
 

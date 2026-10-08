@@ -22,6 +22,7 @@ const SECTION_TO_TAB: Record<string, SettingsTabId> = {
   mqtt: 'network',
   wifi: 'network',
   gps: 'time',
+  location: 'time',
 };
 
 export const isSettingsTab = (value: string | null): value is SettingsTabId =>
@@ -49,6 +50,7 @@ export const tabForErrorPath = (path: string): SettingsTabId => {
       return 'network';
     case 'ntp':
     case 'gps':
+    case 'location':
     case 'timezone':
     case 'primaryTimeSource':
     case 'secondaryTimeSource':

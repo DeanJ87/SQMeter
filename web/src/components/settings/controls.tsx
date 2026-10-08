@@ -1,72 +1,50 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
-import type { SettingsTabId } from './tabs';
+import { Button, Card, InfoTip, Note, Pill } from '../ui';
 
-// Shared building blocks for the Settings tabs, so every section looks and
-// behaves the same: one card style, one toggle style, one way to explain why
-// something can't be used.
-
-export const inputClass = (error?: string) =>
-  `w-full px-3 py-2 bg-gray-900/60 border rounded-lg text-white text-sm focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed ${
-    error ? 'border-red-500' : 'border-gray-600 focus:border-blue-500'
-  }`;
+// Settings building blocks, all on the shared component classes so Settings
+// looks like the rest of the app. Explanations go in `hint` (a "?" tooltip),
+// not in paragraphs.
 
 type Tone = 'ok' | 'warn' | 'bad' | 'off';
+const PILL: Record<Tone, string> = { ok: 'pill-green', warn: 'pill-amber', bad: 'pill-red', off: 'pill-dim' };
 
 export const StatusBadge: FunctionalComponent<{ tone: Tone; label: string }> = ({ tone, label }) => (
-  <span class={`sq-badge sq-badge-${tone}`}>
-    <i class="sq-badge-dot" aria-hidden="true" />
-    {label}
-  </span>
+  <Pill tone={PILL[tone]}>{label}</Pill>
 );
 
 export const SettingsCard: FunctionalComponent<{
   id?: string;
   title: string;
-  description?: ComponentChildren;
+  hint?: ComponentChildren;
   badge?: ComponentChildren;
-}> = ({ id, title, description, badge, children }) => (
-  <section id={id} class="bg-gray-800 rounded-xl p-5 md:p-6 border border-gray-700 scroll-mt-24">
-    <div class="flex flex-wrap items-start justify-between gap-2 mb-4">
-      <div>
-        <h2 class="text-lg font-semibold text-white">{title}</h2>
-        {description && <p class="mt-1 text-sm text-gray-400">{description}</p>}
-      </div>
-      {badge}
-    </div>
-    <div class="space-y-4">{children}</div>
-  </section>
+}> = ({ id, title, hint, badge, children }) => (
+  <Card id={id} title={title} hint={hint} actions={badge}>
+    <div class="card-body">{children}</div>
+  </Card>
 );
 
-// A titled group inside a card, separated by a rule.
-export const Group: FunctionalComponent<{ title: string; aside?: ComponentChildren }> = ({ title, aside, children }) => (
-  <div class="pt-4 border-t border-gray-700 first:border-t-0 first:pt-0 space-y-3">
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-400">{title}</h3>
-      {aside}
-    </div>
+export const Group: FunctionalComponent<{ title?: string; aside?: ComponentChildren }> = ({ title, aside, children }) => (
+  <div class="card-group">
+    {(title || aside) && (
+      <h3 class="card-group-title">
+        {title}
+        {aside}
+      </h3>
+    )}
     {children}
   </div>
 );
 
-// Explains why something is unavailable, optionally with a jump to the tab
-// that fixes it.
-export const Requires: FunctionalComponent<{
-  tone?: 'info' | 'warn';
-  onFix?: () => void;
-  fixLabel?: string;
-}> = ({ tone = 'info', onFix, fixLabel, children }) => (
-  <div
-    class={`flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 rounded-lg text-xs border ${
-      tone === 'warn' ? 'bg-amber-900/30 border-amber-800 text-amber-200' : 'bg-gray-900/50 border-gray-700 text-gray-400'
-    }`}
-  >
-    <span>{children}</span>
-    {onFix && (
-      <button type="button" class="text-cyan-300 hover:underline" onClick={onFix}>
-        {fixLabel ?? 'Set up'} →
-      </button>
-    )}
-  </div>
+// Why something is unavailable, optionally with a jump to where to fix it.
+export const Requires: FunctionalComponent<{ tone?: 'info' | 'warn'; onFix?: () => void; fixLabel?: string }> = ({
+  tone = 'info',
+  onFix,
+  fixLabel,
+  children,
+}) => (
+  <Note tone={tone === 'warn' ? 'warn' : 'muted'} action={onFix ? { label: fixLabel ?? 'Set up', onClick: onFix } : undefined}>
+    {children}
+  </Note>
 );
 
 export const Toggle: FunctionalComponent<{
@@ -74,28 +52,38 @@ export const Toggle: FunctionalComponent<{
   checked: boolean;
   onChange: (checked: boolean) => void;
   hint?: ComponentChildren;
-  // When set and the toggle is off, it can't be switched on; the reason is shown.
-  // A toggle that is already on can always be switched off.
+  // When set and the toggle is off, it can't be switched on; the reason is
+  // shown. A toggle that's already on can always be switched off.
   blockedReason?: ComponentChildren;
+  onFix?: () => void;
+  fixLabel?: string;
   disabled?: boolean;
   dataField?: string;
-}> = ({ label, checked, onChange, hint, blockedReason, disabled, dataField }) => {
-  const blocked = Boolean(blockedReason) && !checked;
+}> = ({ label, checked, onChange, hint, blockedReason, onFix, fixLabel, disabled, dataField }) => {
+  const locked = (Boolean(blockedReason) && !checked) || disabled;
   return (
-    <div class={blocked || disabled ? 'opacity-60' : ''}>
-      <label class={`flex items-start gap-3 ${blocked || disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+    <div>
+      <label class={`toggle${locked ? ' is-disabled' : ''}`}>
         <input
           type="checkbox"
           data-field={dataField}
-          class="mt-0.5 w-4 h-4 accent-blue-500"
+          aria-label={label}
           checked={checked}
-          disabled={blocked || disabled}
+          disabled={locked}
           onChange={(e) => onChange((e.target as HTMLInputElement).checked)}
         />
-        <span class="text-sm text-white">{label}</span>
+        <span>
+          {label}
+          {hint && <InfoTip text={hint} />}
+        </span>
       </label>
-      {hint && <p class="mt-1 ml-7 text-xs text-gray-500">{hint}</p>}
-      {blockedReason && <p class={`mt-1 ml-7 text-xs ${checked ? 'text-amber-300' : 'text-gray-400'}`}>{blockedReason}</p>}
+      {blockedReason && (
+        <div class="indent">
+          <Requires tone={checked ? 'warn' : 'info'} onFix={onFix} fixLabel={fixLabel}>
+            {blockedReason}
+          </Requires>
+        </div>
+      )}
     </div>
   );
 };
@@ -107,13 +95,17 @@ export const Field: FunctionalComponent<{ label: string; hint?: ComponentChildre
   children,
   class: className,
 }) => (
-  <div class={className}>
-    <label class="block text-sm font-medium text-gray-300 mb-1.5">{label}</label>
+  <div class={`field${className ? ` ${className}` : ''}`}>
+    <label class="field-label">
+      {label}
+      {hint && <InfoTip text={hint} />}
+    </label>
     {children}
-    {error && <p class="mt-1 text-xs text-red-400">{error}</p>}
-    {hint && !error && <p class="mt-1 text-xs text-gray-500">{hint}</p>}
+    {error && <Note tone="bad">{error}</Note>}
   </div>
 );
+
+const inputClass = (error?: string) => `input${error ? ' is-invalid' : ''}`;
 
 export const NumberInput: FunctionalComponent<{
   value: number;
@@ -126,23 +118,34 @@ export const NumberInput: FunctionalComponent<{
   dataField?: string;
   integer?: boolean;
   ariaLabel?: string;
-}> = ({ value, onChange, min, max, step, disabled, error, dataField, integer, ariaLabel }) => (
-  <input
-    type="number"
-    data-field={dataField}
-    aria-label={ariaLabel}
-    class={inputClass(error)}
-    value={Number.isFinite(value) ? value : ''}
-    min={min}
-    max={max}
-    step={step}
-    disabled={disabled}
-    onChange={(e) => {
-      const raw = (e.target as HTMLInputElement).value;
-      onChange(integer ? parseInt(raw, 10) : parseFloat(raw));
-    }}
-  />
-);
+  unit?: string;
+}> = ({ value, onChange, min, max, step, disabled, error, dataField, integer, ariaLabel, unit }) => {
+  const input = (
+    <input
+      type="number"
+      data-field={dataField}
+      aria-label={ariaLabel}
+      class={inputClass(error)}
+      value={Number.isFinite(value) ? value : ''}
+      min={min}
+      max={max}
+      step={step}
+      disabled={disabled}
+      onChange={(e) => {
+        const raw = (e.target as HTMLInputElement).value;
+        onChange(integer ? parseInt(raw, 10) : parseFloat(raw));
+      }}
+    />
+  );
+  return unit ? (
+    <div class={`input-group${error ? ' is-invalid' : ''}${disabled ? ' is-disabled' : ''}`}>
+      {input}
+      <span class="input-unit">{unit}</span>
+    </div>
+  ) : (
+    input
+  );
+};
 
 export const TextInput: FunctionalComponent<{
   value: string;
@@ -152,8 +155,7 @@ export const TextInput: FunctionalComponent<{
   disabled?: boolean;
   error?: string;
   dataField?: string;
-  autoComplete?: string;
-}> = ({ value, onInput, type = 'text', placeholder, disabled, error, dataField, autoComplete }) => (
+}> = ({ value, onInput, type = 'text', placeholder, disabled, error, dataField }) => (
   <input
     type={type}
     data-field={dataField}
@@ -162,7 +164,7 @@ export const TextInput: FunctionalComponent<{
     value={value}
     placeholder={placeholder}
     disabled={disabled}
-    autocomplete={autoComplete ?? (type === 'password' ? 'off' : undefined)}
+    autocomplete={type === 'password' ? 'off' : undefined}
     onInput={(e) => onInput((e.target as HTMLInputElement).value)}
   />
 );
@@ -174,8 +176,12 @@ export const SelectInput: FunctionalComponent<{
   disabled?: boolean;
   error?: string;
   dataField?: string;
-}> = ({ value, onChange, options, disabled, error, dataField }) => (
+  id?: string;
+  ariaLabel?: string;
+}> = ({ value, onChange, options, disabled, error, dataField, id, ariaLabel }) => (
   <select
+    id={id}
+    aria-label={ariaLabel}
     data-field={dataField}
     class={inputClass(error)}
     value={value}
@@ -196,23 +202,12 @@ export const ActionButton: FunctionalComponent<{
   busy?: boolean;
   busyLabel?: string;
   title?: string;
-}> = ({ onClick, disabled, busy, busyLabel, title, children }) => (
-  <button
-    type="button"
-    title={title}
-    onClick={onClick}
-    disabled={disabled || busy}
-    class="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg"
-  >
-    {busy ? busyLabel ?? 'Working...' : children}
-  </button>
+  variant?: 'default' | 'danger';
+}> = ({ onClick, disabled, busy, busyLabel, title, variant, children }) => (
+  <Button small onClick={onClick} disabled={disabled} busy={busy} busyLabel={busyLabel} title={title} variant={variant}>
+    {children}
+  </Button>
 );
 
 export const ResultNote: FunctionalComponent<{ result: { type: 'success' | 'error'; text: string } | null }> = ({ result }) =>
-  result ? (
-    <p class={`text-xs ${result.type === 'success' ? 'text-green-300' : 'text-red-300'}`}>{result.text}</p>
-  ) : null;
-
-export interface TabLink {
-  goTo: (tab: SettingsTabId, anchor?: string) => void;
-}
+  result ? <Note tone={result.type === 'success' ? 'ok' : 'bad'}>{result.text}</Note> : null;

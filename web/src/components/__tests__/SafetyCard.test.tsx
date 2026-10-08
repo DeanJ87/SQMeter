@@ -18,7 +18,7 @@ describe('SafetyCard', () => {
   it('shows Safe when all rules pass', () => {
     render(<SafetyCard safety={base} />);
     expect(screen.getByText('Safe')).toBeInTheDocument();
-    expect(screen.getByText('All enabled safety rules pass.')).toBeInTheDocument();
+    expect(screen.getByText('All rules pass.')).toBeInTheDocument();
   });
 
   it('lists unsafe reasons such as rain', () => {
@@ -34,6 +34,6 @@ describe('SafetyCard', () => {
 
   it('warns when Alpaca is disabled', () => {
     render(<SafetyCard safety={{ ...base, alpacaEnabled: false }} />);
-    expect(screen.getByText(/Alpaca disabled/)).toBeInTheDocument();
+    expect(screen.getByText(/Alpaca off/)).toBeInTheDocument();
   });
 });

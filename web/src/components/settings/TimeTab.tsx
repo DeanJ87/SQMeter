@@ -1,8 +1,11 @@
 import { FunctionalComponent } from 'preact';
+import { useState } from 'preact/hooks';
+import { Note } from '../ui';
+import { defaultLocationConfig } from './defaults';
 import type { SettingsTabProps } from './context';
-import { Field, Group, NumberInput, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
+import { ActionButton, Field, Group, NumberInput, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
 
-// Common timezones in POSIX TZ format
+// Common time zones in POSIX TZ format
 export const TIMEZONE_OPTIONS = [
   { label: 'UTC', value: 'UTC0' },
   { label: 'GMT (no daylight saving)', value: 'GMT0' },
@@ -16,25 +19,65 @@ export const TIMEZONE_OPTIONS = [
   { label: 'Asia/Tokyo (JST)', value: 'JST-9' },
 ];
 
+// "51.4779, -0.0015" (or space separated) -> [lat, lon]; null if it isn't that.
+export const parseCoordinates = (text: string): [number, number] | null => {
+  const match = text.trim().match(/^(-?\d+(?:\.\d+)?)\s*[,\s]\s*(-?\d+(?:\.\d+)?)$/);
+  if (!match) return null;
+  const lat = parseFloat(match[1]);
+  const lon = parseFloat(match[2]);
+  return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? [lat, lon] : null;
+};
+
 const NTP = 0;
 const GPS = 1;
-const SOURCE_LABEL: Record<number, string> = { [NTP]: 'NTP (internet)', [GPS]: 'GPS' };
+const SOURCE_LABEL: Record<number, string> = { [NTP]: 'NTP', [GPS]: 'GPS' };
+const LAST_SOURCE = 'At least one time source has to stay on.';
 
-const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw }) => {
-  const knownZone = TIMEZONE_OPTIONS.some((tz) => tz.value === config.ntp.timezone);
-  const lastSourceReason = 'At least one time source has to stay on.';
-  const bothSources = config.ntp.enabled && config.gps.enabled;
+const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw, status }) => {
+  const location = { ...defaultLocationConfig, ...config.location };
+  const [coords, setCoords] = useState(location.set ? `${location.latitude}, ${location.longitude}` : '');
+  const [coordsError, setCoordsError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const canUseBrowserLocation = typeof window !== 'undefined' && window.isSecureContext && 'geolocation' in navigator;
+  const sky = status?.sky;
 
-  const setPrimary = (primary: number) => {
-    const other = primary === NTP ? GPS : NTP;
-    updateMany([
-      [['primaryTimeSource'], primary],
-      [['secondaryTimeSource'], other],
-    ]);
+  const applyCoords = (text: string) => {
+    setCoords(text);
+    if (text.trim() === '') {
+      setCoordsError(null);
+      update(['location', 'set'], false);
+      return;
+    }
+    const parsed = parseCoordinates(text);
+    setCoordsError(parsed ? null : 'Enter latitude, longitude - e.g. 51.4779, -0.0015');
+    if (parsed) {
+      updateMany([
+        [['location', 'set'], true],
+        [['location', 'latitude'], Math.round(parsed[0] * 1e4) / 1e4],
+        [['location', 'longitude'], Math.round(parsed[1] * 1e4) / 1e4],
+      ]);
+    }
   };
 
+  const useBrowserLocation = () => {
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        applyCoords(`${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+      },
+      () => {
+        setLocating(false);
+        setCoordsError('The browser didn\'t share a location.');
+      },
+      { timeout: 15000 }
+    );
+  };
+  const knownZone = TIMEZONE_OPTIONS.some((tz) => tz.value === config.ntp.timezone);
+  const bothSources = config.ntp.enabled && config.gps.enabled;
+
   const gpsBadge = !config.gps.enabled
-    ? <StatusBadge tone="off" label="Off" />
+    ? undefined
     : hw.gps.detected === null
       ? undefined
       : <StatusBadge tone={hw.gps.detected ? 'ok' : 'bad'} label={hw.gps.detected ? 'Running' : 'Not detected'} />;
@@ -42,45 +85,76 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
   return (
     <>
       <SettingsCard title="Time zone">
-        <Field label="Time zone" hint="Used for timestamps, logs and the RG-15 daily reset.">
-          <SelectInput
-            dataField="ntp.timezone"
-            value={knownZone ? config.ntp.timezone : 'custom'}
-            options={[...TIMEZONE_OPTIONS, { value: 'custom', label: 'Custom (POSIX TZ string)...' }]}
-            onChange={(v) => update(['ntp', 'timezone'], v === 'custom' ? '' : v)}
-          />
-        </Field>
-        {!knownZone && (
-          <Field label="Custom time zone" hint="POSIX format, e.g. PST8PDT,M3.2.0,M11.1.0" error={error('ntp.timezone')}>
-            <TextInput dataField="ntp.timezone" value={config.ntp.timezone} onInput={(v) => update(['ntp', 'timezone'], v)} />
+        <div class="form-grid">
+          <Field label="Time zone">
+            <SelectInput
+              dataField="ntp.timezone"
+              value={knownZone ? config.ntp.timezone : 'custom'}
+              options={[...TIMEZONE_OPTIONS, { value: 'custom', label: 'Custom...' }]}
+              onChange={(v) => update(['ntp', 'timezone'], v === 'custom' ? '' : v)}
+            />
           </Field>
-        )}
+          {!knownZone && (
+            <Field label="POSIX time zone" hint="e.g. PST8PDT,M3.2.0,M11.1.0" error={error('ntp.timezone')}>
+              <TextInput dataField="ntp.timezone" value={config.ntp.timezone} onInput={(v) => update(['ntp', 'timezone'], v)} />
+            </Field>
+          )}
+        </div>
       </SettingsCard>
 
-      <SettingsCard title="Time sources" description="Accurate time matters for logs, alerts and Alpaca timestamps.">
-        <Group title="NTP" aside={<StatusBadge tone={config.ntp.enabled ? 'ok' : 'off'} label={config.ntp.enabled ? 'On' : 'Off'} />}>
+      <SettingsCard
+        id="location"
+        title="Location"
+        hint="Used to work out when it's dark. A GPS fix takes precedence."
+        badge={sky?.locationSource === 'gps' ? <StatusBadge tone="ok" label="Using GPS" /> : undefined}
+      >
+        <Field class="field-wide" label="Coordinates" error={coordsError ?? error('location.latitude') ?? error('location.longitude')} hint="Latitude, longitude in decimal degrees. Paste from any maps app.">
+          <div class="input-row">
+            <TextInput dataField="location.latitude" value={coords} placeholder="51.4779, -0.0015" onInput={applyCoords} />
+            {canUseBrowserLocation && (
+              <ActionButton onClick={useBrowserLocation} busy={locating} busyLabel="Locating...">
+                Use my location
+              </ActionButton>
+            )}
+          </div>
+        </Field>
+        {sky?.nightKnown && sky.sunAltitudeDeg !== undefined && (
+          <Note>
+            Sun at {sky.sunAltitudeDeg}° - {sky.isNight ? 'dark now' : 'not dark yet'}.
+          </Note>
+        )}
+        <Toggle
+          label="Sun & Moon card on the dashboard"
+          checked={location.showSunMoon !== false}
+          onChange={(v) => update(['location', 'showSunMoon'], v)}
+          hint="Twilight, darkness, moon phase and rise/set times, worked out in the browser."
+        />
+      </SettingsCard>
+
+      <SettingsCard title="Time sources">
+        <Group title="NTP">
           <Toggle
-            label="Sync time from the internet (NTP)"
+            label="Internet time (NTP)"
             checked={config.ntp.enabled}
             onChange={(v) => update(['ntp', 'enabled'], v)}
             disabled={config.ntp.enabled && !config.gps.enabled}
-            hint={config.ntp.enabled && !config.gps.enabled ? lastSourceReason : undefined}
+            hint={config.ntp.enabled && !config.gps.enabled ? LAST_SOURCE : undefined}
           />
-          {error('ntp.enabled') && <p class="text-xs text-red-400">{error('ntp.enabled')}</p>}
           {config.ntp.enabled && (
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 ml-7">
-              <Field label="Primary server" error={error('ntp.server1')}>
+            <div class="form-grid">
+              <Field label="Server" error={error('ntp.server1')}>
                 <TextInput dataField="ntp.server1" value={config.ntp.server1} placeholder="pool.ntp.org" onInput={(v) => update(['ntp', 'server1'], v)} />
               </Field>
-              <Field label="Secondary server">
+              <Field label="Fallback server">
                 <TextInput dataField="ntp.server2" value={config.ntp.server2} placeholder="time.nist.gov" onInput={(v) => update(['ntp', 'server2'], v)} />
               </Field>
-              <Field label="Sync every (minutes)" error={error('ntp.syncIntervalMs')}>
+              <Field label="Sync every" error={error('ntp.syncIntervalMs')}>
                 <NumberInput
                   dataField="ntp.syncIntervalMs"
                   integer
                   min={10}
                   max={1440}
+                  unit="min"
                   value={config.ntp.syncIntervalMs / 60000}
                   onChange={(v) => update(['ntp', 'syncIntervalMs'], v * 60000)}
                 />
@@ -92,14 +166,14 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
         <Group title="GPS" aside={gpsBadge}>
           <Toggle
             dataField="gps.enabled"
-            label="Use a GPS receiver (time and location)"
+            label="GPS receiver"
             checked={config.gps.enabled}
             onChange={(v) => update(['gps', 'enabled'], v)}
             disabled={config.gps.enabled && !config.ntp.enabled}
-            hint={config.gps.enabled && !config.ntp.enabled ? lastSourceReason : 'Works without internet. Needs a sky view for a fix.'}
+            hint={config.gps.enabled && !config.ntp.enabled ? LAST_SOURCE : 'Time and location without internet.'}
           />
           {config.gps.enabled && (
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 ml-7">
+            <div class="form-grid">
               <Field label="RX pin" error={error('gps.rxPin')}>
                 <NumberInput dataField="gps.rxPin" integer min={0} max={39} value={config.gps.rxPin} onChange={(v) => update(['gps', 'rxPin'], v)} />
               </Field>
@@ -120,16 +194,22 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
 
         {bothSources && (
           <Group title="Priority">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Use first" error={error('primaryTimeSource')} hint={`Falls back to ${SOURCE_LABEL[config.secondaryTimeSource]} if unavailable.`}>
+            <div class="form-grid">
+              <Field label="Use first" error={error('primaryTimeSource')} hint={`Falls back to ${SOURCE_LABEL[config.secondaryTimeSource]}.`}>
                 <SelectInput
                   dataField="primaryTimeSource"
                   value={String(config.primaryTimeSource)}
                   options={[
-                    { value: String(NTP), label: SOURCE_LABEL[NTP] },
-                    { value: String(GPS), label: SOURCE_LABEL[GPS] },
+                    { value: String(NTP), label: 'NTP' },
+                    { value: String(GPS), label: 'GPS' },
                   ]}
-                  onChange={(v) => setPrimary(parseInt(v, 10))}
+                  onChange={(v) => {
+                    const primary = parseInt(v, 10);
+                    updateMany([
+                      [['primaryTimeSource'], primary],
+                      [['secondaryTimeSource'], primary === NTP ? GPS : NTP],
+                    ]);
+                  }}
                 />
               </Field>
             </div>

@@ -83,6 +83,28 @@ void test_cloud_cover_threshold(void)
     TEST_ASSERT_FALSE(r.isSafe);
 }
 
+void test_reasons_state_value_and_limit(void)
+{
+    SafetyThresholds t;
+    t.cloudCoverEnabled = true;
+    t.cloudCoverUnsafePercent = 35.0f;
+    t.sqmMinEnabled = true;
+    t.sqmMinSafe = 19.5f;
+    t.humidityMaxEnabled = true;
+    t.humidityMaxSafe = 90.0f;
+    SafetyInputs in;
+    in.hasEverHadGoodData = true;
+    in.cloudCoverPercent = 62.0f;
+    in.sqm = 18.21f;
+    in.humidityPercent = 92.0f;
+
+    SafetyResult r = evaluateSafety(in, t);
+    TEST_ASSERT_EQUAL(3, r.unsafeReasons.size());
+    TEST_ASSERT_EQUAL_STRING("Cloud 62% >= 35%", r.unsafeReasons[0].c_str());
+    TEST_ASSERT_EQUAL_STRING("SQM 18.21 < 19.50", r.unsafeReasons[1].c_str());
+    TEST_ASSERT_EQUAL_STRING("Humidity 92% > 90%", r.unsafeReasons[2].c_str());
+}
+
 void test_cloud_cover_disabled_ignored(void)
 {
     SafetyThresholds t;
@@ -385,6 +407,17 @@ void test_param_name_case_insensitive(void)
     TEST_ASSERT_FALSE(paramNameEquals("Connected", "Connecte"));
 }
 
+void test_put_param_names_are_case_sensitive(void)
+{
+    // GET query strings: any casing.
+    TEST_ASSERT_TRUE(paramNameMatches("averageperiod", "AveragePeriod", false));
+    TEST_ASSERT_TRUE(paramNameMatches("ClientTransactionID", "ClientTransactionID", false));
+    // PUT form bodies: exact casing only (ConformU "Bad casing" checks).
+    TEST_ASSERT_TRUE(paramNameMatches("AveragePeriod", "AveragePeriod", true));
+    TEST_ASSERT_FALSE(paramNameMatches("averageperiod", "AveragePeriod", true));
+    TEST_ASSERT_FALSE(paramNameMatches("clienttransactionid", "ClientTransactionID", true));
+}
+
 void test_client_transaction_id_parsing(void)
 {
     TEST_ASSERT_EQUAL_UINT32(42, parseClientTransactionId("42"));
@@ -569,6 +602,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_manual_override_forces_unsafe);
     RUN_TEST(test_required_sensor_fault_forces_unsafe);
     RUN_TEST(test_cloud_cover_threshold);
+    RUN_TEST(test_reasons_state_value_and_limit);
     RUN_TEST(test_cloud_cover_disabled_ignored);
     RUN_TEST(test_sqm_min_threshold);
     RUN_TEST(test_humidity_max_threshold);
@@ -607,6 +641,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_discovery_response_body);
 
     RUN_TEST(test_param_name_case_insensitive);
+    RUN_TEST(test_put_param_names_are_case_sensitive);
     RUN_TEST(test_client_transaction_id_parsing);
     RUN_TEST(test_alpaca_bool_parsing);
     RUN_TEST(test_unique_id_includes_mac);

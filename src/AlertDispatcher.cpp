@@ -2,6 +2,7 @@
 #include "AlertRootCA.h"
 #include "Logger.h"
 #include "MQTTClient.h"
+#include "TlsLock.h"
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
@@ -12,6 +13,17 @@
 
 namespace SQM
 {
+    // Several events sent as one notification: list them all, lead first.
+    static void appendStackedEvents(JsonDocument &doc, const Alerts::Alert &alert)
+    {
+        if (alert.stacked.empty())
+            return;
+        JsonArray events = doc.createNestedArray("events");
+        events.add(Alerts::alertTypeName(alert.type));
+        for (Alerts::AlertType type : alert.stacked)
+            events.add(Alerts::alertTypeName(type));
+    }
+
     namespace
     {
         constexpr const char *TAG = "Alerts";
@@ -95,6 +107,15 @@ namespace SQM
             if (!ok)
             {
                 String response = http.getString();
+                // Pushover (and ntfy) explain failures in JSON: show the
+                // message itself rather than truncated raw JSON.
+                StaticJsonDocument<512> errorDoc;
+                if (!deserializeJson(errorDoc, response))
+                {
+                    const char *message = errorDoc["errors"][0] | errorDoc["error"] | static_cast<const char *>(nullptr);
+                    if (message != nullptr)
+                        response = message;
+                }
                 if (response.length() > 0)
                     detail += ": " + std::string(response.substring(0, MAX_ERROR_BODY_CHARS).c_str());
             }
@@ -123,6 +144,8 @@ namespace SQM
                 return "droplet";
             case Alerts::AlertType::ClearSky:
                 return "star";
+            case Alerts::AlertType::CloudedOver:
+                return "cloud";
             case Alerts::AlertType::Acknowledged:
                 return "ok_hand";
             case Alerts::AlertType::Test:
@@ -219,9 +242,10 @@ namespace SQM
         {
             DynamicJsonDocument doc(768);
             doc["event"] = Alerts::alertTypeName(alert.type);
+            appendStackedEvents(doc, alert);
             doc["title"] = alert.title;
             doc["message"] = alert.message;
-            doc["priority"] = static_cast<int>(alert.priority);
+            doc["level"] = Alerts::alertLevelName(alert.level);
             doc["device"] = deviceName;
             if (record.epochSeconds != 0)
                 doc["timestamp"] = record.epochSeconds;
@@ -328,8 +352,21 @@ namespace SQM
                 continue;
             }
 
+            TlsLock::Guard tls(30000);
+            if (!tls.ok())
+            {
+                setStatus(job.recordId, sender.channel, DeliveryStatus::Skipped, "Another HTTPS request is in progress");
+                continue;
+            }
+
             std::string detail;
-            const bool ok = (this->*sender.send)(job, detail);
+            bool ok = (this->*sender.send)(job, detail);
+            if (!ok && detail.rfind("HTTP ", 0) != 0)
+            {
+                // Connection-level failure (DNS, TCP, TLS memory): one retry.
+                vTaskDelay(pdMS_TO_TICKS(3000));
+                ok = (this->*sender.send)(job, detail);
+            }
             setStatus(job.recordId, sender.channel, ok ? DeliveryStatus::Sent : DeliveryStatus::Failed, detail);
             if (!ok)
                 Logger::warn(TAG, "%s delivery failed: %s", alertChannelName(sender.channel), detail.c_str());
@@ -338,11 +375,9 @@ namespace SQM
 
     bool AlertDispatcher::sendPushover(const Job &job, std::string &detail)
     {
-        int priority = 0;
-        if (job.alert.priority == Alerts::AlertPriority::High)
-            priority = job.cfg.pushoverHighPriority;
-        else if (job.alert.priority == Alerts::AlertPriority::Low)
-            priority = -1;
+        // quiet -1 (no sound), normal 0, urgent 1 (bypasses quiet hours),
+        // wake 2 (emergency: repeats until acknowledged).
+        const int priority = static_cast<int>(job.alert.level) - 2;
 
         std::string body = "token=" + urlEncode(job.cfg.pushoverAppToken) +
                            "&user=" + urlEncode(job.cfg.pushoverUserKey) +
@@ -351,8 +386,9 @@ namespace SQM
                            "&priority=" + std::to_string(priority);
         if (priority == 2)
             body += "&retry=60&expire=3600"; // emergency: repeat every minute for up to an hour until acknowledged
-        if (!job.cfg.pushoverSound.empty())
-            body += "&sound=" + urlEncode(job.cfg.pushoverSound);
+        const std::string &sound = job.alert.sound.empty() ? job.cfg.pushoverSound : job.alert.sound;
+        if (!sound.empty())
+            body += "&sound=" + urlEncode(sound);
 
         return httpPost("https://api.pushover.net/1/messages.json", "application/x-www-form-urlencoded", body, {}, false, detail,
                         PUSHOVER_ROOT_CA_PEM);
@@ -364,9 +400,8 @@ namespace SQM
         while (!server.empty() && server.back() == '/')
             server.pop_back();
 
-        const char *priority = job.alert.priority == Alerts::AlertPriority::High  ? "high"
-                               : job.alert.priority == Alerts::AlertPriority::Low ? "low"
-                                                                                  : "default";
+        static const char *const NTFY_PRIORITY[] = {"min", "low", "default", "high", "max"};
+        const char *priority = NTFY_PRIORITY[static_cast<uint8_t>(job.alert.level) <= 4 ? static_cast<uint8_t>(job.alert.level) : 2];
         std::vector<std::pair<std::string, std::string>> headers = {
             {"Title", fullTitle(job.deviceName, job.alert.title)},
             {"Priority", priority},
@@ -385,9 +420,10 @@ namespace SQM
         DynamicJsonDocument doc(768);
         doc["device"] = job.deviceName;
         doc["event"] = Alerts::alertTypeName(job.alert.type);
+        appendStackedEvents(doc, job.alert);
         doc["title"] = job.alert.title;
         doc["message"] = job.alert.message;
-        doc["priority"] = static_cast<int>(job.alert.priority);
+        doc["level"] = Alerts::alertLevelName(job.alert.level);
         const int64_t epoch = epochNow();
         if (epoch != 0)
             doc["timestamp"] = epoch;
@@ -416,6 +452,16 @@ namespace SQM
             }
         }
         xSemaphoreGive(mutex);
+    }
+
+    void AlertDispatcher::clearRecent()
+    {
+        if (mutex && xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE)
+        {
+            records.clear();
+            records.shrink_to_fit();
+            xSemaphoreGive(mutex);
+        }
     }
 
     std::vector<AlertRecord> AlertDispatcher::recent() const
