@@ -3,6 +3,7 @@
 #include "SafetyEvaluator.h"
 #include "ObservingConditionsMapper.h"
 #include "AlpacaDiscovery.h"
+#include "AlpacaProtocol.h"
 
 using namespace SQM::Alpaca;
 
@@ -247,6 +248,46 @@ void test_discovery_response_body(void)
     TEST_ASSERT_EQUAL_STRING("{\"AlpacaPort\":80}", body.c_str());
 }
 
+// --- AlpacaProtocol ---
+
+void test_param_name_case_insensitive(void)
+{
+    TEST_ASSERT_TRUE(paramNameEquals("ClientTransactionID", "clienttransactionid"));
+    TEST_ASSERT_TRUE(paramNameEquals("CONNECTED", "Connected"));
+    TEST_ASSERT_FALSE(paramNameEquals("ClientID", "ClientTransactionID"));
+    TEST_ASSERT_FALSE(paramNameEquals("Connected", "Connecte"));
+}
+
+void test_client_transaction_id_parsing(void)
+{
+    TEST_ASSERT_EQUAL_UINT32(42, parseClientTransactionId("42"));
+    TEST_ASSERT_EQUAL_UINT32(4294967295u, parseClientTransactionId("4294967295"));
+    TEST_ASSERT_EQUAL_UINT32(0, parseClientTransactionId("4294967296"));
+    TEST_ASSERT_EQUAL_UINT32(0, parseClientTransactionId("-1"));
+    TEST_ASSERT_EQUAL_UINT32(0, parseClientTransactionId("abc"));
+    TEST_ASSERT_EQUAL_UINT32(0, parseClientTransactionId(""));
+}
+
+void test_alpaca_bool_parsing(void)
+{
+    bool value = false;
+    TEST_ASSERT_TRUE(parseAlpacaBool("True", value));
+    TEST_ASSERT_TRUE(value);
+    TEST_ASSERT_TRUE(parseAlpacaBool("false", value));
+    TEST_ASSERT_FALSE(value);
+    TEST_ASSERT_FALSE(parseAlpacaBool("1", value));
+    TEST_ASSERT_FALSE(parseAlpacaBool("", value));
+}
+
+void test_unique_id_includes_mac(void)
+{
+    TEST_ASSERT_EQUAL_STRING("sqmeter-a1b2c3d4e5f6-observingconditions-0",
+                             buildUniqueId(0xA1B2C3D4E5F6ULL, "observingconditions", 0).c_str());
+    // Upper 16 bits of the efuse value are ignored; short MACs are zero-padded.
+    TEST_ASSERT_EQUAL_STRING("sqmeter-000000000001-safetymonitor-0",
+                             buildUniqueId(0xFFFF000000000001ULL, "safetymonitor", 0).c_str());
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -275,6 +316,11 @@ int main(int argc, char **argv)
     RUN_TEST(test_discovery_rejects_short_payload);
     RUN_TEST(test_discovery_rejects_null);
     RUN_TEST(test_discovery_response_body);
+
+    RUN_TEST(test_param_name_case_insensitive);
+    RUN_TEST(test_client_transaction_id_parsing);
+    RUN_TEST(test_alpaca_bool_parsing);
+    RUN_TEST(test_unique_id_includes_mac);
 
     return UNITY_END();
 }
