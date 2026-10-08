@@ -142,15 +142,26 @@ namespace SQM
         Alerts::AlertEngine alertEngine;
         bool alertEngineSeeded = false;
 
-        // Alerts on/off ("armed"): off while you're not imaging, so weather
-        // flapping with the scope packed away doesn't wake anyone. Saved in
-        // NVS. Requests come from HTTP (AsyncTCP task), MQTT and Alpaca
-        // connects; the loop task applies them.
-        bool alertsArmed = true;
-        std::atomic<int8_t> pendingArm{-1}; // -1 none, 0 off, 1 on
-        bool lastAlpacaConnected = false;
+        // When alerts go out (specs/021): the send mode and the pause state
+        // ("armed"), with why and since when. Saved in NVS. Pause/resume
+        // requests come from HTTP (AsyncTCP task) and MQTT; the loop task
+        // applies them, and Alpaca connects in the alert pass.
+        Alerts::AlertSchedule alertSchedule;
+        // -1 none, else source * 2 + (resume ? 1 : 0), source an Alerts::ScheduleReason.
+        std::atomic<int8_t> pendingArm{-1};
+        static int8_t encodeArm(bool resume, Alerts::ScheduleReason source) { return static_cast<int8_t>(static_cast<int>(source) * 2 + (resume ? 1 : 0)); }
+        // Whether the imaging app is still checking each Alpaca device.
+        Alpaca::ClientWatch clientWatch;
+        // Copies for the HTTP handlers, which run on the AsyncTCP task.
+        Alerts::ScheduleState scheduleShared;
+        Alpaca::ClientWatch clientWatchShared;
+        mutable portMUX_TYPE scheduleLock = portMUX_INITIALIZER_UNLOCKED;
+        void shareSchedule();
+        Alerts::ScheduleState sharedSchedule() const;   // with any pending pause/resume applied
+        Alpaca::ClientWatch sharedClientWatch() const;
         uint32_t mqttArmedConnection = 0xFFFFFFFF;
         void applyPendingArm();
+        void scheduleChanged(bool wasSending);
         void publishArmedState();
         std::unique_ptr<AlertDispatcher> alertDispatcher;
         // Set by the HTTP handler, sent from the loop task. event < 0 is the

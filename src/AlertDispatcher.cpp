@@ -152,6 +152,12 @@ namespace SQM
                 return "telescope";
             case Alerts::AlertType::Test:
                 return "test_tube";
+            case Alerts::AlertType::ClientLost:
+                return "satellite";
+            case Alerts::AlertType::ClientBack:
+                return "link";
+            case Alerts::AlertType::ClientDisconnected:
+                return "electric_plug";
             }
             return "bell";
         }
