@@ -145,8 +145,7 @@ const GithubUpdates: FunctionalComponent = () => {
     }
   };
 
-  const statusTone = (text: string) =>
-    /successful|complete/i.test(text) ? 'ok' : /fail/i.test(text) ? 'bad' : 'muted';
+  const statusTone = (text: string) => (/successful|complete/i.test(text) ? 'ok' : /fail/i.test(text) ? 'bad' : 'muted');
 
   return (
     <Card title="Firmware" icon="upload" hint="Updates firmware and web UI together from GitHub releases. The device restarts when done.">
@@ -154,7 +153,9 @@ const GithubUpdates: FunctionalComponent = () => {
         <ReadingRow label="Installed" value={currentVersion ? `v${currentVersion}` : '--'} valueClass="tone-cyan" />
         <div class="form-grid">
           <div class="field">
-            <label class="field-label" for="release-track">Release track</label>
+            <label class="field-label" for="release-track">
+              Release track
+            </label>
             <select
               id="release-track"
               class="input"
@@ -168,7 +169,9 @@ const GithubUpdates: FunctionalComponent = () => {
           </div>
           {releases.length > 0 && (
             <div class="field">
-              <label class="field-label" for="release-select">Release</label>
+              <label class="field-label" for="release-select">
+                Release
+              </label>
               <select
                 id="release-select"
                 class="input"
@@ -197,7 +200,13 @@ const GithubUpdates: FunctionalComponent = () => {
 
         {releases.length > 0 && (
           <div class="btn-row">
-            <Button variant="primary" onClick={applyUpdate} disabled={!selectedRelease || waitingForReboot} busy={applying} busyLabel="Updating...">
+            <Button
+              variant="primary"
+              onClick={applyUpdate}
+              disabled={!selectedRelease || waitingForReboot}
+              busy={applying}
+              busyLabel="Updating..."
+            >
               {waitingForReboot ? 'Waiting for restart...' : `Update to ${selectedRelease?.tag ?? '...'}`}
             </Button>
           </div>
@@ -217,10 +226,10 @@ const Updates: FunctionalComponent = () => {
 
   useEffect(() => {
     let checkInterval: number | undefined;
-    
+
     if (waitingForReboot) {
       setStatus('Restarting...');
-      
+
       // Start checking if device is back online
       checkInterval = window.setInterval(async () => {
         try {
@@ -350,7 +359,9 @@ const Updates: FunctionalComponent = () => {
         <div class="card-body">
           <div class="form-grid">
             <div class="field">
-              <label class="field-label" for="upload-type">Image</label>
+              <label class="field-label" for="upload-type">
+                Image
+              </label>
               <select
                 id="upload-type"
                 class="input"
@@ -363,7 +374,9 @@ const Updates: FunctionalComponent = () => {
               </select>
             </div>
             <div class="field">
-              <label class="field-label" for="upload-file">File</label>
+              <label class="field-label" for="upload-file">
+                File
+              </label>
               <input
                 id="upload-file"
                 type="file"
@@ -378,7 +391,11 @@ const Updates: FunctionalComponent = () => {
               />
             </div>
           </div>
-          {file && <Note>{file.name}, {(file.size / 1024).toFixed(0)} KB</Note>}
+          {file && (
+            <Note>
+              {file.name}, {(file.size / 1024).toFixed(0)} KB
+            </Note>
+          )}
           {uploading && <ProgressMeter value={uploadProgress} />}
           {status && <Note tone={statusTone}>{status}</Note>}
           <div class="btn-row">

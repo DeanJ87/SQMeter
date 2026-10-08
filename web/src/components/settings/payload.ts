@@ -1,5 +1,18 @@
 import type { Config } from '../../types';
-import { defaultAlpacaConfig, defaultAuthConfig, defaultBleConfig, defaultCloudDetectionConfig, defaultLocationConfig, defaultRainConfig, defaultWindConfig, mergeAlertsConfig, defaultMqttPublish, defaultHomeAssistant, defaultSkyAveraging, defaultSkyCalibration } from './defaults';
+import {
+  defaultAlpacaConfig,
+  defaultAuthConfig,
+  defaultBleConfig,
+  defaultCloudDetectionConfig,
+  defaultLocationConfig,
+  defaultRainConfig,
+  defaultWindConfig,
+  mergeAlertsConfig,
+  defaultMqttPublish,
+  defaultHomeAssistant,
+  defaultSkyAveraging,
+  defaultSkyCalibration,
+} from './defaults';
 
 // Normalises a config from the device (or the form) into the full shape the
 // UI edits and the firmware accepts, filling in fields that older firmware
@@ -17,9 +30,7 @@ export const fieldErrorAliases: Record<string, string> = {
   i2cFrequency: 'sensor.i2cFrequency',
 };
 
-const isSourceEnabled = (candidate: Config, source: number) => (
-  source === 0 ? candidate.ntp.enabled : candidate.gps.enabled
-);
+const isSourceEnabled = (candidate: Config, source: number) => (source === 0 ? candidate.ntp.enabled : candidate.gps.enabled);
 
 const normalizeTimeSources = (candidate: Config): Pick<Config, 'primaryTimeSource' | 'secondaryTimeSource'> => {
   const ntpEnabled = candidate.ntp.enabled;
@@ -32,13 +43,13 @@ const normalizeTimeSources = (candidate: Config): Pick<Config, 'primaryTimeSourc
     };
   }
 
-  let primaryTimeSource = isSourceEnabled(candidate, candidate.primaryTimeSource)
-    ? candidate.primaryTimeSource
-    : ntpEnabled ? 0 : 1;
+  let primaryTimeSource = isSourceEnabled(candidate, candidate.primaryTimeSource) ? candidate.primaryTimeSource : ntpEnabled ? 0 : 1;
 
   let secondaryTimeSource = isSourceEnabled(candidate, candidate.secondaryTimeSource)
     ? candidate.secondaryTimeSource
-    : gpsEnabled && primaryTimeSource !== 1 ? 1 : 0;
+    : gpsEnabled && primaryTimeSource !== 1
+      ? 1
+      : 0;
 
   if (ntpEnabled && gpsEnabled && primaryTimeSource === secondaryTimeSource) {
     secondaryTimeSource = primaryTimeSource === 0 ? 1 : 0;
@@ -72,9 +83,7 @@ export const toConfigPayload = (source: Config): Config => {
     sensor: { ...source.sensor },
     skyAveraging: { ...defaultSkyAveraging, ...source.skyAveraging },
     skyCalibration: { ...defaultSkyCalibration, ...source.skyCalibration },
-    cloudDetection: source.cloudDetection
-      ? { ...source.cloudDetection }
-      : { ...defaultCloudDetectionConfig },
+    cloudDetection: source.cloudDetection ? { ...source.cloudDetection } : { ...defaultCloudDetectionConfig },
     // Merge defaults so configs from older firmware gain newly added fields.
     alpaca: { ...defaultAlpacaConfig, ...source.alpaca },
     alerts: mergeAlertsConfig(source.alerts),

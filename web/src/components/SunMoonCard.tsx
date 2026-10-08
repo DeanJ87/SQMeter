@@ -16,7 +16,13 @@ import {
 import NightChart from './NightChart';
 import { Card, Pill } from './ui';
 
-const PHASE_TONE = { day: 'pill-amber', civil: 'pill-amber', nautical: 'pill-cyan', astronomical: 'pill-cyan', night: 'pill-green' } as const;
+const PHASE_TONE = {
+  day: 'pill-amber',
+  civil: 'pill-amber',
+  nautical: 'pill-cyan',
+  astronomical: 'pill-cyan',
+  night: 'pill-green',
+} as const;
 
 // Lit part of the moon. phase 0 new .. 0.5 full .. 1 new; mirrored south of the equator.
 const MoonDisc: FunctionalComponent<{ phase: number; southern: boolean }> = ({ phase, southern }) => {

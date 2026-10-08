@@ -158,7 +158,8 @@ class DemoDevice {
 
   alpaca(method: string, path: string, params: [string, string][]): Reply {
     const reply = JSON.parse(this.core.alpaca(method, path, JSON.stringify(params)));
-    if (reply.status === 404) return { status: 400, body: 'Invalid Alpaca device type, device number, method or HTTP verb', contentType: 'text/plain' };
+    if (reply.status === 404)
+      return { status: 400, body: 'Invalid Alpaca device type, device number, method or HTTP verb', contentType: 'text/plain' };
     const body = typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body);
     return { status: reply.status, body, contentType: reply.contentType };
   }
@@ -240,7 +241,7 @@ class DemoDevice {
         alpaca: { enabled: true, safeDelaySeconds: 0 },
         mqtt: { enabled: true, broker: '192.168.1.10', topic: 'sqmeter' },
         alerts: { enabled: true, ntfy: { enabled: true, topic: 'sqmeter-demo' } },
-      })
+      }),
     );
     this.core.loadConfig(this.core.getConfig(false)); // what the hardware boots with
   }

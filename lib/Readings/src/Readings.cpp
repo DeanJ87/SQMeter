@@ -175,8 +175,8 @@ namespace SQM
                 const char *object;
                 const char *name;
                 Group group;
-                const char *jsonGroup;     // readings group whose status gates availability
-                const char *value;         // value_template body (state topic) or nullptr
+                const char *jsonGroup; // readings group whose status gates availability
+                const char *value;     // value_template body (state topic) or nullptr
                 const char *unit;
                 const char *deviceClass;
                 const char *icon;
@@ -187,17 +187,81 @@ namespace SQM
                 {"sensor", "nelm", "Limiting magnitude", Group::Sky, "sky", "value_json.sky.nelm", "mag", nullptr, "mdi:eye"},
                 {"sensor", "bortle", "Bortle class", Group::Sky, "sky", "value_json.sky.bortle", nullptr, nullptr, "mdi:weather-night"},
                 {"sensor", "illuminance", "Illuminance", Group::Sky, "light", "value_json.light.lux", "lx", "illuminance", nullptr},
-                {"sensor", "temperature", "Temperature", Group::Environment, "environment", "value_json.environment.temperature", "°C", "temperature", nullptr},
-                {"sensor", "humidity", "Humidity", Group::Environment, "environment", "value_json.environment.humidity", "%", "humidity", nullptr},
-                {"sensor", "pressure", "Pressure", Group::Environment, "environment", "value_json.environment.pressure", "hPa", "atmospheric_pressure", nullptr},
-                {"sensor", "dewpoint", "Dew point", Group::Environment, "environment", "value_json.environment.dewpoint", "°C", "temperature", nullptr},
-                {"sensor", "sky_temperature", "Sky temperature", Group::Clouds, "infrared", "value_json.infrared.skyTemperature", "°C", "temperature", "mdi:thermometer-low"},
-                {"sensor", "cloud_cover", "Cloud cover", Group::Clouds, "clouds", "value_json.clouds.coverPercent", "%", nullptr, "mdi:weather-cloudy"},
+                {"sensor",
+                 "temperature",
+                 "Temperature",
+                 Group::Environment,
+                 "environment",
+                 "value_json.environment.temperature",
+                 "°C",
+                 "temperature",
+                 nullptr},
+                {"sensor",
+                 "humidity",
+                 "Humidity",
+                 Group::Environment,
+                 "environment",
+                 "value_json.environment.humidity",
+                 "%",
+                 "humidity",
+                 nullptr},
+                {"sensor",
+                 "pressure",
+                 "Pressure",
+                 Group::Environment,
+                 "environment",
+                 "value_json.environment.pressure",
+                 "hPa",
+                 "atmospheric_pressure",
+                 nullptr},
+                {"sensor",
+                 "dewpoint",
+                 "Dew point",
+                 Group::Environment,
+                 "environment",
+                 "value_json.environment.dewpoint",
+                 "°C",
+                 "temperature",
+                 nullptr},
+                {"sensor",
+                 "sky_temperature",
+                 "Sky temperature",
+                 Group::Clouds,
+                 "infrared",
+                 "value_json.infrared.skyTemperature",
+                 "°C",
+                 "temperature",
+                 "mdi:thermometer-low"},
+                {"sensor",
+                 "cloud_cover",
+                 "Cloud cover",
+                 Group::Clouds,
+                 "clouds",
+                 "value_json.clouds.coverPercent",
+                 "%",
+                 nullptr,
+                 "mdi:weather-cloudy"},
                 {"binary_sensor", "raining", "Raining", Group::Rain, "rain", nullptr, nullptr, "moisture", nullptr},
-                {"sensor", "rain_intensity", "Rain intensity", Group::Rain, "rain", "value_json.rain.intensity", "mm/h", "precipitation_intensity", nullptr},
+                {"sensor",
+                 "rain_intensity",
+                 "Rain intensity",
+                 Group::Rain,
+                 "rain",
+                 "value_json.rain.intensity",
+                 "mm/h",
+                 "precipitation_intensity",
+                 nullptr},
                 {"sensor", "wind_speed", "Wind speed", Group::Wind, "wind", "value_json.wind.speed", "m/s", "wind_speed", nullptr},
                 {"sensor", "wind_gust", "Wind gust", Group::Wind, "wind", "value_json.wind.gust", "m/s", "wind_speed", nullptr},
-                {"sensor", "wind_direction", "Wind direction", Group::Wind, "wind", "value_json.wind.direction", "°", nullptr, "mdi:compass"},
+                {"sensor",
+                 "wind_direction",
+                 "Wind direction",
+                 Group::Wind,
+                 "wind",
+                 "value_json.wind.direction",
+                 "°",
+                 nullptr,
+                 "mdi:compass"},
                 {"binary_sensor", "safety", "Observatory", Group::Safety, nullptr, nullptr, nullptr, "safety", nullptr},
                 {"switch", "alerts", "Alerts", Group::Always, nullptr, nullptr, nullptr, nullptr, "mdi:bell-ring"},
             };
@@ -225,8 +289,11 @@ namespace SQM
             }
         } // namespace
 
-        void forEachDiscovery(const DiscoveryDevice &device, const Groups &groups, bool safety,
-                              const std::function<void(const std::string &topic, const std::string &payload)> &publish)
+        void forEachDiscovery(
+            const DiscoveryDevice &device,
+            const Groups &groups,
+            bool safety,
+            const std::function<void(const std::string &topic, const std::string &payload)> &publish)
         {
             const std::string base = device.baseTopic;
             for (const Entity &entity : ENTITIES)

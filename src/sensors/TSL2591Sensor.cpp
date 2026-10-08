@@ -51,7 +51,7 @@ namespace SQM
             500,
             600,
         };
-    }
+    } // namespace
 
     TSL2591Sensor::TSL2591Sensor()
         : sensor(std::make_unique<Adafruit_TSL2591>(2591))
@@ -152,8 +152,8 @@ namespace SQM
         {
             // Sensor saturated - clamp to bright daylight value (~100,000 lux)
             luxCalc = 100000.0F;
-            Logger::debug(TAG, "Sensor saturated (bright daylight) - Full: %u, IR: %u, Lux clamped to %.0f",
-                          reading.full, reading.infrared, luxCalc);
+            Logger::debug(
+                TAG, "Sensor saturated (bright daylight) - Full: %u, IR: %u, Lux clamped to %.0f", reading.full, reading.infrared, luxCalc);
         }
         else if (reading.full == 0)
         {
@@ -189,13 +189,12 @@ namespace SQM
         if (reading.lux < 0 || isnan(reading.lux))
         {
             reading.lux = 0.0; // Report as 0 lux in complete darkness
-            Logger::debug(TAG, "Complete darkness - Lux: 0.00, Visible: %u, IR: %u, Full: %u",
-                          reading.visible, reading.infrared, reading.full);
+            Logger::debug(
+                TAG, "Complete darkness - Lux: 0.00, Visible: %u, IR: %u, Full: %u", reading.visible, reading.infrared, reading.full);
         }
         else if (!saturated)
         {
-            Logger::debug(TAG, "Lux: %.6f, Visible: %u, IR: %u, Full: %u",
-                          reading.lux, reading.visible, reading.infrared, reading.full);
+            Logger::debug(TAG, "Lux: %.6f, Visible: %u, IR: %u, Full: %u", reading.lux, reading.visible, reading.infrared, reading.full);
         }
 
         if (!reading.saturated)
@@ -225,9 +224,8 @@ namespace SQM
 
     void TSL2591Sensor::pushSample(uint16_t full, uint16_t ir, uint16_t visible)
     {
-        const size_t maxSamplesForWindow = std::max<size_t>(1, std::min<size_t>(
-                                                                   MAX_ROLLING_SAMPLES,
-                                                                   (static_cast<size_t>(averagingWindowSeconds) * 1000UL) / currentIntegrationMs()));
+        const size_t maxSamplesForWindow = std::max<size_t>(
+            1, std::min<size_t>(MAX_ROLLING_SAMPLES, (static_cast<size_t>(averagingWindowSeconds) * 1000UL) / currentIntegrationMs()));
 
         fullSamples[sampleHead] = full;
         irSamples[sampleHead] = ir;
@@ -347,8 +345,7 @@ namespace SQM
         reading.gainIndex = gainIndex;
         reading.gainFactor = currentGainFactor();
         reading.integrationMs = currentIntegrationMs();
-        Logger::info(TAG, "Range set to gain %s (%.0fx), integration %ums",
-                     currentGainName(), currentGainFactor(), currentIntegrationMs());
+        Logger::info(TAG, "Range set to gain %s (%.0fx), integration %ums", currentGainName(), currentGainFactor(), currentIntegrationMs());
     }
 
     float TSL2591Sensor::currentCpl() const

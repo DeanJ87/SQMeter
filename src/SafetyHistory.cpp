@@ -81,7 +81,10 @@ namespace SQM
             return n;
         }
 
-        uint16_t currentBoot() { return store.boot; }
+        uint16_t currentBoot()
+        {
+            return store.boot;
+        }
 
         bool lastAlert(bool &safe)
         {

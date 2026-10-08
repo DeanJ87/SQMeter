@@ -35,7 +35,7 @@ describe('Safety alerts at night', () => {
       http.post('/api/config', async ({ request }) => {
         saved = await request.json();
         return HttpResponse.json({ success: true });
-      })
+      }),
     );
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);
@@ -56,7 +56,7 @@ describe('Alerts on/off', () => {
       http.post('/api/alerts/disarm', () => {
         calls.push('disarm');
         return HttpResponse.json({ armed: false }, { status: 202 });
-      })
+      }),
     );
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);

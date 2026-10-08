@@ -6,7 +6,19 @@ import { showToast } from '../toast';
 import { darkness, formatClock, formatDuration, sunPosition } from '../../lib/astro';
 import type { SettingsTabProps } from './context';
 import { InfoTip, Note } from '../ui';
-import { ActionButton, Field, Group, NumberInput, Requires, ResultNote, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
+import {
+  ActionButton,
+  Field,
+  Group,
+  NumberInput,
+  Requires,
+  ResultNote,
+  SelectInput,
+  SettingsCard,
+  StatusBadge,
+  TextInput,
+  Toggle,
+} from './controls';
 
 const LEVEL_OPTIONS = [
   { value: '0', label: 'Off' },
@@ -21,15 +33,42 @@ const LEVEL_HINT =
 
 // Pushover's built-in sounds; a custom one already saved stays selectable.
 const PUSHOVER_SOUNDS = [
-  'pushover', 'bike', 'bugle', 'cashregister', 'classical', 'cosmic', 'falling', 'gamelan', 'incoming', 'intermission', 'magic',
-  'mechanical', 'pianobar', 'siren', 'spacealarm', 'tugboat', 'alien', 'climb', 'persistent', 'echo', 'updown', 'vibrate', 'none',
+  'pushover',
+  'bike',
+  'bugle',
+  'cashregister',
+  'classical',
+  'cosmic',
+  'falling',
+  'gamelan',
+  'incoming',
+  'intermission',
+  'magic',
+  'mechanical',
+  'pianobar',
+  'siren',
+  'spacealarm',
+  'tugboat',
+  'alien',
+  'climb',
+  'persistent',
+  'echo',
+  'updown',
+  'vibrate',
+  'none',
 ];
 const LONG_SOUNDS = new Set(['alien', 'climb', 'persistent', 'echo', 'updown']);
 const soundLabel = (sound: string) =>
-  sound === 'none' ? 'Silent' : sound === 'vibrate' ? 'Vibrate only' : `${sound[0].toUpperCase()}${sound.slice(1)}${LONG_SOUNDS.has(sound) ? ' (long)' : ''}`;
+  sound === 'none'
+    ? 'Silent'
+    : sound === 'vibrate'
+      ? 'Vibrate only'
+      : `${sound[0].toUpperCase()}${sound.slice(1)}${LONG_SOUNDS.has(sound) ? ' (long)' : ''}`;
 const soundOptions = (current: string, defaultLabel: string) => [
   { value: '', label: defaultLabel },
-  ...(current && !PUSHOVER_SOUNDS.includes(current) ? [current] : []).concat(PUSHOVER_SOUNDS).map((sound) => ({ value: sound, label: soundLabel(sound) })),
+  ...(current && !PUSHOVER_SOUNDS.includes(current) ? [current] : [])
+    .concat(PUSHOVER_SOUNDS)
+    .map((sound) => ({ value: sound, label: soundLabel(sound) })),
 ];
 
 const CHANNEL_LABEL: Record<AlertChannelName, string> = { pushover: 'Pushover', ntfy: 'ntfy', webhook: 'Webhook', mqtt: 'MQTT' };
@@ -98,7 +137,30 @@ const VAR_HELP: Record<string, string> = {
   gust: 'Gust m/s',
   sun_alt: 'Sun altitude °',
 };
-const COMMON_VARS = ['event', 'device', 'time', 'date', 'level', 'sqm', 'sqm_min', 'cloud', 'cloud_max', 'clear_below', 'cloudy_above', 'sky_temp', 'temp', 'humidity', 'humidity_max', 'dewpoint', 'dew_margin', 'pressure', 'rain_rate', 'wind', 'gust', 'sun_alt'];
+const COMMON_VARS = [
+  'event',
+  'device',
+  'time',
+  'date',
+  'level',
+  'sqm',
+  'sqm_min',
+  'cloud',
+  'cloud_max',
+  'clear_below',
+  'cloudy_above',
+  'sky_temp',
+  'temp',
+  'humidity',
+  'humidity_max',
+  'dewpoint',
+  'dew_margin',
+  'pressure',
+  'rain_rate',
+  'wind',
+  'gust',
+  'sun_alt',
+];
 const EVENT_VARS: Partial<Record<AlertEventKey, string[]>> = {
   unsafe: ['reasons', 'reasons_inline', 'reason_count'],
   sensor_fault: ['sensor'],
@@ -123,7 +185,12 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
 
   // The device sends the test in the background; follow its delivery
   // status until every channel reports sent / failed / skipped.
-  const runTest = async (target: string, query: string, matches: (record: AlertRecord) => boolean, pick: (record: AlertRecord) => string | null) => {
+  const runTest = async (
+    target: string,
+    query: string,
+    matches: (record: AlertRecord) => boolean,
+    pick: (record: AlertRecord) => string | null,
+  ) => {
     setTestResult({ target, type: 'pending', text: 'Sending...' });
     try {
       const before = (await fetchRecent())[0]?.id ?? 0;
@@ -161,7 +228,9 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
   const allChannelsResult = (record: AlertRecord) => {
     const entries = Object.entries(record.channels) as [AlertChannelName, { status: string; detail: string }][];
     if (entries.some(([, r]) => r.status === 'pending')) return null;
-    const summary = entries.map(([channel, r]) => `${CHANNEL_LABEL[channel]} ${r.status}${r.status === 'sent' ? '' : `: ${r.detail}`}`).join(' · ');
+    const summary = entries
+      .map(([channel, r]) => `${CHANNEL_LABEL[channel]} ${r.status}${r.status === 'sent' ? '' : `: ${r.detail}`}`)
+      .join(' · ');
     return entries.every(([, r]) => r.status === 'sent') ? summary : `!${summary}`;
   };
 
@@ -178,7 +247,11 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
       fetch(`/api/alerts/test?${query}`, { method: 'POST' })
         .then(async (response) => {
           const body = await response.json().catch(() => ({}));
-          setTestResult(response.ok ? { target: key, type: 'success', text: 'Ringing paired phones.' } : { target: key, type: 'error', text: body.error ?? 'Test failed' });
+          setTestResult(
+            response.ok
+              ? { target: key, type: 'success', text: 'Ringing paired phones.' }
+              : { target: key, type: 'error', text: body.error ?? 'Test failed' },
+          );
         })
         .catch(() => setTestResult({ target: key, type: 'error', text: 'Could not reach the device' }));
       return;
@@ -188,12 +261,20 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
 
   const resultNote = (target: string) =>
     testResult?.target === target &&
-    (testResult.type === 'pending' ? <Note>{testResult.text}</Note> : <ResultNote result={{ type: testResult.type, text: testResult.text }} />);
+    (testResult.type === 'pending' ? (
+      <Note>{testResult.text}</Note>
+    ) : (
+      <ResultNote result={{ type: testResult.type, text: testResult.text }} />
+    ));
 
   // Render function (not a nested component) so re-renders don't remount it.
   const testButton = (channel: AlertChannelName) => (
     <div class="btn-row">
-      <ActionButton onClick={() => sendTest(channel)} disabled={dirty || testResult?.type === 'pending'} title={dirty ? 'Save first' : undefined}>
+      <ActionButton
+        onClick={() => sendTest(channel)}
+        disabled={dirty || testResult?.type === 'pending'}
+        title={dirty ? 'Save first' : undefined}
+      >
         Send test
       </ActionButton>
       {resultNote(channel)}
@@ -313,7 +394,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
   const eventRow = (
     key: AlertEventKey,
     label: string,
-    opts: { hint?: string; blocked?: string | null; fix?: () => void; threshold?: ComponentChildren } = {}
+    opts: { hint?: string; blocked?: string | null; fix?: () => void; threshold?: ComponentChildren } = {},
   ) => {
     const event = alerts.events[key];
     const locked = Boolean(opts.blocked) && event.level === 0;
@@ -336,7 +417,13 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           />
           {pushoverOn &&
             (event.level >= 2 ? (
-              <SelectInput value={event.sound} ariaLabel={`${label}: sound`} options={soundOptions(event.sound, 'Default')} disabled={off} onChange={(v) => set(['events', key, 'sound'], v)} />
+              <SelectInput
+                value={event.sound}
+                ariaLabel={`${label}: sound`}
+                options={soundOptions(event.sound, 'Default')}
+                disabled={off}
+                onChange={(v) => set(['events', key, 'sound'], v)}
+              />
             ) : (
               <span />
             ))}
@@ -347,11 +434,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           >
             Test
           </ActionButton>
-          <ActionButton
-            onClick={() => setEditing(editing === key ? null : key)}
-            disabled={off}
-            title="Write your own title and message"
-          >
+          <ActionButton onClick={() => setEditing(editing === key ? null : key)} disabled={off} title="Write your own title and message">
             {event.title || event.message ? 'Text •' : 'Text'}
           </ActionButton>
         </div>
@@ -386,10 +469,12 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         title="Alerts"
         hint="Push notifications sent by the device itself."
         badge={
-          off ? undefined : <StatusBadge
-            tone={channelCount === 0 ? 'warn' : 'ok'}
-            label={channelCount === 0 ? 'No channels' : `${channelCount} channel${channelCount === 1 ? '' : 's'}`}
-          />
+          off ? undefined : (
+            <StatusBadge
+              tone={channelCount === 0 ? 'warn' : 'ok'}
+              label={channelCount === 0 ? 'No channels' : `${channelCount} channel${channelCount === 1 ? '' : 's'}`}
+            />
+          )
         }
       >
         <Toggle label="Send alerts" checked={alerts.enabled} onChange={(v) => set(['enabled'], v)} />
@@ -432,14 +517,32 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             {eventRow('dew_risk', 'Dew risk within', {
               blocked: dewReason,
               threshold: (
-                <NumberInput min={0} max={10} step={0.5} unit="°C" ariaLabel="Dew risk margin" value={alerts.dewRiskMarginC} disabled={off} onChange={(v) => set(['dewRiskMarginC'], v)} />
+                <NumberInput
+                  min={0}
+                  max={10}
+                  step={0.5}
+                  unit="°C"
+                  ariaLabel="Dew risk margin"
+                  value={alerts.dewRiskMarginC}
+                  disabled={off}
+                  onChange={(v) => set(['dewRiskMarginC'], v)}
+                />
               ),
               hint: 'Temperature within this margin of the dew point.',
             })}
             {eventRow('clear_sky', 'Skies clear up below', {
               blocked: skyReason,
               threshold: (
-                <NumberInput min={0} max={100} step={1} unit="%" ariaLabel="Clear below" value={alerts.clearSkyCloudPercent} disabled={off} onChange={(v) => set(['clearSkyCloudPercent'], v)} />
+                <NumberInput
+                  min={0}
+                  max={100}
+                  step={1}
+                  unit="%"
+                  ariaLabel="Clear below"
+                  value={alerts.clearSkyCloudPercent}
+                  disabled={off}
+                  onChange={(v) => set(['clearSkyCloudPercent'], v)}
+                />
               ),
               hint: 'Cloud cover.',
             })}
@@ -495,27 +598,55 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           </div>
           {darknessNote && <Note>{darknessNote}</Note>}
           <div class="form-grid">
-            <Field label="Cooldown" error={err('cooldownSeconds')} hint="Minimum gap between alerts of the same kind. A change held back is sent when it ends.">
-              <NumberInput integer min={0} max={86400} unit="s" value={alerts.cooldownSeconds} disabled={off} onChange={(v) => set(['cooldownSeconds'], v)} />
+            <Field
+              label="Cooldown"
+              error={err('cooldownSeconds')}
+              hint="Minimum gap between alerts of the same kind. A change held back is sent when it ends."
+            >
+              <NumberInput
+                integer
+                min={0}
+                max={86400}
+                unit="s"
+                value={alerts.cooldownSeconds}
+                disabled={off}
+                onChange={(v) => set(['cooldownSeconds'], v)}
+              />
             </Field>
           </div>
         </fieldset>
       </SettingsCard>
 
-      <SettingsCard title="Channels" hint="Tests use the saved settings and work while alerts are off. Sent alerts appear under the bell in the header.">
+      <SettingsCard
+        title="Channels"
+        hint="Tests use the saved settings and work while alerts are off. Sent alerts appear under the bell in the header."
+      >
         <Group>
           <Toggle label="Pushover" checked={alerts.pushover.enabled} onChange={(v) => set(['pushover', 'enabled'], v)} />
           {alerts.pushover.enabled && (
             <>
               <div class="form-grid">
-                <Field label="User key" error={err('pushover.userKey')} hint="Your user key, top of the Pushover dashboard - not the app token or your email.">
-                  <TextInput dataField="alerts.pushover.userKey" type="password" value={alerts.pushover.userKey} onInput={(v) => set(['pushover', 'userKey'], v)} />
+                <Field
+                  label="User key"
+                  error={err('pushover.userKey')}
+                  hint="Your user key, top of the Pushover dashboard - not the app token or your email."
+                >
+                  <TextInput
+                    dataField="alerts.pushover.userKey"
+                    type="password"
+                    value={alerts.pushover.userKey}
+                    onInput={(v) => set(['pushover', 'userKey'], v)}
+                  />
                 </Field>
                 <Field label="App token" error={err('pushover.appToken')} hint="Create an application at pushover.net.">
                   <TextInput type="password" value={alerts.pushover.appToken} onInput={(v) => set(['pushover', 'appToken'], v)} />
                 </Field>
                 <Field label="Default sound" hint="Used where an event's sound is Default.">
-                  <SelectInput value={alerts.pushover.sound} options={soundOptions(alerts.pushover.sound, 'Pushover default')} onChange={(v) => set(['pushover', 'sound'], v)} />
+                  <SelectInput
+                    value={alerts.pushover.sound}
+                    options={soundOptions(alerts.pushover.sound, 'Pushover default')}
+                    onChange={(v) => set(['pushover', 'sound'], v)}
+                  />
                 </Field>
               </div>
               {testButton('pushover')}
@@ -544,15 +675,31 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         </Group>
 
         <Group>
-          <Toggle label="Webhook" checked={alerts.webhook.enabled} onChange={(v) => set(['webhook', 'enabled'], v)} hint="POSTs JSON: device, event, title, message, level, timestamp." />
+          <Toggle
+            label="Webhook"
+            checked={alerts.webhook.enabled}
+            onChange={(v) => set(['webhook', 'enabled'], v)}
+            hint="POSTs JSON: device, event, title, message, level, timestamp."
+          />
           {alerts.webhook.enabled && (
             <>
               <div class="form-grid">
                 <Field label="URL" error={err('webhook.url')}>
-                  <TextInput dataField="alerts.webhook.url" type="url" value={alerts.webhook.url} placeholder="http://homeassistant.local:8123/api/webhook/..." onInput={(v) => set(['webhook', 'url'], v)} />
+                  <TextInput
+                    dataField="alerts.webhook.url"
+                    type="url"
+                    value={alerts.webhook.url}
+                    placeholder="http://homeassistant.local:8123/api/webhook/..."
+                    onInput={(v) => set(['webhook', 'url'], v)}
+                  />
                 </Field>
                 <Field label="Authorization header">
-                  <TextInput type="password" value={alerts.webhook.authHeader} placeholder="Optional" onInput={(v) => set(['webhook', 'authHeader'], v)} />
+                  <TextInput
+                    type="password"
+                    value={alerts.webhook.authHeader}
+                    placeholder="Optional"
+                    onInput={(v) => set(['webhook', 'authHeader'], v)}
+                  />
                 </Field>
               </div>
               {alerts.webhook.url.startsWith('https://') && (
@@ -568,7 +715,13 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           )}
         </Group>
 
-        <Group aside={alerts.mqtt.enabled && hw.mqtt.enabled && hw.mqtt.connected === false ? <StatusBadge tone="bad" label="Broker not connected" /> : undefined}>
+        <Group
+          aside={
+            alerts.mqtt.enabled && hw.mqtt.enabled && hw.mqtt.connected === false ? (
+              <StatusBadge tone="bad" label="Broker not connected" />
+            ) : undefined
+          }
+        >
           <Toggle
             label="MQTT"
             checked={alerts.mqtt.enabled}
@@ -580,7 +733,6 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           {alerts.mqtt.enabled && hw.mqtt.enabled && testButton('mqtt')}
         </Group>
       </SettingsCard>
-
     </>
   );
 };

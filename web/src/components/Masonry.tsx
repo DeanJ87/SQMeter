@@ -126,7 +126,13 @@ const Masonry: FunctionalComponent<{
               >
                 <span aria-hidden="true">⠿</span> {item.title}
               </button>
-              <button type="button" class="btn btn-ghost btn-sm" aria-label={`Move ${item.title} earlier`} disabled={index === 0} onClick={() => onMove?.(item.id, index - 1)}>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                aria-label={`Move ${item.title} earlier`}
+                disabled={index === 0}
+                onClick={() => onMove?.(item.id, index - 1)}
+              >
                 ←
               </button>
               <button
@@ -155,7 +161,10 @@ export const mergeOrder = (saved: string[], defaults: string[]) => {
   const order = saved.filter((id) => defaults.includes(id));
   defaults.forEach((id, index) => {
     if (order.includes(id)) return;
-    const before = defaults.slice(0, index).reverse().find((other) => order.includes(other));
+    const before = defaults
+      .slice(0, index)
+      .reverse()
+      .find((other) => order.includes(other));
     order.splice(before === undefined ? 0 : order.indexOf(before) + 1, 0, id);
   });
   return order;

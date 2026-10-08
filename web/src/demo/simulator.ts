@@ -12,7 +12,11 @@ export interface Scenario {
 }
 
 export const SCENARIOS: { id: ScenarioId; label: string; hint: string }[] = [
-  { id: 'night', label: 'Night sky', hint: 'A dark, clear sky for half an hour, whatever the time of day (the device still knows the real sun)' },
+  {
+    id: 'night',
+    label: 'Night sky',
+    hint: 'A dark, clear sky for half an hour, whatever the time of day (the device still knows the real sun)',
+  },
   { id: 'rain', label: 'Rain', hint: 'A shower: rain, then the rain clear delay' },
   { id: 'cloud', label: 'Cloud over', hint: 'Cloud rolls in until it is overcast' },
   { id: 'clear', label: 'Clear', hint: 'Back to a clear, dark sky' },
@@ -90,10 +94,26 @@ export function simulate(nowMs: number, now: Date, settings: SimulatorSettings, 
   const speed = Math.max(0, 3 + (active?.id === 'rain' ? 4 : 0) + wobble(nowMs, 90, 1.2));
 
   return {
-    light: { present: true, failed: active?.id === 'fail-light', lux, visible: Math.round(counts * 0.86), infrared: Math.round(counts * 0.14), full: counts, nightMode: lux < 0.5 },
-    environment: { present: true, failed: active?.id === 'fail-environment', temperature: ambient, humidity, pressure: 1013 + wobble(nowMs, 3600, 2) },
+    light: {
+      present: true,
+      failed: active?.id === 'fail-light',
+      lux,
+      visible: Math.round(counts * 0.86),
+      infrared: Math.round(counts * 0.14),
+      full: counts,
+      nightMode: lux < 0.5,
+    },
+    environment: {
+      present: true,
+      failed: active?.id === 'fail-environment',
+      temperature: ambient,
+      humidity,
+      pressure: 1013 + wobble(nowMs, 3600, 2),
+    },
     infrared: { present: true, failed: active?.id === 'fail-ir', sky: skyTemperature, ambient: ambient + 0.4 },
-    gps: settings.gpsEnabled ? { fix: true, latitude: where.latitude, longitude: where.longitude, altitude: 42, satellites: 9 } : { fix: false },
+    gps: settings.gpsEnabled
+      ? { fix: true, latitude: where.latitude, longitude: where.longitude, altitude: 42, satellites: 9 }
+      : { fix: false },
     rain: { failed: active?.id === 'fail-rain', rate: Math.max(0, rainRate) },
     wind: { speed, gust: speed * 1.8 + 0.5, direction: (240 + wobble(nowMs, 200, 25) + 360) % 360 },
   };

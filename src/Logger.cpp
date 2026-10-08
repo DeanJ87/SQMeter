@@ -91,11 +91,7 @@ namespace SQM
     {
         const uint32_t timestamp = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
-        printf("%s[%u] [%s] [%s] ",
-               levelToColor(level),
-               timestamp,
-               levelToString(level),
-               tag);
+        printf("%s[%u] [%s] [%s] ", levelToColor(level), timestamp, levelToString(level), tag);
 
         vprintf(format, args);
         printf("\033[0m\n"); // Reset color

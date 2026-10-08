@@ -11,7 +11,7 @@ namespace SQM
         {
             constexpr double PI = 3.14159265358979323846;
             constexpr double DEG = PI / 180.0;
-        }
+        } // namespace
 
         double sunElevationDeg(int64_t unixSeconds, double latitudeDeg, double longitudeDeg)
         {
@@ -23,8 +23,7 @@ namespace SQM
             const double meanAnomaly = 357.52911 + t * (35999.05029 - 0.0001537 * t);
             const double eccentricity = 0.016708634 - t * (0.000042037 + 0.0000001267 * t);
             const double center = std::sin(meanAnomaly * DEG) * (1.914602 - t * (0.004817 + 0.000014 * t)) +
-                                  std::sin(2 * meanAnomaly * DEG) * (0.019993 - 0.000101 * t) +
-                                  std::sin(3 * meanAnomaly * DEG) * 0.000289;
+                                  std::sin(2 * meanAnomaly * DEG) * (0.019993 - 0.000101 * t) + std::sin(3 * meanAnomaly * DEG) * 0.000289;
             const double trueLongitude = meanLongitude + center;
             const double omega = 125.04 - 1934.136 * t;
             const double apparentLongitude = trueLongitude - 0.00569 - 0.00478 * std::sin(omega * DEG);

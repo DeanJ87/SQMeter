@@ -31,9 +31,7 @@ const DemoPanel: FunctionalComponent = () => {
               Close
             </Button>
           </div>
-          <Note>
-            A simulated SQMeter running the real firmware's logic in your browser. Settings work; nothing is sent anywhere.
-          </Note>
+          <Note>A simulated SQMeter running the real firmware's logic in your browser. Settings work; nothing is sent anywhere.</Note>
           <div class="demo-scenarios">
             {SCENARIOS.map((scenario) => (
               <Button

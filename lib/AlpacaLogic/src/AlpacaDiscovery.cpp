@@ -9,7 +9,7 @@ namespace SQM
         {
             constexpr char DISCOVERY_MAGIC[] = "alpacadiscovery1";
             constexpr size_t DISCOVERY_MAGIC_LEN = sizeof(DISCOVERY_MAGIC) - 1; // exclude trailing NUL
-        }
+        } // namespace
 
         bool isValidDiscoveryRequest(const uint8_t *data, size_t len)
         {

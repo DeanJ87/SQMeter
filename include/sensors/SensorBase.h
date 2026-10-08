@@ -9,10 +9,6 @@
 namespace SQM
 {
 
-
-
-
-
     class SensorBase
     {
     public:

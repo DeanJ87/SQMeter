@@ -2,6 +2,7 @@
 """Hash of everything the demo's device core is built from. build.sh writes it
 to web/src/demo/core/SOURCE_HASH; CI runs this with --check and fails if the
 firmware code changed without rebuilding the core (spec 016, FR-010)."""
+
 import glob
 import hashlib
 import os

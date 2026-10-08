@@ -9,11 +9,13 @@ describe('MQTT publish settings', () => {
   it('chooses what is published and turns on Home Assistant discovery', async () => {
     let saved: any = null;
     server.use(
-      http.get('/api/config', () => HttpResponse.json({ ...mockConfig, mqtt: { ...mockConfig.mqtt, enabled: true, broker: '192.168.1.5', topic: 'sqmeter' } })),
+      http.get('/api/config', () =>
+        HttpResponse.json({ ...mockConfig, mqtt: { ...mockConfig.mqtt, enabled: true, broker: '192.168.1.5', topic: 'sqmeter' } }),
+      ),
       http.post('/api/config', async ({ request }) => {
         saved = await request.json();
         return HttpResponse.json({ success: true });
-      })
+      }),
     );
     window.history.replaceState(null, '', '/settings?tab=network');
     render(<Settings />);
@@ -35,7 +37,9 @@ describe('MQTT publish settings', () => {
 
   it('rejects a base topic with MQTT wildcards', async () => {
     server.use(
-      http.get('/api/config', () => HttpResponse.json({ ...mockConfig, mqtt: { ...mockConfig.mqtt, enabled: true, broker: '192.168.1.5', topic: 'sqmeter' } }))
+      http.get('/api/config', () =>
+        HttpResponse.json({ ...mockConfig, mqtt: { ...mockConfig.mqtt, enabled: true, broker: '192.168.1.5', topic: 'sqmeter' } }),
+      ),
     );
     window.history.replaceState(null, '', '/settings?tab=network');
     render(<Settings />);

@@ -25,7 +25,10 @@ namespace SQM
     constexpr size_t ALERT_CHANNEL_COUNT = 4;
     constexpr uint8_t ALERT_CHANNELS_ALL = 0x0F;
 
-    inline uint8_t alertChannelBit(AlertChannel channel) { return static_cast<uint8_t>(1u << static_cast<uint8_t>(channel)); }
+    inline uint8_t alertChannelBit(AlertChannel channel)
+    {
+        return static_cast<uint8_t>(1u << static_cast<uint8_t>(channel));
+    }
     const char *alertChannelName(AlertChannel channel);
 
     enum class DeliveryStatus : uint8_t
@@ -68,8 +71,8 @@ namespace SQM
         // Main loop task only. `channelMask` restricts delivery (used for
         // per-channel test notifications); channels disabled in `cfg` are
         // never used, test or not.
-        void dispatch(const Alerts::Alert &alert, const AlertsConfig &cfg, const std::string &deviceName,
-                      uint8_t channelMask = ALERT_CHANNELS_ALL);
+        void dispatch(
+            const Alerts::Alert &alert, const AlertsConfig &cfg, const std::string &deviceName, uint8_t channelMask = ALERT_CHANNELS_ALL);
 
         std::vector<AlertRecord> recent() const;
         void clearRecent();

@@ -13,7 +13,7 @@ namespace SQM
                 static SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
                 return mutex;
             }
-        }
+        } // namespace
 
         bool acquire(uint32_t timeoutMs)
         {

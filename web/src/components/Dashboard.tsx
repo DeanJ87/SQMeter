@@ -164,18 +164,20 @@ const Dashboard: FunctionalComponent = () => {
   const cloudCover = sensors?.clouds?.coverPercent;
   const rssi = rssiTone(status?.wifi?.rssi);
   // A GPS fix wins over the location typed into Settings.
-  const location = sensors?.gps?.fix && sensors.gps.latitude !== undefined && sensors.gps.longitude !== undefined
-    ? { latitude: sensors.gps.latitude, longitude: sensors.gps.longitude }
-    : config?.location?.set
-      ? config.location
-      : null;
+  const location =
+    sensors?.gps?.fix && sensors.gps.latitude !== undefined && sensors.gps.longitude !== undefined
+      ? { latitude: sensors.gps.latitude, longitude: sensors.gps.longitude }
+      : config?.location?.set
+        ? config.location
+        : null;
   const showSunMoon = location !== null && config?.location?.showSunMoon !== false;
 
-  const rainStatus = rain?.status === 'ok'
-    ? { text: 'Online', tone: 'pill-green' }
-    : rain?.status === 'stale'
-      ? { text: 'Stale', tone: 'pill-amber' }
-      : { text: 'Offline', tone: 'pill-red' };
+  const rainStatus =
+    rain?.status === 'ok'
+      ? { text: 'Online', tone: 'pill-green' }
+      : rain?.status === 'stale'
+        ? { text: 'Stale', tone: 'pill-amber' }
+        : { text: 'Offline', tone: 'pill-red' };
 
   if (!connected || !sensors) {
     return (
@@ -189,198 +191,255 @@ const Dashboard: FunctionalComponent = () => {
 
   const cards: (MasonryItem | false | null | undefined)[] = [
     { id: 'safety', title: 'Safety', node: <SafetyCard safety={sensors.safety} /> },
-    { id: 'sky', title: 'Sky Quality', node: !lightOk ? (
-            <Card title="Sky Quality" icon="star" tone="muted" actions={<Pill tone="pill-red">Not detected</Pill>}>
-              <Note>The TSL2591 light sensor isn't responding - check its wiring, then restart.</Note>
-            </Card>
-          ) : (
-          <section class={`hero-card ${skyTone}`}>
-            <div class="hero-topline">
-              <div class="card-title flat">
-                <Icon name="star" tone="cyan" />
-                <h2>Sky Quality</h2>
-              </div>
-              <div class="hero-pills">
-                <Pill tone={live ? 'pill-green' : isStale ? 'pill-amber' : 'pill-dim'}>
-                  <StatusDot ok={live} /> {live ? 'Live' : isStale ? 'Stale' : 'Connected'}
-                </Pill>
-                <Pill tone={skyTone.replace('tone-', 'pill-')}>
-                  Bortle {formatNumber(sensors.sky.bortle, 0)}
-                </Pill>
-              </div>
+    {
+      id: 'sky',
+      title: 'Sky Quality',
+      node: !lightOk ? (
+        <Card title="Sky Quality" icon="star" tone="muted" actions={<Pill tone="pill-red">Not detected</Pill>}>
+          <Note>The TSL2591 light sensor isn't responding - check its wiring, then restart.</Note>
+        </Card>
+      ) : (
+        <section class={`hero-card ${skyTone}`}>
+          <div class="hero-topline">
+            <div class="card-title flat">
+              <Icon name="star" tone="cyan" />
+              <h2>Sky Quality</h2>
             </div>
+            <div class="hero-pills">
+              <Pill tone={live ? 'pill-green' : isStale ? 'pill-amber' : 'pill-dim'}>
+                <StatusDot ok={live} /> {live ? 'Live' : isStale ? 'Stale' : 'Connected'}
+              </Pill>
+              <Pill tone={skyTone.replace('tone-', 'pill-')}>Bortle {formatNumber(sensors.sky.bortle, 0)}</Pill>
+            </div>
+          </div>
 
-            <div class="sqm-display">
-              <div class="sqm-value">{formatNumber(sensors.sky.sqm, 2)}</div>
-              <div class="sqm-unit">mag / arcsec²</div>
-              <p>{sensors.sky.description ?? 'Sky quality data unavailable'}</p>
-            </div>
+          <div class="sqm-display">
+            <div class="sqm-value">{formatNumber(sensors.sky.sqm, 2)}</div>
+            <div class="sqm-unit">mag / arcsec²</div>
+            <p>{sensors.sky.description ?? 'Sky quality data unavailable'}</p>
+          </div>
 
-            <MiniSpark values={sqmHistory} tone={skyTone} />
+          <MiniSpark values={sqmHistory} tone={skyTone} />
 
-            <div class="metric-grid compact">
-              <MetricTile label="Bortle" value={formatNumber(sensors.sky.bortle, 0)} tone={skyTone} />
-              <MetricTile label="NELM" value={formatNumber(sensors.sky.nelm, 1)} unit="mag" tone="tone-cyan" />
-              <MetricTile label="Illuminance" value={formatNumber(sensors.light.lux, 5)} unit="lux" />
+          <div class="metric-grid compact">
+            <MetricTile label="Bortle" value={formatNumber(sensors.sky.bortle, 0)} tone={skyTone} />
+            <MetricTile label="NELM" value={formatNumber(sensors.sky.nelm, 1)} unit="mag" tone="tone-cyan" />
+            <MetricTile label="Illuminance" value={formatNumber(sensors.light.lux, 5)} unit="lux" />
+          </div>
+        </section>
+      ),
+    },
+    showSunMoon &&
+      location && { id: 'sunmoon', title: 'Sun & Moon', node: <SunMoonCard latitude={location.latitude} longitude={location.longitude} /> },
+    irOk && {
+      id: 'cloud',
+      title: 'Cloud Conditions',
+      node: (
+        <Card
+          title="Cloud Conditions"
+          icon="cloud"
+          tone="violet"
+          actions={
+            <>
+              <Pill tone={conditionTone(sensors.clouds.condition)}>{sensors.clouds.description ?? 'Unknown'}</Pill>
+            </>
+          }
+        >
+          <div class="metric-grid">
+            <MetricTile label="Cloud Cover" value={formatNumber(cloudCover, 0)} unit="%" tone="tone-violet" />
+            <MetricTile label="Temp Delta" value={formatNumber(sensors.clouds.temperatureDelta, 1)} unit="°C" />
+            <MetricTile label="Corrected" value={formatNumber(sensors.clouds.correctedDelta, 1)} unit="°C" />
+          </div>
+          {sensors.clouds.humiditySource === 'assumed' && (
+            <Note>Humidity assumed {formatNumber(sensors.clouds.humidity, 0)}% - no humidity sensor reading.</Note>
+          )}
+        </Card>
+      ),
+    },
+    sensors.environment.status === 'ok' && {
+      id: 'environment',
+      title: 'Environment',
+      node: (
+        <Card title="Environment" icon="therm" tone="amber">
+          <div class="tile-grid two">
+            <MetricTile label="Temperature" value={formatNumber(sensors.environment.temperature, 1)} unit="°C" tone="tone-amber" />
+            <MetricTile
+              label="Humidity"
+              value={formatNumber(sensors.environment.humidity, 1)}
+              unit="%"
+              tone={(sensors.environment.humidity ?? 0) > 80 ? 'tone-amber' : 'tone-cyan'}
+            />
+            <MetricTile label="Pressure" value={formatNumber(sensors.environment.pressure, 1)} unit="hPa" />
+            <MetricTile label="Dew Point" value={formatNumber(sensors.environment.dewpoint, 1)} unit="°C" tone="tone-violet" />
+          </div>
+        </Card>
+      ),
+    },
+    sensors.gps && {
+      id: 'gps',
+      title: 'GPS',
+      node: (
+        <Card
+          title="GPS Location"
+          icon="gps"
+          tone={sensors.gps.fix ? 'green' : 'muted'}
+          actions={
+            <>
+              <Pill tone={sensors.gps.fix ? 'pill-green' : 'pill-dim'}>{sensors.gps.fix ? 'Lock acquired' : 'No fix'}</Pill>
+            </>
+          }
+        >
+          <div class="coordinate-line mono">
+            {sensors.gps.fix
+              ? `${Math.abs(sensors.gps.latitude ?? 0).toFixed(6)} ${(sensors.gps.latitude ?? 0) >= 0 ? 'N' : 'S'}, ${Math.abs(sensors.gps.longitude ?? 0).toFixed(6)} ${(sensors.gps.longitude ?? 0) >= 0 ? 'E' : 'W'}`
+              : '--'}
+          </div>
+          <div class="tile-grid gps-metrics">
+            <MetricTile label="Satellites" value={String(sensors.gps.satellites ?? 0)} tone="tone-green" />
+            <MetricTile label="Altitude" value={sensors.gps.fix ? formatNumber(sensors.gps.altitude, 0) : '--'} unit="m" />
+            <MetricTile label="HDOP" value={sensors.gps.fix ? formatNumber(sensors.gps.hdop, 1) : '--'} />
+            <MetricTile label="Fix Age" value={formatAgeMs(sensors.gps.ageMs)} />
+          </div>
+        </Card>
+      ),
+    },
+    lightOk && {
+      id: 'light',
+      title: 'Light Sensor',
+      node: (
+        <Card title="Light Sensor" icon="eye" tone="cyan">
+          <SensorReadingRow label="Illuminance" value={formatNumber(sensors.light.lux, 5)} unit="lux" />
+          <SensorReadingRow label="Visible" value={String(sensors.light.visible)} unit="raw" />
+          <SensorReadingRow label="Infrared" value={String(sensors.light.infrared)} unit="raw" />
+          <SensorReadingRow label="Full spectrum" value={String(sensors.light.full)} unit="raw" />
+        </Card>
+      ),
+    },
+    {
+      id: 'device',
+      title: 'Device & Network',
+      node: (
+        <Card title="Device & Network" icon="wifi" tone="cyan">
+          <div class="tile-grid two">
+            <div class="metric-tile left">
+              <div class="metric-label">Wi-Fi</div>
+              <Pill tone={rssi.tone}>{rssi.label}</Pill>
+              <div class="metric-sub mono">{status?.wifi?.rssi ?? '--'} dBm</div>
+              <div class="metric-sub">{status?.wifi?.ssid ?? '--'}</div>
             </div>
-          </section>
-          ) },
-    showSunMoon && location && { id: 'sunmoon', title: 'Sun & Moon', node: <SunMoonCard latitude={location.latitude} longitude={location.longitude} /> },
-    irOk && { id: 'cloud', title: 'Cloud Conditions', node: (
-<Card
-              title="Cloud Conditions"
-              icon="cloud"
-              tone="violet"
-              actions={
-                <>
-                  <Pill tone={conditionTone(sensors.clouds.condition)}>{sensors.clouds.description ?? 'Unknown'}</Pill>
-                </>
-              }
-            >
-              <div class="metric-grid">
-                <MetricTile label="Cloud Cover" value={formatNumber(cloudCover, 0)} unit="%" tone="tone-violet" />
-                <MetricTile label="Temp Delta" value={formatNumber(sensors.clouds.temperatureDelta, 1)} unit="°C" />
-                <MetricTile label="Corrected" value={formatNumber(sensors.clouds.correctedDelta, 1)} unit="°C" />
-              </div>
-              {sensors.clouds.humiditySource === 'assumed' && (
-                <Note>Humidity assumed {formatNumber(sensors.clouds.humidity, 0)}% - no humidity sensor reading.</Note>
-              )}
-            </Card>
-    ) },
-    sensors.environment.status === 'ok' && { id: 'environment', title: 'Environment', node: (
-<Card title="Environment" icon="therm" tone="amber">
-              <div class="tile-grid two">
-                <MetricTile label="Temperature" value={formatNumber(sensors.environment.temperature, 1)} unit="°C" tone="tone-amber" />
-                <MetricTile label="Humidity" value={formatNumber(sensors.environment.humidity, 1)} unit="%" tone={(sensors.environment.humidity ?? 0) > 80 ? 'tone-amber' : 'tone-cyan'} />
-                <MetricTile label="Pressure" value={formatNumber(sensors.environment.pressure, 1)} unit="hPa" />
-                <MetricTile label="Dew Point" value={formatNumber(sensors.environment.dewpoint, 1)} unit="°C" tone="tone-violet" />
-              </div>
-            </Card>
-    ) },
-    sensors.gps && { id: 'gps', title: 'GPS', node: (
-<Card
-              title="GPS Location"
-              icon="gps"
-              tone={sensors.gps.fix ? 'green' : 'muted'}
-              actions={
-                <>
-                  <Pill tone={sensors.gps.fix ? 'pill-green' : 'pill-dim'}>
-                    {sensors.gps.fix ? 'Lock acquired' : 'No fix'}
-                  </Pill>
-                </>
-              }
-            >
-              <div class="coordinate-line mono">
-                {sensors.gps.fix
-                  ? `${Math.abs(sensors.gps.latitude ?? 0).toFixed(6)} ${(sensors.gps.latitude ?? 0) >= 0 ? 'N' : 'S'}, ${Math.abs(sensors.gps.longitude ?? 0).toFixed(6)} ${(sensors.gps.longitude ?? 0) >= 0 ? 'E' : 'W'}`
-                  : '--'}
-              </div>
-              <div class="tile-grid gps-metrics">
-                <MetricTile label="Satellites" value={String(sensors.gps.satellites ?? 0)} tone="tone-green" />
-                <MetricTile label="Altitude" value={sensors.gps.fix ? formatNumber(sensors.gps.altitude, 0) : '--'} unit="m" />
-                <MetricTile label="HDOP" value={sensors.gps.fix ? formatNumber(sensors.gps.hdop, 1) : '--'} />
-                <MetricTile label="Fix Age" value={formatAgeMs(sensors.gps.ageMs)} />
-              </div>
-            </Card>
-    ) },
-    lightOk && { id: 'light', title: 'Light Sensor', node: (
-<Card title="Light Sensor" icon="eye" tone="cyan">
-              <SensorReadingRow label="Illuminance" value={formatNumber(sensors.light.lux, 5)} unit="lux" />
-              <SensorReadingRow label="Visible" value={String(sensors.light.visible)} unit="raw" />
-              <SensorReadingRow label="Infrared" value={String(sensors.light.infrared)} unit="raw" />
-              <SensorReadingRow label="Full spectrum" value={String(sensors.light.full)} unit="raw" />
-            </Card>
-    ) },
-    { id: 'device', title: 'Device & Network', node: (
-<Card title="Device & Network" icon="wifi" tone="cyan">
-            <div class="tile-grid two">
-              <div class="metric-tile left">
-                <div class="metric-label">Wi-Fi</div>
-                <Pill tone={rssi.tone}>{rssi.label}</Pill>
-                <div class="metric-sub mono">{status?.wifi?.rssi ?? '--'} dBm</div>
-                <div class="metric-sub">{status?.wifi?.ssid ?? '--'}</div>
-              </div>
-              <div class="metric-tile left">
-                <div class="metric-label">IP Address</div>
-                <div class="metric-value tone-cyan small">{status?.wifi?.ip ?? '--'}</div>
-                <div class="metric-label pushed">Uptime</div>
-                <div class="metric-sub mono">{formatUptime(status?.uptime)}</div>
-              </div>
+            <div class="metric-tile left">
+              <div class="metric-label">IP Address</div>
+              <div class="metric-value tone-cyan small">{status?.wifi?.ip ?? '--'}</div>
+              <div class="metric-label pushed">Uptime</div>
+              <div class="metric-sub mono">{formatUptime(status?.uptime)}</div>
             </div>
-            {status?.firmware?.version && (
-              <div class="firmware-row">
-                <span>Firmware</span>
-                <Pill>v{status.firmware.version}</Pill>
-              </div>
-            )}
-          </Card>
-    ) },
-    irOk && { id: 'ir', title: 'IR Temperature', node: (
-<Card title="IR Temperature" icon="therm" tone="violet">
-              <ReadingRow
-                label="Sky temperature"
-                value={`${formatNumber(sensors.infrared.skyTemperature, 1)} °C`}
-              />
-              <ReadingRow
-                label="Ambient"
-                value={`${formatNumber(sensors.infrared.ambientTemperature, 1)} °C`}
-              />
-            </Card>
-    ) },
-    sensors.wind && { id: 'wind', title: 'Wind', node: (
-<Card
-              title="Wind"
-              icon="cloud"
-              tone="cyan"
-              actions={
-                <Pill tone={sensors.wind.status === 'ok' ? 'pill-green' : 'pill-red'}>
-                  {sensors.wind.status === 'ok' ? 'Online' : 'Offline'}
-                </Pill>
+          </div>
+          {status?.firmware?.version && (
+            <div class="firmware-row">
+              <span>Firmware</span>
+              <Pill>v{status.firmware.version}</Pill>
+            </div>
+          )}
+        </Card>
+      ),
+    },
+    irOk && {
+      id: 'ir',
+      title: 'IR Temperature',
+      node: (
+        <Card title="IR Temperature" icon="therm" tone="violet">
+          <ReadingRow label="Sky temperature" value={`${formatNumber(sensors.infrared.skyTemperature, 1)} °C`} />
+          <ReadingRow label="Ambient" value={`${formatNumber(sensors.infrared.ambientTemperature, 1)} °C`} />
+        </Card>
+      ),
+    },
+    sensors.wind && {
+      id: 'wind',
+      title: 'Wind',
+      node: (
+        <Card
+          title="Wind"
+          icon="cloud"
+          tone="cyan"
+          actions={
+            <Pill tone={sensors.wind.status === 'ok' ? 'pill-green' : 'pill-red'}>
+              {sensors.wind.status === 'ok' ? 'Online' : 'Offline'}
+            </Pill>
+          }
+        >
+          <div class="metric-grid">
+            <MetricTile
+              label="Speed"
+              value={formatNumber(sensors.wind.speed, 1)}
+              unit={`m/s · ${formatNumber((sensors.wind.speed ?? 0) * 3.6, 0)} km/h`}
+              tone={windTone(sensors.wind.speed, config?.alpaca?.windSpeedUnsafeEnabled, config?.alpaca?.windSpeedUnsafeMs, 'tone-cyan')}
+            />
+            <MetricTile
+              label="Gust"
+              value={formatNumber(sensors.wind.gust, 1)}
+              unit={`m/s · ${formatNumber((sensors.wind.gust ?? 0) * 3.6, 0)} km/h`}
+              tone={windTone(sensors.wind.gust, config?.alpaca?.windGustUnsafeEnabled, config?.alpaca?.windGustUnsafeMs)}
+            />
+            <MetricTile
+              label="Direction"
+              value={sensors.wind.direction !== undefined ? compassPoint(sensors.wind.direction) : '--'}
+              unit={
+                sensors.wind.direction !== undefined
+                  ? `${formatNumber(sensors.wind.direction, 0)}°`
+                  : sensors.wind.vaneFault
+                    ? 'vane fault'
+                    : 'calm'
               }
-            >
-              <div class="metric-grid">
-                <MetricTile label="Speed" value={formatNumber(sensors.wind.speed, 1)} unit={`m/s · ${formatNumber((sensors.wind.speed ?? 0) * 3.6, 0)} km/h`} tone={windTone(sensors.wind.speed, config?.alpaca?.windSpeedUnsafeEnabled, config?.alpaca?.windSpeedUnsafeMs, 'tone-cyan')} />
-                <MetricTile label="Gust" value={formatNumber(sensors.wind.gust, 1)} unit={`m/s · ${formatNumber((sensors.wind.gust ?? 0) * 3.6, 0)} km/h`} tone={windTone(sensors.wind.gust, config?.alpaca?.windGustUnsafeEnabled, config?.alpaca?.windGustUnsafeMs)} />
-                <MetricTile
-                  label="Direction"
-                  value={sensors.wind.direction !== undefined ? compassPoint(sensors.wind.direction) : '--'}
-                  unit={sensors.wind.direction !== undefined ? `${formatNumber(sensors.wind.direction, 0)}°` : sensors.wind.vaneFault ? 'vane fault' : 'calm'}
-                />
-              </div>
-            </Card>
-    ) },
-    rain && { id: 'rain', title: 'Rain Sensor', node: (
-<Card
-              title="Rain Sensor"
-              icon="rain"
-              tone="cyan"
-              actions={
-                <>
-                  <Pill tone={rainStatus.tone}>{rainStatus.text}</Pill>
-                </>
-              }
-            >
-              <div class="metric-grid">
-                <MetricTile label="Raining" value={rain.raining ? 'Yes' : rain.status === 'ok' ? 'No' : '--'} tone={rain.raining ? 'tone-amber' : 'tone-green'} />
-                <MetricTile label="Intensity" value={formatNumber(rainValue(rain.intensity), 1)} unit={rainUnits.intensity} />
-                <MetricTile label="Event" value={formatNumber(rainValue(rain.eventAccumulation), 2)} unit={rainUnits.depth} />
-                <MetricTile label="Daily" value={formatNumber(rainValue(rain.totalAccumulation), 2)} unit={rainUnits.depth} />
-              </div>
-              {(rain.lensFault || rain.emitterSaturated) && (
-                <div class="warning-list">
-                  {rain.lensFault && <span>Lens fault: clean or inspect the lens.</span>}
-                  {rain.emitterSaturated && <span>Emitter saturation detected.</span>}
-                </div>
-              )}
-            </Card>
-    ) },
+            />
+          </div>
+        </Card>
+      ),
+    },
+    rain && {
+      id: 'rain',
+      title: 'Rain Sensor',
+      node: (
+        <Card
+          title="Rain Sensor"
+          icon="rain"
+          tone="cyan"
+          actions={
+            <>
+              <Pill tone={rainStatus.tone}>{rainStatus.text}</Pill>
+            </>
+          }
+        >
+          <div class="metric-grid">
+            <MetricTile
+              label="Raining"
+              value={rain.raining ? 'Yes' : rain.status === 'ok' ? 'No' : '--'}
+              tone={rain.raining ? 'tone-amber' : 'tone-green'}
+            />
+            <MetricTile label="Intensity" value={formatNumber(rainValue(rain.intensity), 1)} unit={rainUnits.intensity} />
+            <MetricTile label="Event" value={formatNumber(rainValue(rain.eventAccumulation), 2)} unit={rainUnits.depth} />
+            <MetricTile label="Daily" value={formatNumber(rainValue(rain.totalAccumulation), 2)} unit={rainUnits.depth} />
+          </div>
+          {(rain.lensFault || rain.emitterSaturated) && (
+            <div class="warning-list">
+              {rain.lensFault && <span>Lens fault: clean or inspect the lens.</span>}
+              {rain.emitterSaturated && <span>Emitter saturation detected.</span>}
+            </div>
+          )}
+        </Card>
+      ),
+    },
   ];
   const visible = cards.filter((card): card is MasonryItem => Boolean(card));
   const fullOrder = mergeOrder(savedOrder, DEFAULT_ORDER);
   const ordered = fullOrder.map((id) => visible.find((card) => card.id === id)).filter((card): card is MasonryItem => Boolean(card));
 
   const move = (id: string, toIndex: number) => {
-    const next = moveInOrder(fullOrder, ordered.map((card) => card.id), id, toIndex);
+    const next = moveInOrder(
+      fullOrder,
+      ordered.map((card) => card.id),
+      id,
+      toIndex,
+    );
     setSavedOrder(next);
     saveOrder(next);
   };
@@ -389,7 +448,14 @@ const Dashboard: FunctionalComponent = () => {
     <div class="dashboard page-enter">
       <div class="dashboard-toolbar">
         {arranging && (
-          <Button small variant="ghost" onClick={() => { setSavedOrder([]); saveOrder([]); }}>
+          <Button
+            small
+            variant="ghost"
+            onClick={() => {
+              setSavedOrder([]);
+              saveOrder([]);
+            }}
+          >
             Reset order
           </Button>
         )}

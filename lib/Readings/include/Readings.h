@@ -98,9 +98,9 @@ namespace SQM
             bool present = false; // rain sensor enabled
             Status status = Status::Missing;
             uint32_t ageMs = 0;
-            bool raining = false;    // latched for the clear delay
-            bool rainingNow = false; // instantaneous
-            double intensity = 0.0;  // mm/h
+            bool raining = false;                 // latched for the clear delay
+            bool rainingNow = false;              // instantaneous
+            double intensity = 0.0;               // mm/h
             double eventAccumulation = 0.0;       // mm, device event (clear delay)
             double sensorEventAccumulation = 0.0; // mm, RG-15's own event
             double totalAccumulation = 0.0;       // mm
@@ -139,9 +139,9 @@ namespace SQM
         // Which groups to include (MQTT publish settings). REST/WebSocket use all.
         struct Groups
         {
-            bool sky = true;         // light + sky
+            bool sky = true; // light + sky
             bool environment = true;
-            bool clouds = true;      // infrared + clouds
+            bool clouds = true; // infrared + clouds
             bool gps = true;
             bool rain = true;
             bool wind = true;
@@ -154,17 +154,20 @@ namespace SQM
         // Home Assistant MQTT discovery.
         struct DiscoveryDevice
         {
-            std::string id;          // "sqmeter_<mac hex>"
-            std::string name;        // device name
-            std::string version;     // firmware version
-            std::string baseTopic;   // MQTT base topic
-            std::string prefix;      // discovery prefix, usually "homeassistant"
+            std::string id;        // "sqmeter_<mac hex>"
+            std::string name;      // device name
+            std::string version;   // firmware version
+            std::string baseTopic; // MQTT base topic
+            std::string prefix;    // discovery prefix, usually "homeassistant"
         };
 
         // Calls `publish(topic, payload)` for every entity: its config when its
         // group is enabled, an empty payload (removes the entity) when not.
-        void forEachDiscovery(const DiscoveryDevice &device, const Groups &groups, bool safety,
-                              const std::function<void(const std::string &topic, const std::string &payload)> &publish);
+        void forEachDiscovery(
+            const DiscoveryDevice &device,
+            const Groups &groups,
+            bool safety,
+            const std::function<void(const std::string &topic, const std::string &payload)> &publish);
 
     } // namespace Readings
 } // namespace SQM

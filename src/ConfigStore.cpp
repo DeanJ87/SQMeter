@@ -47,7 +47,7 @@ namespace SQM
             nvs_close(handle);
             return length > 0 ? length - 1 : 0;
         }
-    }
+    } // namespace
 
     bool Config::load(Config &out)
     {
@@ -112,14 +112,19 @@ namespace SQM
 
         std::string json = toJson(false, false);
         const std::string alertsJson = alertsToJson(false);
-        Logger::info(TAG, "Config JSON to save (%u bytes, alerts %u bytes)", static_cast<unsigned>(json.length()),
-                     static_cast<unsigned>(alertsJson.length()));
+        Logger::info(
+            TAG,
+            "Config JSON to save (%u bytes, alerts %u bytes)",
+            static_cast<unsigned>(json.length()),
+            static_cast<unsigned>(alertsJson.length()));
 
         if (json.length() > MAX_PERSISTED_JSON_BYTES)
         {
-            Logger::error(TAG, "Config JSON too large for NVS (%u bytes, max %u bytes)",
-                          static_cast<unsigned>(json.length()),
-                          static_cast<unsigned>(MAX_PERSISTED_JSON_BYTES));
+            Logger::error(
+                TAG,
+                "Config JSON too large for NVS (%u bytes, max %u bytes)",
+                static_cast<unsigned>(json.length()),
+                static_cast<unsigned>(MAX_PERSISTED_JSON_BYTES));
             return false;
         }
 

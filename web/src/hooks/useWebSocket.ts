@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "preact/hooks";
+import { useEffect, useRef, useState, useCallback } from 'preact/hooks';
 
 const INITIAL_RECONNECT_DELAY_MS = 5000;
 const MAX_RECONNECT_DELAY_MS = 30000;
@@ -23,7 +23,7 @@ export const useWebSocket = <T>(url: string) => {
   const connect = useCallback(() => {
     clearReconnectTimeout();
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}${url}`;
 
     const socket = new WebSocket(wsUrl);
@@ -41,12 +41,12 @@ export const useWebSocket = <T>(url: string) => {
         setData(parsed);
         setLastMessageAt(Date.now());
       } catch (error) {
-        console.error("Failed to parse WebSocket message:", error);
+        console.error('Failed to parse WebSocket message:', error);
       }
     };
 
     socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
+      console.error('WebSocket error:', error);
       setConnected(false);
     };
 
@@ -64,10 +64,7 @@ export const useWebSocket = <T>(url: string) => {
       }
 
       const retryCount = retryCountRef.current++;
-      const baseDelay = Math.min(
-        MAX_RECONNECT_DELAY_MS,
-        INITIAL_RECONNECT_DELAY_MS * 2 ** retryCount,
-      );
+      const baseDelay = Math.min(MAX_RECONNECT_DELAY_MS, INITIAL_RECONNECT_DELAY_MS * 2 ** retryCount);
       const delay = baseDelay + Math.random() * RECONNECT_JITTER_MS;
       reconnectTimeoutRef.current = window.setTimeout(connect, delay);
     };
