@@ -5,7 +5,7 @@
 <!-- diagram: DIA-11
 sources: lib/ tools/demo-core/bridge.cpp platformio.ini
 blocking: false
-fingerprint: f734b7bbf93f1bbf
+fingerprint: 6c5f8176ecb7b8ce
 -->
 <figure class="diagram" markdown>
 
