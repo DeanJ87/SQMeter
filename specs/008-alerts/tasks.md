@@ -47,4 +47,4 @@ description: "As-built task list (backfill) for Alerts"
 - [ ] T012 Offer and document the {event} variable the device already fills (missing from COMMON_VARS in web/src/components/settings/AlertsTab.tsx and the table in docs/user-guide/alerts.md) per FR-006 / SC-003 (partial)
 - [ ] T013 Show the device's actual default wording — "Skies clear" (not "Dark and clear") when sky alerts aren't limited to darkness — instead of a duplicated copy in DEFAULT_TEXT, in web/src/components/settings/AlertsTab.tsx per FR-006 / US3-AC2 (contradicts)
 - [ ] T014 Use the UI's labels in docs/user-guide/alerts.md: "App token" (not "API token") and "Skip certificate checks" (not "Skip TLS certificate checks"); describe the "Send alerts" master switch, per FR-009 / SC-004 (contradicts)
-- [ ] T015 Move the level → Pushover/ntfy priority mapping out of src/AlertDispatcher.cpp into lib/AlertLogic with tests per Constitution III (partial)
+- [X] T015 Move the level → Pushover/ntfy priority mapping out of src/AlertDispatcher.cpp into lib/AlertLogic with tests per Constitution III (partial)

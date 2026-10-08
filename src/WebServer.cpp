@@ -460,6 +460,14 @@ namespace SQM
         next.dataTimestamp = dataTimestampMs;
         next.capturedAt = millis();
 
+        const Config &cfg = getConfigCallback();
+        next.sky = SkyQuality::calculate(next.tsl.lux);
+        next.humidityMeasured = next.bmeInitialized && next.bme.status == SensorStatus::OK;
+        next.cloudHumidity = next.humidityMeasured ? next.bme.humidity : ASSUMED_HUMIDITY_PERCENT;
+        next.cloud = CloudDetection::calculate(next.mlx.objectTemp, next.mlx.ambientTemp, next.cloudHumidity,
+                                               cfg.cloudDetection.clearSkyThreshold, cfg.cloudDetection.cloudyThreshold,
+                                               cfg.cloudDetection.humidityCorrection);
+
         if (!sensorSnapshotMutex)
         {
             sensorSnapshot = next;
@@ -949,23 +957,12 @@ namespace SQM
         in.requiredSensorFault = snapshot.tsl.status != SensorStatus::OK ||
                                   snapshot.mlx.status != SensorStatus::OK;
 
-        SkyQualityMetrics sqm = SkyQuality::calculate(snapshot.tsl.lux);
-        in.sqm = sqm.sqm;
-
-        bool usingHumidityFallback = snapshot.bme.status != SensorStatus::OK;
-        float humidity = usingHumidityFallback ? 53.0f : snapshot.bme.humidity;
-        CloudMetrics cloudMetrics = CloudDetection::calculate(
-            snapshot.mlx.objectTemp,
-            snapshot.mlx.ambientTemp,
-            humidity,
-            cfg.cloudDetection.clearSkyThreshold,
-            cfg.cloudDetection.cloudyThreshold,
-            cfg.cloudDetection.humidityCorrection);
-        in.cloudCoverPercent = cloudMetrics.cloudCoverPercent;
-        in.humidityPercent = humidity;
+        in.sqm = snapshot.sky.sqm;
+        in.cloudCoverPercent = snapshot.cloud.cloudCoverPercent;
+        in.humidityPercent = snapshot.cloudHumidity;
         in.temperatureC = snapshot.bme.temperature;
         in.dewpointC = snapshot.bme.dewpoint;
-        in.environmentSensorFault = usingHumidityFallback;
+        in.environmentSensorFault = !snapshot.humidityMeasured;
 
         in.rainSensorEnabled = cfg.rain.enabled;
         in.rainSensorHealthy = snapshot.rg15.online && !snapshot.rg15.stale &&
@@ -1591,21 +1588,11 @@ namespace SQM
         snap.windGustMs = snapshot.wind.gustMs;
         snap.windDirectionDeg = snapshot.wind.directionValid ? snapshot.wind.directionDeg : 0.0f;
 
-        // Cloud cover may use a nominal humidity when the BME280 is down -
+        // Cloud cover may use the assumed humidity when the BME280 is down -
         // it only shifts the correction term - but Alpaca's Humidity
         // property must never report that made-up value.
-        const float humidityForCloud = snap.environment.valid ? snapshot.bme.humidity : 53.0f;
-        CloudMetrics cloudMetrics = CloudDetection::calculate(
-            snapshot.mlx.objectTemp,
-            snapshot.mlx.ambientTemp,
-            humidityForCloud,
-            cfg.cloudDetection.clearSkyThreshold,
-            cfg.cloudDetection.cloudyThreshold,
-            cfg.cloudDetection.humidityCorrection);
-        snap.cloudCoverPercent = cloudMetrics.cloudCoverPercent;
-
-        SkyQualityMetrics sqm = SkyQuality::calculate(snapshot.tsl.lux);
-        snap.skyQualityMagArcsec2 = sqm.sqm;
+        snap.cloudCoverPercent = snapshot.cloud.cloudCoverPercent;
+        snap.skyQualityMagArcsec2 = snapshot.sky.sqm;
         snap.skyBrightnessLux = snapshot.tsl.lux;
         snap.skyTemperatureC = snapshot.mlx.objectTemp;
         snap.temperatureC = snapshot.bme.temperature;
@@ -2272,7 +2259,7 @@ namespace SQM
         r.light.integrationMs = snapshot.tslDiagnostics.integrationMs;
         r.light.saturated = snapshot.tslDiagnostics.saturated;
         r.light.nightMode = snapshot.tslDiagnostics.nightMode;
-        const SkyQualityMetrics sky = SkyQuality::calculate(tsl.lux);
+        const SkyQualityMetrics &sky = snapshot.sky;
         r.sky.sqm = sky.sqm;
         r.sky.rawSqm = tsl.rawSqm;
         r.sky.nelm = sky.nelm;
@@ -2295,18 +2282,14 @@ namespace SQM
         r.infrared.skyTemperature = mlx.objectTemp;
         r.infrared.ambientTemperature = mlx.ambientTemp;
         // Without the BME280 the cloud model assumes 53% humidity, and says so.
-        const bool humidityMeasured = r.environment.status == Readings::Status::Ok;
-        const float humidity = humidityMeasured ? bme.humidity : 53.0f;
-        const CloudMetrics cloud = CloudDetection::calculate(mlx.objectTemp, mlx.ambientTemp, humidity,
-                                                             cfg.cloudDetection.clearSkyThreshold, cfg.cloudDetection.cloudyThreshold,
-                                                             cfg.cloudDetection.humidityCorrection);
+        const CloudMetrics &cloud = snapshot.cloud;
         r.clouds.coverPercent = cloud.cloudCoverPercent;
         r.clouds.condition = cloudConditionName(cloud.condition);
         r.clouds.description = cloud.description;
         r.clouds.temperatureDelta = cloud.temperatureDelta;
         r.clouds.correctedDelta = cloud.correctedDelta;
-        r.clouds.humidity = humidity;
-        r.clouds.humidityMeasured = humidityMeasured;
+        r.clouds.humidity = snapshot.cloudHumidity;
+        r.clouds.humidityMeasured = snapshot.humidityMeasured;
 
         r.gps.present = cfg.gps.enabled;
         if (r.gps.present)

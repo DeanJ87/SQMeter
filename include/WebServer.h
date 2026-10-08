@@ -8,6 +8,8 @@
 #include "sensors/RG15Sensor.h"
 #include "sensors/WindSensor.h"
 #include "calculations/SkyQuality.h"
+#include "calculations/CloudDetection.h"
+#include "calculations/Dewpoint.h"
 #include "TimeManager.h"
 #include "MQTTClient.h"
 #include "OtaUpdater.h"
@@ -106,6 +108,13 @@ namespace SQM
             WindReading wind;
             uint32_t dataTimestamp = 0;
             uint32_t capturedAt = 0;
+
+            // Derived once per reading so REST, MQTT, Alpaca and the safety
+            // verdict all see the same numbers.
+            SkyQualityMetrics sky;
+            CloudMetrics cloud;
+            bool humidityMeasured = false;                  // else the cloud model assumed:
+            float cloudHumidity = ASSUMED_HUMIDITY_PERCENT; // humidity it used
         };
 
         AsyncWebServer server;

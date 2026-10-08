@@ -1,6 +1,7 @@
 #pragma once
 
 #include "sensors/SensorBase.h"
+#include "RainLogic.h"
 #include <HardwareSerial.h>
 #include <memory>
 #include <optional>
@@ -191,6 +192,8 @@ namespace SQM
         void markCommunicationOk();
         uint32_t effectiveStaleTimeoutMs() const;
         void updateRainLatch(uint32_t now);
+        Rain::Latch currentLatch() const;
+        void applyLatch(const Rain::Latch &latch);
         void maybeRunScheduledTotalReset(uint32_t now);
         static const char *stateToString(RG15State state);
         bool start(bool probeImmediately);
