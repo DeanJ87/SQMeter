@@ -4,6 +4,60 @@ SQMeter can send push notifications itself - over Pushover, ntfy, a webhook, or 
 
 Configure everything in **Settings → Alerts**: turn on **Send alerts** (the master switch for every channel), pick your channels, **Save**, then use **Send test** next to each channel. With **Send alerts** off nothing is sent to any channel, though Bluetooth phone alarms still ring (see [Bluetooth](ble.md)).
 
+<!-- diagram: DIA-06
+sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceCore.cpp#runAlerts src/WebServer.cpp#WebServer::processAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
+blocking: false
+fingerprint: unconfirmed
+-->
+<figure class="diagram" markdown>
+
+```mermaid
+flowchart TB
+    accTitle: Why an alert does or doesn't arrive
+    accDescr: Each second the device compares every condition with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on, sent to every enabled channel, with each channel's result recorded.
+    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky"]) --> SILENT{"First minute after boot,<br/>or the event's rule switched off?"}
+    SILENT -->|yes| TRACKED["Tracked silently,<br/>never announced"]
+    SILENT -->|no| HELD{"Held back for now?<br/>safety while it's light or still settling,<br/>a fault not yet 30 s old,<br/>a sky change not yet 2 min old,<br/>the 5 min cooldown not over"}
+    HELD -->|yes| LATER["Checked again every second,<br/>sent later if it still differs"]
+    HELD -->|no| LEVEL{"Event level Off?"}
+    LEVEL -->|yes| DROPPED["Not sent"]
+    LEVEL -->|no| WORDING["Default or your own wording;<br/>events raised together become one notification"]
+    WORDING --> ON{"Alerts on?<br/>not switched off for not imaging"}
+    ON -->|no| NOTHING["Nothing sent, no phone rings"]
+    ON -->|yes| MASTER{"Send alerts on?"}
+    ON -->|"yes, level Wake me"| BLE["Paired phones ring over Bluetooth"]
+    MASTER -->|no| NOPUSH["No channel is used"]
+    MASTER -->|yes| MQTT["MQTT: published at once"]
+    MASTER -->|yes| HTTP["Pushover, ntfy, webhook:<br/>queued, sent in the background"]
+    HTTP --> CANSEND{"WiFi up, no firmware update<br/>and no other HTTPS request?"}
+    CANSEND -->|no| SKIPPED["Skipped, with the reason"]
+    CANSEND -->|yes| SENT["Sent, or Failed after one retry"]
+    MQTT --> RECENT["Recent alerts: each channel's result"]
+    SKIPPED --> RECENT
+    SENT --> RECENT
+```
+
+<figcaption>Why an alert does or doesn't arrive: every gate a change passes on its way to your channels.</figcaption>
+</figure>
+
+??? info "Diagram in words"
+
+    1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, each sensor, dew risk, the sky) with what you were last told, every second.
+    2. **Tracked silently, never announced**: changes in the first minute after boot, and changes while that event's rule is switched off.
+    3. **Held back for now, sent later if still true**:
+        - safe/unsafe while it's light (with "Safety alerts only when it's dark"), or while the verdict is still settling (no data yet, or waiting out the safe delay);
+        - a sensor fault or recovery not yet 30 seconds old;
+        - a sky change not yet 2 minutes old;
+        - within the 5-minute cooldown since that condition's last alert.
+    4. **Not sent**: an event whose level is Off.
+    5. The alert gets its default or custom wording; events raised in the same second become one notification.
+    6. **Alerts switched off** (not imaging): nothing is sent and no phone rings.
+    7. With alerts on:
+        - a **Wake me** alert rings paired phones over Bluetooth, even with **Send alerts** off;
+        - with **Send alerts** on, it goes to every enabled channel: MQTT at once; Pushover, ntfy and the webhook in the background.
+    8. A background send is **skipped** when WiFi is down, a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
+    9. Each channel's result appears under **Recent alerts**.
+
 ---
 
 ## Events

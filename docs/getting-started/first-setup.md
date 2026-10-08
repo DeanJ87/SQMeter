@@ -2,6 +2,52 @@
 
 SQMeter ships with no WiFi credentials. On first power-on it starts in **hotspot mode** — it broadcasts its own open WiFi network so you can configure it from any phone or laptop.
 
+<!-- diagram: DIA-07
+sources: src/WiFiManager.cpp#WiFiManager::begin src/WiFiManager.cpp#WiFiManager::startCaptivePortal src/WiFiManager.cpp#WiFiManager::updateCredentials lib/CaptiveDns/ src/WebServer.cpp#WebServer::pollWiFiConnect src/WebServer.cpp#WebServer::setupStaticRoutes src/main.cpp#loop
+blocking: false
+fingerprint: unconfirmed
+-->
+<figure class="diagram" markdown>
+
+```mermaid
+sequenceDiagram
+    accTitle: First setup
+    accDescr: The device opens the SQM-Setup hotspot and answers every name lookup with itself, so the phone's sign-in window opens the WiFi setup screen. After you pick a network, the device joins it while keeping the hotspot, saves it once joined, shows its new address and restarts on your network about 15 seconds later.
+    participant P as Phone or laptop
+    participant D as SQMeter
+    participant R as Your WiFi
+    Note over D: No saved network, or it isn't reachable within about 10 s
+    D->>D: Open the SQM-Setup hotspot, 192.168.4.1
+    P->>D: Join SQM-Setup
+    P->>D: Look up any name
+    D-->>P: Every name is 192.168.4.1
+    P->>D: Sign-in check, e.g. /hotspot-detect.html
+    D-->>P: Redirect to /wifi
+    Note over P: The sign-in window shows the WiFi setup screen
+    P->>D: Choose a network, enter its password
+    D->>R: Join, keeping the hotspot up
+    alt Joined within 10 s
+        D->>D: Save the network
+        D-->>P: Joined: sqmeter.local and its IP
+        D->>D: About 15 s later, restart on your network
+        P->>R: Rejoin your own network
+        P->>D: Open sqmeter.local or the IP
+    else Wrong password or no answer
+        D-->>P: Not joined, try again
+    end
+```
+
+<figcaption>First setup: from the SQM-Setup hotspot to the device on your own network.</figcaption>
+</figure>
+
+??? info "Diagram in words"
+
+    1. With no saved network, or when the saved one can't be reached within about 10 seconds, the device opens the open **SQM-Setup** hotspot at 192.168.4.1 (and keeps retrying the saved network in the background).
+    2. Your phone or laptop joins SQM-Setup. The device answers every name lookup with its own address, and redirects the system's sign-in checks (such as `/hotspot-detect.html`) to `/wifi`, so the sign-in window opens the WiFi setup screen.
+    3. You choose a network and enter its password. The device joins it while keeping the hotspot up.
+    4. **Joined within 10 seconds**: the device saves the network, the screen shows `sqmeter.local` and the IP, and about 15 seconds later the device restarts on your network and the hotspot goes. Rejoin your own network and open that address.
+    5. **Wrong password or no answer**: the screen says it didn't join, and you can try again.
+
 ---
 
 ## Step 1 — Power On
