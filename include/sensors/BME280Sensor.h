@@ -7,28 +7,7 @@
 namespace SQM
 {
 
-    struct BME280Reading : public SensorReading
-    {
-        float temperature; // Temperature in Celsius
-        float humidity;    // Relative humidity in %
-        float pressure;    // Atmospheric pressure in hPa
-        float dewpoint;    // Calculated dewpoint in Celsius
 
-        BME280Reading() : temperature(0.0f), humidity(0.0f), pressure(0.0f), dewpoint(0.0f)
-        {
-            timestamp = 0;
-            status = SensorStatus::NOT_INITIALIZED;
-        }
-
-        // Validate all readings are within reasonable bounds
-        bool isValid() const
-        {
-            return !isnan(temperature) && !isnan(humidity) && !isnan(pressure) && !isnan(dewpoint) &&
-                   temperature >= -40.0f && temperature <= 85.0f && // BME280 valid range
-                   humidity >= 0.0f && humidity <= 100.0f &&
-                   pressure >= 300.0f && pressure <= 1100.0f;
-        }
-    };
 
     class BME280Sensor : public SensorBase
     {

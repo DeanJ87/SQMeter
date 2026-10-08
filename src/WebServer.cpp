@@ -594,11 +594,13 @@ namespace SQM
                 String jsonStr;
                 serializeJson(json, jsonStr);
                 const Config &currentConfig = getConfigCallback();
-                auto configOpt = Config::fromJson(jsonStr.c_str(), &currentConfig);
+                std::string reason;
+                auto configOpt = Config::fromJson(jsonStr.c_str(), &currentConfig, &reason);
 
                 if (!configOpt)
                 {
-                    request->send(400, "application/json", createErrorJson("Invalid configuration").c_str());
+                    Logger::warn(TAG, "Config rejected: %s", reason.c_str());
+                    request->send(400, "application/json", createErrorJson(reason.empty() ? "Invalid configuration" : reason.c_str()).c_str());
                     return;
                 }
 

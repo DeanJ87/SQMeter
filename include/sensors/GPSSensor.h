@@ -8,23 +8,7 @@
 namespace SQM
 {
 
-    struct GPSReading : public SensorReading
-    {
-        bool hasFix;         // GPS lock acquired
-        uint32_t satellites; // Number of satellites in view
-        double latitude;     // Latitude in degrees
-        double longitude;    // Longitude in degrees
-        double altitude;     // Altitude in meters above sea level
-        uint32_t hdop;       // Horizontal Dilution of Precision (x100)
-        uint32_t age;        // Age of fix data in milliseconds
 
-        GPSReading() : hasFix(false), satellites(0), latitude(0.0), longitude(0.0),
-                       altitude(0.0), hdop(0), age(0)
-        {
-            timestamp = 0;
-            status = SensorStatus::NOT_INITIALIZED;
-        }
-    };
 
     class GPSSensor : public SensorBase
     {

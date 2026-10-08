@@ -7,11 +7,7 @@
 namespace SQM
 {
 
-    struct MLX90614Reading : public SensorReading
-    {
-        float objectTemp = 0.0f;  // Object temperature in Celsius
-        float ambientTemp = 0.0f; // Ambient temperature in Celsius
-    };
+
 
     class MLX90614Sensor : public SensorBase
     {

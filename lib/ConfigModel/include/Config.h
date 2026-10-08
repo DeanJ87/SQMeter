@@ -283,6 +283,7 @@ namespace SQM
         static constexpr const char *TAG = "Config";
         static constexpr size_t MAX_PERSISTED_JSON_BYTES = 5100;
 
+        // Persistence (src/ConfigStore.cpp, firmware only).
         // Loads the stored config into `out`. False (with `out` unspecified)
         // if nothing valid is stored.
         static bool load(Config &out);
@@ -292,10 +293,14 @@ namespace SQM
         std::string toJson(bool redactSecrets = false, bool includeAlerts = true) const;
         std::string alertsToJson(bool redactSecrets = false) const;
         bool validate(std::string *error = nullptr) const;
-        static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr);
+        // `error` (if given) gets the reason a config is rejected - the same
+        // message the web UI shows.
+        static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr,
+                                              std::string *error = nullptr);
         // Applies JSON on top of `cfg` in place and validates. On failure
         // `cfg` may be partially updated.
-        static bool applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders);
+        static bool applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders,
+                              std::string *error = nullptr);
     };
 
 } // namespace SQM
