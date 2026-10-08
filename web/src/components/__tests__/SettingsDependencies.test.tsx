@@ -57,6 +57,14 @@ const CASES: Case[] = [
   { id: 'D-29', tab: 'sensors', config: { skyCalibration: { ...mockConfig.skyCalibration, enabled: false } }, facts: { lightDetected: false }, note: 'TSL2591 not detected.', control: 'Apply SQM offset', control_state: 'locked' },
   { id: 'D-32', tab: 'device', config: { ota: { enabled: true, password: '' } }, note: 'Inactive - Set an upload password', control: 'Command-line uploads (ArduinoOTA)', control_state: 'unlocked' },
   { id: 'D-35', tab: 'time', config: { gps: { ...mockConfig.gps, enabled: true } }, facts: { gpsRunning: false, gpsFix: false }, note: 'Inactive - GPS starts after a restart', control: 'GPS receiver', control_state: 'unlocked', fixLabel: 'Restart' },
+  // Can't be switched on while what it needs is off or missing (FR-005).
+  { id: 'D-12', tab: 'alerts', config: { alpaca: { ...mockConfig.alpaca, enabled: false }, alerts: { ...alerts, armWithAlpaca: false } }, note: 'Alpaca is off.', control: 'On while N.I.N.A. is connected', control_state: 'locked' },
+  { id: 'D-14', tab: 'network', config: { mqtt: { ...mqttOn, publish: { ...mqttOn.publish, rain: false } }, rain: { ...mockConfig.rain, enabled: false } }, note: 'Rain sensor is off.', control: 'Rain', control_state: 'locked' },
+  { id: 'D-15', tab: 'safety', config: { rain: { ...mockConfig.rain, enabled: false }, alpaca: { ...mockConfig.alpaca, rainUnsafeEnabled: false } }, note: 'Rain sensor is off.', control: 'Unsafe while raining', control_state: 'locked' },
+  { id: 'D-16', tab: 'safety', config: { wind: { ...mockConfig.wind, enabled: false }, alpaca: { ...mockConfig.alpaca, windSpeedUnsafeEnabled: false } }, note: 'Anemometer is off.', control: 'Max wind speed', control_state: 'locked' },
+  { id: 'D-17', tab: 'safety', config: { alpaca: { ...mockConfig.alpaca, cloudCoverEnabled: false } }, facts: { infraredDetected: false }, note: 'MLX90614 not detected.', control: 'Max cloud cover', control_state: 'locked' },
+  { id: 'D-19', tab: 'safety', config: { alpaca: { ...mockConfig.alpaca, humidityMaxEnabled: false } }, facts: { environmentDetected: false }, note: 'BME280 not detected.', control: 'Max humidity', control_state: 'locked' },
+  { id: 'D-25', tab: 'time', config: { location: { set: false, latitude: 0, longitude: 0, showSunMoon: false } }, facts: { gpsFix: false }, note: 'Needs your location.', control: 'Sun & Moon card on the dashboard', control_state: 'locked' },
   { id: 'D-36', tab: 'network', config: { wifi: { ...mockConfig.wifi, mdns: true } }, facts: { wifiConnected: false }, note: 'Inactive - Not connected to WiFi', control: 'Advertise on the network (mDNS)', control_state: 'unlocked' },
 ];
 
@@ -93,6 +101,16 @@ describe('settings dependencies in Settings (FR-013b)', () => {
       if (c.fixTab) expect(await screen.findByRole('tab', { name: c.fixTab, selected: true })).toBeInTheDocument();
       else await waitFor(() => expect(restarted).toBe(true));
     }
+  });
+
+  it("D-05: an inactive event can't be tested (spec: test sends)", async () => {
+    mockDevice({ config: { rain: { ...mockConfig.rain, enabled: false }, alerts: { ...alerts, events: level('rain_started', 2) } } });
+    window.history.replaceState(null, '', '/settings?tab=alerts');
+    render(<Settings />);
+    const row = (await screen.findByLabelText('Rain starts: level')).closest('.event-row') as HTMLElement;
+    expect(within(row).getByRole('button', { name: 'Test' })).toBeDisabled();
+    const unsafe = screen.getByLabelText('It turns unsafe: level').closest('.event-row') as HTMLElement;
+    expect(within(unsafe).getByRole('button', { name: 'Test' })).not.toBeDisabled();
   });
 
   it('D-04: with alerts off the event levels are greyed out', async () => {

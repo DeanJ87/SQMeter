@@ -908,7 +908,7 @@ namespace SQM
         }
 
         const time_t currentTime = time(nullptr);
-        if (currentTime < 1700000000)
+        if (currentTime < 1704067200) // dep: D-24 - Core::CLOCK_VALID_EPOCH, "the device doesn't know the time yet"
         {
             return;
         }

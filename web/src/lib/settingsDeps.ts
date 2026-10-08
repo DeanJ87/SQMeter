@@ -184,7 +184,7 @@ export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
     ['D-35', 'ble-restart', fact('bluetoothRunning')],
     ['D-08', 'no-passkey', phoneAlarm],
     ['D-08', 'no-phones', facts ? facts.pairedPhones > 0 : null],
-  ]);
+  ], { neutral: true }); // muted: the default events at Wake me shouldn't warn on a standard build
   const skyNightOnly = a?.skyNightOnly ?? true;
   const safetyNightOnly = a?.safetyNightOnly ?? true;
   add('alerts.skyNightOnly', 'D-09', skyNightOnly, [alerting, ['D-09', 'location-unknown', locationKnown]]);

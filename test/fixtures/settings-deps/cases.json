@@ -21,7 +21,7 @@
       "expect": {
         "alerts.pushover.enabled": { "state": "off", "id": "D-03" },
         "alerts.events.unsafe.level": { "state": "inactive", "id": "D-04", "reason": "alerts-off" },
-        "alerts.wakePhones": { "state": "inactive", "id": "D-08", "reason": "ble-off" },
+        "alerts.wakePhones": { "state": "inactive", "id": "D-08", "reason": "ble-off", "neutral": true },
         "mqtt.publish.gps": { "state": "inactive", "id": "D-14", "reason": "mqtt-off", "neutral": true },
         "mqtt.publish.sky": null,
         "location.showSunMoon": { "state": "inactive", "id": "D-25", "reason": "location-unknown", "neutral": true },
@@ -104,30 +104,30 @@
       "name": "D-08 Wake me without the Bluetooth build",
       "config": { "alerts": { "enabled": true } },
       "facts": { "bluetoothBuild": false },
-      "expect": { "alerts.wakePhones": { "state": "inactive", "id": "D-08", "reason": "ble-build", "text": "Needs the Bluetooth firmware build" } }
+      "expect": { "alerts.wakePhones": { "state": "inactive", "id": "D-08", "reason": "ble-build", "text": "Needs the Bluetooth firmware build", "neutral": true } }
     },
     {
       "name": "D-08 Wake me: Bluetooth on but no passkey, then no phone",
       "config": { "alerts": { "enabled": true }, "ble": { "enabled": true } },
-      "expect": { "alerts.wakePhones": { "state": "inactive", "id": "D-08", "reason": "no-passkey" } }
+      "expect": { "alerts.wakePhones": { "state": "inactive", "id": "D-08", "reason": "no-passkey", "neutral": true } }
     },
     {
       "name": "D-08 Wake me: passkey set, no phone paired",
       "config": { "alerts": { "enabled": true }, "ble": { "enabled": true, "passkey": "123456" } },
       "facts": { "pairedPhones": 0 },
-      "expect": { "alerts.wakePhones": { "state": "inactive", "id": "D-08", "reason": "no-phones", "text": "No phone paired" } }
+      "expect": { "alerts.wakePhones": { "state": "inactive", "id": "D-08", "reason": "no-phones", "text": "No phone paired", "neutral": true } }
     },
     {
       "name": "D-08/D-35 Wake me: Bluetooth switched on but not started",
       "config": { "alerts": { "enabled": true }, "ble": { "enabled": true, "passkey": "123456" } },
       "facts": { "bluetoothRunning": false },
-      "expect": { "alerts.wakePhones": { "state": "inactive", "id": "D-35", "reason": "ble-restart", "fix": "restart" } }
+      "expect": { "alerts.wakePhones": { "state": "inactive", "id": "D-35", "reason": "ble-restart", "fix": "restart", "neutral": true } }
     },
     {
       "name": "D-08 phones ring; Wake-me events stay in effect with push alerts off",
       "config": { "alerts": { "enabled": false }, "ble": { "enabled": true, "passkey": "123456" } },
       "expect": {
-        "alerts.wakePhones": { "state": "active", "id": "D-08" },
+        "alerts.wakePhones": { "state": "active", "id": "D-08", "neutral": true },
         "alerts.events.rain_started.level": { "state": "inactive", "id": "D-05", "reason": "rain-off" },
         "alerts.events.sensor_fault.level": { "state": "active", "id": "D-04" },
         "alerts.events.unsafe.level": { "state": "inactive", "id": "D-04", "reason": "alerts-off" },

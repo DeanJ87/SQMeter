@@ -357,8 +357,8 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             ))}
           <ActionButton
             onClick={() => sendEventTest(key)}
-            disabled={off || event.level === 0 || testResult?.type === 'pending'}
-            title={event.level === 0 ? 'Off' : `Send a sample "${label}" alert at this level`}
+            disabled={off || event.level === 0 || entry.state === 'inactive' || testResult?.type === 'pending'}
+            title={event.level === 0 ? 'Off' : entry.state === 'inactive' ? entry.text : `Send a sample "${label}" alert at this level`}
           >
             Test
           </ActionButton>

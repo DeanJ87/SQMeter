@@ -78,3 +78,10 @@ description: "Tasks for spec 020: settings dependencies"
 ## Dependencies
 
 - Phase 2 blocks everything. US1 before US2/US3 (they test what US1 builds). US4 needs US1's markers. US5 is independent.
+
+## Phase 9: Convergence
+
+- [X] T037 Show "Phones won't ring" neutrally (D-08 `neutral`) so a fresh standard-build device - whose default rain and sensor-fault events are at Wake me - shows no inactive warning, in lib/SettingsDeps/catalogue.json, lib/SettingsDeps/src/SettingsDeps.cpp, web/src/lib/settingsDeps.ts and test/fixtures/settings-deps/cases.json per SC-005 (partial)
+- [X] T038 Don't offer "Test" on an inactive event row (reason shown instead) in web/src/components/settings/AlertsTab.tsx, with a UI test, per spec Edge Cases "Test sends" (partial)
+- [X] T039 Add the missing "can't be switched on" (locked) UI cases for D-12, D-14, D-15, D-16, D-17, D-19 and D-25 in web/src/components/__tests__/SettingsDependencies.test.tsx per FR-013 (partial)
+- [X] T040 Use the evaluator's clock threshold (2024-01-01, `Core::CLOCK_VALID_EPOCH`) for the RG-15 daily reset in src/sensors/RG15Sensor.cpp, so "the device doesn't know the time yet" (D-24) and the device agree, per FR-002 (contradicts)

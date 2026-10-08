@@ -140,7 +140,8 @@ namespace SQM
                    {"D-08", "ble-off", cfg.ble.enabled},
                    {"D-35", "ble-restart", f.bluetoothRunning},
                    {"D-08", "no-passkey", phoneAlarm},
-                   {"D-08", "no-phones", f.pairedPhones > 0}});
+                   {"D-08", "no-phones", f.pairedPhones > 0}},
+                  Unmet::None, true); // shown muted: the default events at Wake me shouldn't warn on a standard build
             b.add("alerts.skyNightOnly", "D-09", a.skyNightOnly, {alerting, {"D-09", "location-unknown", locationKnown}});
             b.add("alerts.safetyNightOnly", "D-10", a.safetyNightOnly, {alerting, {"D-10", "location-unknown", locationKnown}});
             b.add("alerts.nightSunAltitudeDeg", "D-11", a.skyNightOnly || a.safetyNightOnly, {alerting});

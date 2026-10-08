@@ -31,7 +31,7 @@
     { "id": "D-05", "class": "dependency", "kind": "setting", "settings": ["alerts.events.rain_started.level", "alerts.events.rain_stopped.level"], "dependsOn": "Rain sensor on", "reasons": ["rain-off"] },
     { "id": "D-06", "class": "dependency", "kind": "setting", "runtime": true, "settings": ["alerts.events.dew_risk.level"], "dependsOn": "BME280 detected", "reasons": ["environment-missing"] },
     { "id": "D-07", "class": "dependency", "kind": "setting", "runtime": true, "settings": ["alerts.events.clear_sky.level", "alerts.events.clouded_over.level"], "dependsOn": "MLX90614 detected", "reasons": ["infrared-missing"] },
-    { "id": "D-08", "class": "dependency", "kind": "setting", "settings": ["alerts.wakePhones"], "dependsOn": "Bluetooth build, Bluetooth on, passkey set, at least one paired phone (Wake me still escalates Pushover and ntfy)", "reasons": ["ble-build", "ble-off", "no-passkey", "no-phones"] },
+    { "id": "D-08", "class": "dependency", "kind": "setting", "neutral": true, "settings": ["alerts.wakePhones"], "dependsOn": "Bluetooth build, Bluetooth on, passkey set, at least one paired phone (Wake me still escalates Pushover and ntfy)", "reasons": ["ble-build", "ble-off", "no-passkey", "no-phones"] },
     { "id": "D-09", "class": "dependency", "kind": "setting", "settings": ["alerts.skyNightOnly"], "dependsOn": "Location set or GPS fix", "reasons": ["location-unknown"] },
     { "id": "D-10", "class": "dependency", "kind": "setting", "settings": ["alerts.safetyNightOnly"], "dependsOn": "Location set or GPS fix", "reasons": ["location-unknown"] },
     { "id": "D-11", "class": "dependency", "kind": "setting", "settings": ["alerts.nightSunAltitudeDeg"], "dependsOn": "Either night-only option on (off otherwise)", "reasons": [] },
