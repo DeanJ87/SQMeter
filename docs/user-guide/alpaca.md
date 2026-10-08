@@ -16,6 +16,9 @@ SQMeter can act as an ASCOM Alpaca **SafetyMonitor** and **ObservingConditions**
 
 Alpaca support is disabled by default. With it off, every Alpaca endpoint still responds (so tooling doesn't 404) but reports `connected: false` and a `NotConnected` error - it just isn't discoverable or usable until enabled.
 
+!!! note "Upgrading from an earlier firmware"
+    Device `UniqueID`s now include the board's MAC address (e.g. `sqmeter-a1b2c3d4e5f6-safetymonitor-0`) so two SQMeters on the same network never collide. If N.I.N.A. was already connected to a previous firmware, re-select both devices once after upgrading.
+
 ---
 
 ## Connecting from N.I.N.A.
@@ -32,6 +35,14 @@ Alpaca support is disabled by default. With it off, every Alpaca endpoint still 
 2. Click **Refresh**, select **SQMeter ObservingConditions**, **Connect**
 
 Both devices are served from the same device/port - connecting one doesn't require or block the other.
+
+### Alpaca page
+
+The web UI's **Alpaca** tab lists every advertised device with its device type, number, `UniqueID`, setup page, API base URL and live `DeviceState` (refreshed every 5 s), plus the host/port to use when adding the device manually. Use it to confirm what N.I.N.A. should see without leaving the browser.
+
+### Setup button
+
+The **Setup** (cog) button next to either device in N.I.N.A. opens `http://<device>/setup/v1/<devicetype>/0/setup`, which redirects to **Settings → ASCOM Alpaca** in the web UI. Thresholds and options changed there apply immediately.
 
 ### If discovery doesn't find the device
 

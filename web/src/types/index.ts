@@ -426,3 +426,24 @@ export interface GithubRelease {
   fsAssetUrl: string;
   fsAssetSize: number;
 }
+
+// ASCOM Alpaca response envelope (https://ascom-standards.org/api/)
+export interface AlpacaResponse<T> {
+  Value: T;
+  ClientTransactionID: number;
+  ServerTransactionID: number;
+  ErrorNumber: number;
+  ErrorMessage: string;
+}
+
+export interface AlpacaConfiguredDevice {
+  DeviceName: string;
+  DeviceType: string;
+  DeviceNumber: number;
+  UniqueID: string;
+}
+
+export interface AlpacaDeviceStateItem {
+  Name: string;
+  Value: number | boolean | string;
+}

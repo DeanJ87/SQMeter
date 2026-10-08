@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import Settings from './components/Settings';
 import System from './components/System';
 import Updates from './components/Updates';
+import Alpaca from './components/Alpaca';
 import NotFound from './components/NotFound';
 
 const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
@@ -27,6 +28,9 @@ const App: FunctionalComponent = () => (
   <Router history={hashHistory}>
     <Layout path="/">
       <Dashboard />
+    </Layout>
+    <Layout path="/alpaca">
+      <Alpaca />
     </Layout>
     <Layout path="/settings">
       <Settings />
