@@ -15,11 +15,13 @@ namespace SQM
                 return std::round(value * scale) / scale;
             }
 
-            JsonObject group(JsonObject root, const char *name, Status status, uint32_t ageMs, bool ageKnown = true)
+            // A sensor that has never answered (missing) has no reading to be
+            // old, so it gets no ageMs.
+            JsonObject group(JsonObject root, const char *name, Status status, uint32_t ageMs)
             {
                 JsonObject object = root.createNestedObject(name);
                 object["status"] = statusName(status);
-                if (ageKnown)
+                if (status != Status::Missing)
                     object["ageMs"] = ageMs;
                 return object;
             }

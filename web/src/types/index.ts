@@ -138,7 +138,7 @@ export interface LightDiagnostics {
 
 export interface SensorStatusEntry {
   status: SensorHealth;
-  ageMs: number;
+  ageMs?: number; // absent when missing
 }
 
 export interface SystemStatus {

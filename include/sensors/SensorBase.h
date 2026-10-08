@@ -18,8 +18,8 @@ namespace SQM
 
     struct SensorReading
     {
-        uint32_t timestamp;
-        SensorStatus status;
+        uint32_t timestamp = 0; // millis() of the reading; 0 = never read
+        SensorStatus status = SensorStatus::NOT_INITIALIZED;
 
         bool isValid() const { return status == SensorStatus::OK; }
     };

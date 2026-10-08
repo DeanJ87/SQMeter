@@ -103,6 +103,9 @@ void test_faulted_sensor_sends_status_not_zeros(void)
     TEST_ASSERT_EQUAL_STRING("missing", doc["clouds"]["status"]);
     TEST_ASSERT_FALSE(doc["clouds"].containsKey("coverPercent"));
     TEST_ASSERT_FALSE(doc["infrared"].containsKey("skyTemperature"));
+    // An error has an age; a sensor that never answered doesn't.
+    TEST_ASSERT_TRUE(doc["environment"].containsKey("ageMs"));
+    TEST_ASSERT_FALSE(doc["infrared"].containsKey("ageMs"));
 }
 
 void test_optional_hardware_only_when_present(void)

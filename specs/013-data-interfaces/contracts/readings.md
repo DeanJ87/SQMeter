@@ -32,7 +32,7 @@ Built by one serializer (`lib/Readings`). camelCase keys; each value under exact
 
 - `timestamp`: Unix seconds, always. `timeValid` is false (and `timestamp` 0) until the clock is set.
 - `status`: `ok` | `missing` (not detected / not responding) | `error` (read error, invalid data) | `stale`.
-  When `status` isn't `ok`, the group carries only `status` (and `ageMs` if known) — never zeros.
+  When `status` isn't `ok`, the group carries only `status` and, unless it's `missing` (never answered), `ageMs` — never zeros.
 - Presence: `light`, `sky`, `environment`, `infrared`, `clouds` always (built-in sensors). `gps` only
   when GPS is enabled, `rain` only when the rain sensor is enabled, `wind` only when the anemometer is.
   `sky` follows `light`'s status; `clouds` follows `infrared`'s.

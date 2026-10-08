@@ -1768,6 +1768,12 @@ namespace SQM
         if (!requireAuth(request))
             return;
 
+        if (!getConfigCallback().rain.enabled)
+        {
+            request->send(409, "application/json", createErrorJson("The rain sensor is switched off (Settings → Sensors → Rain sensor)").c_str());
+            return;
+        }
+
         const uint32_t startedAt = millis();
         const bool ok = rg15Sensor.testCommunication();
         const RG15Reading reading = rg15Sensor.copyReading();
@@ -2560,7 +2566,8 @@ namespace SQM
         {
             JsonObject sensor = sensors.createNestedObject(name);
             sensor["status"] = Readings::statusName(status);
-            sensor["ageMs"] = age;
+            if (status != Readings::Status::Missing) // never answered: no age
+                sensor["ageMs"] = age;
             return sensor;
         };
         sensorHealth("light", readings.light.status, readings.light.ageMs);
