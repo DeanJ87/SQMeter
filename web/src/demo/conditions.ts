@@ -3,7 +3,7 @@
 // code) derives cloud cover, SQM, dew point, the verdict and alerts from
 // them, exactly as on the roof.
 
-export type SensorId = 'light' | 'environment' | 'infrared' | 'rain' | 'wind';
+export type SensorId = 'light' | 'environment' | 'infrared' | 'rain' | 'wind' | 'gps';
 
 export interface Conditions {
   air: { temperature: number; humidity: number; pressure: number }; // BME280
@@ -59,7 +59,7 @@ export const DEFAULT_CONDITIONS: Conditions = {
   rain: { rate: 0, lensFault: false },
   wind: { speed: 3, gust: 5.9, direction: 240 },
   gps: { fix: true },
-  faults: { light: false, environment: false, infrared: false, rain: false, wind: false },
+  faults: { light: false, environment: false, infrared: false, rain: false, wind: false, gps: false },
   steady: false,
 };
 
@@ -126,7 +126,14 @@ const wobble = (nowMs: number, periodS: number, amplitude: number) => Math.sin((
 
 export interface InputContext {
   sunLux: number; // illuminance from the sun's position, for light mode 'sun'
-  gps: { enabled: boolean; latitude: number; longitude: number };
+  gps: { enabled: boolean; latitude: number; longitude: number; altitude: number };
+}
+
+function gpsInput(c: Conditions, context: InputContext) {
+  if (c.faults.gps) return { failed: true, fix: false };
+  if (!context.gps.enabled || !c.gps.fix) return { fix: false };
+  const { latitude, longitude, altitude } = context.gps;
+  return { fix: true, latitude, longitude, altitude, satellites: 9 };
 }
 
 /** The JSON the device core's tick() reads (tools/demo-core/bridge.cpp readSensors). */
@@ -150,7 +157,7 @@ export function toCoreInputs(c: Conditions, nowMs: number, context: InputContext
       pressure: clamp('air.pressure', c.air.pressure + w(3600, 2)),
     },
     infrared: { present: true, failed: c.faults.infrared, sky: clamp('ir.sky', c.ir.sky + w(120, 0.4)), ambient: clamp('ir.ambient', c.ir.ambient + w(900, 0.3)) },
-    gps: context.gps.enabled && c.gps.fix ? { fix: true, latitude: context.gps.latitude, longitude: context.gps.longitude, altitude: 42, satellites: 9 } : { fix: false },
+    gps: gpsInput(c, context),
     rain: { failed: c.faults.rain, rate: c.rain.rate, lensFault: c.rain.lensFault },
     wind: { failed: c.faults.wind, speed, gust, direction: (c.wind.direction + w(200, 25) + 360) % 360 },
   };

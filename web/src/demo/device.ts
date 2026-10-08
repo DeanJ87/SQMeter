@@ -14,8 +14,8 @@ import {
   type SensorId,
 } from './conditions';
 import { formatIsoWithOffset, localClock } from './posixTz';
-import { LOCATION_PRESETS, resolveTimePreset, type TimePresetId, type TimeResult } from './presets';
-import { shortcut, type ShortcutId, type ShortcutResult } from './shortcuts';
+import { DEFAULT_ELEVATION, LOCATION_PRESETS, presetAt, resolveTimePreset, type TimePresetId, type TimeResult } from './presets';
+import { shortcut, type ShortcutId, type ShortcutOptions, type ShortcutResult } from './shortcuts';
 import { simulatorLocation, sunLux } from './simulator';
 
 // The demo's emulated SQMeter: the firmware's own logic (device core,
@@ -186,7 +186,7 @@ class DemoDevice {
     const place = simulatorLocation(cfg.location);
     const inputs = toCoreInputs(this.inputs, this.demoMs, {
       sunLux: sunLux(this.now, place),
-      gps: { enabled: cfg.gps?.enabled ?? false, ...place },
+      gps: { enabled: cfg.gps?.enabled ?? false, ...place, altitude: presetAt(place)?.elevation ?? DEFAULT_ELEVATION },
     });
     const { time, date } = localClock(cfg.ntp?.timezone || 'UTC0', this.clockMs);
     this.core.tick(this.demoMs, Math.floor(this.clockMs / 1000), JSON.stringify(inputs), time, date);
@@ -315,8 +315,8 @@ class DemoDevice {
   }
 
   /** Works the shortcut out from the current settings and applies it (instantly, or ramped). */
-  applyShortcut(id: ShortcutId, rampMs = 0): ShortcutResult {
-    const result = shortcut(id, this.config(), this.inputs);
+  applyShortcut(id: ShortcutId, rampMs = 0, options: ShortcutOptions = {}): ShortcutResult {
+    const result = shortcut(id, this.config(), this.inputs, options);
     if (!result.ok) return result;
     const fields = Object.keys(result.changes) as NumericInput[];
     if (rampMs > 0) {

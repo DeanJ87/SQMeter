@@ -3,7 +3,8 @@ import { route } from 'preact-router';
 import { useState } from 'preact/hooks';
 import { Button, Note } from '../../components/ui';
 import { CLOUD_RAMP_MS, demoDevice } from '../device';
-import { SHORTCUTS, type ShortcutId, type ShortcutResult } from '../shortcuts';
+import { DARK_SKY_SQM, SHORTCUTS, type ShortcutId, type ShortcutResult } from '../shortcuts';
+import { DraftNumber } from './NumberField';
 
 // Shortcuts worked out from the device's current settings (spec 019 US3).
 // Everything they set shows in the readings afterwards (FR-011).
@@ -19,10 +20,11 @@ const RAMPS: { value: string; label: string }[] = [
 const Shortcuts: FunctionalComponent = () => {
   const [ramp, setRamp] = useState('auto');
   const [result, setResult] = useState<{ label: string; result: ShortcutResult } | null>(null);
+  const [sqm, setSqm] = useState(DARK_SKY_SQM);
 
   const apply = (id: ShortcutId, label: string, cloud?: boolean) => {
     const rampMs = ramp === 'auto' ? (cloud ? CLOUD_RAMP_MS : 0) : Number(ramp);
-    setResult({ label, result: demoDevice.applyShortcut(id, rampMs) });
+    setResult({ label, result: demoDevice.applyShortcut(id, rampMs, { sqm }) });
   };
 
   return (
@@ -34,6 +36,9 @@ const Shortcuts: FunctionalComponent = () => {
             {s.label}
           </Button>
         ))}
+      </div>
+      <div class="demo-grid">
+        <DraftNumber id="demo-dark-sky-sqm" label="Dark sky SQM" unit="mag/arcsec²" valueText={sqm.toFixed(2)} onCommit={setSqm} />
       </div>
       <div class="field">
         <label class="field-label" for="demo-ramp">

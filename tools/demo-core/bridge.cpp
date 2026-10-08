@@ -674,7 +674,14 @@ private:
         snapshot.gpsInitialized = bootConfig.gps.enabled;
         GPSReading &gps = snapshot.gps;
         JsonObjectConst g = in["gps"];
-        if (snapshot.gpsInitialized)
+        if (snapshot.gpsInitialized && (g["failed"] | false))
+        {
+            // No NMEA arriving: the driver reports a read error and the
+            // reading stops updating (src/sensors/GPSSensor.cpp).
+            gps.status = SensorStatus::READ_ERROR;
+            gps.hasFix = false;
+        }
+        else if (snapshot.gpsInitialized)
         {
             gps.status = SensorStatus::OK;
             gps.timestamp = now;

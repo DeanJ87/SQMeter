@@ -1,7 +1,8 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
+import { useState } from 'preact/hooks';
 import { Note } from '../../components/ui';
-import { differential, type SensorId } from '../conditions';
+import { differential, INPUTS, type SensorId } from '../conditions';
 import { demoDevice } from '../device';
 import { Check, DraftNumber, NumberField } from './NumberField';
 
@@ -23,8 +24,11 @@ const SwitchedOff: FunctionalComponent<{ name: string; tab: string }> = ({ name,
   <Note action={{ label: 'Settings', onClick: () => route(`/settings?tab=${tab}`) }}>The {name} is switched off in the device's settings.</Note>
 );
 
+const SKY = INPUTS['ir.sky'];
+
 const SkyGroup: FunctionalComponent = () => {
   const c = demoDevice.conditions;
+  const [clamped, setClamped] = useState(false);
   return (
     <Group title="Sky and light (MLX90614, TSL2591)" open>
       <div class="demo-grid">
@@ -35,7 +39,8 @@ const SkyGroup: FunctionalComponent = () => {
           label="Sky minus IR sensor"
           unit="°C"
           valueText={differential(c).toFixed(1)}
-          onCommit={(v) => demoDevice.setDifferential(v)}
+          hint={clamped ? `The sky temperature is limited to the sensor's range, ${SKY.min} to ${SKY.max} °C.` : undefined}
+          onCommit={(v) => setClamped(demoDevice.setDifferential(v))}
         />
         <NumberField field="light.lux" value={c.light.lux} onCommit={(v) => demoDevice.setInput('light.lux', v)} />
       </div>
@@ -97,6 +102,7 @@ const GpsGroup: FunctionalComponent = () => {
     <Group title="GPS">
       {off && <SwitchedOff name="GPS" tab="time" />}
       <Check label="GPS has a fix" checked={demoDevice.conditions.gps.fix} disabled={off} onChange={(on) => demoDevice.setGpsFix(on)} />
+      <NotResponding sensor="gps" name="GPS" disabled={off} />
       <p class="demo-hint">The GPS reports the device's location (Time and place, below).</p>
     </Group>
   );

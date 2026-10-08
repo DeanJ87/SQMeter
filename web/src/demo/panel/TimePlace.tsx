@@ -4,7 +4,7 @@ import { useState } from 'preact/hooks';
 import { Button, Note } from '../../components/ui';
 import { demoDevice } from '../device';
 import { formatOffset, fromLocal, toLocalParts, zoneName } from '../posixTz';
-import { LOCATION_PRESETS, TIME_PRESETS } from '../presets';
+import { LOCATION_PRESETS, presetAt, TIME_PRESETS } from '../presets';
 import { Check } from './NumberField';
 
 // The device's date, time and place (spec 019 US4): shown in the device's
@@ -26,7 +26,7 @@ const TimePlace: FunctionalComponent = () => {
     timeStyle: 'short',
   });
   const place = demoDevice.place;
-  const preset = LOCATION_PRESETS.find((p) => Math.abs(p.latitude - place.latitude) < 1e-3 && Math.abs(p.longitude - place.longitude) < 1e-3);
+  const preset = presetAt(place);
   const inputValue = `${local.year}-${pad(local.month)}-${pad(local.day)}T${pad(local.hours)}:${pad(local.minutes)}`;
 
   const setExact = (value: string) => {

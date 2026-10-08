@@ -16,6 +16,10 @@ export interface ShortcutConfig {
 
 export type ShortcutId = 'clear' | 'overcast' | 'cloudUnsafe' | 'rain' | 'rainStops' | 'darkSky' | 'dewRisk';
 
+export interface ShortcutOptions {
+  sqm?: number; // Dark sky target
+}
+
 export type ShortcutResult =
   | { ok: true; changes: Partial<Record<NumericInput, number>>; used: string; clamped?: string }
   | { ok: false; reason: string; link?: { label: string; route: string } };
@@ -77,7 +81,7 @@ function skyFor(config: ShortcutConfig, c: Conditions, corrected: number, why: s
   return result;
 }
 
-export function shortcut(id: ShortcutId, config: ShortcutConfig, c: Conditions): ShortcutResult {
+export function shortcut(id: ShortcutId, config: ShortcutConfig, c: Conditions, options: ShortcutOptions = {}): ShortcutResult {
   switch (id) {
     case 'clear': {
       if (c.faults.infrared) return notResponding('IR sensor');
@@ -107,10 +111,15 @@ export function shortcut(id: ShortcutId, config: ShortcutConfig, c: Conditions):
     }
     case 'darkSky': {
       if (c.faults.light) return notResponding('light sensor');
+      const sqm = options.sqm ?? DARK_SKY_SQM;
       const offset = config.skyCalibration?.enabled ? config.skyCalibration.sqmOffset ?? 0 : 0;
-      const lux = Math.pow(10, (12.6 - (DARK_SKY_SQM - offset)) / 2.5);
+      const wanted = Math.pow(10, (12.6 - (sqm - offset)) / 2.5);
+      const spec = INPUTS['light.lux'];
+      const lux = Math.min(spec.max, Math.max(spec.min, wanted));
       const calibrated = offset ? ` with your calibration offset of ${offset >= 0 ? '+' : ''}${fmt(offset, 2)}` : '';
-      return { ok: true, changes: { 'light.lux': lux }, used: `Illuminance ${lux.toPrecision(3)} lux: SQM ${fmt(DARK_SKY_SQM, 2)}${calibrated}.` };
+      const result: ShortcutResult = { ok: true, changes: { 'light.lux': lux }, used: `Illuminance ${lux.toPrecision(3)} lux: SQM ${fmt(sqm, 2)}${calibrated}.` };
+      if (lux !== wanted) result.clamped = `SQM ${fmt(sqm, 2)} needs ${wanted.toPrecision(3)} lux, outside the sensor's range; set to ${lux.toPrecision(3)} lux.`;
+      return result;
     }
     case 'dewRisk': {
       if (c.faults.environment) return notResponding('BME280');

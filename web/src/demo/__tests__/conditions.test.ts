@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { advanceRamps, DEFAULT_CONDITIONS, differential, toCoreInputs, withDifferential, withInput } from '../conditions';
 
-const context = { sunLux: 0.0003, gps: { enabled: false, latitude: 51.5, longitude: -0.1 } };
+const context = { sunLux: 0.0003, gps: { enabled: false, latitude: 51.5, longitude: -0.1, altitude: 42 } };
 
 describe('conditions', () => {
   it('changes only the input that was set', () => {
@@ -51,6 +51,13 @@ describe('conditions', () => {
     expect(inputs.light.lux).toBeCloseTo(0.0003);
     expect(inputs.light.nightMode).toBe(true);
     expect(inputs.gps).toEqual({ fix: false });
+  });
+
+  it('reports the GPS position and altitude, or a GPS that stopped answering', () => {
+    const on = { ...context, gps: { ...context.gps, enabled: true, altitude: 2396 } };
+    expect(toCoreInputs(DEFAULT_CONDITIONS, 0, on).gps).toMatchObject({ fix: true, latitude: 51.5, altitude: 2396 });
+    const silent = { ...DEFAULT_CONDITIONS, faults: { ...DEFAULT_CONDITIONS.faults, gps: true } };
+    expect(toCoreInputs(silent, 0, on).gps).toEqual({ failed: true, fix: false });
   });
 
   it('keeps natural variation small', () => {

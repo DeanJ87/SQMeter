@@ -126,6 +126,17 @@ test("Dawn in London; no dawn at the North Pole on 31 December (SC-006)", async 
   expect(Math.abs((await deviceClock(page)) - before)).toBeLessThan(5000);
 });
 
+test("a GPS that stops answering is a GPS fault (FR-001)", async ({ page }) => {
+  await openPanel(page);
+  await post(page, '{"gps":{"enabled":true}}');
+  await api(page, "/api/restart", { method: "POST" });
+  await page.waitForTimeout(6500);
+  expect((await json(page, "/api/sensors")).gps.fix).toBe(true);
+  await openGroup(page, "GPS");
+  await page.getByLabel("GPS not responding").check();
+  await expect.poll(async () => (await json(page, "/api/sensors")).gps.status, { timeout: 5000 }).not.toBe("ok");
+});
+
 test("a place saves its location and time zone, as Settings does (FR-014)", async ({ page }) => {
   await openPanel(page);
   await page.getByRole("button", { name: "Sydney" }).click();

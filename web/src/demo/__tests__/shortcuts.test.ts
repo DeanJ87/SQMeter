@@ -78,6 +78,8 @@ describe('other shortcuts', () => {
     expect(plain.ok && luxToSqm(plain.changes['light.lux'] as number)).toBeCloseTo(DARK_SKY_SQM);
     const calibrated = shortcut('darkSky', { ...defaults, skyCalibration: { enabled: true, sqmOffset: 0.4 } }, DEFAULT_CONDITIONS);
     expect(calibrated.ok && luxToSqm(calibrated.changes['light.lux'] as number) + 0.4).toBeCloseTo(DARK_SKY_SQM);
+    const chosen = shortcut('darkSky', defaults, DEFAULT_CONDITIONS, { sqm: 19 });
+    expect(chosen.ok && luxToSqm(chosen.changes['light.lux'] as number)).toBeCloseTo(19);
   });
 
   it('dew risk puts the dew point inside the margin', () => {
