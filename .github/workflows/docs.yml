@@ -74,7 +74,7 @@ jobs:
       # Every page and state of the device UI, at desktop and 320 px, against
       # web/tests/a11y/baseline.json (spec 022).
       - name: Accessibility checks (device UI)
-        run: npx playwright test tests/a11y.spec.ts
+        run: npx playwright test tests/a11y.spec.ts tests/a11y-announce.spec.ts
         working-directory: web
 
       - name: Build MkDocs site

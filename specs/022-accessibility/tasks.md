@@ -90,3 +90,8 @@
 ## Implementation strategy
 
 MVP = US1 + US2 + US4: measured, the core tasks usable, and enforced. Then US3, US5 and US6.
+
+## Phase 10: Convergence
+
+- [x] T034 [US2] Add a Playwright check that the live region stays silent on the dashboard while readings update, and receives exactly one announcement when the verdict changes (Rain scenario), in `web/tests/a11y-announce.spec.ts` (partial: SC-003 has only a unit test of the dedupe, not an end-to-end check)
+- [x] T035 [US2] Label the alerts flyout by its heading as T012 states, keeping the accessible name "Recent alerts" that the docs screenshots and tests use, in `web/src/components/AlertsBell.tsx` (contradicts: T012 — it currently uses `aria-label`)

@@ -137,10 +137,12 @@ const AlertsBell: FunctionalComponent = () => {
         {unread > 0 && <span class="alerts-bell-count">{unread > 9 ? '9+' : unread}</span>}
       </button>
       {open && (
-        <div class="alerts-flyout" role="dialog" aria-label="Recent alerts" ref={flyout} style={{ top: `${anchorBottom + 6}px` }}>
+        <div class="alerts-flyout" role="dialog" aria-labelledby="alerts-flyout-title" ref={flyout} style={{ top: `${anchorBottom + 6}px` }}>
           <div class="alerts-flyout-head">
-            <h2 tabIndex={-1} data-autofocus>
-              Alerts
+            <h2 id="alerts-flyout-title" tabIndex={-1} data-autofocus>
+              {/* Shown as "Alerts"; read as "Recent alerts". */}
+              <span class="sr-only">Recent alerts</span>
+              <span aria-hidden="true">Alerts</span>
             </h2>
             <Button variant="link" onClick={switchAlerts} title={armed ? 'Pause while you are not imaging' : undefined}>
               {armed ? 'Turn off' : 'Turn on'}

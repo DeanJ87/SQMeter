@@ -10,7 +10,7 @@ How the web UI, the demo and these docs stay at **WCAG 2.2 AA** ([spec 022](http
 ```bash
 cd web
 npm run build:demo
-npx playwright test tests/a11y.spec.ts          # every page × state × desktop and 320 px
+npx playwright test tests/a11y.spec.ts tests/a11y-announce.spec.ts   # every page × state × desktop and 320 px; live-region quiet
 
 # docs (from the repo root: mkdocs build --strict)
 npx playwright test -c playwright.docs.config.ts
