@@ -7,23 +7,23 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceCore.cpp#runAlerts src/WebServer.cpp#WebServer::processAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 03686090d18b238c
+fingerprint: ba3bba8faf3fb4d9
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: Why an alert does or doesn't arrive
-    accDescr: Each second the device compares every condition with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on, sent to every enabled channel, with each channel's result recorded.
-    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky"]) --> SILENT{"Ignored?"}
-    SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>first minute after boot, the event's rule off,<br/>or the sensor switched off"]
+    accDescr: Each second the device compares every condition with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on, sent to every enabled channel unless alerts are paused, with each channel's result recorded.
+    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky,<br/>the imaging app"]) --> SILENT{"Ignored?"}
+    SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>first minute after boot, the event's rule off,<br/>the sensor switched off, or no imaging app since boot"]
     SILENT -->|no| HELD{"Held back?"}
     HELD -->|yes| LATER["<b>Sent later if it still differs</b><br/>safety or sky changes while it's light,<br/>safety still settling,<br/>a fault not yet 30 s old,<br/>a sky change not yet 2 min old,<br/>within the 5 min cooldown"]
     HELD -->|no| LEVEL{"Event level Off?"}
     LEVEL -->|yes| DROPPED["Not sent"]
     LEVEL -->|no| WORDING["Default or your own wording;<br/>events raised together become one notification"]
-    WORDING --> ON{"Alerts on?"}
-    ON -->|"no: switched off, not imaging"| NOTHING["Nothing sent, no phone rings"]
+    WORDING --> ON{"Sending alerts?"}
+    ON -->|"no: paused, or waiting for an imaging app"| NOTHING["Nothing sent, no phone rings"]
     ON -->|yes| MASTER{"Send alerts on?"}
     ON -->|"yes, level Wake me"| BLE["Paired phones ring over Bluetooth"]
     MASTER -->|no| NOPUSH["No channel is used"]
@@ -42,8 +42,8 @@ flowchart TB
 
 ??? info "Diagram in words"
 
-    1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, each sensor, dew risk, the sky) with what you were last told, every second.
-    2. **Tracked silently, never announced**: changes in the first minute after boot, changes while that event's rule is switched off, and anything from a sensor that is switched off.
+    1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, each sensor, dew risk, the sky, whether the imaging app is still checking) with what you were last told, every second.
+    2. **Tracked silently, never announced**: changes in the first minute after boot (imaging-app events excepted), changes while that event's rule is switched off, anything from a sensor that is switched off, and imaging-app events for a device no app has used since boot.
     3. **Held back for now, sent later if still true**:
         - safe/unsafe while it's light (with "Safety alerts only when it's dark"), or while the verdict is still settling (no data yet, or waiting out the safe delay);
         - sky changes while it's light (with sky alerts limited to darkness): at nightfall a clear sky is announced once;
@@ -52,8 +52,8 @@ flowchart TB
         - within the 5-minute cooldown since that condition's last alert.
     4. **Not sent**: an event whose level is Off.
     5. The alert gets its default or custom wording; events raised in the same second become one notification.
-    6. **Alerts switched off** (not imaging): nothing is sent and no phone rings.
-    7. With alerts on:
+    6. **Alerts paused** (by you, Home Assistant or a script, or because the imaging app disconnected in "Only while an imaging app is connected"): nothing is sent and no phone rings.
+    7. While sending:
         - a **Wake me** alert rings paired phones over Bluetooth, even with **Send alerts** off;
         - with **Send alerts** on, it goes to every enabled channel: MQTT at once; Pushover, ntfy and the webhook in the background.
     8. A background send is **skipped** when WiFi is down, a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.

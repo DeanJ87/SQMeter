@@ -49,7 +49,7 @@ Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 <!-- diagram: DIA-09
 sources: src/WebServer.cpp#WebServer::publishMqttReadings src/WebServer.cpp#WebServer::publishMqttSafety src/WebServer.cpp#WebServer::publishArmedState src/WebServer.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: 6eca0e8ee66266ed
+fingerprint: 32b4c4e16e4a40cf
 -->
 <figure class="diagram" markdown>
 
@@ -63,7 +63,7 @@ flowchart LR
     D --> SAFETY["safety: verdict and reasons<br/>retained, with safe"]
     D --> AVAIL["availability: online or offline<br/>retained, last will"]
     D --> ALERTS["alerts<br/>not retained, one message per alert"]
-    D --> ARMED["alerts/armed: 1 or 0<br/>retained, on change and reconnect"]
+    D --> ARMED["alerts/armed: 1 sending, 0 paused<br/>retained, on change and reconnect"]
     D --> DIAG["diagnostics<br/>not retained, every interval, off by default"]
     D --> DISC["homeassistant/.../config<br/>retained, when discovery is on"]
 ```
@@ -79,10 +79,10 @@ flowchart LR
     - `safe` (`1`/`0`) and `safety` (the verdict with its reasons), retained, on every change and refreshed every minute;
     - `availability` - `online`, or `offline` as the last will, retained;
     - `alerts` - one message per alert, not retained (with the MQTT alert channel on);
-    - `alerts/armed` - `1`/`0`, retained, on change and on reconnect;
+    - `alerts/armed` - `1` sending / `0` paused, retained, on change and on reconnect;
     - `diagnostics` - not retained, every publish interval, only when switched on.
 
-    It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to switch alerts on or off.
+    It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to resume or pause alerts.
 
     With Home Assistant discovery on, it also publishes retained `config` topics under the discovery prefix (default `homeassistant`), and clears them when discovery is switched off or moved.
 

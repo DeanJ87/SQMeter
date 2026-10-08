@@ -26,7 +26,7 @@ Alpaca support is disabled by default. With it off, every Alpaca endpoint still 
 <!-- diagram: DIA-10
 sources: lib/AlpacaLogic/src/AlpacaDiscovery.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp src/WebServer.cpp#WebServer::setupAlpacaRoutes
 blocking: false
-fingerprint: 46c4937e5bf581c8
+fingerprint: bfb15d16e9aab108
 -->
 <figure class="diagram" markdown>
 
@@ -41,6 +41,7 @@ sequenceDiagram
     N->>S: GET /management/apiversions and /management/v1/configureddevices
     S-->>N: SafetyMonitor 0 and ObservingConditions 0
     N->>S: PUT connected = true
+    Note over S: Alerts resume (in "Only while an imaging app is connected")
     loop While connected
         N->>S: GET safetymonitor/0/issafe
         S-->>N: The reported verdict
@@ -50,6 +51,7 @@ sequenceDiagram
     N->>S: Setup button: GET /setup/v1/safetymonitor/0/setup
     S-->>N: Redirect to Settings, Safety
     N->>S: PUT connected = false
+    Note over S: Alerts pause (in that mode). Requests stopping without this: "imaging app stopped checking"
 ```
 
 <figcaption>N.I.N.A. and SQMeter over Alpaca: discovery, connecting, polling and the Setup button.</figcaption>
@@ -63,7 +65,8 @@ sequenceDiagram
     4. While connected, N.I.N.A. polls `safetymonitor/0/issafe` (the reported verdict, after the safe delay) and the ObservingConditions properties; a property whose sensor isn't reporting returns an error instead of a value.
     5. The Setup button opens `/setup/v1/<device>/0/setup`, which redirects to **Settings → Safety** in the web UI.
     6. Disconnecting sends `Connected=false`.
-    7. With Alpaca switched off, every endpoint still answers but reports not connected, and `IsSafe` returns false with a NotConnected error.
+    7. SQMeter notes every request: with **When to send** set to *Only while an imaging app is connected*, a connect resumes alerts and the last disconnect pauses them; if requests stop without a disconnect, the "imaging app stopped checking" alert fires (see [Alerts](alerts.md#the-imaging-app)).
+    8. With Alpaca switched off, every endpoint still answers but reports not connected, and `IsSafe` returns false with a NotConnected error.
 
 ### SafetyMonitor
 
@@ -120,7 +123,7 @@ Each threshold has its own enable/disable toggle - a disabled threshold never co
 <!-- diagram: DIA-02
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#evaluateSafety lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceCore.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: true
-fingerprint: b381debde3c387b1
+fingerprint: 32b5646c7f99dd59
 -->
 <figure class="diagram" markdown>
 

@@ -15,7 +15,7 @@ SQMeter is an open-source sky quality meter built on the ESP32. It measures ligh
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/sensors/ include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h include/OtaUpdater.h include/TimeManager.h
 blocking: false
-fingerprint: 6f946ae9aa1d324f
+fingerprint: b12210309b6f6e1f
 -->
 <figure class="diagram" markdown>
 
