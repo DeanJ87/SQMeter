@@ -14,7 +14,7 @@ const NotFound: FunctionalComponent = () => {
         </div>
 
         <div class="not-found-code">404</div>
-        <h1>Page not found</h1>
+        <h2 class="not-found-title">Page not found</h2>
         <p>
           The dashboard does not have a route for <span>{currentPath}</span>.
         </p>

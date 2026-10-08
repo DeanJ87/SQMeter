@@ -4,6 +4,8 @@ site_url: https://sqmeter.dev/
 repo_url: https://github.com/DeanJ87/SQMeter
 repo_name: DeanJ87/SQMeter
 edit_uri: edit/main/docs/
+# Every page's footer links the accessibility statement (spec 022 FR-016).
+copyright: '<a href="/accessibility/">Accessibility</a>'
 
 extra:
   social:
@@ -103,6 +105,8 @@ nav:
     - Adding Sensors: development/sensors.md
     - Contributing: development/contributing.md
     - Coding Standards: development/coding-standards.md
+    - Accessibility: development/accessibility.md
   - Reference:
     - Sky Quality Calculations: reference/sky-quality.md
     - Troubleshooting: reference/troubleshooting.md
+    - Accessibility: accessibility.md

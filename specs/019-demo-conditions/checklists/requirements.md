@@ -31,7 +31,17 @@
 
 ## Notes
 
-- Domain terms (SQM, Bortle, POSIX time zone rules, `?scenario=` links) are the product's own
-  vocabulary and existing public interfaces, not implementation choices.
-- Choices made without asking are recorded under Assumptions (cloud patchiness, wind scope, SQM
-  target semantics, bundled time zones, settling tolerances).
+- Revised 2026-10-08 after user feedback. The primary controls are now the raw sensor readings
+  (air, sky and IR ambient temperature, humidity, pressure, illuminance, rain rate, wind, GPS),
+  plus a linked sky-minus-ambient differential. Outcome labels became shortcuts computed from the
+  device's current settings, which state the settings they used and explain when a target is
+  unreachable. Re-validated: all items pass.
+- Domain terms are the product's own vocabulary and existing public interfaces, not implementation
+  choices:
+  - SQM, Bortle and dew point
+  - the sensor names BME280, MLX90614, TSL2591 and RG-15 (the hardware the device has)
+  - POSIX time zone rules
+  - `?scenario=` links
+- Choices made without asking are recorded under Assumptions: shortcut margins, default inputs,
+  natural variation and "hold steady", illuminance rather than raw counts, wind fault scope,
+  bundled time zones and layout.

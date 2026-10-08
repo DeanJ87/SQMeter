@@ -90,7 +90,10 @@ code {
   --line-soft: #142130;
   --text: #e7edf3;
   --muted: #8b9baa;
-  --dim: #566675;
+  --dim: #768798; /* faintest text: 4.7:1 on --panel-2 (WCAG 1.4.3) */
+  /* Edges of inputs, selects and toggles: 3:1 on every background (1.4.11).
+     --line stays for decorative card and section dividers. */
+  --control-edge: #55687a;
   --cyan: #55c7f2;
   --violet: #a78bfa;
   --green: #5ee0a0;
@@ -764,8 +767,10 @@ button {
   width: min(100%, 42rem);
 }
 
+/* The page's own title is an h2: the header's "SQMeter" is the one h1. */
 .panel-page > h1,
-.panel-page > div:first-child h1 {
+.panel-page > div:first-child h1,
+.page-title {
   margin: 0 0 0.15rem;
   color: var(--text);
   font-size: 1.25rem;
@@ -948,7 +953,8 @@ button {
   color: var(--cyan);
 }
 
-.not-found-card h1 {
+.not-found-card h1,
+.not-found-title {
   margin-top: 0.9rem;
   font-size: 1.35rem;
   line-height: 1.2;
@@ -1281,7 +1287,7 @@ button {
   width: 1rem;
   height: 1rem;
   margin-left: 0.35rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-edge);
   border-radius: 50%;
   color: var(--dim);
   font: 700 0.62rem/1 var(--font-ui);
@@ -1289,11 +1295,20 @@ button {
   vertical-align: middle;
 }
 
+/* The visible circle stays small; the target is 24 x 24 (WCAG 2.5.8). */
+.info-tip::after {
+  content: '';
+  position: absolute;
+  inset: calc((1rem - 24px) / 2);
+  min-width: 24px;
+  min-height: 24px;
+}
+
 .info-tip:hover,
-.info-tip:focus {
+.info-tip:focus-visible,
+.info-tip.is-open {
   border-color: var(--cyan);
   color: var(--cyan);
-  outline: none;
 }
 
 .info-tip-body {
@@ -1322,8 +1337,14 @@ button {
 }
 
 .info-tip:hover .info-tip-body,
-.info-tip:focus .info-tip-body {
+.info-tip:focus-visible .info-tip-body,
+.info-tip.is-open .info-tip-body {
   display: block;
+}
+
+/* Escape dismisses a tip until the pointer or focus leaves (WCAG 1.4.13). */
+.info-tip.is-dismissed .info-tip-body {
+  display: none;
 }
 
 .note {
@@ -1411,6 +1432,8 @@ button {
 }
 
 .toast-close {
+  min-width: 24px;
+  min-height: 24px;
   color: var(--dim);
   font-size: 1.1rem;
 }
@@ -1443,12 +1466,11 @@ button {
   width: 100%;
   min-height: 2.3rem;
   padding: 0.4rem 0.7rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-edge);
   border-radius: 0.45rem;
   background: var(--panel-3);
   color: var(--text);
   font: 0.86rem var(--font-ui);
-  outline: none;
 }
 
 .input:focus {
@@ -1476,13 +1498,23 @@ button {
   display: flex;
   align-items: center;
   min-height: 2.3rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-edge);
   border-radius: 0.45rem;
   background: var(--panel-3);
 }
 
 .input-group:focus-within {
   border-color: var(--cyan);
+}
+
+/* The group, not the bare input inside it, shows the focus ring. */
+.input-group:has(.input:focus-visible) {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.input-group .input:focus-visible {
+  outline: none;
 }
 
 .input-group.is-invalid {
@@ -1548,7 +1580,7 @@ input[type='file'].input::file-selector-button {
   width: 2.25rem;
   height: 1.25rem;
   margin: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-edge);
   border-radius: 999px;
   background: var(--line);
   cursor: pointer;
@@ -2270,22 +2302,183 @@ input[type='file'].input::file-selector-button {
   text-transform: uppercase;
 }
 
-.demo-scenarios {
+.demo-section {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.demo-section h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
 }
 
-.demo-clock {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.76rem;
+.demo-group {
+  border: 1px solid var(--line-soft);
+  border-radius: 0.6rem;
 }
 
-.demo-speed {
+.demo-group summary {
+  padding: 0.5rem 0.7rem;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.demo-group-body {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0 0.7rem 0.7rem;
+}
+
+.demo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.demo-check {
   display: flex;
   gap: 0.5rem;
   align-items: flex-start;
   color: var(--muted);
   font-size: 0.76rem;
+}
+
+.demo-clock,
+.demo-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.demo-readout {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.demo-readout-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.demo-readout-row span:first-child {
+  color: var(--muted);
+}
+
+.demo-waits {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--amber);
+  font-size: 0.76rem;
+}
+
+/* Phones: the open panel is a bottom sheet that scrolls inside itself, its
+   head (title and Close) always in reach. */
+@media (max-width: 560px) {
+  .demo-panel.is-open {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    align-items: stretch;
+    padding: 0 0.5rem max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .demo-panel.is-open .demo-panel-body {
+    width: auto;
+    max-height: 75vh;
+  }
+
+  .demo-panel.is-open .demo-panel-toggle {
+    align-self: flex-end;
+  }
+
+  .demo-panel-head {
+    position: sticky;
+    top: -1rem;
+    z-index: 1;
+    margin: -1rem -1rem 0;
+    padding: 0.75rem 1rem;
+    background: var(--panel);
+  }
+}
+
+/* --- Accessibility (spec 022) ---------------------------------------------- */
+
+/* One visible focus ring everywhere (WCAG 2.4.7, 2.4.11): cyan is ~9:1 on
+   every background. Components must not remove it without an equal one. */
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+/* Keep focused controls clear of the sticky save bar, toasts and the Demo
+   button (2.4.11). */
+html {
+  scroll-padding-top: 4.5rem;
+  scroll-padding-bottom: 6rem;
+}
+
+/* Text for screen readers only. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link: hidden until focused (2.4.1). */
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.45rem;
+  background: var(--cyan);
+  color: var(--bg);
+  font-weight: 650;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+main:focus {
+  outline: none;
+}
+
+/* Minimum target size (2.5.8). */
+.demo-panel-toggle,
+.note-action {
+  min-height: 24px;
+}
+
+/* Reduced motion (2.3.3): no movement; fades shorten to nothing. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
