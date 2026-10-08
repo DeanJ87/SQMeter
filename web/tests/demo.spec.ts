@@ -155,4 +155,25 @@ test.describe("demo scenarios follow the device", () => {
     const safety = JSON.parse((await api(page, "/api/safety")).body);
     expect(safety.reasons.join(" ").toLowerCase()).toContain("cloud");
   });
+
+  test("Dawn moves the device clock to just before sunrise", async ({ page }) => {
+    await openPanel(page);
+    await page.getByRole("button", { name: "Dawn" }).click();
+    await page.waitForTimeout(2500);
+    const sun = (await status(page)).sky.sunAltitudeDeg;
+    expect(sun).toBeGreaterThan(-13);
+    expect(sun).toBeLessThan(-10);
+  });
+
+  test("on a phone the Demo button leaves the Save button clear", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await ready(page, "#/settings?tab=device");
+    await page.locator("input").first().fill("Changed name");
+    const save = page.getByRole("button", { name: "Save" });
+    await expect(save).toBeVisible();
+    const a = (await save.boundingBox())!;
+    const b = (await page.locator(".demo-panel-toggle").boundingBox())!;
+    const overlap = a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+    expect(overlap).toBe(false);
+  });
 });

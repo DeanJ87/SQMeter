@@ -45,6 +45,29 @@ describe('Updates - GitHub check for updates', () => {
     expect(screen.getByText(/A newer release/)).toBeInTheDocument();
   });
 
+  it('marks the installed release and will not reinstall it', async () => {
+    vi.mocked(useWebSocket).mockReturnValue({
+      data: { firmware: { name: 'SQMeter', version: '0.1.4', buildDate: 'x', buildTime: 'y' } },
+      connected: true,
+      lastMessageAt: Date.now(),
+    });
+    render(<Updates />);
+    await waitFor(() => expect(screen.getByRole('option', { name: /v0\.1\.4.*installed/ })).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Installed' })).toBeDisabled();
+  });
+
+  it('warns before a downgrade', async () => {
+    vi.mocked(useWebSocket).mockReturnValue({
+      data: { firmware: { name: 'SQMeter', version: '0.2.0-beta.3', buildDate: 'x', buildTime: 'y' } },
+      connected: true,
+      lastMessageAt: Date.now(),
+    });
+    render(<Updates />);
+    await waitFor(() => expect(screen.getByRole('option', { name: /v0\.1\.4.*older/ })).toBeInTheDocument());
+    expect(screen.getByText(/older than the installed/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Downgrade to v0\.1\.4/ })).toBeEnabled();
+  });
+
   it('switches to the beta track and fetches beta releases', async () => {
     render(<Updates />);
 
