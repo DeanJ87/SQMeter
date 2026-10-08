@@ -1,0 +1,5 @@
+# Formatting-only commits, skipped by `git blame` (GitHub honours this file;
+# locally: git config blame.ignoreRevsFile .git-blame-ignore-revs)
+
+# style: format the whole codebase (spec 017, FR-016)
+510f024442f1b022e3b0287cf6bd334f16ce9c2d
