@@ -99,7 +99,7 @@
 
   Prove each failure mode from quickstart.md, then revert.
 - [x] T032 Render review: serve site/ on port 4185 and screenshot every diagram page at 1280 px and 400 px in headless Chromium. Check the palette, scroll containment and captions, and confirm there are no requests to third-party hosts (SC-005)
-- [ ] T033 Update PR #90: title, body crediting PR #30 and stating it supersedes it, and the research R6 findings
+- [x] T033 Update PR #90: title, body crediting PR #30 and stating it supersedes it, and the research R6 findings
 
 ## Dependencies
 
