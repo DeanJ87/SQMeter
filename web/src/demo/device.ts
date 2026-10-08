@@ -1,5 +1,5 @@
 import createSqmCore from './core/sqm-core.mjs';
-import { SCENARIOS, darkestTime, simulate, simulatorLocation, type Scenario, type ScenarioId } from './simulator';
+import { SCENARIOS, darkestTime, nextSunRising, simulate, simulatorLocation, type Scenario, type ScenarioId } from './simulator';
 
 // The demo's emulated SQMeter: the firmware's own logic (device core,
 // WebAssembly) fed by the sky simulator, ticking once a second like the
@@ -190,11 +190,13 @@ class DemoDevice {
 
   private beginScenario(id: ScenarioId) {
     this.scenario = { id, startedAtMs: this.demoMs };
-    if (id === 'night') {
-      // Night falls by moving the device's clock to tonight's darkest moment,
-      // so the sun, moon and darkness all agree with the sky.
-      const where = simulatorLocation({ location: this.config().location, gpsEnabled: false });
-      this.clockMs = darkestTime(this.now, where.latitude, where.longitude).getTime();
+    // Night and dawn move the device's clock, so the sun, moon, darkness
+    // and the sky readings all agree.
+    const where = simulatorLocation({ location: this.config().location, gpsEnabled: false });
+    if (id === 'night') this.clockMs = darkestTime(this.now, where.latitude, where.longitude).getTime();
+    if (id === 'dawn') {
+      const dawn = nextSunRising(this.now, where.latitude, where.longitude, -12);
+      if (dawn) this.clockMs = dawn.getTime();
     }
   }
 

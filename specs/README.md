@@ -37,4 +37,4 @@ each `tasks.md`, checked off, as the record.
 | [015](015-ipv6-dual-stack/spec.md) | IPv6 (dual stack) | Specified - next: `/speckit-plan` |
 | [016](016-demo-device-emulation/spec.md) | Demo that behaves like the device | Implemented (PR) |
 
-New features continue at 017 with `/speckit-specify`.
+New features continue at 019 with `/speckit-specify`.
