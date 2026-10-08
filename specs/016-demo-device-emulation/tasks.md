@@ -39,10 +39,10 @@ moved into `lib/`.
 
 - [X] T015 [US1] Write tools/demo-core/bridge.cpp: embind class EmulatedDevice per contracts/device-core.md (constructor, getConfig, applyConfig, restart, tick, readings, status, safety, alerts, clearAlerts, setArmed, armed, testAlert, alpaca, history, mqttMessages, discovery), using DeviceCore + Alpaca::Router with a DeviceCore-backed Backend; no I/O, time only from tick
 - [X] T016 [US1] Build the core (T001) and commit web/src/demo/core/sqm-core.mjs + sqm-core.wasm
-- [ ] T017 [US1] web/src/demo/device.ts: load the core, create the device, drive tick() every second from the browser clock and the simulator, expose typed wrappers
-- [ ] T018 [P] [US1] web/src/demo/simulator.ts: baseline sky inputs (lux from sun altitude via the core's sun position, IR temps, BME, wind) per data-model.md "Simulator inputs"; sensors absent when disabled in config
-- [ ] T019 [US1] web/src/demo/handlers.ts: MSW handlers for every endpoint in web/src/mocks/handlers.ts routed to the device (REST, /ws/sensors, /ws/status, /management/*, /api/v1/*); demo build (web/src/main.tsx) uses these instead of src/mocks/handlers.ts
-- [ ] T020 [US1] Direct URLs (contracts/demo-urls.md): copy index.html to 404.html in the demo build (web/vite.demo.config.ts); web/src/demo/ApiView.tsx renders `/api/...` and `/management/...` from device.alpaca()/REST with status; `/setup...` redirects to `#/settings?tab=safety`
+- [X] T017 [US1] web/src/demo/device.ts: load the core, create the device, drive tick() every second from the browser clock and the simulator, expose typed wrappers
+- [X] T018 [P] [US1] web/src/demo/simulator.ts: baseline sky inputs (lux from sun altitude via the core's sun position, IR temps, BME, wind) per data-model.md "Simulator inputs"; sensors absent when disabled in config
+- [X] T019 [US1] web/src/demo/handlers.ts: MSW handlers for every endpoint in web/src/mocks/handlers.ts routed to the device (REST, /ws/sensors, /ws/status, /management/*, /api/v1/*); demo build (web/src/main.tsx) uses these instead of src/mocks/handlers.ts
+- [X] T020 [US1] Direct URLs (contracts/demo-urls.md): copy index.html to 404.html in the demo build (web/vite.demo.config.ts); web/src/demo/ApiView.tsx renders `/api/...` and `/management/...` from device.alpaca()/REST with status; `/setup...` redirects to `#/settings?tab=safety`
 - [ ] T021 [P] [US1] Playwright web/tests/demo-links.spec.ts: visit every page and every in-app link incl. Alpaca links and direct API URLs; assert no host 404 page
 - [ ] T022 [P] [US1] Playwright web/tests/demo-consistency.spec.ts: safety on dashboard, Alpaca page and Alpaca live state agree (baseline and after rain)
 

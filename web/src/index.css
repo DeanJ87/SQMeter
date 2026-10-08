@@ -2208,3 +2208,24 @@ input[type="file"].input::file-selector-button {
   padding-left: 1.2rem;
   font-size: 1.05rem;
 }
+
+/* Demo: a device URL opened directly */
+.api-view {
+  max-width: 58rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.api-view pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 0.7rem;
+  background: var(--panel-3);
+  color: var(--text);
+  font: 0.8rem/1.5 var(--font-mono);
+}
+
+.api-view-head code {
+  font-family: var(--font-mono);
+}
