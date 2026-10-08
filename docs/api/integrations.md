@@ -4,6 +4,43 @@ SQMeter exposes device data through these integration paths. The legacy raw TCP 
 
 ## Supported integration paths
 
+<!-- diagram: DIA-15
+sources: include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h lib/AlpacaLogic/include/AlpacaRouter.h lib/Readings/include/
+blocking: false
+fingerprint: unconfirmed
+-->
+<figure class="diagram" markdown>
+
+```mermaid
+flowchart LR
+    accTitle: Integration paths
+    accDescr: One readings document and the safety verdict feed five paths. REST is pulled by scripts and Home Assistant; WebSocket pushes live to the dashboard and apps; MQTT publishes to a broker for Home Assistant, Grafana and indi-allsky; Alpaca is polled by N.I.N.A. and other clients; alerts are pushed to phones and services.
+    DATA["Readings document<br/>and safety verdict"]
+    DATA --> REST["REST API<br/>pull, any time"]
+    DATA --> WS["WebSocket<br/>push: readings 1 s, status 2 s"]
+    DATA --> MQTT["MQTT<br/>publish: state every interval,<br/>safe on change, alerts"]
+    DATA --> ALPACA["ASCOM Alpaca<br/>polled by the client"]
+    DATA --> ALERTS["Alerts<br/>pushed on events"]
+    REST --> SCRIPTS["Scripts, Home Assistant REST"]
+    WS --> UI["Dashboard and apps"]
+    MQTT --> HA["Home Assistant, Grafana,<br/>Node-RED, indi-allsky"]
+    ALPACA --> NINA["N.I.N.A. and other<br/>Alpaca clients"]
+    ALERTS --> PHONES["Pushover, ntfy, webhook,<br/>MQTT, Bluetooth phones"]
+```
+
+<figcaption>Integration paths: which way the data flows on each, and who typically uses it.</figcaption>
+</figure>
+
+??? info "Diagram in words"
+
+    The same readings document and safety verdict feed every path:
+
+    - **REST API**: pulled any time, by scripts and Home Assistant's REST integrations.
+    - **WebSocket**: pushed live, readings every second and status every 2 seconds, to the dashboard and apps.
+    - **MQTT**: published to your broker - the state every publish interval, the safe flag on every change, and alerts - for Home Assistant, Grafana, Node-RED or indi-allsky.
+    - **ASCOM Alpaca**: polled by N.I.N.A. and other Alpaca clients.
+    - **Alerts**: pushed when something happens, to Pushover, ntfy, a webhook, MQTT, or phones over Bluetooth.
+
 ### REST API
 
 Pull sensor data, status, and configuration over plain HTTP. See [REST API](rest.md) for full endpoint reference.
