@@ -35,10 +35,13 @@ export const resetAnnouncements = () => {
 // (the page loading isn't news).
 export const useAnnounceChange = <T>(value: T | undefined, message: (value: T) => string | null) => {
   const previous = useRef<T | undefined>(undefined);
+  // The latest wording, without re-running the effect on every render.
+  const wording = useRef(message);
+  wording.current = message;
   useEffect(() => {
     if (value === undefined) return;
     if (previous.current !== undefined && previous.current !== value) {
-      const text = message(value);
+      const text = wording.current(value);
       if (text) announce(text);
     }
     previous.current = value;
@@ -57,13 +60,14 @@ export const useDialogFocus = (open: boolean, container: RefObject<HTMLElement>,
   useEffect(() => {
     if (!open) return undefined;
     const box = container.current;
+    const opener = trigger.current;
     const target = box?.querySelector<HTMLElement>('[data-autofocus]') ?? box?.querySelector<HTMLElement>(FOCUSABLE) ?? box;
     target?.focus();
     return () => {
       const active = document.activeElement;
-      if (!active || active === document.body || box?.contains(active)) trigger.current?.focus();
+      if (!active || active === document.body || box?.contains(active)) opener?.focus();
     };
-  }, [open]);
+  }, [open, container, trigger]);
 };
 
 // --- Tabs (FR-013) ---------------------------------------------------------------

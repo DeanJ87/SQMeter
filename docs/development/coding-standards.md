@@ -163,6 +163,33 @@ Test files are exempt from LIMIT-01 (a `describe` block is long by nature) but n
 
 ---
 
+## Accessibility (A11Y)
+
+The web UI, the demo and the docs meet **WCAG 2.2 AA** (spec 022). These rules have their own checks rather than `check.py`:
+- **a11y CI**: the axe page checks in the *Deploy Docs & Demo* workflow (`web/tests/a11y*.spec.ts`).
+- **test**: a Vitest test.
+- **converge** / **manual**: review, and the release checklist in [Accessibility (development)](accessibility.md).
+
+| ID | Rule | Check |
+|---|---|---|
+| A11Y-01 | Text meets 4.5:1 (3:1 large); control edges, meaningful chart lines and focus indicators meet 3:1. Use the theme tokens: `--dim` is the faintest text colour, and `--control-edge` the edge of inputs. | a11y CI, test |
+| A11Y-02 | Every interactive element shows the global `:focus-visible` ring. Never `outline: none` without an equal replacement. Sticky or floating UI must not cover the focused element. | a11y CI (partly), manual |
+| A11Y-03 | Icon-only buttons and links have an accessible name (`ariaLabel`). Decorative SVG is `aria-hidden`. | a11y CI |
+| A11Y-04 | Form controls are labelled. Put inputs in a `Field`, which labels them and ties its error to them (`aria-describedby`, `aria-invalid`), or pass `ariaLabel`. | a11y CI |
+| A11Y-05 | Targets are at least 24 × 24 CSS px, or have equivalent spacing. | a11y CI (`target-size`), manual |
+| A11Y-06 | Keep the skip link, one `h1`, the landmarks (`header`, `nav`, `main`) and `lang`. | a11y CI |
+| A11Y-07 | Nothing appears only on hover. Use `InfoTip`: focusable, tappable, closes with Escape. | converge, manual |
+| A11Y-08 | Content reflows at 320 px with no sideways page scroll; tables and charts scroll in their own box. | a11y CI, manual |
+| A11Y-09 | Live data never announces itself. Only a verdict change, a new alert, and connection loss and recovery are announced, once, through `announce()` / `useAnnounceChange()`. Never put `aria-live` on an updating value. | a11y CI (`a11y-announce.spec.ts`), converge |
+| A11Y-10 | Status is never colour alone: each state has text, or an icon with a text equivalent. | converge, manual |
+| A11Y-11 | Charts and sparklines have a text alternative giving their meaning (`role="img"` with a label from `summariseSeries` or equivalent), and "no data yet" when empty. | a11y CI, converge |
+| A11Y-12 | Dialogs and flyouts move focus in when opened, close on Escape and return focus to their trigger (`useDialogFocus`). Modal dialogs also keep Tab inside. | test, manual |
+| A11Y-13 | Composite widgets follow the WAI-ARIA patterns: tabs (arrows, roving tabindex, labelled panel), switches (`role="switch"`), progress bars (`role="progressbar"` with a value). | test, converge |
+| A11Y-14 | Motion respects `prefers-reduced-motion`. New animation goes in CSS, which the reduced-motion block covers; JS scrolling uses `scrollBehavior()`. | converge, manual |
+| A11Y-15 | A new component comes with a test that finds it by role and accessible name, or its page is in `web/tests/a11y/inventory.ts`. | converge |
+
+---
+
 ## Exceptions (EXC)
 
 | ID | Rule | Check |
@@ -224,6 +251,12 @@ try { await saveConfig(cfg); } catch (error) { toast.error(`Settings weren't sav
 **ERR-04 - fail safe.** Bad: no cloud reading, so the cloud rule is skipped and the verdict says safe. Good: no cloud reading, so the verdict is unsafe with "Cloud sensor not responding".
 
 **LOG-02 - secrets.** Bad: `log("MQTT login %s:%s", user, password)`. Good: `log("MQTT login as %s", user)`.
+
+**A11Y-04 - labelled inputs.** Bad: `<label class="field-label">Port</label><input type="number" />`, where nothing ties the two. Good: `<Field label="Port" error={error('mqtt.port')}><NumberInput ... /></Field>`; the input is named "Port" and described by its error.
+
+**A11Y-09 - announcements.** Bad: `<div aria-live="polite">{sqm}</div>`, which reads every reading aloud. Good: `useAnnounceChange(safety.safe, (safe) => (safe ? 'Observatory safe' : 'Observatory unsafe'))`.
+
+**A11Y-12 - dialogs.** Bad: a flyout that opens with focus left on the button behind it. Good: `useDialogFocus(open, flyoutRef, buttonRef)`, plus Escape to close.
 
 **TEST-02 - a bug fix comes with a test.** Bad: fixing the release-list buffer size alone. Good: also adding a test with a release list longer than the old buffer, which fails without the fix.
 

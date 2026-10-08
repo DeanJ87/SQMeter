@@ -2,8 +2,7 @@
 
 How the web UI, the demo and these docs stay at **WCAG 2.2 AA** ([spec 022](https://github.com/DeanJ87/SQMeter/tree/main/specs/022-accessibility)). The public statement is [Accessibility](../accessibility.md).
 
-!!! note "Part of the coding standard"
-    These A11Y rules amend the project coding standard (spec 017). Until that standard's document lands, this page is where they live; afterwards they become its *Accessibility* section, with the same rule IDs.
+The rules every change must meet are the **A11Y** section of the [coding standard](coding-standards.md#accessibility-a11y). This page covers how they're checked, and the manual checklist.
 
 ## Checks
 
@@ -25,27 +24,7 @@ npx playwright test -c playwright.docs.config.ts
 
 ## Rules
 
-**Enforced by** says how each rule is checked: **CI** means the build fails, **Review** means a reviewer checks it in the PR, and **Manual** means the release checklist below.
-
-| ID | Rule | Enforced by |
-|---|---|---|
-| A11Y-01 | Text meets 4.5:1 (3:1 large); control edges, meaningful chart lines and focus indicators meet 3:1. Use the theme tokens; `--dim` is the faintest text colour and `--control-edge` the edge of inputs. | CI |
-| A11Y-02 | Every interactive element shows the global `:focus-visible` ring. Never `outline: none` without an equal replacement. Sticky or floating UI must not cover the focused element. | CI (partly) + Manual |
-| A11Y-03 | Icon-only buttons and links have an accessible name (`ariaLabel`). Decorative SVG is `aria-hidden`. | CI |
-| A11Y-04 | Form controls are labelled. Put inputs in a `Field`, which labels them and ties its error to them (`aria-describedby`, `aria-invalid`), or pass `ariaLabel`. | CI |
-| A11Y-05 | Targets are at least 24 × 24 CSS px, or have equivalent spacing. | Review + Manual |
-| A11Y-06 | Keep the skip link, one `h1`, the landmarks (`header`, `nav`, `main`) and `lang`. | CI |
-| A11Y-07 | Nothing appears only on hover. Use `InfoTip`: focusable, tappable, closes with Escape. | Review + Manual |
-| A11Y-08 | Content reflows at 320 px with no sideways page scroll; tables and charts scroll in their own box. | CI + Manual |
-| A11Y-09 | Live data never announces itself. Only a verdict change, a new alert, and connection loss and recovery are announced, once, through `announce()` / `useAnnounceChange()`. Never put `aria-live` on an updating value. | Review + Manual |
-| A11Y-10 | Status is never colour alone: each state has text, or an icon with a text equivalent. | Review + Manual |
-| A11Y-11 | Charts and sparklines have a text alternative giving their meaning (`role="img"` with a label from `summariseSeries` or equivalent), and "no data yet" when empty. | CI + Review |
-| A11Y-12 | Dialogs and flyouts move focus in when opened, close on Escape and return focus to their trigger (`useDialogFocus`). Modal dialogs also keep Tab inside. | Review + Manual |
-| A11Y-13 | Composite widgets follow the WAI-ARIA patterns: tabs (arrows, roving tabindex, labelled panel), switches (`role="switch"`), progress bars (`role="progressbar"` with a value). | CI (component tests) + Review |
-| A11Y-14 | Motion respects `prefers-reduced-motion`. New animation goes in CSS, which the reduced-motion block covers; JS scrolling uses `scrollBehavior()`. | Review + Manual |
-| A11Y-15 | A new component comes with a test that finds it by role and accessible name, or its page is in the inventory. | Review |
-
-The helpers are in `web/src/lib/a11y.ts`.
+See [Coding Standards → Accessibility (A11Y)](coding-standards.md#accessibility-a11y): A11Y-01 to A11Y-15, each marked with how it's checked. The helpers they refer to are in `web/src/lib/a11y.ts`.
 
 ## Manual checklist
 

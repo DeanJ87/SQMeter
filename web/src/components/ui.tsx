@@ -149,7 +149,7 @@ export const ProgressMeter: FunctionalComponent<{ value: number; label?: string;
   useEffect(() => {
     if (announceSteps && quarter > lastQuarter.current) announce(`${label} ${quarter * 25}%`);
     lastQuarter.current = quarter;
-  }, [quarter, announceSteps]);
+  }, [quarter, announceSteps, label]);
   return (
     <div class="progress-meter" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
       <div style={{ width: `${percent}%` }} />

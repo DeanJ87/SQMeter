@@ -81,8 +81,8 @@ Each family was proven on a scratch change, then reverted:
 | | JS gzip | CSS gzip | Total |
 |---|---|---|---|
 | Before | 66.20 kB | 6.81 kB | 73.01 kB |
-| After | 67.93 kB | 7.13 kB | 75.06 kB |
-| Change | +1.73 kB | +0.32 kB | **+2.05 kB** (budget +4 KB) ✔ |
+| After (merged with main, spec 017) | 67.97 kB | 7.13 kB | 75.10 kB |
+| Change | +1.77 kB | +0.32 kB | **+2.09 kB** (budget +4 KB) ✔ |
 
 No runtime dependency was added; `@axe-core/playwright` is dev-only.
 
