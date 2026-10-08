@@ -247,6 +247,12 @@ namespace SQM
         cfg.alerts.dewRisk = {0, "", "", ""};
         cfg.alerts.clearSky = {0, "", "", ""};
         cfg.alerts.cloudedOver = {0, "", "", ""};
+        cfg.alerts.clientLost = {3, "", "", ""};
+        cfg.alerts.clientBack = {1, "", "", ""};
+        cfg.alerts.clientDisconnected = {0, "", "", ""};
+        cfg.alerts.sendMode = AlertsConfig::SendMode::Any;
+        cfg.alerts.clientSilentSafetySeconds = 120;
+        cfg.alerts.clientSilentWeatherSeconds = 600;
         cfg.alerts.dewRiskMarginC = 2.0f;
         cfg.alerts.clearSkyCloudPercent = 20.0f;
         cfg.alerts.cloudedOverCloudPercent = 70.0f;
@@ -286,8 +292,13 @@ namespace SQM
 
     namespace
     {
+        constexpr size_t EVENT_COUNT = 12;
+        // Events from here on are the imaging-app events, persisted separately.
+        constexpr size_t FIRST_CLIENT_EVENT = 9;
+
         // JSON key for each configurable event, matching the alert event names.
-        std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, 9> eventSettings(const AlertsConfig &a)
+        template <typename Alerts, typename Setting>
+        std::array<std::pair<const char *, Setting *>, EVENT_COUNT> eventSettingsOf(Alerts &a)
         {
             return {{{"unsafe", &a.unsafe},
                      {"safe", &a.safe},
@@ -297,32 +308,121 @@ namespace SQM
                      {"sensor_recovered", &a.sensorRecovered},
                      {"dew_risk", &a.dewRisk},
                      {"clear_sky", &a.clearSky},
-                     {"clouded_over", &a.cloudedOver}}};
+                     {"clouded_over", &a.cloudedOver},
+                     {"client_lost", &a.clientLost},
+                     {"client_back", &a.clientBack},
+                     {"client_disconnected", &a.clientDisconnected}}};
+        }
+        std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, EVENT_COUNT> eventSettings(const AlertsConfig &a)
+        {
+            return eventSettingsOf<const AlertsConfig, const AlertsConfig::EventSetting>(a);
+        }
+        std::array<std::pair<const char *, AlertsConfig::EventSetting *>, EVENT_COUNT> eventSettings(AlertsConfig &a)
+        {
+            return eventSettingsOf<AlertsConfig, AlertsConfig::EventSetting>(a);
         }
 
-        void appendAlerts(JsonObject alerts, const AlertsConfig &a, bool redactSecrets)
+        const char *sendModeName(AlertsConfig::SendMode mode)
+        {
+            return mode == AlertsConfig::SendMode::WhileConnected ? "whileConnected" : "any";
+        }
+
+        void appendEvents(JsonObject alerts, const AlertsConfig &a, size_t first, size_t last)
+        {
+            JsonObject events = alerts.createNestedObject("events");
+            const auto settings = eventSettings(a);
+            for (size_t i = first; i < last; ++i)
+            {
+                JsonObject event = events.createNestedObject(settings[i].first);
+                event["level"] = settings[i].second->level;
+                event["sound"] = settings[i].second->sound.c_str();
+                event["title"] = settings[i].second->title.c_str();
+                event["message"] = settings[i].second->message.c_str();
+            }
+        }
+
+        // Applies an "events" object ({"rain_started": {"level": 4, ...}, ...}).
+        void applyEvents(JsonObject events, AlertsConfig &a)
+        {
+            for (const auto &entry : eventSettings(a))
+            {
+                JsonObject event = events[entry.first];
+                if (event.isNull())
+                    continue;
+                AlertsConfig::EventSetting &target = *entry.second;
+                if (event.containsKey("level"))
+                    target.level = event["level"] | target.level;
+                if (event.containsKey("sound"))
+                    target.sound = event["sound"] | "";
+                if (event.containsKey("title"))
+                    target.title = event["title"] | "";
+                if (event.containsKey("message"))
+                    target.message = event["message"] | "";
+            }
+        }
+
+        // "sendMode", or the older "armWithAlpaca" when there's no sendMode.
+        bool applySendMode(JsonObject obj, AlertsConfig &a, std::string *error)
+        {
+            if (obj.containsKey("sendMode"))
+            {
+                const std::string mode = obj["sendMode"] | "";
+                if (mode == "any")
+                    a.sendMode = AlertsConfig::SendMode::Any;
+                else if (mode == "whileConnected")
+                    a.sendMode = AlertsConfig::SendMode::WhileConnected;
+                else
+                    return setError(error, "Alerts: when to send must be any or whileConnected");
+            }
+            else if (obj.containsKey("armWithAlpaca"))
+            {
+                // Settings and scripts from before sendMode.
+                a.sendMode = (obj["armWithAlpaca"] | false) ? AlertsConfig::SendMode::WhileConnected : AlertsConfig::SendMode::Any;
+            }
+            return true;
+        }
+
+        void applyClientSilence(JsonObject obj, AlertsConfig &a)
+        {
+            if (obj.containsKey("clientSilentSafetySeconds"))
+                a.clientSilentSafetySeconds = obj["clientSilentSafetySeconds"] | 120U;
+            if (obj.containsKey("clientSilentWeatherSeconds"))
+                a.clientSilentWeatherSeconds = obj["clientSilentWeatherSeconds"] | 600U;
+        }
+
+        void appendAlerts(JsonObject alerts, const AlertsConfig &a, bool redactSecrets, Config::AlertsPart part)
         {
             auto secret = [redactSecrets](const std::string &value) -> const char *
             {
                 return redactSecrets && !value.empty() ? SECRET_MASK : value.c_str();
             };
 
-            alerts["enabled"] = a.enabled;
-            JsonObject events = alerts.createNestedObject("events");
-            for (const auto &entry : eventSettings(a))
+            if (part == Config::AlertsPart::Client)
             {
-                JsonObject event = events.createNestedObject(entry.first);
-                event["level"] = entry.second->level;
-                event["sound"] = entry.second->sound.c_str();
-                event["title"] = entry.second->title.c_str();
-                event["message"] = entry.second->message.c_str();
+                // sendMode is stored here too, so it adds nothing to the main
+                // part (which older firmware reads; it has armWithAlpaca).
+                alerts["sendMode"] = sendModeName(a.sendMode);
+                appendEvents(alerts, a, FIRST_CLIENT_EVENT, EVENT_COUNT);
+                alerts["clientSilentSafetySeconds"] = a.clientSilentSafetySeconds;
+                alerts["clientSilentWeatherSeconds"] = a.clientSilentWeatherSeconds;
+                return;
+            }
+
+            alerts["enabled"] = a.enabled;
+            appendEvents(alerts, a, 0, part == Config::AlertsPart::All ? EVENT_COUNT : FIRST_CLIENT_EVENT);
+            if (part == Config::AlertsPart::All)
+            {
+                alerts["sendMode"] = sendModeName(a.sendMode);
+                alerts["clientSilentSafetySeconds"] = a.clientSilentSafetySeconds;
+                alerts["clientSilentWeatherSeconds"] = a.clientSilentWeatherSeconds;
             }
             alerts["dewRiskMarginC"] = a.dewRiskMarginC;
             alerts["clearSkyCloudPercent"] = a.clearSkyCloudPercent;
             alerts["cloudedOverCloudPercent"] = a.cloudedOverCloudPercent;
             alerts["skyNightOnly"] = a.skyNightOnly;
             alerts["safetyNightOnly"] = a.safetyNightOnly;
-            alerts["armWithAlpaca"] = a.armWithAlpaca;
+            // Older firmware reads this instead of sendMode.
+            alerts["armWithAlpaca"] = a.sendMode == AlertsConfig::SendMode::WhileConnected;
             alerts["nightSunAltitudeDeg"] = a.nightSunAltitudeDeg;
             alerts["cooldownSeconds"] = a.cooldownSeconds;
 
@@ -349,10 +449,10 @@ namespace SQM
         }
     }
 
-    std::string Config::alertsToJson(bool redactSecrets) const
+    std::string Config::alertsToJson(bool redactSecrets, AlertsPart part) const
     {
-        DynamicJsonDocument doc(2048); // strings are referenced, not copied
-        appendAlerts(doc.to<JsonObject>(), alerts, redactSecrets);
+        DynamicJsonDocument doc(3072); // strings are referenced, not copied
+        appendAlerts(doc.to<JsonObject>(), alerts, redactSecrets, part);
         std::string json;
         serializeJson(doc, json);
         return json;
@@ -496,7 +596,7 @@ namespace SQM
         wind["vanePullupOhms"] = this->wind.vanePullupOhms;
 
         if (includeAlerts)
-            appendAlerts(doc.createNestedObject("alerts"), this->alerts, redactSecrets);
+            appendAlerts(doc.createNestedObject("alerts"), this->alerts, redactSecrets, AlertsPart::All);
 
         std::string output;
         serializeJson(doc, output);
@@ -786,8 +886,14 @@ namespace SQM
             if (entry.second->title.size() > AlertsConfig::MAX_TEMPLATE_TITLE || entry.second->message.size() > AlertsConfig::MAX_TEMPLATE_MESSAGE)
                 return setError(error, "Alerts: custom titles are up to 80 characters and messages up to 240");
         }
-        // NVS strings top out just under 4000 bytes.
-        if (alertsToJson(false).size() > 3900)
+        if (alerts.sendMode != AlertsConfig::SendMode::Any && alerts.sendMode != AlertsConfig::SendMode::WhileConnected)
+            return setError(error, "Alerts: when to send must be any or whileConnected");
+        for (uint32_t seconds : {alerts.clientSilentSafetySeconds, alerts.clientSilentWeatherSeconds})
+            if (seconds < AlertsConfig::MIN_CLIENT_SILENT_SECONDS || seconds > AlertsConfig::MAX_CLIENT_SILENT_SECONDS)
+                return setError(error, "Alerts: silence times must be between 30 and 3600 seconds");
+        // NVS strings top out just under 4000 bytes; each stored part has its own key.
+        if (alertsToJson(false, AlertsPart::Main).size() > MAX_ALERTS_JSON_BYTES ||
+            alertsToJson(false, AlertsPart::Client).size() > MAX_ALERTS_JSON_BYTES)
             return setError(error, "Alerts: the custom alert texts are too long in total - shorten some");
         if (alerts.pushoverEnabled && (alerts.pushoverUserKey.empty() || alerts.pushoverAppToken.empty()))
             return setError(error, "Alerts: Pushover needs both a user key and an application token");
@@ -1067,25 +1173,7 @@ namespace SQM
             JsonObject events = alertsObj["events"];
             if (!events.isNull())
             {
-                AlertsConfig::EventSetting *targets[] = {&a.unsafe, &a.safe, &a.rainStarted, &a.rainStopped, &a.sensorFault,
-                                                         &a.sensorRecovered, &a.dewRisk, &a.clearSky, &a.cloudedOver};
-                size_t i = 0;
-                for (const auto &entry : eventSettings(a))
-                {
-                    JsonObject event = events[entry.first];
-                    if (!event.isNull())
-                    {
-                        if (event.containsKey("level"))
-                            targets[i]->level = event["level"] | targets[i]->level;
-                        if (event.containsKey("sound"))
-                            targets[i]->sound = event["sound"] | "";
-                        if (event.containsKey("title"))
-                            targets[i]->title = event["title"] | "";
-                        if (event.containsKey("message"))
-                            targets[i]->message = event["message"] | "";
-                    }
-                    ++i;
-                }
+                applyEvents(events, a);
             }
             else
             {
@@ -1115,8 +1203,9 @@ namespace SQM
                 a.skyNightOnly = alertsObj["skyNightOnly"] | true;
             if (alertsObj.containsKey("safetyNightOnly"))
                 a.safetyNightOnly = alertsObj["safetyNightOnly"] | true;
-            if (alertsObj.containsKey("armWithAlpaca"))
-                a.armWithAlpaca = alertsObj["armWithAlpaca"] | false;
+            if (!applySendMode(alertsObj, a, errorOut))
+                return false;
+            applyClientSilence(alertsObj, a);
             if (alertsObj.containsKey("nightSunAltitudeDeg"))
                 a.nightSunAltitudeDeg = alertsObj["nightSunAltitudeDeg"] | -12.0f;
             if (alertsObj.containsKey("cooldownSeconds"))
@@ -1165,6 +1254,20 @@ namespace SQM
             if (!mqtt.isNull() && mqtt.containsKey("enabled"))
                 a.mqttEnabled = mqtt["enabled"] | false;
         }
+
+        // The imaging-app alert settings as stored under their own NVS key
+        // (ConfigStore splices them in as "alertsClient").
+        JsonObject alertsClientObj = doc["alertsClient"];
+        if (!alertsClientObj.isNull())
+        {
+            JsonObject events = alertsClientObj["events"];
+            if (!events.isNull())
+                applyEvents(events, cfg.alerts);
+            if (!applySendMode(alertsClientObj, cfg.alerts, errorOut))
+                return false;
+            applyClientSilence(alertsClientObj, cfg.alerts);
+        }
+        cfg.alerts.armWithAlpaca = cfg.alerts.sendMode == AlertsConfig::SendMode::WhileConnected;
 
         JsonObject locationObj = doc["location"];
         if (!locationObj.isNull())

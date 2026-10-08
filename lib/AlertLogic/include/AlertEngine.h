@@ -24,8 +24,13 @@ namespace SQM
             ClearSky,
             CloudedOver,
             Acknowledged, // someone acknowledged a phone alarm
-            AlertsOn,     // alerts switched back on, with the current verdict
+            AlertsOn,     // alerts resumed, with the current verdict
             Test,
+            // The imaging app (any Alpaca client) stopped checking a device,
+            // came back, or disconnected normally (specs/021).
+            ClientLost,
+            ClientBack,
+            ClientDisconnected,
         };
 
         // How loudly an alert is delivered; set per event in the alert
@@ -92,10 +97,28 @@ namespace SQM
             uint32_t sensorSettleSeconds = 30;
             // Nothing is sent this soon after boot; state is still tracked,
             // so a reboot doesn't announce whatever the startup state is.
+            // Imaging-app events don't wait for it: they need a request
+            // since the restart anyway.
             uint32_t startupGraceSeconds = 60;
+            bool onClientLost = true;
+            bool onClientBack = true;
+            bool onClientDisconnected = false;
         };
 
         constexpr size_t SENSOR_COUNT = 5;
+        constexpr size_t CLIENT_DEVICE_COUNT = 2; // SafetyMonitor, ObservingConditions
+
+        // One Alpaca device as the imaging app sees it (from Alpaca::ClientWatch).
+        struct ClientInputs
+        {
+            const char *device = "";     // "safety monitor" / "weather device"
+            bool watching = false;       // a session since the restart
+            bool silent = false;         // no request for the silence time
+            bool disconnectedNow = false; // disconnected cleanly since the last pass
+            std::string silentFor;       // the silence time, e.g. "2 min"
+            std::string lastChecked;     // "21:04", or "3 min ago" without a clock
+            std::string clientId;        // last Alpaca ClientID, or ""
+        };
 
         struct SensorHealth
         {
@@ -135,6 +158,8 @@ namespace SQM
             // a location, in which case night-only rules don't hold alerts back.
             bool nightKnown = false;
             bool isNight = false;
+
+            ClientInputs clients[CLIENT_DEVICE_COUNT];
         };
 
         // Edge-triggered, rate-limited event detection. Each condition is a
@@ -183,6 +208,15 @@ namespace SQM
             // Observed (hysteresis) state for threshold conditions.
             bool dewObserved = false;
             bool skyClear = false;
+
+            // Imaging app: notified value = "lost"; disconnects wait out the
+            // cooldown like any other change.
+            Tracker clients[CLIENT_DEVICE_COUNT];
+            bool disconnectPending[CLIENT_DEVICE_COUNT] = {};
+            bool disconnectSent = false;
+            uint32_t disconnectSentAt = 0;
+
+            void updateClients(const AlertInputs &inputs, const AlertRules &rules, std::vector<Alert> &alerts);
         };
 
         // Formatting helpers shared with the dispatcher's test alerts.

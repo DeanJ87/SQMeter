@@ -13,6 +13,8 @@
 #include <vector>
 
 #include "AlertEngine.h"
+#include "AlertSchedule.h"
+#include "ClientWatch.h"
 #include "Config.h"
 #include "ObservingConditionsMapper.h"
 #include "Readings.h"
@@ -117,6 +119,22 @@ namespace SQM
                                                                    const std::string &localTime, const std::string &localDate);
         void applyAlertTemplate(Alerts::Alert &alert, const AlertsConfig::EventSetting &setting,
                                 const std::vector<std::pair<std::string, std::string>> &vars);
+
+        // The imaging app (specs/021): silence time per Alpaca device, the
+        // client state as alert inputs, and the documents that report it.
+        void clientSilenceMs(const Config &cfg, uint32_t (&out)[Alpaca::DEVICE_COUNT]);
+        // `localTime` is "HH:MM" when the clock is set (else anything else).
+        void addClientInputs(Alerts::AlertInputs &inputs, const Alpaca::ClientWatch &watch, const Config &cfg, uint32_t nowMs,
+                             const std::string &localTime);
+        // /api/status "alpaca": {enabled, clients: {safetymonitor, observingconditions}}.
+        void writeClientWatch(JsonObject alpaca, const Alpaca::ClientWatch &watch, const Config &cfg, uint32_t nowMs);
+        // "2 min", "45 s", "1 h 5 min".
+        std::string formatDuration(uint32_t seconds);
+
+        // When alerts go out: the setting, and the /api/alerts/armed document
+        // (also /api/status "alerts").
+        Alerts::SendMode sendMode(const Config &cfg);
+        void writeAlertSchedule(JsonObject target, const Alerts::ScheduleState &state, const Config &cfg, uint32_t nowMs);
 
         // One alert pass: the engine's raw alerts given their configured
         // level, sound and wording; Off events dropped.

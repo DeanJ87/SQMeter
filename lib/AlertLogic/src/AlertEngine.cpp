@@ -109,6 +109,12 @@ namespace SQM
                 return "alerts_on";
             case AlertType::Test:
                 return "test";
+            case AlertType::ClientLost:
+                return "client_lost";
+            case AlertType::ClientBack:
+                return "client_back";
+            case AlertType::ClientDisconnected:
+                return "client_disconnected";
             }
             return "unknown";
         }
@@ -360,7 +366,53 @@ namespace SQM
                 }
             }
 
+            updateClients(in, rules, alerts);
             return alerts;
+        }
+
+        void AlertEngine::updateClients(const AlertInputs &in, const AlertRules &rules, std::vector<Alert> &alerts)
+        {
+            const uint32_t now = in.nowSeconds;
+            const uint32_t cooldown = rules.cooldownSeconds;
+            for (size_t i = 0; i < CLIENT_DEVICE_COUNT; ++i)
+            {
+                const ClientInputs &client = in.clients[i];
+                const std::string device = client.device;
+                auto withVars = [&client, &device](Alert alert)
+                {
+                    // {device} is the Alpaca device here; it overrides the
+                    // device name, as an event's own values do.
+                    alert.vars = {{"device", device}, {"silent_for", client.silentFor}, {"last_checked", client.lastChecked}, {"client_id", client.clientId}};
+                    return alert;
+                };
+
+                if (client.disconnectedNow)
+                {
+                    // A normal end of session: no "stopped checking", and no
+                    // "is back" for the request that disconnected.
+                    clients[i].initialized = true;
+                    clients[i].notified = false;
+                    clients[i].pending = false;
+                    disconnectPending[i] = rules.onClientDisconnected;
+                }
+                else if (sync(clients[i], client.silent, now, cooldown, client.watching && (rules.onClientLost || rules.onClientBack)))
+                {
+                    if (client.silent && rules.onClientLost)
+                        alerts.push_back(withVars(make(AlertType::ClientLost, "Imaging app stopped checking",
+                                                       "No request to the " + device + " for " + client.silentFor + " - last checked " +
+                                                           client.lastChecked + ".")));
+                    else if (!client.silent && rules.onClientBack)
+                        alerts.push_back(withVars(make(AlertType::ClientBack, "Imaging app is back", "The " + device + " is being checked again.")));
+                }
+
+                if (disconnectPending[i] && (!disconnectSent || now - disconnectSentAt >= cooldown))
+                {
+                    disconnectPending[i] = false;
+                    disconnectSent = true;
+                    disconnectSentAt = now;
+                    alerts.push_back(withVars(make(AlertType::ClientDisconnected, "Imaging app disconnected", "The " + device + " was disconnected.")));
+                }
+            }
         }
 
     } // namespace Alerts

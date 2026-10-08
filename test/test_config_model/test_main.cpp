@@ -2,6 +2,8 @@
 
 #include <ArduinoJson.h>
 
+#include <cstring>
+
 #include "Config.h"
 
 using namespace SQM;
@@ -88,6 +90,98 @@ void test_mqtt_interval_and_hostname_boundaries()
     TEST_ASSERT_TRUE(rejectReason("{\"wifi\":{\"hostname\":\"a-33-character-hostname-ok-123456\"}}").size() > 0);
 }
 
+// --- When to send and the imaging-app events (specs/021) ---
+
+void test_alert_schedule_defaults()
+{
+    const Config cfg = Config::createDefault();
+    TEST_ASSERT_TRUE(cfg.alerts.sendMode == AlertsConfig::SendMode::Any);
+    TEST_ASSERT_EQUAL_UINT32(120, cfg.alerts.clientSilentSafetySeconds);
+    TEST_ASSERT_EQUAL_UINT32(600, cfg.alerts.clientSilentWeatherSeconds);
+    TEST_ASSERT_EQUAL_UINT8(3, cfg.alerts.clientLost.level);
+    TEST_ASSERT_EQUAL_UINT8(1, cfg.alerts.clientBack.level);
+    TEST_ASSERT_EQUAL_UINT8(0, cfg.alerts.clientDisconnected.level);
+    DynamicJsonDocument doc(8192);
+    deserializeJson(doc, cfg.toJson());
+    TEST_ASSERT_EQUAL_STRING("any", doc["alerts"]["sendMode"]);
+    TEST_ASSERT_FALSE(doc["alerts"]["armWithAlpaca"].as<bool>());
+    TEST_ASSERT_EQUAL(3, doc["alerts"]["events"]["client_lost"]["level"].as<int>());
+}
+
+void test_arm_with_alpaca_migrates_and_is_still_written()
+{
+    const Config base = Config::createDefault();
+    auto cfg = Config::fromJson("{\"alerts\":{\"armWithAlpaca\":true}}", &base);
+    TEST_ASSERT_TRUE(cfg.has_value());
+    TEST_ASSERT_TRUE(cfg->alerts.sendMode == AlertsConfig::SendMode::WhileConnected);
+    TEST_ASSERT_TRUE(cfg->alerts.armWithAlpaca);
+    cfg = Config::fromJson("{\"alerts\":{\"armWithAlpaca\":false}}", &*cfg);
+    TEST_ASSERT_TRUE(cfg->alerts.sendMode == AlertsConfig::SendMode::Any);
+
+    // sendMode wins over a stale armWithAlpaca (the new UI sends both).
+    cfg = Config::fromJson("{\"alerts\":{\"sendMode\":\"whileConnected\",\"armWithAlpaca\":false}}", &base);
+    TEST_ASSERT_TRUE(cfg->alerts.sendMode == AlertsConfig::SendMode::WhileConnected);
+    // Older firmware reads armWithAlpaca from the main stored part.
+    DynamicJsonDocument main(8192);
+    deserializeJson(main, cfg->alertsToJson(false, Config::AlertsPart::Main));
+    TEST_ASSERT_TRUE(main["armWithAlpaca"].as<bool>());
+    TEST_ASSERT_TRUE(main["sendMode"].isNull());
+    TEST_ASSERT_TRUE(main["events"]["client_lost"].isNull());
+
+    TEST_ASSERT_EQUAL_STRING("Alerts: when to send must be any or whileConnected",
+                             rejectReason("{\"alerts\":{\"sendMode\":\"sometimes\"}}").c_str());
+}
+
+void test_client_silence_boundaries()
+{
+    TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"alerts\":{\"clientSilentSafetySeconds\":30,\"clientSilentWeatherSeconds\":3600}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Alerts: silence times must be between 30 and 3600 seconds",
+                             rejectReason("{\"alerts\":{\"clientSilentSafetySeconds\":29}}").c_str());
+    TEST_ASSERT_TRUE(rejectReason("{\"alerts\":{\"clientSilentWeatherSeconds\":3601}}").size() > 0);
+}
+
+void test_stored_parts_round_trip()
+{
+    Config cfg = Config::createDefault();
+    cfg.alerts.sendMode = AlertsConfig::SendMode::WhileConnected;
+    cfg.alerts.clientSilentSafetySeconds = 90;
+    cfg.alerts.clientLost = {4, "siren", "Lost {device}", "Gone for {silent_for}"};
+    // As ConfigStore loads them: the main document with both parts spliced in.
+    const std::string stored = std::string("{\"alerts\":") + cfg.alertsToJson(false, Config::AlertsPart::Main) +
+                               ",\"alertsClient\":" + cfg.alertsToJson(false, Config::AlertsPart::Client) + "}";
+    const auto loaded = Config::fromJson(stored);
+    TEST_ASSERT_TRUE(loaded.has_value());
+    TEST_ASSERT_TRUE(loaded->alerts.sendMode == AlertsConfig::SendMode::WhileConnected);
+    TEST_ASSERT_EQUAL_UINT32(90, loaded->alerts.clientSilentSafetySeconds);
+    TEST_ASSERT_EQUAL_UINT8(4, loaded->alerts.clientLost.level);
+    TEST_ASSERT_EQUAL_STRING("Gone for {silent_for}", loaded->alerts.clientLost.message.c_str());
+    // First boot after the update: no client part yet - armWithAlpaca decides.
+    const auto upgraded = Config::fromJson(std::string("{\"alerts\":") + cfg.alertsToJson(false, Config::AlertsPart::Main) + "}");
+    TEST_ASSERT_TRUE(upgraded->alerts.sendMode == AlertsConfig::SendMode::WhileConnected);
+    TEST_ASSERT_EQUAL_UINT32(120, upgraded->alerts.clientSilentSafetySeconds);
+}
+
+void test_full_client_templates_fit_and_add_nothing_to_main()
+{
+    Config cfg = Config::createDefault();
+    const std::string mainBefore = cfg.alertsToJson(false, Config::AlertsPart::Main);
+    const std::string title(AlertsConfig::MAX_TEMPLATE_TITLE, 'T');
+    const std::string message(AlertsConfig::MAX_TEMPLATE_MESSAGE, 'M');
+    for (AlertsConfig::EventSetting *event : {&cfg.alerts.clientLost, &cfg.alerts.clientBack, &cfg.alerts.clientDisconnected})
+        *event = {4, "persistent", title, message};
+    cfg.alerts.sendMode = AlertsConfig::SendMode::WhileConnected;
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(cfg.validate(&error), error.c_str());
+    TEST_ASSERT_TRUE(cfg.alertsToJson(false, Config::AlertsPart::Client).size() <= Config::MAX_ALERTS_JSON_BYTES);
+    // The main part (what was stored before this feature) only changes by
+    // the armWithAlpaca value it already had.
+    std::string mainAfter = cfg.alertsToJson(false, Config::AlertsPart::Main);
+    const size_t at = mainAfter.find("\"armWithAlpaca\":true");
+    TEST_ASSERT_TRUE(at != std::string::npos);
+    mainAfter.replace(at, std::strlen("\"armWithAlpaca\":true"), "\"armWithAlpaca\":false");
+    TEST_ASSERT_EQUAL_STRING(mainBefore.c_str(), mainAfter.c_str());
+}
+
 int main()
 {
     UNITY_BEGIN();
@@ -97,5 +191,10 @@ int main()
     RUN_TEST(test_rejections_say_why);
     RUN_TEST(test_read_interval_boundaries);
     RUN_TEST(test_mqtt_interval_and_hostname_boundaries);
+    RUN_TEST(test_alert_schedule_defaults);
+    RUN_TEST(test_arm_with_alpaca_migrates_and_is_still_written);
+    RUN_TEST(test_client_silence_boundaries);
+    RUN_TEST(test_stored_parts_round_trip);
+    RUN_TEST(test_full_client_templates_fit_and_add_nothing_to_main);
     return UNITY_END();
 }

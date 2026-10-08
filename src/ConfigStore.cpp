@@ -13,6 +13,9 @@ namespace SQM
     static const char *NVS_NAMESPACE = "sqm";
     static const char *NVS_CONFIG_KEY = "config";
     static const char *NVS_ALERTS_KEY = "alerts";
+    // The imaging-app alert settings (Config::AlertsPart::Client): their own
+    // key keeps both alerts strings under the NVS limit.
+    static const char *NVS_ALERTS_CLIENT_KEY = "alertclient";
 
     namespace
     {
@@ -69,24 +72,28 @@ namespace SQM
 
         Logger::info(TAG, "Loaded config JSON (%u bytes)", static_cast<unsigned>(json.length()));
 
-        // Alerts live under their own NVS key; splice them into the main
+        // Alerts live under their own NVS keys; splice them into the main
         // document and parse once, straight into the caller's Config.
-        std::string alertsJson;
         const size_t close = json.rfind('}');
+        std::string alertsJson;
+        std::string clientJson;
         const bool haveAlerts = readNvsString(NVS_ALERTS_KEY, alertsJson) && !alertsJson.empty() && close != std::string::npos;
+        const bool haveClient = readNvsString(NVS_ALERTS_CLIENT_KEY, clientJson) && !clientJson.empty() && close != std::string::npos;
+        std::string spliced = json;
         if (haveAlerts)
-            json.insert(close, std::string(",\"alerts\":") + alertsJson);
+            spliced.insert(close, std::string(",\"alerts\":") + alertsJson);
+        if (haveClient)
+            spliced.insert(spliced.rfind('}'), std::string(",\"alertsClient\":") + clientJson);
 
         out = createDefault();
         std::string reason;
-        bool ok = applyJson(json, out, false, &reason);
+        bool ok = applyJson(spliced, out, false, &reason);
         if (!ok)
             Logger::error(TAG, "Stored config rejected: %s", reason.c_str());
-        if (!ok && haveAlerts)
+        if (!ok && (haveAlerts || haveClient))
         {
             // A corrupt alerts entry mustn't take the whole config down.
             Logger::error(TAG, "Failed to parse config JSON with alerts - retrying without them");
-            json.erase(close, std::string(",\"alerts\":").size() + alertsJson.size());
             out = createDefault();
             ok = applyJson(json, out, false);
         }
@@ -111,7 +118,8 @@ namespace SQM
         }
 
         std::string json = toJson(false, false);
-        const std::string alertsJson = alertsToJson(false);
+        const std::string alertsJson = alertsToJson(false, AlertsPart::Main);
+        const std::string clientJson = alertsToJson(false, AlertsPart::Client);
         Logger::info(TAG, "Config JSON to save (%u bytes, alerts %u bytes)", static_cast<unsigned>(json.length()),
                      static_cast<unsigned>(alertsJson.length()));
 
@@ -132,9 +140,10 @@ namespace SQM
 
         size_t written = prefs.putString(NVS_CONFIG_KEY, json.c_str());
         const size_t alertsWritten = prefs.putString(NVS_ALERTS_KEY, alertsJson.c_str());
+        const size_t clientWritten = prefs.putString(NVS_ALERTS_CLIENT_KEY, clientJson.c_str());
         prefs.end();
 
-        if (alertsWritten == 0)
+        if (alertsWritten == 0 || clientWritten == 0)
         {
             Logger::error(TAG, "Failed to write alerts config to NVS");
             return false;
