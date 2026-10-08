@@ -1,0 +1,324 @@
+/* The SQMeter web UI's look for the docs: same palette, fonts and cards
+   (web/src/index.css). Dark only, like the device UI. */
+
+@font-face {
+  font-family: "Inter SQM";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../assets/fonts/inter-sqm.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono SQM";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("../assets/fonts/jetbrains-mono-sqm.woff2") format("woff2");
+}
+
+:root {
+  --sqm-bg: #080d14;
+  --sqm-panel: #0d141d;
+  --sqm-panel-2: #111b27;
+  --sqm-panel-3: #0a1018;
+  --sqm-line: #1b2a38;
+  --sqm-line-soft: #142130;
+  --sqm-text: #e7edf3;
+  --sqm-muted: #8b9baa;
+  --sqm-dim: #566675;
+  --sqm-cyan: #55c7f2;
+  --sqm-violet: #a78bfa;
+  --sqm-green: #5ee0a0;
+  --sqm-amber: #f4c15d;
+  --sqm-red: #f26b62;
+  --md-text-font: "Inter SQM";
+  --md-code-font: "JetBrains Mono SQM";
+}
+
+[data-md-color-scheme="slate"] {
+  --md-hue: 212;
+  --md-default-bg-color: var(--sqm-bg);
+  --md-default-fg-color: var(--sqm-text);
+  --md-default-fg-color--light: var(--sqm-muted);
+  --md-default-fg-color--lighter: var(--sqm-dim);
+  --md-default-fg-color--lightest: var(--sqm-line);
+  --md-primary-fg-color: var(--sqm-panel);
+  --md-primary-fg-color--light: var(--sqm-panel-2);
+  --md-primary-fg-color--dark: var(--sqm-bg);
+  --md-primary-bg-color: var(--sqm-text);
+  --md-primary-bg-color--light: var(--sqm-muted);
+  --md-accent-fg-color: var(--sqm-cyan);
+  --md-accent-fg-color--transparent: rgba(85, 199, 242, 0.1);
+  --md-typeset-color: var(--sqm-text);
+  --md-typeset-a-color: var(--sqm-cyan);
+  --md-typeset-table-color: var(--sqm-line);
+  --md-typeset-table-color--light: rgba(85, 199, 242, 0.04);
+  --md-code-bg-color: var(--sqm-panel-3);
+  --md-code-fg-color: #c9d6e2;
+  --md-code-hl-color: rgba(85, 199, 242, 0.12);
+  --md-footer-bg-color: var(--sqm-panel);
+  --md-footer-bg-color--dark: var(--sqm-bg);
+  --md-footer-fg-color: var(--sqm-text);
+  --md-footer-fg-color--light: var(--sqm-muted);
+  --md-footer-fg-color--lighter: var(--sqm-dim);
+  --md-admonition-bg-color: var(--sqm-panel);
+  --md-admonition-fg-color: var(--sqm-text);
+  --md-shadow-z1: none;
+  --md-shadow-z2: 0 14px 42px rgba(0, 0, 0, 0.22);
+  --md-shadow-z3: 0 14px 42px rgba(0, 0, 0, 0.32);
+}
+
+/* Header and tabs: the app's top bar - panel background, hairline border,
+   muted items, cyan underline on the current one. */
+.md-header {
+  background: rgba(8, 13, 20, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--sqm-line-soft);
+  box-shadow: none;
+}
+
+.md-header[data-md-state="shadow"],
+.md-header--shadow {
+  box-shadow: none;
+}
+
+.md-header__title {
+  font-weight: 650;
+}
+
+.md-header__button.md-logo img {
+  height: 1.6rem;
+  width: 1.6rem;
+}
+
+.md-tabs {
+  background: var(--sqm-bg);
+  border-bottom: 1px solid var(--sqm-line-soft);
+}
+
+.md-tabs__link {
+  color: var(--sqm-muted);
+  font-weight: 550;
+  opacity: 1;
+}
+
+.md-tabs__item--active .md-tabs__link,
+.md-tabs__link:hover {
+  color: var(--sqm-cyan);
+}
+
+.md-tabs__item--active {
+  box-shadow: inset 0 -2px 0 var(--sqm-cyan);
+}
+
+/* Sidebars */
+.md-nav__link {
+  color: var(--sqm-muted);
+}
+
+.md-nav__link--active,
+.md-nav__item--active > .md-nav__link {
+  color: var(--sqm-cyan);
+}
+
+.md-nav__title {
+  color: var(--sqm-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+}
+
+/* Headings: the app's card titles are small uppercase labels; keep docs
+   headings readable but in the same voice. */
+.md-typeset h1 {
+  color: var(--sqm-text);
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.md-typeset h2 {
+  font-weight: 650;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--sqm-line-soft);
+}
+
+.md-typeset h3 {
+  font-weight: 600;
+}
+
+.md-typeset hr {
+  border-bottom-color: var(--sqm-line-soft);
+}
+
+/* Code: the app's mono readouts on a sunken panel. */
+.md-typeset code {
+  border-radius: 0.35rem;
+}
+
+.md-typeset pre > code {
+  border: 1px solid var(--sqm-line-soft);
+  border-radius: 0.6rem;
+}
+
+/* Tables: reading rows - hairlines, muted header labels, no zebra. */
+.md-typeset table:not([class]) {
+  border: 1px solid var(--sqm-line-soft);
+  border-radius: 0.7rem;
+  background: var(--sqm-panel);
+  font-size: 0.72rem;
+}
+
+.md-typeset table:not([class]) th {
+  background: var(--sqm-panel-2);
+  color: var(--sqm-muted);
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.md-typeset table:not([class]) td {
+  border-top: 1px solid var(--sqm-line-soft);
+}
+
+/* Admonitions: the app's cards, with the note colours as a thin accent. */
+.md-typeset .admonition,
+.md-typeset details {
+  background: linear-gradient(180deg, var(--sqm-panel), #0a1119);
+  border: 1px solid var(--sqm-line-soft);
+  border-left-width: 3px;
+  border-radius: 0.7rem;
+  box-shadow: none;
+  font-size: 0.72rem;
+}
+
+.md-typeset .admonition-title,
+.md-typeset summary {
+  background: transparent !important;
+  font-weight: 650;
+}
+
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-left-color: var(--sqm-cyan);
+}
+
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-left-color: var(--sqm-green);
+}
+
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+  border-left-color: var(--sqm-amber);
+}
+
+.md-typeset .admonition.danger,
+.md-typeset details.danger {
+  border-left-color: var(--sqm-red);
+}
+
+/* Content tabs: the Settings tab bar. */
+.md-typeset .tabbed-labels > label {
+  color: var(--sqm-muted);
+  font-weight: 600;
+}
+
+.md-typeset .tabbed-labels > label:hover {
+  color: var(--sqm-text);
+}
+
+.md-typeset .tabbed-set > input:checked + label,
+.md-typeset .tabbed-labels > label.tabbed-label--active {
+  color: var(--sqm-cyan);
+}
+
+/* Screenshots sit like cards. */
+.md-typeset img[src*="screenshots/"] {
+  border: 1px solid var(--sqm-line-soft);
+  border-radius: 0.7rem;
+}
+
+/* Search */
+.md-search__form {
+  background: var(--sqm-panel-2);
+  border: 1px solid var(--sqm-line-soft);
+  border-radius: 0.5rem;
+}
+
+.md-search__output {
+  background: var(--sqm-panel);
+}
+
+/* Footer */
+.md-footer,
+.md-footer-meta {
+  border-top: 1px solid var(--sqm-line-soft);
+}
+
+/* Home page: the app's hero - big cyan display type. */
+.sqm-hero {
+  margin: 0.5rem 0 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid var(--sqm-line-soft);
+  border-radius: 0.85rem;
+  background: radial-gradient(120% 140% at 50% 0%, rgba(85, 199, 242, 0.12), transparent 60%),
+    linear-gradient(180deg, var(--sqm-panel), #0a1119);
+}
+
+.sqm-hero .sqm-hero-value {
+  font: 600 3rem/1 var(--md-code-font), monospace;
+  color: var(--sqm-cyan);
+  letter-spacing: -0.02em;
+}
+
+.sqm-hero .sqm-hero-unit {
+  font: 0.7rem var(--md-code-font), monospace;
+  color: var(--sqm-dim);
+}
+
+.sqm-hero p {
+  margin: 0.6rem 0 0;
+  color: var(--sqm-muted);
+}
+
+/* Buttons: the app's buttons - outlined, cyan for the primary action. */
+.md-typeset .md-button {
+  border: 1px solid var(--sqm-line);
+  border-radius: 0.55rem;
+  color: var(--sqm-text);
+  font-weight: 600;
+  padding: 0.5em 1.2em;
+}
+
+.md-typeset .md-button:hover {
+  border-color: var(--sqm-cyan);
+  color: var(--sqm-cyan);
+  background: rgba(85, 199, 242, 0.08);
+}
+
+.md-typeset .md-button--primary {
+  border-color: rgba(85, 199, 242, 0.45);
+  background: rgba(85, 199, 242, 0.12);
+  color: var(--sqm-cyan);
+}
+
+/* Feature grid: dashboard cards. */
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid > .card {
+  background: linear-gradient(180deg, var(--sqm-panel), #0a1119);
+  border: 1px solid var(--sqm-line-soft);
+  border-radius: 0.85rem;
+}
+
+.md-typeset .grid.cards > ul > li:hover,
+.md-typeset .grid > .card:hover {
+  border-color: var(--sqm-line);
+  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.32);
+}
+
+.md-typeset .grid.cards .twemoji,
+.md-typeset .grid.cards svg {
+  color: var(--sqm-cyan);
+}
