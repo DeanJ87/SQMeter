@@ -6,18 +6,18 @@ Update firmware over WiFi without a USB cable.
 
 ## Check for Updates (Recommended)
 
-The **System > Updates** page can check GitHub Releases directly and update the device itself - no downloading or uploading required.
+The **Updates** page can check GitHub Releases directly and update the device itself - no downloading or uploading required.
 
 1. Open the web UI and go to **Updates**
-2. Under **Check for Updates**, pick a release track:
+2. Under **Firmware**, pick a **Release track**:
     - **Stable** - tagged releases (`prerelease: false` on GitHub)
     - **Beta** - pre-release builds (`prerelease: true` on GitHub)
 3. Pick a specific release from the dropdown (defaults to the newest on the selected track) - a badge shows whether it's newer than the running firmware
 4. Click **Update to `<tag>`**
 
-The device downloads `sqmeter-firmware-<tag>.bin` and `sqmeter-littlefs-<tag>.bin` directly from `api.github.com` over HTTPS and flashes both before rebooting - firmware and web UI are always updated together as a matched pair, so they never drift out of sync with each other. A release only appears in the list if both assets exist for it.
+The device downloads `sqmeter-firmware-<tag>.bin` and `sqmeter-littlefs-<tag>.bin` directly from `api.github.com` over HTTPS and flashes both before rebooting - firmware and web UI are always updated together as a matched pair, so they never drift out of sync with each other. A release only appears in the list if both assets exist for it. On the Bluetooth build the device fetches `sqmeter-ble-firmware-<tag>.bin` instead, so it stays on the Bluetooth build.
 
-Progress and errors are pushed to the page over the same WebSocket channel the System page uses; if the connection to GitHub fails partway through (no internet, DNS, etc.), the device aborts cleanly and keeps running exactly what it was running before - see [How self-update failure handling works](#how-self-update-failure-handling-works) below.
+Progress and errors are pushed to the page over the status WebSocket; if the connection to GitHub fails partway through (no internet, DNS, etc.), the device aborts cleanly and keeps running exactly what it was running before - see [How self-update failure handling works](#how-self-update-failure-handling-works) below.
 
 !!! note "TLS"
     The device validates GitHub's certificate chain against two pinned root CAs (covering `api.github.com` and the release-asset CDN) rather than trusting any certificate - it will refuse to update if GitHub's certificate doesn't chain to one of them.
@@ -27,8 +27,8 @@ Progress and errors are pushed to the page over the same WebSocket channel the S
 ## Via Web UI (Manual Upload)
 
 1. Download `sqmeter-firmware-vX.Y.Z.bin` from [GitHub Releases](https://github.com/DeanJ87/SQMeter/releases)
-2. Open the web UI and go to **System**
-3. Under **Firmware Update**, select the `.bin` file
+2. Open the web UI and go to **Updates**
+3. Under **Manual upload**, choose **Firmware** as the image and select the `.bin` file
 4. Click **Upload**
 5. The device reboots automatically into the new firmware
 
@@ -36,7 +36,7 @@ Progress and errors are pushed to the page over the same WebSocket channel the S
     Keep the browser open during upload. A power cut mid-flash can corrupt the active partition — the device will fall back to the previous app slot on next boot.
 
 !!! note "Web UI updates"
-    To update the web UI (the dashboard/settings pages), flash `sqmeter-littlefs-vX.Y.Z.bin` via the web UI's **Filesystem Update** section, or use esptool directly. The web UI update doesn't touch the firmware.
+    To update the web UI (the dashboard/settings pages), upload `sqmeter-littlefs-vX.Y.Z.bin` under **Manual upload** with **Web UI (littlefs.bin)** as the image, or use esptool directly. The web UI update doesn't touch the firmware.
 
 !!! warning "Security"
     The current OTA endpoints are unauthenticated LAN endpoints. Anyone who can reach the device web UI can attempt firmware or filesystem uploads. Keep the device on a trusted network and do not expose it through port forwarding.

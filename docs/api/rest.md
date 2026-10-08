@@ -276,6 +276,10 @@ The response includes:
 
 ---
 
+### `POST /api/sensors/rg15/reset-total`, `POST /api/sensors/rg15/reboot`
+
+Send the RG-15 its `O` (reset total accumulation) or `K` (reboot) command. Returns `{"ok": true, "command": "O", "message": "..."}`, or 400 if the command failed. Requires HTTP auth when enabled. See [RG-15](../hardware/rg15.md).
+
 ### `GET /api/config`
 
 Read the full device configuration. Password fields are returned as `********` when a stored password exists.
@@ -465,6 +469,19 @@ The current SafetyMonitor verdict - the same value served to Alpaca clients as `
 
 ---
 
+### `GET /api/safety/history`
+
+The last 32 safety changes, device restarts and safe/unsafe alerts sent, newest first. Kept in RTC memory, so it survives software restarts, crashes and OTA updates, not power cuts.
+
+```json
+{"boot":3,"uptime":4000,"entries":[
+  {"kind":"alert","boot":3,"uptime":3900,"timestamp":1759500000,"safe":false},
+  {"kind":"change","boot":3,"uptime":3899,"timestamp":1759499999,"safe":false,"held":false,"reasonFlags":48},
+  {"kind":"boot","boot":3,"uptime":0,"resetReason":3}]}
+```
+
+`held` marks unsafe only because of the safe delay. `resetReason` is ESP-IDF's `esp_reset_reason_t` (1 power on, 3 software restart, 4 crash, 5-7 watchdog, 9 brownout). `timestamp` is missing for entries from before the clock was set.
+
 ## Alerts
 
 See [Alerts](../user-guide/alerts.md) for setup.
@@ -483,19 +500,6 @@ Alerts on/off, for automations: `{"armed": true, "armWithAlpaca": false}`. `arm`
 
 Empties the recent-alerts list. Requires HTTP auth when enabled.
 
-### `GET /api/safety/history`
-
-The last 32 safety changes, device restarts and safe/unsafe alerts sent, newest first. Kept in RTC memory, so it survives software restarts, crashes and OTA updates, not power cuts.
-
-```json
-{"boot":3,"uptime":4000,"entries":[
-  {"kind":"alert","boot":3,"uptime":3900,"timestamp":1759500000,"safe":false},
-  {"kind":"change","boot":3,"uptime":3899,"timestamp":1759499999,"safe":false,"held":false,"reasonFlags":48},
-  {"kind":"boot","boot":3,"uptime":0,"resetReason":3}]}
-```
-
-`held` marks unsafe only because of the safe delay. `resetReason` is ESP-IDF's `esp_reset_reason_t` (1 power on, 3 software restart, 4 crash, 5-7 watchdog, 9 brownout). `timestamp` is missing for entries from before the clock was set.
-
 ### `GET /api/alerts/recent`
 
 Whether alerts are on, and the last 20 alerts since boot, newest first:
@@ -508,6 +512,18 @@ Whether alerts are on, and the last 20 alerts since boot, newest first:
 `status` is `pending`, `sent`, `failed` or `skipped`.
 
 ---
+
+## Bluetooth phone alarm
+
+Bluetooth firmware build only. See [Bluetooth](../user-guide/ble.md).
+
+### `POST /api/ble/ack`
+
+Acknowledge the ringing phone alarm from the web UI, as if a phone had. 409 if no alarm is active. Requires HTTP auth when enabled.
+
+### `POST /api/ble/forget-bonds`
+
+Unpair every phone; they need to pair again (with the passkey) to get alarms. 409 if Bluetooth is off. Requires HTTP auth when enabled.
 
 ## ASCOM Alpaca API
 

@@ -35,7 +35,19 @@ SQMeter is an open-source sky quality meter built on the ESP32. It measures ligh
 
 - :material-connection: **ASCOM Alpaca**
 
-    Native SafetyMonitor + ObservingConditions device for N.I.N.A. — no separate bridge required.
+    Native SafetyMonitor + ObservingConditions device for N.I.N.A. — no separate bridge required. Tested with ASCOM ConformU on every change.
+
+- :material-shield-check: **Safety & alerts**
+
+    Rain, wind, cloud, SQM, humidity and dew-point rules. Alerts via Pushover, ntfy, webhook, MQTT or a paired phone over Bluetooth — and switched off while you're not imaging.
+
+- :material-weather-windy: **Rain & wind**
+
+    Optional Hydreon RG-15 rain gauge and anemometer / wind vane.
+
+- :material-weather-night: **Sun & Moon**
+
+    Twilight, darkness and moon chart for the night ahead from your location.
 
 - :material-lock-open: **Open Hardware**
 

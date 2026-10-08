@@ -1,6 +1,6 @@
 # Integrations
 
-SQMeter exposes device data through three supported integration paths. The legacy raw TCP server that previously ran on port 2020 has been removed.
+SQMeter exposes device data through these integration paths. The legacy raw TCP server that previously ran on port 2020 has been removed.
 
 ## Supported integration paths
 
@@ -25,7 +25,15 @@ Real-time streaming over persistent connections. Connect to `/ws/sensors` for li
 
 ### MQTT
 
-Configure SQMeter to publish to an MQTT broker on a schedule. See [MQTT Integration](../user-guide/mqtt.md) for setup.
+Configure SQMeter to publish to an MQTT broker on a schedule, plus a retained safe/unsafe flag (`<topic>/safe`) and an alerts on/off switch for Home Assistant. See [MQTT Integration](../user-guide/mqtt.md) for setup.
+
+### ASCOM Alpaca
+
+Native SafetyMonitor and ObservingConditions devices for N.I.N.A. and other Alpaca clients, found by Alpaca discovery - no driver or bridge. See [ASCOM Alpaca](../user-guide/alpaca.md).
+
+### Alerts
+
+The device sends its own notifications via Pushover, ntfy, a webhook or MQTT, and can ring a paired phone over Bluetooth. See [Alerts](../user-guide/alerts.md) and [Bluetooth](../user-guide/ble.md).
 
 ---
 
@@ -33,7 +41,7 @@ Configure SQMeter to publish to an MQTT broker on a schedule. See [MQTT Integrat
 
 The raw TCP server that previously accepted colon-command strings on port 2020 has been removed. It provided an ASCOM ObservingConditions-compatible interface, but the same data is available through the REST API and MQTT.
 
-If you used the port 2020 TCP interface to drive observatory automation software (N.I.N.A., Voyager, Sequence Generator Pro), the recommended migration paths are:
+If you used the port 2020 TCP interface to drive observatory automation software (N.I.N.A., Voyager, Sequence Generator Pro), use the native [ASCOM Alpaca](../user-guide/alpaca.md) devices instead. For scripts, the REST equivalents are:
 
 | Capability | Old path | Replacement |
 |------------|----------|-------------|

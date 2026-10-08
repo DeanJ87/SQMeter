@@ -6,7 +6,7 @@ SQMeter can publish sensor readings to any MQTT broker — Home Assistant, Grafa
 
 ## Enabling MQTT
 
-In the Settings page (or via API), enable MQTT and set your broker details:
+In **Settings → Network → MQTT** (or via the API), enable MQTT and set your broker details:
 
 ```json
 {
