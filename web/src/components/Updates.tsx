@@ -1,7 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { isVersionStale } from '../utils/versionCompare';
+import { compareVersions, isVersionStale } from '../utils/versionCompare';
 import type { GithubRelease, SystemStatus } from '../types';
 import { Button, Card, Note, ProgressMeter, ReadingRow } from './ui';
 
@@ -93,6 +93,14 @@ const GithubUpdates: FunctionalComponent = () => {
 
   const selectedRelease = releases.find((r) => r.tag === selectedTag);
   const stale = currentVersion && selectedRelease ? isVersionStale(currentVersion, selectedRelease.tag) : false;
+  // -1 older than installed (a downgrade), 0 installed, 1 newer, null unknown.
+  const relation = (tag: string) => (currentVersion ? compareVersions(tag, currentVersion) : null);
+  const selectedRelation = selectedRelease ? relation(selectedRelease.tag) : null;
+  const installed = selectedRelation === 0;
+  const downgrade = selectedRelation === -1;
+  // Releases before this one can't fetch the release list (it outgrew their
+  // buffer), so a device downgraded to one can only be updated by upload.
+  const noOtaCheck = selectedRelease ? (compareVersions(selectedRelease.tag, '0.2.0-beta.3') ?? 0) < 0 : false;
 
   const applyUpdate = async () => {
     if (!selectedRelease) return;
@@ -178,7 +186,7 @@ const GithubUpdates: FunctionalComponent = () => {
               >
                 {releases.map((r) => (
                   <option key={r.tag} value={r.tag}>
-                    {r.name} ({r.tag})
+                    {r.name} ({r.tag}){relation(r.tag) === 0 ? ' - installed' : relation(r.tag) === -1 ? ' - older' : ''}
                   </option>
                 ))}
               </select>
@@ -189,16 +197,33 @@ const GithubUpdates: FunctionalComponent = () => {
         {checking && <Note>Checking GitHub...</Note>}
         {checkError && <Note tone="bad">{checkError}</Note>}
         {!checking && !checkError && releases.length === 0 && <Note>No {track} releases.</Note>}
-        {selectedRelease && !applyStatus && (
-          <Note tone={stale ? 'warn' : 'muted'}>{stale ? `A newer release (${selectedRelease.tag}) is available.` : 'Up to date.'}</Note>
+        {selectedRelease && !applyStatus && !downgrade && (
+          <Note tone={stale ? 'warn' : 'muted'}>{stale ? `A newer release (${selectedRelease.tag}) is available.` : installed ? 'This release is installed.' : 'Up to date.'}</Note>
+        )}
+        {selectedRelease && !applyStatus && downgrade && (
+          <Note tone="warn">
+            {selectedRelease.tag} is older than the installed v{currentVersion}. Older firmware may not read settings saved by a newer one; if it can't, it
+            starts with defaults and you set it up again from its WiFi hotspot.
+            {noOtaCheck && ' It also can’t check for updates itself, so you would update it by uploading the firmware here.'}
+          </Note>
         )}
         {applying && <ProgressMeter value={applyProgress} />}
         {applyStatus && <Note tone={statusTone(applyStatus)}>{applyStatus}</Note>}
 
         {releases.length > 0 && (
           <div class="btn-row">
-            <Button variant="primary" onClick={applyUpdate} disabled={!selectedRelease || waitingForReboot} busy={applying} busyLabel="Updating...">
-              {waitingForReboot ? 'Waiting for restart...' : `Update to ${selectedRelease?.tag ?? '...'}`}
+            <Button
+              variant={downgrade ? 'danger' : 'primary'}
+              onClick={applyUpdate}
+              disabled={!selectedRelease || installed || waitingForReboot}
+              busy={applying}
+              busyLabel="Updating..."
+            >
+              {waitingForReboot
+                ? 'Waiting for restart...'
+                : installed
+                  ? 'Installed'
+                  : `${downgrade ? 'Downgrade' : 'Update'} to ${selectedRelease?.tag ?? '...'}`}
             </Button>
           </div>
         )}
