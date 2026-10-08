@@ -130,17 +130,17 @@ The demo only talks to itself: there is no server behind it, and the page's secu
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/demo/simulator.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: 73dcfb0514095b7b
+fingerprint: 340228bacd165dc8
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: How the demo works
-    accDescr: Everything runs in your browser. The sky simulator invents raw sensor readings and feeds the device core, the firmware's own logic compiled to WebAssembly, once a second. A service worker answers the web UI's requests from that core, and device addresses opened directly are answered the same way. The page's security policy blocks every other host.
+    accDescr: Everything runs in your browser. The sensor readings you set in the Demo panel, with daylight from the sun at the device's clock and place, feed the device core, the firmware's own logic compiled to WebAssembly, once a second. A service worker answers the web UI's requests from that core, and device addresses opened directly are answered the same way. The page's security policy blocks every other host.
     subgraph browser["Your browser"]
         direction TB
-        SIM["Sky simulator<br/>raw sensor readings, scenarios"] -->|every second| CORE["Device core<br/>lib/ compiled to WebAssembly"]
+        SIM["Sensor readings you set<br/>plus daylight from the sun"] -->|every second| CORE["Device core<br/>lib/ compiled to WebAssembly"]
         CORE --- STORE[("Settings and state<br/>session storage")]
         UI["SQMeter web UI and Demo panel"] -->|"/api, /ws, Alpaca requests"| SW["Service worker<br/>answers like the device"]
         SW --> CORE
@@ -155,7 +155,7 @@ flowchart TB
 ??? info "Diagram in words"
 
     - Everything runs in your browser; there is no server behind the demo.
-    - The **sky simulator** invents the raw sensor readings (and the scenarios you pick) and feeds them, once a second, to the **device core**: the firmware's own `lib/` code compiled to WebAssembly.
+    - The **sensor readings** you set in the Demo panel (with daylight from the sun at the device's clock and place, when the light follows the sun) are fed, once a second, to the **device core**: the firmware's own `lib/` code compiled to WebAssembly.
     - The core keeps the settings and state in the tab's **session storage**.
     - The **web UI** and Demo panel make the same requests as on a real device; a **service worker** answers them from the core. Device addresses opened directly (such as `/management/v1/description`) are answered by the core too.
     - The page's security policy blocks every other host, so nothing reaches a broker, a push service or GitHub.
