@@ -6,6 +6,9 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'overrides/**'
+      - 'README.md'
+      - 'tools/docs/**'
       - 'web/**'
       - '.github/workflows/docs.yml'
   push:
@@ -13,6 +16,9 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'overrides/**'
+      - 'README.md'
+      - 'tools/docs/**'
       - 'web/**'
       - '.github/workflows/docs.yml'
 
@@ -49,7 +55,7 @@ jobs:
           restore-keys: ${{ runner.os }}-npm-
 
       - name: Install MkDocs Material
-        run: pip install mkdocs-material
+        run: pip install -r docs/requirements.txt
 
       - name: Install web dependencies
         run: npm ci
@@ -71,8 +77,21 @@ jobs:
         run: npm run screenshots
         working-directory: web
 
+      # Diagrams (spec 024): the site serves its own pinned mermaid, every
+      # diagram must parse and render, and no page may use a CDN.
+      - name: Vendor mermaid for the docs
+        run: npm run docs:vendor
+        working-directory: web
+
+      - name: Render every diagram
+        run: npm run docs:diagrams
+        working-directory: web
+
       - name: Build MkDocs site
         run: mkdocs build --strict
+
+      - name: Site serves its own mermaid
+        run: python3 tools/docs/diagrams.py --site site
 
       # The demo has its own site, https://demo.sqmeter.dev, served by GitHub
       # Pages from DeanJ87/sqmeter-demo (one custom domain per Pages site).

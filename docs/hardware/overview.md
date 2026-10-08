@@ -14,8 +14,9 @@ SQMeter is built around an ESP32 development board and a small set of I2C sensor
 | MLX90614 | IR cloud temperature | I2C `0x5A` | — |
 | GPS module (optional) | Location and precise time | UART | Optional |
 | RG-15 (optional) | Rain detection | UART | Optional — active development |
+| Anemometer and wind vane (optional) | Wind speed, gust, direction | Pulse input + ADC1 | Optional — see [Wind](wind.md) |
 
-The ESP32 is the only component with WiFi. Everything else talks to it over I2C. The GPS module is optional — NTP can be used for time sync without it.
+The ESP32 is the only component with WiFi. The core sensors talk to it over I²C; the optional GPS and RG-15 use serial (UART) and the wind sensors a pulse input and an analogue pin. The GPS module is optional — NTP can be used for time sync without it. See the [wiring overview](../getting-started/hardware.md) for the default pins.
 
 ---
 
