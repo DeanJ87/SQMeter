@@ -48,7 +48,6 @@ const GithubUpdates: FunctionalComponent = () => {
 
   useEffect(() => {
     checkForUpdates(track);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track]);
 
   // Reflect firmware-pushed OTA progress/errors from /ws/status while applying
@@ -153,8 +152,7 @@ const GithubUpdates: FunctionalComponent = () => {
     }
   };
 
-  const statusTone = (text: string) =>
-    /successful|complete/i.test(text) ? 'ok' : /fail/i.test(text) ? 'bad' : 'muted';
+  const statusTone = (text: string) => (/successful|complete/i.test(text) ? 'ok' : /fail/i.test(text) ? 'bad' : 'muted');
 
   return (
     <Card title="Firmware" icon="upload" hint="Updates firmware and web UI together from GitHub releases. The device restarts when done.">
@@ -162,7 +160,9 @@ const GithubUpdates: FunctionalComponent = () => {
         <ReadingRow label="Installed" value={currentVersion ? `v${currentVersion}` : '--'} valueClass="tone-cyan" />
         <div class="form-grid">
           <div class="field">
-            <label class="field-label" for="release-track">Release track</label>
+            <label class="field-label" for="release-track">
+              Release track
+            </label>
             <select
               id="release-track"
               class="input"
@@ -176,7 +176,9 @@ const GithubUpdates: FunctionalComponent = () => {
           </div>
           {releases.length > 0 && (
             <div class="field">
-              <label class="field-label" for="release-select">Release</label>
+              <label class="field-label" for="release-select">
+                Release
+              </label>
               <select
                 id="release-select"
                 class="input"
@@ -198,12 +200,14 @@ const GithubUpdates: FunctionalComponent = () => {
         {checkError && <Note tone="bad">{checkError}</Note>}
         {!checking && !checkError && releases.length === 0 && <Note>No {track} releases.</Note>}
         {selectedRelease && !applyStatus && !downgrade && (
-          <Note tone={stale ? 'warn' : 'muted'}>{stale ? `A newer release (${selectedRelease.tag}) is available.` : installed ? 'This release is installed.' : 'Up to date.'}</Note>
+          <Note tone={stale ? 'warn' : 'muted'}>
+            {stale ? `A newer release (${selectedRelease.tag}) is available.` : installed ? 'This release is installed.' : 'Up to date.'}
+          </Note>
         )}
         {selectedRelease && !applyStatus && downgrade && (
           <Note tone="warn">
-            {selectedRelease.tag} is older than the installed v{currentVersion}. Older firmware may not read settings saved by a newer one; if it can't, it
-            starts with defaults and you set it up again from its WiFi hotspot.
+            {selectedRelease.tag} is older than the installed v{currentVersion}. Older firmware may not read settings saved by a newer one;
+            if it can't, it starts with defaults and you set it up again from its WiFi hotspot.
             {noOtaCheck && ' It also can’t check for updates itself, so you would update it by uploading the firmware here.'}
           </Note>
         )}
@@ -242,10 +246,10 @@ const Updates: FunctionalComponent = () => {
 
   useEffect(() => {
     let checkInterval: number | undefined;
-    
+
     if (waitingForReboot) {
       setStatus('Restarting...');
-      
+
       // Start checking if device is back online
       checkInterval = window.setInterval(async () => {
         try {
@@ -375,7 +379,9 @@ const Updates: FunctionalComponent = () => {
         <div class="card-body">
           <div class="form-grid">
             <div class="field">
-              <label class="field-label" for="upload-type">Image</label>
+              <label class="field-label" for="upload-type">
+                Image
+              </label>
               <select
                 id="upload-type"
                 class="input"
@@ -388,7 +394,9 @@ const Updates: FunctionalComponent = () => {
               </select>
             </div>
             <div class="field">
-              <label class="field-label" for="upload-file">File</label>
+              <label class="field-label" for="upload-file">
+                File
+              </label>
               <input
                 id="upload-file"
                 type="file"
@@ -403,7 +411,11 @@ const Updates: FunctionalComponent = () => {
               />
             </div>
           </div>
-          {file && <Note>{file.name}, {(file.size / 1024).toFixed(0)} KB</Note>}
+          {file && (
+            <Note>
+              {file.name}, {(file.size / 1024).toFixed(0)} KB
+            </Note>
+          )}
           {uploading && <ProgressMeter value={uploadProgress} />}
           {status && <Note tone={statusTone}>{status}</Note>}
           <div class="btn-row">

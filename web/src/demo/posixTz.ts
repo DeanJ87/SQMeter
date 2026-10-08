@@ -45,7 +45,8 @@ const parseRule = (text: string): Rule | null => {
 export function parsePosixTz(tz: string): PosixTz {
   const text = (tz ?? '').trim();
   // name, offset, optional dst name, optional dst offset, optional rules
-  const re = /^(<[^>]+>|[A-Za-z]{3,})([+-]?\d{1,2}(?::\d{1,2}){0,2})(?:(<[^>]+>|[A-Za-z]{3,})([+-]?\d{1,2}(?::\d{1,2}){0,2})?(?:,([^,]+),([^,]+))?)?$/;
+  const re =
+    /^(<[^>]+>|[A-Za-z]{3,})([+-]?\d{1,2}(?::\d{1,2}){0,2})(?:(<[^>]+>|[A-Za-z]{3,})([+-]?\d{1,2}(?::\d{1,2}){0,2})?(?:,([^,]+),([^,]+))?)?$/;
   const match = text.match(re);
   if (!match) return UTC;
   const name = (n: string) => n.replace(/^<|>$/g, '');
@@ -113,8 +114,16 @@ export function toLocalParts(zone: PosixTz | string, ms: number): LocalParts {
   };
 }
 
+export interface WallTime {
+  year: number;
+  month: number; // 1-12
+  day: number;
+  hours?: number;
+  minutes?: number;
+}
+
 /** The instant a local wall time (in the zone) happens. */
-export function fromLocal(zone: PosixTz | string, year: number, month: number, day: number, hours = 0, minutes = 0): number {
+export function fromLocal(zone: PosixTz | string, { year, month, day, hours = 0, minutes = 0 }: WallTime): number {
   const wall = Date.UTC(year, month - 1, day, hours, minutes);
   let guess = wall - offsetAt(zone, wall) * 1000;
   guess = wall - offsetAt(zone, guess) * 1000;

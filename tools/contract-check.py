@@ -5,6 +5,7 @@ contracts/schemas). Standard library only.
 
   python3 tools/contract-check.py http://192.168.1.128
 """
+
 import glob
 import json
 import os

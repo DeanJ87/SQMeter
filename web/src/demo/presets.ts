@@ -71,11 +71,11 @@ export function resolveTimePreset(id: TimePresetId, nowMs: number, place: Place,
       return sunset ? { ok: true, at: sunset.getTime() } : { ok: false, reason: NO_SUNSET };
     }
     case 'midsummer':
-      return { ok: true, at: fromLocal(timezone, year, south ? 12 : 6, 21) };
+      return { ok: true, at: fromLocal(timezone, { year, month: south ? 12 : 6, day: 21 }) };
     case 'midwinter':
-      return { ok: true, at: fromLocal(timezone, year, south ? 6 : 12, 21) };
+      return { ok: true, at: fromLocal(timezone, { year, month: south ? 6 : 12, day: 21 }) };
     case 'newYearsEve':
-      return { ok: true, at: fromLocal(timezone, year, 12, 31, 23, 0) };
+      return { ok: true, at: fromLocal(timezone, { year, month: 12, day: 31, hours: 23 }) };
   }
 }
 
@@ -92,7 +92,14 @@ export const DEFAULT_ELEVATION = 42;
 export const LOCATION_PRESETS: LocationPreset[] = [
   { id: 'london', label: 'London', latitude: 51.5074, longitude: -0.1278, elevation: 35, timezone: 'GMT0BST,M3.5.0/1,M10.5.0' },
   { id: 'la-palma', label: 'La Palma', latitude: 28.7606, longitude: -17.8816, elevation: 2396, timezone: 'WET0WEST,M3.5.0/1,M10.5.0' },
-  { id: 'atacama', label: 'Atacama', latitude: -24.6272, longitude: -70.4041, elevation: 2635, timezone: '<-04>4<-03>,M9.1.6/24,M4.1.6/24' },
+  {
+    id: 'atacama',
+    label: 'Atacama',
+    latitude: -24.6272,
+    longitude: -70.4041,
+    elevation: 2635,
+    timezone: '<-04>4<-03>,M9.1.6/24,M4.1.6/24',
+  },
   { id: 'sydney', label: 'Sydney', latitude: -33.8688, longitude: 151.2093, elevation: 58, timezone: 'AEST-10AEDT,M10.1.0,M4.1.0/3' },
   { id: 'arctic', label: '75° N 1° W', latitude: 75, longitude: -1, elevation: 0, timezone: 'UTC0' },
   { id: 'north-pole', label: 'North Pole', latitude: 90, longitude: 0, elevation: 0, timezone: 'UTC0' },

@@ -5,8 +5,7 @@ import WifiSetup from '../WifiSetup';
 import { mockStatus } from '../../mocks/data';
 import { server } from '../../test/mswServer';
 
-const statusWith = (wifi: Partial<typeof mockStatus.wifi>) =>
-  HttpResponse.json({ ...mockStatus, wifi: { ...mockStatus.wifi, ...wifi } });
+const statusWith = (wifi: Partial<typeof mockStatus.wifi>) => HttpResponse.json({ ...mockStatus, wifi: { ...mockStatus.wifi, ...wifi } });
 
 const field = (name: string) => document.querySelector(`[data-field="${name}"]`) as HTMLInputElement;
 
@@ -22,8 +21,16 @@ describe('WiFi setup screen', () => {
       http.get('/api/status', () =>
         ++polls < 2
           ? statusWith({ connectPending: true, connected: false, apMode: true })
-          : statusWith({ connectPending: false, connected: true, ssid: 'DarkSkyLab', ip: '192.168.1.77', hostname: 'sqmeter', mdns: true, apMode: true })
-      )
+          : statusWith({
+              connectPending: false,
+              connected: true,
+              ssid: 'DarkSkyLab',
+              ip: '192.168.1.77',
+              hostname: 'sqmeter',
+              mdns: true,
+              apMode: true,
+            }),
+      ),
     );
     render(<WifiSetup pollMs={5} />);
 
@@ -44,7 +51,7 @@ describe('WiFi setup screen', () => {
         sent = await request.json();
         return HttpResponse.json({ success: true, pending: true }, { status: 202 });
       }),
-      http.get('/api/status', () => statusWith({ connectPending: false, connected: true, ssid: 'Observatory-Guest', ip: '10.0.0.5' }))
+      http.get('/api/status', () => statusWith({ connectPending: false, connected: true, ssid: 'Observatory-Guest', ip: '10.0.0.5' })),
     );
     render(<WifiSetup pollMs={5} />);
 
@@ -56,9 +63,7 @@ describe('WiFi setup screen', () => {
   });
 
   it('reports a failed attempt', async () => {
-    server.use(
-      http.get('/api/status', () => statusWith({ connectPending: false, connected: false, apMode: true }))
-    );
+    server.use(http.get('/api/status', () => statusWith({ connectPending: false, connected: false, apMode: true })));
     render(<WifiSetup pollMs={5} />);
 
     fireEvent.click(await screen.findByRole('radio', { name: /Other network/ }));

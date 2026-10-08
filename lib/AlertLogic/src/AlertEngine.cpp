@@ -28,7 +28,7 @@ namespace SQM
                 std::snprintf(buffer, sizeof(buffer), fmt, a, b, c);
                 return buffer;
             }
-        }
+        } // namespace
 
         const char *alertLevelName(AlertLevel level)
         {
@@ -256,18 +256,17 @@ namespace SQM
                 {
                     if (unsafe)
                     {
-                        const std::string reasons = in.unsafeReasons.empty() ? std::string("Safety rules failing") : joinReasons(in.unsafeReasons);
+                        const std::string reasons =
+                            in.unsafeReasons.empty() ? std::string("Safety rules failing") : joinReasons(in.unsafeReasons);
                         alerts.push_back(make(AlertType::Unsafe, "Observatory UNSAFE", reasons));
                         std::string inline_;
                         for (const std::string &reason : in.unsafeReasons)
                             inline_ += (inline_.empty() ? "" : "; ") + reason;
-                        alerts.back().vars = {{"reasons", reasons},
-                                              {"reasons_inline", inline_},
-                                              {"reason_count", std::to_string(in.unsafeReasons.size())}};
+                        alerts.back().vars = {
+                            {"reasons", reasons}, {"reasons_inline", inline_}, {"reason_count", std::to_string(in.unsafeReasons.size())}};
                     }
                     else
-                        alerts.push_back(make(AlertType::Safe, "Observatory safe",
-                                              "All enabled safety rules pass."));
+                        alerts.push_back(make(AlertType::Safe, "Observatory safe", "All enabled safety rules pass."));
                 }
             }
 
@@ -278,19 +277,20 @@ namespace SQM
                 {
                     if (in.raining)
                     {
-                        alerts.push_back(make(AlertType::RainStarted, "Rain detected",
-                                              format("The rain sensor reports rain (%.1f mm/h).", in.rainRateMmPerHour)));
+                        alerts.push_back(make(
+                            AlertType::RainStarted,
+                            "Rain detected",
+                            format("The rain sensor reports rain (%.1f mm/h).", in.rainRateMmPerHour)));
                         alerts.back().vars = {{"rain_rate", format("%.1f", in.rainRateMmPerHour)}};
                     }
                     else
-                        alerts.push_back(make(AlertType::RainStopped, "Rain cleared",
-                                              "No rain for the configured rain clear delay."));
+                        alerts.push_back(make(AlertType::RainStopped, "Rain cleared", "No rain for the configured rain clear delay."));
                 }
 
                 if (sync(lens, in.lensFault, now, cooldown, pastGrace && rules.onSensorFault, rules.sensorSettleSeconds) && in.lensFault)
                 {
-                    alerts.push_back(make(AlertType::LensFault, "Rain sensor lens fault",
-                                          "The RG-15 reports a lens fault - clean or inspect the lens."));
+                    alerts.push_back(make(
+                        AlertType::LensFault, "Rain sensor lens fault", "The RG-15 reports a lens fault - clean or inspect the lens."));
                     alerts.back().vars = {{"sensor", "RG-15 lens"}};
                 }
             }
@@ -309,11 +309,15 @@ namespace SQM
                 if (sync(sensors[i], faulted, now, cooldown, pastGrace && rules.onSensorFault, rules.sensorSettleSeconds))
                 {
                     if (faulted)
-                        alerts.push_back(make(AlertType::SensorFault, std::string(sensor.name) + " sensor fault",
-                                              std::string(sensor.name) + " is offline or reporting errors."));
+                        alerts.push_back(make(
+                            AlertType::SensorFault,
+                            std::string(sensor.name) + " sensor fault",
+                            std::string(sensor.name) + " is offline or reporting errors."));
                     else
-                        alerts.push_back(make(AlertType::SensorRecovered, std::string(sensor.name) + " sensor recovered",
-                                              std::string(sensor.name) + " is reporting normally again."));
+                        alerts.push_back(make(
+                            AlertType::SensorRecovered,
+                            std::string(sensor.name) + " sensor recovered",
+                            std::string(sensor.name) + " is reporting normally again."));
                     alerts.back().vars = {{"sensor", sensor.name}};
                 }
             }
@@ -322,13 +326,14 @@ namespace SQM
             if (in.environmentValid)
             {
                 const float margin = in.temperatureC - in.dewpointC;
-                dewObserved = dewObserved ? margin < rules.dewRiskMarginC + DEW_HYSTERESIS_C
-                                          : margin < rules.dewRiskMarginC;
+                dewObserved = dewObserved ? margin < rules.dewRiskMarginC + DEW_HYSTERESIS_C : margin < rules.dewRiskMarginC;
                 if (sync(dew, dewObserved, now, cooldown, pastGrace && rules.onDewRisk) && dewObserved)
                 {
-                    alerts.push_back(make(AlertType::DewRisk, "Dew risk",
-                                          format("Temperature %.1f °C is within %.1f °C of the dew point (%.1f °C).",
-                                                 in.temperatureC, margin, in.dewpointC)));
+                    alerts.push_back(make(
+                        AlertType::DewRisk,
+                        "Dew risk",
+                        format(
+                            "Temperature %.1f °C is within %.1f °C of the dew point (%.1f °C).", in.temperatureC, margin, in.dewpointC)));
                     alerts.back().vars = {{"dew_margin", format("%.1f", margin)}, {"dew_margin_min", format("%.1f", rules.dewRiskMarginC)}};
                 }
             }
@@ -353,11 +358,19 @@ namespace SQM
                 else if (sync(sky, skyClear, now, cooldown, pastGrace && (rules.onClearSky || rules.onCloudedOver), rules.skySettleSeconds))
                 {
                     if (skyClear && rules.onClearSky)
-                        alerts.push_back(make(AlertType::ClearSky, rules.skyNightOnly ? "Dark and clear" : "Skies clear",
-                                              format("Cloud cover is down to %.0f%% (clear below %.0f%%).", in.cloudCoverPercent, rules.clearSkyCloudPercent)));
+                        alerts.push_back(make(
+                            AlertType::ClearSky,
+                            rules.skyNightOnly ? "Dark and clear" : "Skies clear",
+                            format(
+                                "Cloud cover is down to %.0f%% (clear below %.0f%%).", in.cloudCoverPercent, rules.clearSkyCloudPercent)));
                     else if (!skyClear && rules.onCloudedOver)
-                        alerts.push_back(make(AlertType::CloudedOver, "Clouded over",
-                                              format("Cloud cover is up to %.0f%% (cloudy above %.0f%%).", in.cloudCoverPercent, rules.cloudedOverCloudPercent)));
+                        alerts.push_back(make(
+                            AlertType::CloudedOver,
+                            "Clouded over",
+                            format(
+                                "Cloud cover is up to %.0f%% (cloudy above %.0f%%).",
+                                in.cloudCoverPercent,
+                                rules.cloudedOverCloudPercent)));
                 }
             }
 
@@ -378,27 +391,6 @@ namespace SQM
             return "settle";
         }
 
-        namespace
-        {
-            // A tracker whose state differs from the one last announced is
-            // waiting first to settle, then for its cooldown.
-            void addWait(std::vector<Wait> &out, const std::string &condition, bool initialized, bool pending, uint32_t pendingSince,
-                         bool hasNotified, uint32_t lastNotifiedAt, uint32_t now, uint32_t cooldown, uint32_t settle)
-            {
-                if (!initialized || !pending)
-                    return;
-                const uint32_t held = now - pendingSince;
-                if (held < settle)
-                {
-                    out.push_back({condition, WaitKind::Settle, settle - held});
-                    return;
-                }
-                const uint32_t since = now - lastNotifiedAt;
-                if (hasNotified && since < cooldown)
-                    out.push_back({condition, WaitKind::Cooldown, cooldown - since});
-            }
-        } // namespace
-
         std::vector<Wait> AlertEngine::waits(uint32_t now, const AlertRules &rules) const
         {
             std::vector<Wait> out;
@@ -410,9 +402,22 @@ namespace SQM
                 out.push_back({"startup", WaitKind::Grace, rules.startupGraceSeconds - sinceStart});
                 return out;
             }
-            const uint32_t cooldown = rules.cooldownSeconds;
+            // A tracker whose state differs from the one last announced is
+            // waiting first to settle, then for its cooldown.
             const auto add = [&](const std::string &name, const Tracker &t, uint32_t settle)
-            { addWait(out, name, t.initialized, t.pending, t.pendingSince, t.hasNotified, t.lastNotifiedAt, now, cooldown, settle); };
+            {
+                if (!t.initialized || !t.pending)
+                    return;
+                const uint32_t held = now - t.pendingSince;
+                if (held < settle)
+                {
+                    out.push_back({name, WaitKind::Settle, settle - held});
+                    return;
+                }
+                const uint32_t since = now - t.lastNotifiedAt;
+                if (t.hasNotified && since < rules.cooldownSeconds)
+                    out.push_back({name, WaitKind::Cooldown, rules.cooldownSeconds - since});
+            };
             add("safety", safety, 0);
             add("rain", rain, 0);
             add("lens", lens, rules.sensorSettleSeconds);

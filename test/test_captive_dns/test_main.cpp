@@ -59,7 +59,7 @@ void test_other_types_get_empty_answer()
         const auto q = query("captive.apple.com", type);
         std::vector<uint8_t> r;
         TEST_ASSERT_TRUE(CaptiveDns::buildResponse(q.data(), q.size(), IP, r));
-        TEST_ASSERT_EQUAL(0, r[7]);       // no answers
+        TEST_ASSERT_EQUAL(0, r[7]);         // no answers
         TEST_ASSERT_EQUAL_HEX8(0x00, r[3]); // but no error either
         TEST_ASSERT_EQUAL(q.size(), r.size());
     }

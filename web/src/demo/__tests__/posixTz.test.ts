@@ -47,8 +47,8 @@ describe('POSIX time zones', () => {
     expect(formatIsoWithOffset(LONDON, at('2026-10-08T22:10:00Z'))).toBe('2026-10-08T23:10:00+0100');
     expect(formatIsoWithOffset(CHILE, at('2026-06-30T12:00:00Z'))).toBe('2026-06-30T08:00:00-0400');
     expect(localClock(SYDNEY, at('2026-12-31T12:30:00Z'))).toEqual({ time: '23:30', date: '2026-12-31' });
-    expect(new Date(fromLocal(LONDON, 2026, 12, 31, 23, 0)).toISOString()).toBe('2026-12-31T23:00:00.000Z');
-    expect(new Date(fromLocal(LONDON, 2026, 6, 21, 0, 0)).toISOString()).toBe('2026-06-20T23:00:00.000Z');
-    expect(new Date(fromLocal(SYDNEY, 2026, 12, 21, 0, 0)).toISOString()).toBe('2026-12-20T13:00:00.000Z');
+    expect(new Date(fromLocal(LONDON, { year: 2026, month: 12, day: 31, hours: 23 })).toISOString()).toBe('2026-12-31T23:00:00.000Z');
+    expect(new Date(fromLocal(LONDON, { year: 2026, month: 6, day: 21 })).toISOString()).toBe('2026-06-20T23:00:00.000Z');
+    expect(new Date(fromLocal(SYDNEY, { year: 2026, month: 12, day: 21 })).toISOString()).toBe('2026-12-20T13:00:00.000Z');
   });
 });

@@ -101,7 +101,10 @@ export interface Ramp {
 // Light spans decades, so it ramps on a log scale.
 const interpolate = (ramp: Ramp, progress: number) =>
   ramp.field === 'light.lux'
-    ? Math.pow(10, Math.log10(Math.max(ramp.from, 1e-4)) + (Math.log10(Math.max(ramp.to, 1e-4)) - Math.log10(Math.max(ramp.from, 1e-4))) * progress)
+    ? Math.pow(
+        10,
+        Math.log10(Math.max(ramp.from, 1e-4)) + (Math.log10(Math.max(ramp.to, 1e-4)) - Math.log10(Math.max(ramp.from, 1e-4))) * progress,
+      )
     : ramp.from + (ramp.to - ramp.from) * progress;
 
 /** Applies the ramps at `nowMs`; finished ramps are dropped. */
@@ -148,7 +151,15 @@ export function toCoreInputs(c: Conditions, nowMs: number, context: InputContext
   const gust = clamp('wind.gust', Math.max(speed, c.wind.gust + w(90, 1.2)));
 
   return {
-    light: { present: true, failed: c.faults.light, lux, visible: Math.round(counts * 0.86), infrared: Math.round(counts * 0.14), full: counts, nightMode: lux < 0.5 },
+    light: {
+      present: true,
+      failed: c.faults.light,
+      lux,
+      visible: Math.round(counts * 0.86),
+      infrared: Math.round(counts * 0.14),
+      full: counts,
+      nightMode: lux < 0.5,
+    },
     environment: {
       present: true,
       failed: c.faults.environment,
@@ -156,7 +167,12 @@ export function toCoreInputs(c: Conditions, nowMs: number, context: InputContext
       humidity: clamp('air.humidity', c.air.humidity + w(600, 1.5)),
       pressure: clamp('air.pressure', c.air.pressure + w(3600, 2)),
     },
-    infrared: { present: true, failed: c.faults.infrared, sky: clamp('ir.sky', c.ir.sky + w(120, 0.4)), ambient: clamp('ir.ambient', c.ir.ambient + w(900, 0.3)) },
+    infrared: {
+      present: true,
+      failed: c.faults.infrared,
+      sky: clamp('ir.sky', c.ir.sky + w(120, 0.4)),
+      ambient: clamp('ir.ambient', c.ir.ambient + w(900, 0.3)),
+    },
     gps: gpsInput(c, context),
     rain: { failed: c.faults.rain, rate: c.rain.rate, lensFault: c.rain.lensFault },
     wind: { failed: c.faults.wind, speed, gust, direction: (c.wind.direction + w(200, 25) + 360) % 360 },

@@ -70,7 +70,10 @@ describe('other shortcuts', () => {
   it('rain needs the rain sensor', () => {
     expect(shortcut('rain', defaults, DEFAULT_CONDITIONS)).toMatchObject({ ok: true, changes: { 'rain.rate': 2.5 } });
     expect(shortcut('rainStops', defaults, DEFAULT_CONDITIONS)).toMatchObject({ ok: true, changes: { 'rain.rate': 0 } });
-    expect(shortcut('rain', { ...defaults, rain: { enabled: false } }, DEFAULT_CONDITIONS)).toMatchObject({ ok: false, link: { route: '/settings?tab=sensors' } });
+    expect(shortcut('rain', { ...defaults, rain: { enabled: false } }, DEFAULT_CONDITIONS)).toMatchObject({
+      ok: false,
+      link: { route: '/settings?tab=sensors' },
+    });
   });
 
   it('dark sky inverts the device conversion, with the calibration offset', () => {

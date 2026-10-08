@@ -12,9 +12,12 @@ export const useWifiScan = () => {
   const [error, setError] = useState<string | null>(null);
   const cancelled = useRef(false);
 
-  useEffect(() => () => {
-    cancelled.current = true;
-  }, []);
+  useEffect(
+    () => () => {
+      cancelled.current = true;
+    },
+    [],
+  );
 
   const scan = async () => {
     setScanning(true);

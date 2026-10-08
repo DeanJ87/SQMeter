@@ -47,7 +47,7 @@ namespace
                 return true;
         return false;
     }
-}
+} // namespace
 
 void test_first_update_sets_baseline_without_alerts(void)
 {
@@ -347,7 +347,8 @@ void test_unsafe_alert_lists_every_reason(void)
     TEST_ASSERT_EQUAL(1, alerts.size());
     TEST_ASSERT_EQUAL_STRING("\u2022 SQM 18.21 < 19.50\n\u2022 Cloud 62% >= 35%\n\u2022 Humidity 92% > 90%", alerts[0].message.c_str());
     TEST_ASSERT_EQUAL_STRING("3", renderTemplate("{reason_count}", alerts[0].vars).c_str());
-    TEST_ASSERT_EQUAL_STRING("SQM 18.21 < 19.50; Cloud 62% >= 35%; Humidity 92% > 90%", renderTemplate("{reasons_inline}", alerts[0].vars).c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "SQM 18.21 < 19.50; Cloud 62% >= 35%; Humidity 92% > 90%", renderTemplate("{reasons_inline}", alerts[0].vars).c_str());
 }
 
 void test_stack_alerts(void)

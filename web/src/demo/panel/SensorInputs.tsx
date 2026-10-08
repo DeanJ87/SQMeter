@@ -16,12 +16,19 @@ const Group: FunctionalComponent<{ title: string; open?: boolean; children: Comp
 );
 
 const NotResponding: FunctionalComponent<{ sensor: SensorId; name: string; disabled?: boolean }> = ({ sensor, name, disabled }) => (
-  <Check label={`${name} not responding`} checked={demoDevice.conditions.faults[sensor]} disabled={disabled} onChange={(on) => demoDevice.setFault(sensor, on)} />
+  <Check
+    label={`${name} not responding`}
+    checked={demoDevice.conditions.faults[sensor]}
+    disabled={disabled}
+    onChange={(on) => demoDevice.setFault(sensor, on)}
+  />
 );
 
 // Controls for a sensor switched off in the device's settings (FR-016).
 const SwitchedOff: FunctionalComponent<{ name: string; tab: string }> = ({ name, tab }) => (
-  <Note action={{ label: 'Settings', onClick: () => route(`/settings?tab=${tab}`) }}>The {name} is switched off in the device's settings.</Note>
+  <Note action={{ label: 'Settings', onClick: () => route(`/settings?tab=${tab}`) }}>
+    The {name} is switched off in the device's settings.
+  </Note>
 );
 
 const SKY = INPUTS['ir.sky'];
@@ -44,7 +51,11 @@ const SkyGroup: FunctionalComponent = () => {
         />
         <NumberField field="light.lux" value={c.light.lux} onCommit={(v) => demoDevice.setInput('light.lux', v)} />
       </div>
-      <Check label="Light follows the sun" checked={c.light.mode === 'sun'} onChange={(on) => (on ? demoDevice.followSun() : demoDevice.setInput('light.lux', c.light.lux))} />
+      <Check
+        label="Light follows the sun"
+        checked={c.light.mode === 'sun'}
+        onChange={(on) => (on ? demoDevice.followSun() : demoDevice.setInput('light.lux', c.light.lux))}
+      />
       <NotResponding sensor="infrared" name="IR sensor" />
       <NotResponding sensor="light" name="Light sensor" />
     </Group>
@@ -89,7 +100,12 @@ const WindGroup: FunctionalComponent = () => {
       <div class="demo-grid">
         <NumberField field="wind.speed" value={c.wind.speed} disabled={off} onCommit={(v) => demoDevice.setInput('wind.speed', v)} />
         <NumberField field="wind.gust" value={c.wind.gust} disabled={off} onCommit={(v) => demoDevice.setInput('wind.gust', v)} />
-        <NumberField field="wind.direction" value={c.wind.direction} disabled={off} onCommit={(v) => demoDevice.setInput('wind.direction', v)} />
+        <NumberField
+          field="wind.direction"
+          value={c.wind.direction}
+          disabled={off}
+          onCommit={(v) => demoDevice.setInput('wind.direction', v)}
+        />
       </div>
       <NotResponding sensor="wind" name="Anemometer" disabled={off} />
     </Group>

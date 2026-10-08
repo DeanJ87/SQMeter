@@ -5,8 +5,7 @@
 
 namespace SQM
 {
-    TimeManager::TimeManager(const NTPConfig &ntpCfg, const GPSConfig &gpsCfg,
-                             TimeSource primary, TimeSource secondary, GPSSensor *gps)
+    TimeManager::TimeManager(const NTPConfig &ntpCfg, const GPSConfig &gpsCfg, TimeSource primary, TimeSource secondary, GPSSensor *gps)
         : ntpConfig(ntpCfg),
           gpsConfig(gpsCfg),
           primarySource(primary),
@@ -23,9 +22,11 @@ namespace SQM
     void TimeManager::begin()
     {
         Logger::info(TAG, "Initializing time synchronization");
-        Logger::info(TAG, "Primary source: %s, Secondary: %s",
-                     primarySource == TimeSource::NTP ? "NTP" : "GPS",
-                     secondarySource == TimeSource::NTP ? "NTP" : "GPS");
+        Logger::info(
+            TAG,
+            "Primary source: %s, Secondary: %s",
+            primarySource == TimeSource::NTP ? "NTP" : "GPS",
+            secondarySource == TimeSource::NTP ? "NTP" : "GPS");
 
         configureTimezone();
 
@@ -85,8 +86,7 @@ namespace SQM
                 syncStatus = NTPSyncStatus::SYNCED;
                 lastSuccessfulSync = now;
                 lastKnownTime = currentTime;
-                Logger::info(TAG, "Time sync successful via %s",
-                             activeSource == ActiveTimeSource::NTP ? "NTP" : "GPS");
+                Logger::info(TAG, "Time sync successful via %s", activeSource == ActiveTimeSource::NTP ? "NTP" : "GPS");
             }
             else if (now - lastSyncAttempt > 30000) // 30 second timeout
             {
@@ -191,11 +191,10 @@ namespace SQM
         tzset();
     }
 
-    void TimeManager::updateConfig(const NTPConfig &newNtpConfig, const GPSConfig &newGpsConfig,
-                                   TimeSource newPrimary, TimeSource newSecondary)
+    void TimeManager::updateConfig(
+        const NTPConfig &newNtpConfig, const GPSConfig &newGpsConfig, TimeSource newPrimary, TimeSource newSecondary)
     {
-        bool serverChanged = (ntpConfig.server1 != newNtpConfig.server1) ||
-                             (ntpConfig.server2 != newNtpConfig.server2);
+        bool serverChanged = (ntpConfig.server1 != newNtpConfig.server1) || (ntpConfig.server2 != newNtpConfig.server2);
         bool tzChanged = (ntpConfig.timezone != newNtpConfig.timezone);
         bool priorityChanged = (primarySource != newPrimary) || (secondarySource != newSecondary);
 

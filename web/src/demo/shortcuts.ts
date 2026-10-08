@@ -77,64 +77,90 @@ function skyFor(config: ShortcutConfig, c: Conditions, corrected: number, why: s
     changes: { 'ir.sky': sky },
     used: `Sky ${fmt(sky)} °C: ${side} the IR sensor's ${fmt(c.ir.ambient)} °C after the humidity correction - ${why}.`,
   };
-  if (sky !== wanted) result.clamped = `The sky temperature needed (${fmt(wanted)} °C) is outside the sensor's range; set to ${fmt(sky)} °C.`;
+  if (sky !== wanted)
+    result.clamped = `The sky temperature needed (${fmt(wanted)} °C) is outside the sensor's range; set to ${fmt(sky)} °C.`;
   return result;
 }
 
-export function shortcut(id: ShortcutId, config: ShortcutConfig, c: Conditions, options: ShortcutOptions = {}): ShortcutResult {
-  switch (id) {
-    case 'clear': {
-      if (c.faults.infrared) return notResponding('IR sensor');
-      const { clear } = cloudModel(config, c);
-      return skyFor(config, c, clear - CLEAR_MARGIN_C, `your clear-sky threshold is ${fmt(clear)} °C`);
-    }
-    case 'overcast': {
-      if (c.faults.infrared) return notResponding('IR sensor');
-      const { cloudy } = cloudModel(config, c);
-      return skyFor(config, c, cloudy + OVERCAST_MARGIN_C, `your overcast threshold is ${fmt(cloudy)} °C`);
-    }
-    case 'cloudUnsafe': {
-      if (!config.alpaca?.cloudCoverEnabled) return { ok: false, reason: 'The cloud cover safety rule is off.', link: SAFETY_LINK };
-      if (c.faults.infrared) return notResponding('IR sensor');
-      const { clear, cloudy } = cloudModel(config, c);
-      const limit = config.alpaca.cloudCoverUnsafePercent ?? 90;
-      const cover = Math.min(100, limit + UNSAFE_MARGIN_PERCENT);
-      const corrected = cover >= 100 ? cloudy + OVERCAST_MARGIN_C : clear + (cover / 100) * (cloudy - clear);
-      return skyFor(config, c, corrected, `about ${fmt(cover, 0)}% cover; your safety limit is ${fmt(limit, 0)}%`);
-    }
-    case 'rain':
-    case 'rainStops': {
-      if (!config.rain?.enabled) return { ok: false, reason: 'The rain sensor is switched off.', link: SENSORS_LINK };
-      if (c.faults.rain) return notResponding('rain sensor');
-      const rate = id === 'rain' ? RAIN_RATE_MM_H : 0;
-      return { ok: true, changes: { 'rain.rate': rate }, used: `Rain ${fmt(rate)} mm/h.` };
-    }
-    case 'darkSky': {
-      if (c.faults.light) return notResponding('light sensor');
-      const sqm = options.sqm ?? DARK_SKY_SQM;
-      const offset = config.skyCalibration?.enabled ? config.skyCalibration.sqmOffset ?? 0 : 0;
-      const wanted = Math.pow(10, (12.6 - (sqm - offset)) / 2.5);
-      const spec = INPUTS['light.lux'];
-      const lux = Math.min(spec.max, Math.max(spec.min, wanted));
-      const calibrated = offset ? ` with your calibration offset of ${offset >= 0 ? '+' : ''}${fmt(offset, 2)}` : '';
-      const result: ShortcutResult = { ok: true, changes: { 'light.lux': lux }, used: `Illuminance ${lux.toPrecision(3)} lux: SQM ${fmt(sqm, 2)}${calibrated}.` };
-      if (lux !== wanted) result.clamped = `SQM ${fmt(sqm, 2)} needs ${wanted.toPrecision(3)} lux, outside the sensor's range; set to ${lux.toPrecision(3)} lux.`;
-      return result;
-    }
-    case 'dewRisk': {
-      if (c.faults.environment) return notResponding('BME280');
-      const margin = config.alerts?.dewRiskMarginC ?? 2;
-      if (margin <= 0)
-        return { ok: false, reason: 'Your dew-risk margin is 0 °C, and the dew point can never be above the air temperature.', link: ALERTS_LINK };
-      const gap = margin > 0.5 ? margin - 0.5 : margin / 2;
-      const t = c.air.temperature;
-      const dewpoint = t - gap;
-      const humidity = 100 * Math.exp((MAGNUS_A * dewpoint) / (MAGNUS_B + dewpoint) - (MAGNUS_A * t) / (MAGNUS_B + t));
-      return {
-        ok: true,
-        changes: { 'air.humidity': Math.round(humidity * 10) / 10 },
-        used: `Humidity ${fmt(humidity)}%: dew point ${fmt(dewpoint)} °C, ${fmt(gap)} °C below the air - your dew-risk margin is ${fmt(margin)} °C.`,
-      };
-    }
-  }
-}
+type Compute = (config: ShortcutConfig, c: Conditions, options: ShortcutOptions) => ShortcutResult;
+
+const clear: Compute = (config, c) => {
+  if (c.faults.infrared) return notResponding('IR sensor');
+  const model = cloudModel(config, c);
+  return skyFor(config, c, model.clear - CLEAR_MARGIN_C, `your clear-sky threshold is ${fmt(model.clear)} °C`);
+};
+
+const overcast: Compute = (config, c) => {
+  if (c.faults.infrared) return notResponding('IR sensor');
+  const { cloudy } = cloudModel(config, c);
+  return skyFor(config, c, cloudy + OVERCAST_MARGIN_C, `your overcast threshold is ${fmt(cloudy)} °C`);
+};
+
+const cloudUnsafe: Compute = (config, c) => {
+  if (!config.alpaca?.cloudCoverEnabled) return { ok: false, reason: 'The cloud cover safety rule is off.', link: SAFETY_LINK };
+  if (c.faults.infrared) return notResponding('IR sensor');
+  const model = cloudModel(config, c);
+  const limit = config.alpaca.cloudCoverUnsafePercent ?? 90;
+  const cover = Math.min(100, limit + UNSAFE_MARGIN_PERCENT);
+  const corrected = cover >= 100 ? model.cloudy + OVERCAST_MARGIN_C : model.clear + (cover / 100) * (model.cloudy - model.clear);
+  return skyFor(config, c, corrected, `about ${fmt(cover, 0)}% cover; your safety limit is ${fmt(limit, 0)}%`);
+};
+
+const rainAt =
+  (rate: number): Compute =>
+  (config, c) => {
+    if (!config.rain?.enabled) return { ok: false, reason: 'The rain sensor is switched off.', link: SENSORS_LINK };
+    if (c.faults.rain) return notResponding('rain sensor');
+    return { ok: true, changes: { 'rain.rate': rate }, used: `Rain ${fmt(rate)} mm/h.` };
+  };
+
+const darkSky: Compute = (config, c, options) => {
+  if (c.faults.light) return notResponding('light sensor');
+  const sqm = options.sqm ?? DARK_SKY_SQM;
+  const offset = config.skyCalibration?.enabled ? (config.skyCalibration.sqmOffset ?? 0) : 0;
+  const wanted = Math.pow(10, (12.6 - (sqm - offset)) / 2.5);
+  const spec = INPUTS['light.lux'];
+  const lux = Math.min(spec.max, Math.max(spec.min, wanted));
+  const calibrated = offset ? ` with your calibration offset of ${offset >= 0 ? '+' : ''}${fmt(offset, 2)}` : '';
+  const result: ShortcutResult = {
+    ok: true,
+    changes: { 'light.lux': lux },
+    used: `Illuminance ${lux.toPrecision(3)} lux: SQM ${fmt(sqm, 2)}${calibrated}.`,
+  };
+  if (lux !== wanted)
+    result.clamped = `SQM ${fmt(sqm, 2)} needs ${wanted.toPrecision(3)} lux, outside the sensor's range; set to ${lux.toPrecision(3)} lux.`;
+  return result;
+};
+
+const dewRisk: Compute = (config, c) => {
+  if (c.faults.environment) return notResponding('BME280');
+  const margin = config.alerts?.dewRiskMarginC ?? 2;
+  if (margin <= 0)
+    return {
+      ok: false,
+      reason: 'Your dew-risk margin is 0 °C, and the dew point can never be above the air temperature.',
+      link: ALERTS_LINK,
+    };
+  const gap = margin > 0.5 ? margin - 0.5 : margin / 2;
+  const t = c.air.temperature;
+  const dewpoint = t - gap;
+  const humidity = 100 * Math.exp((MAGNUS_A * dewpoint) / (MAGNUS_B + dewpoint) - (MAGNUS_A * t) / (MAGNUS_B + t));
+  return {
+    ok: true,
+    changes: { 'air.humidity': Math.round(humidity * 10) / 10 },
+    used: `Humidity ${fmt(humidity)}%: dew point ${fmt(dewpoint)} °C, ${fmt(gap)} °C below the air - your dew-risk margin is ${fmt(margin)} °C.`,
+  };
+};
+
+const COMPUTE: Record<ShortcutId, Compute> = {
+  clear,
+  overcast,
+  cloudUnsafe,
+  rain: rainAt(RAIN_RATE_MM_H),
+  rainStops: rainAt(0),
+  darkSky,
+  dewRisk,
+};
+
+export const shortcut = (id: ShortcutId, config: ShortcutConfig, c: Conditions, options: ShortcutOptions = {}): ShortcutResult =>
+  COMPUTE[id](config, c, options);

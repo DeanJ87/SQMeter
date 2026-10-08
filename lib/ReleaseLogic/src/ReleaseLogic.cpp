@@ -76,8 +76,7 @@ namespace SQM
             return results;
         }
 
-        bool parse(const std::string &json, const std::string &track, bool ble,
-                   std::vector<GithubRelease> &out, std::string &error)
+        bool parse(const std::string &json, const std::string &track, bool ble, std::vector<GithubRelease> &out, std::string &error)
         {
             StaticJsonDocument<512> filter; // 256 is too small on 64-bit hosts
             buildFilter(filter);

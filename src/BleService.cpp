@@ -51,7 +51,10 @@ namespace SQM
         class AckCallbacks : public NimBLECharacteristicCallbacks
         {
         public:
-            explicit AckCallbacks(BleService &owner) : owner(owner) {}
+            explicit AckCallbacks(BleService &owner)
+                : owner(owner)
+            {
+            }
 
             void onWrite(NimBLECharacteristic *characteristic) override
             {
@@ -64,7 +67,7 @@ namespace SQM
         private:
             BleService &owner;
         };
-    }
+    } // namespace
 
     void BleService::begin(const std::string &deviceName, const std::string &passkey)
     {
@@ -126,9 +129,13 @@ namespace SQM
         advertising->start();
 
         active = true;
-        Logger::info(TAG, "Advertising as \"%s\"%s (%d bonded phone%s)", name.c_str(),
-                     alarmService ? " with the phone alarm service" : "", NimBLEDevice::getNumBonds(),
-                     NimBLEDevice::getNumBonds() == 1 ? "" : "s");
+        Logger::info(
+            TAG,
+            "Advertising as \"%s\"%s (%d bonded phone%s)",
+            name.c_str(),
+            alarmService ? " with the phone alarm service" : "",
+            NimBLEDevice::getNumBonds(),
+            NimBLEDevice::getNumBonds() == 1 ? "" : "s");
     }
 
     void BleService::releaseControllerMemory()
@@ -311,13 +318,22 @@ namespace SQM
 {
     void BleService::releaseControllerMemory() {}
     void BleService::begin(const std::string &, const std::string &) {}
-    uint8_t BleService::connectedClients() const { return 0; }
-    BleAlarmStatus BleService::alarmStatus() const { return {}; }
+    uint8_t BleService::connectedClients() const
+    {
+        return 0;
+    }
+    BleAlarmStatus BleService::alarmStatus() const
+    {
+        return {};
+    }
     void BleService::update(const Ble::State &, const std::string &) {}
     void BleService::publishAlert(const Alerts::Alert &) {}
     void BleService::raiseAlarm(uint32_t, uint32_t) {}
     void BleService::raiseInfo(uint32_t, uint32_t) {}
-    bool BleService::processAcks(uint32_t &, bool &) { return false; }
+    bool BleService::processAcks(uint32_t &, bool &)
+    {
+        return false;
+    }
 } // namespace SQM
 
 #endif

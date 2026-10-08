@@ -81,11 +81,7 @@ describe('Updates - GitHub check for updates', () => {
   });
 
   it('shows an error if the release check fails', async () => {
-    server.use(
-      http.get('/api/updates/check', () =>
-        HttpResponse.json({ error: 'GitHub API request failed (HTTP 503)' }, { status: 502 })
-      )
-    );
+    server.use(http.get('/api/updates/check', () => HttpResponse.json({ error: 'GitHub API request failed (HTTP 503)' }, { status: 502 })));
 
     render(<Updates />);
 
@@ -105,7 +101,7 @@ describe('Updates - GitHub check for updates', () => {
           fsAssetUrl: mockGithubReleases[0].fsAssetUrl,
         });
         return HttpResponse.json({ success: true, message: 'Update started' });
-      })
+      }),
     );
 
     render(<Updates />);
