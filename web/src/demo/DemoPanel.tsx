@@ -2,6 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
 import { useEffect, useState } from 'preact/hooks';
 import { Button, Note } from '../components/ui';
+import DemoImagingApp from './DemoImagingApp';
 import { demoDevice } from './device';
 import { SCENARIOS, scenarioActive, scenarioRemainingMs } from './simulator';
 
@@ -67,6 +68,7 @@ const DemoPanel: FunctionalComponent = () => {
               {SCENARIOS.find((s) => s.id === active.id)?.label} - {formatRemaining(remaining)} left
             </Note>
           )}
+          <DemoImagingApp />
           <label class="demo-speed">
             <input
               type="checkbox"
