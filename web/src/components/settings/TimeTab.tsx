@@ -76,11 +76,11 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
   const knownZone = TIMEZONE_OPTIONS.some((tz) => tz.value === config.ntp.timezone);
   const bothSources = config.ntp.enabled && config.gps.enabled;
 
-  const gpsBadge = !config.gps.enabled
+  // GPS starts at boot: switched on but not running yet means a restart is
+  // due, not a missing receiver.
+  const gpsBadge = !config.gps.enabled || hw.gps.detected === null
     ? undefined
-    : hw.gps.detected === null
-      ? undefined
-      : <StatusBadge tone={hw.gps.detected ? 'ok' : 'bad'} label={hw.gps.detected ? 'Running' : 'Not detected'} />;
+    : <StatusBadge tone={hw.gps.detected ? 'ok' : 'warn'} label={hw.gps.detected ? 'Running' : 'Starts after a restart'} />;
 
   return (
     <>

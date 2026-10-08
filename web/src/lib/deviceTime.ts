@@ -8,6 +8,7 @@ const EARLIEST_VALID = Date.UTC(2024, 0, 1);
 export const deviceTime = (status?: Pick<SystemStatus, 'time'> | null): Date | undefined => {
   const iso = status?.time?.iso;
   if (!iso) return undefined;
-  const at = new Date(iso);
+  // The device writes the offset as +0100; not every browser parses that.
+  const at = new Date(iso.replace(/([+-]\d{2})(\d{2})$/, '$1:$2'));
   return Number.isNaN(at.getTime()) || at.getTime() < EARLIEST_VALID ? undefined : at;
 };

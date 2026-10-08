@@ -72,6 +72,7 @@ nav:
     - Configuration: user-guide/configuration.md
     - Security: user-guide/security.md
     - MQTT Integration: user-guide/mqtt.md
+    - indi-allsky: user-guide/indi-allsky.md
     - OTA Updates: user-guide/ota.md
     - ASCOM Alpaca: user-guide/alpaca.md
     - Alerts: user-guide/alerts.md
