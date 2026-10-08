@@ -1,0 +1,9 @@
+{
+  "dashboard": ["color-contrast"],
+  "settings-alerts": ["color-contrast", "label"],
+  "settings-device": ["label"],
+  "settings-network": ["label", "select-name"],
+  "settings-safety": ["label"],
+  "settings-sensors": ["color-contrast", "label", "select-name"],
+  "settings-time": ["color-contrast", "label", "select-name"]
+}
