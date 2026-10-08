@@ -43,7 +43,7 @@ const normalizeTimeSources = (candidate: Config): Pick<Config, 'primaryTimeSourc
     };
   }
 
-  let primaryTimeSource = isSourceEnabled(candidate, candidate.primaryTimeSource) ? candidate.primaryTimeSource : ntpEnabled ? 0 : 1;
+  const primaryTimeSource = isSourceEnabled(candidate, candidate.primaryTimeSource) ? candidate.primaryTimeSource : ntpEnabled ? 0 : 1;
 
   let secondaryTimeSource = isSourceEnabled(candidate, candidate.secondaryTimeSource)
     ? candidate.secondaryTimeSource

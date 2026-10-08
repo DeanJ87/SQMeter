@@ -50,7 +50,7 @@ describe('Safety alerts at night', () => {
 
 describe('Alerts on/off', () => {
   it('switches alerts off straight away, without saving settings', async () => {
-    let calls: string[] = [];
+    const calls: string[] = [];
     server.use(
       http.get('/api/alerts/armed', () => HttpResponse.json({ armed: true, armWithAlpaca: false })),
       http.post('/api/alerts/disarm', () => {

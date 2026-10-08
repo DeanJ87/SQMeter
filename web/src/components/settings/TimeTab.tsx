@@ -68,9 +68,9 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
       },
       () => {
         setLocating(false);
-        setCoordsError('The browser didn\'t share a location.');
+        setCoordsError("The browser didn't share a location.");
       },
-      { timeout: 15000 }
+      { timeout: 15000 },
     );
   };
   const knownZone = TIMEZONE_OPTIONS.some((tz) => tz.value === config.ntp.timezone);
@@ -78,9 +78,10 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
 
   // GPS starts at boot: switched on but not running yet means a restart is
   // due, not a missing receiver.
-  const gpsBadge = !config.gps.enabled || hw.gps.detected === null
-    ? undefined
-    : <StatusBadge tone={hw.gps.detected ? 'ok' : 'warn'} label={hw.gps.detected ? 'Running' : 'Starts after a restart'} />;
+  const gpsBadge =
+    !config.gps.enabled || hw.gps.detected === null ? undefined : (
+      <StatusBadge tone={hw.gps.detected ? 'ok' : 'warn'} label={hw.gps.detected ? 'Running' : 'Starts after a restart'} />
+    );
 
   return (
     <>
@@ -108,7 +109,12 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
         hint="Used to work out when it's dark. A GPS fix takes precedence."
         badge={sky?.locationSource === 'gps' ? <StatusBadge tone="ok" label="Using GPS" /> : undefined}
       >
-        <Field class="field-wide" label="Coordinates" error={coordsError ?? error('location.latitude') ?? error('location.longitude')} hint="Latitude, longitude in decimal degrees. Paste from any maps app.">
+        <Field
+          class="field-wide"
+          label="Coordinates"
+          error={coordsError ?? error('location.latitude') ?? error('location.longitude')}
+          hint="Latitude, longitude in decimal degrees. Paste from any maps app."
+        >
           <div class="input-row">
             <TextInput dataField="location.latitude" value={coords} placeholder="51.4779, -0.0015" onInput={applyCoords} />
             {canUseBrowserLocation && (
@@ -143,10 +149,20 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
           {config.ntp.enabled && (
             <div class="form-grid">
               <Field label="Server" error={error('ntp.server1')}>
-                <TextInput dataField="ntp.server1" value={config.ntp.server1} placeholder="pool.ntp.org" onInput={(v) => update(['ntp', 'server1'], v)} />
+                <TextInput
+                  dataField="ntp.server1"
+                  value={config.ntp.server1}
+                  placeholder="pool.ntp.org"
+                  onInput={(v) => update(['ntp', 'server1'], v)}
+                />
               </Field>
               <Field label="Fallback server">
-                <TextInput dataField="ntp.server2" value={config.ntp.server2} placeholder="time.nist.gov" onInput={(v) => update(['ntp', 'server2'], v)} />
+                <TextInput
+                  dataField="ntp.server2"
+                  value={config.ntp.server2}
+                  placeholder="time.nist.gov"
+                  onInput={(v) => update(['ntp', 'server2'], v)}
+                />
               </Field>
               <Field label="Sync every" error={error('ntp.syncIntervalMs')}>
                 <NumberInput
@@ -175,10 +191,24 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
           {config.gps.enabled && (
             <div class="form-grid">
               <Field label="RX pin" error={error('gps.rxPin')}>
-                <NumberInput dataField="gps.rxPin" integer min={0} max={39} value={config.gps.rxPin} onChange={(v) => update(['gps', 'rxPin'], v)} />
+                <NumberInput
+                  dataField="gps.rxPin"
+                  integer
+                  min={0}
+                  max={39}
+                  value={config.gps.rxPin}
+                  onChange={(v) => update(['gps', 'rxPin'], v)}
+                />
               </Field>
               <Field label="TX pin" error={error('gps.txPin')}>
-                <NumberInput dataField="gps.txPin" integer min={0} max={39} value={config.gps.txPin} onChange={(v) => update(['gps', 'txPin'], v)} />
+                <NumberInput
+                  dataField="gps.txPin"
+                  integer
+                  min={0}
+                  max={39}
+                  value={config.gps.txPin}
+                  onChange={(v) => update(['gps', 'txPin'], v)}
+                />
               </Field>
               <Field label="Baud rate" error={error('gps.baudRate')}>
                 <SelectInput
@@ -195,7 +225,11 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
         {bothSources && (
           <Group title="Priority">
             <div class="form-grid">
-              <Field label="Use first" error={error('primaryTimeSource')} hint={`Falls back to ${SOURCE_LABEL[config.secondaryTimeSource]}.`}>
+              <Field
+                label="Use first"
+                error={error('primaryTimeSource')}
+                hint={`Falls back to ${SOURCE_LABEL[config.secondaryTimeSource]}.`}
+              >
                 <SelectInput
                   dataField="primaryTimeSource"
                   value={String(config.primaryTimeSource)}
