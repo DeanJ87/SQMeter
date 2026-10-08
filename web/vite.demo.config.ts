@@ -3,7 +3,9 @@ import preact from "@preact/preset-vite";
 
 export default defineConfig({
   plugins: [preact()],
-  base: "/SQMeter/demo/",
+  // Served at the root of https://demo.sqmeter.dev. Set DEMO_BASE to build it
+  // for a sub-path instead (routing is hash-based, so only assets care).
+  base: process.env.DEMO_BASE ?? "/",
   define: {
     "import.meta.env.VITE_DEMO_MODE": '"true"',
   },

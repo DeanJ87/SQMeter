@@ -57,7 +57,7 @@ const capturePage = async (
 
 // The demo uses hash routing so GitHub Pages hard-refreshes never 404.
 // All goto() calls use "./" or "./#/route" — resolved against the Playwright
-// baseURL (http://localhost:4173/SQMeter/demo/) so they reach the demo server.
+// baseURL (http://localhost:4173/) so they reach the demo server.
 
 test.beforeEach(async ({ page }) => {
   // Give MSW service worker time to activate before each test
