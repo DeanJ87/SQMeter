@@ -32,6 +32,20 @@ async function init() {
     }
   }
 
+  if (import.meta.env.VITE_DEMO_MODE === "true") {
+    const { default: DemoPanel } = await import("./demo/DemoPanel");
+    // ?panel=hidden leaves the Demo button out (screenshots for the docs).
+    const showPanel = new URLSearchParams(window.location.search).get("panel") !== "hidden";
+    render(
+      <>
+        <App />
+        {showPanel && <DemoPanel />}
+      </>,
+      document.getElementById("app")!
+    );
+    return;
+  }
+
   render(<App />, document.getElementById("app")!);
 }
 

@@ -27,6 +27,7 @@ em++ -std=gnu++17 -O2 -Wall -Wextra \
   "${INCLUDES[@]}" "-I$AJ" \
   -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createSqmCore \
   -sENVIRONMENT=web,node -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=0 \
+  -sDYNAMIC_EXECUTION=0 \
   --bind "${SOURCES[@]}" -o "$OUT/sqm-core.mjs"
 
 # Hash of everything that went in, so CI can tell the output is current.

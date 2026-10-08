@@ -8,6 +8,17 @@ export default defineConfig({
     preact(),
     // Static hosts serve 404.html for unknown paths: let the app answer
     // device URLs (/api/..., /management/..., /setup/...) opened directly.
+    // Nothing may leave the browser (spec 016 FR-006): the demo only talks to
+    // its own origin, enforced by the browser too.
+    {
+      name: "sqm-demo-csp",
+      transformIndexHtml(html: string) {
+        return html.replace(
+          "<head>",
+          `<head>\n    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' ws: wss:; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; worker-src 'self'">`
+        );
+      },
+    },
     {
       name: "sqm-demo-404",
       closeBundle() {

@@ -4,7 +4,7 @@ import { sunPosition } from '../lib/astro';
 // readings are invented here; everything derived from them (SQM, cloud cover,
 // the safety verdict, alerts) is the firmware's own code in the device core.
 
-export type ScenarioId = 'rain' | 'cloud' | 'clear' | 'fail-light' | 'fail-ir' | 'fail-environment' | 'fail-rain' | 'dawn';
+export type ScenarioId = 'night' | 'rain' | 'cloud' | 'clear' | 'fail-light' | 'fail-ir' | 'fail-environment' | 'fail-rain' | 'dawn';
 
 export interface Scenario {
   id: ScenarioId;
@@ -12,6 +12,7 @@ export interface Scenario {
 }
 
 export const SCENARIOS: { id: ScenarioId; label: string; hint: string }[] = [
+  { id: 'night', label: 'Night sky', hint: 'A dark, clear sky for half an hour, whatever the time of day (the device still knows the real sun)' },
   { id: 'rain', label: 'Rain', hint: 'A shower: rain, then the rain clear delay' },
   { id: 'cloud', label: 'Cloud over', hint: 'Cloud rolls in until it is overcast' },
   { id: 'clear', label: 'Clear', hint: 'Back to a clear, dark sky' },
@@ -24,6 +25,7 @@ export const SCENARIOS: { id: ScenarioId; label: string; hint: string }[] = [
 
 // How long each scenario lasts in demo time before the sky goes back to baseline.
 const DURATION_MS: Record<ScenarioId, number> = {
+  night: 30 * 60_000,
   rain: 4 * 60_000,
   cloud: 10 * 60_000,
   clear: 60_000,
@@ -66,8 +68,9 @@ export const skyLux = (sunAltitudeDeg: number) => {
 
 export function simulate(nowMs: number, now: Date, settings: SimulatorSettings, scenario: Scenario | null) {
   const where = settings.location?.set ? settings.location : DEFAULT_LOCATION;
-  const sun = sunPosition(now, where.latitude, where.longitude).altitude;
   const active = scenarioActive(scenario, nowMs) ? scenario : null;
+  // "Night sky" lights the sensors as if the sun were well below the horizon.
+  const sun = active?.id === 'night' ? -30 : sunPosition(now, where.latitude, where.longitude).altitude;
   const elapsed = active ? nowMs - active.startedAtMs : 0;
 
   // Cloud amount 0 (clear) .. 1 (overcast).

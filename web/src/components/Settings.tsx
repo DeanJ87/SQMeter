@@ -15,7 +15,7 @@ import NetworkTab from './settings/NetworkTab';
 import { fieldErrorAliases, toConfigPayload } from './settings/payload';
 import SafetyTab from './settings/SafetyTab';
 import SensorsTab from './settings/SensorsTab';
-import { SETTINGS_TABS, tabForErrorPath, tabFromLocation, type SettingsTabId } from './settings/tabs';
+import { SETTINGS_TABS, locationQuery, tabForErrorPath, tabFromLocation, type SettingsTabId } from './settings/tabs';
 import TimeTab from './settings/TimeTab';
 import { listReasons, restartReasons } from './settings/restart';
 import { showToast } from './toast';
@@ -37,7 +37,7 @@ const setPath = (target: Config, path: ConfigPath, value: unknown): Config => {
 };
 
 const Settings: FunctionalComponent = () => {
-  const initial = tabFromLocation(typeof window !== 'undefined' ? window.location.search : '');
+  const initial = tabFromLocation(typeof window !== 'undefined' ? locationQuery(window.location) : '');
   const [tab, setTab] = useState<SettingsTabId>(initial.tab);
   const [config, setConfig] = useState<Config | null>(null);
   const [saved, setSaved] = useState<Config | null>(null);
@@ -86,8 +86,13 @@ const Settings: FunctionalComponent = () => {
     pendingAnchor.current = anchor;
     setTab(next);
     const url = new URL(window.location.href);
-    url.searchParams.set('tab', next);
-    url.searchParams.delete('section');
+    if (url.hash.startsWith('#/')) {
+      // Hash routing (demo): the query lives in the hash.
+      url.hash = `#/settings?tab=${next}`;
+    } else {
+      url.searchParams.set('tab', next);
+      url.searchParams.delete('section');
+    }
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
     if (!anchor) window.scrollTo?.({ top: 0 });
   };

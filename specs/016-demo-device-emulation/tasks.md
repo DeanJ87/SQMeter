@@ -43,8 +43,8 @@ moved into `lib/`.
 - [X] T018 [P] [US1] web/src/demo/simulator.ts: baseline sky inputs (lux from sun altitude via the core's sun position, IR temps, BME, wind) per data-model.md "Simulator inputs"; sensors absent when disabled in config
 - [X] T019 [US1] web/src/demo/handlers.ts: MSW handlers for every endpoint in web/src/mocks/handlers.ts routed to the device (REST, /ws/sensors, /ws/status, /management/*, /api/v1/*); demo build (web/src/main.tsx) uses these instead of src/mocks/handlers.ts
 - [X] T020 [US1] Direct URLs (contracts/demo-urls.md): copy index.html to 404.html in the demo build (web/vite.demo.config.ts); web/src/demo/ApiView.tsx renders `/api/...` and `/management/...` from device.alpaca()/REST with status; `/setup...` redirects to `#/settings?tab=safety`
-- [ ] T021 [P] [US1] Playwright web/tests/demo-links.spec.ts: visit every page and every in-app link incl. Alpaca links and direct API URLs; assert no host 404 page
-- [ ] T022 [P] [US1] Playwright web/tests/demo-consistency.spec.ts: safety on dashboard, Alpaca page and Alpaca live state agree (baseline and after rain)
+- [X] T021 [P] [US1] Playwright web/tests/demo.spec.ts "demo links": visit every page and every in-app link incl. Alpaca links and direct API URLs; assert no host 404 page
+- [X] T022 [P] [US1] Playwright web/tests/demo.spec.ts "rain: ... agree": safety on dashboard, Alpaca page and Alpaca live state agree (baseline and after rain)
 
 ## Phase 4: User Story 2 - Settings change the emulated device (P1)
 
@@ -52,9 +52,9 @@ moved into `lib/`.
 
 **Independent Test**: quickstart scenario 3.
 
-- [ ] T023 [US2] POST/PUT /api/config → device.applyConfig (device's own validation/messages); GET /api/config → device.getConfig(true); restart-required changes queued until POST /api/restart (simulated reboot: new boot in history, uptime reset)
-- [ ] T024 [US2] Persistence per data-model.md "Persisted demo state": `sqm.demo.v1` in sessionStorage `{ version: 1, config, armed, safetyHistory, alerts, scenario, timeMultiplier, savedAt }`; corrupt/unknown version → defaults; storage errors → in-memory
-- [ ] T025 [P] [US2] Vitest web/src/demo/__tests__/settings.test.ts: GPS off removes gps group; location drives sun altitude; tighter cloud limit → unsafe reason; rain off → no rain group and no rain reason
+- [X] T023 [US2] POST/PUT /api/config → device.applyConfig (device's own validation/messages); GET /api/config → device.getConfig(true); restart-required changes queued until POST /api/restart (simulated reboot: new boot in history, uptime reset)
+- [X] T024 [US2] Persistence per data-model.md "Persisted demo state": `sqm.demo.v1` in sessionStorage `{ version: 1, config, armed, safetyHistory, alerts, scenario, timeMultiplier, savedAt }`; corrupt/unknown version → defaults; storage errors → in-memory
+- [X] T025 [P] [US2] Playwright web/tests/demo.spec.ts "settings change the emulated device": GPS off removes gps group; location drives sun altitude; tighter cloud limit → unsafe reason; rain off → no rain group and no rain reason
 
 ## Phase 5: User Story 3 - The demo is safe to publish (P1)
 
@@ -62,10 +62,10 @@ moved into `lib/`.
 
 **Independent Test**: quickstart scenario 4.
 
-- [ ] T026 [US3] Simulated outbound actions in web/src/demo/handlers.ts: update check (canned release list shaped like the device's), update apply (progress over /ws/status, then simulated restart), uploads (accept, don't keep the file), alert channel tests and event tests (device.testAlert; result "demo"), MQTT test, WiFi scan/connect, restart; each response carries `demo: true`
-- [ ] T027 [US3] Show "Demo: nothing was sent" where a `demo: true` result is displayed (AlertsTab, NetworkTab MQTT test, Updates, WifiSetup) using existing Note/ResultNote components
-- [ ] T028 [US3] Content-Security-Policy `connect-src 'self'` (meta tag in the demo build only) in web/vite.demo.config.ts
-- [ ] T029 [P] [US3] Playwright web/tests/demo-network.spec.ts: exercise every action; assert every request is same-origin and for a file under the demo
+- [X] T026 [US3] Simulated outbound actions in web/src/demo/handlers.ts: update check (canned release list shaped like the device's), update apply (progress over /ws/status, then simulated restart), uploads (accept, don't keep the file), alert channel tests and event tests (device.testAlert; result "demo"), MQTT test, WiFi scan/connect, restart; each response carries `demo: true`
+- [X] T027 [US3] Show "Demo: nothing was sent" where a `demo: true` result is displayed (AlertsTab, NetworkTab MQTT test, Updates, WifiSetup) using existing Note/ResultNote components
+- [X] T028 [US3] Content-Security-Policy `connect-src 'self'` (meta tag in the demo build only) in web/vite.demo.config.ts
+- [X] T029 [P] [US3] Playwright web/tests/demo.spec.ts "nothing leaves the browser": exercise every action; assert every request is same-origin and for a file under the demo
 
 ## Phase 6: User Story 4 - The demo can't drift (P2)
 
@@ -84,13 +84,13 @@ moved into `lib/`.
 
 **Independent Test**: quickstart scenario 6.
 
-- [ ] T034 [US5] Scenarios in web/src/demo/simulator.ts: 'rain' | 'cloud' | 'clear' | 'fail-light' | 'fail-ir' | 'fail-environment' | 'fail-rain' | 'dawn', one active at a time, ending back at baseline; demo time multiplier (1× or 10×) shortens rain clear delay, safe delay and cooldowns
-- [ ] T035 [US5] web/src/demo/DemoPanel.tsx: floating panel (shared ui.tsx components, phone width) with scenario buttons, time multiplier, "Reset demo", and a one-line "This is a simulated SQMeter" note; mounted only in the demo build
-- [ ] T036 [P] [US5] Vitest web/src/demo/__tests__/scenarios.test.ts: rain → unsafe "Rain detected" + rain alert at its level; clears after the (shortened) rain clear delay; fail-light → sensor fault reason
+- [X] T034 [US5] Scenarios in web/src/demo/simulator.ts: 'rain' | 'cloud' | 'clear' | 'fail-light' | 'fail-ir' | 'fail-environment' | 'fail-rain' | 'dawn', one active at a time, ending back at baseline; demo time multiplier (1× or 10×) shortens rain clear delay, safe delay and cooldowns
+- [X] T035 [US5] web/src/demo/DemoPanel.tsx: floating panel (shared ui.tsx components, phone width) with scenario buttons, time multiplier, "Reset demo", and a one-line "This is a simulated SQMeter" note; mounted only in the demo build
+- [X] T036 [P] [US5] Playwright web/tests/demo.spec.ts "rain" scenario: rain → unsafe "Rain detected" + rain alert at its level; clears after the (shortened) rain clear delay; fail-light → sensor fault reason
 
 ## Phase 8: User Story 6 - Own domain (P3)
 
-- [ ] T037 [US6] Done in #78 (sqmeter.dev / demo.sqmeter.dev, redirects); verify the demo still works at a sub-path with DEMO_BASE (build + preview)
+- [X] T037 [US6] Done in #78 (sqmeter.dev / demo.sqmeter.dev, redirects); verify the demo still works at a sub-path with DEMO_BASE (build + preview)
 
 ## Phase 9: Polish
 

@@ -35,12 +35,15 @@ export function statusDocument() {
     ...parts,
     firmware: { ...mockStatus.firmware, version: '0.2.0-beta.3' },
     time: { iso: now.toISOString(), timezone: cfg.ntp?.timezone ?? 'UTC0' },
-    wifi: { ...mockStatus.wifi, ssid: cfg.wifi?.ssid || mockStatus.wifi.ssid, hostname: cfg.wifi?.hostname, mdns: cfg.wifi?.mdns ?? true, apMode: false, connectPending: false },
+    wifi: { ...mockStatus.wifi, ssid: joinedSsid ?? (cfg.wifi?.ssid || mockStatus.wifi.ssid), hostname: cfg.wifi?.hostname, mdns: cfg.wifi?.mdns ?? true, apMode: false, connectPending: false },
     mqtt: cfg.mqtt?.enabled
       ? { ...mockStatus.mqtt, enabled: true, connected: true, broker: cfg.mqtt.broker, port: cfg.mqtt.port, topic: cfg.mqtt.topic }
       : { ...mockStatus.mqtt, enabled: false, connected: false },
   };
 }
+
+// The network the WiFi setup screen "joined" (simulated).
+let joinedSsid: string | null = null;
 
 const simulated = (extra: Record<string, unknown> = {}) => HttpResponse.json({ success: true, demo: true, ...extra });
 
@@ -93,7 +96,13 @@ export const demoHandlers = [
 
   // Network (simulated: nothing is contacted)
   http.get('/api/wifi/scan', () => HttpResponse.json({ success: true, scanning: false, networks: mockWifiNetworks })),
-  http.post('/api/wifi/connect', () => HttpResponse.json({ success: true, pending: true, message: 'Connection started', demo: true }, { status: 202 })),
+  http.post('/api/wifi/connect', async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { ssid?: string; password?: string };
+    if (typeof body.ssid !== 'string' || typeof body.password !== 'string')
+      return HttpResponse.json({ error: 'Missing SSID or password' }, { status: 400 });
+    joinedSsid = body.ssid; // nothing is joined: the demo just says it was
+    return HttpResponse.json({ success: true, pending: true, message: 'Connection started', demo: true }, { status: 202 });
+  }),
   http.post('/api/mqtt/test', () => simulated({ message: 'Demo: nothing was sent - a real SQMeter would connect to your broker here' })),
 
   // Updates (simulated: no download, nothing flashed)

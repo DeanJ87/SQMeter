@@ -28,6 +28,11 @@ const SECTION_TO_TAB: Record<string, SettingsTabId> = {
 export const isSettingsTab = (value: string | null): value is SettingsTabId =>
   SETTINGS_TABS.some((tab) => tab.id === value);
 
+// The query string, also when it's inside a hash route (the demo uses
+// #/settings?tab=safety).
+export const locationQuery = (location: Pick<Location, 'search' | 'hash'>) =>
+  location.search || (location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?')) : '');
+
 export const tabFromLocation = (search: string): { tab: SettingsTabId; anchor?: string } => {
   const params = new URLSearchParams(search);
   const tab = params.get('tab');

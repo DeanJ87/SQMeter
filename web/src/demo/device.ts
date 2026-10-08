@@ -1,5 +1,5 @@
 import createSqmCore from './core/sqm-core.mjs';
-import { simulate, type Scenario, type ScenarioId } from './simulator';
+import { SCENARIOS, simulate, type Scenario, type ScenarioId } from './simulator';
 
 // The demo's emulated SQMeter: the firmware's own logic (device core,
 // WebAssembly) fed by the sky simulator, ticking once a second like the
@@ -62,6 +62,11 @@ class DemoDevice {
     this.core = new module.EmulatedDevice(JSON.stringify({ version: DEMO_VERSION, mac: 'a1b2c3d4e5f6' })) as Core;
     this.restore();
     this.lastWall = Date.now();
+    // ?scenario=rain etc. starts a scenario - for links from the docs and
+    // for screenshots.
+    const requested = new URLSearchParams(location.search).get('scenario');
+    const known = SCENARIOS.find((s) => s.id === requested);
+    if (known) this.scenario = { id: known.id, startedAtMs: this.demoMs };
     this.step();
     this.timer = setInterval(() => this.step(), 1000);
   }
