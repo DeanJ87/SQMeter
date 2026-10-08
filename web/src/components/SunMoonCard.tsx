@@ -39,6 +39,8 @@ const MoonDisc: FunctionalComponent<{ phase: number; southern: boolean }> = ({ p
 };
 
 // `deviceNow` is the device's clock when it has one; otherwise this browser's.
+const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; deviceNow?: Date }> = ({ latitude, longitude, deviceNow }) => {
   const [browserNow, setBrowserNow] = useState(() => new Date());
   useEffect(() => {
@@ -83,7 +85,7 @@ const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; de
       </div>
       <NightChart latitude={latitude} longitude={longitude} now={now} />
       {/* Worked out in the browser for the device's location; times are this browser's clock. */}
-      <p class="note note-muted">Times in {Intl.DateTimeFormat().resolvedOptions().timeZone || 'your time zone'}</p>
+      <p class="note note-muted">Times in this browser's time zone{browserZone ? ` (${browserZone})` : ''}, not the location's</p>
     </Card>
   );
 };
