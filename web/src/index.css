@@ -2242,6 +2242,16 @@ input[type="file"].input::file-selector-button {
   gap: 0.5rem;
 }
 
+/* The Demo button sits in the bottom-right corner: keep the save bar and
+   toasts clear of it. */
+.has-demo-panel .save-bar {
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 3.25rem);
+}
+
+.has-demo-panel .toaster {
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 3.25rem);
+}
+
 .demo-panel-toggle {
   padding: 0.55rem 0.95rem;
   border: 1px solid rgba(85, 199, 242, 0.45);
