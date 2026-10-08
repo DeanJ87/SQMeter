@@ -63,8 +63,9 @@ export const deriveHardware = (config: Config, status: SystemStatus | null): Har
     },
     gps: {
       enabled: config.gps.enabled,
+      // 'missing' while enabled: switched on but not started (needs a restart).
       detected: sensors?.gps ? sensors.gps.status !== 'missing' : null,
-      savedEnabled: null,
+      savedEnabled: sensors?.gps ? sensors.gps.status !== 'missing' : null,
     },
     mqtt: {
       enabled: config.mqtt.enabled,

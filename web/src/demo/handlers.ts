@@ -29,7 +29,7 @@ async function alpacaParams(request: Request): Promise<[string, string][]> {
 export function statusDocument() {
   const parts = demoDevice.statusParts();
   const cfg = demoDevice.rawConfig();
-  const now = new Date();
+  const now = demoDevice.now;
   return {
     ...mockStatus,
     ...parts,
