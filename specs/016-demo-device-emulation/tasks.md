@@ -10,7 +10,7 @@ moved into `lib/`.
 ## Phase 1: Setup
 
 - [X] T001 Add Emscripten (pinned) instructions and version file in tools/demo-core/VERSION and a build script tools/demo-core/build.sh that compiles lib/*/src/*.cpp + tools/demo-core/bridge.cpp with embind to web/src/demo/core/sqm-core.mjs (+ .wasm), `-O2 -sMODULARIZE -sEXPORT_ES6 -sENVIRONMENT=web,node -sALLOW_MEMORY_GROWTH`
-- [ ] T002 [P] Add `npm run build:core` (calls tools/demo-core/build.sh) and `ajv` dev dependency in web/package.json
+- [X] T002 [P] Add `npm run build:core` (calls tools/demo-core/build.sh) and `ajv` dev dependency in web/package.json
 - [X] T003 [P] Add native test env include paths for the new libs (lib/SensorTypes, lib/ConfigModel, lib/DeviceCore) in platformio.ini
 
 ## Phase 2: Foundational (move device logic into lib/, no behaviour change)
@@ -94,10 +94,10 @@ moved into `lib/`.
 
 ## Phase 9: Polish
 
-- [ ] T038 [P] Rewrite docs/live-demo.md: what's real (device logic) vs simulated (sensors, outbound), scenarios, Reset, persistence
-- [ ] T039 [P] Contributing: device core build (docs/development/contributing.md)
-- [ ] T040 Regenerate screenshots from the emulated device (web/tests/screenshots.spec.ts)
-- [ ] T041 Run quickstart.md end to end; update specs/README.md status for 016
+- [X] T038 [P] Rewrite docs/live-demo.md: what's real (device logic) vs simulated (sensors, outbound), scenarios, Reset, persistence
+- [X] T039 [P] Contributing: device core build (docs/development/contributing.md)
+- [X] T040 Regenerate screenshots from the emulated device (web/tests/screenshots.spec.ts)
+- [X] T041 Run quickstart.md end to end; update specs/README.md status for 016
 
 ## Dependencies
 
