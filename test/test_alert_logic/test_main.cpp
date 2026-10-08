@@ -489,6 +489,75 @@ void test_level_priorities()
     TEST_ASSERT_EQUAL_STRING("max", ntfyPriority(AlertLevel::Wake));
 }
 
+void test_waits_startup_grace(void)
+{
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    rules.startupGraceSeconds = 60;
+    TEST_ASSERT_EQUAL(0, engine.waits(0, rules).size()); // not started
+    engine.update(safeInputs(0), rules);
+    std::vector<Wait> waits = engine.waits(20, rules);
+    TEST_ASSERT_EQUAL(1, waits.size());
+    TEST_ASSERT_EQUAL_STRING("startup", waits[0].condition.c_str());
+    TEST_ASSERT_TRUE(waits[0].kind == WaitKind::Grace);
+    TEST_ASSERT_EQUAL(40, waits[0].remainingSeconds);
+    TEST_ASSERT_EQUAL(0, engine.waits(60, rules).size());
+}
+
+void test_waits_cooldown_and_settle(void)
+{
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    rules.cooldownSeconds = 60;
+    rules.sensorSettleSeconds = 30;
+    engine.update(safeInputs(0), rules);
+    TEST_ASSERT_EQUAL(0, engine.waits(0, rules).size()); // nothing pending
+
+    AlertInputs unsafe = safeInputs(10);
+    unsafe.isSafe = false;
+    TEST_ASSERT_TRUE(hasType(engine.update(unsafe, rules), AlertType::Unsafe));
+    TEST_ASSERT_EQUAL(0, engine.waits(10, rules).size()); // announced, nothing waiting
+
+    // Safe again within the cooldown: held back, 60 - (25 - 10) = 45 s left.
+    engine.update(safeInputs(25), rules);
+    std::vector<Wait> waits = engine.waits(25, rules);
+    TEST_ASSERT_EQUAL(1, waits.size());
+    TEST_ASSERT_EQUAL_STRING("safety", waits[0].condition.c_str());
+    TEST_ASSERT_TRUE(waits[0].kind == WaitKind::Cooldown);
+    TEST_ASSERT_EQUAL(45, waits[0].remainingSeconds);
+
+    // A sensor fault must hold 30 s first.
+    AlertInputs fault = safeInputs(26);
+    fault.sensors[1].name = "MLX90614";
+    fault.sensors[1].healthy = false;
+    engine.update(fault, rules);
+    waits = engine.waits(36, rules);
+    bool found = false;
+    for (const Wait &w : waits)
+        if (w.condition == "sensor:MLX90614")
+        {
+            found = true;
+            TEST_ASSERT_TRUE(w.kind == WaitKind::Settle);
+            TEST_ASSERT_EQUAL(20, w.remainingSeconds);
+        }
+    TEST_ASSERT_TRUE(found);
+}
+
+void test_waits_does_not_change_what_is_sent(void)
+{
+    AlertRules rules = noGraceRules();
+    AlertEngine a;
+    AlertEngine b;
+    AlertInputs unsafe = safeInputs(5);
+    unsafe.isSafe = false;
+    a.update(safeInputs(0), rules);
+    b.update(safeInputs(0), rules);
+    (void)a.waits(3, rules);
+    TEST_ASSERT_EQUAL(a.update(unsafe, rules).size(), b.update(unsafe, rules).size());
+    (void)a.waits(8, rules);
+    TEST_ASSERT_EQUAL(a.update(safeInputs(70), rules).size(), b.update(safeInputs(70), rules).size());
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -516,5 +585,8 @@ int main(int argc, char **argv)
     RUN_TEST(test_restart_compares_with_what_was_last_sent);
     RUN_TEST(test_safety_alerts_only_when_dark);
     RUN_TEST(test_level_priorities);
+    RUN_TEST(test_waits_startup_grace);
+    RUN_TEST(test_waits_cooldown_and_settle);
+    RUN_TEST(test_waits_does_not_change_what_is_sent);
     return UNITY_END();
 }

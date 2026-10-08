@@ -2270,22 +2270,114 @@ input[type='file'].input::file-selector-button {
   text-transform: uppercase;
 }
 
-.demo-scenarios {
+.demo-section {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.demo-section h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
 }
 
-.demo-clock {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.76rem;
+.demo-group {
+  border: 1px solid var(--line-soft);
+  border-radius: 0.6rem;
 }
 
-.demo-speed {
+.demo-group summary {
+  padding: 0.5rem 0.7rem;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.demo-group-body {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0 0.7rem 0.7rem;
+}
+
+.demo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.demo-check {
   display: flex;
   gap: 0.5rem;
   align-items: flex-start;
   color: var(--muted);
   font-size: 0.76rem;
+}
+
+.demo-clock,
+.demo-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.demo-readout {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+}
+
+.demo-readout-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.demo-readout-row span:first-child {
+  color: var(--muted);
+}
+
+.demo-waits {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--amber);
+  font-size: 0.76rem;
+}
+
+/* Phones: the open panel is a bottom sheet that scrolls inside itself, its
+   head (title and Close) always in reach. */
+@media (max-width: 560px) {
+  .demo-panel.is-open {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    align-items: stretch;
+    padding: 0 0.5rem max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .demo-panel.is-open .demo-panel-body {
+    width: auto;
+    max-height: 75vh;
+  }
+
+  .demo-panel.is-open .demo-panel-toggle {
+    align-self: flex-end;
+  }
+
+  .demo-panel-head {
+    position: sticky;
+    top: -1rem;
+    z-index: 1;
+    margin: -1rem -1rem 0;
+    padding: 0.75rem 1rem;
+    background: var(--panel);
+  }
 }

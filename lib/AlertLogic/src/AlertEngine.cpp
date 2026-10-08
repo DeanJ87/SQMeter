@@ -292,6 +292,7 @@ namespace SQM
             for (size_t i = 0; i < SENSOR_COUNT; ++i)
             {
                 const SensorHealth &sensor = in.sensors[i];
+                sensorNames[i] = sensor.name;
                 if (!sensor.enabled)
                 {
                     sensors[i] = Tracker{};
@@ -420,6 +421,59 @@ namespace SQM
                         withVars(make(AlertType::ClientDisconnected, "Imaging app disconnected", "The " + device + " was disconnected.")));
                 }
             }
+        }
+
+        const char *waitKindName(WaitKind kind)
+        {
+            switch (kind)
+            {
+            case WaitKind::Grace:
+                return "grace";
+            case WaitKind::Settle:
+                return "settle";
+            case WaitKind::Cooldown:
+                return "cooldown";
+            }
+            return "settle";
+        }
+
+        std::vector<Wait> AlertEngine::waits(uint32_t now, const AlertRules &rules) const
+        {
+            std::vector<Wait> out;
+            if (!started)
+                return out;
+            const uint32_t sinceStart = now - startedAt;
+            if (sinceStart < rules.startupGraceSeconds)
+            {
+                out.push_back({"startup", WaitKind::Grace, rules.startupGraceSeconds - sinceStart});
+                return out;
+            }
+            // A tracker whose state differs from the one last announced is
+            // waiting first to settle, then for its cooldown.
+            const auto add = [&](const std::string &name, const Tracker &t, uint32_t settle)
+            {
+                if (!t.initialized || !t.pending)
+                    return;
+                const uint32_t held = now - t.pendingSince;
+                if (held < settle)
+                {
+                    out.push_back({name, WaitKind::Settle, settle - held});
+                    return;
+                }
+                const uint32_t since = now - t.lastNotifiedAt;
+                if (t.hasNotified && since < rules.cooldownSeconds)
+                    out.push_back({name, WaitKind::Cooldown, rules.cooldownSeconds - since});
+            };
+            add("safety", safety, 0);
+            add("rain", rain, 0);
+            add("lens", lens, rules.sensorSettleSeconds);
+            for (size_t i = 0; i < SENSOR_COUNT; ++i)
+                add(std::string("sensor:") + (sensorNames[i] != nullptr ? sensorNames[i] : ""), sensors[i], rules.sensorSettleSeconds);
+            add("dew", dew, 0);
+            add("sky", sky, rules.skySettleSeconds);
+            add("client:safetymonitor", clients[0], 0);
+            add("client:observingconditions", clients[1], 0);
+            return out;
         }
 
     } // namespace Alerts

@@ -115,6 +115,9 @@ public:
         const Alerts::ScheduleState kept = schedule.state();
         schedule.restore(kept.sending, true, static_cast<uint8_t>(kept.reason), kept.sinceEpoch);
         rainLatch = Rain::Latch{};
+        lightSamples.clear();
+        lastLightStepMs = 0;
+        lastInputLux = 0.0f;
         SafetyHistory::startBoot(history, true);
         pushHistory(SafetyHistory::Kind::Boot, false, false, 0, 3 /* software reset */);
     }
@@ -168,6 +171,44 @@ public:
         Core::writeDiagnostics(doc.createNestedObject("diagnostics"), snapshot, cfg, nowMs);
         Core::writeAlertSchedule(doc.createNestedObject("alerts"), schedule.state(), cfg, nowMs);
         Core::writeClientWatch(doc.createNestedObject("alpaca"), clientWatch, cfg, nowMs);
+        return serialize(doc);
+    }
+
+    // What the device is still waiting on: the light average catching up,
+    // the rain clear delay and held-back alerts (the demo panel's waits;
+    // specs/019-demo-conditions/contracts/core-pending.md).
+    std::string pending() const
+    {
+        DynamicJsonDocument doc(2048);
+        JsonObject sky = doc.createNestedObject("skyAveraging");
+        const bool nightMode = snapshot.tsl.nightMode;
+        sky["nightMode"] = nightMode;
+        sky["windowSeconds"] = lightWindowSeconds;
+        uint32_t settlingMs = 0;
+        if (nightMode && lastLightStepMs != 0 && nowMs - lastLightStepMs < lightWindowSeconds * 1000UL)
+            settlingMs = lightWindowSeconds * 1000UL - (nowMs - lastLightStepMs);
+        sky["settlingSeconds"] = (settlingMs + 999) / 1000;
+
+        JsonObject rainClear = doc.createNestedObject("rainClear");
+        const bool rainingNow = snapshot.rg15.online && snapshot.rg15.isRaining;
+        rainClear["latched"] = rainLatch.latched;
+        rainClear["rainingNow"] = rainingNow;
+        if (rainLatch.latched && !rainingNow && rainLatch.lastRainMs != 0)
+        {
+            const uint32_t since = nowMs - rainLatch.lastRainMs;
+            const uint32_t delay = cfg.rain.rainClearDelayMs;
+            rainClear["remainingSeconds"] = since < delay ? (delay - since + 999) / 1000 : 0;
+        }
+
+        JsonArray alerts = doc.createNestedArray("alerts");
+        if (cfg.alerts.enabled)
+            for (const Alerts::Wait &w : engine.waits(uptimeSeconds(), Core::alertRules(cfg)))
+            {
+                JsonObject item = alerts.createNestedObject();
+                item["condition"] = w.condition;
+                item["kind"] = Alerts::waitKindName(w.kind);
+                item["remainingSeconds"] = w.remainingSeconds;
+            }
         return serialize(doc);
     }
 
@@ -567,6 +608,31 @@ private:
             scheduleChanged(wasSending);
     }
 
+    // The TSL2591 driver averages its samples over the sky averaging window
+    // and, at night, reports the average (src/sensors/TSL2591Sensor.cpp);
+    // emulated here so light changes take the time they take on the device.
+    float averagedLux(float inputLux, bool nightMode, uint32_t now)
+    {
+        const uint16_t window = static_cast<uint16_t>(std::max<uint32_t>(10, std::min<uint32_t>(cfg.skyAveraging.windowSeconds, 300)));
+        if (window != lightWindowSeconds)
+        {
+            lightWindowSeconds = window;
+            lightSamples.clear(); // the driver resets its samples too
+        }
+        if (lastInputLux > 0.0f && std::fabs(inputLux - lastInputLux) > 0.1f * lastInputLux)
+            lastLightStepMs = now;
+        lastInputLux = inputLux;
+        lightSamples.emplace_back(now, inputLux);
+        while (!lightSamples.empty() && now - lightSamples.front().first >= window * 1000UL)
+            lightSamples.pop_front();
+        if (!nightMode || lightSamples.empty())
+            return inputLux;
+        float total = 0.0f;
+        for (const auto &sample : lightSamples)
+            total += sample.second;
+        return total / static_cast<float>(lightSamples.size());
+    }
+
     // Simulated sensors -> the readings the drivers would produce.
     void readSensors(JsonObjectConst in)
     {
@@ -583,7 +649,7 @@ private:
             tsl.status = SensorStatus::OK;
             tsl.timestamp = now;
             snapshot.tslLastUpdate = now;
-            tsl.rawLux = light["lux"] | 0.001f;
+            tsl.rawLux = averagedLux(light["lux"] | 0.001f, light["nightMode"] | false, now);
             tsl.rawSqm = SkyQuality::luxToSQM(tsl.rawLux);
             tsl.calibrated = cfg.skyCalibration.enabled;
             tsl.calibratedSqm = tsl.rawSqm + (cfg.skyCalibration.enabled ? cfg.skyCalibration.sqmOffset : 0.0f);
@@ -653,7 +719,14 @@ private:
         snapshot.gpsInitialized = bootConfig.gps.enabled;
         GPSReading &gps = snapshot.gps;
         JsonObjectConst g = in["gps"];
-        if (snapshot.gpsInitialized)
+        if (snapshot.gpsInitialized && (g["failed"] | false))
+        {
+            // No NMEA arriving: the driver reports a read error and the
+            // reading stops updating (src/sensors/GPSSensor.cpp).
+            gps.status = SensorStatus::READ_ERROR;
+            gps.hasFix = false;
+        }
+        else if (snapshot.gpsInitialized)
         {
             gps.status = SensorStatus::OK;
             gps.timestamp = now;
@@ -768,6 +841,10 @@ private:
     uint32_t nextId = 1;
     Rain::Latch rainLatch;
     uint32_t lastRainTickMs = 0;
+    std::deque<std::pair<uint32_t, float>> lightSamples; // (ms, lux) within the window
+    uint16_t lightWindowSeconds = 90;
+    uint32_t lastLightStepMs = 0;
+    float lastInputLux = 0.0f;
     uint32_t nowMs = 0;
     uint32_t bootMs = 0;
     int64_t epoch = 0;
@@ -788,6 +865,7 @@ EMSCRIPTEN_BINDINGS(sqmeter_core)
         .function("readings", &EmulatedDevice::readings)
         .function("statusParts", &EmulatedDevice::statusParts)
         .function("safety", &EmulatedDevice::safetyDocument)
+        .function("pending", &EmulatedDevice::pending)
         .function("safetyHistory", &EmulatedDevice::safetyHistory)
         .function("recentAlerts", &EmulatedDevice::recentAlerts)
         .function("clearAlerts", &EmulatedDevice::clearAlerts)

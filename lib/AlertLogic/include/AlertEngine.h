@@ -164,6 +164,23 @@ namespace SQM
             ClientInputs clients[CLIENT_DEVICE_COUNT];
         };
 
+        // Why a change hasn't been announced yet.
+        enum class WaitKind : uint8_t
+        {
+            Grace,    // nothing is sent this soon after boot
+            Settle,   // the new state must hold this long first
+            Cooldown, // the last notice for this condition was too recent
+        };
+
+        struct Wait
+        {
+            std::string condition; // "safety", "rain", "lens", "dew", "sky", "sensor:<name>", "startup"
+            WaitKind kind = WaitKind::Settle;
+            uint32_t remainingSeconds = 0;
+        };
+
+        const char *waitKindName(WaitKind kind);
+
         // Edge-triggered, rate-limited event detection. Each condition is a
         // tracked boolean; a notification is emitted when its value differs
         // from the last *notified* value and the per-condition cooldown has
@@ -180,6 +197,10 @@ namespace SQM
             // a change across a restart is announced and a restart that
             // changes nothing isn't. Call before the first update().
             void seedSafety(bool unsafe);
+
+            // Changes seen but not announced yet, and how long until they
+            // can be (as of the last update()). Doesn't change any state.
+            std::vector<Wait> waits(uint32_t nowSeconds, const AlertRules &rules) const;
 
         private:
             struct Tracker
@@ -206,6 +227,7 @@ namespace SQM
             Tracker dew;
             Tracker sky; // notified value = "clear"
             Tracker sensors[SENSOR_COUNT];
+            const char *sensorNames[SENSOR_COUNT] = {};
 
             // Observed (hysteresis) state for threshold conditions.
             bool dewObserved = false;
