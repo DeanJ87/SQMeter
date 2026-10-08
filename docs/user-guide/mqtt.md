@@ -56,32 +56,19 @@ fingerprint: bc1292286de47969
 ```mermaid
 flowchart LR
     accTitle: MQTT topic map
-    accDescr: SQMeter publishes state, safe, safety, availability, alerts, alerts/armed and diagnostics under its base topic, plus Home Assistant discovery under the discovery prefix, and listens on alerts/armed/set.
-    D["SQMeter"]
-    subgraph broker["Your broker, under the base topic, default sqmeter"]
-        direction TB
-        STATE["state<br/>retained, every publish interval and on reconnect"]
-        SAFE["safe: 1 or 0<br/>retained, on change and every minute"]
-        SAFETY["safety: verdict and reasons<br/>retained, with safe"]
-        AVAIL["availability: online or offline<br/>retained, last will"]
-        ALERTS["alerts<br/>not retained, one message per alert"]
-        ARMED["alerts/armed: 1 or 0<br/>retained, on change and reconnect"]
-        SET["alerts/armed/set<br/>commands: 1/0, on/off, true/false"]
-        DIAG["diagnostics<br/>not retained, every interval, off by default"]
-    end
-    DISC["homeassistant/.../config<br/>retained, when discovery is on"]
-    D --> STATE
-    D --> SAFE
-    D --> SAFETY
-    D --> AVAIL
-    D --> ALERTS
-    D --> ARMED
-    D --> DIAG
-    D --> DISC
-    SET --> D
+    accDescr: SQMeter listens on alerts/armed/set and publishes state, safe, safety, availability, alerts, alerts/armed and diagnostics under its base topic, plus Home Assistant discovery under the discovery prefix.
+    SET["alerts/armed/set<br/>1/0, on/off, true/false"] -->|command| D["SQMeter"]
+    D --> STATE["state<br/>retained, every publish interval<br/>and on reconnect"]
+    D --> SAFE["safe: 1 or 0<br/>retained, on change and every minute"]
+    D --> SAFETY["safety: verdict and reasons<br/>retained, with safe"]
+    D --> AVAIL["availability: online or offline<br/>retained, last will"]
+    D --> ALERTS["alerts<br/>not retained, one message per alert"]
+    D --> ARMED["alerts/armed: 1 or 0<br/>retained, on change and reconnect"]
+    D --> DIAG["diagnostics<br/>not retained, every interval, off by default"]
+    D --> DISC["homeassistant/.../config<br/>retained, when discovery is on"]
 ```
 
-<figcaption>MQTT topic map: what SQMeter publishes (arrows out) and the one topic it listens to (arrow in).</figcaption>
+<figcaption>MQTT topic map: the one topic SQMeter listens to (left) and what it publishes (right). All but the discovery topics sit under the base topic, default <code>sqmeter</code>.</figcaption>
 </figure>
 
 ??? info "Diagram in words"

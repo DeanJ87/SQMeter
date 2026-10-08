@@ -26,13 +26,14 @@ sequenceDiagram
     Note over P: The sign-in window shows the WiFi setup screen
     P->>D: Choose a network, enter its password
     D->>R: Join, keeping the hotspot up
-    alt Joined within 10 s
+    opt Joined within 10 s
         D->>D: Save the network
         D-->>P: Joined: sqmeter.local and its IP
         D->>D: About 15 s later, restart on your network
         P->>R: Rejoin your own network
         P->>D: Open sqmeter.local or the IP
-    else Wrong password or no answer
+    end
+    opt Wrong password or no answer within 10 s
         D-->>P: Not joined, try again
     end
 ```

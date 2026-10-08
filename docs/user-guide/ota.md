@@ -128,11 +128,12 @@ sequenceDiagram
     D->>D: Erase and rewrite the web UI partition
     D->>G: Download the firmware image
     D->>D: Write the unused app slot, verify it
-    alt Every step succeeded
+    opt Every step succeeded
         D->>D: Point the bootloader at the new slot
         D-->>B: Progress 100 %
         D->>D: Restart into the new firmware
-    else A download or write failed
+    end
+    opt A download or write failed
         D-->>B: The error
         Note over D: The boot slot is unchanged:<br/>the old firmware keeps running
     end

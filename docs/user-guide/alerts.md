@@ -15,22 +15,22 @@ fingerprint: 79ca59f59d0fbe29
 flowchart TB
     accTitle: Why an alert does or doesn't arrive
     accDescr: Each second the device compares every condition with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on, sent to every enabled channel, with each channel's result recorded.
-    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky"]) --> SILENT{"First minute after boot,<br/>the event's rule off,<br/>or the sensor switched off?"}
-    SILENT -->|yes| TRACKED["Tracked silently,<br/>never announced"]
-    SILENT -->|no| HELD{"Held back for now?<br/>safety or sky changes while it's light,<br/>safety still settling,<br/>a fault not yet 30 s old,<br/>a sky change not yet 2 min old,<br/>the 5 min cooldown not over"}
-    HELD -->|yes| LATER["Checked again every second,<br/>sent later if it still differs"]
+    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky"]) --> SILENT{"Ignored?"}
+    SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>first minute after boot, the event's rule off,<br/>or the sensor switched off"]
+    SILENT -->|no| HELD{"Held back?"}
+    HELD -->|yes| LATER["<b>Sent later if it still differs</b><br/>safety or sky changes while it's light,<br/>safety still settling,<br/>a fault not yet 30 s old,<br/>a sky change not yet 2 min old,<br/>within the 5 min cooldown"]
     HELD -->|no| LEVEL{"Event level Off?"}
     LEVEL -->|yes| DROPPED["Not sent"]
     LEVEL -->|no| WORDING["Default or your own wording;<br/>events raised together become one notification"]
-    WORDING --> ON{"Alerts on?<br/>not switched off for not imaging"}
-    ON -->|no| NOTHING["Nothing sent, no phone rings"]
+    WORDING --> ON{"Alerts on?"}
+    ON -->|"no: switched off, not imaging"| NOTHING["Nothing sent, no phone rings"]
     ON -->|yes| MASTER{"Send alerts on?"}
     ON -->|"yes, level Wake me"| BLE["Paired phones ring over Bluetooth"]
     MASTER -->|no| NOPUSH["No channel is used"]
     MASTER -->|yes| MQTT["MQTT: published at once"]
     MASTER -->|yes| HTTP["Pushover, ntfy, webhook:<br/>queued, sent in the background"]
-    HTTP --> CANSEND{"WiFi up, no firmware update<br/>and no other HTTPS request?"}
-    CANSEND -->|no| SKIPPED["Skipped, with the reason"]
+    HTTP --> CANSEND{"Network free?"}
+    CANSEND -->|no| SKIPPED["<b>Skipped</b>, with the reason<br/>WiFi down, a firmware update,<br/>or another HTTPS request"]
     CANSEND -->|yes| SENT["Sent, or Failed after one retry"]
     MQTT --> RECENT["Recent alerts: each channel's result"]
     SKIPPED --> RECENT
