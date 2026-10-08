@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveHardware, unavailableReason } from '../components/settings/hardware';
+import { deriveHardware } from '../components/settings/hardware';
 import { tabForErrorPath, tabFromLocation } from '../components/settings/tabs';
 import { toConfigPayload } from '../components/settings/payload';
 import { listReasons, restartReasons } from '../components/settings/restart';
@@ -39,20 +39,17 @@ describe('deriveHardware', () => {
     const hw = deriveHardware(config, null);
     expect(hw.statusLoaded).toBe(false);
     expect(hw.irSky.detected).toBeNull();
-    expect(unavailableReason(hw.irSky, 'MLX', 'wire')).toBeNull();
   });
 
   it('reports undetected I2C sensors', () => {
     const status = { ...mockStatus, sensors: { ...mockStatus.sensors!, infrared: { status: 'missing' as const, ageMs: 0 } } };
     const hw = deriveHardware(config, status);
     expect(hw.irSky.detected).toBe(false);
-    expect(unavailableReason(hw.irSky, 'The MLX90614', 'wire')).toMatch(/wasn't detected/);
   });
 
   it('follows the form, not the device, for optional sensors', () => {
     const hw = deriveHardware({ ...config, rain: { ...config.rain!, enabled: false } }, mockStatus);
     expect(hw.rain.enabled).toBe(false);
-    expect(unavailableReason(hw.rain, 'The rain sensor', 'enable')).toBe('The rain sensor is turned off.');
   });
 
   it('only judges rain sensor health when the device is running it', () => {

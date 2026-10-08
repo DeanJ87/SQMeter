@@ -160,8 +160,9 @@ namespace SQM
             // Safety rules (unmet behaviour confirmed from SafetyEvaluator).
             const AlpacaConfig &s = cfg.alpaca;
             const Link rainRule{"D-15", "rain-off", cfg.rain.enabled};
-            b.add("alpaca.rainUnsafeEnabled", "D-15", s.rainUnsafeEnabled, {rainRule}, Unmet::Inactive);
-            b.add("alpaca.rainSensorRequired", "D-15", s.rainSensorRequired, {rainRule}, Unmet::Inactive);
+            // Both ship on while the rain sensor ships off: not in effect, shown muted.
+            b.add("alpaca.rainUnsafeEnabled", "D-15", s.rainUnsafeEnabled, {rainRule}, Unmet::Inactive, true);
+            b.add("alpaca.rainSensorRequired", "D-15", s.rainSensorRequired, {rainRule}, Unmet::Inactive, true);
             const Link windOn{"D-16", "wind-off", cfg.wind.enabled};
             b.add("alpaca.windSpeedUnsafeEnabled", "D-16", s.windSpeedUnsafeEnabled, {windOn}, Unmet::FailSafe);
             b.add("alpaca.windGustUnsafeEnabled", "D-16", s.windGustUnsafeEnabled, {windOn}, Unmet::FailSafe);

@@ -85,3 +85,7 @@ description: "Tasks for spec 020: settings dependencies"
 - [X] T038 Don't offer "Test" on an inactive event row (reason shown instead) in web/src/components/settings/AlertsTab.tsx, with a UI test, per spec Edge Cases "Test sends" (partial)
 - [X] T039 Add the missing "can't be switched on" (locked) UI cases for D-12, D-14, D-15, D-16, D-17, D-19 and D-25 in web/src/components/__tests__/SettingsDependencies.test.tsx per FR-013 (partial)
 - [X] T040 Use the evaluator's clock threshold (2024-01-01, `Core::CLOCK_VALID_EPOCH`) for the RG-15 daily reset in src/sensors/RG15Sensor.cpp, so "the device doesn't know the time yet" (D-24) and the device agree, per FR-002 (contradicts)
+
+## Phase 10: Convergence
+
+- [X] T041 Show the rain rules' "Not in effect - Rain sensor is off" neutrally (D-15 `neutral`): both rules ship on while the rain sensor ships off, so a fresh device warned twice, in lib/SettingsDeps/catalogue.json, lib/SettingsDeps/src/SettingsDeps.cpp, web/src/lib/settingsDeps.ts and test/fixtures/settings-deps/cases.json, with an automated fresh-defaults test in web/src/lib/__tests__/settingsDeps.test.ts per SC-005 (partial)

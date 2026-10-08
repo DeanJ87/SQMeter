@@ -208,8 +208,9 @@ export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
   // Safety rules (unmet behaviour confirmed from the device's SafetyEvaluator).
   const s = config.alpaca;
   const rainRule: Link = ['D-15', 'rain-off', rainEnabled];
-  add('alpaca.rainUnsafeEnabled', 'D-15', s?.rainUnsafeEnabled ?? false, [rainRule], { unmet: 'inactive' });
-  add('alpaca.rainSensorRequired', 'D-15', s?.rainSensorRequired ?? false, [rainRule], { unmet: 'inactive' });
+  // Both ship on while the rain sensor ships off: not in effect, shown muted.
+  add('alpaca.rainUnsafeEnabled', 'D-15', s?.rainUnsafeEnabled ?? false, [rainRule], { unmet: 'inactive', neutral: true });
+  add('alpaca.rainSensorRequired', 'D-15', s?.rainSensorRequired ?? false, [rainRule], { unmet: 'inactive', neutral: true });
   const windOn: Link = ['D-16', 'wind-off', config.wind?.enabled ?? false];
   add('alpaca.windSpeedUnsafeEnabled', 'D-16', s?.windSpeedUnsafeEnabled ?? false, [windOn], { unmet: 'fail-safe' });
   add('alpaca.windGustUnsafeEnabled', 'D-16', s?.windGustUnsafeEnabled ?? false, [windOn], { unmet: 'fail-safe' });

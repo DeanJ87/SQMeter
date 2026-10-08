@@ -61,6 +61,16 @@ describe('settings dependencies: same answers as the device', () => {
   });
 });
 
+describe('a fresh device (SC-005)', () => {
+  it('shows no inactive warnings with the shipped defaults - only neutral notes', () => {
+    // A standard build that has just joined WiFi: no Bluetooth, GPS off, no location yet.
+    const standard: DepFacts = { ...fixtures.baseFacts, bluetoothBuild: false, bluetoothRunning: false, pairedPhones: 0, gpsRunning: false, gpsFix: false };
+    const warnings = evaluate(defaults, standard).filter((e) => e.state === 'inactive' && !e.neutral && e.reason !== 'alerts-off');
+    // "Alerts are off" is shown once, by the Send alerts switch, not as a warning per row.
+    expect(warnings.map((e) => `${e.setting}: ${e.text}`)).toEqual([]);
+  });
+});
+
 describe('before the device has reported', () => {
   it('evaluates settings-only links and leaves runtime links unknown (D-01, D-03)', () => {
     const config = merge(defaults as unknown as Json, { alerts: { enabled: true, mqtt: { enabled: true }, pushover: { enabled: true } } }) as unknown as Config;

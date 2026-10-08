@@ -216,14 +216,14 @@
       "name": "D-15 rain rules are not in effect with the rain sensor off",
       "config": { "alpaca": { "rainUnsafeEnabled": true, "rainSensorRequired": true } },
       "expect": {
-        "alpaca.rainUnsafeEnabled": { "state": "inactive", "id": "D-15", "reason": "rain-off", "unmet": "inactive" },
-        "alpaca.rainSensorRequired": { "state": "inactive", "id": "D-15", "reason": "rain-off", "unmet": "inactive" }
+        "alpaca.rainUnsafeEnabled": { "state": "inactive", "id": "D-15", "reason": "rain-off", "unmet": "inactive", "neutral": true },
+        "alpaca.rainSensorRequired": { "state": "inactive", "id": "D-15", "reason": "rain-off", "unmet": "inactive", "neutral": true }
       }
     },
     {
       "name": "D-15 met",
       "config": { "rain": { "enabled": true }, "alpaca": { "rainUnsafeEnabled": true } },
-      "expect": { "alpaca.rainUnsafeEnabled": { "state": "active", "id": "D-15", "unmet": "inactive" } }
+      "expect": { "alpaca.rainUnsafeEnabled": { "state": "active", "id": "D-15", "unmet": "inactive", "neutral": true } }
     },
     {
       "name": "D-16 wind rules are fail-safe with no anemometer",

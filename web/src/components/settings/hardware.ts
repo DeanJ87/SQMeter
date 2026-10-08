@@ -74,14 +74,3 @@ export const deriveHardware = (config: Config, status: SystemStatus | null): Har
     bleAvailable: status ? Boolean(status.ble?.available) : null,
   };
 };
-
-// Reason a feature depending on `sensor` can't be switched on, or null if it can.
-export const unavailableReason = (sensor: SensorAvailability, name: string, how: 'enable' | 'wire'): string | null => {
-  if (!sensor.enabled) return `${name} is turned off.`;
-  if (sensor.detected === false) {
-    return how === 'wire'
-      ? `${name} wasn't detected - check its wiring, then restart the device.`
-      : `${name} isn't responding.`;
-  }
-  return null;
-};
