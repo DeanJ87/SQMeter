@@ -8,22 +8,7 @@
 namespace SQM
 {
 
-    struct WindReading : public SensorReading
-    {
-        float speedMs = 0.0f;      // 2-minute mean
-        float gustMs = 0.0f;       // max 3 s mean over 10 minutes
-        float instantMs = 0.0f;    // last 1 s
-        float directionDeg = 0.0f; // 0 = North, clockwise; valid only when directionValid
-        bool directionValid = false;
-        bool vaneFault = false;    // vane enabled but its reading matches no position
-        uint32_t samples = 0;      // seconds of history (up to 600)
 
-        WindReading()
-        {
-            timestamp = 0;
-            status = SensorStatus::NOT_INITIALIZED;
-        }
-    };
 
     struct WindSensorSettings
     {

@@ -4,25 +4,14 @@
 #include <cstdint>
 #include <optional>
 
+#include "SensorTypes.h"
+
 namespace SQM
 {
 
-    enum class SensorStatus
-    {
-        OK,
-        NOT_INITIALIZED,
-        READ_ERROR,
-        TIMEOUT,
-        INVALID_DATA
-    };
 
-    struct SensorReading
-    {
-        uint32_t timestamp = 0; // millis() of the reading; 0 = never read
-        SensorStatus status = SensorStatus::NOT_INITIALIZED;
 
-        bool isValid() const { return status == SensorStatus::OK; }
-    };
+
 
     class SensorBase
     {

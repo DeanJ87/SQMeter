@@ -1,9 +1,6 @@
 #include "Config.h"
 #include "BleAlarm.h"
-#include "Logger.h"
 #include <ArduinoJson.h>
-#include <Preferences.h>
-#include <nvs.h>
 #include <array>
 #include <cctype>
 #include <cmath>
@@ -11,9 +8,6 @@
 
 namespace SQM
 {
-    static const char *NVS_NAMESPACE = "sqm";
-    static const char *NVS_CONFIG_KEY = "config";
-    static const char *NVS_ALERTS_KEY = "alerts";
     static const char *SECRET_MASK = "********";
 
     namespace
@@ -104,7 +98,7 @@ namespace SQM
                    baudRate == 38400 || baudRate == 57600 || baudRate == 115200;
         }
 
-        bool setError(std::string *error, const char *message)
+        bool setError(std::string *error, const std::string &message)
         {
             if (error)
             {
@@ -148,142 +142,6 @@ namespace SQM
             }
         }
     } // namespace
-
-    namespace
-    {
-        // Reads an NVS string straight into heap memory. Preferences::getString()
-        // copies through a variable-length array on the stack - ~2 KB for the
-        // config JSON, which nearly overflowed the 8 KB loop task during setup().
-        bool readNvsString(const char *key, std::string &out)
-        {
-            nvs_handle_t handle;
-            if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK)
-                return false;
-            size_t length = 0;
-            bool ok = nvs_get_str(handle, key, nullptr, &length) == ESP_OK && length > 0;
-            if (ok)
-            {
-                out.assign(length, '\0');
-                ok = nvs_get_str(handle, key, &out[0], &length) == ESP_OK;
-                out.resize(length > 0 ? length - 1 : 0); // drop the terminator
-            }
-            nvs_close(handle);
-            return ok;
-        }
-
-        size_t nvsStringLength(const char *key)
-        {
-            nvs_handle_t handle;
-            if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK)
-                return 0;
-            size_t length = 0;
-            if (nvs_get_str(handle, key, nullptr, &length) != ESP_OK)
-                length = 0;
-            nvs_close(handle);
-            return length > 0 ? length - 1 : 0;
-        }
-    }
-
-    bool Config::load(Config &out)
-    {
-        Logger::info(TAG, "Loading configuration from NVS");
-
-        std::string json;
-        if (!readNvsString(NVS_CONFIG_KEY, json) || json.empty())
-        {
-            Logger::warn(TAG, "No config found in NVS, creating default");
-            out = createDefault();
-            if (out.save())
-            {
-                Logger::info(TAG, "Default config saved successfully");
-                return true;
-            }
-            Logger::error(TAG, "Failed to save default config");
-            return false;
-        }
-
-        Logger::info(TAG, "Loaded config JSON (%u bytes)", static_cast<unsigned>(json.length()));
-
-        // Alerts live under their own NVS key; splice them into the main
-        // document and parse once, straight into the caller's Config.
-        std::string alertsJson;
-        const size_t close = json.rfind('}');
-        const bool haveAlerts = readNvsString(NVS_ALERTS_KEY, alertsJson) && !alertsJson.empty() && close != std::string::npos;
-        if (haveAlerts)
-            json.insert(close, std::string(",\"alerts\":") + alertsJson);
-
-        out = createDefault();
-        bool ok = applyJson(json, out, false);
-        if (!ok && haveAlerts)
-        {
-            // A corrupt alerts entry mustn't take the whole config down.
-            Logger::error(TAG, "Failed to parse config JSON with alerts - retrying without them");
-            json.erase(close, std::string(",\"alerts\":").size() + alertsJson.size());
-            out = createDefault();
-            ok = applyJson(json, out, false);
-        }
-
-        if (ok)
-            Logger::info(TAG, "Config parsed successfully - SSID: '%s'", out.wifi.ssid.c_str());
-        else
-            Logger::error(TAG, "Failed to parse config JSON");
-
-        return ok;
-    }
-
-    bool Config::save() const
-    {
-        Logger::info(TAG, "Attempting to save configuration to NVS...");
-
-        std::string validationError;
-        if (!validate(&validationError))
-        {
-            Logger::error(TAG, "Refusing to save invalid configuration: %s", validationError.c_str());
-            return false;
-        }
-
-        std::string json = toJson(false, false);
-        const std::string alertsJson = alertsToJson(false);
-        Logger::info(TAG, "Config JSON to save (%u bytes, alerts %u bytes)", static_cast<unsigned>(json.length()),
-                     static_cast<unsigned>(alertsJson.length()));
-
-        if (json.length() > MAX_PERSISTED_JSON_BYTES)
-        {
-            Logger::error(TAG, "Config JSON too large for NVS (%u bytes, max %u bytes)",
-                          static_cast<unsigned>(json.length()),
-                          static_cast<unsigned>(MAX_PERSISTED_JSON_BYTES));
-            return false;
-        }
-
-        Preferences prefs;
-        if (!prefs.begin(NVS_NAMESPACE, false))
-        {
-            Logger::error(TAG, "Failed to open NVS namespace for writing");
-            return false;
-        }
-
-        size_t written = prefs.putString(NVS_CONFIG_KEY, json.c_str());
-        const size_t alertsWritten = prefs.putString(NVS_ALERTS_KEY, alertsJson.c_str());
-        prefs.end();
-
-        if (alertsWritten == 0)
-        {
-            Logger::error(TAG, "Failed to write alerts config to NVS");
-            return false;
-        }
-
-        if (written == 0)
-        {
-            Logger::error(TAG, "Failed to write config to NVS");
-            return false;
-        }
-
-        Logger::info(TAG, "Configuration saved successfully to NVS (%u bytes)", static_cast<unsigned>(written));
-
-        Logger::info(TAG, "Verification: NVS contains %u bytes", static_cast<unsigned>(nvsStringLength(NVS_CONFIG_KEY)));
-
-        return true;
-    }
 
     Config Config::createDefault()
     {
@@ -941,15 +799,15 @@ namespace SQM
         return true;
     }
 
-    std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig)
+    std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig, std::string *error)
     {
         std::optional<Config> cfg(baseConfig != nullptr ? *baseConfig : createDefault());
-        if (!applyJson(json, *cfg, baseConfig != nullptr))
+        if (!applyJson(json, *cfg, baseConfig != nullptr, error))
             return std::nullopt;
         return cfg;
     }
 
-    bool Config::applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders)
+    bool Config::applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *errorOut)
     {
         // Parsing copies every string; custom alert texts can make the JSON
         // bigger than the old fixed 8 KB.
@@ -958,7 +816,7 @@ namespace SQM
 
         if (error)
         {
-            Logger::error(TAG, "JSON parse error: %s", error.c_str());
+            setError(errorOut, std::string("Settings JSON couldn't be read: ") + error.c_str());
             return false;
         }
 
@@ -1350,12 +1208,8 @@ namespace SQM
 
         normalizeTimeSources(cfg);
 
-        std::string validationError;
-        if (!cfg.validate(&validationError))
-        {
-            Logger::error(TAG, "Configuration validation failed: %s", validationError.c_str());
+        if (!cfg.validate(errorOut))
             return false;
-        }
 
         // Key format is only enforced for changes coming from the UI/API, so a
         // key stored by older firmware never stops the config from loading.
@@ -1372,12 +1226,12 @@ namespace SQM
             };
             if (!isPushoverKey(cfg.alerts.pushoverUserKey))
             {
-                Logger::error(TAG, "Pushover user key must be 30 letters and digits");
+                setError(errorOut, "Pushover user key must be 30 letters and digits");
                 return false;
             }
             if (!isPushoverKey(cfg.alerts.pushoverAppToken))
             {
-                Logger::error(TAG, "Pushover app token must be 30 letters and digits");
+                setError(errorOut, "Pushover app token must be 30 letters and digits");
                 return false;
             }
         }

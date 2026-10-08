@@ -9,59 +9,9 @@
 namespace SQM
 {
 
-    struct TSL2591Reading : public SensorReading
-    {
-        float lux;         // Illuminance in lux
-        float rawLux;      // Lux before SQM calibration offset
-        float rawSqm;      // SQM before SQM calibration offset
-        float calibratedSqm;
-        float rollingVisible;
-        float correctedVisible;
-        float darkVisibleOffset;
-        uint16_t visible;  // Visible light (channel 0 - infrared)
-        uint16_t infrared; // Infrared light (channel 1)
-        uint32_t full;     // Full spectrum (channel 0)
-        uint16_t integrationMs;
-        uint16_t averagingWindowSeconds;
-        uint16_t sampleCount;
-        uint8_t gainIndex;
-        float gainFactor;
-        bool calibrated;
-        bool saturated;
-        bool nightMode;
 
-        TSL2591Reading()
-            : lux(0.0f), rawLux(0.0f), rawSqm(0.0f), calibratedSqm(0.0f), rollingVisible(0.0f),
-              correctedVisible(0.0f), darkVisibleOffset(0.0f), visible(0), infrared(0), full(0),
-              integrationMs(600), averagingWindowSeconds(90), sampleCount(0), gainIndex(3),
-              gainFactor(9876.0f), calibrated(false), saturated(false), nightMode(false)
-        {
-            timestamp = 0;
-            status = SensorStatus::NOT_INITIALIZED;
-        }
-    };
 
-    struct TSL2591Diagnostics
-    {
-        const char *gainName;
-        float gainFactor;
-        uint16_t integrationMs;
-        uint16_t averagingWindowSeconds;
-        uint16_t sampleCount;
-        uint16_t rejectedSamples;
-        uint16_t consecutiveSaturatedSamples;
-        uint16_t consecutiveLowSamples;
-        float rollingFull;
-        float rollingIr;
-        float rollingVisible;
-        float correctedVisible;
-        float darkVisibleOffset;
-        float rawSqm;
-        float calibratedSqm;
-        bool saturated;
-        bool nightMode;
-        bool calibrated;
-    };
+
 
     class TSL2591Sensor : public SensorBase
     {

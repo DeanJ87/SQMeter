@@ -69,7 +69,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("dashboard", async ({ page }) => {
-  await page.goto("./");
+  await page.goto("./?scenario=night&panel=hidden");
   await waitForDemoApp(page);
   await expect(page.getByRole("heading", { name: "Sky Quality" })).toBeVisible();
   await expect(page.getByText("Live")).toBeVisible();
@@ -77,7 +77,7 @@ test("dashboard", async ({ page }) => {
 });
 
 test("system", async ({ page }) => {
-  await page.goto("./#/system");
+  await page.goto("./?scenario=night&panel=hidden#/system");
   await waitForDemoApp(page);
   await expect(page.getByRole("heading", { name: "Firmware" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Sensors" })).toBeVisible();
@@ -85,7 +85,7 @@ test("system", async ({ page }) => {
 });
 
 test("updates", async ({ page }) => {
-  await page.goto("./#/updates");
+  await page.goto("./?scenario=night&panel=hidden#/updates");
   await waitForDemoApp(page);
   await expect(page.getByRole("heading", { name: "Firmware" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Manual upload" })).toBeVisible();
@@ -93,7 +93,7 @@ test("updates", async ({ page }) => {
 });
 
 test("alpaca", async ({ page }) => {
-  await page.goto("./#/alpaca");
+  await page.goto("./?scenario=night&panel=hidden#/alpaca");
   await waitForDemoApp(page);
   await expect(page.getByRole("heading", { name: "ASCOM Alpaca" })).toBeVisible();
   await capturePage(page, "alpaca");
@@ -108,7 +108,7 @@ for (const [id, label] of [
   ["alerts", "Alerts"],
 ] as const) {
   test(`settings ${label}`, async ({ page }) => {
-    await page.goto(`./#/settings?tab=${id}`);
+    await page.goto(`./?scenario=night&panel=hidden#/settings?tab=${id}`);
     await waitForDemoApp(page);
     const tab = page.getByRole("tab", { name: label });
     await tab.click();
@@ -118,7 +118,7 @@ for (const [id, label] of [
 }
 
 test("alerts flyout", async ({ page }) => {
-  await page.goto("./");
+  await page.goto("./?scenario=night&panel=hidden");
   await waitForDemoApp(page);
   await waitForLayout(page);
   await page.getByRole("button", { name: /^Alerts/ }).click();

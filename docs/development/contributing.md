@@ -29,6 +29,26 @@ Decision logic lives in `lib/` with a native test suite under `test/`, so it can
 | `WindLogic`, `BleLogic` | Wind statistics; Bluetooth payloads |
 | `Readings` | The readings document (REST, WebSocket, MQTT) and Home Assistant discovery |
 | `ReleaseLogic` | GitHub release list for updates |
+| `ConfigModel` | Settings: defaults, JSON, validation |
+| `DeviceCore` | Per-reading decisions and documents: readings, safety, darkness, alerts, Alpaca snapshot |
+| `SensorTypes` | The sensor reading structs |
+| `CaptiveDns` | DNS for the setup hotspot |
+
+**The demo's device core.** The live demo runs the code in `lib/` compiled to WebAssembly (`web/src/demo/core/`, committed). After changing anything in `lib/` or `tools/demo-core/`, rebuild it:
+
+```bash
+brew install emscripten          # or the emsdk; version in tools/demo-core/VERSION
+tools/demo-core/build.sh
+cd web && npm run build:demo && npx playwright test tests/demo.spec.ts
+```
+
+CI fails with "The demo's device core is out of date" if you forget. Response formats are checked against `specs/016-demo-device-emulation/contracts/schemas/` - by the demo's tests, and on a device with:
+
+```bash
+python3 tools/contract-check.py http://<device>
+```
+
+If a device response changes on purpose, capture fresh samples and regenerate the schemas with `tools/contracts/generate_schemas.py` (see its header).
 
 **Web UI dev server:**
 ```bash

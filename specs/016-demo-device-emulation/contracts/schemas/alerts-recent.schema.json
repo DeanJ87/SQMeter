@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "alerts-recent",
+  "type": "object",
+  "properties": {
+    "alerts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ageSeconds": {
+            "type": "number"
+          },
+          "channels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "detail": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "detail",
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "event": {
+            "type": "string"
+          },
+          "id": {
+            "type": "number"
+          },
+          "level": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ageSeconds",
+          "channels",
+          "event",
+          "id",
+          "level",
+          "message",
+          "timestamp",
+          "title"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "armed": {
+      "type": "boolean"
+    },
+    "enabled": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "alerts",
+    "armed",
+    "enabled"
+  ],
+  "additionalProperties": false
+}

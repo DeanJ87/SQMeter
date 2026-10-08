@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "safety-history",
+  "type": "object",
+  "properties": {
+    "boot": {
+      "type": "number"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "boot": {
+            "type": "number"
+          },
+          "held": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "reasonFlags": {
+            "type": "number"
+          },
+          "resetReason": {
+            "type": "number"
+          },
+          "safe": {
+            "type": "boolean"
+          },
+          "timestamp": {
+            "type": "number"
+          },
+          "uptime": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "boot",
+          "kind",
+          "uptime"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "uptime": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "boot",
+    "entries",
+    "uptime"
+  ],
+  "additionalProperties": false
+}
