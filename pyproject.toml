@@ -1,0 +1,15 @@
+# Python tools (tools/): ruff lints and formats them (coding standard FMT-01, NAME-09, LIMIT-*).
+[tool.ruff]
+line-length = 140
+target-version = "py39"
+extend-exclude = ["web", ".pio", "site"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "N", "SIM", "C90", "PLR0913"]
+ignore = ["E501"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.pylint]
+max-args = 5
