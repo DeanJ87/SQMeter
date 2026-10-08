@@ -326,7 +326,7 @@ namespace SQM
                 if (sync(dew, dewObserved, now, cooldown, pastGrace && rules.onDewRisk) && dewObserved)
                 {
                     alerts.push_back(make(AlertType::DewRisk, "Dew risk",
-                                          format("Temperature %.1f C is within %.1f C of the dew point (%.1f C).",
+                                          format("Temperature %.1f °C is within %.1f °C of the dew point (%.1f °C).",
                                                  in.temperatureC, margin, in.dewpointC)));
                     alerts.back().vars = {{"dew_margin", format("%.1f", margin)}, {"dew_margin_min", format("%.1f", rules.dewRiskMarginC)}};
                 }

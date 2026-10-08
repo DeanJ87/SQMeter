@@ -26,9 +26,9 @@
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
 #include <ArduinoJson.h>
-#include <WiFiUdp.h>
 #include <memory>
 #include <vector>
+#include <AsyncUDP.h>
 #include <functional>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -144,8 +144,7 @@ namespace SQM
 
         std::unique_ptr<OtaUpdater> otaUpdater;
 
-        WiFiUDP alpacaDiscoveryUdp;
-        bool alpacaDiscoveryStarted = false;
+        AsyncUDP alpacaDiscoveryUdp; // answers in the network task, not the main loop
         // The Alpaca HTTP API lives in lib/AlpacaLogic (Alpaca::Router) so the
         // CI simulator runs the same code; this feeds it the device's state.
         class AlpacaBackend : public Alpaca::Backend
@@ -246,7 +245,6 @@ namespace SQM
         void setupGithubUpdates();
         void setupAlpacaRoutes();
         void handleAlpacaRequest(AsyncWebServerRequest *request);
-        void handleAlpacaDiscovery();
 
         // API endpoint handlers
         void handleGetStatus(AsyncWebServerRequest *request);

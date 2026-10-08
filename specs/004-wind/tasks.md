@@ -37,6 +37,6 @@ description: "As-built task list (backfill) for Wind"
 
 ## Phase 7: Convergence
 
-- [ ] T008 Update settings paths in docs/hardware/wind.md: "Settings → Wind (anemometer)" is now Settings → Sensors → Wind, and "Settings → ASCOM Alpaca & Safety → Wind" is Settings → Safety → Safety rules → Wind, per FR-006 / SC-002 (contradicts)
-- [ ] T009 Use the UI's label "Model" (not "Anemometer type") in docs/hardware/wind.md per FR-006 (contradicts)
-- [ ] T010 Highlight wind gust (and speed) against the configured safety limits instead of a fixed 10 m/s in web/src/components/Dashboard.tsx per FR-005 (contradicts)
+- [X] T008 Update settings paths in docs/hardware/wind.md: "Settings → Wind (anemometer)" is now Settings → Sensors → Wind, and "Settings → ASCOM Alpaca & Safety → Wind" is Settings → Safety → Safety rules → Wind, per FR-006 / SC-002 (contradicts)
+- [X] T009 Use the UI's label "Model" (not "Anemometer type") in docs/hardware/wind.md per FR-006 (contradicts)
+- [X] T010 Highlight wind gust (and speed) against the configured safety limits instead of a fixed 10 m/s in web/src/components/Dashboard.tsx per FR-005 (contradicts)

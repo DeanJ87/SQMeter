@@ -41,8 +41,8 @@ description: "As-built task list (backfill) for Environment and Cloud Cover"
 ## Phase 7: Convergence
 
 - [X] T011 CRITICAL: Move the cloud model (humidity correction, cloud %, condition) and the Magnus dew point into lib/ with native tests covering both threshold boundaries per Constitution III (contradicts)
-- [ ] T012 Use the device's cloud condition for the dashboard label instead of fixed 15/40/70% bands in web/src/components/Dashboard.tsx (conditionLabel/conditionTone) per FR-007 / US1-AC3 (contradicts)
-- [ ] T013 Show on the Cloud Conditions card when humidity is assumed (cloudConditions.humiditySource = "default") in web/src/components/Dashboard.tsx per FR-005 / SC-003 (missing)
-- [ ] T014 Display temperatures as °C (not "C") on the Environment and Cloud Conditions tiles in web/src/components/Dashboard.tsx per FR-007 / Constitution V (contradicts)
+- [X] T012 Use the device's cloud condition for the dashboard label instead of fixed 15/40/70% bands in web/src/components/Dashboard.tsx (conditionLabel/conditionTone) per FR-007 / US1-AC3 (contradicts)
+- [X] T013 Show on the Cloud Conditions card when humidity is assumed (cloudConditions.humiditySource = "default") in web/src/components/Dashboard.tsx per FR-005 / SC-003 (missing)
+- [X] T014 Display temperatures as °C (not "C") on the Environment and Cloud Conditions tiles in web/src/components/Dashboard.tsx per FR-007 / Constitution V (contradicts)
 - [X] T015 Compute cloud metrics once per reading and reuse them for the sensor payload, Alpaca snapshot and safety inputs in src/WebServer.cpp (three CloudDetection call sites) per FR-008 (partial)
 - [X] T016 Document the humidity correction, thresholds and 53% fallback in the cloud section of docs/reference/sky-quality.md per FR-009 (partial)

@@ -6,6 +6,8 @@ Update firmware over WiFi without a USB cable.
 
 ## Check for Updates (Recommended)
 
+![Updates page](../assets/screenshots/updates.png)
+
 The **Updates** page can check GitHub Releases directly and update the device itself - no downloading or uploading required.
 
 1. Open the web UI and go to **Updates**

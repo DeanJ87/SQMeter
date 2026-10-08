@@ -161,7 +161,7 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
                   dataField="mqttInterval"
                   integer
                   min={1}
-                  max={3600}
+                  max={86400}
                   unit="s"
                   value={config.mqtt.publishIntervalMs / 1000}
                   onChange={(v) => update(['mqtt', 'publishIntervalMs'], Math.max(1, v || 60) * 1000)}

@@ -14,7 +14,7 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 describe('Updates - GitHub check for updates', () => {
   beforeEach(() => {
     vi.mocked(useWebSocket).mockReturnValue({
-      data: { firmware: { name: 'SQMeter', version: '0.0.1', buildDate: 'x', buildTime: 'y' } },
+      data: { firmware: { name: 'SQMeter', version: '0.1.3', buildDate: 'x', buildTime: 'y' } },
       connected: true,
       lastMessageAt: Date.now(),
     });
@@ -24,21 +24,36 @@ describe('Updates - GitHub check for updates', () => {
     render(<Updates />);
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: /v0\.0\.3/ })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /v0\.1\.4/ })).toBeInTheDocument();
     });
 
+    expect(screen.getByText(/A newer release/)).toBeInTheDocument();
+  });
+
+  it('flags a newer beta for a beta build', async () => {
+    vi.mocked(useWebSocket).mockReturnValue({
+      data: { firmware: { name: 'SQMeter', version: '0.2.0-beta.1', buildDate: 'x', buildTime: 'y' } },
+      connected: true,
+      lastMessageAt: Date.now(),
+    });
+    render(<Updates />);
+    await waitFor(() => expect(screen.getByRole('option', { name: /v0\.1\.4/ })).toBeInTheDocument());
+    // The stable release is older than this beta.
+    expect(screen.queryByText(/A newer release/)).toBeNull();
+    fireEvent.change(screen.getByLabelText('Release track'), { target: { value: 'beta' } });
+    await waitFor(() => expect(screen.getByRole('option', { name: /v0\.2\.0-beta\.2/ })).toBeInTheDocument());
     expect(screen.getByText(/A newer release/)).toBeInTheDocument();
   });
 
   it('switches to the beta track and fetches beta releases', async () => {
     render(<Updates />);
 
-    await waitFor(() => expect(screen.getByRole('option', { name: /v0\.0\.3/ })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('option', { name: /v0\.1\.4/ })).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText('Release track'), { target: { value: 'beta' } });
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: /v0\.0\.4-beta\.1/ })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /v0\.2\.0-beta\.2/ })).toBeInTheDocument();
     });
   });
 
@@ -72,9 +87,9 @@ describe('Updates - GitHub check for updates', () => {
 
     render(<Updates />);
 
-    await waitFor(() => expect(screen.getByRole('option', { name: /v0\.0\.3/ })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('option', { name: /v0\.1\.4/ })).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: /Update to v0\.0\.3/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Update to v0\.1\.4/ }));
 
     await waitFor(() => expect(applyCalled).toBe(true));
   });

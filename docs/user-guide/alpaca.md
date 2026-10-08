@@ -9,10 +9,10 @@ SQMeter can act as an ASCOM Alpaca **SafetyMonitor** and **ObservingConditions**
 
 ## Enabling Alpaca support
 
-1. Open the web UI and go to **Settings**
-2. Scroll to **ASCOM Alpaca** and check **Enable Alpaca SafetyMonitor / ObservingConditions**
-3. Set your safety thresholds (see [Safety rules](#safety-rules) below) and **Save**
-4. Restart the device (Settings save doesn't require it, but the UDP discovery listener that N.I.N.A. uses to auto-find the device only starts at boot)
+1. Open the web UI and go to **Settings → Safety**
+2. In the **ASCOM Alpaca** card, turn on **Serve Alpaca devices**
+3. Set your safety rules (see [Safety rules](#safety-rules) below) and **Save**
+4. When asked, restart the device: the UDP discovery listener that N.I.N.A. uses to find the device only starts at boot
 
 Alpaca support is disabled by default. With it off, every Alpaca endpoint still responds (so tooling doesn't 404) but reports `connected: false` and a `NotConnected` error - it just isn't discoverable or usable until enabled.
 
@@ -42,11 +42,11 @@ The web UI's **Alpaca** tab lists every advertised device with its device type, 
 
 ### Setup button
 
-The **Setup** (cog) button next to either device in N.I.N.A. opens `http://<device>/setup/v1/<devicetype>/0/setup`, which redirects to **Settings → ASCOM Alpaca** in the web UI. Thresholds and options changed there apply immediately.
+The **Setup** (cog) button next to either device in N.I.N.A. opens `http://<device>/setup/v1/<devicetype>/0/setup`, which redirects to **Settings → Safety** (the ASCOM Alpaca card and safety rules) in the web UI. Rules changed there apply as soon as you save.
 
 ### If discovery doesn't find the device
 
-- Confirm **Enable Alpaca...** is checked in Settings and the device has been restarted since
+- Confirm **Serve Alpaca devices** is on under **Settings → Safety → ASCOM Alpaca** and the device has been restarted since
 - Discovery is a UDP broadcast - it won't cross VLANs/subnets or most VPNs; N.I.N.A. and the device need to be on the same local network segment
 - As a fallback, most Alpaca clients (including N.I.N.A.) let you add a device manually by IP:port instead of relying on discovery - use the device's IP and port `80`
 
@@ -54,9 +54,9 @@ The **Setup** (cog) button next to either device in N.I.N.A. opens `http://<devi
 
 ## Safety rules
 
-The safety verdict is re-evaluated every second from the current sensor readings against the rules in **Settings → ASCOM Alpaca & Safety**. It is shown on the Dashboard's **Safety Monitor** card, on the **Alpaca** page, from `GET /api/safety`, and served to Alpaca clients as `SafetyMonitor.IsSafe`. Any of the following makes it unsafe:
+The safety verdict is re-evaluated every second from the current sensor readings against the rules in **Settings → Safety → Safety rules**. It is shown on the Dashboard's **Safety Monitor** card, on the **Alpaca** page, from `GET /api/safety`, and served to Alpaca clients as `SafetyMonitor.IsSafe`. Any of the following makes it unsafe:
 
-1. **Manual override** - the "Force SafetyMonitor unsafe" checkbox is on
+1. **Manual override** - the **Force unsafe** toggle is on
 2. **Rain** - the RG-15 reports rain, *or* it rained within the rain sensor's "rain clear delay" (default 15 min). Enabled by default whenever the rain sensor is enabled
 3. **Rain sensor offline/faulty** - the rain sensor is enabled but not responding, its data is stale, or it reports a lens fault (fail safe; enabled by default)
 4. **Wind / gust** - the 2-minute mean wind speed or the 10-minute peak gust is at or above its limit (both disabled by default). If a wind limit is enabled but the [anemometer](../hardware/wind.md) is disabled or not reporting, that's unsafe too
@@ -72,6 +72,12 @@ The safety verdict is re-evaluated every second from the current sensor readings
 Rain and wind rules (2-4) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining or blowing a gale. Rules 8-12 only apply to fresh data.
 
 Each threshold has its own enable/disable toggle - a disabled threshold never contributes to the verdict.
+
+### Reasons
+
+Every failing rule is listed as a reason with the measured value and the limit, e.g. `SQM 18.70 below 19.50` or `Cloud cover 96% at or above 90%`. The reasons are shown on the Dashboard's **Safety Monitor** card, returned by `GET /api/safety`, published to MQTT `<base>/safety`, and used in alert messages (`{reasons}`).
+
+The Safety Monitor card's **History** lists recent safe/unsafe changes, restarts and the safety alerts that were sent - kept across restarts (not power cuts) - which answers "it went unsafe and I got no alert: why?".
 
 ### Safe delay
 

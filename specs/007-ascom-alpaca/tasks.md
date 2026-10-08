@@ -43,5 +43,5 @@ description: "As-built task list (backfill) for ASCOM Alpaca Devices"
 
 ## Phase 8: Convergence
 
-- [ ] T011 Answer Alpaca discovery from the network task (AsyncUDP) instead of polling once per main-loop pass, in src/WebServer.cpp (handleAlpacaDiscovery), per FR-001 / SC-002 — measured 0.4–1.2 s on 2026-10-07 (partial)
-- [ ] T012 Update docs/user-guide/alpaca.md "Enabling Alpaca support", "Setup button" and "If discovery doesn't find the device" to Settings → Safety → ASCOM Alpaca and the "Serve Alpaca devices" toggle, and mention the restart prompt, per FR-007 / SC-004 (contradicts)
+- [X] T011 Answer Alpaca discovery from the network task (AsyncUDP) instead of polling once per main-loop pass, in src/WebServer.cpp (handleAlpacaDiscovery), per FR-001 / SC-002 — measured 0.4–1.2 s on 2026-10-07 (partial)
+- [X] T012 Update docs/user-guide/alpaca.md "Enabling Alpaca support", "Setup button" and "If discovery doesn't find the device" to Settings → Safety → ASCOM Alpaca and the "Serve Alpaca devices" toggle, and mention the restart prompt, per FR-007 / SC-004 (contradicts)

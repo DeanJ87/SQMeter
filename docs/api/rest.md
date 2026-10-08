@@ -38,7 +38,7 @@ curl http://sqmeter.local/api/status
     "wind": { "status": "ok", "ageMs": 900, "vaneStatus": "ok" }
   },
   "diagnostics": {
-    "light": { "rollingVisible": 3.1, "correctedVisible": 3.1, "darkVisibleOffset": 0, "sampleCount": 150, "rejectedSamples": 0, "consecutiveSaturatedSamples": 0, "consecutiveLowSamples": 0 },
+    "light": { "rollingVisible": 3.1, "correctedVisible": 3.1, "darkVisibleOffset": 0, "sampleCount": 150, "windowSamples": 150, "nightMode": true, "rejectedSamples": 0, "consecutiveSaturatedSamples": 0, "consecutiveLowSamples": 0 },
     "rain": { "state": "online", "uartOpened": true, "rxPin": 18, "txPin": 19, "baudRate": 9600, "uartPort": 1, "lastCommand": "R", "lastResponse": "Acc 0.01 mm, ...", "timeouts": 0, "parseErrors": 0, "successfulReads": 1424, "lastPollAgeMs": 40, "lastResponseAgeMs": 40, "lastSuccessfulReadAgeMs": 40 }
   },
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "sqmeter", "availabilityTopic": "sqmeter/availability" }
@@ -92,6 +92,8 @@ curl -X POST http://sqmeter.local/api/sensors/tsl2591/calibrate-dark
   "darkCalibratedAt": 1778171234
 }
 ```
+
+It's refused with `409 {"error": "..."}` while it can't give a good offset: no light-sensor readings yet, the sensor isn't in night mode (it's seeing light), or the averaging window isn't full - then the body also has `sampleCount` and `windowSamples`. `/api/status` → `diagnostics.light` shows `sampleCount`, `windowSamples` and `nightMode` so you can wait for it. `darkCalibratedAt` is Unix seconds, or uptime milliseconds if the clock wasn't set.
 
 ### `POST /api/sensors/rg15/test`
 

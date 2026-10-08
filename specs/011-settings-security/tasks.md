@@ -37,5 +37,5 @@ description: "As-built task list (backfill) for Settings, Configuration and Secu
 
 ## Phase 7: Convergence
 
-- [ ] T008 Make browser validation match the device: add the device's 24 h maximum to mqtt.publishIntervalMs and ntp.syncIntervalMs in web/src/validation/configSchema.ts, and let the MQTT "Publish every" input go to 86400 s (now 3600) in web/src/components/settings/NetworkTab.tsx, per FR-004 / SC-001 (contradicts)
-- [ ] T009 Add browser validation for skyCalibration.sqmOffset (±5) and skyAveraging.windowSeconds (10–300) alongside the calibration UI (see 001 T016) in web/src/validation/configSchema.ts per FR-004 (partial)
+- [X] T008 Make browser validation match the device: add the device's 24 h maximum to mqtt.publishIntervalMs and ntp.syncIntervalMs in web/src/validation/configSchema.ts, and let the MQTT "Publish every" input go to 86400 s (now 3600) in web/src/components/settings/NetworkTab.tsx, per FR-004 / SC-001 (contradicts)
+- [X] T009 Add browser validation for skyCalibration.sqmOffset (±5) and skyAveraging.windowSeconds (10–300) alongside the calibration UI (see 001 T016) in web/src/validation/configSchema.ts per FR-004 (partial)

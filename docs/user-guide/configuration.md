@@ -2,6 +2,40 @@
 
 All settings are stored in NVS (Non-Volatile Storage) and survive firmware and filesystem updates. Configure via the web UI (**Settings**) or the REST API.
 
+## Settings pages
+
+**Settings** has six tabs. Changes are kept until you **Save**; a tab with a problem shows a red dot, and settings that only take effect after a restart ask for one when you save.
+
+=== "Device"
+    Name, password protection, command-line uploads (ArduinoOTA), Bluetooth.
+
+    ![Device settings](../assets/screenshots/settings-device.png)
+
+=== "Network"
+    WiFi, mDNS, and MQTT including what's published and Home Assistant discovery - see [MQTT](mqtt.md).
+
+    ![Network settings](../assets/screenshots/settings-network.png)
+
+=== "Time & Location"
+    NTP and GPS time, time zone, and the location used for darkness and Sun & Moon.
+
+    ![Time & Location settings](../assets/screenshots/settings-time.png)
+
+=== "Sensors"
+    I2C, sky quality (averaging, SQM offset, dark calibration), cloud detection, the RG-15 rain sensor and the anemometer.
+
+    ![Sensor settings](../assets/screenshots/settings-sensors.png)
+
+=== "Safety"
+    ASCOM Alpaca and the safety rules - see [ASCOM Alpaca](alpaca.md#safety-rules).
+
+    ![Safety settings](../assets/screenshots/settings-safety.png)
+
+=== "Alerts"
+    Events, levels, wording and channels - see [Alerts](alerts.md).
+
+    ![Alert settings](../assets/screenshots/settings-alerts.png)
+
 ---
 
 ## Full Configuration Reference
@@ -9,7 +43,6 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
 ```json
 {
   "deviceName": "SQM-ESP32",
-  "timezone": "UTC",
   "primaryTimeSource": 0,
   "secondaryTimeSource": 1,
 
@@ -28,8 +61,6 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
     "server1": "pool.ntp.org",
     "server2": "time.nist.gov",
     "timezone": "UTC0",
-    "gmtOffsetSec": 0,
-    "daylightOffsetSec": 0,
     "syncIntervalMs": 600000
   },
 
@@ -189,7 +220,6 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `deviceName` | string | `"SQM-ESP32"` | Friendly name shown in the web UI |
-| `timezone` | string | `"UTC"` | Display timezone |
 | `primaryTimeSource` | int | `0` | Primary time source: `0` = NTP, `1` = GPS |
 | `secondaryTimeSource` | int | `1` | Fallback time source: `0` = NTP, `1` = GPS |
 
@@ -213,8 +243,6 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
 | `server1` | string | `"pool.ntp.org"` | Primary NTP server |
 | `server2` | string | `"time.nist.gov"` | Fallback NTP server |
 | `timezone` | string | `"UTC0"` | POSIX timezone string |
-| `gmtOffsetSec` | int | `0` | UTC offset in seconds (e.g. `-28800` for PST) |
-| `daylightOffsetSec` | int | `0` | DST offset in seconds |
 | `syncIntervalMs` | int | `600000` | Re-sync interval — default 10 minutes |
 
 !!! tip "POSIX timezone strings"

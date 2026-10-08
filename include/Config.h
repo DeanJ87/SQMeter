@@ -70,8 +70,6 @@ namespace SQM
         std::string server1;       // Primary NTP server (e.g., "pool.ntp.org")
         std::string server2;       // Secondary NTP server (optional fallback)
         std::string timezone;      // POSIX timezone string (e.g., "PST8PDT,M3.2.0,M11.1.0")
-        int32_t gmtOffsetSec;      // GMT offset in seconds (e.g., -28800 for PST)
-        int32_t daylightOffsetSec; // Daylight saving offset in seconds (e.g., 3600)
         uint32_t syncIntervalMs;   // How often to sync with NTP (default: 1 hour)
     };
 
@@ -279,7 +277,6 @@ namespace SQM
         WindConfig wind;
         LocationConfig location;
         std::string deviceName;
-        std::string timezone;
         TimeSource primaryTimeSource;   // Primary time source
         TimeSource secondaryTimeSource; // Fallback time source
 

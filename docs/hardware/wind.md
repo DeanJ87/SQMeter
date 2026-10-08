@@ -15,9 +15,9 @@ Keep these pins clear of I2C (21/22), GPS (16/17) and the RG-15 (18/19); **Setti
 
 ## Settings
 
-**Settings → Wind (anemometer)**:
+**Settings → Sensors → Wind**:
 
-- **Anemometer type** sets the speed per pulse frequency: 2.4 km/h per Hz (Misol/Argent/SparkFun) or 3.621 km/h per Hz (Davis 6410, 2.25 mph per Hz), or a custom value
+- **Model** sets the speed per pulse frequency: 2.4 km/h per Hz (Misol/Argent/SparkFun) or 3.621 km/h per Hz (Davis 6410, 2.25 mph per Hz), or a custom value
 - **Wind vane**: pin, pull-up value, and a **north offset** if the vane isn't mounted with its north mark pointing north
 
 Changes apply immediately, without a restart.
@@ -34,4 +34,4 @@ Pulses are debounced in software (2 ms), and sampled once a second. A vane readi
 
 ## Safety limits
 
-**Settings → ASCOM Alpaca & Safety → Wind** has optional maximum wind speed and maximum gust limits (m/s). Like rain, they're checked even when the other sensors' data is stale. If a wind limit is enabled but the anemometer is disabled or not reporting, the SafetyMonitor reports unsafe - a limit you can't measure isn't a limit you can trust.
+**Settings → Safety → Safety rules → Wind** has optional maximum wind speed and maximum gust limits (m/s). Like rain, they're checked even when the other sensors' data is stale. If a wind limit is enabled but the anemometer is disabled or not reporting, the SafetyMonitor reports unsafe - a limit you can't measure isn't a limit you can trust.

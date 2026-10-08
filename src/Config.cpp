@@ -290,7 +290,6 @@ namespace SQM
         Config cfg;
 
         cfg.deviceName = "SQM-ESP32";
-        cfg.timezone = "UTC";
 
         cfg.wifi.ssid = "";
         cfg.wifi.password = "";
@@ -322,8 +321,6 @@ namespace SQM
         cfg.ntp.server1 = "pool.ntp.org";
         cfg.ntp.server2 = "time.nist.gov";
         cfg.ntp.timezone = "UTC0"; // POSIX format
-        cfg.ntp.gmtOffsetSec = 0;
-        cfg.ntp.daylightOffsetSec = 0;
         cfg.ntp.syncIntervalMs = 600000; // 10 minutes
 
         cfg.gps.enabled = false;
@@ -508,7 +505,6 @@ namespace SQM
         DynamicJsonDocument doc(8192);
 
         doc["deviceName"] = deviceName;
-        doc["timezone"] = timezone;
         doc["primaryTimeSource"] = static_cast<int>(primaryTimeSource);
         doc["secondaryTimeSource"] = static_cast<int>(secondaryTimeSource);
 
@@ -556,8 +552,6 @@ namespace SQM
         ntp["server1"] = this->ntp.server1;
         ntp["server2"] = this->ntp.server2;
         ntp["timezone"] = this->ntp.timezone;
-        ntp["gmtOffsetSec"] = this->ntp.gmtOffsetSec;
-        ntp["daylightOffsetSec"] = this->ntp.daylightOffsetSec;
         ntp["syncIntervalMs"] = this->ntp.syncIntervalMs;
 
         JsonObject gps = doc.createNestedObject("gps");
@@ -970,8 +964,6 @@ namespace SQM
 
         if (doc.containsKey("deviceName"))
             cfg.deviceName = doc["deviceName"] | "SQM-ESP32";
-        if (doc.containsKey("timezone"))
-            cfg.timezone = doc["timezone"] | "UTC";
         if (doc.containsKey("primaryTimeSource"))
             cfg.primaryTimeSource = static_cast<TimeSource>(doc["primaryTimeSource"] | 0); // 0 = NTP
         if (doc.containsKey("secondaryTimeSource"))
@@ -1067,10 +1059,6 @@ namespace SQM
                 cfg.ntp.server2 = ntp["server2"] | "time.nist.gov";
             if (ntp.containsKey("timezone"))
                 cfg.ntp.timezone = ntp["timezone"] | "UTC0";
-            if (ntp.containsKey("gmtOffsetSec"))
-                cfg.ntp.gmtOffsetSec = ntp["gmtOffsetSec"] | 0;
-            if (ntp.containsKey("daylightOffsetSec"))
-                cfg.ntp.daylightOffsetSec = ntp["daylightOffsetSec"] | 0;
             if (ntp.containsKey("syncIntervalMs"))
                 cfg.ntp.syncIntervalMs = ntp["syncIntervalMs"] | 3600000;
         }

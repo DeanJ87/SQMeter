@@ -1,5 +1,5 @@
 import type { Config } from '../../types';
-import { defaultAlpacaConfig, defaultAuthConfig, defaultBleConfig, defaultCloudDetectionConfig, defaultLocationConfig, defaultRainConfig, defaultWindConfig, mergeAlertsConfig, defaultMqttPublish, defaultHomeAssistant } from './defaults';
+import { defaultAlpacaConfig, defaultAuthConfig, defaultBleConfig, defaultCloudDetectionConfig, defaultLocationConfig, defaultRainConfig, defaultWindConfig, mergeAlertsConfig, defaultMqttPublish, defaultHomeAssistant, defaultSkyAveraging, defaultSkyCalibration } from './defaults';
 
 // Normalises a config from the device (or the form) into the full shape the
 // UI edits and the firmware accepts, filling in fields that older firmware
@@ -56,7 +56,6 @@ export const toConfigPayload = (source: Config): Config => {
   const auth = source.auth ? { ...source.auth } : { ...defaultAuthConfig };
   const base: Config = {
     deviceName: source.deviceName,
-    timezone: source.timezone,
     primaryTimeSource: source.primaryTimeSource,
     secondaryTimeSource: source.secondaryTimeSource,
     wifi: { ...source.wifi },
@@ -71,6 +70,8 @@ export const toConfigPayload = (source: Config): Config => {
     gps: { ...source.gps },
     rain,
     sensor: { ...source.sensor },
+    skyAveraging: { ...defaultSkyAveraging, ...source.skyAveraging },
+    skyCalibration: { ...defaultSkyCalibration, ...source.skyCalibration },
     cloudDetection: source.cloudDetection
       ? { ...source.cloudDetection }
       : { ...defaultCloudDetectionConfig },

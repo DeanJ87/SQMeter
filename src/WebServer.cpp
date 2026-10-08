@@ -168,12 +168,24 @@ namespace SQM
                 root["emitterTotal"] = *diag.emitterTotal;
         }
 
+        // Samples the averaging window holds when full (one per integration,
+        // capped by the sensor's buffer).
+        uint16_t windowSamples(const TSL2591Diagnostics &diag)
+        {
+            if (diag.integrationMs == 0)
+                return 0;
+            const uint32_t samples = static_cast<uint32_t>(diag.averagingWindowSeconds) * 1000UL / diag.integrationMs;
+            return static_cast<uint16_t>(std::max<uint32_t>(1, std::min<uint32_t>(samples, 512)));
+        }
+
         void appendLightDiagnostics(JsonObject root, const TSL2591Diagnostics &diag)
         {
             root["rollingVisible"] = diag.rollingVisible;
             root["correctedVisible"] = diag.correctedVisible;
             root["darkVisibleOffset"] = diag.darkVisibleOffset;
             root["sampleCount"] = diag.sampleCount;
+            root["windowSamples"] = windowSamples(diag);
+            root["nightMode"] = diag.nightMode;
             root["rejectedSamples"] = diag.rejectedSamples;
             root["consecutiveSaturatedSamples"] = diag.consecutiveSaturatedSamples;
             root["consecutiveLowSamples"] = diag.consecutiveLowSamples;
@@ -297,9 +309,16 @@ namespace SQM
 
         if (getConfigCallback().alpaca.enabled)
         {
-            if (alpacaDiscoveryUdp.begin(Alpaca::DISCOVERY_UDP_PORT))
+            if (alpacaDiscoveryUdp.listen(Alpaca::DISCOVERY_UDP_PORT))
             {
-                alpacaDiscoveryStarted = true;
+                // Replies straight from the UDP task: discovery answers
+                // within milliseconds instead of waiting for a main-loop pass.
+                alpacaDiscoveryUdp.onPacket([](AsyncUDPPacket &packet)
+                                            {
+                    if (!Alpaca::isValidDiscoveryRequest(packet.data(), packet.length()))
+                        return;
+                    const std::string response = Alpaca::buildDiscoveryResponse(PORT);
+                    packet.write(reinterpret_cast<const uint8_t *>(response.data()), response.size()); });
                 Logger::info(TAG, "Alpaca UDP discovery listening on port %u", Alpaca::DISCOVERY_UDP_PORT);
             }
             else
@@ -345,7 +364,6 @@ namespace SQM
         wsSensors.cleanupClients();
         wsStatus.cleanupClients();
         pollWiFiConnect();
-        handleAlpacaDiscovery();
 
         const uint32_t now = millis();
 
@@ -1673,26 +1691,6 @@ namespace SQM
         request->send(response.status, response.contentType, response.body.c_str());
     }
 
-    void WebServer::handleAlpacaDiscovery()
-    {
-        if (!alpacaDiscoveryStarted)
-            return;
-
-        int packetSize = alpacaDiscoveryUdp.parsePacket();
-        if (packetSize <= 0)
-            return;
-
-        uint8_t buf[64];
-        int len = alpacaDiscoveryUdp.read(buf, sizeof(buf));
-        if (len > 0 && Alpaca::isValidDiscoveryRequest(buf, static_cast<size_t>(len)))
-        {
-            std::string response = Alpaca::buildDiscoveryResponse(PORT);
-            alpacaDiscoveryUdp.beginPacket(alpacaDiscoveryUdp.remoteIP(), alpacaDiscoveryUdp.remotePort());
-            alpacaDiscoveryUdp.write(reinterpret_cast<const uint8_t *>(response.data()), response.size());
-            alpacaDiscoveryUdp.endPacket();
-        }
-    }
-
     void WebServer::handleGetStatus(AsyncWebServerRequest *request)
     {
         std::string json = createStatusJson();
@@ -1806,9 +1804,32 @@ namespace SQM
             return;
 
         const TSL2591Diagnostics diagnostics = tslSensor.getDiagnostics();
-        if (diagnostics.sampleCount == 0)
+        if (!tslSensor.isInitialized() || diagnostics.sampleCount == 0)
         {
-            request->send(400, "application/json", createErrorJson("No TSL2591 samples available for dark calibration").c_str());
+            request->send(409, "application/json", createErrorJson("No light-sensor readings to calibrate from").c_str());
+            return;
+        }
+        // A covered sensor reads near zero at maximum gain. Out of night mode
+        // it's seeing light, and the offset would wipe out real readings.
+        if (!diagnostics.nightMode)
+        {
+            request->send(409, "application/json",
+                          createErrorJson("The sensor is seeing light. Cover it completely and wait for the averaging window to fill.").c_str());
+            return;
+        }
+        // The offset is the window's average: wait until the window holds only
+        // covered readings, not a mix from before it was covered.
+        const uint16_t needed = windowSamples(diagnostics);
+        if (diagnostics.sampleCount < needed)
+        {
+            DynamicJsonDocument error(256);
+            error["error"] = "The averaging window isn't full yet (" + std::to_string(diagnostics.sampleCount) + " of " +
+                             std::to_string(needed) + " samples). Keep the sensor covered and try again.";
+            error["sampleCount"] = diagnostics.sampleCount;
+            error["windowSamples"] = needed;
+            std::string body;
+            serializeJson(error, body);
+            request->send(409, "application/json", body.c_str());
             return;
         }
 
