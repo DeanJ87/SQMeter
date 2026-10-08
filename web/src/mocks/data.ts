@@ -1,4 +1,4 @@
-import type { SensorData, SystemStatus, Config, GithubRelease, AlpacaConfiguredDevice, AlertRecord } from "../types";
+import type { SensorData, SystemStatus, Config, GithubRelease, AlpacaConfiguredDevice, AlertRecord, WiFiNetwork } from "../types";
 
 const jitter = (base: number, range: number) =>
   base + (Math.random() - 0.5) * range;
@@ -160,6 +160,10 @@ export const mockStatus: SystemStatus = {
     ip: "192.168.1.42",
     rssi: -58,
     mac: "AA:BB:CC:DD:EE:FF",
+    connectPending: false,
+    apMode: false,
+    hostname: "sqmeter",
+    mdns: true,
   },
   mqtt: {
     enabled: true,
@@ -223,6 +227,7 @@ export const mockConfig: Config = {
     ssid: "DarkSkyLab",
     password: "",
     hostname: "sqmeter",
+    mdns: true,
     autoReconnect: true,
     reconnectDelayMs: 1000,
     maxReconnectDelayMs: 300000,
@@ -345,10 +350,11 @@ export const mockConfig: Config = {
   },
 };
 
-export const mockWifiNetworks = [
-  { ssid: "DarkSkyLab", rssi: -42, encryption: "WPA2" },
-  { ssid: "NeighbourNet", rssi: -71, encryption: "WPA2" },
-  { ssid: "TeleCom_5G", rssi: -85, encryption: "WPA3" },
+export const mockWifiNetworks: WiFiNetwork[] = [
+  { ssid: "DarkSkyLab", rssi: -42, encryption: "secured" },
+  { ssid: "NeighbourNet", rssi: -71, encryption: "secured" },
+  { ssid: "Observatory-Guest", rssi: -78, encryption: "open" },
+  { ssid: "TeleCom_5G", rssi: -85, encryption: "secured" },
 ];
 
 export const mockGithubReleases: GithubRelease[] = [

@@ -19,6 +19,7 @@ namespace SQM
         std::string ssid;
         std::string password;
         std::string hostname;
+        bool mdns = true; // advertise <hostname>.local and the HTTP service
         bool autoReconnect;
         uint32_t reconnectDelayMs;
         uint32_t maxReconnectDelayMs;

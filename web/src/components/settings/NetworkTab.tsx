@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
-import type { MQTTPublishGroups, WiFiNetwork } from '../../types';
+import type { MQTTPublishGroups } from '../../types';
+import { useWifiScan } from '../../hooks/useWifiScan';
 import type { Hardware } from './hardware';
 import { defaultHomeAssistant, defaultMqttPublish } from './defaults';
 import type { SettingsTabProps } from './context';
@@ -33,25 +34,9 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
   hw,
   originalWifiSsid,
 }) => {
-  const [networks, setNetworks] = useState<WiFiNetwork[]>([]);
-  const [scanning, setScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<Result>(null);
+  const { networks, scanning, error: scanError, scan } = useWifiScan();
   const [testingMqtt, setTestingMqtt] = useState(false);
   const [mqttResult, setMqttResult] = useState<Result>(null);
-
-  const scan = async () => {
-    setScanning(true);
-    setScanResult(null);
-    try {
-      const response = await fetch('/api/wifi/scan');
-      const data = await response.json();
-      setNetworks(data.networks || []);
-    } catch {
-      setScanResult({ type: 'error', text: 'Scan failed' });
-    } finally {
-      setScanning(false);
-    }
-  };
 
   const selectNetwork = (ssid: string) =>
     updateMany([
@@ -65,7 +50,7 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
   const showPassword = originalWifiSsid !== null && ssid !== originalWifiSsid;
   const networkOptions = [
     ...(ssid && !networks.some((n) => n.ssid === ssid) ? [{ value: ssid, label: ssid }] : []),
-    ...networks.map((n) => ({ value: n.ssid, label: `${n.ssid}  ${n.rssi} dBm${n.encryption !== 'Open' ? ' 🔒' : ''}` })),
+    ...networks.map((n) => ({ value: n.ssid, label: `${n.ssid}  ${n.rssi} dBm${n.encryption === 'secured' ? ' 🔒' : ''}` })),
     { value: 'OTHER', label: 'Other...' },
   ];
 
@@ -120,7 +105,7 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
               <ActionButton onClick={scan} busy={scanning} busyLabel="Scanning...">Scan</ActionButton>
             </div>
             {ssid === '' && <TextInput dataField="wifi.ssid" value={ssid} placeholder="Network name" onInput={(v) => selectNetwork(v)} />}
-            <ResultNote result={scanResult} />
+            <ResultNote result={scanError ? { type: 'error', text: scanError } : null} />
           </Field>
           {showPassword && (
             <Field label="Password">
@@ -132,6 +117,12 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
           </Field>
         </div>
         <Toggle label="Reconnect automatically" checked={config.wifi.autoReconnect} onChange={(v) => update(['wifi', 'autoReconnect'], v)} />
+        <Toggle
+          label="Advertise on the network (mDNS)"
+          hint={`Reachable at http://${config.wifi.hostname || 'sqmeter'}.local. Turn off on networks that don't allow multicast.`}
+          checked={config.wifi.mdns ?? true}
+          onChange={(v) => update(['wifi', 'mdns'], v)}
+        />
       </SettingsCard>
 
       <SettingsCard id="mqtt" title="MQTT" hint="Publishes readings to a broker, e.g. for Home Assistant." badge={mqttBadge}>

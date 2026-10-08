@@ -4,7 +4,7 @@
   "wifi": {
     "ssid": "YourWiFiSSID",
     "password": "YourWiFiPassword",
-    "hostname": "sqm-esp32",
+    "hostname": "sqmeter",
     "autoReconnect": true,
     "reconnectDelayMs": 1000,
     "maxReconnectDelayMs": 300000

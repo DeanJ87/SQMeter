@@ -10,7 +10,7 @@ Connect to `/ws/sensors` for a live stream of sensor readings. The device curren
 ## Connecting
 
 ```javascript
-const ws = new WebSocket('ws://sqm-esp32.local/ws/sensors');
+const ws = new WebSocket('ws://sqmeter.local/ws/sensors');
 
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
@@ -56,7 +56,7 @@ import json
 import websockets
 
 async def stream():
-    async with websockets.connect("ws://sqm-esp32.local/ws/sensors") as ws:
+    async with websockets.connect("ws://sqmeter.local/ws/sensors") as ws:
         async for message in ws:
             data = json.loads(message)
             sky, clouds = data["sky"], data["clouds"]

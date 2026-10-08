@@ -72,6 +72,10 @@ namespace SQM
         void setOTAProgress(int progress);
         void setOTAError(const char *error);
 
+        // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
+        bool isWifiConnectPending() const { return wifiConnectActive; }
+        static bool scheduleRestart(uint32_t delayMs);
+
     private:
         static constexpr const char *TAG = "WebServer";
         static constexpr uint16_t PORT = 80;
@@ -272,7 +276,6 @@ namespace SQM
         void appendSafetyStatus(JsonObject target) const;
         std::string createStatusJson() const;
         static std::string createErrorJson(const char *error);
-        static bool scheduleRestart(uint32_t delayMs);
         static uint32_t ageMs(uint32_t now, uint32_t timestamp);
 
         // Alpaca helpers

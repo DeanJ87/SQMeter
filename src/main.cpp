@@ -3,6 +3,7 @@
 #include <esp_task_wdt.h>
 #include <LittleFS.h>
 #include <ArduinoOTA.h>
+#include <ESPmDNS.h>
 #include "Logger.h"
 #include "SafetyHistory.h"
 #include "HeapTrace.h"
@@ -267,6 +268,7 @@ void setup()
         wifiManager->startCaptivePortal();
     }
 
+    wifiManager->startMdns();
     HeapTrace::mark("wifi");
 
     // Initialize ArduinoOTA for command-line firmware uploads only when configured securely.
@@ -274,6 +276,7 @@ void setup()
     {
         ArduinoOTA.setHostname(config.wifi.hostname.c_str());
         ArduinoOTA.setPassword(config.ota.password.c_str());
+        ArduinoOTA.setMdnsEnabled(false); // WiFiManager owns mDNS (and it can be off)
 
         ArduinoOTA.onStart([]()
                            {
@@ -308,6 +311,8 @@ void setup()
             else if (error == OTA_END_ERROR) Logger::error("OTA", "End Failed"); });
 
         ArduinoOTA.begin();
+        if (wifiManager->isMdnsRunning())
+            MDNS.enableArduino(3232, true);
         arduinoOTAEnabled = true;
         Logger::info("Main", "ArduinoOTA enabled with password authentication");
     }
@@ -362,7 +367,18 @@ void loop()
     esp_task_wdt_reset();
 
     // Handle WiFi
+    wifiManager->setRetryPaused(webServer->isWifiConnectPending());
     wifiManager->handle();
+
+    // Joined a network from the setup hotspot: restart so time, MQTT, Alpaca
+    // discovery and OTA start normally. The delay lets the setup screen show
+    // the new address first.
+    static bool restartingFromHotspot = false;
+    if (!restartingFromHotspot && wifiManager->connectedFromHotspotFor(15000))
+    {
+        Logger::info("Main", "Connected to WiFi from the setup hotspot; restarting");
+        restartingFromHotspot = WebServer::scheduleRestart(1000);
+    }
 
     // Handle ArduinoOTA
     if (arduinoOTAEnabled)

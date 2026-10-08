@@ -16,7 +16,8 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
   "wifi": {
     "ssid": "YourWiFiSSID",
     "password": "YourWiFiPassword",
-    "hostname": "sqm-esp32",
+    "hostname": "sqmeter",
+    "mdns": true,
     "autoReconnect": true,
     "reconnectDelayMs": 1000,
     "maxReconnectDelayMs": 300000
@@ -198,7 +199,8 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
 |-------|------|---------|-------------|
 | `ssid` | string | — | Network name (2.4 GHz only) |
 | `password` | string | — | Network password |
-| `hostname` | string | `"sqm-esp32"` | mDNS hostname (`hostname.local`) |
+| `hostname` | string | `"sqmeter"` | Network name: `hostname.local` via mDNS and the DHCP host name. Letters, numbers and hyphens, up to 32 |
+| `mdns` | bool | `true` | Advertise `hostname.local` and the web service via mDNS |
 | `autoReconnect` | bool | `true` | Reconnect on WiFi drop |
 | `reconnectDelayMs` | int | `1000` | Initial reconnect delay (ms) |
 | `maxReconnectDelayMs` | int | `300000` | Max reconnect backoff — 5 min |
