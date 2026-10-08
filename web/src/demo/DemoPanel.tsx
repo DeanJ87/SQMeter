@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { useDialogFocus } from '../lib/a11y';
 import { Button, Note } from '../components/ui';
 import { demoDevice } from './device';
 import { SCENARIOS, scenarioActive, scenarioRemainingMs } from './simulator';
@@ -16,6 +17,11 @@ const formatRemaining = (ms: number) => {
 const DemoPanel: FunctionalComponent = () => {
   const [open, setOpen] = useState(false);
   const [, setTick] = useState(0);
+  // Non-modal: focus moves in on open, Escape closes and focus returns to the
+  // Demo button (spec 022 FR-012).
+  const body = useRef<HTMLElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  useDialogFocus(open, body, toggle);
 
   useEffect(() => demoDevice.onChange(() => setTick((n) => n + 1)), []);
   useEffect(() => {
@@ -28,11 +34,13 @@ const DemoPanel: FunctionalComponent = () => {
   const rainEnabled = demoDevice.rainEnabled;
 
   return (
-    <div class={`demo-panel${open ? ' is-open' : ''}`}>
+    <div class={`demo-panel${open ? ' is-open' : ''}`} onKeyDown={(event) => event.key === 'Escape' && setOpen(false)}>
       {open && (
-        <section class="demo-panel-body" aria-label="Demo controls">
+        <section class="demo-panel-body" aria-label="Demo controls" ref={body}>
           <div class="demo-panel-head">
-            <h2>Demo</h2>
+            <h2 tabIndex={-1} data-autofocus>
+              Demo
+            </h2>
             <Button variant="link" onClick={() => setOpen(false)}>
               Close
             </Button>
@@ -82,7 +90,7 @@ const DemoPanel: FunctionalComponent = () => {
           </div>
         </section>
       )}
-      <button type="button" class="demo-panel-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button ref={toggle} type="button" class="demo-panel-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span aria-hidden="true">✦</span> Demo{active ? ` · ${SCENARIOS.find((s) => s.id === active.id)?.label}` : ''}
       </button>
     </div>

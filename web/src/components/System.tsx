@@ -117,15 +117,15 @@ const System: FunctionalComponent = () => {
           <InfoRow label="CPU Frequency" value={`${status.cpuFreqMHz} MHz`} />
           <div class="system-metric">
             <InfoRow label="Free Heap" value={`${formatBytes(status.freeHeap)} / ${formatBytes(status.heapSize)}`} />
-            <ProgressMeter value={100 - heapUsedPercent} />
+            <ProgressMeter value={100 - heapUsedPercent} label="Free heap" />
           </div>
           <div class="system-metric">
             <InfoRow label="Flash" value={`${formatBytes(status.sketchSize)} / ${formatBytes(status.flashSize)}`} />
-            <ProgressMeter value={flashUsedPercent} />
+            <ProgressMeter value={flashUsedPercent} label="Flash used" />
           </div>
           <div class="system-metric">
             <InfoRow label="Filesystem" value={`${formatBytes(status.fsUsed)} / ${formatBytes(status.fsTotal)}`} />
-            <ProgressMeter value={fsUsedPercent} />
+            <ProgressMeter value={fsUsedPercent} label="Filesystem used" />
           </div>
           <div>
             <div class="reading-row">

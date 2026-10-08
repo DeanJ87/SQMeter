@@ -2,6 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { route, useRouter } from 'preact-router';
 import { Toaster } from './toast';
 import AlertsBell from './AlertsBell';
+import { LIVE_REGION_ID } from '../lib/a11y';
 
 interface LayoutProps {
   path?: string;
@@ -44,6 +45,13 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
 
   return (
     <div class="app-shell">
+      <a class="skip-link" href="#main" onClick={(event) => {
+        // Hash routing (demo) would treat #main as a route: move focus instead.
+        event.preventDefault();
+        document.getElementById('main')?.focus();
+      }}>
+        Skip to main content
+      </a>
       <header class="app-header">
         <div class="app-header-inner">
           <div class="brand">
@@ -60,6 +68,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
                 key={item.path}
                 type="button"
                 onClick={() => route(item.path)}
+                aria-current={router.url.split('?')[0] === item.path ? 'page' : undefined}
                 class={`nav-button ${router.url.split('?')[0] === item.path ? 'is-active' : ''}`}
               >
                 <TinyIcon name={item.icon} />
@@ -78,10 +87,12 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
         </div>
       </header>
 
-      <main class="app-main">
+      <main class="app-main" id="main" tabIndex={-1}>
         {children}
       </main>
       <Toaster />
+      {/* Verdict changes, new alerts and connection loss (spec 022 FR-009). */}
+      <div id={LIVE_REGION_ID} class="sr-only" role="status" aria-live="polite" />
     </div>
   );
 };

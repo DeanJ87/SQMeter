@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import type { AlertRecord, AlertsRecent } from '../types';
 import { Button, Note } from './ui';
+import { useAnnounceChange, useDialogFocus } from '../lib/a11y';
 
 const POLL_MS = 20000;
 const SEEN_KEY = 'sqm.alerts.lastSeenId';
@@ -62,6 +63,12 @@ const AlertsBell: FunctionalComponent = () => {
   const [anchorBottom, setAnchorBottom] = useState(0);
   const [seen, setSeen] = useState(readSeen);
   const root = useRef<HTMLDivElement>(null);
+  const bell = useRef<HTMLButtonElement>(null);
+  const flyout = useRef<HTMLDivElement>(null);
+  useDialogFocus(open, flyout, bell);
+  // A new alert is announced once (spec 022 FR-009).
+  const newestRecord = data?.alerts[0];
+  useAnnounceChange(newestRecord?.id, () => (newestRecord ? `New alert: ${newestRecord.title}` : null));
 
   useEffect(() => {
     const load = () =>
@@ -115,10 +122,12 @@ const AlertsBell: FunctionalComponent = () => {
   return (
     <div class="alerts-bell" ref={root}>
       <button
+        ref={bell}
         type="button"
         class={`nav-button alerts-bell-button${armed ? '' : ' is-off'}`}
         aria-label={`Alerts${armed ? '' : ' (off)'}${unread ? `, ${unread} new` : ''}`}
         aria-expanded={open}
+        aria-haspopup="dialog"
         onClick={toggle}
       >
         <svg class="nav-icon-svg" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
@@ -128,9 +137,11 @@ const AlertsBell: FunctionalComponent = () => {
         {unread > 0 && <span class="alerts-bell-count">{unread > 9 ? '9+' : unread}</span>}
       </button>
       {open && (
-        <div class="alerts-flyout" role="dialog" aria-label="Recent alerts" style={{ top: `${anchorBottom + 6}px` }}>
+        <div class="alerts-flyout" role="dialog" aria-labelledby="alerts-flyout-title" ref={flyout} style={{ top: `${anchorBottom + 6}px` }}>
           <div class="alerts-flyout-head">
-            <h2>Alerts</h2>
+            <h2 id="alerts-flyout-title" tabIndex={-1} data-autofocus>
+              Alerts
+            </h2>
             <Button variant="link" onClick={switchAlerts} title={armed ? 'Pause while you are not imaging' : undefined}>
               {armed ? 'Turn off' : 'Turn on'}
             </Button>

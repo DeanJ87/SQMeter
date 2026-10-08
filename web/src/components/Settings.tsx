@@ -20,6 +20,7 @@ import TimeTab from './settings/TimeTab';
 import { listReasons, restartReasons } from './settings/restart';
 import { showToast } from './toast';
 import { Button } from './ui';
+import { nextTabIndex, scrollBehavior } from '../lib/a11y';
 
 const STATUS_REFRESH_MS = 10000;
 
@@ -134,7 +135,7 @@ const Settings: FunctionalComponent = () => {
       const alias = Object.entries(fieldErrorAliases).find(([, path]) => path === firstField)?.[0];
       const target = document.querySelector<HTMLElement>(`[data-field="${firstField}"]`)
         ?? (alias ? document.querySelector<HTMLElement>(`[data-field="${alias}"]`) : null);
-      target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      target?.scrollIntoView?.({ behavior: scrollBehavior(), block: 'center' });
       if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) target.focus({ preventScroll: true });
     }, 60);
   };
@@ -205,6 +206,16 @@ const Settings: FunctionalComponent = () => {
     return <div class="empty-state tone-red">Failed to load configuration</div>;
   }
 
+  const onTabKey = (event: KeyboardEvent) => {
+    const index = SETTINGS_TABS.findIndex(({ id }) => id === tab);
+    const next = nextTabIndex(event.key, index, SETTINGS_TABS.length);
+    if (next === null) return;
+    event.preventDefault();
+    const nextId = SETTINGS_TABS[next].id;
+    goTo(nextId);
+    document.getElementById(`settings-tab-${nextId}`)?.focus();
+  };
+
   const props: SettingsTabProps = {
     config,
     update: (path, value) => applyChanges([[path, value]]),
@@ -219,23 +230,36 @@ const Settings: FunctionalComponent = () => {
 
   return (
     <div class="panel-page settings-page page-enter">
-      <nav class="settings-tabs" role="tablist" aria-label="Settings sections">
+      {/* ARIA tabs: arrows, Home and End move between tabs (spec 022). */}
+      <div class="settings-tabs" role="tablist" aria-label="Settings sections" onKeyDown={onTabKey}>
         {SETTINGS_TABS.map(({ id, label }) => (
           <button
             key={id}
+            id={`settings-tab-${id}`}
             type="button"
             role="tab"
             aria-selected={tab === id}
+            aria-controls="settings-tab-panel"
+            aria-describedby={errorsByTab[id] ? `settings-tab-${id}-errors` : undefined}
+            tabIndex={tab === id ? 0 : -1}
             class={`settings-tab ${tab === id ? 'is-active' : ''}`}
             onClick={() => goTo(id)}
           >
             {label}
-            {errorsByTab[id] ? <span class="settings-tab-error" title={`${errorsByTab[id]} to fix`} /> : null}
+            {errorsByTab[id] ? <span class="settings-tab-error" title={`${errorsByTab[id]} to fix`} aria-hidden="true" /> : null}
           </button>
         ))}
-      </nav>
+        {/* The red dot in words, as each tab's description. */}
+        {SETTINGS_TABS.map(({ id }) =>
+          errorsByTab[id] ? (
+            <span key={id} id={`settings-tab-${id}-errors`} hidden>
+              {errorsByTab[id]} to fix
+            </span>
+          ) : null
+        )}
+      </div>
 
-      <div class="settings-tab-panel" role="tabpanel">
+      <div class="settings-tab-panel" role="tabpanel" id="settings-tab-panel" aria-labelledby={`settings-tab-${tab}`} tabIndex={0}>
         {tab === 'device' && <DeviceTab {...props} />}
         {tab === 'network' && <NetworkTab {...props} originalWifiSsid={originalWifiSsid} />}
         {tab === 'time' && <TimeTab {...props} />}

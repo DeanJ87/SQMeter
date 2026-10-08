@@ -62,13 +62,19 @@ const enter: Record<A11yState, (page: Page, entry: InventoryEntry) => Promise<vo
 
 const check = async (page: Page, where: string): Promise<Finding[]> => {
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
-  return results.violations.map((v) => ({
+  const findings = results.violations.map((v) => ({
     rule: v.id,
     impact: v.impact ?? 'unknown',
     where,
     targets: v.nodes.slice(0, 5).map((n) => n.target.join(' ')),
     help: v.help,
   }));
+  // Reflow (WCAG 1.4.10): no sideways page scroll, at 320 px included. Tables
+  // and charts scroll inside their own box, which this doesn't count.
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  if (overflow > 1)
+    findings.push({ rule: 'reflow', impact: 'serious', where, targets: [`page is ${overflow}px wider than the viewport`], help: 'Content must reflow without horizontal scrolling' });
+  return findings;
 };
 
 test.describe.configure({ retries: 0 });

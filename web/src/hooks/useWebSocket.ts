@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "preact/hooks";
+import { announce } from "../lib/a11y";
 
 const INITIAL_RECONNECT_DELAY_MS = 5000;
 const MAX_RECONNECT_DELAY_MS = 30000;
@@ -12,6 +13,10 @@ export const useWebSocket = <T>(url: string) => {
   const reconnectTimeoutRef = useRef<number | null>(null);
   const retryCountRef = useRef(0);
   const shouldReconnectRef = useRef(true);
+  // Connection loss and recovery are announced once each, not per retry
+  // (spec 022 FR-009). Two sockets dropping together say it once (dedupe).
+  const openRef = useRef(false);
+  const lostRef = useRef(false);
 
   const clearReconnectTimeout = () => {
     if (reconnectTimeoutRef.current !== null) {
@@ -32,6 +37,9 @@ export const useWebSocket = <T>(url: string) => {
     socket.onopen = () => {
       console.log(`WebSocket connected: ${url}`);
       retryCountRef.current = 0;
+      openRef.current = true;
+      if (lostRef.current) announce("Reconnected to the device");
+      lostRef.current = false;
       setConnected(true);
     };
 
@@ -61,6 +69,12 @@ export const useWebSocket = <T>(url: string) => {
 
       if (!shouldReconnectRef.current) {
         return;
+      }
+
+      if (openRef.current) {
+        openRef.current = false;
+        lostRef.current = true;
+        announce("Connection to the device lost");
       }
 
       const retryCount = retryCountRef.current++;

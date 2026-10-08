@@ -105,13 +105,32 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
     : null;
   const nowInside = now.valueOf() >= start.valueOf() && now.valueOf() <= end.valueOf();
 
+  // What the chart shows, in words (spec 022 FR-011).
+  const darkBands = bands.filter((band) => band.phase === 'night');
+  const moonUp: { from: number; to: number }[] = [];
+  samples.forEach((sample, i) => {
+    if (sample.moon <= 0) return;
+    const last = moonUp[moonUp.length - 1];
+    if (last && i > 0 && samples[i - 1].moon > 0) last.to = sample.t;
+    else moonUp.push({ from: sample.t, to: sample.t });
+  });
+  const clock = (t: number) => formatClock(new Date(t));
+  const description = [
+    `Night chart, ${clock(start.valueOf())} to ${clock(end.valueOf())}.`,
+    darkBands.length
+      ? `Dark from ${clock(darkBands[0].from)} to ${clock(darkBands[darkBands.length - 1].to)}.`
+      : 'No full darkness.',
+    moonUp.length ? `Moon up ${moonUp.map((up) => `${clock(up.from)} to ${clock(up.to)}`).join(' and ')}.` : 'Moon below the horizon.',
+    `Moon ${Math.round(lit * 100)}% lit.`,
+  ].join(' ');
+
   return (
     <div class="night-chart" ref={boxRef}>
       <svg
         width={width}
         height={HEIGHT}
         role="img"
-        aria-label="Twilight and moon altitude from noon to noon"
+        aria-label={description}
         onPointerMove={pick}
         onPointerDown={pick}
         onPointerLeave={() => setHoverTime(null)}

@@ -1,4 +1,6 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
+import { useEffect, useId, useRef, useState } from 'preact/hooks';
+import { announce } from '../lib/a11y';
 
 export const COLORS = {
   cyan: '#55c7f2',
@@ -101,11 +103,26 @@ export const SensorReadingRow: FunctionalComponent<{ label: string; value: strin
   </div>
 );
 
-export const ProgressMeter: FunctionalComponent<{ value: number }> = ({ value }) => (
-  <div class="progress-meter">
-    <div style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
-  </div>
-);
+// `announceSteps`: for a running task (an update), announce each quarter
+// reached - never every percent (spec 022).
+export const ProgressMeter: FunctionalComponent<{ value: number; label?: string; announceSteps?: boolean }> = ({
+  value,
+  label = 'Progress',
+  announceSteps,
+}) => {
+  const percent = Math.round(Math.max(0, Math.min(100, value)));
+  const quarter = Math.floor(percent / 25);
+  const lastQuarter = useRef(quarter);
+  useEffect(() => {
+    if (announceSteps && quarter > lastQuarter.current) announce(`${label} ${quarter * 25}%`);
+    lastQuarter.current = quarter;
+  }, [quarter, announceSteps]);
+  return (
+    <div class="progress-meter" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+      <div style={{ width: `${percent}%` }} />
+    </div>
+  );
+};
 
 type ButtonVariant = 'default' | 'primary' | 'danger' | 'ghost' | 'link';
 
@@ -138,22 +155,53 @@ export const Button: FunctionalComponent<{
 );
 
 // "?" that reveals an explanation on hover, focus or tap - for detail that
-// would otherwise clutter the page as footnotes.
-export const InfoTip: FunctionalComponent<{ text: ComponentChildren }> = ({ text }) => (
-  <span class="info-tip" tabIndex={0} aria-label="More information">
-    ?
-    <span class="info-tip-body" role="tooltip">
-      {text}
-    </span>
-  </span>
-);
+// would otherwise clutter the page as footnotes. A button whose description
+// is the tip, so screen readers read it; tap toggles it, Escape hides it
+// (WCAG 1.4.13, 4.1.2).
+export const InfoTip: FunctionalComponent<{ text: ComponentChildren }> = ({ text }) => {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const reset = () => setDismissed(false);
+  return (
+    <button
+      type="button"
+      class={`info-tip${open ? ' is-open' : ''}${dismissed ? ' is-dismissed' : ''}`}
+      aria-label="More information"
+      aria-describedby={id}
+      aria-expanded={open}
+      onClick={(event) => {
+        event.preventDefault(); // inside a <label>: don't toggle its control
+        setDismissed(false);
+        setOpen(!open);
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape') return;
+        event.stopPropagation();
+        setOpen(false);
+        setDismissed(true);
+      }}
+      onBlur={() => {
+        setOpen(false);
+        reset();
+      }}
+      onMouseLeave={reset}
+    >
+      <span aria-hidden="true">?</span>
+      <span class="info-tip-body" role="tooltip" id={id}>
+        {text}
+      </span>
+    </button>
+  );
+};
 
 // One-line status note under a control: no box, just tinted text.
 export const Note: FunctionalComponent<{
   tone?: 'muted' | 'warn' | 'bad' | 'ok';
   action?: { label: string; onClick: () => void };
-}> = ({ tone = 'muted', action, children }) => (
-  <p class={`note note-${tone}`}>
+  id?: string;
+}> = ({ tone = 'muted', action, id, children }) => (
+  <p class={`note note-${tone}`} id={id}>
     {children}
     {action && (
       <button type="button" class="note-action" onClick={action.onClick}>
