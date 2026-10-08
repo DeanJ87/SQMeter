@@ -71,8 +71,18 @@ jobs:
         run: npm run screenshots
         working-directory: web
 
+      # Every page and state of the device UI, at desktop and 320 px, against
+      # web/tests/a11y/baseline.json (spec 022).
+      - name: Accessibility checks (device UI)
+        run: npx playwright test tests/a11y.spec.ts
+        working-directory: web
+
       - name: Build MkDocs site
         run: mkdocs build --strict
+
+      - name: Accessibility checks (docs)
+        run: npx playwright test -c playwright.docs.config.ts
+        working-directory: web
 
       # The demo has its own site, https://demo.sqmeter.dev, served by GitHub
       # Pages from DeanJ87/sqmeter-demo (one custom domain per Pages site).

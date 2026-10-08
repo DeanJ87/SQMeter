@@ -770,8 +770,10 @@ button {
   width: min(100%, 42rem);
 }
 
+/* The page's own title is an h2: the header's "SQMeter" is the one h1. */
 .panel-page > h1,
-.panel-page > div:first-child h1 {
+.panel-page > div:first-child h1,
+.page-title {
   margin: 0 0 0.15rem;
   color: var(--text);
   font-size: 1.25rem;
@@ -974,7 +976,8 @@ button {
   color: var(--cyan);
 }
 
-.not-found-card h1 {
+.not-found-card h1,
+.not-found-title {
   margin-top: 0.9rem;
   font-size: 1.35rem;
   line-height: 1.2;

@@ -111,7 +111,7 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
   return (
     <div class="panel-page compact-page page-enter">
       <div>
-        <h1>WiFi setup</h1>
+        <h2 class="page-title">WiFi setup</h2>
         <p class="muted">Choose the network SQMeter should join.</p>
       </div>
       <Card

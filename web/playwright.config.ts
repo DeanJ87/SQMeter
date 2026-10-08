@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
+  // The docs check needs the built mkdocs site: playwright.docs.config.ts.
+  testIgnore: "a11y-docs.spec.ts",
   fullyParallel: false,
   retries: 1,
   workers: 1,
