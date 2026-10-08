@@ -47,12 +47,14 @@ New features are built with [Spec Kit](https://github.com/github/spec-kit). The 
 All code follows the [coding standard](docs/development/coding-standards.md) - naming, where code goes, smells to avoid, limits, comments, errors and tests. Every rule has an ID; CI checks the automatic ones:
 
 ```bash
-python3 -m pip install -r tools/quality/requirements.txt   # once
-python3 tools/quality/check.py          # what CI runs
-python3 tools/quality/check.py --fix    # apply the formatters
+python3 -m venv .venv-quality && .venv-quality/bin/pip install -r tools/quality/requirements.txt   # once
+(cd web && npm ci) && pio pkg install -e native                                                    # once
+.venv-quality/bin/python tools/quality/check.py          # what CI runs (the "Quality" workflow)
+.venv-quality/bin/python tools/quality/check.py --fast   # quicker: skips clang-tidy
+.venv-quality/bin/python tools/quality/check.py --fix    # autofix and format, then check
 ```
 
-Existing violations are in `tools/quality/baseline.json`; new ones fail. Fix one and run `--update-baseline` so the count goes down.
+Existing violations are in `tools/quality/baseline.json`; new ones fail. Fix one and run `--update-baseline` so the count goes down. See the [standard](docs/development/coding-standards.md) for details.
 
 **Firmware build (zero warnings):**
 ```bash

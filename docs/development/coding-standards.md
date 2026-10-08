@@ -4,13 +4,29 @@ How SQMeter code is written - firmware (C++), web UI (TypeScript/Preact) and too
 
 **Check types**: **auto** - `tools/quality/check.py` fails CI; **converge** - checked by `/speckit-converge` and review, because a tool can't judge it.
 
+Set up once:
+
 ```bash
-python3 tools/quality/check.py          # everything CI runs
-python3 tools/quality/check.py --fast   # without clang-tidy, for quick local runs
-python3 tools/quality/check.py --fix    # apply the formatters
+python3 -m venv .venv-quality && .venv-quality/bin/pip install -r tools/quality/requirements.txt   # pinned tools
+(cd web && npm ci)                  # ESLint and Prettier
+pio pkg install -e native           # ArduinoJson, for clang-tidy
 ```
 
-Existing violations are listed in `tools/quality/baseline.json`. New ones fail; when you fix one, update the baseline (`--update-baseline`) so the count goes down - it never goes up.
+Then, with that venv's Python:
+
+```bash
+.venv-quality/bin/python tools/quality/check.py                    # everything CI runs
+.venv-quality/bin/python tools/quality/check.py --fast             # without clang-tidy, for quick local runs
+.venv-quality/bin/python tools/quality/check.py --fix              # linter autofixes, then the formatters, then the check
+.venv-quality/bin/python tools/quality/check.py --update-baseline  # record burned-down findings
+.venv-quality/bin/python -m unittest tools/quality/test_check.py   # the gate's own tests
+```
+
+In the web UI, `npm run lint`, `npm run format` and `npm run format:check` run ESLint and Prettier on their own.
+
+CI runs the same in the **Quality** workflow (job `quality`) on every pull request. Each failure names the rule ID, the file and line, and how to fix it.
+
+**Baseline.** Existing violations are counted per rule per file in `tools/quality/baseline.json`. A rule/file pair over its count fails, so new code meets the standard while old code is burned down. When you fix some, CI fails until you run `--update-baseline` in that PR, so the count goes down and can't creep back up. Formatting has no baseline: it's always clean. Never raise a count to get a change through - fix it, or make a one-place exception (EXC-01) with a reason the reviewer can judge.
 
 **Not checked**: generated or vendored code - `web/src/demo/core/` (built device core), `web/public/mockServiceWorker.js`, `.pio/`, `node_modules/`, `web/dist*`, `site/`.
 
@@ -136,6 +152,14 @@ Test files are exempt from LIMIT-01 (a `describe` block is long by nature) but n
 | TEST-02 | A bug fix adds a test that fails without the fix (Constitution III). | converge |
 | TEST-03 | Tests don't sleep for timing or touch the network; inject time and data. | converge |
 | TEST-04 | Test names follow NAME-10. | converge |
+
+---
+
+## Linters (LINT)
+
+| ID | Rule | Check |
+|---|---|---|
+| LINT-01 | Findings from the linters' bug and performance checks (clang-tidy `bugprone-*`, `performance-*`; ESLint and typescript-eslint recommended, React hooks; ruff `E`, `F`, `B`, `UP`, `SIM`) are fixed, or suppressed in one place with a reason (EXC-01). | auto |
 
 ---
 

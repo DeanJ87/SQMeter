@@ -5,7 +5,7 @@ target-version = "py39"
 extend-exclude = ["web", ".pio", "site"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "B", "UP", "N", "SIM", "C90", "PLR0913"]
+select = ["E", "F", "W", "B", "UP", "N", "SIM", "C90", "PLR0913", "S110", "S112"]
 ignore = ["E501"]
 
 [tool.ruff.lint.mccabe]
