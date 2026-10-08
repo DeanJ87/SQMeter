@@ -15,8 +15,8 @@ SQMeter measures light pollution in real time using an ESP32. It gives you SQM m
 
 ## Links
 
-- **Docs:** https://deanj87.github.io/SQMeter/
-- **Demo:** https://deanj87.github.io/SQMeter/demo/
+- **Docs:** https://sqmeter.dev/
+- **Demo:** https://demo.sqmeter.dev/
 - **Releases:** https://github.com/DeanJ87/SQMeter/releases
 
 ## Highlights
@@ -36,7 +36,7 @@ SQMeter measures light pollution in real time using an ESP32. It gives you SQM m
 
 ## Quick Start
 
-See [Flashing Your Device](https://deanj87.github.io/SQMeter/getting-started/flashing/) to get started with a new ESP32.
+See [Flashing Your Device](https://sqmeter.dev/getting-started/flashing/) to get started with a new ESP32.
 
 ## Current Security Model
 

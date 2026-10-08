@@ -74,8 +74,20 @@ jobs:
       - name: Build MkDocs site
         run: mkdocs build --strict
 
-      - name: Copy demo into docs site
-        run: rm -rf site/demo && cp -r web/dist-demo site/demo
+      # The demo has its own site, https://demo.sqmeter.dev, served by GitHub
+      # Pages from DeanJ87/sqmeter-demo (one custom domain per Pages site).
+      # site/demo/ is just a redirect for old links.
+      - name: Publish demo to demo.sqmeter.dev
+        if: github.event_name == 'push'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          deploy_key: ${{ secrets.DEMO_DEPLOY_KEY }}
+          external_repository: DeanJ87/sqmeter-demo
+          publish_branch: gh-pages
+          publish_dir: ./web/dist-demo
+          cname: demo.sqmeter.dev
+          force_orphan: true
+          commit_message: "Demo from DeanJ87/SQMeter@${{ github.sha }}"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

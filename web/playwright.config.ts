@@ -8,7 +8,7 @@ export default defineConfig({
   reporter: "list",
 
   use: {
-    baseURL: "http://localhost:4173/SQMeter/demo/",
+    baseURL: "http://localhost:4173/",
     // Give MSW time to intercept before assertions
     actionTimeout: 10_000,
     screenshot: "only-on-failure",
@@ -31,7 +31,7 @@ export default defineConfig({
   // Start the demo preview server before running tests
   webServer: {
     command: "npm run preview:demo",
-    url: "http://localhost:4173/SQMeter/demo/",
+    url: "http://localhost:4173/",
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },

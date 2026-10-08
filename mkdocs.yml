@@ -1,6 +1,6 @@
 site_name: SQMeter
 site_description: ESP32 Dark Sky Quality Monitor
-site_url: https://DeanJ87.github.io/SQMeter/
+site_url: https://sqmeter.dev/
 repo_url: https://github.com/DeanJ87/SQMeter
 repo_name: DeanJ87/SQMeter
 edit_uri: edit/main/docs/
@@ -11,7 +11,7 @@ extra:
       link: https://github.com/DeanJ87/SQMeter
       name: GitHub
     - icon: material/monitor-eye
-      link: https://DeanJ87.github.io/SQMeter/demo/
+      link: https://demo.sqmeter.dev/
       name: Live Demo
 
 theme:

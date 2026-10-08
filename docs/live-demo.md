@@ -1,6 +1,6 @@
 # Live Demo
 
-[Try the Live Demo :material-arrow-right:](https://DeanJ87.github.io/SQMeter/demo/){ .md-button .md-button--primary }
+[Try the Live Demo :material-arrow-right:](https://demo.sqmeter.dev/){ .md-button .md-button--primary }
 
 The live demo lets you explore the SQMeter web interface without owning any hardware.
 
