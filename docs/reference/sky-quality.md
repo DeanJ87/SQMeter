@@ -2,6 +2,49 @@
 
 SQMeter converts TSL2591 light readings into three astronomical metrics. The conversion is only as good as the optical build and calibration: a bare TSL2591 is not a calibrated SQM instrument because it has a very wide angular response and can collect stray light from the horizon, ground, buildings, vehicles, and the enclosure.
 
+<!-- diagram: DIA-05
+sources: src/sensors/TSL2591Sensor.cpp#TSL2591Sensor::updateRollingReading lib/SkyLogic/src/ lib/DeviceCore/src/DeviceCore.cpp#derive lib/DeviceCore/src/DeviceCore.cpp#buildReadings src/sensors/BME280Sensor.cpp#BME280Sensor::calculateDewpoint
+blocking: false
+fingerprint: unconfirmed
+-->
+<figure class="diagram" markdown>
+
+```mermaid
+flowchart TB
+    accTitle: From sensor readings to the readings document
+    accDescr: Light counts become lux, then SQM, NELM and Bortle. The IR sky minus ambient temperature, corrected for humidity, becomes cloud cover. Temperature and humidity give the dew point. Everything goes into one readings document that the dashboard, REST, WebSocket, MQTT, Alpaca and the safety rules all use.
+    TSL["TSL2591 light counts<br/>auto-ranged gain and integration"] --> NIGHT{"Night mode?<br/>maximum gain and integration"}
+    NIGHT -->|no| LUXNOW["Lux from the latest sample"]
+    NIGHT -->|yes| LUXAVG["Visible counts averaged over the averaging window,<br/>minus the dark offset, to lux,<br/>plus the SQM calibration offset if set"]
+    LUXNOW --> SQM["SQM = 12.6 - 2.5 log10 lux"]
+    LUXAVG --> SQM
+    SQM --> NELM["NELM"]
+    SQM --> BORTLE["Bortle class"]
+    MLX["MLX90614<br/>sky and its own temperature"] --> DELTA["delta = sky - ambient"]
+    BME["BME280<br/>temperature, humidity, pressure"] -->|humidity, or 53% assumed| CORR
+    DELTA --> CORR["corrected = delta - k/100 x humidity"]
+    CORR --> CLOUD["Cloud cover % and condition<br/>from the Clear below and Overcast above limits"]
+    BME --> DEW["Dew point, Magnus formula"]
+    NELM --> DOC
+    BORTLE --> DOC
+    CLOUD --> DOC
+    DEW --> DOC
+    DOC["One readings document<br/>with a status per sensor group"] --> OUT["Dashboard, REST and WebSocket,<br/>MQTT state, Alpaca properties,<br/>safety rules and alerts"]
+```
+
+<figcaption>From sensor readings to the one readings document every interface uses.</figcaption>
+</figure>
+
+??? info "Diagram in words"
+
+    1. **Light**: the TSL2591 auto-ranges its gain and integration time.
+        - In **night mode** (maximum gain and integration), visible counts are averaged over the averaging window, the dark offset is subtracted, the result is converted to lux, and the SQM calibration offset is applied if one is set.
+        - Otherwise lux comes from the latest sample.
+    2. **Sky quality**: SQM = 12.6 - 2.5 × log₁₀(lux). NELM and the Bortle class are worked out from the SQM.
+    3. **Cloud**: the MLX90614's sky temperature minus its own (ambient) temperature, corrected for humidity: corrected = delta - (k / 100) × humidity. The BME280's humidity is used, or 53 % when it isn't working. The corrected delta, against the **Clear below** and **Overcast above** limits, gives the cloud cover % and condition.
+    4. **Dew point**: from the BME280's temperature and humidity (Magnus formula).
+    5. Everything goes into **one readings document**, with a status per sensor group. The dashboard, REST and WebSocket, MQTT `<base>/state`, the Alpaca ObservingConditions properties, the safety rules and the alerts all use it, so they always agree.
+
 ---
 
 ## SQM — Sky Quality Meter
