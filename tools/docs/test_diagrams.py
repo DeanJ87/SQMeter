@@ -198,8 +198,8 @@ class SiteTest(unittest.TestCase):
             self.assertEqual([], diagrams.check_site(root))
             (root / "other.html").write_text('<div class="mermaid"></div><script src="https://unpkg.com/mermaid@11"></script>')
             problems = diagrams.check_site(root)
-            self.assertTrue(any("unpkg.com" in p for p in problems))
-            self.assertTrue(any("doesn't load the vendored" in p for p in problems))
+            self.assertIn("other.html references unpkg.com (FR-004: no third-party hosts)", problems)
+            self.assertIn("other.html has a diagram but doesn't load the vendored mermaid", problems)
 
 
 if __name__ == "__main__":
