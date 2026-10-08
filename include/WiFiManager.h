@@ -2,7 +2,7 @@
 
 #include "Config.h"
 #include <WiFi.h>
-#include <DNSServer.h>
+#include <AsyncUDP.h>
 #include <functional>
 #include <optional>
 
@@ -53,7 +53,6 @@ namespace SQM
     private:
         static constexpr const char *TAG = "WiFiManager";
         static constexpr const char *AP_SSID = "SQM-Setup";
-        static constexpr const uint8_t DNS_PORT = 53;
 
         WiFiConfig config;
         bool apMode;
@@ -63,7 +62,9 @@ namespace SQM
         bool mdnsStarted = false;
         uint32_t stationConnectedAt = 0;
 
-        std::optional<DNSServer> dnsServer;
+        // Answers DNS from the network task, so phones get replies at once
+        // even while the main loop is busy (a light-sensor read takes ~0.7 s).
+        std::optional<AsyncUDP> dnsServer;
         OnConnectedCallback onConnectedCallback;
         OnDisconnectedCallback onDisconnectedCallback;
 
