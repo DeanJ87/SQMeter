@@ -7,7 +7,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceCore.cpp#runAlerts src/WebServer.cpp#WebServer::processAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 03686090d18b238c
+fingerprint: cd815ecbb7debae7
 -->
 <figure class="diagram" markdown>
 
@@ -27,12 +27,15 @@ flowchart TB
     ON -->|yes| MASTER{"Send alerts on?"}
     ON -->|"yes, level Wake me"| BLE["Paired phones ring over Bluetooth"]
     MASTER -->|no| NOPUSH["No channel is used"]
-    MASTER -->|yes| MQTT["MQTT: published at once"]
-    MASTER -->|yes| HTTP["Pushover, ntfy, webhook:<br/>queued, sent in the background"]
+    MASTER -->|yes| INEFFECT{"Channel in effect?"}
+    INEFFECT -->|"no: MQTT off,<br/>no WiFi"| INACTIVE["<b>Skipped</b>, with the reason;<br/>nothing attempted"]
+    INEFFECT -->|yes| MQTT["MQTT: published at once"]
+    INEFFECT -->|yes| HTTP["Pushover, ntfy, webhook:<br/>queued, sent in the background"]
     HTTP --> CANSEND{"Network free?"}
     CANSEND -->|no| SKIPPED["<b>Skipped</b>, with the reason<br/>WiFi down, a firmware update,<br/>or another HTTPS request"]
     CANSEND -->|yes| SENT["Sent, or Failed after one retry"]
     MQTT --> RECENT["Recent alerts: each channel's result"]
+    INACTIVE --> RECENT
     SKIPPED --> RECENT
     SENT --> RECENT
 ```
@@ -56,6 +59,7 @@ flowchart TB
     7. With alerts on:
         - a **Wake me** alert rings paired phones over Bluetooth, even with **Send alerts** off;
         - with **Send alerts** on, it goes to every enabled channel: MQTT at once; Pushover, ntfy and the webhook in the background.
+        - a channel that is switched on but not in effect (MQTT alerts with MQTT off, internet channels without WiFi) is **skipped** with the reason, and nothing is attempted.
     8. A background send is **skipped** when WiFi is down, a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
     9. Each channel's result appears under **Recent alerts**.
 

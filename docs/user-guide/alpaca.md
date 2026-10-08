@@ -26,7 +26,7 @@ Alpaca support is disabled by default. With it off, every Alpaca endpoint still 
 <!-- diagram: DIA-10
 sources: lib/AlpacaLogic/src/AlpacaDiscovery.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp src/WebServer.cpp#WebServer::setupAlpacaRoutes
 blocking: false
-fingerprint: 46c4937e5bf581c8
+fingerprint: d719bc4ec6ab837d
 -->
 <figure class="diagram" markdown>
 
