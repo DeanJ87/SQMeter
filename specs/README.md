@@ -30,4 +30,11 @@ from the documentation, the maintainer's stated requirements and the code, then 
 All convergence tasks were implemented in the v0.2.0-beta.2 work (PR #75); the tasks stay in
 each `tasks.md`, checked off, as the record.
 
-New features start at 015 with `/speckit-specify`.
+## New features
+
+| Spec | Feature | Status |
+|---|---|---|
+| [015](015-ipv6-dual-stack/spec.md) | IPv6 (dual stack) | Specified - next: `/speckit-plan` |
+| [016](016-demo-device-emulation/spec.md) | Demo that behaves like the device | Specified - next: `/speckit-plan` |
+
+New features continue at 017 with `/speckit-specify`.
