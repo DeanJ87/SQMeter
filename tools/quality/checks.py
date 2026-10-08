@@ -23,7 +23,7 @@ WEB = ROOT / "web"
 
 CPP_PATTERNS = ["src/*.cpp", "src/*.h", "include/*.h", "lib/*.cpp", "lib/*.h", "test/*.cpp", "test/*.h", "tools/*.cpp", "tools/*.h"]
 PY_PATTERNS = ["tools/*.py"]
-PRETTIER_GLOBS = ["src/**/*.{ts,tsx,css}", "tests/**/*.ts", "*.ts"]
+PRETTIER_GLOBS = ["src/**/*.{ts,tsx,css}", "tests/**/*.ts", "*.ts", "*.json", ".prettierrc.json"]
 
 # Limits (LIMIT-01..05). TypeScript limits live in web/eslint.config.js.
 CPP_FUNCTION_LINES = 60

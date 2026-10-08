@@ -168,3 +168,65 @@ Test files are exempt from LIMIT-01 (a `describe` block is long by nature) but n
 | ID | Rule | Check |
 |---|---|---|
 | EXC-01 | A rule may be switched off for one place only, with the rule ID and a reason on the same line: `// NOLINT(readability-function-size): Alpaca router, one case per method` (C++), `// eslint-disable-next-line max-lines-per-function -- table of steps` (TS), `# noqa: C901 - parser for GitHub's format` (Python). Bare suppressions fail. | auto |
+
+---
+
+## Examples
+
+Good and bad for the rules whose tables don't show one.
+
+**STRUCT-03, SMELL-02 - one responsibility per module.** Bad: `WebServer.cpp` routes HTTP, builds the readings document and keeps the safety history. Good: routing in `src/WebServer*.cpp`, the document in `lib/Readings`, the history in `lib/SafetyHistoryLogic`.
+
+**SMELL-01, LIMIT-01 - long function.** Bad: one 120-line `setupRoutes()`. Good: `setupStatusRoutes()`, `setupConfigRoutes()`, `setupAlpacaRoutes()`, each a screen long.
+
+**SMELL-03 - duplicated logic.** Bad: the demo computing cloud cover in TypeScript. Good: the demo calling the firmware's `CloudDetection` through the WebAssembly core.
+
+**SMELL-07, LIMIT-05 - deep nesting.**
+
+```cpp
+// Bad
+if (cfg.rain.enabled) { if (reading.ok) { if (reading.rate > 0) { latch.set(now); } } }
+// Good
+if (!cfg.rain.enabled || !reading.ok || reading.rate <= 0)
+    return;
+latch.set(now);
+```
+
+**SMELL-08, ERR-01 - swallowed errors.**
+
+```ts
+// Bad
+try { await saveConfig(cfg); } catch {}
+// Good
+try { await saveConfig(cfg); } catch (error) { toast.error(`Settings weren't saved: ${describe(error)}`); }
+```
+
+**SMELL-09 - blocking in async handlers.** Bad: an HTTP handler that waits for a Pushover request. Good: the handler queues the alert for the dispatcher task and returns 202.
+
+**SMELL-11, SMELL-12 - dead and commented-out code.** Bad: `// oldCalibrate(raw);` left "just in case". Good: delete it; git has it.
+
+**SMELL-13 - copy-pasted handlers.** Bad: six Alpaca `GET` handlers that differ only in the property. Good: one table of property names and getters.
+
+**SMELL-15 - mutable globals.** Bad: `static float lastLux;` read by two tasks. Good: the value lives in the snapshot passed to whoever needs it.
+
+**LIMIT-02 - complexity.** Bad: one function with a branch per alert event. Good: a table from event to level and wording.
+
+**LIMIT-03 - parameters.** Bad: `evaluate(sqm, cloud, rain, wind, humidity, dewpoint)`. Good: `evaluate(const SafetyInputs &inputs)`.
+
+**LIMIT-04 - file length.** Bad: a 1,000-line settings component. Good: one file per settings tab.
+
+**FMT-01, FMT-02 - formatting.** Bad: hand-aligned code or a brace on the same line in C++. Good: whatever `check.py --fix` produces.
+
+**CMT-01 - comments say why.** Bad: `// add one to count`. Good: `// The RG-15 counts the first tip twice after power-up; skip it.`
+
+**ERR-02 - user-facing messages.** Bad: "Error 409". Good: "The rain sensor is switched off (Settings → Sensors → Rain sensor)".
+
+**ERR-04 - fail safe.** Bad: no cloud reading, so the cloud rule is skipped and the verdict says safe. Good: no cloud reading, so the verdict is unsafe with "Cloud sensor not responding".
+
+**LOG-02 - secrets.** Bad: `log("MQTT login %s:%s", user, password)`. Good: `log("MQTT login as %s", user)`.
+
+**TEST-02 - a bug fix comes with a test.** Bad: fixing the release-list buffer size alone. Good: also adding a test with a release list longer than the old buffer, which fails without the fix.
+
+**TEST-03 - no sleeping or network in tests.** Bad: `delay(15000)` to wait out the rain clear delay. Good: pass `now + 15000` to the latch.
+
+**TEST-04 - test names.** Bad: `test1()`. Good: `test_latch_holds_for_clear_delay()`.
