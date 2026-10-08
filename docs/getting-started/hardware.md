@@ -5,7 +5,7 @@ SQMeter runs on any standard ESP32 dev board. The three core sensors share the I
 <!-- diagram: DIA-13
 sources: lib/ConfigModel/src/ConfigModel.cpp#createDefault src/main.cpp#setupI2C src/sensors/WindSensor.cpp
 blocking: false
-fingerprint: 798b8d76d9b09891
+fingerprint: cb8354ff672be2b4
 -->
 <figure class="diagram" markdown>
 

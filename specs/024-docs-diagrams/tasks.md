@@ -112,4 +112,4 @@
 
 - [x] T034 [SC-005] Override Material's repo link (overrides/partials/source.html) without `data-md-component="source"`, so no docs page fetches repository facts from api.github.com. Keep the GitHub link and name. Prove with the render review that a diagram page makes no third-party request
 - [x] T035 [US2/T015] Show on DIA-02 (docs/user-guide/alpaca.md) that Alpaca IsSafe is false with a NotConnected error while Alpaca is off, in the diagram and its words, and link to DIA-10
-- [ ] T036 [FR-009] When spec 017's docs/development/coding-standards.md is on main, add the diagram rule to it as a numbered rule (DOC-01: behaviour shown in a diagram is updated and re-confirmed in the same PR) and reference it from CONTRIBUTING.md
+- [x] T036 [FR-009] When spec 017's docs/development/coding-standards.md is on main, add the diagram rule to it as a numbered rule (DOC-01: behaviour shown in a diagram is updated and re-confirmed in the same PR) and reference it from CONTRIBUTING.md

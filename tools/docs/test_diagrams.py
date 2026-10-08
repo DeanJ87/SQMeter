@@ -1,6 +1,6 @@
 """Tests for tools/docs/diagrams.py (spec 024).
 
-    python3 -m unittest discover -s tools/docs -p 'test_*.py'
+python3 -m unittest discover -s tools/docs -p 'test_*.py'
 """
 
 import tempfile
@@ -169,9 +169,7 @@ class CheckTest(unittest.TestCase):
     def test_bad_source_and_copies_that_differ(self):
         report, _, _ = self.run_check({"lib/logic.cpp": LOGIC, "docs/p.md": page().replace("#evaluate", "#renamed")})
         self.assertIn("bad source", report.errors[0][1])
-        report, _, _ = self.run_check(
-            {"lib/logic.cpp": LOGIC, "docs/p.md": page(), "docs/q.md": page(body="    A --> C\n")}
-        )
+        report, _, _ = self.run_check({"lib/logic.cpp": LOGIC, "docs/p.md": page(), "docs/q.md": page(body="    A --> C\n")})
         self.assertTrue(any("different content" in message for _, message in report.errors))
 
     def test_confirm_round_trip(self):
@@ -191,7 +189,9 @@ class CheckTest(unittest.TestCase):
 
 class SiteTest(unittest.TestCase):
     def test_site_must_vendor_mermaid_and_avoid_cdns(self):
-        with TempRepo({"index.html": '<div class="mermaid"></div><script src="assets/javascripts/vendor/mermaid.min.js"></script>'}) as root:
+        with TempRepo(
+            {"index.html": '<div class="mermaid"></div><script src="assets/javascripts/vendor/mermaid.min.js"></script>'}
+        ) as root:
             self.assertTrue(any("missing" in p for p in diagrams.check_site(root)))
             (root / diagrams.VENDORED).parent.mkdir(parents=True)
             (root / diagrams.VENDORED).write_text("// mermaid", encoding="utf-8")

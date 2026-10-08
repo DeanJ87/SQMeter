@@ -69,5 +69,11 @@ export default tseslint.config(
     files: ['**/__tests__/**', 'src/test/**', 'tests/**'],
     rules: { 'max-lines-per-function': 'off', '@typescript-eslint/no-explicit-any': 'off' },
   },
+  {
+    // Build scripts run in Node (docs diagrams, spec 024); code passed to
+    // page.evaluate() runs in the browser.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
   prettier,
 );

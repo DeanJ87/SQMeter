@@ -66,6 +66,19 @@ class SourceError(Exception):
 # --- Sources and fingerprints ------------------------------------------------
 
 
+def _matching(text: str, start: int, open_char: str, close_char: str) -> int:
+    """Index of the bracket closing the one at `start`, or -1."""
+    depth = 0
+    for k in range(start, len(text)):
+        if text[k] == open_char:
+            depth += 1
+        elif text[k] == close_char:
+            depth -= 1
+            if depth == 0:
+                return k
+    return -1
+
+
 def _definition_span(text: str, symbol: str) -> str:
     """The definition of `symbol` in C/C++-like source: from the line where it
     is defined (a `symbol(` whose parameter list is followed by `{`) to the
@@ -74,31 +87,18 @@ def _definition_span(text: str, symbol: str) -> str:
         start = match.start()
         if start > 0 and (text[start - 1].isalnum() or text[start - 1] == "_"):
             continue  # part of a longer name
-        i, depth = match.end() - 1, 0
-        while i < len(text):
-            if text[i] == "(":
-                depth += 1
-            elif text[i] == ")":
-                depth -= 1
-                if depth == 0:
-                    break
-            i += 1
-        rest = text[i + 1 :]
-        after = re.match(r"\s*(?:const\s*|override\s*|noexcept\s*|->\s*[\w:<>]+\s*)*", rest)
-        j = i + 1 + (after.end() if after else 0)
-        if j >= len(text) or text[j] != "{":
+        params_end = _matching(text, match.end() - 1, "(", ")")
+        if params_end < 0:
+            continue
+        after = re.match(r"\s*(?:const\s*|override\s*|noexcept\s*|->\s*[\w:<>]+\s*)*", text[params_end + 1 :])
+        body_start = params_end + 1 + after.end()
+        if body_start >= len(text) or text[body_start] != "{":
             continue  # a declaration or a call
-        depth, k = 0, j
-        while k < len(text):
-            if text[k] == "{":
-                depth += 1
-            elif text[k] == "}":
-                depth -= 1
-                if depth == 0:
-                    line_start = text.rfind("\n", 0, start) + 1
-                    return text[line_start : k + 1]
-            k += 1
-        raise SourceError(f"unbalanced braces after {symbol}")
+        body_end = _matching(text, body_start, "{", "}")
+        if body_end < 0:
+            raise SourceError(f"unbalanced braces after {symbol}")
+        line_start = text.rfind("\n", 0, start) + 1
+        return text[line_start : body_end + 1]
     raise SourceError(f"no definition of {symbol}")
 
 
@@ -174,6 +174,46 @@ def _parse_meta(lines: list[str], fence_index: int) -> tuple[dict[str, str], int
     return fields, i
 
 
+def _check_meta(diagram: Diagram, meta: dict[str, str]) -> None:
+    if not meta:
+        diagram.problems.append("no <!-- diagram: DIA-NN ... --> metadata comment above it")
+        return
+    if not DIAGRAM_ID.match(diagram.id):
+        diagram.problems.append(f"bad diagram id {diagram.id!r} (want DIA-NN)")
+    diagram.sources = meta.get("sources", "").split()
+    if not diagram.sources:
+        diagram.problems.append("no sources: listed")
+    blocking = meta.get("blocking", "false").lower()
+    if blocking not in ("true", "false"):
+        diagram.problems.append(f"blocking must be true or false, not {blocking!r}")
+    diagram.blocking = blocking == "true"
+    diagram.fingerprint = meta.get("fingerprint")
+
+
+def _check_body(diagram: Diagram) -> None:
+    if "accTitle:" not in diagram.body:
+        diagram.problems.append("no accTitle: (screen reader title)")
+    if not re.search(r"accDescr\s*[:{]", diagram.body):
+        diagram.problems.append("no accDescr (screen reader description)")
+    for number, line in enumerate(diagram.body.splitlines(), start=diagram.line + 1):
+        if INLINE_STYLE.search(line):
+            diagram.problems.append(f"inline styling on line {number} - diagrams take the site's colours (FR-003)")
+
+
+def _check_text_after(diagram: Diagram, after: list[str]) -> None:
+    """The caption, then a non-empty "Diagram in words" block, just below."""
+    caption_at = next((k for k, line in enumerate(after[:LOOKAHEAD_LINES]) if CAPTION.search(line)), None)
+    if caption_at is None:
+        diagram.problems.append("no caption (<figcaption>...</figcaption> or *Figure: ...*) right after it")
+        return
+    rest = after[caption_at + 1 : caption_at + 1 + LOOKAHEAD_LINES]
+    words_at = next((k for k, line in enumerate(rest) if WORDS.search(line)), None)
+    if words_at is None:
+        diagram.problems.append('no "Diagram in words" block after the caption')
+    elif not [line for line in rest[words_at + 1 :] if line.strip() and "</details>" not in line]:
+        diagram.problems.append('the "Diagram in words" block is empty')
+
+
 def parse_file(path: Path) -> list[Diagram]:
     lines = path.read_text(encoding="utf-8").splitlines()
     diagrams = []
@@ -193,39 +233,9 @@ def parse_file(path: Path) -> list[Diagram]:
         diagram.meta_line = meta_index + 1 if meta_index is not None else None
         if j >= len(lines):
             diagram.problems.append("unclosed ```mermaid fence")
-        if not meta:
-            diagram.problems.append("no <!-- diagram: DIA-NN ... --> metadata comment above it")
-        else:
-            if not DIAGRAM_ID.match(diagram.id):
-                diagram.problems.append(f"bad diagram id {diagram.id!r} (want DIA-NN)")
-            diagram.sources = meta.get("sources", "").split()
-            if not diagram.sources:
-                diagram.problems.append("no sources: listed")
-            blocking = meta.get("blocking", "false").lower()
-            if blocking not in ("true", "false"):
-                diagram.problems.append(f"blocking must be true or false, not {blocking!r}")
-            diagram.blocking = blocking == "true"
-            diagram.fingerprint = meta.get("fingerprint")
-        if "accTitle:" not in body:
-            diagram.problems.append("no accTitle: (screen reader title)")
-        if not re.search(r"accDescr\s*[:{]", body):
-            diagram.problems.append("no accDescr (screen reader description)")
-        for number, line in enumerate(body.splitlines(), start=i + 2):
-            if INLINE_STYLE.search(line):
-                diagram.problems.append(f"inline styling on line {number} - diagrams take the site's colours (FR-003)")
-        after = lines[j + 1 : j + 1 + LOOKAHEAD_LINES]
-        caption_at = next((k for k, line in enumerate(after) if CAPTION.search(line)), None)
-        if caption_at is None:
-            diagram.problems.append("no caption (<figcaption>...</figcaption> or *Figure: ...*) right after it")
-        else:
-            rest = lines[j + 2 + caption_at : j + 2 + caption_at + LOOKAHEAD_LINES]
-            words_at = next((k for k, line in enumerate(rest) if WORDS.search(line)), None)
-            if words_at is None:
-                diagram.problems.append('no "Diagram in words" block after the caption')
-            else:
-                following = [line for line in rest[words_at + 1 :] if line.strip() and "</details>" not in line]
-                if not following:
-                    diagram.problems.append('the "Diagram in words" block is empty')
+        _check_meta(diagram, meta)
+        _check_body(diagram)
+        _check_text_after(diagram, lines[j + 1 : j + 1 + 2 * LOOKAHEAD_LINES])
         diagrams.append(diagram)
         i = j + 1
     return diagrams
@@ -251,35 +261,38 @@ class Report:
     lines: list[str] = field(default_factory=list)
 
 
+def _freshness(diagram: Diagram, report: Report, root: Path) -> str:
+    try:
+        current = fingerprint(diagram.sources, root)
+    except SourceError as error:
+        report.errors.append((diagram, f"bad source: {error}"))
+        return "bad-source"
+    if diagram.fingerprint == current:
+        return "ok"
+    message = (
+        f"stale: its sources changed (recorded {diagram.fingerprint or 'none'}, now {current}). Check the diagram against "
+        f"{' '.join(diagram.sources)}, update it if needed, then run "
+        f"`python3 tools/docs/diagrams.py --confirm {diagram.id}`"
+    )
+    if diagram.blocking:
+        report.errors.append((diagram, message + " - this is a safety diagram, so it blocks"))
+        return "stale-blocking"
+    report.warnings.append((diagram, message))
+    return "stale"
+
+
 def check(diagrams: list[Diagram], root: Path = ROOT) -> Report:
     report = Report()
     by_id: dict[str, list[Diagram]] = {}
     for diagram in diagrams:
         by_id.setdefault(diagram.id, []).append(diagram)
-        state = "ok"
-        for problem in diagram.problems:
-            report.errors.append((diagram, problem))
+        report.errors.extend((diagram, problem) for problem in diagram.problems)
+        if diagram.problems:
             state = "incomplete"
-        if diagram.sources and state == "ok":
-            try:
-                current = fingerprint(diagram.sources, root)
-            except SourceError as error:
-                report.errors.append((diagram, f"bad source: {error}"))
-                state = "bad-source"
-            else:
-                if diagram.fingerprint != current:
-                    recorded = diagram.fingerprint or "none"
-                    message = (
-                        f"stale: its sources changed (recorded {recorded}, now {current}). Check the diagram against "
-                        f"{' '.join(diagram.sources)}, update it if needed, then run "
-                        f"`python3 tools/docs/diagrams.py --confirm {diagram.id}`"
-                    )
-                    if diagram.blocking:
-                        report.errors.append((diagram, message + " - this is a safety diagram, so it blocks"))
-                        state = "stale-blocking"
-                    else:
-                        report.warnings.append((diagram, message))
-                        state = "stale"
+        elif diagram.sources:
+            state = _freshness(diagram, report, root)
+        else:
+            state = "ok"
         report.lines.append(f"{state:<15}{diagram.id:<8}{diagram.where}")
     for diagram_id, copies in by_id.items():
         if len({copy.body.strip() for copy in copies}) > 1:

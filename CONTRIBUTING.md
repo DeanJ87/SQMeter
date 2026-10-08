@@ -103,7 +103,7 @@ Diagrams are [Mermaid](https://mermaid.js.org/) in the Markdown, in the shape de
 - a fingerprint of that code;
 - `accTitle`/`accDescr`, a caption, and a "Diagram in words" block.
 
-**A change to behaviour shown in a diagram updates the diagram in the same pull request.**
+**A change to behaviour shown in a diagram updates the diagram in the same pull request** (coding standard DOC-01).
 1. Update the diagram, its caption and its words.
 2. Record that it matches the code again:
    ```bash
