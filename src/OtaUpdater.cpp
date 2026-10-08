@@ -22,12 +22,11 @@ namespace SQM
     namespace
     {
         constexpr const char *TAG = "OtaUpdater";
-        // Only the newest few releases matter, and per_page keeps the
-        // response (and parse time over TLS) small.
+        // Only the newest few releases matter; per_page keeps the response
+        // (and parse time over TLS) small. Sizes in lib/ReleaseLogic.
         constexpr const char *RELEASES_URL = "https://api.github.com/repos/DeanJ87/SQMeter/releases?per_page=8";
-        // Filtered, the current releases (6 releases x 3 assets) take 3.2 KB;
-        // 6 KB leaves room for 8 releases with the BLE assets added.
-        constexpr size_t JSON_DOC_CAPACITY = 6144;
+        static_assert(Releases::PER_PAGE == 8, "keep RELEASES_URL's per_page in step");
+        constexpr size_t JSON_DOC_CAPACITY = Releases::JSON_CAPACITY;
 
         constexpr uint32_t HTTP_TIMEOUT_MS = 15000;
         constexpr size_t OTA_TASK_STACK_WORDS = 8192;

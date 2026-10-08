@@ -83,6 +83,39 @@ void test_ignores_non_bin_and_drafts()
     TEST_ASSERT_EQUAL(0, parse(json, "stable", false).size());
 }
 
+void test_full_page_of_releases_fits()
+{
+    // A full page of current-style releases: every file, real-length URLs,
+    // plus the release notes and uploader details the filter drops.
+    std::string json = "[";
+    for (int i = 0; i < Releases::PER_PAGE; ++i)
+    {
+        const std::string tag = "v1.2." + std::to_string(i) + "-beta.10";
+        std::string assets;
+        for (const char *kind : {"sqmeter-firmware-", "sqmeter-ble-firmware-", "sqmeter-littlefs-",
+                                 "sqmeter-complete-flash-", "sqmeter-ble-complete-flash-", "sqmeter-checksums-"})
+        {
+            if (!assets.empty())
+                assets += ",";
+            assets += "{\"name\":\"" + std::string(kind) + tag + ".bin\",\"size\":1700000,"
+                      "\"browser_download_url\":\"https://github.com/DeanJ87/SQMeter/releases/download/" + tag + "/" +
+                      kind + tag + ".bin\",\"uploader\":{\"login\":\"github-actions[bot]\",\"id\":41898282}}";
+        }
+        if (i > 0)
+            json += ",";
+        json += "{\"tag_name\":\"" + tag + "\",\"name\":\"SQMeter " + tag + "\",\"prerelease\":true,\"draft\":false,"
+                "\"published_at\":\"2026-10-08T16:20:00Z\",\"body\":\"" + std::string(3000, 'x') + "\",\"assets\":[" + assets + "]}";
+    }
+    json += "]";
+
+    std::vector<GithubRelease> out;
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(Releases::parse(json, "beta", true, out, error), error.c_str());
+    TEST_ASSERT_EQUAL(Releases::PER_PAGE, out.size());
+    TEST_ASSERT_EQUAL_STRING("https://github.com/DeanJ87/SQMeter/releases/download/v1.2.7-beta.10/sqmeter-ble-firmware-v1.2.7-beta.10.bin",
+                             out.back().firmwareAssetUrl.c_str());
+}
+
 void test_bad_json()
 {
     std::vector<GithubRelease> out;
@@ -99,6 +132,7 @@ int main()
     RUN_TEST(test_picks_firmware_for_the_build);
     RUN_TEST(test_skips_incomplete_releases);
     RUN_TEST(test_ignores_non_bin_and_drafts);
+    RUN_TEST(test_full_page_of_releases_fits);
     RUN_TEST(test_bad_json);
     return UNITY_END();
 }

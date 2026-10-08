@@ -7,7 +7,15 @@ All notable changes to SQMeter are documented here.
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
 
-## [0.2.0-beta.2] — unreleased
+## [0.2.0-beta.3] — 2026-10-08
+
+### Fixed
+
+- "Check for updates" failing with "Release list too large to read" from v0.2.0-beta.2 on: releases now
+  ship 5 files each and the list outgrew its 6 KB buffer. It's 16 KB now, with a test that reads a full
+  page of releases. Devices on v0.2.0-beta.2 need this release installed by **Manual upload** once.
+
+## [0.2.0-beta.2] — 2026-10-08
 
 ### ⚠️ Breaking changes
 
