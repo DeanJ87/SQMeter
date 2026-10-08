@@ -24,6 +24,7 @@ namespace SQM
             ClearSky,
             CloudedOver,
             Acknowledged, // someone acknowledged a phone alarm
+            AlertsOn,     // alerts switched back on, with the current verdict
             Test,
         };
 

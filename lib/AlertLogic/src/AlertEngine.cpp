@@ -73,6 +73,8 @@ namespace SQM
                 return "clouded_over";
             case AlertType::Acknowledged:
                 return "acknowledged";
+            case AlertType::AlertsOn:
+                return "alerts_on";
             case AlertType::Test:
                 return "test";
             }

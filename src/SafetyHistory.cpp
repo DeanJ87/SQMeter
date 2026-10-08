@@ -84,6 +84,13 @@ namespace SQM
             push(entry);
         }
 
+        void recordArmed(bool armed)
+        {
+            Entry entry = make(Kind::Armed);
+            entry.safe = armed;
+            push(entry);
+        }
+
         size_t entries(Entry *out, size_t max)
         {
             portENTER_CRITICAL(&lock);

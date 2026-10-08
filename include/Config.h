@@ -188,6 +188,7 @@ namespace SQM
         float cloudedOverCloudPercent; // clouded over above this
         bool skyNightOnly;          // sky alerts only while the sun is below nightSunAltitudeDeg
         bool safetyNightOnly;       // safe/unsafe alerts only then too
+        bool armWithAlpaca;         // switch alerts on/off as N.I.N.A. connects/disconnects
         float nightSunAltitudeDeg;  // -0.833 sunset, -12 nautical, -18 astronomical
         uint32_t cooldownSeconds;   // min time between notifications of the same kind
 

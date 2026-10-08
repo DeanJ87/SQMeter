@@ -9,6 +9,9 @@ import {
   mockRecentAlerts,
 } from "./data";
 
+// Demo-only: alerts switched on/off.
+const mockAlertsArmed = { value: true };
+
 const alpacaEnvelope = <T,>(Value: T) => ({
   Value,
   ClientTransactionID: 0,
@@ -78,7 +81,16 @@ export const handlers = [
   http.get("/api/safety", () => HttpResponse.json(generateSensorData().safety)),
 
   // REST — alerts
-  http.get("/api/alerts/recent", () => HttpResponse.json({ enabled: true, alerts: mockRecentAlerts })),
+  http.get("/api/alerts/recent", () => HttpResponse.json({ enabled: true, armed: mockAlertsArmed.value, alerts: mockRecentAlerts })),
+  http.get("/api/alerts/armed", () => HttpResponse.json({ armed: mockAlertsArmed.value, armWithAlpaca: false })),
+  http.post("/api/alerts/arm", () => {
+    mockAlertsArmed.value = true;
+    return HttpResponse.json({ armed: true }, { status: 202 });
+  }),
+  http.post("/api/alerts/disarm", () => {
+    mockAlertsArmed.value = false;
+    return HttpResponse.json({ armed: false }, { status: 202 });
+  }),
   http.post("/api/alerts/clear", () => {
     mockRecentAlerts.splice(0, mockRecentAlerts.length);
     return HttpResponse.json({ success: true });

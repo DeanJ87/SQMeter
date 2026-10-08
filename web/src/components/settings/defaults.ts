@@ -80,6 +80,7 @@ export const defaultAlertsConfig: AlertsConfig = {
   cloudedOverCloudPercent: 70,
   skyNightOnly: true,
   safetyNightOnly: true,
+  armWithAlpaca: false,
   nightSunAltitudeDeg: -12,
   cooldownSeconds: 300,
   pushover: { enabled: false, userKey: '', appToken: '', sound: '' },

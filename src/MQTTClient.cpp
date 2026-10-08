@@ -31,6 +31,21 @@ namespace SQM
         connect();
     }
 
+    void MQTTClient::onCommand(const std::string &subtopic, CommandHandler handler)
+    {
+        commandSubtopic = subtopic;
+        commandHandler = std::move(handler);
+        mqttClient->setCallback([this](char *topic, uint8_t *payload, unsigned int length)
+                                {
+            if (commandHandler && config.topic + "/" + commandSubtopic == topic)
+                commandHandler(std::string(reinterpret_cast<const char *>(payload), length)); });
+        if (config.enabled && mqttClient->connected())
+        {
+            const std::string topic = config.topic + "/" + commandSubtopic;
+            mqttClient->subscribe(topic.c_str(), 1);
+        }
+    }
+
     void MQTTClient::handle()
     {
         if (!config.enabled)
@@ -156,6 +171,12 @@ namespace SQM
         {
             Logger::info(TAG, "Connected to MQTT broker as %s", clientId.c_str());
             publishAvailability(true);
+            if (commandHandler)
+            {
+                const std::string topic = config.topic + "/" + commandSubtopic;
+                mqttClient->subscribe(topic.c_str(), 1);
+            }
+            ++connections;
         }
         else
         {

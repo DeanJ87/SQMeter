@@ -20,6 +20,7 @@
 #include "HeapTrace.h"
 #include "SunPosition.h"
 #include "SafetyHistory.h"
+#include <Preferences.h>
 
 extern uint32_t bootCount;
 
@@ -28,6 +29,24 @@ namespace SQM
     namespace
     {
         constexpr size_t CONFIG_JSON_BUFFER_SIZE = 12288; // full config incl. custom alert texts
+
+        constexpr const char *ARMED_NVS_NAMESPACE = "sqm-alerts";
+
+        // "1"/"0", "on"/"off", "true"/"false", "arm"/"disarm" (any case).
+        bool parseArmPayload(std::string text, bool &armed)
+        {
+            while (!text.empty() && isspace(static_cast<unsigned char>(text.back())))
+                text.pop_back();
+            for (char &c : text)
+                c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+            if (text == "1" || text == "on" || text == "true" || text == "arm" || text == "armed")
+                armed = true;
+            else if (text == "0" || text == "off" || text == "false" || text == "disarm" || text == "disarmed")
+                armed = false;
+            else
+                return false;
+            return true;
+        }
 
         // Test sends that only ring paired phones (no push channel enabled).
         constexpr uint8_t BLE_ONLY_TEST = 0x80;
@@ -314,6 +333,25 @@ namespace SQM
     void WebServer::begin()
     {
         loopTaskHandle = xTaskGetCurrentTaskHandle();
+
+        {
+            Preferences prefs;
+            if (prefs.begin(ARMED_NVS_NAMESPACE, true))
+            {
+                alertsArmed = prefs.getBool("armed", true);
+                prefs.end();
+            }
+        }
+        if (mqttClient != nullptr)
+        {
+            // Home Assistant MQTT switch: command <topic>/alerts/armed/set,
+            // state <topic>/alerts/armed.
+            mqttClient->onCommand("alerts/armed/set", [this](const std::string &payload)
+                                  {
+                bool armed = false;
+                if (parseArmPayload(payload, armed))
+                    pendingArm = armed ? 1 : 0; });
+        }
         Logger::info(TAG, "Starting web server on port %d", PORT);
 
         // CRITICAL: Register API routes BEFORE static file serving
@@ -387,6 +425,19 @@ namespace SQM
         handleAlpacaDiscovery();
 
         const uint32_t now = millis();
+
+        // N.I.N.A. connecting/disconnecting the Alpaca devices switches
+        // alerts on/off, when that's enabled.
+        const bool alpacaConnectedNow = alpacaRouter.anyConnected();
+        if (alpacaConnectedNow != lastAlpacaConnected)
+        {
+            lastAlpacaConnected = alpacaConnectedNow;
+            if (getConfigCallback().alerts.armWithAlpaca)
+                pendingArm = alpacaConnectedNow ? 1 : 0;
+        }
+        applyPendingArm();
+        if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
+            publishArmedState();
 
         if (now - lastSafetyEvaluation >= SAFETY_EVALUATION_INTERVAL_MS)
         {
@@ -551,7 +602,7 @@ namespace SQM
                   {
             static SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
             const size_t n = SafetyHistory::entries(entries, SafetyHistory::CAPACITY);
-            static const char *const KIND[] = {"boot", "change", "alert"};
+            static const char *const KIND[] = {"boot", "change", "alert", "armed"};
             DynamicJsonDocument doc(256 + n * 160);
             doc["boot"] = SafetyHistory::currentBoot();
             doc["uptime"] = millis() / 1000;
@@ -560,7 +611,7 @@ namespace SQM
             {
                 const SafetyHistory::Entry &e = entries[i];
                 JsonObject item = list.createNestedObject();
-                item["kind"] = KIND[static_cast<uint8_t>(e.kind) <= 2 ? static_cast<uint8_t>(e.kind) : 1];
+                item["kind"] = KIND[static_cast<uint8_t>(e.kind) <= 3 ? static_cast<uint8_t>(e.kind) : 1];
                 item["boot"] = e.boot;
                 item["uptime"] = e.uptimeS;
                 if (e.epoch != 0)
@@ -1192,7 +1243,8 @@ namespace SQM
                               (alert.type == Alerts::AlertType::SensorFault || alert.type == Alerts::AlertType::LensFault ? Alpaca::UNSAFE_SENSOR_FAULT : 0u);
             outgoing.push_back(std::move(alert));
         }
-        if (!outgoing.empty())
+        // Switched off (not imaging): state is still tracked above, nothing goes out.
+        if (!outgoing.empty() && alertsArmed)
         {
             const Alerts::Alert notification = Alerts::stackAlerts(outgoing);
             if (cfg.alerts.enabled)
@@ -1221,6 +1273,49 @@ namespace SQM
                           (fromPhone ? "on a phone." : "in the web UI.");
             alertDispatcher->dispatch(ack, cfg.alerts, cfg.deviceName);
         }
+    }
+
+    void WebServer::applyPendingArm()
+    {
+        const int8_t requested = pendingArm.exchange(-1);
+        if (requested < 0 || (requested == 1) == alertsArmed)
+            return;
+        alertsArmed = requested == 1;
+        Logger::info(TAG, "Alerts %s", alertsArmed ? "on" : "off");
+        Preferences prefs;
+        if (prefs.begin(ARMED_NVS_NAMESPACE, false))
+        {
+            prefs.putBool("armed", alertsArmed);
+            prefs.end();
+        }
+        SafetyHistory::recordArmed(alertsArmed);
+        publishArmedState();
+
+        const Config &cfg = getConfigCallback();
+        if (alertsArmed && cfg.alerts.enabled)
+        {
+            // One quiet line so you know where things stand as you start.
+            const SafetyStatus safety = getSafetyStatus();
+            Alerts::Alert on;
+            on.type = Alerts::AlertType::AlertsOn;
+            on.level = Alerts::AlertLevel::Quiet;
+            on.title = "Alerts on";
+            if (safety.evaluatedAtMs == 0)
+                on.message = "Safety not evaluated yet.";
+            else if (safety.isSafe)
+                on.message = "Observatory safe.";
+            else
+                on.message = "Observatory UNSAFE" + (safety.reasons.empty() ? std::string(".") : ":\n" + Alerts::joinReasons(safety.reasons));
+            alertDispatcher->dispatch(on, cfg.alerts, cfg.deviceName);
+        }
+    }
+
+    void WebServer::publishArmedState()
+    {
+        if (mqttClient == nullptr || !mqttClient->isConnected())
+            return;
+        if (mqttClient->publishSubtopic("alerts/armed", alertsArmed ? "1" : "0", true))
+            mqttArmedConnection = mqttClient->connectionCount();
     }
 
     std::vector<std::pair<std::string, std::string>> WebServer::alertVars(const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs,
@@ -1459,11 +1554,35 @@ namespace SQM
             ble.requestForgetBonds();
             request->send(202, "application/json", "{\"success\":true}"); });
 
+        // Alerts on/off for automations (Home Assistant rest_command,
+        // N.I.N.A. sequence scripts): POST /api/alerts/arm or /disarm.
+        auto armRoute = [this](bool armed)
+        {
+            return [this, armed](AsyncWebServerRequest *request)
+            {
+                if (!requireAuth(request))
+                    return;
+                pendingArm = armed ? 1 : 0;
+                request->send(202, "application/json", armed ? "{\"armed\":true}" : "{\"armed\":false}");
+            };
+        };
+        server.on("/api/alerts/arm", HTTP_POST, armRoute(true));
+        server.on("/api/alerts/disarm", HTTP_POST, armRoute(false));
+        server.on("/api/alerts/armed", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            const int8_t pending = pendingArm.load();
+            const bool armed = pending >= 0 ? pending == 1 : alertsArmed;
+            std::string json = std::string("{\"armed\":") + (armed ? "true" : "false") +
+                               ",\"armWithAlpaca\":" + (getConfigCallback().alerts.armWithAlpaca ? "true" : "false") + "}";
+            request->send(200, "application/json", json.c_str()); });
+
         server.on("/api/alerts/recent", HTTP_GET, [this](AsyncWebServerRequest *request)
                   {
             const std::vector<AlertRecord> records = alertDispatcher->recent();
             DynamicJsonDocument doc(8192);
             doc["enabled"] = getConfigCallback().alerts.enabled;
+            const int8_t pending = pendingArm.load();
+            doc["armed"] = pending >= 0 ? pending == 1 : alertsArmed;
             JsonArray arr = doc.createNestedArray("alerts");
             const uint32_t nowSeconds = millis() / 1000;
             // Newest first

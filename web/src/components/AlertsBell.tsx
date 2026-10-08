@@ -92,6 +92,12 @@ const AlertsBell: FunctionalComponent = () => {
   const newest = data.alerts[0]?.id ?? 0;
   const unread = data.alerts.filter((record) => record.id > seen && record.event !== 'test').length;
 
+  const armed = data.armed !== false;
+  const switchAlerts = () =>
+    fetch(armed ? '/api/alerts/disarm' : '/api/alerts/arm', { method: 'POST' })
+      .then((response) => response.ok && setData({ ...data, armed: !armed }))
+      .catch(() => undefined);
+
   const clear = () =>
     fetch('/api/alerts/clear', { method: 'POST' })
       .then((response) => response.ok && setData({ ...data, alerts: [] }))
@@ -108,9 +114,16 @@ const AlertsBell: FunctionalComponent = () => {
 
   return (
     <div class="alerts-bell" ref={root}>
-      <button type="button" class="nav-button alerts-bell-button" aria-label={`Alerts${unread ? `, ${unread} new` : ''}`} aria-expanded={open} onClick={toggle}>
+      <button
+        type="button"
+        class={`nav-button alerts-bell-button${armed ? '' : ' is-off'}`}
+        aria-label={`Alerts${armed ? '' : ' (off)'}${unread ? `, ${unread} new` : ''}`}
+        aria-expanded={open}
+        onClick={toggle}
+      >
         <svg class="nav-icon-svg" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2ZM10 20a2 2 0 0 0 4 0" />
+          {!armed && <path stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M4 4l16 16" />}
         </svg>
         {unread > 0 && <span class="alerts-bell-count">{unread > 9 ? '9+' : unread}</span>}
       </button>
@@ -118,6 +131,9 @@ const AlertsBell: FunctionalComponent = () => {
         <div class="alerts-flyout" role="dialog" aria-label="Recent alerts" style={{ top: `${anchorBottom + 6}px` }}>
           <div class="alerts-flyout-head">
             <h2>Alerts</h2>
+            <Button variant="link" onClick={switchAlerts} title={armed ? 'Pause while you are not imaging' : undefined}>
+              {armed ? 'Turn off' : 'Turn on'}
+            </Button>
             {data.alerts.length > 0 && (
               <Button variant="link" onClick={clear}>
                 Clear
@@ -133,6 +149,7 @@ const AlertsBell: FunctionalComponent = () => {
               Settings
             </Button>
           </div>
+          {!armed && <Note tone="warn">Alerts are off - nothing is sent until they're switched back on.</Note>}
           {data.alerts.length === 0 ? <Note>No alerts.</Note> : <AlertList alerts={data.alerts} />}
         </div>
       )}

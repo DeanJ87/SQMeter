@@ -59,6 +59,9 @@ namespace SQM
             // Handles /management/... and /api/v1/...; false for any other path.
             bool handle(const Request &request, Response &response);
 
+            // A client (N.I.N.A.) currently has either device connected.
+            bool anyConnected() const { return connected[0] || connected[1]; }
+
         private:
             Response device(const Request &request);
 

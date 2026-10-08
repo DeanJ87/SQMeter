@@ -83,6 +83,41 @@ Below the setting, the tab shows where the sun is now and when the chosen darkne
 
 The browser's own location can't be used on the device's plain-HTTP pages - browsers only share it with HTTPS sites - so the "Use my location" button only appears where it works.
 
+## Turning alerts off when you're not imaging
+
+With the scope packed away you don't want weather flapping to wake you. **Alerts on now** (Settings → Alerts, or the bell in the header) switches every alert off - nothing is sent and phones don't ring - while the device keeps watching, so switching back on doesn't replay stale changes. It takes effect immediately, survives restarts, and switching on sends one quiet **Alerts on** with the current verdict ("Observatory UNSAFE: • Cloud 62% >= 35%") so you know where things stand.
+
+Ways to automate it:
+
+**N.I.N.A.** - turn on **On while N.I.N.A. is connected**: alerts switch on when N.I.N.A. connects the SafetyMonitor or ObservingConditions and off when it disconnects. Or call the API from a sequence (e.g. an *External Script* instruction): `curl -X POST http://sqmeter.local/api/alerts/arm` at the start, `.../api/alerts/disarm` at the end.
+
+**Home Assistant (MQTT)** - the device publishes `<topic>/alerts/armed` (retained `1`/`0`) and listens on `<topic>/alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`):
+
+```yaml
+mqtt:
+  switch:
+    - name: "SQMeter alerts"
+      state_topic: "sqm/data/alerts/armed"
+      command_topic: "sqm/data/alerts/armed/set"
+      payload_on: "1"
+      payload_off: "0"
+      icon: mdi:bell-ring
+```
+
+**Home Assistant (REST)**:
+
+```yaml
+rest_command:
+  sqmeter_alerts_on:
+    url: "http://sqmeter.local/api/alerts/arm"
+    method: post
+  sqmeter_alerts_off:
+    url: "http://sqmeter.local/api/alerts/disarm"
+    method: post
+```
+
+Add `username`/`password` if the device's password protection is on. N.I.N.A. and Alpaca keep getting the real safety verdict either way.
+
 ## Channels
 
 ### Pushover

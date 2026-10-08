@@ -456,6 +456,7 @@ export interface AlertsConfig {
   cloudedOverCloudPercent: number;
   skyNightOnly: boolean;
   safetyNightOnly: boolean;
+  armWithAlpaca?: boolean;
   nightSunAltitudeDeg: number;
   cooldownSeconds: number;
   pushover: { enabled: boolean; userKey: string; appToken: string; sound: string };
@@ -479,6 +480,8 @@ export interface AlertRecord {
 
 export interface AlertsRecent {
   enabled: boolean;
+  // Alerts switched on (imaging) or off; missing from older firmware = on.
+  armed?: boolean;
   alerts: AlertRecord[];
 }
 

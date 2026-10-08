@@ -393,6 +393,7 @@ namespace SQM
         cfg.alerts.cloudedOverCloudPercent = 70.0f;
         cfg.alerts.skyNightOnly = true;
         cfg.alerts.safetyNightOnly = true;
+        cfg.alerts.armWithAlpaca = false;
         cfg.alerts.nightSunAltitudeDeg = -12.0f;
         cfg.alerts.cooldownSeconds = 300;
         cfg.alerts.pushoverEnabled = false;
@@ -462,6 +463,7 @@ namespace SQM
             alerts["cloudedOverCloudPercent"] = a.cloudedOverCloudPercent;
             alerts["skyNightOnly"] = a.skyNightOnly;
             alerts["safetyNightOnly"] = a.safetyNightOnly;
+            alerts["armWithAlpaca"] = a.armWithAlpaca;
             alerts["nightSunAltitudeDeg"] = a.nightSunAltitudeDeg;
             alerts["cooldownSeconds"] = a.cooldownSeconds;
 
@@ -1196,6 +1198,8 @@ namespace SQM
                 a.skyNightOnly = alertsObj["skyNightOnly"] | true;
             if (alertsObj.containsKey("safetyNightOnly"))
                 a.safetyNightOnly = alertsObj["safetyNightOnly"] | true;
+            if (alertsObj.containsKey("armWithAlpaca"))
+                a.armWithAlpaca = alertsObj["armWithAlpaca"] | false;
             if (alertsObj.containsKey("nightSunAltitudeDeg"))
                 a.nightSunAltitudeDeg = alertsObj["nightSunAltitudeDeg"] | -12.0f;
             if (alertsObj.containsKey("cooldownSeconds"))

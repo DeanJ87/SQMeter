@@ -7,6 +7,7 @@
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
 #include <PubSubClient.h>
+#include <functional>
 #include <WiFiClient.h>
 #include <memory>
 #include <string>
@@ -57,12 +58,24 @@ namespace SQM
         // Update configuration
         void updateConfig(const MQTTConfig &newConfig);
 
+        // Commands from the broker: `<topic>/<subtopic>` messages go to
+        // `handler` (on the task that runs handle()). Subscribed on every
+        // (re)connect.
+        using CommandHandler = std::function<void(const std::string &payload)>;
+        void onCommand(const std::string &subtopic, CommandHandler handler);
+        // Bumped on every successful connect, so retained state can be
+        // republished after the broker comes back.
+        uint32_t connectionCount() const { return connections; }
+
         // The SafetyMonitor verdict, added to the readings payload as
         // "safe": 1/0 so it's logged alongside them.
         void setSafety(bool safe) { safeState = safe ? 1 : 0; }
 
     private:
         int8_t safeState = -1; // -1 until the first verdict
+        std::string commandSubtopic;
+        CommandHandler commandHandler;
+        uint32_t connections = 0;
         static constexpr const char *TAG = "MQTT";
         static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
 

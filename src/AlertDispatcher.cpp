@@ -148,6 +148,8 @@ namespace SQM
                 return "cloud";
             case Alerts::AlertType::Acknowledged:
                 return "ok_hand";
+            case Alerts::AlertType::AlertsOn:
+                return "telescope";
             case Alerts::AlertType::Test:
                 return "test_tube";
             }

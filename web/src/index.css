@@ -2119,3 +2119,7 @@ input[type="file"].input::file-selector-button {
   display: grid;
   gap: 0.5rem;
 }
+
+.alerts-bell-button.is-off {
+  opacity: 0.6;
+}

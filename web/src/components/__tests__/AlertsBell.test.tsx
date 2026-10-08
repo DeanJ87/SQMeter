@@ -44,4 +44,21 @@ describe('AlertsBell', () => {
     expect(await screen.findByText('No alerts.')).toBeInTheDocument();
     expect(cleared).toBe(true);
   });
+
+  it('switches alerts off and shows that they are off', async () => {
+    let disarmed = false;
+    server.use(
+      http.post('/api/alerts/disarm', () => {
+        disarmed = true;
+        return HttpResponse.json({ armed: false }, { status: 202 });
+      })
+    );
+    render(<AlertsBell />);
+    fireEvent.click(await screen.findByRole('button', { name: /Alerts, 2 new/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Turn off' }));
+    expect(await screen.findByText(/Alerts are off/)).toBeInTheDocument();
+    expect(disarmed).toBe(true);
+    expect(screen.getByRole('button', { name: /Alerts \(off\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Turn on' })).toBeInTheDocument();
+  });
 });

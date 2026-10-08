@@ -162,6 +162,17 @@ namespace SQM
         // Alerts
         Alerts::AlertEngine alertEngine;
         bool alertEngineSeeded = false;
+
+        // Alerts on/off ("armed"): off while you're not imaging, so weather
+        // flapping with the scope packed away doesn't wake anyone. Saved in
+        // NVS. Requests come from HTTP (AsyncTCP task), MQTT and Alpaca
+        // connects; the loop task applies them.
+        bool alertsArmed = true;
+        std::atomic<int8_t> pendingArm{-1}; // -1 none, 0 off, 1 on
+        bool lastAlpacaConnected = false;
+        uint32_t mqttArmedConnection = 0xFFFFFFFF;
+        void applyPendingArm();
+        void publishArmedState();
         std::unique_ptr<AlertDispatcher> alertDispatcher;
         // Set by the HTTP handler, sent from the loop task. event < 0 is the
         // plain channel test; otherwise an index into the sample events.

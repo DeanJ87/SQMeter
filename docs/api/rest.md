@@ -475,6 +475,10 @@ Queues a test notification on the given (saved and enabled) channel(s). Returns 
 
 Add `event=<unsafe|safe|rain_started|rain_stopped|sensor_fault|sensor_recovered|dew_risk|clear_sky|clouded_over>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Level 4 (wake me) also rings paired Bluetooth phones; with no push channel enabled, it only rings the phones. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`, filled in from current readings.
 
+### `GET /api/alerts/armed`, `POST /api/alerts/arm`, `POST /api/alerts/disarm`
+
+Alerts on/off, for automations: `{"armed": true, "armWithAlpaca": false}`. `arm`/`disarm` switch immediately (202) and the state survives restarts; while off nothing is sent and paired phones don't ring. POSTs require HTTP auth when enabled. `/api/alerts/recent` also carries `armed`.
+
 ### `POST /api/alerts/clear`
 
 Empties the recent-alerts list. Requires HTTP auth when enabled.

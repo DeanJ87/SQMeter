@@ -1,7 +1,8 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { AlertChannelName, AlertEventKey, AlertRecord } from '../../types';
 import { mergeAlertsConfig } from './defaults';
+import { showToast } from '../toast';
 import { darkness, formatClock, formatDuration, sunPosition } from '../../lib/astro';
 import type { SettingsTabProps } from './context';
 import { InfoTip, Note } from '../ui';
@@ -191,6 +192,26 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
   const dewReason = hw.environment.detected === false ? 'BME280 not detected.' : null;
   const skyReason = hw.irSky.detected === false ? 'MLX90614 not detected.' : null;
   const pushoverOn = alerts.pushover.enabled;
+
+  // Alerts on/off is live device state, not a saved setting.
+  const [armed, setArmed] = useState<boolean | null>(null);
+  useEffect(() => {
+    fetch('/api/alerts/armed')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => setArmed(body ? body.armed !== false : true))
+      .catch(() => setArmed(true));
+  }, []);
+  const switchAlerts = async (on: boolean) => {
+    const previous = armed;
+    setArmed(on);
+    try {
+      const response = await fetch(on ? '/api/alerts/arm' : '/api/alerts/disarm', { method: 'POST' });
+      if (!response.ok) throw new Error();
+    } catch {
+      setArmed(previous);
+      showToast({ message: 'Could not reach the device', tone: 'bad' });
+    }
+  };
   const [editing, setEditing] = useState<AlertEventKey | null>(null);
   // Where a clicked {variable} goes: the last focused title/message field.
   const lastField = useRef<{ key: AlertEventKey; field: 'title' | 'message'; el: HTMLInputElement | HTMLTextAreaElement } | null>(null);
@@ -359,6 +380,23 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
       >
         <Toggle label="Send alerts" checked={alerts.enabled} onChange={(v) => set(['enabled'], v)} />
         {!off && channelCount === 0 && <Requires tone="warn">Turn on a channel below.</Requires>}
+        {!off && (
+          <Group title="When you're not imaging">
+            <Toggle
+              label="Alerts on now"
+              checked={armed !== false}
+              disabled={armed === null}
+              onChange={switchAlerts}
+              hint="Off: nothing is sent and phones don't ring, but the device keeps watching. Takes effect straight away. Home Assistant and scripts can switch it too - MQTT <topic>/alerts/armed/set, or POST /api/alerts/arm and /disarm."
+            />
+            <Toggle
+              label="On while N.I.N.A. is connected"
+              checked={Boolean(alerts.armWithAlpaca)}
+              onChange={(v) => set(['armWithAlpaca'], v)}
+              hint="Switches alerts on when N.I.N.A. connects the SafetyMonitor or ObservingConditions, and off when it disconnects."
+            />
+          </Group>
+        )}
       </SettingsCard>
 
       <SettingsCard title="Notify me when" hint={LEVEL_HINT}>
