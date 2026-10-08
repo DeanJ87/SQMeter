@@ -1,0 +1,201 @@
+[
+  {
+    "id": "sqmeter_indi_tab",
+    "type": "tab",
+    "label": "SQMeter -> indi-allsky",
+    "disabled": false,
+    "info": "SQMeter readings, safety and status republished as flat numeric topics (indi/mysqm/*) for indi-allsky.\nSet SQMETER_HOST (this tab's environment variables) to the device's address to also publish whether an imaging app is connected and the sun altitude.\n\nhttps://sqmeter.dev/user-guide/indi-allsky/",
+    "env": [
+      {
+        "name": "SQMETER_HOST",
+        "value": "",
+        "type": "str"
+      }
+    ]
+  },
+  {
+    "id": "sqmeter_in_state",
+    "type": "mqtt in",
+    "z": "sqmeter_indi_tab",
+    "name": "SQMeter readings",
+    "topic": "sqmeter/state",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 60,
+    "wires": [
+      [
+        "sqmeter_indi_fn"
+      ]
+    ]
+  },
+  {
+    "id": "sqmeter_in_safety",
+    "type": "mqtt in",
+    "z": "sqmeter_indi_tab",
+    "name": "SQMeter safety",
+    "topic": "sqmeter/safety",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 120,
+    "wires": [
+      [
+        "sqmeter_indi_fn"
+      ]
+    ]
+  },
+  {
+    "id": "sqmeter_in_armed",
+    "type": "mqtt in",
+    "z": "sqmeter_indi_tab",
+    "name": "SQMeter alerts on/off",
+    "topic": "sqmeter/alerts/armed",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 180,
+    "wires": [
+      [
+        "sqmeter_indi_fn"
+      ]
+    ]
+  },
+  {
+    "id": "sqmeter_in_availability",
+    "type": "mqtt in",
+    "z": "sqmeter_indi_tab",
+    "name": "SQMeter online",
+    "topic": "sqmeter/availability",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 160,
+    "y": 240,
+    "wires": [
+      [
+        "sqmeter_indi_fn"
+      ]
+    ]
+  },
+  {
+    "id": "sqmeter_poll_tick",
+    "type": "inject",
+    "z": "sqmeter_indi_tab",
+    "name": "Every 30 s",
+    "props": [],
+    "repeat": "30",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "5",
+    "topic": "",
+    "x": 150,
+    "y": 320,
+    "wires": [
+      [
+        "sqmeter_poll_build"
+      ]
+    ]
+  },
+  {
+    "id": "sqmeter_poll_build",
+    "type": "function",
+    "z": "sqmeter_indi_tab",
+    "name": "Imaging app + sun (HTTP)",
+    "func": "// Optional: whether an imaging app has SQMeter's Alpaca devices connected,\n// and the device's sun altitude. Neither is on MQTT, so they're read over\n// HTTP. Set SQMETER_HOST on this flow (double-click the tab) to turn it on.\nconst host = String(env.get('SQMETER_HOST') || '').trim();\nif (!host) {\n  node.status({ fill: 'grey', shape: 'ring', text: 'off - set SQMETER_HOST on the flow' });\n  return null;\n}\nnode.status({ fill: 'green', shape: 'dot', text: `polling ${host}` });\nconst base = `http://${host}`;\nreturn [[\n  { topic: 'poll/safetymonitor', url: `${base}/api/v1/safetymonitor/0/connected` },\n  { topic: 'poll/observingconditions', url: `${base}/api/v1/observingconditions/0/connected` },\n  { topic: 'poll/status', url: `${base}/api/status` },\n]];\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 360,
+    "y": 320,
+    "wires": [
+      [
+        "sqmeter_poll_http"
+      ]
+    ]
+  },
+  {
+    "id": "sqmeter_poll_http",
+    "type": "http request",
+    "z": "sqmeter_indi_tab",
+    "name": "GET from SQMeter",
+    "method": "GET",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 580,
+    "y": 320,
+    "wires": [
+      [
+        "sqmeter_indi_fn"
+      ]
+    ]
+  },
+  {
+    "id": "sqmeter_indi_fn",
+    "type": "function",
+    "z": "sqmeter_indi_tab",
+    "name": "SQMeter -> indi/mysqm topics",
+    "func": "// SQMeter -> flat topics with one number each, retained, for indi-allsky.\n// Fed by SQMeter's MQTT topics and, optionally, an HTTP poll for whether an\n// imaging app is connected (that isn't published on MQTT).\nconst OUT = 'indi/mysqm/';\nconst out = [];\nconst send = (name, value, prefix = OUT) => {\n  if (value !== null && value !== undefined) out.push({ topic: prefix + name, payload: value, retain: true });\n};\nconst num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? Number(v.toFixed(d)) : null);\nconst flag = (v) => (typeof v === 'boolean' ? (v ? 1 : 0) : null);\n\nlet p = msg.payload;\nif (typeof p === 'string' && /^[[{]/.test(p.trim())) {\n  try {\n    p = JSON.parse(p);\n  } catch (e) {\n    node.error('SQMeter sent JSON that could not be read', msg);\n    return null;\n  }\n}\nconst topic = String(msg.topic || '');\nconst source = topic.split('/').pop();\n\nif (source === 'state') {\n  // A group whose status isn't \"ok\" carries no readings: its topics are skipped.\n  const ok = (group) => (p[group] && p[group].status === 'ok' ? p[group] : {});\n  const sky = ok('sky'), light = ok('light'), env = ok('environment'), ir = ok('infrared');\n  const clouds = ok('clouds'), rain = ok('rain'), wind = ok('wind'), gps = ok('gps');\n  const condition = { clear: 0, cloudy: 1, overcast: 2 }[clouds.condition];\n  const v = {\n    sqm: num(sky.sqm, 2),\n    bortle: num(sky.bortle, 0),\n    nelm: num(sky.nelm, 2),\n    lux: num(light.lux, 6),\n    ambient: num(env.temperature, 1),\n    humidity: num(env.humidity, 1),\n    dewpoint: num(env.dewpoint, 1),\n    pressure: num(env.pressure, 1),\n    cloudcover: num(clouds.coverPercent, 0),\n    skystate_code: condition === undefined ? null : condition,\n    raining: flag(rain.raining),\n    rainrate: num(rain.intensity, 2),\n    windspd: num(wind.speed, 1),\n    windgust: num(wind.gust, 1),\n    // The device leaves this out when it's calm or there's no vane.\n    winddir: num(wind.direction, 0),\n    skyambient: num(ir.ambientTemperature, 1),\n    skyobject: num(ir.skyTemperature, 1),\n    gps_fix: flag(gps.fix),\n    latitude: gps.fix ? num(gps.latitude, 5) : null,\n    longitude: gps.fix ? num(gps.longitude, 5) : null,\n    data_age: typeof p.dataAgeMs === 'number' ? num(p.dataAgeMs / 1000, 1) : null,\n    stale: flag(p.dataStale),\n    last_update: Math.round(Date.now() / 1000),\n  };\n  for (const [name, value] of Object.entries(v)) send(name, value);\n  // Text versions for other consumers (indi-allsky only reads numbers).\n  send('bortle_label', v.bortle !== null ? `B${v.bortle}` : null);\n  send('skystate', clouds.condition || null);\n  send('json', JSON.stringify(v));\n  // The IR sensor's two temperatures under their older names.\n  send('infrared_ambientTemp', v.skyambient, 'indi/sqmeter/');\n  send('infrared_skyTemp', v.skyobject, 'indi/sqmeter/');\n  context.set('summary', `SQM ${v.sqm ?? '--'} | ${v.ambient ?? '--'}°C | Cloud ${v.cloudcover ?? '--'}%`);\n  context.set('raining', v.raining);\n} else if (source === 'safety') {\n  send('safe', flag(p.safe));\n  send('seconds_until_safe', num(p.secondsUntilSafe, 0));\n  send('unsafe_flags', num(p.reasonFlags, 0));\n  send('unsafe_reasons', Array.isArray(p.reasons) ? (p.reasons.length ? p.reasons.join(', ') : 'none') : null);\n  context.set('safe', p.safe);\n} else if (source === 'armed') {\n  send('alerts_armed', String(p).trim() === '1' ? 1 : 0);\n} else if (source === 'availability') {\n  send('online', String(p).trim() === 'online' ? 1 : 0);\n} else if (topic === 'poll/safetymonitor' || topic === 'poll/observingconditions') {\n  // Alpaca GET .../connected answers {\"Value\": true|false, ...}\n  const connected = msg.statusCode === 200 && p && typeof p.Value === 'boolean' ? p.Value : null;\n  const name = topic === 'poll/safetymonitor' ? 'imaging_safetymonitor' : 'imaging_weather';\n  context.set(name, connected);\n  send(name, flag(connected));\n  const sm = context.get('imaging_safetymonitor');\n  const oc = context.get('imaging_weather');\n  if (sm !== undefined && oc !== undefined && (sm !== null || oc !== null)) send('imaging', sm || oc ? 1 : 0);\n} else if (topic === 'poll/status') {\n  const sky = (msg.statusCode === 200 && p && p.sky) || {};\n  send('sun_alt', num(sky.sunAltitudeDeg, 1));\n  send('is_night', flag(sky.isNight));\n} else {\n  return null;\n}\n\nconst safe = context.get('safe');\nnode.status({\n  fill: context.get('raining') ? 'red' : safe === false ? 'yellow' : 'green',\n  shape: 'dot',\n  text: `${context.get('summary') || 'waiting for readings'}${safe === undefined ? '' : safe ? ' | safe' : ' | UNSAFE'} | ${new Date().toLocaleTimeString('en-GB', { hour12: false })}`,\n});\nreturn [out];\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 600,
+    "y": 150,
+    "wires": [
+      [
+        "sqmeter_indi_out"
+      ]
+    ]
+  },
+  {
+    "id": "sqmeter_indi_out",
+    "type": "mqtt out",
+    "z": "sqmeter_indi_tab",
+    "name": "indi-allsky topics",
+    "topic": "",
+    "qos": "",
+    "retain": "",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "",
+    "x": 860,
+    "y": 150,
+    "wires": []
+  }
+]
