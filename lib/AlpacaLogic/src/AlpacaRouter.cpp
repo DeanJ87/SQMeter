@@ -109,6 +109,12 @@ namespace SQM
         {
         }
 
+        void Router::resetConnections()
+        {
+            for (DeviceActivity &activity : devices)
+                activity.connected = false;
+        }
+
         bool Router::handle(const Request &request, Response &response)
         {
             const std::string &path = request.path;
@@ -184,12 +190,31 @@ namespace SQM
             const bool put = request.put;
             const size_t deviceIndex = isSafetyMonitor ? SAFETY_MONITOR : OBSERVING_CONDITIONS;
             const bool enabled = backend.alpacaEnabled();
+            DeviceActivity &activity = devices[deviceIndex];
+            // The device's own web UI (the Alpaca page's live state) tags its
+            // requests source=ui: it isn't an imaging app watching the device.
+            const std::string *source = findParam(request, "source");
+            if (source == nullptr || *source != "ui")
+            {
+                ++activity.requests;
+                if (const std::string *clientId = findParam(request, "ClientID"))
+                {
+                    activity.hasClientId = true;
+                    activity.clientId = parseClientTransactionId(*clientId);
+                }
+            }
+            auto setConnected = [&activity](bool value)
+            {
+                if (activity.connected && !value)
+                    ++activity.disconnects;
+                activity.connected = value;
+            };
             Envelope reply(request, serverTransactionId);
 
             // --- Common ASCOM device API ---
             if (method == "connected" && get)
             {
-                reply.setValue(enabled && connected[deviceIndex]);
+                reply.setValue(enabled && activity.connected);
                 return reply.finish();
             }
             if (method == "connected" && put)
@@ -200,7 +225,7 @@ namespace SQM
                     return badRequest("Missing or invalid Connected parameter (expected true or false)");
                 if (value && !enabled)
                     return reply.finish(ALPACA_ERR_NOT_CONNECTED, DISABLED_MESSAGE);
-                connected[deviceIndex] = value;
+                setConnected(value);
                 return reply.finish();
             }
             // Platform 7 asynchronous connect: connecting completes instantly,
@@ -209,12 +234,12 @@ namespace SQM
             {
                 if (!enabled)
                     return reply.finish(ALPACA_ERR_NOT_CONNECTED, DISABLED_MESSAGE);
-                connected[deviceIndex] = true;
+                setConnected(true);
                 return reply.finish();
             }
             if (method == "disconnect" && put)
             {
-                connected[deviceIndex] = false;
+                setConnected(false);
                 return reply.finish();
             }
             if (method == "connecting" && get)

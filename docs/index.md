@@ -15,7 +15,7 @@ SQMeter is an open-source sky quality meter built on the ESP32. It measures ligh
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/sensors/ include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h include/OtaUpdater.h include/TimeManager.h
 blocking: false
-fingerprint: 6f946ae9aa1d324f
+fingerprint: b12210309b6f6e1f
 -->
 <figure class="diagram" markdown>
 
@@ -94,7 +94,7 @@ flowchart LR
 
 - :material-shield-check: **Safety & alerts**
 
-    Rain, wind, cloud, SQM, humidity and dew-point rules. Alerts via Pushover, ntfy, webhook, MQTT or a paired phone over Bluetooth — and switched off while you're not imaging.
+    Rain, wind, cloud, SQM, humidity and dew-point rules. Alerts via Pushover, ntfy, webhook, MQTT or a paired phone over Bluetooth — sent any time, or only while an imaging app is connected, and you're told if it goes quiet.
 
 - :material-weather-windy: **Rain & wind**
 

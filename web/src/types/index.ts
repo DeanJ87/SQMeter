@@ -255,6 +255,11 @@ export interface SystemStatus {
     light?: LightDiagnostics;
     rain?: RainDiagnostics;
   };
+  alerts?: AlertSchedule;
+  alpaca?: {
+    enabled: boolean;
+    clients: { safetymonitor: AlpacaClientState; observingconditions: AlpacaClientState };
+  };
 }
 
 export interface WiFiConfig {
@@ -395,7 +400,18 @@ export interface SafetyStatus {
 export type AlertLevel = 0 | 1 | 2 | 3 | 4;
 
 export type AlertEventKey =
-  'unsafe' | 'safe' | 'rain_started' | 'rain_stopped' | 'sensor_fault' | 'sensor_recovered' | 'dew_risk' | 'clear_sky' | 'clouded_over';
+  | 'unsafe'
+  | 'safe'
+  | 'rain_started'
+  | 'rain_stopped'
+  | 'sensor_fault'
+  | 'sensor_recovered'
+  | 'dew_risk'
+  | 'clear_sky'
+  | 'clouded_over'
+  | 'client_lost'
+  | 'client_back'
+  | 'client_disconnected';
 
 // sound: Pushover sound name; empty uses the Pushover default.
 export interface AlertEventSetting {
@@ -414,7 +430,11 @@ export interface AlertsConfig {
   cloudedOverCloudPercent: number;
   skyNightOnly: boolean;
   safetyNightOnly: boolean;
+  // When alerts are sent (specs/021); older firmware has only armWithAlpaca.
+  sendMode?: AlertSendMode;
   armWithAlpaca?: boolean;
+  clientSilentSafetySeconds?: number;
+  clientSilentWeatherSeconds?: number;
   nightSunAltitudeDeg: number;
   cooldownSeconds: number;
   pushover: { enabled: boolean; userKey: string; appToken: string; sound: string };
@@ -424,6 +444,31 @@ export interface AlertsConfig {
 }
 
 export type AlertChannelName = 'mqtt' | 'pushover' | 'ntfy' | 'webhook';
+
+export type AlertSendMode = 'any' | 'whileConnected';
+
+export type AlertScheduleReason =
+  'none' | 'user-ui' | 'user-rest' | 'user-mqtt' | 'client-connected' | 'client-disconnected' | 'waiting-for-client' | 'migrated';
+
+// GET /api/alerts/armed, and /api/status "alerts". Older firmware sends only
+// armed and armWithAlpaca.
+export interface AlertSchedule {
+  armed: boolean;
+  armWithAlpaca?: boolean;
+  mode?: AlertSendMode;
+  reason?: AlertScheduleReason;
+  since?: string | null; // ISO 8601 UTC, null without a clock
+  sinceAgeMs?: number | null; // null: before this boot
+}
+
+// One Alpaca device as the imaging app sees it (/api/status "alpaca").
+export interface AlpacaClientState {
+  connected: boolean;
+  watching: boolean;
+  silent: boolean;
+  lastCheckedAgeMs: number | null;
+  clientId: number | null;
+}
 
 export interface AlertRecord {
   id: number;
@@ -438,7 +483,7 @@ export interface AlertRecord {
 
 export interface AlertsRecent {
   enabled: boolean;
-  // Alerts switched on (imaging) or off; missing from older firmware = on.
+  // Sending (true) or paused; missing from older firmware = sending.
   armed?: boolean;
   alerts: AlertRecord[];
 }

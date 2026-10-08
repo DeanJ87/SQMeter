@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "alerts-armed",
+  "type": "object",
+  "properties": {
+    "armed": {
+      "type": "boolean"
+    },
+    "armWithAlpaca": {
+      "type": "boolean"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "any",
+        "whileConnected"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "none",
+        "user-ui",
+        "user-rest",
+        "user-mqtt",
+        "client-connected",
+        "client-disconnected",
+        "waiting-for-client",
+        "migrated"
+      ]
+    },
+    "since": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "sinceAgeMs": {
+      "type": [
+        "null",
+        "number"
+      ]
+    }
+  },
+  "required": [
+    "armWithAlpaca",
+    "armed",
+    "mode",
+    "reason",
+    "since",
+    "sinceAgeMs"
+  ],
+  "additionalProperties": false
+}

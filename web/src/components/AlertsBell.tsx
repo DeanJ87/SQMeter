@@ -101,7 +101,7 @@ const AlertsBell: FunctionalComponent = () => {
 
   const armed = data.armed !== false;
   const switchAlerts = () =>
-    fetch(armed ? '/api/alerts/disarm' : '/api/alerts/arm', { method: 'POST' })
+    fetch(`${armed ? '/api/alerts/disarm' : '/api/alerts/arm'}?source=ui`, { method: 'POST' })
       .then((response) => response.ok && setData({ ...data, armed: !armed }))
       .catch(() => undefined);
 
@@ -125,7 +125,7 @@ const AlertsBell: FunctionalComponent = () => {
         ref={bell}
         type="button"
         class={`nav-button alerts-bell-button${armed ? '' : ' is-off'}`}
-        aria-label={`Alerts${armed ? '' : ' (off)'}${unread ? `, ${unread} new` : ''}`}
+        aria-label={`Alerts${armed ? '' : ' (paused)'}${unread ? `, ${unread} new` : ''}`}
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={toggle}
@@ -157,8 +157,8 @@ const AlertsBell: FunctionalComponent = () => {
               <span class="sr-only">Recent alerts</span>
               <span aria-hidden="true">Alerts</span>
             </h2>
-            <Button variant="link" onClick={switchAlerts} title={armed ? 'Pause while you are not imaging' : undefined}>
-              {armed ? 'Turn off' : 'Turn on'}
+            <Button variant="link" onClick={switchAlerts} title={armed ? 'Nothing is sent until you resume them' : undefined}>
+              {armed ? 'Pause' : 'Resume'}
             </Button>
             {data.alerts.length > 0 && (
               <Button variant="link" onClick={clear}>
@@ -175,7 +175,7 @@ const AlertsBell: FunctionalComponent = () => {
               Settings
             </Button>
           </div>
-          {!armed && <Note tone="warn">Alerts are off - nothing is sent until they're switched back on.</Note>}
+          {!armed && <Note tone="warn">Alerts are paused - nothing is sent until they're resumed.</Note>}
           {data.alerts.length === 0 ? <Note>No alerts.</Note> : <AlertList alerts={data.alerts} />}
         </div>
       )}

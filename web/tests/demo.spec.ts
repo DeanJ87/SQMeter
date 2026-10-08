@@ -121,3 +121,44 @@ test('nothing leaves the browser (US3, SC-004)', async ({ page }) => {
   expect(recent.alerts[0].channels.pushover.detail).toBe('Demo: nothing was sent');
   expect(outside).toEqual([]);
 });
+
+test.describe('the imaging app (specs/021)', () => {
+  const recentEvents = async (page: Page) =>
+    (JSON.parse((await api(page, '/api/alerts/recent')).body).alerts as { event: string }[]).map((a) => a.event);
+
+  test('a silent imaging app is noticed, its return too; a disconnect pauses alerts', async ({ page }) => {
+    test.setTimeout(150_000);
+    await ready(page);
+    await page.getByRole('button', { name: /Demo/ }).click();
+    await page.getByLabel(/10× faster/).check();
+    const app = page.getByLabel('Imaging app');
+    await app.getByRole('button', { name: 'Connect' }).click();
+    await expect(app.getByText(/Connected - checking/)).toBeVisible();
+    await page.waitForTimeout(2000);
+    const status = JSON.parse((await api(page, '/api/status')).body);
+    expect(status.alpaca.clients.safetymonitor.connected).toBe(true);
+
+    // Silent for 2 min of device time: about 12 s at 10x.
+    await app.getByRole('button', { name: 'Go silent' }).click();
+    await expect.poll(() => recentEvents(page), { timeout: 40_000 }).toContain('client_lost');
+
+    // Back: sent once the cooldown (5 min device time) has run.
+    await app.getByRole('button', { name: 'Resume checking' }).click();
+    await expect.poll(() => recentEvents(page), { timeout: 60_000 }).toContain('client_back');
+
+    // Only while an imaging app is connected: a clean disconnect pauses alerts.
+    await api(page, '/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{"alerts":{"sendMode":"whileConnected"}}',
+    });
+    await page.waitForTimeout(1500);
+    await app.getByRole('button', { name: 'Disconnect' }).click();
+    await expect
+      .poll(async () => JSON.parse((await api(page, '/api/alerts/armed')).body), { timeout: 10_000 })
+      .toMatchObject({ armed: false, mode: 'whileConnected', reason: 'client-disconnected' });
+    await page.getByRole('button', { name: /Demo/ }).first().click(); // close the panel
+    await page.goto('./#/settings?tab=alerts');
+    await expect(page.getByText(/Paused - the imaging app disconnected/)).toBeVisible({ timeout: 10_000 });
+  });
+});

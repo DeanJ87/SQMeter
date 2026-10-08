@@ -1,4 +1,5 @@
 #include <unity.h>
+#include <cstring>
 #include "AlertEngine.h"
 
 using namespace SQM::Alerts;

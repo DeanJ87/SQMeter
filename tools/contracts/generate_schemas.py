@@ -27,6 +27,7 @@ DOCUMENTS = {
     "safety": "safety",
     "config": "config",
     "alerts_recent": "alerts-recent",
+    "alerts_armed": "alerts-armed",
     "safety_history": "safety-history",
     "management_v1_description": "alpaca-description",
     "management_v1_configureddevices": "alpaca-configured-devices",

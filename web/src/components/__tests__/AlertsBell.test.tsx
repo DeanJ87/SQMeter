@@ -45,7 +45,7 @@ describe('AlertsBell', () => {
     expect(cleared).toBe(true);
   });
 
-  it('switches alerts off and shows that they are off', async () => {
+  it('pauses alerts and shows that they are paused', async () => {
     let disarmed = false;
     server.use(
       http.post('/api/alerts/disarm', () => {
@@ -55,10 +55,10 @@ describe('AlertsBell', () => {
     );
     render(<AlertsBell />);
     fireEvent.click(await screen.findByRole('button', { name: /Alerts, 2 new/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Turn off' }));
-    expect(await screen.findByText(/Alerts are off/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    expect(await screen.findByText(/Alerts are paused/)).toBeInTheDocument();
     expect(disarmed).toBe(true);
-    expect(screen.getByRole('button', { name: /Alerts \(off\)/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Turn on' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Alerts \(paused\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
   });
 });

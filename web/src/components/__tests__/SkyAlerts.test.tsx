@@ -48,28 +48,6 @@ describe('Safety alerts at night', () => {
   });
 });
 
-describe('Alerts on/off', () => {
-  it('switches alerts off straight away, without saving settings', async () => {
-    const calls: string[] = [];
-    server.use(
-      http.get('/api/alerts/armed', () => HttpResponse.json({ armed: true, armWithAlpaca: false })),
-      http.post('/api/alerts/disarm', () => {
-        calls.push('disarm');
-        return HttpResponse.json({ armed: false }, { status: 202 });
-      }),
-    );
-    window.history.replaceState(null, '', '/settings?tab=alerts');
-    render(<Settings />);
-    const toggle = (await screen.findByLabelText('Alerts on now')) as HTMLInputElement;
-    await waitFor(() => expect(toggle.disabled).toBe(false));
-    expect(toggle.checked).toBe(true);
-    fireEvent.click(toggle);
-    await waitFor(() => expect(calls).toEqual(['disarm']));
-    expect((screen.getByLabelText('Alerts on now') as HTMLInputElement).checked).toBe(false);
-    expect(screen.queryByRole('button', { name: /save/i })).toBeNull();
-  });
-});
-
 describe('Alert text defaults', () => {
   it("shows the device's wording for 'Skies clear' and offers {event}", async () => {
     window.history.replaceState(null, '', '/settings?tab=alerts');

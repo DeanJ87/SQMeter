@@ -30,6 +30,14 @@ curl http://sqmeter.local/api/status
   "firmware": { "name": "SQMeter", "version": "0.3.0", "buildDate": "Oct  8 2026", "buildTime": "12:00:00", "variant": "standard" },
   "wifi": { "connected": true, "ssid": "MyNetwork", "ip": "192.168.1.42", "rssi": -62, "mac": "AA:BB:CC:DD:EE:FF", "connectPending": false, "apMode": false, "hostname": "sqmeter", "mdns": true },
   "sky": { "locationSource": "manual", "nightKnown": true, "latitude": 51.4779, "longitude": -0.0015, "isNight": false, "sunAltitudeDeg": 19.4 },
+  "alerts": { "armed": true, "armWithAlpaca": true, "mode": "whileConnected", "reason": "client-connected", "since": "2026-10-08T20:58:02Z", "sinceAgeMs": 412000 },
+  "alpaca": {
+    "enabled": true,
+    "clients": {
+      "safetymonitor": { "connected": true, "watching": true, "silent": false, "lastCheckedAgeMs": 2100, "clientId": 4021 },
+      "observingconditions": { "connected": true, "watching": true, "silent": false, "lastCheckedAgeMs": 41000, "clientId": 4021 }
+    }
+  },
   "sensors": {
     "light": { "status": "ok", "ageMs": 400 },
     "environment": { "status": "ok", "ageMs": 3100 },
@@ -44,6 +52,8 @@ curl http://sqmeter.local/api/status
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "sqmeter", "availabilityTopic": "sqmeter/availability" }
 }
 ```
+
+`alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object. `alpaca.clients` says, per Alpaca device, whether an imaging app has it `connected`, whether one is `watching` (connected, or polling since the restart), whether it has gone `silent` (no request for the alert's **Silent for** time), how long ago it last checked (`lastCheckedAgeMs`, `null` if never since the restart) and the last Alpaca `clientId` (`null` if none); the web UI's own requests aren't counted ([The imaging app](../user-guide/alerts.md#the-imaging-app)).
 
 `sensors` lists the built-in sensors (`light`, `environment`, `infrared`) and, when enabled, `gps`, `rain` and `wind`. `status` is `ok`, `missing`, `error` or `stale`. `diagnostics.rain` is only present while the rain sensor is enabled. Readings are in `/api/sensors`.
 
@@ -332,11 +342,22 @@ See [Alerts](../user-guide/alerts.md) for setup.
 
 Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. `400` if the channel is unknown or not enabled. Requires HTTP auth when enabled.
 
-Add `event=<unsafe|safe|rain_started|rain_stopped|sensor_fault|sensor_recovered|dew_risk|clear_sky|clouded_over>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Level 4 (wake me) also rings paired Bluetooth phones; with no push channel enabled, it only rings the phones. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`, filled in from current readings.
+Add `event=<unsafe|safe|rain_started|rain_stopped|sensor_fault|sensor_recovered|dew_risk|clear_sky|clouded_over|client_lost|client_back|client_disconnected>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Level 4 (wake me) also rings paired Bluetooth phones; with no push channel enabled, it only rings the phones. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`, filled in from current readings.
 
 ### `GET /api/alerts/armed`, `POST /api/alerts/arm`, `POST /api/alerts/disarm`
 
-Alerts on/off, for automations: `{"armed": true, "armWithAlpaca": false}`. `arm`/`disarm` return 202 `{"success": true, "armed": true|false}` and switch immediately and the state survives restarts; while off nothing is sent and paired phones don't ring. POSTs require HTTP auth when enabled. `/api/alerts/recent` also carries `armed`.
+Whether alerts are being sent ([When to send](../user-guide/alerts.md#when-to-send)), for automations:
+
+```json
+{"armed": false, "armWithAlpaca": true, "mode": "whileConnected", "reason": "client-disconnected", "since": "2026-10-08T05:42:10Z", "sinceAgeMs": 734000}
+```
+
+- `armed`: `true` sending, `false` paused.
+- `mode`: `any` or `whileConnected` (the `sendMode` setting); `armWithAlpaca` is its older form.
+- `reason`: why it's sending or paused - `user-ui` (the web UI's Pause/Resume), `user-rest` (`arm`/`disarm`), `user-mqtt` (`<base>/alerts/armed/set`), `client-connected`, `client-disconnected`, `waiting-for-client` (while-connected mode with nothing connected), `migrated` (paused before an update that added reasons) or `none`.
+- `since`: when it changed, ISO 8601 UTC; `null` without a clock. `sinceAgeMs`: milliseconds since, on the uptime clock; `null` if it changed before the last restart.
+
+`arm` (resume) / `disarm` (pause) return 202 `{"success": true, "armed": true|false}`, take effect immediately, and the state survives restarts; while paused nothing is sent and paired phones don't ring. The web UI adds `?source=ui`. POSTs require HTTP auth when enabled. `/api/alerts/recent` also carries `armed`, and `/api/status` carries the same object as `alerts`.
 
 ### `POST /api/alerts/clear`
 

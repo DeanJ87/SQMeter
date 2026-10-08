@@ -109,6 +109,11 @@ public:
         engine = Alerts::AlertEngine{};
         engineSeeded = false;
         records.clear();
+        // The device forgets Alpaca connections; the pause state is kept.
+        router.resetConnections();
+        clientWatch.reset();
+        const Alerts::ScheduleState kept = schedule.state();
+        schedule.restore(kept.sending, true, static_cast<uint8_t>(kept.reason), kept.sinceEpoch);
         rainLatch = Rain::Latch{};
         lightSamples.clear();
         lastLightStepMs = 0;
@@ -139,15 +144,6 @@ public:
         readSensors(in.as<JsonObjectConst>());
         Core::derive(snapshot, cfg);
 
-        // N.I.N.A. connecting switches alerts on, when that's enabled.
-        const bool connected = router.anyConnected();
-        if (connected != lastAlpacaConnected)
-        {
-            lastAlpacaConnected = connected;
-            if (cfg.alerts.armWithAlpaca)
-                setArmed(connected);
-        }
-
         const Alpaca::SafetyResult result = Alpaca::evaluateSafety(Core::safetyInputs(snapshot, cfg, nowMs), Core::safetyThresholds(cfg));
         if (Core::updateSafety(safety, delayFilter, result, cfg, nowMs))
             pushHistory(SafetyHistory::Kind::Change, safety.isSafe, !safety.isSafe && result.isSafe, result.reasonFlags, 0);
@@ -173,6 +169,8 @@ public:
         Core::writeSky(doc.createNestedObject("sky"), Core::night(snapshot, cfg, epoch));
         Core::writeSensorHealth(doc.createNestedObject("sensors"), Core::buildReadings(snapshot, cfg, nowMs, epoch), cfg);
         Core::writeDiagnostics(doc.createNestedObject("diagnostics"), snapshot, cfg, nowMs);
+        Core::writeAlertSchedule(doc.createNestedObject("alerts"), schedule.state(), cfg, nowMs);
+        Core::writeClientWatch(doc.createNestedObject("alpaca"), clientWatch, cfg, nowMs);
         return serialize(doc);
     }
 
@@ -260,7 +258,7 @@ public:
     {
         DynamicJsonDocument doc(16384);
         doc["enabled"] = cfg.alerts.enabled;
-        doc["armed"] = armed;
+        doc["armed"] = schedule.state().sending;
         JsonArray arr = doc.createNestedArray("alerts");
         for (auto it = records.rbegin(); it != records.rend(); ++it)
         {
@@ -288,27 +286,43 @@ public:
 
     void clearAlerts() { records.clear(); }
 
-    // --- Alerts on/off -----------------------------------------------------
-    bool isArmed() const { return armed; }
+    // --- Pause / resume (specs/021) ------------------------------------------
+    bool isArmed() const { return schedule.state().sending; }
+    // GET /api/alerts/armed
     std::string armedDocument() const
     {
-        return std::string("{\"armed\":") + (armed ? "true" : "false") +
-               ",\"armWithAlpaca\":" + (cfg.alerts.armWithAlpaca ? "true" : "false") + "}";
+        StaticJsonDocument<384> doc;
+        Core::writeAlertSchedule(doc.to<JsonObject>(), schedule.state(), cfg, nowMs);
+        return serialize(doc);
     }
 
-    void setArmed(bool on)
+    // POST /api/alerts/arm|disarm (source "ui" or "rest") and MQTT ("mqtt").
+    void setArmed(bool on, const std::string &source)
     {
-        if (on == armed)
+        const Alerts::ScheduleReason reason = source == "ui"     ? Alerts::ScheduleReason::UserUi
+                                              : source == "mqtt" ? Alerts::ScheduleReason::UserMqtt
+                                                                 : Alerts::ScheduleReason::UserRest;
+        const bool wasSending = schedule.state().sending;
+        if (schedule.command(on, reason, nowMs, validEpoch()))
+            scheduleChanged(wasSending);
+    }
+
+private:
+    int64_t validEpoch() const { return epoch >= Core::CLOCK_VALID_EPOCH ? epoch : 0; }
+
+    void scheduleChanged(bool wasSending)
+    {
+        const bool sending = schedule.state().sending;
+        if (sending == wasSending)
             return;
-        armed = on;
-        pushHistory(SafetyHistory::Kind::Armed, on, false, 0, 0);
-        if (armed && cfg.alerts.enabled)
+        pushHistory(SafetyHistory::Kind::Armed, sending, false, 0, 0);
+        if (sending && cfg.alerts.enabled)
         {
             // One quiet line so you know where things stand as you start.
             Alerts::Alert alertsOn;
             alertsOn.type = Alerts::AlertType::AlertsOn;
             alertsOn.level = Alerts::AlertLevel::Quiet;
-            alertsOn.title = "Alerts on";
+            alertsOn.title = "Alerts resumed";
             if (safety.evaluatedAtMs == 0)
                 alertsOn.message = "Safety not evaluated yet.";
             else if (safety.isSafe)
@@ -320,6 +334,7 @@ public:
         }
     }
 
+public:
     // POST /api/alerts/test?channel=&event=&level=&sound=&title=&message=
     // Returns {status, body} like the device.
     std::string testAlert(const std::string &paramsJson)
@@ -437,7 +452,10 @@ public:
     {
         DynamicJsonDocument doc(24576);
         doc["config"] = serialized(cfg.toJson(false));
-        doc["armed"] = armed;
+        const Alerts::ScheduleState &state = schedule.state();
+        doc["armed"] = state.sending;
+        doc["armedReason"] = static_cast<uint8_t>(state.reason);
+        doc["armedSince"] = static_cast<double>(state.sinceEpoch);
         JsonArray list = doc.createNestedArray("history");
         SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
         const size_t n = SafetyHistory::copy(history, entries, SafetyHistory::CAPACITY);
@@ -466,7 +484,9 @@ public:
         serializeJson(doc["config"], configJson);
         if (!loadConfig(configJson))
             return false;
-        armed = doc["armed"] | true;
+        schedule = Alerts::AlertSchedule{};
+        schedule.restore(
+            doc["armed"] | true, doc.containsKey("armedReason"), doc["armedReason"] | 0, static_cast<int64_t>(doc["armedSince"] | 0.0));
         history = SafetyHistory::Log{};
         history.magic = SafetyHistory::MAGIC;
         for (JsonArrayConst e : doc["history"].as<JsonArrayConst>())
@@ -564,13 +584,28 @@ private:
         const Core::NightState night = Core::night(snapshot, cfg, epoch);
         Alerts::AlertInputs in = Core::alertInputs(safety, snapshot, obs, cfg, night, nowMs);
         in.nowSeconds = uptimeSeconds();
+
+        // The imaging app: is each Alpaca device still being checked?
+        const Alpaca::DeviceActivity activity[Alpaca::DEVICE_COUNT] = {
+            router.activity(Alpaca::Device::SafetyMonitor), router.activity(Alpaca::Device::ObservingConditions)};
+        uint32_t silenceMs[Alpaca::DEVICE_COUNT];
+        Core::clientSilenceMs(cfg, silenceMs);
+        clientWatch.update(activity, silenceMs, cfg.alpaca.enabled, nowMs);
+        Core::addClientInputs(in, clientWatch, cfg, nowMs, clockTime);
+
         Core::AlertStep step = Core::runAlerts(engine, in, Core::alertRules(cfg), cfg, obs, night, safety, clockTime, clockDate);
-        if (step.outgoing.empty() || !armed || !cfg.alerts.enabled)
-            return;
-        record(Alerts::stackAlerts(step.outgoing), 0x0F);
-        for (const Alerts::Alert &sent : step.outgoing)
-            if (sent.type == Alerts::AlertType::Unsafe || sent.type == Alerts::AlertType::Safe)
-                pushHistory(SafetyHistory::Kind::Alert, sent.type == Alerts::AlertType::Safe, false, 0, 0);
+        if (!step.outgoing.empty() && schedule.state().sending && cfg.alerts.enabled)
+        {
+            record(Alerts::stackAlerts(step.outgoing), 0x0F);
+            for (const Alerts::Alert &sent : step.outgoing)
+                if (sent.type == Alerts::AlertType::Unsafe || sent.type == Alerts::AlertType::Safe)
+                    pushHistory(SafetyHistory::Kind::Alert, sent.type == Alerts::AlertType::Safe, false, 0, 0);
+        }
+
+        // After this pass's alerts: "disconnected" goes out before it pauses.
+        const bool wasSending = schedule.state().sending;
+        if (schedule.update(Core::sendMode(cfg), router.anyConnected(), nowMs, validEpoch()))
+            scheduleChanged(wasSending);
     }
 
     // The TSL2591 driver averages its samples over the sky averaging window
@@ -799,8 +834,8 @@ private:
     Alpaca::SafeDelayFilter delayFilter;
     Alerts::AlertEngine engine;
     bool engineSeeded = false;
-    bool armed = true;
-    bool lastAlpacaConnected = false;
+    Alerts::AlertSchedule schedule;
+    Alpaca::ClientWatch clientWatch;
     SafetyHistory::Log history{};
     std::deque<Record> records;
     uint32_t nextId = 1;

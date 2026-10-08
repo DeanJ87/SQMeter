@@ -6,6 +6,7 @@
 #include "ObservingConditionsMapper.h"
 #include "AlpacaDiscovery.h"
 #include "AlpacaProtocol.h"
+#include "ClientWatch.h"
 
 using namespace SQM::Alpaca;
 
@@ -676,6 +677,171 @@ void test_router_connected_and_disabled(void)
     TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/management/v1/configureddevices").body.c_str(), "\"Value\":[]"));
 }
 
+// --- Client activity and ClientWatch (specs/021) ---
+
+void test_router_counts_requests_disconnects_and_client_id(void)
+{
+    FakeBackend backend;
+    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
+    route(router, true, "/api/v1/safetymonitor/0/connected", {{"Connected", "True"}, {"ClientID", "42"}});
+    route(router, false, "/api/v1/safetymonitor/0/issafe", {{"ClientID", "42"}});
+    route(router, false, "/management/v1/description");                              // management requests don't count
+    route(router, false, "/api/v1/safetymonitor/0/devicestate", {{"source", "ui"}}); // nor the web UI's own
+    DeviceActivity sm = router.activity(Device::SafetyMonitor);
+    TEST_ASSERT_TRUE(sm.connected);
+    TEST_ASSERT_EQUAL_UINT32(2, sm.requests);
+    TEST_ASSERT_EQUAL_UINT32(0, sm.disconnects);
+    TEST_ASSERT_TRUE(sm.hasClientId);
+    TEST_ASSERT_EQUAL_UINT32(42, sm.clientId);
+    TEST_ASSERT_EQUAL_UINT32(0, router.activity(Device::ObservingConditions).requests);
+
+    route(router, true, "/api/v1/safetymonitor/0/disconnect");
+    route(router, true, "/api/v1/safetymonitor/0/connected", {{"Connected", "False"}}); // already disconnected
+    sm = router.activity(Device::SafetyMonitor);
+    TEST_ASSERT_FALSE(sm.connected);
+    TEST_ASSERT_EQUAL_UINT32(1, sm.disconnects);
+
+    route(router, true, "/api/v1/observingconditions/0/connect");
+    router.resetConnections();
+    TEST_ASSERT_FALSE(router.anyConnected());
+    TEST_ASSERT_EQUAL_UINT32(0, router.activity(Device::ObservingConditions).disconnects);
+}
+
+namespace
+{
+    struct WatchRig
+    {
+        FakeBackend backend;
+        SQM::Alpaca::Router router{backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234}};
+        ClientWatch watch;
+        uint32_t silence[DEVICE_COUNT] = {120000, 600000};
+        bool enabled = true;
+
+        void tick(uint32_t nowMs)
+        {
+            const DeviceActivity activity[DEVICE_COUNT] = {
+                router.activity(Device::SafetyMonitor), router.activity(Device::ObservingConditions)};
+            watch.update(activity, silence, enabled, nowMs);
+        }
+        const ClientState &sm() const { return watch.state(Device::SafetyMonitor); }
+        const ClientState &oc() const { return watch.state(Device::ObservingConditions); }
+        void poll(const char *device = "safetymonitor") { route(router, false, std::string("/api/v1/") + device + "/0/issafe"); }
+        void connect(const char *device = "safetymonitor")
+        {
+            route(router, true, std::string("/api/v1/") + device + "/0/connected", {{"Connected", "True"}});
+        }
+        void disconnect(const char *device = "safetymonitor")
+        {
+            route(router, true, std::string("/api/v1/") + device + "/0/connected", {{"Connected", "False"}});
+        }
+    };
+} // namespace
+
+void test_watch_silence_and_recovery(void)
+{
+    WatchRig rig;
+    rig.tick(1000);
+    TEST_ASSERT_FALSE(rig.sm().watching); // nothing since the restart
+    rig.connect();
+    rig.tick(2000);
+    TEST_ASSERT_TRUE(rig.sm().watching);
+    rig.poll();
+    rig.tick(5000);
+    rig.tick(5000 + 120000);
+    TEST_ASSERT_FALSE(rig.sm().silent); // exactly the silence time: not yet
+    rig.tick(5000 + 120001);
+    TEST_ASSERT_TRUE(rig.sm().silent);
+    TEST_ASSERT_TRUE(rig.sm().connected); // silence doesn't disconnect
+    rig.poll();
+    rig.tick(200000);
+    TEST_ASSERT_FALSE(rig.sm().silent);
+    TEST_ASSERT_EQUAL_UINT32(200000, rig.sm().lastRequestMs);
+}
+
+void test_watch_clean_disconnect_is_not_silence(void)
+{
+    WatchRig rig;
+    rig.tick(0);
+    rig.connect();
+    rig.tick(1000);
+    rig.disconnect();
+    rig.tick(2000);
+    TEST_ASSERT_TRUE(rig.sm().disconnectedNow);
+    TEST_ASSERT_FALSE(rig.sm().watching);
+    rig.tick(3000);
+    TEST_ASSERT_FALSE(rig.sm().disconnectedNow); // an edge, once
+    // A tool polling after the session ended doesn't restart watching...
+    rig.poll();
+    rig.tick(4000);
+    rig.tick(4000 + 600000);
+    TEST_ASSERT_FALSE(rig.sm().watching);
+    TEST_ASSERT_FALSE(rig.sm().silent);
+    // ...a new connect does.
+    rig.connect();
+    rig.tick(700000);
+    TEST_ASSERT_TRUE(rig.sm().watching);
+}
+
+void test_watch_after_restart_polling_counts(void)
+{
+    // The device restarted; the client keeps polling without connecting.
+    WatchRig rig;
+    rig.tick(500);
+    rig.poll();
+    rig.tick(1000);
+    TEST_ASSERT_TRUE(rig.sm().watching);
+    TEST_ASSERT_FALSE(rig.sm().connected);
+    rig.tick(1000 + 120001);
+    TEST_ASSERT_TRUE(rig.sm().silent);
+}
+
+void test_watch_devices_and_clients_are_separate(void)
+{
+    WatchRig rig;
+    rig.tick(0);
+    rig.connect("safetymonitor");
+    rig.connect("observingconditions");
+    rig.tick(1000);
+    // Two clients on the safety monitor: one polling is enough.
+    for (uint32_t t = 2000; t < 600000; t += 5000)
+    {
+        rig.poll("safetymonitor");
+        rig.tick(t);
+    }
+    TEST_ASSERT_FALSE(rig.sm().silent);
+    TEST_ASSERT_FALSE(rig.oc().silent); // weather has 10 minutes
+    rig.poll("safetymonitor");
+    rig.tick(1000 + 600001);
+    TEST_ASSERT_TRUE(rig.oc().silent);
+    TEST_ASSERT_FALSE(rig.sm().silent);
+}
+
+void test_watch_off_when_alpaca_disabled(void)
+{
+    WatchRig rig;
+    rig.tick(0);
+    rig.connect();
+    rig.tick(1000);
+    rig.enabled = false;
+    rig.tick(500000);
+    TEST_ASSERT_FALSE(rig.sm().watching);
+    TEST_ASSERT_FALSE(rig.sm().silent);
+}
+
+void test_watch_reset_forgets_everything(void)
+{
+    WatchRig rig;
+    rig.tick(0);
+    rig.connect();
+    rig.tick(1000);
+    rig.router.resetConnections();
+    rig.watch.reset();
+    rig.tick(2000);
+    TEST_ASSERT_FALSE(rig.sm().watching);
+    rig.tick(500000);
+    TEST_ASSERT_FALSE(rig.sm().silent);
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -733,6 +899,14 @@ int main(int argc, char **argv)
     RUN_TEST(test_client_transaction_id_parsing);
     RUN_TEST(test_alpaca_bool_parsing);
     RUN_TEST(test_unique_id_includes_mac);
+
+    RUN_TEST(test_router_counts_requests_disconnects_and_client_id);
+    RUN_TEST(test_watch_silence_and_recovery);
+    RUN_TEST(test_watch_clean_disconnect_is_not_silence);
+    RUN_TEST(test_watch_after_restart_polling_counts);
+    RUN_TEST(test_watch_devices_and_clients_are_separate);
+    RUN_TEST(test_watch_off_when_alpaca_disabled);
+    RUN_TEST(test_watch_reset_forgets_everything);
 
     return UNITY_END();
 }

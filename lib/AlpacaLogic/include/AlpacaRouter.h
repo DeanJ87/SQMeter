@@ -51,6 +51,26 @@ namespace SQM
             uint64_t mac = 0; // for UniqueIDs
         };
 
+        // The two Alpaca devices, in Router order.
+        enum class Device : uint8_t
+        {
+            SafetyMonitor = 0,
+            ObservingConditions = 1,
+        };
+        constexpr size_t DEVICE_COUNT = 2;
+
+        // What clients did with one device since the Router started. The
+        // counters only ever grow; ClientWatch compares them between passes,
+        // so the Router (which runs on the web server's task) needs no clock.
+        struct DeviceActivity
+        {
+            bool connected = false;
+            uint32_t requests = 0;    // every device request, any method (except the web UI's, source=ui)
+            uint32_t disconnects = 0; // clean disconnects of a connected device
+            bool hasClientId = false;
+            uint32_t clientId = 0; // ClientID of the latest request that sent one
+        };
+
         class Router
         {
         public:
@@ -60,14 +80,19 @@ namespace SQM
             bool handle(const Request &request, Response &response);
 
             // A client (N.I.N.A.) currently has either device connected.
-            bool anyConnected() const { return connected[0] || connected[1]; }
+            bool anyConnected() const { return devices[0].connected || devices[1].connected; }
+
+            DeviceActivity activity(Device device) const { return devices[static_cast<size_t>(device)]; }
+
+            // As after a restart: no device connected (the demo's restart).
+            void resetConnections();
 
         private:
             Response device(const Request &request);
 
             Backend &backend;
             ServerIdentity identity;
-            bool connected[2] = {false, false};
+            DeviceActivity devices[DEVICE_COUNT];
             uint32_t serverTransactionId = 0;
         };
 

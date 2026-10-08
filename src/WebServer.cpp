@@ -137,9 +137,15 @@ namespace SQM
             Preferences prefs;
             if (prefs.begin(ARMED_NVS_NAMESPACE, true))
             {
-                alertsArmed = prefs.getBool("armed", true);
+                // No "reason" key: saved by firmware from before reasons.
+                alertSchedule.restore(
+                    prefs.getBool("armed", true),
+                    prefs.isKey("reason"),
+                    prefs.getUChar("reason", 0),
+                    static_cast<int64_t>(prefs.getUInt("since", 0)));
                 prefs.end();
             }
+            shareSchedule();
         }
         if (mqttClient != nullptr)
         {
@@ -151,7 +157,7 @@ namespace SQM
                 {
                     bool armed = false;
                     if (parseArmPayload(payload, armed))
-                        pendingArm = armed ? 1 : 0;
+                        pendingArm = encodeArm(armed, Alerts::ScheduleReason::UserMqtt);
                 });
         }
         Logger::info(TAG, "Starting web server on port %d", PORT);
@@ -249,15 +255,6 @@ namespace SQM
 
         const uint32_t now = millis();
 
-        // N.I.N.A. connecting/disconnecting the Alpaca devices switches
-        // alerts on/off, when that's enabled.
-        const bool alpacaConnectedNow = alpacaRouter.anyConnected();
-        if (alpacaConnectedNow != lastAlpacaConnected)
-        {
-            lastAlpacaConnected = alpacaConnectedNow;
-            if (getConfigCallback().alerts.armWithAlpaca)
-                pendingArm = alpacaConnectedNow ? 1 : 0;
-        }
         applyPendingArm();
         if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
             publishArmedState();
@@ -983,7 +980,19 @@ namespace SQM
                 alertEngine.seedSafety(!toldSafe);
         }
         const Core::NightState night = computeNight(snapshot, cfg);
-        const Alerts::AlertInputs in = Core::alertInputs(status, snapshot, obs, cfg, night, millis());
+        Alerts::AlertInputs in = Core::alertInputs(status, snapshot, obs, cfg, night, millis());
+        std::string localTime, localDate;
+        localClock(localTime, localDate);
+
+        // The imaging app: is each Alpaca device still being checked?
+        {
+            const Alpaca::DeviceActivity activity[Alpaca::DEVICE_COUNT] = {
+                alpacaRouter.activity(Alpaca::Device::SafetyMonitor), alpacaRouter.activity(Alpaca::Device::ObservingConditions)};
+            uint32_t silenceMs[Alpaca::DEVICE_COUNT];
+            Core::clientSilenceMs(cfg, silenceMs);
+            clientWatch.update(activity, silenceMs, cfg.alpaca.enabled, millis());
+            Core::addClientInputs(in, clientWatch, cfg, millis(), localTime);
+        }
         const Alerts::AlertRules rules = Core::alertRules(cfg);
 
         if (ble.isActive())
@@ -1026,13 +1035,11 @@ namespace SQM
         // Push channels need the master switch, paired phones only Bluetooth.
         const time_t wallClock = time(nullptr);
         const uint32_t epoch = wallClock >= 1704067200 ? static_cast<uint32_t>(wallClock) : 0;
-        std::string localTime, localDate;
-        localClock(localTime, localDate);
         Core::AlertStep step = Core::runAlerts(alertEngine, in, rules, cfg, obs, night, status, localTime, localDate);
         std::vector<Alerts::Alert> &outgoing = step.outgoing;
         const uint32_t alarmFlags = step.alarmFlags;
-        // Switched off (not imaging): state is still tracked above, nothing goes out.
-        if (!outgoing.empty() && alertsArmed)
+        // Paused: state is still tracked above, nothing goes out.
+        if (!outgoing.empty() && alertSchedule.state().sending)
         {
             const Alerts::Alert notification = Alerts::stackAlerts(outgoing);
             if (cfg.alerts.enabled)
@@ -1048,6 +1055,17 @@ namespace SQM
             else
                 ble.raiseInfo(status.reasonFlags, epoch);
         }
+
+        // Only after this pass's alerts went out: a clean disconnect's
+        // "imaging app disconnected" is sent before it pauses alerts.
+        {
+            const bool wasSending = alertSchedule.state().sending;
+            if (alertSchedule.update(Core::sendMode(cfg), alpacaRouter.anyConnected(), millis(), epoch))
+                scheduleChanged(wasSending);
+        }
+        portENTER_CRITICAL(&scheduleLock);
+        clientWatchShared = clientWatch;
+        portEXIT_CRITICAL(&scheduleLock);
 
         uint32_t acknowledged = 0;
         bool fromPhone = false;
@@ -1066,28 +1084,72 @@ namespace SQM
     void WebServer::applyPendingArm()
     {
         const int8_t requested = pendingArm.exchange(-1);
-        if (requested < 0 || (requested == 1) == alertsArmed)
+        if (requested < 0)
             return;
-        alertsArmed = requested == 1;
-        Logger::info(TAG, "Alerts %s", alertsArmed ? "on" : "off");
+        const bool wasSending = alertSchedule.state().sending;
+        const time_t wallClock = time(nullptr);
+        const int64_t epoch = wallClock >= Core::CLOCK_VALID_EPOCH ? static_cast<int64_t>(wallClock) : 0;
+        if (alertSchedule.command((requested & 1) != 0, static_cast<Alerts::ScheduleReason>(requested / 2), millis(), epoch))
+            scheduleChanged(wasSending);
+    }
+
+    void WebServer::shareSchedule()
+    {
+        portENTER_CRITICAL(&scheduleLock);
+        scheduleShared = alertSchedule.state();
+        portEXIT_CRITICAL(&scheduleLock);
+    }
+
+    Alerts::ScheduleState WebServer::sharedSchedule() const
+    {
+        portENTER_CRITICAL(&scheduleLock);
+        Alerts::ScheduleState state = scheduleShared;
+        portEXIT_CRITICAL(&scheduleLock);
+        // A pause/resume the loop hasn't applied yet already counts.
+        const int8_t pending = pendingArm.load();
+        if (pending >= 0)
+        {
+            state.sending = (pending & 1) != 0;
+            state.reason = static_cast<Alerts::ScheduleReason>(pending / 2);
+        }
+        return state;
+    }
+
+    Alpaca::ClientWatch WebServer::sharedClientWatch() const
+    {
+        portENTER_CRITICAL(&scheduleLock);
+        const Alpaca::ClientWatch copy = clientWatchShared;
+        portEXIT_CRITICAL(&scheduleLock);
+        return copy;
+    }
+
+    void WebServer::scheduleChanged(bool wasSending)
+    {
+        const Alerts::ScheduleState &state = alertSchedule.state();
+        shareSchedule();
         Preferences prefs;
         if (prefs.begin(ARMED_NVS_NAMESPACE, false))
         {
-            prefs.putBool("armed", alertsArmed);
+            prefs.putBool("armed", state.sending);
+            prefs.putUChar("reason", static_cast<uint8_t>(state.reason));
+            prefs.putUInt("since", static_cast<uint32_t>(state.sinceEpoch > 0 ? state.sinceEpoch : 0));
             prefs.end();
         }
-        SafetyHistory::recordArmed(alertsArmed);
+        if (state.sending == wasSending)
+            return;
+        Logger::info(TAG, "Alerts %s (%s)", state.sending ? "resumed" : "paused", Alerts::scheduleReasonName(state.reason));
+        SafetyHistory::recordArmed(state.sending);
         publishArmedState();
 
         const Config &cfg = getConfigCallback();
-        if (alertsArmed && cfg.alerts.enabled)
+        if (state.sending && cfg.alerts.enabled)
         {
             // One quiet line so you know where things stand as you start.
             const SafetyStatus safety = getSafetyStatus();
             Alerts::Alert on;
             on.type = Alerts::AlertType::AlertsOn;
             on.level = Alerts::AlertLevel::Quiet;
-            on.title = "Alerts on";
+            on.title = "Alerts resumed";
             if (safety.evaluatedAtMs == 0)
                 on.message = "Safety not evaluated yet.";
             else if (safety.isSafe)
@@ -1103,7 +1165,7 @@ namespace SQM
     {
         if (mqttClient == nullptr || !mqttClient->isConnected())
             return;
-        if (mqttClient->publishSubtopic("alerts/armed", alertsArmed ? "1" : "0", true))
+        if (mqttClient->publishSubtopic("alerts/armed", alertSchedule.state().sending ? "1" : "0", true))
             mqttArmedConnection = mqttClient->connectionCount();
     }
 
@@ -1268,15 +1330,18 @@ namespace SQM
                 request->send(202, "application/json", "{\"success\":true}");
             });
 
-        // Alerts on/off for automations (Home Assistant rest_command,
-        // N.I.N.A. sequence scripts): POST /api/alerts/arm or /disarm.
+        // Resume ("arm") and pause ("disarm") for automations (Home Assistant
+        // rest_command, N.I.N.A. sequence scripts) and the web UI, which adds
+        // ?source=ui so the status line can say who paused.
         auto armRoute = [this](bool armed)
         {
             return [this, armed](AsyncWebServerRequest *request)
             {
                 if (!requireAuth(request))
                     return;
-                pendingArm = armed ? 1 : 0;
+                const AsyncWebParameter *source = request->getParam("source");
+                const bool fromUi = source != nullptr && source->value() == "ui";
+                pendingArm = encodeArm(armed, fromUi ? Alerts::ScheduleReason::UserUi : Alerts::ScheduleReason::UserRest);
                 request->send(202, "application/json", armed ? "{\"success\":true,\"armed\":true}" : "{\"success\":true,\"armed\":false}");
             };
         };
@@ -1287,10 +1352,10 @@ namespace SQM
             HTTP_GET,
             [this](AsyncWebServerRequest *request)
             {
-                const int8_t pending = pendingArm.load();
-                const bool armed = pending >= 0 ? pending == 1 : alertsArmed;
-                std::string json = std::string("{\"armed\":") + (armed ? "true" : "false") +
-                                   ",\"armWithAlpaca\":" + (getConfigCallback().alerts.armWithAlpaca ? "true" : "false") + "}";
+                StaticJsonDocument<384> doc;
+                Core::writeAlertSchedule(doc.to<JsonObject>(), sharedSchedule(), getConfigCallback(), millis());
+                std::string json;
+                serializeJson(doc, json);
                 request->send(200, "application/json", json.c_str());
             });
 
@@ -1302,8 +1367,7 @@ namespace SQM
                 const std::vector<AlertRecord> records = alertDispatcher->recent();
                 DynamicJsonDocument doc(8192);
                 doc["enabled"] = getConfigCallback().alerts.enabled;
-                const int8_t pending = pendingArm.load();
-                doc["armed"] = pending >= 0 ? pending == 1 : alertsArmed;
+                doc["armed"] = sharedSchedule().sending;
                 JsonArray arr = doc.createNestedArray("alerts");
                 const uint32_t nowSeconds = millis() / 1000;
                 // Newest first
@@ -1957,7 +2021,7 @@ namespace SQM
 
     std::string WebServer::createStatusJson() const
     {
-        DynamicJsonDocument doc(6144); // Includes MQTT, partition, boot, sensor and BLE diagnostics
+        DynamicJsonDocument doc(7168); // Includes MQTT, partition, boot, sensor, BLE and alert-schedule diagnostics
         const SensorSnapshot snapshot = getSensorSnapshot();
 
         // Firmware version
@@ -1991,6 +2055,8 @@ namespace SQM
         doc["sensorSnapshotBytes"] = sizeof(SensorSnapshot);
 
         Core::writeSky(doc.createNestedObject("sky"), computeNight(snapshot, getConfigCallback()));
+        Core::writeAlertSchedule(doc.createNestedObject("alerts"), sharedSchedule(), getConfigCallback(), millis());
+        Core::writeClientWatch(doc.createNestedObject("alpaca"), sharedClientWatch(), getConfigCallback(), millis());
 
         JsonArray heapStages = doc.createNestedArray("heapStages");
         for (size_t i = 0; i < HeapTrace::count(); ++i)

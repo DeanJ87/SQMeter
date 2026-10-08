@@ -2,6 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useDialogFocus } from '../lib/a11y';
 import { Button, Note } from '../components/ui';
+import DemoImagingApp from './DemoImagingApp';
 import { demoDevice } from './device';
 import DeviceReadout from './panel/DeviceReadout';
 import SensorInputs from './panel/SensorInputs';
@@ -44,6 +45,7 @@ const DemoPanel: FunctionalComponent = () => {
           <Shortcuts />
           <SensorInputs />
           <TimePlace />
+          <DemoImagingApp />
           <div class="btn-row">
             <Button small variant="danger" onClick={() => demoDevice.reset()}>
               Reset demo

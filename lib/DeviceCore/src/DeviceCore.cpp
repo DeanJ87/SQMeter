@@ -3,6 +3,7 @@
 #include "SunPosition.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <ctime>
@@ -532,6 +533,9 @@ namespace SQM
             rules.skyNightOnly = a.skyNightOnly;
             rules.safetyNightOnly = a.safetyNightOnly;
             rules.cooldownSeconds = a.cooldownSeconds;
+            rules.onClientLost = a.clientLost.level != 0;
+            rules.onClientBack = a.clientBack.level != 0;
+            rules.onClientDisconnected = a.clientDisconnected.level != 0;
             return rules;
         }
 
@@ -558,6 +562,12 @@ namespace SQM
                 return &a.clearSky;
             case Alerts::AlertType::CloudedOver:
                 return &a.cloudedOver;
+            case Alerts::AlertType::ClientLost:
+                return &a.clientLost;
+            case Alerts::AlertType::ClientBack:
+                return &a.clientBack;
+            case Alerts::AlertType::ClientDisconnected:
+                return &a.clientDisconnected;
             default:
                 return nullptr;
             }
@@ -624,6 +634,108 @@ namespace SQM
             alert.vars.shrink_to_fit();
         }
 
+        void clientSilenceMs(const Config &cfg, uint32_t (&out)[Alpaca::DEVICE_COUNT])
+        {
+            out[static_cast<size_t>(Alpaca::Device::SafetyMonitor)] = cfg.alerts.clientSilentSafetySeconds * 1000;
+            out[static_cast<size_t>(Alpaca::Device::ObservingConditions)] = cfg.alerts.clientSilentWeatherSeconds * 1000;
+        }
+
+        std::string formatDuration(uint32_t seconds)
+        {
+            if (seconds < 60)
+                return std::to_string(seconds) + " s";
+            const uint32_t minutes = (seconds + 30) / 60;
+            if (minutes < 60)
+                return std::to_string(minutes) + " min";
+            return std::to_string(minutes / 60) + " h" + (minutes % 60 != 0 ? " " + std::to_string(minutes % 60) + " min" : "");
+        }
+
+        namespace
+        {
+            const char *const CLIENT_DEVICE_NAMES[Alpaca::DEVICE_COUNT] = {"safety monitor", "weather device"};
+            const char *const CLIENT_DEVICE_KEYS[Alpaca::DEVICE_COUNT] = {"safetymonitor", "observingconditions"};
+
+            // The local clock time `ageSeconds` ago, from the current "HH:MM";
+            // "N min ago" when there's no clock.
+            std::string lastCheckedText(uint32_t ageSeconds, const std::string &localTime)
+            {
+                const bool clock = localTime.size() == 5 && localTime[2] == ':' && std::isdigit(static_cast<unsigned char>(localTime[0])) &&
+                                   std::isdigit(static_cast<unsigned char>(localTime[1])) &&
+                                   std::isdigit(static_cast<unsigned char>(localTime[3])) &&
+                                   std::isdigit(static_cast<unsigned char>(localTime[4]));
+                if (!clock)
+                    return formatDuration(ageSeconds) + " ago";
+                const int now = std::stoi(localTime.substr(0, 2)) * 60 + std::stoi(localTime.substr(3, 2));
+                const int then = ((now - static_cast<int>(ageSeconds / 60)) % 1440 + 1440) % 1440;
+                char buffer[8];
+                std::snprintf(buffer, sizeof(buffer), "%02d:%02d", then / 60, then % 60);
+                return buffer;
+            }
+        } // namespace
+
+        void addClientInputs(
+            Alerts::AlertInputs &inputs, const Alpaca::ClientWatch &watch, const Config &cfg, uint32_t nowMs, const std::string &localTime)
+        {
+            uint32_t silence[Alpaca::DEVICE_COUNT];
+            clientSilenceMs(cfg, silence);
+            for (size_t i = 0; i < Alpaca::DEVICE_COUNT; ++i)
+            {
+                const Alpaca::ClientState &state = watch.state(static_cast<Alpaca::Device>(i));
+                Alerts::ClientInputs &client = inputs.clients[i];
+                client.device = CLIENT_DEVICE_NAMES[i];
+                client.watching = state.watching;
+                client.silent = state.silent;
+                client.disconnectedNow = state.disconnectedNow;
+                client.silentFor = formatDuration(silence[i] / 1000);
+                client.lastChecked = state.everRequested ? lastCheckedText((nowMs - state.lastRequestMs) / 1000, localTime) : "never";
+                client.clientId = state.hasClientId ? std::to_string(state.clientId) : "";
+            }
+        }
+
+        void writeClientWatch(JsonObject alpaca, const Alpaca::ClientWatch &watch, const Config &cfg, uint32_t nowMs)
+        {
+            alpaca["enabled"] = cfg.alpaca.enabled;
+            JsonObject clients = alpaca.createNestedObject("clients");
+            for (size_t i = 0; i < Alpaca::DEVICE_COUNT; ++i)
+            {
+                const Alpaca::ClientState &state = watch.state(static_cast<Alpaca::Device>(i));
+                JsonObject client = clients.createNestedObject(CLIENT_DEVICE_KEYS[i]);
+                client["connected"] = state.connected;
+                client["watching"] = state.watching;
+                client["silent"] = state.silent;
+                if (state.everRequested)
+                    client["lastCheckedAgeMs"] = nowMs - state.lastRequestMs;
+                else
+                    client["lastCheckedAgeMs"] = nullptr;
+                if (state.hasClientId)
+                    client["clientId"] = state.clientId;
+                else
+                    client["clientId"] = nullptr;
+            }
+        }
+
+        Alerts::SendMode sendMode(const Config &cfg)
+        {
+            return cfg.alerts.sendMode == AlertsConfig::SendMode::WhileConnected ? Alerts::SendMode::WhileConnected : Alerts::SendMode::Any;
+        }
+
+        void writeAlertSchedule(JsonObject target, const Alerts::ScheduleState &state, const Config &cfg, uint32_t nowMs)
+        {
+            target["armed"] = state.sending;
+            target["armWithAlpaca"] = cfg.alerts.sendMode == AlertsConfig::SendMode::WhileConnected;
+            target["mode"] = Alerts::sendModeName(sendMode(cfg));
+            target["reason"] = Alerts::scheduleReasonName(state.reason);
+            const std::string since = isoUtc(state.sinceEpoch);
+            if (since.empty())
+                target["since"] = nullptr;
+            else
+                target["since"] = since;
+            if (state.sinceKnown)
+                target["sinceAgeMs"] = nowMs - state.sinceMs;
+            else
+                target["sinceAgeMs"] = nullptr;
+        }
+
         AlertStep runAlerts(
             Alerts::AlertEngine &engine,
             const Alerts::AlertInputs &inputs,
@@ -666,6 +778,13 @@ namespace SQM
                 {"dew_risk", Alerts::AlertType::DewRisk, "Dew risk", "Dew risk", Alpaca::UNSAFE_DEWPOINT},
                 {"clear_sky", Alerts::AlertType::ClearSky, "Dark and clear", "Skies clear up", 0},
                 {"clouded_over", Alerts::AlertType::CloudedOver, "Clouded over", "Skies cloud over", Alpaca::UNSAFE_CLOUD_COVER},
+                {"client_lost", Alerts::AlertType::ClientLost, "Imaging app stopped checking", "The imaging app stops checking", 0},
+                {"client_back", Alerts::AlertType::ClientBack, "Imaging app is back", "The imaging app is back", 0},
+                {"client_disconnected",
+                 Alerts::AlertType::ClientDisconnected,
+                 "Imaging app disconnected",
+                 "The imaging app disconnects",
+                 0},
             };
         } // namespace
 
@@ -722,6 +841,14 @@ namespace SQM
             }
             else if (sample->type == Alerts::AlertType::SensorFault || sample->type == Alerts::AlertType::SensorRecovered)
                 test.vars = {{"sensor", "TSL2591 light (example)"}};
+            else if (
+                sample->type == Alerts::AlertType::ClientLost || sample->type == Alerts::AlertType::ClientBack ||
+                sample->type == Alerts::AlertType::ClientDisconnected)
+                test.vars = {
+                    {"device", "safety monitor"},
+                    {"silent_for", formatDuration(cfg.alerts.clientSilentSafetySeconds)},
+                    {"last_checked", "2 min ago (example)"},
+                    {"client_id", "1234 (example)"}};
             AlertsConfig::EventSetting custom{level, sound, title, message};
             applyAlertTemplate(test, custom, alertVars(cfg, obs, n, test, localTime, localDate));
             test.title = "Test: " + test.title;

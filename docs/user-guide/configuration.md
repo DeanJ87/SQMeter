@@ -184,7 +184,10 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
     "skyNightOnly": true,
     "safetyNightOnly": true,
     "nightSunAltitudeDeg": -12,
+    "sendMode": "any",
     "armWithAlpaca": false,
+    "clientSilentSafetySeconds": 120,
+    "clientSilentWeatherSeconds": 600,
     "cooldownSeconds": 300,
     "pushover": { "enabled": false, "userKey": "", "appToken": "", "sound": "" },
     "ntfy": { "enabled": false, "server": "https://ntfy.sh", "topic": "", "token": "" },
@@ -410,11 +413,15 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `clearSkyCloudPercent` / `cloudedOverCloudPercent` | float | `20` / `70` | "Skies clear up" below / "cloud over" above |
 | `skyNightOnly` / `safetyNightOnly` | bool | `true` / `true` | Sky / safe-unsafe alerts only while it's dark |
 | `nightSunAltitudeDeg` | float | `-12` | "Dark" means the sun below this (-0.833 sunset, -12 nautical, -18 astronomical) |
-| `armWithAlpaca` | bool | `false` | Switch alerts on/off as N.I.N.A. connects/disconnects |
+| `sendMode` | string | `"any"` | When to send: `any` (any time, unless paused) or `whileConnected` (only while an imaging app has an Alpaca device connected) |
+| `armWithAlpaca` | bool | `false` | The older form of `sendMode` (`true` = `whileConnected`): still written for older firmware, and read when `sendMode` is missing |
+| `clientSilentSafetySeconds` / `clientSilentWeatherSeconds` | int | `120` / `600` | "The imaging app stops checking" after this long without a request to the safety monitor / weather device (30-3600) |
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
 | `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
 
-Alerts on/off (for when you're not imaging) is live state, not a setting - see [Alerts](alerts.md#turning-alerts-off-when-youre-not-imaging).
+Events: `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `dew_risk`, `clear_sky`, `clouded_over`, `client_lost`, `client_back`, `client_disconnected`. The imaging-app events and the silence times are stored under their own NVS key, so they don't count towards the 3900-byte limit on the rest of the alert settings.
+
+Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
 
 ### Bluetooth (`ble`)
 

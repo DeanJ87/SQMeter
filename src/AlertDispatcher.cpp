@@ -130,35 +130,28 @@ namespace SQM
 
         const char *ntfyTags(Alerts::AlertType type)
         {
-            switch (type)
-            {
-            case Alerts::AlertType::Unsafe:
-                return "warning";
-            case Alerts::AlertType::Safe:
-                return "white_check_mark";
-            case Alerts::AlertType::RainStarted:
-                return "cloud_with_rain";
-            case Alerts::AlertType::RainStopped:
-                return "sun_behind_small_cloud";
-            case Alerts::AlertType::SensorFault:
-            case Alerts::AlertType::LensFault:
-                return "rotating_light";
-            case Alerts::AlertType::SensorRecovered:
-                return "wrench";
-            case Alerts::AlertType::DewRisk:
-                return "droplet";
-            case Alerts::AlertType::ClearSky:
-                return "star";
-            case Alerts::AlertType::CloudedOver:
-                return "cloud";
-            case Alerts::AlertType::Acknowledged:
-                return "ok_hand";
-            case Alerts::AlertType::AlertsOn:
-                return "telescope";
-            case Alerts::AlertType::Test:
-                return "test_tube";
-            }
-            return "bell";
+            // In AlertType order (lib/AlertLogic/include/AlertEngine.h).
+            static constexpr const char *TAGS[] = {
+                "warning",                // Unsafe
+                "white_check_mark",       // Safe
+                "cloud_with_rain",        // RainStarted
+                "sun_behind_small_cloud", // RainStopped
+                "rotating_light",         // SensorFault
+                "wrench",                 // SensorRecovered
+                "rotating_light",         // LensFault
+                "droplet",                // DewRisk
+                "star",                   // ClearSky
+                "cloud",                  // CloudedOver
+                "ok_hand",                // Acknowledged
+                "telescope",              // AlertsOn
+                "test_tube",              // Test
+                "satellite",              // ClientLost
+                "link",                   // ClientBack
+                "electric_plug",          // ClientDisconnected
+            };
+            static_assert(sizeof(TAGS) / sizeof(TAGS[0]) == Alerts::ALERT_TYPE_COUNT, "a tag for every AlertType");
+            const size_t index = static_cast<size_t>(type);
+            return index < Alerts::ALERT_TYPE_COUNT ? TAGS[index] : "bell";
         }
     } // namespace
 

@@ -36,7 +36,7 @@ Cards flow into columns like a pin board. **Arrange** lets you drag them into yo
 
 The bell in the header lists the recent alerts with each channel's delivery result, and counts new ones. From it you can:
 
-- **Turn off** / **Turn on** alerts - the same switch as **Alerts on now** in Settings, for when you're not imaging (see [Alerts](alerts.md#turning-alerts-off-when-youre-not-imaging)); the bell shows when alerts are off
+- **Pause** / **Resume** alerts - the same as **Pause alerts** in Settings (see [Alerts](alerts.md#when-to-sende-not-imaging)); the bell shows when alerts are off
 - **Clear** the list
 - jump to the alert **Settings**
 

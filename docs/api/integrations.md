@@ -7,7 +7,7 @@ SQMeter exposes device data through these integration paths. The legacy raw TCP 
 <!-- diagram: DIA-15
 sources: include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h lib/AlpacaLogic/include/AlpacaRouter.h lib/Readings/include/
 blocking: false
-fingerprint: 88c5172c4d848e42
+fingerprint: 757c06cfd40ba221
 -->
 <figure class="diagram" markdown>
 
@@ -62,7 +62,7 @@ Real-time streaming over persistent connections. Connect to `/ws/sensors` for li
 
 ### MQTT
 
-Configure SQMeter to publish to an MQTT broker on a schedule, plus a retained safe/unsafe flag (`<topic>/safe`) and an alerts on/off switch for Home Assistant. See [MQTT Integration](../user-guide/mqtt.md) for setup.
+Configure SQMeter to publish to an MQTT broker on a schedule, plus a retained safe/unsafe flag (`<topic>/safe`) and an alerts pause/resume switch for Home Assistant. See [MQTT Integration](../user-guide/mqtt.md) for setup.
 
 ### ASCOM Alpaca
 
