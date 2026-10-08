@@ -53,3 +53,4 @@ Thumbs.db
 
 # Claude Code per-user settings (the shared Spec Kit skills in .claude/skills are committed)
 .claude/settings.local.json
+.claude/worktrees/

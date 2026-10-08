@@ -16,7 +16,7 @@ export const SCENARIOS: { id: ScenarioId; label: string; hint: string; needsRain
   { id: 'rain', label: 'Rain', hint: 'A shower: rain, then the rain clear delay', needsRain: true },
   { id: 'cloud', label: 'Cloud over', hint: 'Cloud rolls in until it is overcast' },
   { id: 'clear', label: 'Clear', hint: 'Back to a clear, dark sky' },
-  { id: 'dawn', label: 'Dawn', hint: 'The sky brightens as if the sun were rising' },
+  { id: 'dawn', label: 'Dawn', hint: "Moves the device's clock to the next dawn (sun 12° below the horizon and rising) - run 10× to watch it brighten" },
   { id: 'fail-light', label: 'Light sensor fails', hint: 'The TSL2591 stops responding for a while' },
   { id: 'fail-ir', label: 'IR sensor fails', hint: 'The MLX90614 stops responding for a while' },
   { id: 'fail-environment', label: 'BME280 fails', hint: 'Temperature and humidity stop for a while' },
@@ -29,7 +29,7 @@ const DURATION_MS: Record<ScenarioId, number> = {
   rain: 4 * 60_000,
   cloud: 10 * 60_000,
   clear: 60_000,
-  dawn: 6 * 60_000,
+  dawn: 50 * 60_000,
   'fail-light': 3 * 60_000,
   'fail-ir': 3 * 60_000,
   'fail-environment': 3 * 60_000,
@@ -84,6 +84,19 @@ export function darkestTime(from: Date, latitude: number, longitude: number) {
   return best;
 }
 
+// The next time after `from` the sun rises through `altitude`, at 2-minute
+// resolution (null if it doesn't within a day, e.g. polar night or day).
+export function nextSunRising(from: Date, latitude: number, longitude: number, altitude: number) {
+  let previous = sunPosition(from, latitude, longitude).altitude;
+  for (let minutes = 2; minutes <= 24 * 60; minutes += 2) {
+    const at = new Date(from.getTime() + minutes * 60_000);
+    const current = sunPosition(at, latitude, longitude).altitude;
+    if (previous < altitude && current >= altitude) return at;
+    previous = current;
+  }
+  return null;
+}
+
 // Cloud takes this long (demo time) to roll in fully.
 const CLOUD_ROLL_IN_MS = 40_000;
 
@@ -106,7 +119,6 @@ export function simulate(nowMs: number, now: Date, settings: SimulatorSettings, 
   if (active?.id === 'rain') cloud = 0.97;
 
   let lux = skyLux(sun) * (1 + cloud * 0.5) * (1 + wobble(nowMs, 47, 0.04));
-  if (active?.id === 'dawn') lux = Math.max(lux, 0.00028 * Math.pow(10, 6 * ramp(elapsed, 5 * 60_000)));
   const counts = Math.min(65535, Math.round(Math.max(lux, 0.0001) * 1_000_000));
 
   const ambient = 11 + 5 * Math.sin((sun * Math.PI) / 180) + wobble(nowMs, 900, 0.3);
