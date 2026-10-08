@@ -24,7 +24,7 @@ from the documentation, the maintainer's stated requirements and the code, then 
 | [010](010-dashboard/spec.md) | Dashboard, demo and screenshots | 4 |
 | [011](011-settings-security/spec.md) | Settings, configuration and security | 2 |
 | [012](012-ota-updates/spec.md) | Firmware and web UI updates | 5 |
-| [013](013-data-interfaces/spec.md) | MQTT, REST and WebSocket | 13 (1 critical) |
+| [013](013-data-interfaces/spec.md) | MQTT, REST and WebSocket | 0 — converged |
 | [014](014-wifi-setup/spec.md) | WiFi setup and network presence | 5 |
 
 Some documentation tasks are already addressed by the docs refresh PR (#73); they are marked

@@ -304,7 +304,10 @@ namespace SQM
         cfg.mqtt.port = 1883;
         cfg.mqtt.username = "";
         cfg.mqtt.password = "";
-        cfg.mqtt.topic = "sqm/data";
+        cfg.mqtt.topic = "sqmeter";
+        cfg.mqtt.publish = MQTTConfig::Publish{};
+        cfg.mqtt.homeAssistant = false;
+        cfg.mqtt.discoveryPrefix = "homeassistant";
         cfg.mqtt.publishIntervalMs = 60000; // 1 minute
 
         cfg.ota.enabled = false;
@@ -524,6 +527,18 @@ namespace SQM
         mqtt["password"] = redactSecrets && !this->mqtt.password.empty() ? SECRET_MASK : this->mqtt.password.c_str();
         mqtt["topic"] = this->mqtt.topic;
         mqtt["publishIntervalMs"] = this->mqtt.publishIntervalMs;
+        JsonObject publish = mqtt.createNestedObject("publish");
+        publish["sky"] = this->mqtt.publish.sky;
+        publish["environment"] = this->mqtt.publish.environment;
+        publish["clouds"] = this->mqtt.publish.clouds;
+        publish["gps"] = this->mqtt.publish.gps;
+        publish["rain"] = this->mqtt.publish.rain;
+        publish["wind"] = this->mqtt.publish.wind;
+        publish["safety"] = this->mqtt.publish.safety;
+        publish["diagnostics"] = this->mqtt.publish.diagnostics;
+        JsonObject homeAssistant = mqtt.createNestedObject("homeAssistant");
+        homeAssistant["enabled"] = this->mqtt.homeAssistant;
+        homeAssistant["discoveryPrefix"] = this->mqtt.discoveryPrefix;
 
         JsonObject ota = doc.createNestedObject("ota");
         ota["enabled"] = this->ota.enabled;
@@ -688,6 +703,20 @@ namespace SQM
             return setError(error, "MQTT broker and topic are required when MQTT is enabled");
         }
 
+        // Letters, digits, _ and -, with / between levels (same rule as the web UI).
+        auto validTopic = [](const std::string &topic)
+        {
+            if (topic.empty() || topic.front() == '/' || topic.back() == '/' || topic.find("//") != std::string::npos)
+                return false;
+            for (char c : topic)
+                if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '-' || c == '/'))
+                    return false;
+            return true;
+        };
+        if (mqtt.enabled && !validTopic(mqtt.topic))
+            return setError(error, "MQTT topic: use letters, numbers, _ and -, with / between levels");
+        if (mqtt.homeAssistant && !validTopic(mqtt.discoveryPrefix))
+            return setError(error, "MQTT discovery prefix: use letters, numbers, _ and -, with / between levels");
         if (mqtt.publishIntervalMs < 1000 || mqtt.publishIntervalMs > 86400000)
         {
             return setError(error, "MQTT publish interval is invalid");
@@ -962,7 +991,32 @@ namespace SQM
                 cfg.mqtt.username = mqtt["username"] | "";
             assignSecret(mqtt, "password", cfg.mqtt.password, preserveSecretPlaceholders);
             if (mqtt.containsKey("topic"))
-                cfg.mqtt.topic = mqtt["topic"] | "sqm/data";
+                cfg.mqtt.topic = mqtt["topic"] | "sqmeter";
+            JsonObject publish = mqtt["publish"];
+            if (!publish.isNull())
+            {
+                auto flag = [&publish](const char *key, bool &target)
+                {
+                    if (publish.containsKey(key))
+                        target = publish[key] | target;
+                };
+                flag("sky", cfg.mqtt.publish.sky);
+                flag("environment", cfg.mqtt.publish.environment);
+                flag("clouds", cfg.mqtt.publish.clouds);
+                flag("gps", cfg.mqtt.publish.gps);
+                flag("rain", cfg.mqtt.publish.rain);
+                flag("wind", cfg.mqtt.publish.wind);
+                flag("safety", cfg.mqtt.publish.safety);
+                flag("diagnostics", cfg.mqtt.publish.diagnostics);
+            }
+            JsonObject homeAssistant = mqtt["homeAssistant"];
+            if (!homeAssistant.isNull())
+            {
+                if (homeAssistant.containsKey("enabled"))
+                    cfg.mqtt.homeAssistant = homeAssistant["enabled"] | false;
+                if (homeAssistant.containsKey("discoveryPrefix"))
+                    cfg.mqtt.discoveryPrefix = homeAssistant["discoveryPrefix"] | "homeassistant";
+            }
             if (mqtt.containsKey("publishIntervalMs"))
                 cfg.mqtt.publishIntervalMs = mqtt["publishIntervalMs"] | 60000;
         }

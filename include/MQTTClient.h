@@ -1,11 +1,6 @@
 #pragma once
 
 #include "Config.h"
-#include "sensors/TSL2591Sensor.h"
-#include "sensors/BME280Sensor.h"
-#include "sensors/MLX90614Sensor.h"
-#include "sensors/GPSSensor.h"
-#include "sensors/RG15Sensor.h"
 #include <PubSubClient.h>
 #include <functional>
 #include <WiFiClient.h>
@@ -48,12 +43,12 @@ namespace SQM
         // Get current status
         MQTTStatus getStatus() const;
 
-        // Publish sensor data
-        void publishSensorData(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15);
-
-        // Publish to <configured topic>/<subtopic>. Must be called from the
-        // same task that runs handle() - PubSubClient isn't thread-safe.
+        // Publish to <base topic>/<subtopic>, or to an absolute topic (Home
+        // Assistant discovery). Must be called from the task that runs
+        // handle() - PubSubClient isn't thread-safe. The readings themselves
+        // are built by WebServer (lib/Readings).
         bool publishSubtopic(const std::string &subtopic, const std::string &payload, bool retained);
+        bool publishTopic(const std::string &topic, const std::string &payload, bool retained);
 
         // Update configuration
         void updateConfig(const MQTTConfig &newConfig);
@@ -67,12 +62,7 @@ namespace SQM
         // republished after the broker comes back.
         uint32_t connectionCount() const { return connections; }
 
-        // The SafetyMonitor verdict, added to the readings payload as
-        // "safe": 1/0 so it's logged alongside them.
-        void setSafety(bool safe) { safeState = safe ? 1 : 0; }
-
     private:
-        int8_t safeState = -1; // -1 until the first verdict
         std::string commandSubtopic;
         CommandHandler commandHandler;
         uint32_t connections = 0;
@@ -91,8 +81,6 @@ namespace SQM
         void publishAvailability(bool online);
         std::string buildClientId() const;
         std::string getAvailabilityTopic() const;
-
-        std::string createPayload(const TSL2591Sensor &tsl, const BME280Sensor &bme, const MLX90614Sensor &mlx, const GPSSensor &gps, const RG15Sensor &rg15);
     };
 
 } // namespace SQM

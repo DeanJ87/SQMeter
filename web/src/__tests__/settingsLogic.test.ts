@@ -43,7 +43,7 @@ describe('deriveHardware', () => {
   });
 
   it('reports undetected I2C sensors', () => {
-    const status = { ...mockStatus, sensors: { ...mockStatus.sensors!, mlx90614: { initialized: false, status: 1, lastUpdate: 0 } } };
+    const status = { ...mockStatus, sensors: { ...mockStatus.sensors!, infrared: { status: 'missing' as const, ageMs: 0 } } };
     const hw = deriveHardware(config, status);
     expect(hw.irSky.detected).toBe(false);
     expect(unavailableReason(hw.irSky, 'The MLX90614', 'wire')).toMatch(/wasn't detected/);
@@ -56,7 +56,7 @@ describe('deriveHardware', () => {
   });
 
   it('only judges rain sensor health when the device is running it', () => {
-    const status = { ...mockStatus, sensors: { ...mockStatus.sensors!, rg15: { ...mockStatus.sensors!.rg15!, enabled: false } } };
+    const status = { ...mockStatus, sensors: { ...mockStatus.sensors!, rain: undefined } };
     expect(deriveHardware(config, status).rain.detected).toBeNull();
   });
 });

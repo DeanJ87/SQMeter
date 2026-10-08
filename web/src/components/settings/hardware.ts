@@ -27,44 +27,43 @@ export interface Hardware {
   bleAvailable: boolean | null;
 }
 
-const OK = 0;
-
-const i2cSensor = (sensor?: { initialized: boolean; status: number }): SensorAvailability => ({
+const i2cSensor = (sensor?: { status: string }): SensorAvailability => ({
   enabled: true,
-  detected: sensor ? sensor.initialized && sensor.status === OK : null,
+  detected: sensor ? sensor.status === 'ok' || sensor.status === 'stale' : null,
   savedEnabled: true,
 });
 
 export const deriveHardware = (config: Config, status: SystemStatus | null): Hardware => {
   const sensors = status?.sensors;
-  const rainRunning = sensors?.rg15?.enabled ?? null;
-  const windRunning = sensors?.wind?.enabled ?? null;
+  // Optional hardware only appears in status while the device runs with it on.
+  const rainRunning = sensors ? Boolean(sensors.rain) : null;
+  const windRunning = sensors ? Boolean(sensors.wind) : null;
   const windEnabled = config.wind?.enabled ?? false;
 
   return {
     statusLoaded: status !== null,
-    skyLight: i2cSensor(sensors?.tsl2591),
-    irSky: i2cSensor(sensors?.mlx90614),
-    environment: i2cSensor(sensors?.bme280),
+    skyLight: i2cSensor(sensors?.light),
+    irSky: i2cSensor(sensors?.infrared),
+    environment: i2cSensor(sensors?.environment),
     rain: {
       enabled: config.rain?.enabled ?? false,
       // Only meaningful if the device is already running with the sensor on.
-      detected: rainRunning ? Boolean(sensors?.rg15?.online && !sensors?.rg15?.stale) : null,
+      detected: rainRunning ? sensors?.rain?.status === 'ok' : null,
       savedEnabled: rainRunning,
     },
     wind: {
       enabled: windEnabled,
-      detected: windRunning ? sensors?.wind?.status === OK : null,
+      detected: windRunning ? sensors?.wind?.status === 'ok' : null,
       savedEnabled: windRunning,
     },
     windVane: {
       enabled: windEnabled && (config.wind?.directionEnabled ?? false),
-      detected: windRunning ? !(sensors?.wind?.vaneFault ?? false) : null,
+      detected: windRunning ? sensors?.wind?.vaneStatus !== 'fault' : null,
       savedEnabled: windRunning,
     },
     gps: {
       enabled: config.gps.enabled,
-      detected: sensors?.gps ? sensors.gps.initialized : null,
+      detected: sensors?.gps ? sensors.gps.status !== 'missing' : null,
       savedEnabled: null,
     },
     mqtt: {

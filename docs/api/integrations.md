@@ -45,13 +45,13 @@ If you used the port 2020 TCP interface to drive observatory automation software
 
 | Capability | Old path | Replacement |
 |------------|----------|-------------|
-| Sky quality / SQM | TCP `:003#` | `GET /api/sensors` → `skyQuality.sqm` |
+| Sky quality / SQM | TCP `:003#` | `GET /api/sensors` → `sky.sqm` |
 | Humidity | TCP `:028#` | `GET /api/sensors` → `environment.humidity` |
 | Pressure | TCP `:029#` | `GET /api/sensors` → `environment.pressure` |
 | Ambient temp | TCP `:030#` | `GET /api/sensors` → `environment.temperature` |
 | Dew point | TCP `:031#` | `GET /api/sensors` → `environment.dewpoint` |
-| Sky temperature | TCP `:035#` | `GET /api/sensors` → `irTemperature.objectTemp` |
-| Cloud cover | TCP `:038#` | `GET /api/sensors` → `cloudConditions.cloudCoverPercent` |
-| Rain rate | TCP `:051#` | `GET /api/sensors` → `rainSensor.rInt` |
+| Sky temperature | TCP `:035#` | `GET /api/sensors` → `infrared.skyTemperature` |
+| Cloud cover | TCP `:038#` | `GET /api/sensors` → `clouds.coverPercent` |
+| Rain rate | TCP `:051#` | `GET /api/sensors` → `rain.intensity` (mm/h) |
 
 Most observatory automation tools that previously supported the SQMeter TCP interface can be configured to query a REST endpoint via HTTP instead, either natively or via a local bridge script.

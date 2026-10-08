@@ -60,7 +60,7 @@ describe('Settings', () => {
   it('greys out sky rules when the MLX90614 was not detected', async () => {
     server.use(
       http.get('/api/status', () =>
-        HttpResponse.json({ ...mockStatus, sensors: { ...mockStatus.sensors, mlx90614: { initialized: false, status: 1, lastUpdate: 0 } } })
+        HttpResponse.json({ ...mockStatus, sensors: { ...mockStatus.sensors, infrared: { status: 'missing', ageMs: 0 } } })
       )
     );
     withConfig({ alpaca: { ...mockConfig.alpaca, cloudCoverEnabled: false } });

@@ -5,7 +5,7 @@ import type { SafetyStatus } from '../types';
 import { Button, Card, Note, Pill } from './ui';
 
 const verdict = (safety: SafetyStatus) => {
-  if (safety.isSafe) return { text: 'Safe', tone: 'pill-green' };
+  if (safety.safe) return { text: 'Safe', tone: 'pill-green' };
   if (safety.rawSafe && safety.secondsUntilSafe > 0) {
     return { text: `Safe in ${safety.secondsUntilSafe}s`, tone: 'pill-amber' };
   }
@@ -108,7 +108,7 @@ const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null; showRulesL
   const state = verdict(safety);
 
   return (
-    <Card title="Safety Monitor" icon="eye" tone={safety.isSafe ? 'green' : 'red'} actions={<Pill tone={state.tone}>{state.text}</Pill>}>
+    <Card title="Safety Monitor" icon="eye" tone={safety.safe ? 'green' : 'red'} actions={<Pill tone={state.tone}>{state.text}</Pill>}>
       <div class="card-body">
         {safety.reasons.length > 0 ? (
           <ul class="reason-list" aria-label="Unsafe reasons">
@@ -116,13 +116,13 @@ const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null; showRulesL
               <li key={reason}>{reason}</li>
             ))}
           </ul>
-        ) : safety.isSafe ? (
+        ) : safety.safe ? (
           <Note>All rules pass.</Note>
         ) : (
           <Note tone="warn">Waiting out the safe delay.</Note>
         )}
         <Note action={showRulesLink ? { label: 'Rules', onClick: () => route('/settings?tab=safety') } : undefined}>
-          {safety.isSafe ? 'Safe' : 'Unsafe'} for {formatSince(safety.changedAgeMs)}
+          {safety.safe ? 'Safe' : 'Unsafe'} for {formatSince(safety.changedAgeMs)}
           {!safety.alpacaEnabled && ' · not shared with N.I.N.A. (Alpaca off)'}
         </Note>
         <div class="btn-row">

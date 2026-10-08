@@ -1,140 +1,142 @@
-export interface LightSensorReading {
-  lux: number;
-  visible: number;
-  infrared: number;
-  full: number;
-  status: number;
+// The readings document: GET /api/sensors, /ws/sensors and MQTT <base>/state
+// (specs/013-data-interfaces/contracts/readings.md). A group whose status
+// isn't "ok" carries only status and ageMs.
+export type SensorHealth = 'ok' | 'missing' | 'error' | 'stale';
+
+interface Group {
+  status: SensorHealth;
+  ageMs?: number;
 }
 
-export interface EnvironmentReading {
-  temperature: number;
-  humidity: number;
-  pressure: number;
-  dewpoint: number;
-  status: number;
+export interface LightReading extends Group {
+  lux?: number;
+  visible?: number;
+  infrared?: number;
+  full?: number;
+  gain?: string;
+  gainFactor?: number;
+  integrationMs?: number;
+  saturated?: boolean;
+  nightMode?: boolean;
 }
 
-export interface IRTemperatureReading {
-  objectTemp: number;
-  ambientTemp: number;
-  status: number;
+export interface SkyReading extends Group {
+  sqm?: number;
+  rawSqm?: number;
+  nelm?: number;
+  bortle?: number;
+  description?: string;
+  calibrated?: boolean;
+  averagingWindowSeconds?: number;
 }
 
-export interface SkyQuality {
-  sqm: number;
-  nelm: number;
-  bortle: number;
-  description: string;
+export interface EnvironmentReading extends Group {
+  temperature?: number;
+  humidity?: number;
+  pressure?: number;
+  dewpoint?: number;
 }
 
-export interface CloudConditions {
-  temperatureDelta: number;
-  correctedDelta: number;
-  cloudCoverPercent: number;
-  condition: number; // 0=Unknown, 1=Clear, 2=Cloudy, 3=Overcast
-  description: string;
-  humidityUsed: number;
+export interface InfraredReading extends Group {
+  skyTemperature?: number;
+  ambientTemperature?: number;
+}
+
+export interface CloudReading extends Group {
+  coverPercent?: number;
+  condition?: 'clear' | 'cloudy' | 'overcast' | 'unknown';
+  description?: string;
+  temperatureDelta?: number;
+  correctedDelta?: number;
+  humidity?: number;
+  humiditySource?: 'measured' | 'assumed';
+}
+
+export interface GpsReading extends Group {
+  fix?: boolean;
+  satellites?: number;
+  latitude?: number;
+  longitude?: number;
+  altitude?: number;
+  hdop?: number;
+}
+
+// Always metric (mm, mm/h).
+export interface RainReading extends Group {
+  raining?: boolean;
+  rainingNow?: boolean;
+  intensity?: number;
+  eventAccumulation?: number;
+  sensorEventAccumulation?: number;
+  totalAccumulation?: number;
+  lensFault?: boolean;
+  emitterSaturated?: boolean;
+}
+
+export interface WindReading extends Group {
+  speed?: number;
+  gust?: number;
+  direction?: number;
+  vaneFault?: boolean;
 }
 
 export interface SensorData {
-  dataTimestamp?: number;
-  safety?: SafetyStatus;
-  wind?: WindReading;
-  lightSensor?: LightSensorReading;
-  environment?: EnvironmentReading;
-  irTemperature?: IRTemperatureReading;
-  skyQuality?: SkyQuality;
-  cloudConditions?: CloudConditions;
-  gps?: {
-    hasFix: boolean;
-    satellites: number;
-    latitude: number;
-    longitude: number;
-    altitude: number;
-    hdop: number;
-    age: number;
-  };
-  rainSensor?: RainSensorReading;
-}
-
-export interface RG15UartDiagnostics {
-  configured: boolean;
-  opened: boolean;
-  rx_pin: number;
-  tx_pin: number;
-  baud_rate: number;
-  uart_port: number;
-  mode: string;
-  resolution: string;
-  units: string;
-  debug_uart: boolean;
-  poll_interval_ms?: number;
-  rain_clear_delay_ms?: number;
-  daily_reset_enabled?: boolean;
-  daily_reset_hour?: number;
-  daily_reset_minute?: number;
-  last_command?: string | null;
-  last_command_ms?: number | null;
-  last_bytes_written?: number;
-  expected_ack?: string | null;
-  last_ack?: string | null;
-  last_ack_ms?: number | null;
-  last_raw_response?: string | null;
-  last_response_ms?: number | null;
-  last_error?: string | null;
-  timeouts: number;
-  parse_errors: number;
-  successful_reads: number;
-  response_timeout_ms: number;
-  stale_timeout_ms: number;
-  last_health_check_ms?: number | null;
-  last_health_check_age_ms?: number | null;
-  last_poll_ms?: number | null;
-  last_poll_age_ms?: number | null;
-  last_rain_detected_ms?: number | null;
-  last_rain_detected_age_ms?: number | null;
-  last_total_reset_ms?: number | null;
-  last_total_reset_age_ms?: number | null;
-  last_reboot_command_ms?: number | null;
-  last_reboot_command_age_ms?: number | null;
-  last_status_line?: string | null;
-  software_version?: string | null;
-  software_build_date?: string | null;
-  reset_reason?: string | null;
-  power_on_days?: number | null;
-  emitter_1?: number | null;
-  emitter_2?: number | null;
-  emitter_total?: number | null;
-  last_response_age_ms?: number | null;
-  last_successful_read_ms?: number | null;
-  last_successful_read_age_ms?: number | null;
-}
-
-export interface RG15SensorDiagnostics {
-  enabled: boolean;
-  sensor: string;
-  initialized: boolean;
-  online: boolean;
-  stale: boolean;
-  state: string;
   timestamp: number;
+  timeValid: boolean;
+  dataAgeMs: number;
+  dataStale: boolean;
+  light: LightReading;
+  sky: SkyReading;
+  environment: EnvironmentReading;
+  infrared: InfraredReading;
+  clouds: CloudReading;
+  gps?: GpsReading;
+  rain?: RainReading;
+  wind?: WindReading;
+  safety?: SafetyStatus;
+}
+
+// GET /api/status -> diagnostics.rain
+export interface RainDiagnostics {
+  state: string;
+  uartOpened: boolean;
+  rxPin: number;
+  txPin: number;
+  baudRate: number;
+  uartPort: number;
+  lastCommand?: string;
+  lastAck?: string;
+  lastResponse?: string;
+  lastError?: string;
+  timeouts: number;
+  parseErrors: number;
+  successfulReads: number;
+  lastPollAgeMs?: number;
+  lastResponseAgeMs?: number;
+  lastSuccessfulReadAgeMs?: number;
+  lastRainDetectedAgeMs?: number;
+  lastTotalResetAgeMs?: number;
+  lastRebootAgeMs?: number;
+  softwareVersion?: string;
+  softwareBuildDate?: string;
+  resetReason?: string;
+  powerOnDays?: number;
+  emitterTotal?: number;
+}
+
+export interface LightDiagnostics {
+  rollingVisible: number;
+  correctedVisible: number;
+  darkVisibleOffset: number;
+  sampleCount: number;
+  rejectedSamples: number;
+  consecutiveSaturatedSamples: number;
+  consecutiveLowSamples: number;
+}
+
+export interface SensorStatusEntry {
+  status: SensorHealth;
   ageMs: number;
-  status: number;
-  isRaining: boolean;
-  raining?: boolean;
-  acc: number;
-  eventAcc: number;
-  totalAcc: number;
-  rInt: number;
-  accumulation_since_last_read?: number;
-  event_accumulation?: number;
-  local_event_accumulation?: number;
-  hydreon_event_accumulation?: number;
-  total_accumulation?: number;
-  rain_intensity?: number;
-  lensBad: boolean;
-  emSat: boolean;
-  uart: RG15UartDiagnostics;
 }
 
 export interface SystemStatus {
@@ -225,68 +227,18 @@ export interface SystemStatus {
     port: number;
     topic: string;
   };
+  // Present hardware only; readings are in /api/sensors.
   sensors: {
-    tsl2591: {
-      initialized: boolean;
-      status: number;
-      lastUpdate: number;
-    };
-    bme280: {
-      initialized: boolean;
-      status: number;
-      lastUpdate: number;
-    };
-    mlx90614: {
-      initialized: boolean;
-      status: number;
-      lastUpdate: number;
-    };
-    gps: {
-      initialized: boolean;
-      status: number;
-      lastUpdate: number;
-    };
-    wind?: {
-      enabled: boolean;
-      status: number;
-      vaneFault: boolean;
-      ageMs: number;
-    };
-    rg15?: {
-      enabled: boolean;
-      initialized: boolean;
-      online: boolean;
-      stale: boolean;
-      state: string;
-      status: number;
-      lastUpdate: number;
-      timestamp?: number;
-      ageMs?: number;
-      isRaining?: boolean;
-      raining?: boolean;
-      acc?: number;
-      eventAcc?: number;
-      totalAcc?: number;
-      rInt?: number;
-      accumulation_since_last_read?: number;
-      event_accumulation?: number;
-      local_event_accumulation?: number;
-      hydreon_event_accumulation?: number;
-      total_accumulation?: number;
-      rain_intensity?: number;
-      lensBad?: boolean;
-      emSat?: boolean;
-      uart?: RG15UartDiagnostics;
-    };
+    light: SensorStatusEntry;
+    environment: SensorStatusEntry;
+    infrared: SensorStatusEntry;
+    gps?: SensorStatusEntry;
+    rain?: SensorStatusEntry;
+    wind?: SensorStatusEntry & { vaneStatus: 'ok' | 'fault' | 'off' };
   };
-  gpsData?: {
-    hasFix: boolean;
-    satellites: number;
-    latitude: number;
-    longitude: number;
-    altitude: number;
-    hdop: number;
-    age: number;
+  diagnostics?: {
+    light?: LightDiagnostics;
+    rain?: RainDiagnostics;
   };
 }
 
@@ -299,14 +251,27 @@ export interface WiFiConfig {
   maxReconnectDelayMs: number;
 }
 
+export interface MQTTPublishGroups {
+  sky: boolean;
+  environment: boolean;
+  clouds: boolean;
+  gps: boolean;
+  rain: boolean;
+  wind: boolean;
+  safety: boolean;
+  diagnostics: boolean;
+}
+
 export interface MQTTConfig {
   enabled: boolean;
   broker: string;
   port: number;
   username: string;
   password: string;
-  topic: string;
+  topic: string; // base topic
   publishIntervalMs: number;
+  publish?: MQTTPublishGroups;
+  homeAssistant?: { enabled: boolean; discoveryPrefix: string };
 }
 
 export interface OTAConfig {
@@ -400,22 +365,9 @@ export interface WindConfig {
   vanePullupOhms: number;
 }
 
-export interface WindReading {
-  status: number;
-  speedMs: number;
-  gustMs: number;
-  instantMs: number;
-  directionValid: boolean;
-  directionDeg: number;
-  vaneFault: boolean;
-  samples: number;
-  ageMs: number;
-}
-
 // Live SafetyMonitor verdict (GET /api/safety, and `safety` on /ws/sensors)
 export interface SafetyStatus {
-  isSafe: boolean;
-  safe?: 0 | 1;
+  safe: boolean;
   rawSafe: boolean;
   alpacaEnabled: boolean;
   reasonFlags: number;
@@ -513,32 +465,6 @@ export interface LocationConfig {
   latitude: number;
   longitude: number;
   showSunMoon?: boolean;
-}
-
-export interface RainSensorReading {
-  enabled: boolean;
-  sensor: string;
-  initialized: boolean;
-  online: boolean;
-  stale: boolean;
-  status: number;
-  timestamp: number;
-  ageMs: number;
-  isRaining: boolean;
-  raining?: boolean;
-  acc: number;
-  eventAcc: number;
-  totalAcc: number;
-  rInt: number;
-  accumulation_since_last_read?: number;
-  event_accumulation?: number;
-  local_event_accumulation?: number;
-  hydreon_event_accumulation?: number;
-  total_accumulation?: number;
-  rain_intensity?: number;
-  lensBad: boolean;
-  emSat: boolean;
-  uart: RG15UartDiagnostics;
 }
 
 export interface RainSensorConfig {

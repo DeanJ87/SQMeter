@@ -4,7 +4,7 @@ import SafetyCard from '../SafetyCard';
 import type { SafetyStatus } from '../../types';
 
 const base: SafetyStatus = {
-  isSafe: true,
+  safe: true,
   rawSafe: true,
   alpacaEnabled: true,
   reasonFlags: 0,
@@ -22,13 +22,13 @@ describe('SafetyCard', () => {
   });
 
   it('lists unsafe reasons such as rain', () => {
-    render(<SafetyCard safety={{ ...base, isSafe: false, rawSafe: false, reasonFlags: 512, reasons: ['Rain detected'] }} />);
+    render(<SafetyCard safety={{ ...base, safe: false, rawSafe: false, reasonFlags: 512, reasons: ['Rain detected'] }} />);
     expect(screen.getByText('Unsafe')).toBeInTheDocument();
     expect(screen.getByText(/Rain detected/)).toBeInTheDocument();
   });
 
   it('shows the countdown while the safe delay holds', () => {
-    render(<SafetyCard safety={{ ...base, isSafe: false, rawSafe: true, secondsUntilSafe: 42 }} />);
+    render(<SafetyCard safety={{ ...base, safe: false, rawSafe: true, secondsUntilSafe: 42 }} />);
     expect(screen.getByText('Safe in 42s')).toBeInTheDocument();
   });
 

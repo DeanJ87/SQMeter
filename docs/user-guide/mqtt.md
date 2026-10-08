@@ -1,12 +1,12 @@
 # MQTT Integration
 
-SQMeter can publish sensor readings to any MQTT broker — Home Assistant, Grafana, or your own pipeline.
+SQMeter publishes its readings, the safety verdict and alerts to any MQTT broker, and can announce itself to Home Assistant automatically.
 
 ---
 
 ## Enabling MQTT
 
-In **Settings → Network → MQTT** (or via the API), enable MQTT and set your broker details:
+In **Settings → Network → MQTT**, turn on **Publish to a broker** and set the broker, credentials, **Base topic** (default `sqmeter`) and how often readings are sent. The same settings over the API:
 
 ```json
 {
@@ -16,150 +16,108 @@ In **Settings → Network → MQTT** (or via the API), enable MQTT and set your 
     "port": 1883,
     "username": "mqttuser",
     "password": "mqttpass",
-    "topic": "sqm/backyard",
-    "publishIntervalMs": 60000
+    "topic": "sqmeter",
+    "publishIntervalMs": 60000,
+    "publish": { "sky": true, "environment": true, "clouds": true, "gps": true, "rain": true, "wind": true, "safety": true, "diagnostics": false },
+    "homeAssistant": { "enabled": true, "discoveryPrefix": "homeassistant" }
   }
 }
 ```
 
-The device will start publishing once it reconnects.
+The base topic may use letters, numbers, `_` and `-`, with `/` between levels.
 
-!!! warning "Current MQTT limitations"
-    MQTT is still a plaintext LAN integration and should not be treated as a safety controller. Use the payload as telemetry and keep physical safety interlocks independent.
+!!! warning "Telemetry, not an interlock"
+    MQTT is a plaintext LAN integration. Use it for telemetry and automation; keep physical safety interlocks independent.
 
 ---
 
-## Payload Format
+## Topics
 
-Published to `{topic}` every `publishIntervalMs` milliseconds:
+| Topic | Retained | Payload | When |
+|---|---|---|---|
+| `<base>/availability` | Yes | `online` / `offline` (last will) | On connect / disconnect |
+| `<base>/state` | Yes | The readings document (below) | Every publish interval, and on reconnect |
+| `<base>/safe` | Yes | `1` safe, `0` unsafe | On every change, refreshed every minute |
+| `<base>/safety` | Yes | The safety object - same as [`GET /api/safety`](../api/rest.md#get-apisafety) | With `<base>/safe` |
+| `<base>/alerts` | No | One message per alert (with **Settings → Alerts → MQTT** on): `{"event","events"?,"title","message","level","device","timestamp"}` | Each alert |
+| `<base>/alerts/armed` | Yes | `1` alerts on, `0` off | On change and reconnect |
+| `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` switch alerts on or off | Command |
+| `<base>/diagnostics` | No | Light-sensor sample counts and RG-15 serial counters - same as `/api/status` → `diagnostics` | Every publish interval, when enabled |
+
+Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
+
+### Choosing what's published
+
+**Settings → Network → MQTT → Publish** switches each part on or off:
+
+| Switch | Controls |
+|---|---|
+| Sky quality and light | `light` and `sky` in `<base>/state` |
+| Temperature, humidity, pressure | `environment` |
+| IR and cloud cover | `infrared` and `clouds` |
+| GPS, Rain, Wind | `gps`, `rain`, `wind` (only when that hardware is enabled) |
+| Safe / unsafe | `<base>/safe` and `<base>/safety` |
+| Diagnostics | `<base>/diagnostics` (off by default) |
+
+---
+
+## Readings (`<base>/state`)
+
+The same document as [`GET /api/sensors`](../api/rest.md#get-apisensors) and `/ws/sensors`, minus the `safety` object (it has its own topics) and any groups switched off:
 
 ```json
 {
-  "timestamp": 1234567,
-  "light": {
-    "lux": 0.0234,
-    "visible": 123,
-    "infrared": 45,
-    "full": 168,
-    "gain": "MAX",
-    "gainFactor": 9876,
-    "integrationMs": 600,
-    "averagingWindowSeconds": 90,
-    "calibrated": true,
-    "saturated": false
-  },
-  "sky": {
-    "sqm": 21.5,
-    "rawSqm": 21.42,
-    "calibratedSqm": 21.5,
-    "nelm": 6.2,
-    "bortle": 2.0
-  },
-  "environment": {
-    "temperature": 12.4,
-    "humidity": 72.1,
-    "pressure": 1013.25
-  },
-  "infrared": {
-    "skyTemp": -15.2,
-    "ambientTemp": 12.4
-  },
-  "clouds": {
-    "temperatureDelta": -27.6,
-    "correctedDelta": -24.1,
-    "coverPercent": 5.0,
-    "condition": 0,
-    "description": "Clear"
-  },
-  "location": {
-    "latitude": 51.5074,
-    "longitude": -0.1278,
-    "altitude": 42.0,
-    "satellites": 8,
-    "hdop": 1.2
-  },
-  "rain": {
-    "enabled": true,
-    "initialized": true,
-    "online": true,
-    "stale": false,
-    "status": 0,
-    "isRaining": false,
-    "raining": false,
-    "acc": 0.0,
-    "eventAcc": 2.4,
-    "event_accumulation": 0.0,
-    "hydreon_event_accumulation": 2.4,
-    "totalAcc": 12.34,
-    "rInt": 0.0,
-    "uart": {
-      "last_command": "R",
-      "last_raw_response": "Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 1.24 mm, RInt 0.00 mm/h",
-      "timeouts": 0,
-      "parse_errors": 0,
-      "successful_reads": 42
-    }
-  }
+  "timestamp": 1791401772,
+  "timeValid": true,
+  "dataAgeMs": 412,
+  "dataStale": false,
+  "light": { "status": "ok", "ageMs": 400, "lux": 0.0003, "visible": 307, "infrared": 47, "full": 357, "gain": "MAX", "gainFactor": 9876, "integrationMs": 600, "saturated": false, "nightMode": true },
+  "sky": { "status": "ok", "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90 },
+  "environment": { "status": "ok", "ageMs": 3100, "temperature": 12.3, "humidity": 64.7, "pressure": 1013.4, "dewpoint": 6.1 },
+  "infrared": { "status": "ok", "ageMs": 3100, "skyTemperature": -24.7, "ambientTemperature": 12.4 },
+  "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "description": "Clear", "temperatureDelta": -37.1, "correctedDelta": -33.0, "humidity": 64.7, "humiditySource": "measured" },
+  "gps": { "status": "ok", "ageMs": 750, "fix": true, "satellites": 9, "latitude": 51.5074, "longitude": -0.1278, "altitude": 42.0, "hdop": 1.1 },
+  "rain": { "status": "ok", "ageMs": 40, "raining": false, "rainingNow": false, "intensity": 0.0, "eventAccumulation": 0.4, "sensorEventAccumulation": 0.4, "totalAccumulation": 12.6, "lensFault": false, "emitterSaturated": false },
+  "wind": { "status": "ok", "ageMs": 900, "speed": 3.3, "gust": 6.8, "direction": 246, "vaneFault": false }
 }
 ```
 
-`infrared` and `clouds` are omitted if the MLX90614 reading is unavailable. `location` is omitted unless GPS has a valid fix. `rain` is included whenever the RG-15 path is enabled and now carries UART diagnostics alongside the rain reading.
+- **`timestamp`** is Unix seconds; `timeValid` is `false` (and `timestamp` `0`) until the clock is set.
+- **`status`** is `ok`, `missing` (not detected or not responding), `error` or `stale`. A group whose status isn't `ok` carries only `status` and `ageMs` - never zeros that look like readings.
+- **`gps`, `rain`, `wind`** are only present when that hardware is enabled.
+- **Units**: °C, %, hPa, lux, mag/arcsec², m/s, degrees (0 = north), mm and mm/h (an RG-15 set to inches is converted). `wind.direction` is left out when it's calm or there's no vane.
+- **`rain.raining`** is held for the rain clear delay after the last drop; `rainingNow` is instantaneous. `eventAccumulation` is cleared by the clear delay; `sensorEventAccumulation` is the RG-15's own event total.
+- **`clouds.humiditySource`** is `assumed` when there's no humidity sensor (53% is used).
 
 ---
 
-## Safety and alert topics
-
-The SafetyMonitor verdict is published whenever MQTT is on, on every change and refreshed every minute. The readings payload on `<topic>` also carries `"safe": 1` or `0`, so it's logged with the readings.
-
-| Topic | Retained | Payload |
-|---|---|---|
-| `<topic>/safe` | Yes | `1` (safe) or `0` (unsafe) - for loggers, graphs and simple automations |
-| `<topic>/safety` | Yes | `{"isSafe": false, "safe": 0, "reasons": ["SQM 18.21 < 19.50", "Cloud 62% >= 35%"]}` |
-| `<topic>/alerts/armed` | Yes | `1` or `0` - alerts on or off |
-| `<topic>/alerts/armed/set` | - | Subscribed: publish `1`/`0` (or `on`/`off`, `true`/`false`) to switch alerts on or off |
-| `<topic>/alerts` | No | With **Settings → Alerts → MQTT** on: one message per alert, `{"event":"rain_started","title":"Rain detected","message":"...","level":"wake","device":"SQM-ESP32","timestamp":1759500000}` |
-
-For a Home Assistant binary sensor on `<topic>/safe` with `device_class: safety` (where "on" means unsafe), set `payload_on: "0"` and `payload_off: "1"`.
-
-See [Alerts](alerts.md) for the event list.
-
 ## Home Assistant
 
-Add to your `configuration.yaml`:
+Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**. SQMeter then appears as a device with:
+
+- **Sensors**: sky quality, limiting magnitude, Bortle class, illuminance, temperature, humidity, pressure, dew point, sky temperature, cloud cover, rain intensity, wind speed, gust and direction - for the groups you publish
+- **Binary sensors**: *Raining* (moisture) and *Observatory* (safety: on = unsafe)
+- **Switch**: *Alerts* - turn alerts off while you're not imaging
+
+Each entity is unavailable while the device is offline or its sensor isn't `ok`. Switching a group off removes its entities. The discovery prefix defaults to `homeassistant`.
+
+Without discovery, read `<base>/state` with a `value_template`:
 
 ```yaml
 mqtt:
   sensor:
-    - name: "Sky Quality (SQM)"
-      state_topic: "sqm/backyard"
+    - name: "Sky quality"
+      state_topic: "sqmeter/state"
       value_template: "{{ value_json.sky.sqm }}"
       unit_of_measurement: "mag/arcsec²"
-
-    - name: "Bortle Class"
-      state_topic: "sqm/backyard"
-      value_template: "{{ value_json.sky.bortle }}"
-
-    - name: "NELM"
-      state_topic: "sqm/backyard"
-      value_template: "{{ value_json.sky.nelm }}"
-
-    - name: "Sky Temperature"
-      state_topic: "sqm/backyard"
-      value_template: "{{ value_json.infrared.skyTemp }}"
-      unit_of_measurement: "°C"
-
-    - name: "Rain Intensity"
-      state_topic: "sqm/backyard"
-      value_template: "{{ value_json.rain.rInt | default(0) }}"
-      unit_of_measurement: "mm/h"
 ```
+
+See [Alerts](alerts.md) for the alert events.
 
 ---
 
 ## Mosquitto Test
 
-Verify data is publishing:
-
 ```bash
-mosquitto_sub -h 192.168.1.10 -t "sqm/#" -v
+mosquitto_sub -h <broker-ip> -t 'sqmeter/#' -v
 ```

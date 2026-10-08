@@ -1,4 +1,4 @@
-import type { AlertsConfig, AlpacaConfig, BleConfig, Config, LocationConfig, WindConfig } from '../../types';
+import type { AlertsConfig, AlpacaConfig, BleConfig, Config, LocationConfig, WindConfig, MQTTPublishGroups } from '../../types';
 
 // Defaults for every settings section - used to fill in fields that configs
 // from older firmware don't have yet.
@@ -106,3 +106,16 @@ export const defaultBleConfig: BleConfig = {
 };
 
 export const defaultLocationConfig: LocationConfig = { set: false, latitude: 0, longitude: 0, showSunMoon: true };
+
+export const defaultMqttPublish: MQTTPublishGroups = {
+  sky: true,
+  environment: true,
+  clouds: true,
+  gps: true,
+  rain: true,
+  wind: true,
+  safety: true,
+  diagnostics: false,
+};
+
+export const defaultHomeAssistant = { enabled: false, discoveryPrefix: 'homeassistant' };

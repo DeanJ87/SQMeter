@@ -1,10 +1,29 @@
 import { FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
-import type { WiFiNetwork } from '../../types';
+import type { MQTTPublishGroups, WiFiNetwork } from '../../types';
+import type { Hardware } from './hardware';
+import { defaultHomeAssistant, defaultMqttPublish } from './defaults';
 import type { SettingsTabProps } from './context';
-import { ActionButton, Field, NumberInput, ResultNote, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
+import { ActionButton, Field, Group, NumberInput, ResultNote, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
 
 type Result = { type: 'success' | 'error'; text: string } | null;
+
+const PUBLISH_GROUPS: {
+  key: keyof MQTTPublishGroups;
+  label: string;
+  hint?: string;
+  needs?: (hw: Hardware) => boolean;
+  blocked?: string;
+}[] = [
+  { key: 'sky', label: 'Sky quality and light' },
+  { key: 'environment', label: 'Temperature, humidity, pressure' },
+  { key: 'clouds', label: 'IR and cloud cover' },
+  { key: 'gps', label: 'GPS', needs: (hw) => hw.gps.enabled, blocked: 'GPS is off.' },
+  { key: 'rain', label: 'Rain', needs: (hw) => hw.rain.enabled, blocked: 'Rain sensor is off.' },
+  { key: 'wind', label: 'Wind', needs: (hw) => hw.wind.enabled, blocked: 'Anemometer is off.' },
+  { key: 'safety', label: 'Safe / unsafe', hint: 'Retained <base>/safe (1/0) and <base>/safety (reasons), on every change.' },
+  { key: 'diagnostics', label: 'Diagnostics', hint: 'Light-sensor sample counts and RG-15 serial counters to <base>/diagnostics. For troubleshooting.' },
+];
 
 const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: string | null }> = ({
   config,
@@ -76,6 +95,10 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
     }
   };
 
+  const base = config.mqtt.topic || 'sqmeter';
+  const publish = { ...defaultMqttPublish, ...config.mqtt.publish };
+  const homeAssistant = { ...defaultHomeAssistant, ...config.mqtt.homeAssistant };
+
   const mqttBadge = !config.mqtt.enabled
     ? undefined
     : hw.mqtt.connected === null
@@ -135,8 +158,12 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
               <Field label="Password">
                 <TextInput type="password" value={config.mqtt.password} placeholder="Optional" onInput={(v) => update(['mqtt', 'password'], v)} />
               </Field>
-              <Field label="Topic" error={error('mqttTopic')}>
-                <TextInput dataField="mqttTopic" value={config.mqtt.topic} placeholder="sqm/data" onInput={(v) => update(['mqtt', 'topic'], v)} />
+              <Field
+                label="Base topic"
+                error={error('mqttTopic')}
+                hint={`Readings go to ${base}/state; also ${base}/availability, /safe, /safety, /alerts and /alerts/armed.`}
+              >
+                <TextInput dataField="mqttTopic" value={config.mqtt.topic} placeholder="sqmeter" onInput={(v) => update(['mqtt', 'topic'], v)} />
               </Field>
               <Field label="Publish every" error={error('mqttInterval')}>
                 <NumberInput
@@ -156,6 +183,39 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
               </ActionButton>
               <ResultNote result={mqttResult} />
             </div>
+
+            <Group title="Publish">
+              {PUBLISH_GROUPS.map((item) => (
+                <Toggle
+                  key={item.key}
+                  label={item.label}
+                  checked={publish[item.key]}
+                  onChange={(v) => update(['mqtt', 'publish', item.key], v)}
+                  hint={item.hint}
+                  blockedReason={item.needs && !item.needs(hw) ? item.blocked : null}
+                />
+              ))}
+            </Group>
+
+            <Group title="Home Assistant">
+              <Toggle
+                label="MQTT discovery"
+                checked={homeAssistant.enabled}
+                onChange={(v) => update(['mqtt', 'homeAssistant', 'enabled'], v)}
+                hint="Announces the readings, the safe flag and an alerts on/off switch, so they appear in Home Assistant without YAML."
+              />
+              {homeAssistant.enabled && (
+                <div class="form-grid indent">
+                  <Field label="Discovery prefix" error={error('mqtt.homeAssistant.discoveryPrefix')} hint="Home Assistant's default is homeassistant.">
+                    <TextInput
+                      value={homeAssistant.discoveryPrefix}
+                      placeholder="homeassistant"
+                      onInput={(v) => update(['mqtt', 'homeAssistant', 'discoveryPrefix'], v)}
+                    />
+                  </Field>
+                </div>
+              )}
+            </Group>
           </>
         )}
       </SettingsCard>

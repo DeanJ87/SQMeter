@@ -1,14 +1,5 @@
 import type { Config } from '../../types';
-import {
-  defaultAlpacaConfig,
-  defaultAuthConfig,
-  defaultBleConfig,
-  defaultCloudDetectionConfig,
-  defaultLocationConfig,
-  defaultRainConfig,
-  defaultWindConfig,
-  mergeAlertsConfig,
-} from './defaults';
+import { defaultAlpacaConfig, defaultAuthConfig, defaultBleConfig, defaultCloudDetectionConfig, defaultLocationConfig, defaultRainConfig, defaultWindConfig, mergeAlertsConfig, defaultMqttPublish, defaultHomeAssistant } from './defaults';
 
 // Normalises a config from the device (or the form) into the full shape the
 // UI edits and the firmware accepts, filling in fields that older firmware
@@ -69,7 +60,11 @@ export const toConfigPayload = (source: Config): Config => {
     primaryTimeSource: source.primaryTimeSource,
     secondaryTimeSource: source.secondaryTimeSource,
     wifi: { ...source.wifi },
-    mqtt: { ...source.mqtt },
+    mqtt: {
+      ...source.mqtt,
+      publish: { ...defaultMqttPublish, ...source.mqtt.publish },
+      homeAssistant: { ...defaultHomeAssistant, ...source.mqtt.homeAssistant },
+    },
     ota: { ...source.ota },
     auth,
     ntp: { ...source.ntp },

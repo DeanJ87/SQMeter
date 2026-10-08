@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/preact';
 import SafetyCard, { describeHistoryEntry } from '../SafetyCard';
 
-const safety = { isSafe: false, rawSafe: false, alpacaEnabled: true, reasonFlags: 48, reasons: ['Cloud 62% >= 35%'], secondsUntilSafe: 0, evaluatedAgeMs: 0, changedAgeMs: 1000 };
+const safety = { safe: false, rawSafe: false, alpacaEnabled: true, reasonFlags: 48, reasons: ['Cloud 62% >= 35%'], secondsUntilSafe: 0, evaluatedAgeMs: 0, changedAgeMs: 1000 };
 
 describe('Safety history', () => {
   it('describes restarts, holds, reasons and alerts', () => {

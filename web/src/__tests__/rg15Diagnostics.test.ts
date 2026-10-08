@@ -28,28 +28,19 @@ describe("RG-15 diagnostics contracts", () => {
     ).toBe(true);
   });
 
-  it("exposes RG-15 diagnostics in the sensor mock", () => {
+  it("reports rain readings in the sensor mock, without diagnostics", () => {
     const sensor = generateSensorData();
-    expect(sensor.rainSensor).toBeDefined();
-    expect(sensor.rainSensor?.initialized).toBe(true);
-    expect(sensor.rainSensor?.online).toBe(true);
-    expect(sensor.rainSensor?.raining).toBe(true);
-    expect(sensor.rainSensor?.stale).toBe(false);
-    expect(sensor.rainSensor?.uart.last_raw_response).toContain("Acc");
-    expect(sensor.rainSensor?.uart.software_version).toBe("1.000");
-    expect(sensor.rainSensor?.uart.stale_timeout_ms).toBe(30000);
-    expect(sensor.rainSensor?.uart.rain_clear_delay_ms).toBe(900000);
-    expect(sensor.rainSensor?.uart.last_health_check_age_ms).toBeGreaterThan(0);
-    expect(sensor.rainSensor?.uart.successful_reads).toBeGreaterThan(0);
+    expect(sensor.rain?.status).toBe("ok");
+    expect(sensor.rain?.raining).toBe(true);
+    expect(sensor.rain?.intensity).toBeGreaterThan(0);
+    expect(sensor.rain).not.toHaveProperty("uart");
   });
 
   it("exposes RG-15 diagnostics in the status mock", () => {
-    expect(mockStatus.sensors.rg15).toBeDefined();
-    expect(mockStatus.sensors.rg15?.initialized).toBe(true);
-    expect(mockStatus.sensors.rg15?.online).toBe(true);
-    expect(mockStatus.sensors.rg15?.raining).toBe(true);
-    expect(mockStatus.sensors.rg15?.uart?.last_command).toBe("R");
-    expect(mockStatus.sensors.rg15?.uart?.software_version).toBe("1.000");
-    expect(mockStatus.sensors.rg15?.uart?.timeouts).toBe(0);
+    expect(mockStatus.sensors.rain?.status).toBe("ok");
+    expect(mockStatus.diagnostics?.rain?.lastCommand).toBe("R");
+    expect(mockStatus.diagnostics?.rain?.lastResponse).toContain("Acc");
+    expect(mockStatus.diagnostics?.rain?.softwareVersion).toBe("1.000");
+    expect(mockStatus.diagnostics?.rain?.timeouts).toBe(0);
   });
 });

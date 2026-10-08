@@ -304,7 +304,14 @@ const Updates: FunctionalComponent = () => {
             setWaitingForReboot(true);
           }
         } else {
-          setStatus(`Upload failed: HTTP ${xhr.status}`);
+          // Failures carry {"error": "..."} with a 4xx/5xx status.
+          let errorMsg = `HTTP ${xhr.status}`;
+          try {
+            errorMsg = JSON.parse(xhr.responseText).error || errorMsg;
+          } catch {
+            // not JSON - keep the status code
+          }
+          setStatus(`Upload failed: ${errorMsg}`);
           setUploading(false);
         }
       });

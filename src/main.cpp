@@ -404,13 +404,7 @@ void loop()
         gpsSensor->update();
         rg15Sensor->update();
         lastSensorUpdate = now;
-        webServer->refreshSensorSnapshot(lastSensorUpdate);
-
-        // Publish to MQTT if enabled
-        if (mqttClient && mqttClient->isEnabled())
-        {
-            mqttClient->publishSensorData(*tslSensor, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor);
-        }
+        webServer->refreshSensorSnapshot(lastSensorUpdate); // also feeds MQTT <base>/state
     }
 
     // Small delay to prevent tight loop

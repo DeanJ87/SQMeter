@@ -3,7 +3,7 @@
 Connect to `/ws/sensors` for a live stream of sensor readings. The device currently pushes messages every second.
 
 !!! note "Data freshness"
-    The default sensor poll interval is 5 seconds, so several WebSocket messages can contain the same sensor reading. The payload now includes `dataTimestamp`, `dataAgeMs`, and `dataStale`.
+    The default sensor poll interval is 5 seconds, so several WebSocket messages can contain the same sensor reading. Each message carries `dataAgeMs` and `dataStale`, and every sensor group its own `ageMs`.
 
 ---
 
@@ -14,7 +14,7 @@ const ws = new WebSocket('ws://sqm-esp32.local/ws/sensors');
 
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
-  console.log('SQM:', data.skyQuality.sqm);
+  console.log('SQM:', data.sky.sqm);
 };
 
 ws.onclose = () => {
@@ -26,95 +26,25 @@ ws.onclose = () => {
 
 ## Message Format
 
+Each message on `/ws/sensors` is the readings document - the same as [`GET /api/sensors`](rest.md#get-apisensors) and MQTT `<base>/state` - with the `safety` object added:
+
 ```json
 {
-  "lightSensor": {
-    "lux": 0.0234,
-    "visible": 123,
-    "infrared": 45,
-    "full": 168,
-    "status": 0
-  },
-  "skyQuality": {
-    "sqm": 21.5,
-    "nelm": 6.2,
-    "bortle": 2.0,
-    "description": "Typical truly dark site"
-  },
-  "environment": {
-    "temperature": 12.4,
-    "humidity": 72.1,
-    "pressure": 1013.25,
-    "dewpoint": 7.8,
-    "status": 0
-  },
-  "irTemperature": {
-    "objectTemp": -15.2,
-    "ambientTemp": 12.4,
-    "status": 0
-  },
-  "cloudConditions": {
-    "temperatureDelta": -27.6,
-    "correctedDelta": -24.1,
-    "cloudCoverPercent": 5.0,
-    "condition": 0,
-    "description": "Clear",
-    "humidityUsed": 72.1
-  },
-  "gps": {
-    "hasFix": true,
-    "satellites": 8,
-    "latitude": 51.5074,
-    "longitude": -0.1278,
-    "altitude": 42.0,
-    "hdop": 1.2,
-    "age": 800
-  },
-  "rainSensor": {
-    "enabled": true,
-    "sensor": "hydreon_rg15",
-    "initialized": true,
-    "online": true,
-    "stale": false,
-    "state": "online",
-    "timestamp": 1234567890,
-    "ageMs": 40,
-    "status": 0,
-    "isRaining": false,
-    "acc": 0.000,
-    "eventAcc": 0.000,
-    "totalAcc": 12.340,
-    "rInt": 0.000,
-    "lensBad": false,
-    "emSat": false,
-    "uart": {
-      "last_command": "R",
-      "last_raw_response": "Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 1.24 mm, RInt 0.00 mm/h",
-      "timeouts": 0,
-      "parse_errors": 0,
-      "successful_reads": 42
-    }
-  }
+  "timestamp": 1791401772,
+  "timeValid": true,
+  "dataAgeMs": 412,
+  "dataStale": false,
+  "light": { "status": "ok", "ageMs": 400, "lux": 0.0003, "...": "..." },
+  "sky": { "status": "ok", "sqm": 21.48, "nelm": 6.2, "bortle": 2, "...": "..." },
+  "environment": { "status": "ok", "temperature": 12.3, "humidity": 64.7, "pressure": 1013.4, "dewpoint": 6.1, "...": "..." },
+  "infrared": { "status": "ok", "skyTemperature": -24.7, "ambientTemperature": 12.4, "...": "..." },
+  "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "...": "..." },
+  "rain": { "status": "ok", "raining": false, "intensity": 0.0, "...": "..." },
+  "safety": { "safe": true, "reasons": [], "...": "..." }
 }
 ```
 
-!!! note "GPS field"
-    `gps` is only included in the message when a GPS module is connected and initialised.
-
-!!! note "Rain and wind fields"
-    `rainSensor` is only included while the RG-15 is enabled in settings, and `wind` only while the anemometer is. Check `initialized` and `online` on `rainSensor` to tell a UART that's open from a live sensor. Rain values use the RG-15's configured units; the payload also carries UART diagnostics for bring-up debugging.
-
-!!! note "Safety field"
-    Every message includes `safety` - the SafetyMonitor verdict, the same object as [`GET /api/safety`](rest.md#get-apisafety): `isSafe`, `safe` (1/0), `rawSafe`, `reasons` (e.g. `"SQM 18.21 < 19.50"`), `reasonFlags`, `secondsUntilSafe` and ages.
-
-### `status` values
-
-| Value | Meaning |
-|-------|---------|
-| `0` | OK |
-| `1` | Sensor not found |
-| `2` | Read error |
-| `3` | Stale data |
+See [MQTT → Readings](../user-guide/mqtt.md#readings-basestate) for every field and the rules: units, `status` values (`ok`, `missing`, `error`, `stale`), and groups for disabled hardware being left out.
 
 ---
 
@@ -129,10 +59,10 @@ async def stream():
     async with websockets.connect("ws://sqm-esp32.local/ws/sensors") as ws:
         async for message in ws:
             data = json.loads(message)
-            sqm = data["skyQuality"]["sqm"]
-            bortle = data["skyQuality"]["bortle"]
-            cloud = data["cloudConditions"]["description"]
-            print(f"SQM: {sqm:.2f}  Bortle: {bortle}  Sky: {cloud}")
+            sky, clouds = data["sky"], data["clouds"]
+            if sky["status"] == "ok":
+                cover = clouds.get("description", "unknown")
+                print(f"SQM: {sky['sqm']:.2f}  Bortle: {sky['bortle']}  Sky: {cover}")
 
 asyncio.run(stream())
 ```

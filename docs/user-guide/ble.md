@@ -43,7 +43,7 @@ The characteristics below are read + notify and need no pairing; the phone alarm
 
 | Characteristic | UUID | Format | Notifies |
 |---|---|---|---|
-| Safety | `c5a10001-…` | `[isSafe u8][rawSafe u8][reasonFlags u32]` - reason bits as in [`/api/safety`](../api/rest.md#get-apisafety) | On change |
+| Safety | `c5a10001-…` | `[safe u8][rawSafe u8][reasonFlags u32]` - reason bits as in [`/api/safety`](../api/rest.md#get-apisafety) | On change |
 | Rain | `c5a10002-…` | `[flags u8][rate u16, 0.01 mm/h]` - flags as advertisement bits 1, 2, 4 | On change |
 | Latest alert | `c5a10003-…` | JSON `{"event","title","message","level"}` | Each alert (when alerts are enabled) |
 | Sensor summary | `c5a10004-…` | JSON `{"sqm","cloud","skyT","temp","hum","dew","press"}` (fields omitted when unavailable) | Every 30 s |
