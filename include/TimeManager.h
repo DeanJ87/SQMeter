@@ -44,14 +44,12 @@ namespace SQM
     class TimeManager
     {
     public:
-        TimeManager(const NTPConfig &ntpCfg, const GPSConfig &gpsCfg,
-                    TimeSource primary, TimeSource secondary, GPSSensor *gps);
+        TimeManager(const NTPConfig &ntpCfg, const GPSConfig &gpsCfg, TimeSource primary, TimeSource secondary, GPSSensor *gps);
         ~TimeManager() = default;
 
         void begin();
         void handle();
-        void updateConfig(const NTPConfig &newNtpConfig, const GPSConfig &newGpsConfig,
-                          TimeSource newPrimary, TimeSource newSecondary);
+        void updateConfig(const NTPConfig &newNtpConfig, const GPSConfig &newGpsConfig, TimeSource newPrimary, TimeSource newSecondary);
 
         TimeStatus getStatus() const;
         std::string getCurrentTimeISO() const;

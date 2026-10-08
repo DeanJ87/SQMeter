@@ -7,10 +7,10 @@ import { mockGithubReleases, mockStatus, mockWifiNetworks } from '../mocks/data'
 // (update checks, alerts, MQTT, WiFi) is simulated and marked `demo: true`;
 // nothing leaves the browser (specs/016-demo-device-emulation, FR-006).
 
-const json = (body: string, status = 200) =>
-  new HttpResponse(body, { status, headers: { 'Content-Type': 'application/json' } });
+const json = (body: string, status = 200) => new HttpResponse(body, { status, headers: { 'Content-Type': 'application/json' } });
 
-const reply = (r: Reply) => new HttpResponse(r.body, { status: r.status, headers: { 'Content-Type': r.contentType ?? 'application/json' } });
+const reply = (r: Reply) =>
+  new HttpResponse(r.body, { status: r.status, headers: { 'Content-Type': r.contentType ?? 'application/json' } });
 
 const queryParams = (request: Request) => Object.fromEntries(new URL(request.url).searchParams.entries());
 
@@ -35,9 +35,24 @@ export function statusDocument() {
     ...parts,
     firmware: { ...mockStatus.firmware, version: '0.2.0-beta.3' },
     time: { iso: now.toISOString(), timezone: cfg.ntp?.timezone ?? 'UTC0' },
-    wifi: { ...mockStatus.wifi, ssid: joinedSsid ?? (cfg.wifi?.ssid || mockStatus.wifi.ssid), hostname: cfg.wifi?.hostname, mdns: cfg.wifi?.mdns ?? true, apMode: false, connectPending: false },
+    wifi: {
+      ...mockStatus.wifi,
+      ssid: joinedSsid ?? (cfg.wifi?.ssid || mockStatus.wifi.ssid),
+      hostname: cfg.wifi?.hostname,
+      mdns: cfg.wifi?.mdns ?? true,
+      apMode: false,
+      connectPending: false,
+    },
     mqtt: cfg.mqtt?.enabled
-      ? { ...mockStatus.mqtt, enabled: true, connected: true, broker: cfg.mqtt.broker, port: cfg.mqtt.port, topic: cfg.mqtt.topic, availabilityTopic: `${cfg.mqtt.topic}/availability` }
+      ? {
+          ...mockStatus.mqtt,
+          enabled: true,
+          connected: true,
+          broker: cfg.mqtt.broker,
+          port: cfg.mqtt.port,
+          topic: cfg.mqtt.topic,
+          availabilityTopic: `${cfg.mqtt.topic}/availability`,
+        }
       : { ...mockStatus.mqtt, enabled: false, connected: false, availabilityTopic: `${cfg.mqtt?.topic ?? 'sqmeter'}/availability` },
   };
 }
@@ -51,7 +66,10 @@ export const demoHandlers = [
   // Readings and status
   http.get('/api/sensors', () => json(demoDevice.readings())),
   http.get('/api/status', () => HttpResponse.json(statusDocument())),
-  http.get('/api/safe', () => new HttpResponse(JSON.parse(demoDevice.safety()).safe ? '1' : '0', { headers: { 'Content-Type': 'text/plain' } })),
+  http.get(
+    '/api/safe',
+    () => new HttpResponse(JSON.parse(demoDevice.safety()).safe ? '1' : '0', { headers: { 'Content-Type': 'text/plain' } }),
+  ),
   http.get('/api/safety/history', () => json(demoDevice.safetyHistory())),
   http.get('/api/safety', () => json(demoDevice.safety())),
   http.get('/api/settings/effective', () => json(demoDevice.effective())),
@@ -90,7 +108,17 @@ export const demoHandlers = [
     if (!demoDevice.rawConfig().rain?.enabled)
       return HttpResponse.json({ error: 'The rain sensor is switched off (Settings → Sensors → Rain sensor)' }, { status: 409 });
     const rain = demoDevice.statusParts().diagnostics?.rain ?? {};
-    return HttpResponse.json({ success: true, command: 'R', bytesWritten: 2, elapsedMs: 42, rawResponse: rain.lastResponse ?? '', ack: true, online: true, lastSuccessfulReadAgeMs: 0, demo: true });
+    return HttpResponse.json({
+      success: true,
+      command: 'R',
+      bytesWritten: 2,
+      elapsedMs: 42,
+      rawResponse: rain.lastResponse ?? '',
+      ack: true,
+      online: true,
+      lastSuccessfulReadAgeMs: 0,
+      demo: true,
+    });
   }),
   http.post('/api/sensors/rg15/reset-total', () => simulated({ command: 'O', message: 'RG-15 total accumulation reset command sent' })),
   http.post('/api/sensors/rg15/reboot', () => simulated({ command: 'K', message: 'RG-15 reboot command sent' })),
@@ -116,7 +144,9 @@ export const demoHandlers = [
   http.post('/api/update/fs', () => simulated()),
 
   // ASCOM Alpaca: the firmware's own router, in the device core
-  http.get('/management/*', async ({ request }) => reply(demoDevice.alpaca('GET', new URL(request.url).pathname, await alpacaParams(request)))),
+  http.get('/management/*', async ({ request }) =>
+    reply(demoDevice.alpaca('GET', new URL(request.url).pathname, await alpacaParams(request))),
+  ),
   http.get('/api/v1/*', async ({ request }) => reply(demoDevice.alpaca('GET', new URL(request.url).pathname, await alpacaParams(request)))),
   http.put('/api/v1/*', async ({ request }) => reply(demoDevice.alpaca('PUT', new URL(request.url).pathname, await alpacaParams(request)))),
 

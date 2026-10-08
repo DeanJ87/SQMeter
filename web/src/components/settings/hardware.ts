@@ -9,18 +9,18 @@ import type { Config, SystemStatus } from '../../types';
 // blocks anything; it just doesn't show a warning.
 
 export interface SensorAvailability {
-  enabled: boolean;           // switched on in this config (always true for built-in I2C sensors)
-  detected: boolean | null;   // found / responding on the device
+  enabled: boolean; // switched on in this config (always true for built-in I2C sensors)
+  detected: boolean | null; // found / responding on the device
   savedEnabled: boolean | null; // enabled in the config the device is running
 }
 
 export interface Hardware {
   statusLoaded: boolean;
-  skyLight: SensorAvailability;    // TSL2591
-  irSky: SensorAvailability;       // MLX90614
+  skyLight: SensorAvailability; // TSL2591
+  irSky: SensorAvailability; // MLX90614
   environment: SensorAvailability; // BME280
-  rain: SensorAvailability;        // RG-15
-  wind: SensorAvailability;        // anemometer
+  rain: SensorAvailability; // RG-15
+  wind: SensorAvailability; // anemometer
   windVane: SensorAvailability;
   gps: SensorAvailability;
   mqtt: { enabled: boolean; connected: boolean | null };

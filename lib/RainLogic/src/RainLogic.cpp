@@ -10,7 +10,10 @@ namespace SQM
     {
         namespace
         {
-            bool isSpace(char c) { return std::isspace(static_cast<unsigned char>(c)) != 0; }
+            bool isSpace(char c)
+            {
+                return std::isspace(static_cast<unsigned char>(c)) != 0;
+            }
 
             // "<label> <number>" where label starts a field (line start, after
             // a comma or whitespace) - so "Acc" doesn't match inside "EventAcc".
@@ -58,16 +61,12 @@ namespace SQM
                 return ParseResult::TooShort;
 
             Line parsed;
-            if (!extractFloatField(line, "Acc", parsed.acc) ||
-                !extractFloatField(line, "EventAcc", parsed.eventAcc) ||
-                !extractFloatField(line, "TotalAcc", parsed.totalAcc) ||
-                !extractFloatField(line, "RInt", parsed.rInt))
+            if (!extractFloatField(line, "Acc", parsed.acc) || !extractFloatField(line, "EventAcc", parsed.eventAcc) ||
+                !extractFloatField(line, "TotalAcc", parsed.totalAcc) || !extractFloatField(line, "RInt", parsed.rInt))
                 return ParseResult::MissingField;
 
-            if (!(parsed.acc >= 0.0f && parsed.acc <= 9999.0f) ||
-                !(parsed.eventAcc >= 0.0f && parsed.eventAcc <= 9999.0f) ||
-                !(parsed.totalAcc >= 0.0f && parsed.totalAcc <= 999999.0f) ||
-                !(parsed.rInt >= 0.0f && parsed.rInt <= 9999.0f))
+            if (!(parsed.acc >= 0.0f && parsed.acc <= 9999.0f) || !(parsed.eventAcc >= 0.0f && parsed.eventAcc <= 9999.0f) ||
+                !(parsed.totalAcc >= 0.0f && parsed.totalAcc <= 999999.0f) || !(parsed.rInt >= 0.0f && parsed.rInt <= 9999.0f))
                 return ParseResult::OutOfRange;
 
             // Unit after RInt, then optional flags.

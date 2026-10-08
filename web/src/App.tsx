@@ -12,18 +12,24 @@ import WifiSetup from './components/WifiSetup';
 
 const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 
-const hashHistory: CustomHistory | undefined = isDemo ? {
-  get location() {
-    return { pathname: window.location.hash.replace(/^#/, '') || '/' } as Location;
-  },
-  push(path: string) { window.location.hash = path; },
-  replace(path: string) { window.location.hash = path; },
-  listen(cb: (loc: Location) => void) {
-    const h = () => cb({ pathname: window.location.hash.replace(/^#/, '') || '/' } as Location);
-    window.addEventListener('hashchange', h);
-    return () => window.removeEventListener('hashchange', h);
-  },
-} : undefined;
+const hashHistory: CustomHistory | undefined = isDemo
+  ? {
+      get location() {
+        return { pathname: window.location.hash.replace(/^#/, '') || '/' } as Location;
+      },
+      push(path: string) {
+        window.location.hash = path;
+      },
+      replace(path: string) {
+        window.location.hash = path;
+      },
+      listen(cb: (loc: Location) => void) {
+        const h = () => cb({ pathname: window.location.hash.replace(/^#/, '') || '/' } as Location);
+        window.addEventListener('hashchange', h);
+        return () => window.removeEventListener('hashchange', h);
+      },
+    }
+  : undefined;
 
 const App: FunctionalComponent = () => (
   <Router history={hashHistory}>

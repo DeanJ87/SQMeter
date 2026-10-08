@@ -8,10 +8,13 @@ import { statusDocument } from '../handlers';
 // (specs/016-demo-device-emulation/contracts/schemas, generated from a real
 // SQMeter). A field the device doesn't send, or a missing one, fails here.
 
-const files = import.meta.glob('../../../../specs/016-demo-device-emulation/contracts/schemas/*.schema.json', { eager: true, import: 'default' });
+const files = import.meta.glob('../../../../specs/016-demo-device-emulation/contracts/schemas/*.schema.json', {
+  eager: true,
+  import: 'default',
+});
 const ajv = new Ajv({ allErrors: true, strict: false });
 const schemas: Record<string, object> = Object.fromEntries(
-  Object.entries(files).map(([path, schema]) => [path.split('/').pop()!.replace('.schema.json', ''), schema as object])
+  Object.entries(files).map(([path, schema]) => [path.split('/').pop()!.replace('.schema.json', ''), schema as object]),
 );
 
 const check = (schemaName: string, document: unknown) => {

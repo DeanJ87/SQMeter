@@ -37,8 +37,8 @@ namespace SQM
             out.reserve(value.size() * 3);
             for (unsigned char c : value)
             {
-                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
-                    c == '-' || c == '_' || c == '.' || c == '~')
+                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' ||
+                    c == '~')
                 {
                     out += static_cast<char>(c);
                 }
@@ -63,9 +63,14 @@ namespace SQM
             return now >= 1704067200 ? static_cast<int64_t>(now) : 0;
         }
 
-        bool httpPost(const std::string &url, const char *contentType, const std::string &body,
-                      const std::vector<std::pair<std::string, std::string>> &headers, bool insecureTls,
-                      std::string &detail, const char *rootCa = ALERT_ROOT_CA_PEM)
+        bool httpPost(
+            const std::string &url,
+            const char *contentType,
+            const std::string &body,
+            const std::vector<std::pair<std::string, std::string>> &headers,
+            bool insecureTls,
+            std::string &detail,
+            const char *rootCa = ALERT_ROOT_CA_PEM)
         {
             std::unique_ptr<WiFiClient> client;
             if (url.rfind("https://", 0) == 0)
@@ -155,7 +160,7 @@ namespace SQM
             }
             return "bell";
         }
-    }
+    } // namespace
 
     const char *alertChannelName(AlertChannel channel)
     {
@@ -192,7 +197,8 @@ namespace SQM
     }
 
     AlertDispatcher::AlertDispatcher(MQTTClient *mqttClient, BusyCheck busy)
-        : mqtt(mqttClient), networkBusy(std::move(busy))
+        : mqtt(mqttClient),
+          networkBusy(std::move(busy))
     {
     }
 
@@ -225,8 +231,12 @@ namespace SQM
         static_cast<AlertDispatcher *>(arg)->run();
     }
 
-    void AlertDispatcher::dispatch(const Alerts::Alert &alert, const AlertsConfig &cfg, const std::string &deviceName, uint8_t channelMask,
-                                   const ChannelBlocks &blocked)
+    void AlertDispatcher::dispatch(
+        const Alerts::Alert &alert,
+        const AlertsConfig &cfg,
+        const std::string &deviceName,
+        uint8_t channelMask,
+        const ChannelBlocks &blocked)
     {
         AlertRecord record;
         record.uptimeSeconds = millis() / 1000;
@@ -390,10 +400,8 @@ namespace SQM
     {
         const int priority = Alerts::pushoverPriority(job.alert.level);
 
-        std::string body = "token=" + urlEncode(job.cfg.pushoverAppToken) +
-                           "&user=" + urlEncode(job.cfg.pushoverUserKey) +
-                           "&title=" + urlEncode(fullTitle(job.deviceName, job.alert.title)) +
-                           "&message=" + urlEncode(job.alert.message) +
+        std::string body = "token=" + urlEncode(job.cfg.pushoverAppToken) + "&user=" + urlEncode(job.cfg.pushoverUserKey) +
+                           "&title=" + urlEncode(fullTitle(job.deviceName, job.alert.title)) + "&message=" + urlEncode(job.alert.message) +
                            "&priority=" + std::to_string(priority);
         if (priority == 2)
             body += "&retry=60&expire=3600"; // emergency: repeat every minute for up to an hour until acknowledged
@@ -401,8 +409,8 @@ namespace SQM
         if (!sound.empty())
             body += "&sound=" + urlEncode(sound);
 
-        return httpPost("https://api.pushover.net/1/messages.json", "application/x-www-form-urlencoded", body, {}, false, detail,
-                        PUSHOVER_ROOT_CA_PEM);
+        return httpPost(
+            "https://api.pushover.net/1/messages.json", "application/x-www-form-urlencoded", body, {}, false, detail, PUSHOVER_ROOT_CA_PEM);
     }
 
     bool AlertDispatcher::sendNtfy(const Job &job, std::string &detail)
@@ -421,8 +429,14 @@ namespace SQM
             headers.push_back({"Authorization", "Bearer " + job.cfg.ntfyToken});
 
         const bool ntfySh = server == "https://ntfy.sh";
-        return httpPost(server + "/" + urlEncode(job.cfg.ntfyTopic), "text/plain; charset=utf-8", job.alert.message, headers, false, detail,
-                        ntfySh ? NTFY_SH_ROOT_CA_PEM : ALERT_ROOT_CA_PEM);
+        return httpPost(
+            server + "/" + urlEncode(job.cfg.ntfyTopic),
+            "text/plain; charset=utf-8",
+            job.alert.message,
+            headers,
+            false,
+            detail,
+            ntfySh ? NTFY_SH_ROOT_CA_PEM : ALERT_ROOT_CA_PEM);
     }
 
     bool AlertDispatcher::sendWebhook(const Job &job, std::string &detail)

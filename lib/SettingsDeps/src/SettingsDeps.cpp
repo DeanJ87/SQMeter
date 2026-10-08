@@ -52,19 +52,33 @@ namespace SQM
                 bool met;
             };
 
-            struct Builder
+            // How a reported setting is shown: safety rules declare their unmet
+            // behaviour; harmless defaults are shown muted.
+            struct Shown
             {
+                Unmet unmet = Unmet::None;
+                bool neutral = false;
+            };
+            constexpr Shown NEUTRAL{Unmet::None, true};
+            constexpr Shown FAIL_SAFE{Unmet::FailSafe, false};
+
+            // What every section needs, worked out once.
+            struct Context
+            {
+                const Config &cfg;
+                const Facts &f;
                 std::vector<Entry> &out;
+                bool locationKnown;
+                bool phonesRing; // paired phones ring for Wake-level events, alerts on or not
 
                 // `on`: the setting's own switch. The first unmet link decides.
-                void add(const char *setting, const char *id, bool on, std::initializer_list<Link> chain, Unmet unmet = Unmet::None,
-                         bool neutral = false)
+                void add(const char *setting, const char *id, bool on, std::initializer_list<Link> chain, Shown shown = {}) const
                 {
                     Entry e;
                     e.setting = setting;
                     e.id = id;
-                    e.unmet = unmet;
-                    e.neutral = neutral;
+                    e.unmet = shown.unmet;
+                    e.neutral = shown.neutral;
                     if (on)
                     {
                         e.state = State::Active;
@@ -84,11 +98,147 @@ namespace SQM
 
             bool anyEventAt(const AlertsConfig &a, uint8_t level)
             {
-                for (const AlertsConfig::EventSetting *e : {&a.unsafe, &a.safe, &a.rainStarted, &a.rainStopped, &a.sensorFault,
-                                                            &a.sensorRecovered, &a.dewRisk, &a.clearSky, &a.cloudedOver})
+                for (const AlertsConfig::EventSetting *e :
+                     {&a.unsafe,
+                      &a.safe,
+                      &a.rainStarted,
+                      &a.rainStopped,
+                      &a.sensorFault,
+                      &a.sensorRecovered,
+                      &a.dewRisk,
+                      &a.clearSky,
+                      &a.cloudedOver})
                     if (e->level == level)
                         return true;
                 return false;
+            }
+
+            // Alert channels are push only: they need the master switch. Links
+            // in catalogue order, so the channel's own dependency comes before
+            // "alerts are off" - a test send ignores the latter.
+            void addAlertChannels(const Context &c)
+            {
+                const AlertsConfig &a = c.cfg.alerts;
+                const Link alertsOn{"D-04", "alerts-off", a.enabled};
+                const Link wifi{"D-03", "wifi-disconnected", c.f.wifiConnected};
+                c.add("alerts.pushover.enabled", "D-03", a.pushoverEnabled, {wifi, alertsOn});
+                c.add("alerts.ntfy.enabled", "D-03", a.ntfyEnabled, {wifi, alertsOn});
+                c.add("alerts.webhook.enabled", "D-03", a.webhookEnabled, {wifi, alertsOn});
+                const Link mqttOn{"D-01", "mqtt-off", c.cfg.mqtt.enabled};
+                const Link broker{"D-02", "mqtt-disconnected", c.f.mqttConnected};
+                c.add("alerts.mqtt.enabled", "D-01", a.mqttEnabled, {mqttOn, broker, alertsOn});
+            }
+
+            void addAlertEvents(const Context &c)
+            {
+                const AlertsConfig &a = c.cfg.alerts;
+                // Wake-level events still ring paired phones with push alerts off.
+                auto event = [&](const AlertsConfig::EventSetting &e) -> Link
+                { return {"D-04", "alerts-off", a.enabled || (e.level == 4 && c.phonesRing)}; };
+                const Link rainOn{"D-05", "rain-off", c.cfg.rain.enabled};
+                const Link bmeFound{"D-06", "environment-missing", c.f.environmentDetected};
+                const Link mlxFound{"D-07", "infrared-missing", c.f.infraredDetected};
+                c.add("alerts.events.unsafe.level", "D-04", a.unsafe.level != 0, {event(a.unsafe)});
+                c.add("alerts.events.safe.level", "D-04", a.safe.level != 0, {event(a.safe)});
+                c.add("alerts.events.rain_started.level", "D-05", a.rainStarted.level != 0, {event(a.rainStarted), rainOn});
+                c.add("alerts.events.rain_stopped.level", "D-05", a.rainStopped.level != 0, {event(a.rainStopped), rainOn});
+                c.add("alerts.events.sensor_fault.level", "D-04", a.sensorFault.level != 0, {event(a.sensorFault)});
+                c.add("alerts.events.sensor_recovered.level", "D-04", a.sensorRecovered.level != 0, {event(a.sensorRecovered)});
+                c.add("alerts.events.dew_risk.level", "D-06", a.dewRisk.level != 0, {event(a.dewRisk), bmeFound});
+                c.add("alerts.events.clear_sky.level", "D-07", a.clearSky.level != 0, {event(a.clearSky), mlxFound});
+                c.add("alerts.events.clouded_over.level", "D-07", a.cloudedOver.level != 0, {event(a.cloudedOver), mlxFound});
+            }
+
+            void addAlertOptions(const Context &c)
+            {
+                const AlertsConfig &a = c.cfg.alerts;
+                const BleConfig &ble = c.cfg.ble;
+                // "Wake me" also escalates Pushover and ntfy; only the phone ringing
+                // needs Bluetooth. Shown muted: the default events at Wake me
+                // shouldn't warn on a standard build.
+                c.add(
+                    "alerts.wakePhones",
+                    "D-08",
+                    anyEventAt(a, 4),
+                    {{"D-08", "ble-build", c.f.bluetoothBuild},
+                     {"D-08", "ble-off", ble.enabled},
+                     {"D-35", "ble-restart", c.f.bluetoothRunning},
+                     {"D-08", "no-passkey", !ble.passkey.empty()},
+                     {"D-08", "no-phones", c.f.pairedPhones > 0}},
+                    NEUTRAL);
+                const Link alerting{"D-04", "alerts-off", a.enabled || c.phonesRing};
+                c.add("alerts.skyNightOnly", "D-09", a.skyNightOnly, {alerting, {"D-09", "location-unknown", c.locationKnown}});
+                c.add("alerts.safetyNightOnly", "D-10", a.safetyNightOnly, {alerting, {"D-10", "location-unknown", c.locationKnown}});
+                c.add("alerts.nightSunAltitudeDeg", "D-11", a.skyNightOnly || a.safetyNightOnly, {alerting});
+                c.add("alerts.armWithAlpaca", "D-12", a.armWithAlpaca, {alerting, {"D-12", "alpaca-off", c.cfg.alpaca.enabled}});
+            }
+
+            void addMqtt(const Context &c)
+            {
+                const MQTTConfig &mqtt = c.cfg.mqtt;
+                const Link mqttOn{"D-13", "mqtt-off", mqtt.enabled};
+                c.add("mqtt.homeAssistant.enabled", "D-13", mqtt.homeAssistant, {mqttOn});
+                const Link alerting{"D-13", "alerts-off", c.cfg.alerts.enabled || c.phonesRing};
+                c.add("mqtt.homeAssistant.alertsSwitch", "D-13", mqtt.homeAssistant, {mqttOn, alerting});
+                // Publishing a switched-off sensor sends nothing: harmless, shown muted.
+                const Link publishMqtt{"D-14", "mqtt-off", mqtt.enabled};
+                const Link gpsRunning{"D-35", "gps-restart", c.f.gpsRunning};
+                c.add(
+                    "mqtt.publish.gps",
+                    "D-14",
+                    mqtt.publish.gps,
+                    {publishMqtt, {"D-14", "gps-off", c.cfg.gps.enabled}, gpsRunning},
+                    NEUTRAL);
+                c.add("mqtt.publish.rain", "D-14", mqtt.publish.rain, {publishMqtt, {"D-14", "rain-off", c.cfg.rain.enabled}}, NEUTRAL);
+                c.add("mqtt.publish.wind", "D-14", mqtt.publish.wind, {publishMqtt, {"D-14", "wind-off", c.cfg.wind.enabled}}, NEUTRAL);
+            }
+
+            // Unmet behaviour confirmed from SafetyEvaluator (research R4).
+            void addSafetyRules(const Context &c)
+            {
+                const AlpacaConfig &s = c.cfg.alpaca;
+                // Both ship on while the rain sensor ships off: not in effect, shown muted.
+                const Link rainOn{"D-15", "rain-off", c.cfg.rain.enabled};
+                const Shown ignored{Unmet::Inactive, true};
+                c.add("alpaca.rainUnsafeEnabled", "D-15", s.rainUnsafeEnabled, {rainOn}, ignored);
+                c.add("alpaca.rainSensorRequired", "D-15", s.rainSensorRequired, {rainOn}, ignored);
+                const Link windOn{"D-16", "wind-off", c.cfg.wind.enabled};
+                c.add("alpaca.windSpeedUnsafeEnabled", "D-16", s.windSpeedUnsafeEnabled, {windOn}, FAIL_SAFE);
+                c.add("alpaca.windGustUnsafeEnabled", "D-16", s.windGustUnsafeEnabled, {windOn}, FAIL_SAFE);
+                c.add(
+                    "alpaca.cloudCoverEnabled",
+                    "D-17",
+                    s.cloudCoverEnabled,
+                    {{"D-17", "infrared-missing", c.f.infraredDetected}},
+                    FAIL_SAFE);
+                c.add("alpaca.sqmMinEnabled", "D-18", s.sqmMinEnabled, {{"D-18", "light-missing", c.f.lightDetected}}, FAIL_SAFE);
+                const Link bme{"D-19", "environment-missing", c.f.environmentDetected};
+                c.add("alpaca.humidityMaxEnabled", "D-19", s.humidityMaxEnabled, {bme}, FAIL_SAFE);
+                c.add("alpaca.dewpointMarginEnabled", "D-19", s.dewpointMarginEnabled, {bme}, FAIL_SAFE);
+            }
+
+            void addSensorsAndTime(const Context &c)
+            {
+                const Config &cfg = c.cfg;
+                c.add("wind.directionEnabled", "D-23", cfg.wind.directionEnabled, {{"D-23", "wind-off", cfg.wind.enabled}});
+                const Link rainOn{"D-24", "rain-off", cfg.rain.enabled};
+                c.add("rain.dailyResetEnabled", "D-24", cfg.rain.dailyResetEnabled, {rainOn, {"D-24", "clock-unset", c.f.clockSet}});
+                c.add("location.showSunMoon", "D-25", cfg.location.showSunMoon, {{"D-25", "location-unknown", c.locationKnown}}, NEUTRAL);
+                const Link gpsRunning{"D-35", "gps-restart", c.f.gpsRunning};
+                c.add("gps.enabled", "D-26", cfg.gps.enabled, {gpsRunning, {"D-26", "gps-no-fix", c.f.gpsFix}});
+                c.add("ntp.enabled", "D-28", cfg.ntp.enabled, {{"D-28", "wifi-disconnected", c.f.wifiConnected}});
+                c.add("skyCalibration.enabled", "D-29", cfg.skyCalibration.enabled, {{"D-29", "light-missing", c.f.lightDetected}});
+            }
+
+            void addDevice(const Context &c)
+            {
+                const Config &cfg = c.cfg;
+                const Link bleBuild{"D-30", "ble-build", c.f.bluetoothBuild};
+                const Link bleRunning{"D-35", "ble-restart", c.f.bluetoothRunning};
+                c.add("ble.enabled", "D-30", cfg.ble.enabled, {bleBuild, bleRunning});
+                c.add("ble.phoneAlarm", "D-31", !cfg.ble.passkey.empty(), {bleBuild, {"D-31", "ble-off", cfg.ble.enabled}, bleRunning});
+                c.add("ota.enabled", "D-32", cfg.ota.enabled, {{"D-32", "ota-no-password", !cfg.ota.password.empty()}});
+                c.add("wifi.mdns", "D-36", cfg.wifi.mdns, {{"D-36", "wifi-disconnected", c.f.wifiConnected}});
             }
         } // namespace
 
@@ -96,98 +246,19 @@ namespace SQM
         {
             std::vector<Entry> out;
             out.reserve(44);
-            Builder b{out};
-            const AlertsConfig &a = cfg.alerts;
-
-            // Links shared by several settings.
-            const Link alertsOn{"D-04", "alerts-off", a.enabled};
-            const Link wifi{"D-03", "wifi-disconnected", f.wifiConnected};
-            const bool locationKnown = cfg.location.set || (f.gpsRunning && f.gpsFix);
-            const bool phoneAlarm = !cfg.ble.passkey.empty();
-            // Paired phones ring for Wake-level events even with push alerts
-            // off (WebServer::processAlerts), so events, arming and the
-            // night-only options still matter to them.
-            const bool phonesRing = f.bluetoothBuild && cfg.ble.enabled && f.bluetoothRunning && phoneAlarm && f.pairedPhones > 0;
-            const Link alerting{"D-04", "alerts-off", a.enabled || phonesRing};
-            auto event = [&](const AlertsConfig::EventSetting &e) -> Link
-            { return {"D-04", "alerts-off", a.enabled || (e.level == 4 && phonesRing)}; };
-
-            // Alert channels (push only: they need the master switch). Links
-            // in catalogue order, so the channel's own dependency comes
-            // before "alerts are off" - a test send ignores the latter.
-            b.add("alerts.pushover.enabled", "D-03", a.pushoverEnabled, {wifi, alertsOn});
-            b.add("alerts.ntfy.enabled", "D-03", a.ntfyEnabled, {wifi, alertsOn});
-            b.add("alerts.webhook.enabled", "D-03", a.webhookEnabled, {wifi, alertsOn});
-            b.add("alerts.mqtt.enabled", "D-01", a.mqttEnabled,
-                  {{"D-01", "mqtt-off", cfg.mqtt.enabled}, {"D-02", "mqtt-disconnected", f.mqttConnected}, alertsOn});
-
-            // Alert events.
-            const Link rainOn{"D-05", "rain-off", cfg.rain.enabled};
-            const Link bmeFound{"D-06", "environment-missing", f.environmentDetected};
-            const Link mlxFound{"D-07", "infrared-missing", f.infraredDetected};
-            b.add("alerts.events.unsafe.level", "D-04", a.unsafe.level != 0, {event(a.unsafe)});
-            b.add("alerts.events.safe.level", "D-04", a.safe.level != 0, {event(a.safe)});
-            b.add("alerts.events.rain_started.level", "D-05", a.rainStarted.level != 0, {event(a.rainStarted), rainOn});
-            b.add("alerts.events.rain_stopped.level", "D-05", a.rainStopped.level != 0, {event(a.rainStopped), rainOn});
-            b.add("alerts.events.sensor_fault.level", "D-04", a.sensorFault.level != 0, {event(a.sensorFault)});
-            b.add("alerts.events.sensor_recovered.level", "D-04", a.sensorRecovered.level != 0, {event(a.sensorRecovered)});
-            b.add("alerts.events.dew_risk.level", "D-06", a.dewRisk.level != 0, {event(a.dewRisk), bmeFound});
-            b.add("alerts.events.clear_sky.level", "D-07", a.clearSky.level != 0, {event(a.clearSky), mlxFound});
-            b.add("alerts.events.clouded_over.level", "D-07", a.cloudedOver.level != 0, {event(a.cloudedOver), mlxFound});
-            // "Wake me" also escalates Pushover and ntfy; only the phone ringing needs Bluetooth.
-            b.add("alerts.wakePhones", "D-08", anyEventAt(a, 4),
-                  {{"D-08", "ble-build", f.bluetoothBuild},
-                   {"D-08", "ble-off", cfg.ble.enabled},
-                   {"D-35", "ble-restart", f.bluetoothRunning},
-                   {"D-08", "no-passkey", phoneAlarm},
-                   {"D-08", "no-phones", f.pairedPhones > 0}},
-                  Unmet::None, true); // shown muted: the default events at Wake me shouldn't warn on a standard build
-            b.add("alerts.skyNightOnly", "D-09", a.skyNightOnly, {alerting, {"D-09", "location-unknown", locationKnown}});
-            b.add("alerts.safetyNightOnly", "D-10", a.safetyNightOnly, {alerting, {"D-10", "location-unknown", locationKnown}});
-            b.add("alerts.nightSunAltitudeDeg", "D-11", a.skyNightOnly || a.safetyNightOnly, {alerting});
-            b.add("alerts.armWithAlpaca", "D-12", a.armWithAlpaca, {alerting, {"D-12", "alpaca-off", cfg.alpaca.enabled}});
-
-            // MQTT and Home Assistant.
-            const Link mqttOn{"D-13", "mqtt-off", cfg.mqtt.enabled};
-            b.add("mqtt.homeAssistant.enabled", "D-13", cfg.mqtt.homeAssistant, {mqttOn});
-            b.add("mqtt.homeAssistant.alertsSwitch", "D-13", cfg.mqtt.homeAssistant, {mqttOn, {"D-13", "alerts-off", a.enabled || phonesRing}});
-            const Link publishMqtt{"D-14", "mqtt-off", cfg.mqtt.enabled};
-            b.add("mqtt.publish.gps", "D-14", cfg.mqtt.publish.gps,
-                  {publishMqtt, {"D-14", "gps-off", cfg.gps.enabled}, {"D-35", "gps-restart", f.gpsRunning}}, Unmet::None, true);
-            b.add("mqtt.publish.rain", "D-14", cfg.mqtt.publish.rain, {publishMqtt, {"D-14", "rain-off", cfg.rain.enabled}}, Unmet::None, true);
-            b.add("mqtt.publish.wind", "D-14", cfg.mqtt.publish.wind, {publishMqtt, {"D-14", "wind-off", cfg.wind.enabled}}, Unmet::None, true);
-
-            // Safety rules (unmet behaviour confirmed from SafetyEvaluator).
-            const AlpacaConfig &s = cfg.alpaca;
-            const Link rainRule{"D-15", "rain-off", cfg.rain.enabled};
-            // Both ship on while the rain sensor ships off: not in effect, shown muted.
-            b.add("alpaca.rainUnsafeEnabled", "D-15", s.rainUnsafeEnabled, {rainRule}, Unmet::Inactive, true);
-            b.add("alpaca.rainSensorRequired", "D-15", s.rainSensorRequired, {rainRule}, Unmet::Inactive, true);
-            const Link windOn{"D-16", "wind-off", cfg.wind.enabled};
-            b.add("alpaca.windSpeedUnsafeEnabled", "D-16", s.windSpeedUnsafeEnabled, {windOn}, Unmet::FailSafe);
-            b.add("alpaca.windGustUnsafeEnabled", "D-16", s.windGustUnsafeEnabled, {windOn}, Unmet::FailSafe);
-            b.add("alpaca.cloudCoverEnabled", "D-17", s.cloudCoverEnabled, {{"D-17", "infrared-missing", f.infraredDetected}}, Unmet::FailSafe);
-            b.add("alpaca.sqmMinEnabled", "D-18", s.sqmMinEnabled, {{"D-18", "light-missing", f.lightDetected}}, Unmet::FailSafe);
-            const Link bme{"D-19", "environment-missing", f.environmentDetected};
-            b.add("alpaca.humidityMaxEnabled", "D-19", s.humidityMaxEnabled, {bme}, Unmet::FailSafe);
-            b.add("alpaca.dewpointMarginEnabled", "D-19", s.dewpointMarginEnabled, {bme}, Unmet::FailSafe);
-
-            // Sensors, time and location.
-            b.add("wind.directionEnabled", "D-23", cfg.wind.directionEnabled, {{"D-23", "wind-off", cfg.wind.enabled}});
-            b.add("rain.dailyResetEnabled", "D-24", cfg.rain.dailyResetEnabled,
-                  {{"D-24", "rain-off", cfg.rain.enabled}, {"D-24", "clock-unset", f.clockSet}});
-            b.add("location.showSunMoon", "D-25", cfg.location.showSunMoon, {{"D-25", "location-unknown", locationKnown}}, Unmet::None, true);
-            b.add("gps.enabled", "D-26", cfg.gps.enabled, {{"D-35", "gps-restart", f.gpsRunning}, {"D-26", "gps-no-fix", f.gpsFix}});
-            b.add("ntp.enabled", "D-28", cfg.ntp.enabled, {{"D-28", "wifi-disconnected", f.wifiConnected}});
-            b.add("skyCalibration.enabled", "D-29", cfg.skyCalibration.enabled, {{"D-29", "light-missing", f.lightDetected}});
-
-            // Device.
-            const Link bleBuild{"D-30", "ble-build", f.bluetoothBuild};
-            const Link bleRunning{"D-35", "ble-restart", f.bluetoothRunning};
-            b.add("ble.enabled", "D-30", cfg.ble.enabled, {bleBuild, bleRunning});
-            b.add("ble.phoneAlarm", "D-31", phoneAlarm, {bleBuild, {"D-31", "ble-off", cfg.ble.enabled}, bleRunning});
-            b.add("ota.enabled", "D-32", cfg.ota.enabled, {{"D-32", "ota-no-password", !cfg.ota.password.empty()}});
-            b.add("wifi.mdns", "D-36", cfg.wifi.mdns, {{"D-36", "wifi-disconnected", f.wifiConnected}});
+            // Paired phones ring for Wake-level events even with push alerts off
+            // (WebServer::processAlerts), so events, arming and the night-only
+            // options still matter to them.
+            const bool phonesRing =
+                f.bluetoothBuild && cfg.ble.enabled && f.bluetoothRunning && !cfg.ble.passkey.empty() && f.pairedPhones > 0;
+            const Context c{cfg, f, out, cfg.location.set || (f.gpsRunning && f.gpsFix), phonesRing};
+            addAlertChannels(c);
+            addAlertEvents(c);
+            addAlertOptions(c);
+            addMqtt(c);
+            addSafetyRules(c);
+            addSensorsAndTime(c);
+            addDevice(c);
             return out;
         }
 
@@ -211,7 +282,10 @@ namespace SQM
             return e != nullptr && e->state == State::Inactive ? e->reason : nullptr;
         }
 
-        const std::vector<Reason> &reasons() { return REASONS; }
+        const std::vector<Reason> &reasons()
+        {
+            return REASONS;
+        }
 
         std::vector<std::string> rulesNotInEffect(const Config &cfg)
         {

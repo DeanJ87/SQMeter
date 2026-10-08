@@ -26,7 +26,10 @@ namespace SQM
     constexpr size_t ALERT_CHANNEL_COUNT = 4;
     constexpr uint8_t ALERT_CHANNELS_ALL = 0x0F;
 
-    inline uint8_t alertChannelBit(AlertChannel channel) { return static_cast<uint8_t>(1u << static_cast<uint8_t>(channel)); }
+    inline uint8_t alertChannelBit(AlertChannel channel)
+    {
+        return static_cast<uint8_t>(1u << static_cast<uint8_t>(channel));
+    }
     const char *alertChannelName(AlertChannel channel);
 
     enum class DeliveryStatus : uint8_t
@@ -75,8 +78,12 @@ namespace SQM
         // per-channel test notifications); channels disabled in `cfg` are
         // never used, test or not. A channel switched on but blocked is
         // recorded as skipped with the reason and nothing is attempted.
-        void dispatch(const Alerts::Alert &alert, const AlertsConfig &cfg, const std::string &deviceName,
-                      uint8_t channelMask = ALERT_CHANNELS_ALL, const ChannelBlocks &blocked = ChannelBlocks{});
+        void dispatch(
+            const Alerts::Alert &alert,
+            const AlertsConfig &cfg,
+            const std::string &deviceName,
+            uint8_t channelMask = ALERT_CHANNELS_ALL,
+            const ChannelBlocks &blocked = ChannelBlocks{});
 
         std::vector<AlertRecord> recent() const;
         void clearRecent();

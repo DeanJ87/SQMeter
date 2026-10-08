@@ -32,8 +32,7 @@ namespace
 
     Deps::Facts factsFrom(JsonObjectConst base, JsonObjectConst overrides)
     {
-        auto flag = [&](const char *key)
-        { return overrides.containsKey(key) ? overrides[key].as<bool>() : base[key].as<bool>(); };
+        auto flag = [&](const char *key) { return overrides.containsKey(key) ? overrides[key].as<bool>() : base[key].as<bool>(); };
         Deps::Facts f;
         f.wifiConnected = flag("wifiConnected");
         f.mqttConnected = flag("mqttConnected");
@@ -42,7 +41,8 @@ namespace
         f.gpsFix = flag("gpsFix");
         f.bluetoothBuild = flag("bluetoothBuild");
         f.bluetoothRunning = flag("bluetoothRunning");
-        f.pairedPhones = overrides.containsKey("pairedPhones") ? overrides["pairedPhones"].as<uint8_t>() : base["pairedPhones"].as<uint8_t>();
+        f.pairedPhones =
+            overrides.containsKey("pairedPhones") ? overrides["pairedPhones"].as<uint8_t>() : base["pairedPhones"].as<uint8_t>();
         f.lightDetected = flag("lightDetected");
         f.infraredDetected = flag("infraredDetected");
         f.environmentDetected = flag("environmentDetected");
@@ -245,10 +245,19 @@ void test_dependents_survive_dependency_round_trip()
         "rain":{"enabled":true,"dailyResetEnabled":true},"wind":{"enabled":true,"directionEnabled":true},"alpaca":{"enabled":true,
         "rainUnsafeEnabled":true,"rainSensorRequired":true,"windSpeedUnsafeEnabled":true,"windGustUnsafeEnabled":true}})");
     const std::string before = cfg.toJson(false);
-    const char *dependents[] = {"alerts.mqtt.enabled", "alerts.armWithAlpaca", "alerts.events.rain_started.level",
-                                "mqtt.homeAssistant.alertsSwitch", "mqtt.publish.rain", "mqtt.publish.wind",
-                                "rain.dailyResetEnabled", "wind.directionEnabled", "alpaca.rainUnsafeEnabled",
-                                "alpaca.rainSensorRequired", "alpaca.windSpeedUnsafeEnabled", "alpaca.windGustUnsafeEnabled"};
+    const char *dependents[] = {
+        "alerts.mqtt.enabled",
+        "alerts.armWithAlpaca",
+        "alerts.events.rain_started.level",
+        "mqtt.homeAssistant.alertsSwitch",
+        "mqtt.publish.rain",
+        "mqtt.publish.wind",
+        "rain.dailyResetEnabled",
+        "wind.directionEnabled",
+        "alpaca.rainUnsafeEnabled",
+        "alpaca.rainSensorRequired",
+        "alpaca.windSpeedUnsafeEnabled",
+        "alpaca.windGustUnsafeEnabled"};
     for (const char *setting : dependents)
         TEST_ASSERT_EQUAL_STRING_MESSAGE("active", stateOf(cfg, f, setting).c_str(), setting);
 

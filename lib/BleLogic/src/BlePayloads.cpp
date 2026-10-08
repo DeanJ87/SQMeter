@@ -29,7 +29,7 @@ namespace SQM
                 const float raw = std::round(value * scale);
                 return raw >= static_cast<float>(max) ? max : static_cast<uint16_t>(raw);
             }
-        }
+        } // namespace
 
         uint8_t stateFlags(const State &state)
         {

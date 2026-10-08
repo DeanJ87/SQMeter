@@ -24,14 +24,20 @@ export const healthyFacts: DepFacts = {
  * whose settings-dependency report (GET /api/settings/effective) agrees with
  * them, as a real device's would.
  */
-export const mockDevice = ({ config = {}, facts = {} }: { config?: Partial<Config> | Record<string, unknown>; facts?: Partial<DepFacts> } = {}) => {
+export const mockDevice = ({
+  config = {},
+  facts = {},
+}: { config?: Partial<Config> | Record<string, unknown>; facts?: Partial<DepFacts> } = {}) => {
   const merged = { ...mockConfig, ...config } as Config;
   const deviceFacts = { ...healthyFacts, ...facts };
   server.use(
     http.get('/api/config', () => HttpResponse.json(merged)),
     http.get('/api/settings/effective', () =>
-      HttpResponse.json({ facts: deviceFacts, settings: evaluate(merged, deviceFacts).map(({ blockedBy: _blockedBy, ...entry }) => entry) })
-    )
+      HttpResponse.json({
+        facts: deviceFacts,
+        settings: evaluate(merged, deviceFacts).map(({ blockedBy: _blockedBy, ...entry }) => entry),
+      }),
+    ),
   );
   return merged;
 };

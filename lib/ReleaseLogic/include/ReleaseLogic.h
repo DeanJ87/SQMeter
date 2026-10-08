@@ -42,7 +42,6 @@ namespace SQM
 
         // Same, from the raw body. Returns false (and sets `error`) when the
         // JSON can't be read.
-        bool parse(const std::string &json, const std::string &track, bool ble,
-                   std::vector<GithubRelease> &out, std::string &error);
+        bool parse(const std::string &json, const std::string &track, bool ble, std::vector<GithubRelease> &out, std::string &error);
     } // namespace Releases
 } // namespace SQM

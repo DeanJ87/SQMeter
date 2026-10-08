@@ -95,6 +95,7 @@ nav:
     - Dev Workflow: development/workflow.md
     - Adding Sensors: development/sensors.md
     - Contributing: development/contributing.md
+    - Coding Standards: development/coding-standards.md
   - Reference:
     - Sky Quality Calculations: reference/sky-quality.md
     - Settings Dependencies: reference/settings-dependencies.md

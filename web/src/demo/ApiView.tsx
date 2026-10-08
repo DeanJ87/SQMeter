@@ -35,7 +35,11 @@ const ApiView: FunctionalComponent<{ path: string; search: string }> = ({ path, 
   return (
     <div class="api-view">
       <p class="api-view-head">
-        <span class="pill pill-cyan">Demo</span> <code>GET {path}{search}</code>
+        <span class="pill pill-cyan">Demo</span>{' '}
+        <code>
+          GET {path}
+          {search}
+        </code>
         {result && <span class="muted"> · HTTP {result.status}</span>}
       </p>
       <pre>{result ? result.body : 'Asking the demo device...'}</pre>

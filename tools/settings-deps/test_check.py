@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for check.py (specs/020-settings-dependencies, US4).
 
-  python3 tools/settings-deps/test_check.py
+python3 tools/settings-deps/test_check.py
 """
 
 import json
@@ -12,7 +12,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import check  # noqa: E402
+import check  # noqa: E402 - importable only once its directory is on the path
 
 COPY = ["lib", "test", "src", "include", "web/src", "tools/demo-core/bridge.cpp", "docs/reference/settings-dependencies.md"]
 

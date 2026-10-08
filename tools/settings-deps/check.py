@@ -119,15 +119,10 @@ def docs_page(catalogue):
     )
 
 
-def check(root, write_docs=False):
-    problems = []
-    catalogue = json.loads(read(root, CATALOGUE))
-    reasons = catalogue["reasons"]
-    entries = catalogue["entries"]
-
-    # Structure.
-    seen = set()
-    for e in entries:
+def check_structure(catalogue):
+    """IDs unique; class, kind and reasons valid; constraints list their messages."""
+    problems, seen = [], set()
+    for e in catalogue["entries"]:
         if e["id"] in seen:
             problems.append(f"{CATALOGUE}: {e['id']} is listed twice")
         seen.add(e["id"])
@@ -137,65 +132,105 @@ def check(root, write_docs=False):
             problems.append(f"{CATALOGUE}: {e['id']} kind must be setting or feature")
         if e["class"] == "constraint" and (e["kind"] != "feature" or not e.get("messages")):
             problems.append(f"{CATALOGUE}: constraint {e['id']} must be kind feature and list its messages")
-        for r in e["reasons"]:
-            if r not in reasons:
-                problems.append(f"{CATALOGUE}: {e['id']} uses unknown reason {r}")
+        problems += [f"{CATALOGUE}: {e['id']} uses unknown reason {r}" for r in e["reasons"] if r not in catalogue["reasons"]]
+    return problems
 
-    device = read(root, DEVICE_IMPL)
-    web = read(root, WEB_IMPL)
-    native_tests = "\n".join(read(root, f) for f in files(root, ["test/**/*.cpp"]))
-    web_tests = "\n".join(read(root, f) for f in files(root, ["web/src/**/__tests__/**/*.ts", "web/src/**/__tests__/**/*.tsx", "web/src/**/*.test.ts", "web/src/**/*.test.tsx"]))
-    fixtures = json.loads(read(root, FIXTURES))
 
-    code = {rel: read(root, rel) for rel in files(root, DEVICE_CODE) if rel not in SCAN_EXCLUDE}
-    marked = set()
-    for rel, text in code.items():
+def load_sources(root):
+    """Everything the entries are checked against."""
+    web_test_patterns = ["web/src/**/__tests__/**/*.ts", "web/src/**/__tests__/**/*.tsx", "web/src/**/*.test.ts", "web/src/**/*.test.tsx"]
+    return {
+        "device": read(root, DEVICE_IMPL),
+        "web": read(root, WEB_IMPL),
+        "native_tests": "\n".join(read(root, f) for f in files(root, ["test/**/*.cpp"])),
+        "web_tests": "\n".join(read(root, f) for f in files(root, web_test_patterns)),
+        "constraints": {source: read(root, source) for source in CONSTRAINT_SOURCES},
+    }
+
+
+def check_code(root, known_ids):
+    """Markers name catalogue entries; no undeclared dependencies. Returns (problems, marked IDs)."""
+    problems, marked = [], set()
+    for rel in files(root, DEVICE_CODE):
+        if rel in SCAN_EXCLUDE:
+            continue
+        text = read(root, rel)
         found = markers(text)
-        for unknown in sorted(found - seen):
-            problems.append(f"{rel}: marker names {unknown}, which isn't in {CATALOGUE}")
+        problems += [f"{rel}: marker names {unknown}, which isn't in {CATALOGUE}" for unknown in sorted(found - known_ids)]
         marked |= found
         problems += undeclared_dependencies(rel, text)
+    return problems, marked
 
-    # Fixture coverage per ID: inactive and in effect.
+
+def fixture_coverage(fixtures):
+    """IDs some fixture case makes inactive, and settings some case has in effect."""
     inactive_ids, effective_settings = set(), set()
     for case in fixtures["cases"]:
         for setting, expected in case["expect"].items():
-            if not expected:
-                continue
-            if expected["state"] == "inactive":
+            if expected and expected["state"] == "inactive":
                 inactive_ids.add(expected["id"])
-            elif expected["state"] == "active":
+            elif expected and expected["state"] == "active":
                 effective_settings.add(setting)
+    return inactive_ids, effective_settings
 
-    for e in entries:
-        i = e["id"]
-        if e["kind"] == "setting":
-            if f'"{i}"' not in device:
-                problems.append(f"{i}: not implemented in {DEVICE_IMPL}")
-            if f"'{i}'" not in web:
-                problems.append(f"{i}: not implemented in {WEB_IMPL}")
-            if e["reasons"] and i not in inactive_ids:
-                problems.append(f"{i}: no fixture case where it makes a setting inactive ({FIXTURES})")
-            if not set(e["settings"]) & effective_settings:
-                problems.append(f"{i}: no fixture case where its setting is in effect ({FIXTURES})")
-        elif e["class"] == "dependency" and i not in marked:
-            problems.append(f"{i}: a feature dependency needs a `dep: {i}` marker where the device enforces it")
-        for message in e.get("messages", []):
-            for source in CONSTRAINT_SOURCES:
-                if message not in read(root, source):
-                    problems.append(f"{i}: message {message!r} not in {source} (FR-010: the same message on the device and in the UI)")
-        if i not in native_tests:
-            problems.append(f"{i}: no native test names it (test/)")
-        if i not in web_tests:
-            problems.append(f"{i}: no web test names it (web/src)")
 
+def check_implemented(e, sources, coverage, marked):
+    """A reported entry is in both evaluators and the fixtures; a feature dependency is marked in the code."""
+    i = e["id"]
+    if e["kind"] != "setting":
+        needs_marker = e["class"] == "dependency" and i not in marked
+        return [f"{i}: a feature dependency needs a `dep: {i}` marker where the device enforces it"] if needs_marker else []
+    inactive_ids, effective_settings = coverage
+    problems = []
+    if f'"{i}"' not in sources["device"]:
+        problems.append(f"{i}: not implemented in {DEVICE_IMPL}")
+    if f"'{i}'" not in sources["web"]:
+        problems.append(f"{i}: not implemented in {WEB_IMPL}")
+    if e["reasons"] and i not in inactive_ids:
+        problems.append(f"{i}: no fixture case where it makes a setting inactive ({FIXTURES})")
+    if not set(e["settings"]) & effective_settings:
+        problems.append(f"{i}: no fixture case where its setting is in effect ({FIXTURES})")
+    return problems
+
+
+def check_tested(e, sources):
+    """Named in a native and a web test; constraint messages shared by the device and the UI (FR-010)."""
+    i = e["id"]
+    problems = [
+        f"{i}: message {message!r} not in {source} (FR-010: the same message on the device and in the UI)"
+        for message in e.get("messages", [])
+        for source, text in sources["constraints"].items()
+        if message not in text
+    ]
+    if i not in sources["native_tests"]:
+        problems.append(f"{i}: no native test names it (test/)")
+    if i not in sources["web_tests"]:
+        problems.append(f"{i}: no web test names it (web/src)")
+    return problems
+
+
+def check_docs(root, catalogue, write_docs):
     page = docs_page(catalogue)
     if write_docs:
         with open(os.path.join(root, DOCS), "w", encoding="utf-8") as f:
             f.write(page)
-    elif not os.path.exists(os.path.join(root, DOCS)) or read(root, DOCS) != page:
-        problems.append(f"{DOCS} is out of date: run python3 tools/settings-deps/check.py --write-docs")
-    return problems
+        return []
+    if not os.path.exists(os.path.join(root, DOCS)) or read(root, DOCS) != page:
+        return [f"{DOCS} is out of date: run python3 tools/settings-deps/check.py --write-docs"]
+    return []
+
+
+def check(root, write_docs=False):
+    catalogue = json.loads(read(root, CATALOGUE))
+    problems = check_structure(catalogue)
+    sources = load_sources(root)
+    code_problems, marked = check_code(root, {e["id"] for e in catalogue["entries"]})
+    problems += code_problems
+    coverage = fixture_coverage(json.loads(read(root, FIXTURES)))
+    for e in catalogue["entries"]:
+        problems += check_implemented(e, sources, coverage, marked)
+        problems += check_tested(e, sources)
+    return problems + check_docs(root, catalogue, write_docs)
 
 
 def main(argv=None):

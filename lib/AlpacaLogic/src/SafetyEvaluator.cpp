@@ -27,7 +27,7 @@ namespace SQM
                 va_end(args);
                 addReason(result, flag, buffer);
             }
-        }
+        } // namespace
 
         SafetyResult evaluateSafety(const SafetyInputs &in, const SafetyThresholds &t)
         {
@@ -75,8 +75,12 @@ namespace SQM
             }
             else if (in.secondsSinceLastGoodData > t.staleAfterSeconds)
             {
-                addReasonf(result, UNSAFE_STALE_DATA, "Sensor data is stale (%us old, limit %us)",
-                           static_cast<unsigned>(in.secondsSinceLastGoodData), static_cast<unsigned>(t.staleAfterSeconds));
+                addReasonf(
+                    result,
+                    UNSAFE_STALE_DATA,
+                    "Sensor data is stale (%us old, limit %us)",
+                    static_cast<unsigned>(in.secondsSinceLastGoodData),
+                    static_cast<unsigned>(t.staleAfterSeconds));
             }
 
             if (in.requiredSensorFault)
@@ -123,8 +127,14 @@ namespace SQM
 
                     if (t.dewpointMarginEnabled && (in.temperatureC - in.dewpointC) < t.dewpointMarginMinC)
                     {
-                        addReasonf(result, UNSAFE_DEWPOINT, "Dew margin %.1f C < %.1f C (temp %.1f C, dew point %.1f C)",
-                                   in.temperatureC - in.dewpointC, t.dewpointMarginMinC, in.temperatureC, in.dewpointC);
+                        addReasonf(
+                            result,
+                            UNSAFE_DEWPOINT,
+                            "Dew margin %.1f C < %.1f C (temp %.1f C, dew point %.1f C)",
+                            in.temperatureC - in.dewpointC,
+                            t.dewpointMarginMinC,
+                            in.temperatureC,
+                            in.dewpointC);
                     }
                 }
             }

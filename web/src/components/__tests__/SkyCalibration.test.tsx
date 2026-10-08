@@ -18,8 +18,11 @@ describe('Sky quality settings', () => {
   it("shows the device's reason when calibration is refused", async () => {
     server.use(
       http.post('/api/sensors/tsl2591/calibrate-dark', () =>
-        HttpResponse.json({ error: "The averaging window isn't full yet (40 of 150 samples). Keep the sensor covered and try again." }, { status: 409 })
-      )
+        HttpResponse.json(
+          { error: "The averaging window isn't full yet (40 of 150 samples). Keep the sensor covered and try again." },
+          { status: 409 },
+        ),
+      ),
     );
     window.history.replaceState(null, '', '/settings?tab=sensors');
     render(<Settings />);
@@ -34,7 +37,7 @@ describe('Sky quality settings', () => {
       http.post('/api/config', async ({ request }) => {
         saved = await request.json();
         return HttpResponse.json({ success: true });
-      })
+      }),
     );
     window.history.replaceState(null, '', '/settings?tab=sensors');
     render(<Settings />);

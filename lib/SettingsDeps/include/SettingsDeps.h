@@ -64,12 +64,12 @@ namespace SQM
 
         struct Entry
         {
-            const char *setting;            // config JSON path, e.g. "alerts.mqtt.enabled"
-            const char *id;                 // catalogue ID of the deciding link
+            const char *setting; // config JSON path, e.g. "alerts.mqtt.enabled"
+            const char *id;      // catalogue ID of the deciding link
             State state = State::Off;
             const Reason *reason = nullptr; // when Inactive
             Unmet unmet = Unmet::None;
-            bool neutral = false;           // inactive by default and harmless: shown muted
+            bool neutral = false; // inactive by default and harmless: shown muted
         };
 
         // Every reported setting, in catalogue order.

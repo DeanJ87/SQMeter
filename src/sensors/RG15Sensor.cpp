@@ -16,7 +16,8 @@ namespace SQM
         {
         public:
             explicit MutexGuard(SemaphoreHandle_t mutex, TickType_t timeoutTicks = pdMS_TO_TICKS(20))
-                : mutex(mutex), locked(mutex != nullptr && xSemaphoreTake(mutex, timeoutTicks) == pdTRUE)
+                : mutex(mutex),
+                  locked(mutex != nullptr && xSemaphoreTake(mutex, timeoutTicks) == pdTRUE)
             {
             }
 
@@ -42,12 +43,10 @@ namespace SQM
 
             while (labelPos != std::string::npos)
             {
-                const bool startsField = labelPos == 0 ||
-                                         line[labelPos - 1] == ',' ||
-                                         std::isspace(static_cast<unsigned char>(line[labelPos - 1]));
+                const bool startsField =
+                    labelPos == 0 || line[labelPos - 1] == ',' || std::isspace(static_cast<unsigned char>(line[labelPos - 1]));
                 const size_t valuePos = labelPos + labelLength;
-                const bool hasValueSeparator = valuePos < line.length() &&
-                                               std::isspace(static_cast<unsigned char>(line[valuePos]));
+                const bool hasValueSeparator = valuePos < line.length() && std::isspace(static_cast<unsigned char>(line[valuePos]));
 
                 if (startsField && hasValueSeparator)
                 {
@@ -109,18 +108,35 @@ namespace SQM
         }
     }
 
-    RG15Sensor::RG15Sensor(uint8_t rxPin, uint8_t txPin, uint32_t baudRate,
-                           const std::string &mode, const std::string &resolution,
-                           const std::string &units, bool enabled, bool debugUart,
-                           uint32_t pollIntervalMs, uint32_t rainClearDelayMs,
-                           bool dailyResetEnabled, uint8_t dailyResetHour,
-                           uint8_t dailyResetMinute)
-        : enabledConfig(enabled), debugUart(debugUart), rxPin(rxPin), txPin(txPin),
-          baudRate(baudRate), mode(mode), resolution(resolution), units(units),
-          pollIntervalMs(pollIntervalMs), rainClearDelayMs(rainClearDelayMs),
-          dailyResetEnabled(dailyResetEnabled), dailyResetHour(dailyResetHour),
+    RG15Sensor::RG15Sensor(
+        uint8_t rxPin,
+        uint8_t txPin,
+        uint32_t baudRate,
+        const std::string &mode,
+        const std::string &resolution,
+        const std::string &units,
+        bool enabled,
+        bool debugUart,
+        uint32_t pollIntervalMs,
+        uint32_t rainClearDelayMs,
+        bool dailyResetEnabled,
+        uint8_t dailyResetHour,
+        uint8_t dailyResetMinute)
+        : enabledConfig(enabled),
+          debugUart(debugUart),
+          rxPin(rxPin),
+          txPin(txPin),
+          baudRate(baudRate),
+          mode(mode),
+          resolution(resolution),
+          units(units),
+          pollIntervalMs(pollIntervalMs),
+          rainClearDelayMs(rainClearDelayMs),
+          dailyResetEnabled(dailyResetEnabled),
+          dailyResetHour(dailyResetHour),
           dailyResetMinute(dailyResetMinute),
-          serial(std::make_unique<HardwareSerial>(UART_NUM)), stateMutex(xSemaphoreCreateMutex())
+          serial(std::make_unique<HardwareSerial>(UART_NUM)),
+          stateMutex(xSemaphoreCreateMutex())
     {
         diagnostics.rxPin = rxPin;
         diagnostics.txPin = txPin;
@@ -198,8 +214,16 @@ namespace SQM
             return true;
         }
 
-        Logger::info(TAG, "UART begin rx=%u tx=%u baud=%u port=%u mode=%s res=%s units=%s",
-                     rxPin, txPin, baudRate, UART_NUM, mode.c_str(), resolution.c_str(), units.c_str());
+        Logger::info(
+            TAG,
+            "UART begin rx=%u tx=%u baud=%u port=%u mode=%s res=%s units=%s",
+            rxPin,
+            txPin,
+            baudRate,
+            UART_NUM,
+            mode.c_str(),
+            resolution.c_str(),
+            units.c_str());
 
         serial->begin(baudRate, SERIAL_8N1, rxPin, txPin);
         initialized = true;
@@ -209,8 +233,7 @@ namespace SQM
 
         if (debugUart)
         {
-            Logger::info(TAG, "UART configured: rx=%u tx=%u baud=%u port=%u debug=%d",
-                         rxPin, txPin, baudRate, UART_NUM, debugUart ? 1 : 0);
+            Logger::info(TAG, "UART configured: rx=%u tx=%u baud=%u port=%u debug=%d", rxPin, txPin, baudRate, UART_NUM, debugUart ? 1 : 0);
         }
 
         applyConfig();
@@ -379,8 +402,7 @@ namespace SQM
 
             if (debugUart)
             {
-                Logger::info(TAG, "unexpected response while waiting for ack \"%s\": \"%s\"",
-                             expectedAck, ack.c_str());
+                Logger::info(TAG, "unexpected response while waiting for ack \"%s\": \"%s\"", expectedAck, ack.c_str());
             }
         }
 
@@ -648,14 +670,8 @@ namespace SQM
             }
         }
 
-        if (line.rfind("Baud ", 0) == 0 ||
-            line.rfind("Reset ", 0) == 0 ||
-            line.rfind("SW ", 0) == 0 ||
-            line.rfind("Emitters ", 0) == 0 ||
-            line.rfind("EmTotal ", 0) == 0 ||
-            line.rfind("PwrDays ", 0) == 0 ||
-            line.rfind("Event", 0) == 0 ||
-            line.rfind(";", 0) == 0)
+        if (line.rfind("Baud ", 0) == 0 || line.rfind("Reset ", 0) == 0 || line.rfind("SW ", 0) == 0 || line.rfind("Emitters ", 0) == 0 ||
+            line.rfind("EmTotal ", 0) == 0 || line.rfind("PwrDays ", 0) == 0 || line.rfind("Event", 0) == 0 || line.rfind(";", 0) == 0)
         {
             diagnostics.lastStatusLine = line;
             if (line.rfind("Reset ", 0) == 0)
@@ -750,9 +766,14 @@ namespace SQM
 
         if (debugUart)
         {
-            Logger::info(TAG, "parsed acc=%.2f event=%.2f total=%.2f intensity=%.2f unit=%s",
-                         reading.acc, reading.eventAcc, reading.totalAcc, reading.rInt,
-                         units == "imperial" ? "in" : "mm");
+            Logger::info(
+                TAG,
+                "parsed acc=%.2f event=%.2f total=%.2f intensity=%.2f unit=%s",
+                reading.acc,
+                reading.eventAcc,
+                reading.totalAcc,
+                reading.rInt,
+                units == "imperial" ? "in" : "mm");
             Logger::info(TAG, "online=true age=%ums", 0u);
         }
 
@@ -1101,12 +1122,19 @@ namespace SQM
         Logger::info(TAG, "RG-15 stopped");
     }
 
-    void RG15Sensor::reconfigure(uint8_t newRxPin, uint8_t newTxPin, uint32_t newBaudRate,
-                                 const std::string &newMode, const std::string &newResolution,
-                                 const std::string &newUnits, bool newDebugUart,
-                                 uint32_t newPollIntervalMs, uint32_t newRainClearDelayMs,
-                                 bool newDailyResetEnabled, uint8_t newDailyResetHour,
-                                 uint8_t newDailyResetMinute)
+    void RG15Sensor::reconfigure(
+        uint8_t newRxPin,
+        uint8_t newTxPin,
+        uint32_t newBaudRate,
+        const std::string &newMode,
+        const std::string &newResolution,
+        const std::string &newUnits,
+        bool newDebugUart,
+        uint32_t newPollIntervalMs,
+        uint32_t newRainClearDelayMs,
+        bool newDailyResetEnabled,
+        uint8_t newDailyResetHour,
+        uint8_t newDailyResetMinute)
     {
         stop();
 

@@ -1,5 +1,5 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
-import { FIX_LABEL, blocksSwitchingOn, type DepEntry } from '../../lib/settingsDeps';
+import { FIX_LABEL, blocksSwitchingOn, noteFor, type DepEntry } from '../../lib/settingsDeps';
 import { Button, Card, InfoTip, Note, Pill } from '../ui';
 
 // Settings building blocks, all on the shared component classes so Settings
@@ -9,9 +9,7 @@ import { Button, Card, InfoTip, Note, Pill } from '../ui';
 type Tone = 'ok' | 'warn' | 'bad' | 'off';
 const PILL: Record<Tone, string> = { ok: 'pill-green', warn: 'pill-amber', bad: 'pill-red', off: 'pill-dim' };
 
-export const StatusBadge: FunctionalComponent<{ tone: Tone; label: string }> = ({ tone, label }) => (
-  <Pill tone={PILL[tone]}>{label}</Pill>
-);
+export const StatusBadge: FunctionalComponent<{ tone: Tone; label: string }> = ({ tone, label }) => <Pill tone={PILL[tone]}>{label}</Pill>;
 
 export const SettingsCard: FunctionalComponent<{
   id?: string;
@@ -93,16 +91,16 @@ export const Toggle: FunctionalComponent<{
 // (specs/020-settings-dependencies). Inactive: a warning ("Inactive - MQTT
 // is off"), or a muted note for harmless defaults. Off but blocked: what has
 // to change before it can be switched on.
-export const DepNote: FunctionalComponent<{ entry: DepEntry; onFix: (entry: DepEntry) => void; prefix?: string }> = ({ entry, onFix, prefix }) => {
-  const blocked = entry.state === 'off' ? entry.blockedBy : undefined;
-  const inactive = entry.state === 'inactive' && entry.reason ? entry : undefined;
-  const reason = inactive?.reason ?? blocked?.reason;
-  if (!reason) return null;
-  const text = inactive ? `${prefix ?? 'Inactive'} - ${inactive.text}` : `${blocked?.text}.`;
-  const tone = inactive && !inactive.neutral ? 'warn' : 'info';
+export const DepNote: FunctionalComponent<{ entry: DepEntry; onFix: (entry: DepEntry) => void; prefix?: string }> = ({
+  entry,
+  onFix,
+  prefix,
+}) => {
+  const note = noteFor(entry, prefix);
+  if (!note) return null;
   return (
-    <Requires tone={tone} onFix={() => onFix(inactive ?? { ...entry, ...blocked })} fixLabel={FIX_LABEL[reason]}>
-      <span data-dep={inactive?.id ?? blocked?.id}>{text}</span>
+    <Requires tone={note.tone} onFix={() => onFix(note.target)} fixLabel={FIX_LABEL[note.reason]}>
+      <span data-dep={note.id}>{note.text}</span>
     </Requires>
   );
 };

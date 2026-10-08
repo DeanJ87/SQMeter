@@ -194,7 +194,7 @@ namespace
         }
         return snap;
     }
-}
+} // namespace
 
 void test_observing_conditions_maps_known_property(void)
 {
@@ -445,11 +445,10 @@ void test_alpaca_bool_parsing(void)
 
 void test_unique_id_includes_mac(void)
 {
-    TEST_ASSERT_EQUAL_STRING("sqmeter-a1b2c3d4e5f6-observingconditions-0",
-                             buildUniqueId(0xA1B2C3D4E5F6ULL, "observingconditions", 0).c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "sqmeter-a1b2c3d4e5f6-observingconditions-0", buildUniqueId(0xA1B2C3D4E5F6ULL, "observingconditions", 0).c_str());
     // Upper 16 bits of the efuse value are ignored; short MACs are zero-padded.
-    TEST_ASSERT_EQUAL_STRING("sqmeter-000000000001-safetymonitor-0",
-                             buildUniqueId(0xFFFF000000000001ULL, "safetymonitor", 0).c_str());
+    TEST_ASSERT_EQUAL_STRING("sqmeter-000000000001-safetymonitor-0", buildUniqueId(0xFFFF000000000001ULL, "safetymonitor", 0).c_str());
 }
 
 // --- Rain safety ---
@@ -466,7 +465,7 @@ namespace
         in.rainSensorHealthy = true;
         return in;
     }
-}
+} // namespace
 
 void test_rain_makes_unsafe(void)
 {
@@ -523,7 +522,7 @@ void test_environment_fault_blocks_humidity_rules(void)
     SafetyThresholds t;
     SafetyInputs in = freshSafeInputs();
     in.environmentSensorFault = true;
-    in.humidityPercent = 53.0f; // fallback value must not be trusted
+    in.humidityPercent = 53.0f;                     // fallback value must not be trusted
     TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe); // rules disabled -> irrelevant
 
     t.humidityMaxEnabled = true;
@@ -615,8 +614,8 @@ namespace
         std::string timestampUtc() const override { return ""; }
     };
 
-    SQM::Alpaca::Response route(SQM::Alpaca::Router &router, bool put, const std::string &path,
-                                std::vector<std::pair<std::string, std::string>> params = {})
+    SQM::Alpaca::Response route(
+        SQM::Alpaca::Router &router, bool put, const std::string &path, std::vector<std::pair<std::string, std::string>> params = {})
     {
         SQM::Alpaca::Request request;
         request.get = !put;
@@ -627,7 +626,7 @@ namespace
         TEST_ASSERT_TRUE(router.handle(request, response));
         return response;
     }
-}
+} // namespace
 
 void test_router_issafe_and_transaction_ids(void)
 {
@@ -635,7 +634,8 @@ void test_router_issafe_and_transaction_ids(void)
     SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
     SQM::Alpaca::Response r = route(router, false, "/api/v1/safetymonitor/0/issafe", {{"clienttransactionid", "7"}});
     TEST_ASSERT_EQUAL(200, r.status);
-    TEST_ASSERT_EQUAL_STRING("{\"Value\":true,\"ClientTransactionID\":7,\"ServerTransactionID\":1,\"ErrorNumber\":0,\"ErrorMessage\":\"\"}", r.body.c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "{\"Value\":true,\"ClientTransactionID\":7,\"ServerTransactionID\":1,\"ErrorNumber\":0,\"ErrorMessage\":\"\"}", r.body.c_str());
     backend.safe = false;
     r = route(router, false, "/api/v1/safetymonitor/0/issafe");
     TEST_ASSERT_NOT_NULL(strstr(r.body.c_str(), "\"Value\":false"));

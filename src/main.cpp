@@ -80,8 +80,7 @@ bool saveConfigCallback(const Config &newConfig)
         // Update time manager config if changed
         if (timeManager)
         {
-            timeManager->updateConfig(config.ntp, config.gps,
-                                      config.primaryTimeSource, config.secondaryTimeSource);
+            timeManager->updateConfig(config.ntp, config.gps, config.primaryTimeSource, config.secondaryTimeSource);
         }
 
         if (!config.ota.enabled || config.ota.password.empty())
@@ -99,11 +98,18 @@ bool saveConfigCallback(const Config &newConfig)
             if (config.rain.enabled)
             {
                 rg15Sensor->reconfigure(
-                    config.rain.rxPin, config.rain.txPin, config.rain.baudRate,
-                    config.rain.mode, config.rain.resolution, config.rain.units,
-                    config.rain.debugUart, config.rain.pollIntervalMs,
-                    config.rain.rainClearDelayMs, config.rain.dailyResetEnabled,
-                    config.rain.dailyResetHour, config.rain.dailyResetMinute);
+                    config.rain.rxPin,
+                    config.rain.txPin,
+                    config.rain.baudRate,
+                    config.rain.mode,
+                    config.rain.resolution,
+                    config.rain.units,
+                    config.rain.debugUart,
+                    config.rain.pollIntervalMs,
+                    config.rain.rainClearDelayMs,
+                    config.rain.dailyResetEnabled,
+                    config.rain.dailyResetHour,
+                    config.rain.dailyResetMinute);
             }
             else
             {
@@ -129,8 +135,7 @@ void setupWatchdog()
 
 void setupI2C()
 {
-    Logger::info("Main", "Initializing I2C (SDA:%d, SCL:%d, %dHz)",
-                 config.sensor.i2cSDA, config.sensor.i2cSCL, config.sensor.i2cFrequency);
+    Logger::info("Main", "Initializing I2C (SDA:%d, SCL:%d, %dHz)", config.sensor.i2cSDA, config.sensor.i2cSCL, config.sensor.i2cFrequency);
 
     Wire.begin(config.sensor.i2cSDA, config.sensor.i2cSCL);
     Wire.setClock(config.sensor.i2cFrequency);
@@ -181,11 +186,19 @@ void setupSensors()
     if (config.rain.enabled)
     {
         rg15Sensor = std::make_unique<RG15Sensor>(
-            config.rain.rxPin, config.rain.txPin, config.rain.baudRate,
-            config.rain.mode, config.rain.resolution, config.rain.units,
-            true, config.rain.debugUart, config.rain.pollIntervalMs,
-            config.rain.rainClearDelayMs, config.rain.dailyResetEnabled,
-            config.rain.dailyResetHour, config.rain.dailyResetMinute);
+            config.rain.rxPin,
+            config.rain.txPin,
+            config.rain.baudRate,
+            config.rain.mode,
+            config.rain.resolution,
+            config.rain.units,
+            true,
+            config.rain.debugUart,
+            config.rain.pollIntervalMs,
+            config.rain.rainClearDelayMs,
+            config.rain.dailyResetEnabled,
+            config.rain.dailyResetHour,
+            config.rain.dailyResetMinute);
         if (!rg15Sensor->begin())
         {
             Logger::warn("Main", "RG-15 initialization failed");
@@ -278,37 +291,51 @@ void setup()
         ArduinoOTA.setPassword(config.ota.password.c_str());
         ArduinoOTA.setMdnsEnabled(false); // WiFiManager owns mDNS (and it can be off)
 
-        ArduinoOTA.onStart([]()
-                           {
-            String type;
-            if (ArduinoOTA.getCommand() == U_FLASH) {
-                type = "firmware";
-            } else { // U_SPIFFS
-                type = "filesystem";
-                LittleFS.end(); // Unmount filesystem
-            }
-            Logger::info("OTA", "Start updating %s", type.c_str()); });
+        ArduinoOTA.onStart(
+            []()
+            {
+                String type;
+                if (ArduinoOTA.getCommand() == U_FLASH)
+                {
+                    type = "firmware";
+                }
+                else
+                { // U_SPIFFS
+                    type = "filesystem";
+                    LittleFS.end(); // Unmount filesystem
+                }
+                Logger::info("OTA", "Start updating %s", type.c_str());
+            });
 
-        ArduinoOTA.onEnd([]()
-                         { Logger::info("OTA", "Update complete"); });
+        ArduinoOTA.onEnd([]() { Logger::info("OTA", "Update complete"); });
 
-        ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
-                              {
-            static int lastPercent = -1;
-            int percent = (progress / (total / 100));
-            if (percent != lastPercent && percent % 10 == 0) {
-                Logger::info("OTA", "Progress: %u%%", percent);
-                lastPercent = percent;
-            } });
+        ArduinoOTA.onProgress(
+            [](unsigned int progress, unsigned int total)
+            {
+                static int lastPercent = -1;
+                int percent = (progress / (total / 100));
+                if (percent != lastPercent && percent % 10 == 0)
+                {
+                    Logger::info("OTA", "Progress: %u%%", percent);
+                    lastPercent = percent;
+                }
+            });
 
-        ArduinoOTA.onError([](ota_error_t error)
-                           {
-            Logger::error("OTA", "Error[%u]: ", error);
-            if (error == OTA_AUTH_ERROR) Logger::error("OTA", "Auth Failed");
-            else if (error == OTA_BEGIN_ERROR) Logger::error("OTA", "Begin Failed");
-            else if (error == OTA_CONNECT_ERROR) Logger::error("OTA", "Connect Failed");
-            else if (error == OTA_RECEIVE_ERROR) Logger::error("OTA", "Receive Failed");
-            else if (error == OTA_END_ERROR) Logger::error("OTA", "End Failed"); });
+        ArduinoOTA.onError(
+            [](ota_error_t error)
+            {
+                Logger::error("OTA", "Error[%u]: ", error);
+                if (error == OTA_AUTH_ERROR)
+                    Logger::error("OTA", "Auth Failed");
+                else if (error == OTA_BEGIN_ERROR)
+                    Logger::error("OTA", "Begin Failed");
+                else if (error == OTA_CONNECT_ERROR)
+                    Logger::error("OTA", "Connect Failed");
+                else if (error == OTA_RECEIVE_ERROR)
+                    Logger::error("OTA", "Receive Failed");
+                else if (error == OTA_END_ERROR)
+                    Logger::error("OTA", "End Failed");
+            });
 
         ArduinoOTA.begin();
         if (wifiManager->isMdnsRunning())
@@ -322,12 +349,8 @@ void setup()
     }
 
     // Initialize time manager with GPS/NTP priority
-    timeManager = std::make_unique<TimeManager>(
-        config.ntp,
-        config.gps,
-        config.primaryTimeSource,
-        config.secondaryTimeSource,
-        gpsSensor.get());
+    timeManager =
+        std::make_unique<TimeManager>(config.ntp, config.gps, config.primaryTimeSource, config.secondaryTimeSource, gpsSensor.get());
     if (wifiManager->isConnected())
     {
         timeManager->begin();

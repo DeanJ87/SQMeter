@@ -8,8 +8,8 @@ using namespace SQM;
 
 namespace
 {
-    constexpr int64_t NIGHT_EPOCH = 1791417600;   // 2026-10-08 00:00 UTC (dark over London)
-    constexpr int64_t MIDDAY_EPOCH = 1791460800;  // 2026-10-08 12:00 UTC
+    constexpr int64_t NIGHT_EPOCH = 1791417600;  // 2026-10-08 00:00 UTC (dark over London)
+    constexpr int64_t MIDDAY_EPOCH = 1791460800; // 2026-10-08 12:00 UTC
 
     // A healthy reading set: all three sky sensors fresh at `now`.
     SensorSnapshot healthy(uint32_t now)
@@ -205,12 +205,21 @@ void test_alert_wording_and_levels()
     status.isSafe = true;
     status.rawSafe = true;
     // Baseline pass, then unsafe after the engine's 60 s start-up grace.
-    Core::runAlerts(engine, Core::alertInputs(status, s, obs, cfg, night, now), Core::alertRules(cfg), cfg, obs, night, status, "23:00", "2026-10-07");
+    Core::runAlerts(
+        engine, Core::alertInputs(status, s, obs, cfg, night, now), Core::alertRules(cfg), cfg, obs, night, status, "23:00", "2026-10-07");
     status.isSafe = false;
     status.rawSafe = false;
     status.reasons = {"Cloud 96% >= 90%"};
-    const Core::AlertStep step = Core::runAlerts(engine, Core::alertInputs(status, s, obs, cfg, night, now + 70000), Core::alertRules(cfg),
-                                                 cfg, obs, night, status, "23:01", "2026-10-07");
+    const Core::AlertStep step = Core::runAlerts(
+        engine,
+        Core::alertInputs(status, s, obs, cfg, night, now + 70000),
+        Core::alertRules(cfg),
+        cfg,
+        obs,
+        night,
+        status,
+        "23:01",
+        "2026-10-07");
     TEST_ASSERT_EQUAL(1, step.outgoing.size());
     const Alerts::Alert &alert = step.outgoing[0];
     TEST_ASSERT_EQUAL(static_cast<int>(Alerts::AlertLevel::Urgent), static_cast<int>(alert.level));
@@ -222,8 +231,16 @@ void test_alert_wording_and_levels()
     cfg.alerts.safe.level = 0;
     status.isSafe = status.rawSafe = true;
     status.reasons.clear();
-    const Core::AlertStep quiet = Core::runAlerts(engine, Core::alertInputs(status, s, obs, cfg, night, now + 600000), Core::alertRules(cfg),
-                                                  cfg, obs, night, status, "23:11", "2026-10-07");
+    const Core::AlertStep quiet = Core::runAlerts(
+        engine,
+        Core::alertInputs(status, s, obs, cfg, night, now + 600000),
+        Core::alertRules(cfg),
+        cfg,
+        obs,
+        night,
+        status,
+        "23:11",
+        "2026-10-07");
     TEST_ASSERT_EQUAL(0, quiet.outgoing.size());
 }
 

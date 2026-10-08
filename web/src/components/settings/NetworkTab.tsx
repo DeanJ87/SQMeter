@@ -4,7 +4,20 @@ import type { MQTTPublishGroups } from '../../types';
 import { useWifiScan } from '../../hooks/useWifiScan';
 import { defaultHomeAssistant, defaultMqttPublish } from './defaults';
 import type { SettingsTabProps } from './context';
-import { ActionButton, DepNote, DepToggle, Field, Group, NumberInput, ResultNote, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
+import {
+  ActionButton,
+  DepNote,
+  DepToggle,
+  Field,
+  Group,
+  NumberInput,
+  ResultNote,
+  SelectInput,
+  SettingsCard,
+  StatusBadge,
+  TextInput,
+  Toggle,
+} from './controls';
 
 type Result = { type: 'success' | 'error'; text: string } | null;
 
@@ -20,7 +33,11 @@ const PUBLISH_GROUPS: {
   { key: 'rain', label: 'Rain' },
   { key: 'wind', label: 'Wind' },
   { key: 'safety', label: 'Safe / unsafe', hint: 'Retained <base>/safe (1/0) and <base>/safety (reasons), on every change.' },
-  { key: 'diagnostics', label: 'Diagnostics', hint: 'Light-sensor sample counts and RG-15 serial counters to <base>/diagnostics. For troubleshooting.' },
+  {
+    key: 'diagnostics',
+    label: 'Diagnostics',
+    hint: 'Light-sensor sample counts and RG-15 serial counters to <base>/diagnostics. For troubleshooting.',
+  },
 ];
 
 const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: string | null }> = ({
@@ -69,9 +86,11 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
         }),
       });
       const result = await response.json();
-      setMqttResult(result.success
-        ? { type: 'success', text: result.message || 'Connected' }
-        : { type: 'error', text: result.error || 'Connection failed' });
+      setMqttResult(
+        result.success
+          ? { type: 'success', text: result.message || 'Connected' }
+          : { type: 'error', text: result.error || 'Connection failed' },
+      );
     } catch {
       setMqttResult({ type: 'error', text: 'Could not reach the device' });
     } finally {
@@ -83,11 +102,9 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
   const publish = { ...defaultMqttPublish, ...config.mqtt.publish };
   const homeAssistant = { ...defaultHomeAssistant, ...config.mqtt.homeAssistant };
 
-  const mqttBadge = !config.mqtt.enabled
-    ? undefined
-    : hw.mqtt.connected === null
-      ? undefined
-      : <StatusBadge tone={hw.mqtt.connected ? 'ok' : 'bad'} label={hw.mqtt.connected ? 'Connected' : 'Not connected'} />;
+  const mqttBadge = !config.mqtt.enabled ? undefined : hw.mqtt.connected === null ? undefined : (
+    <StatusBadge tone={hw.mqtt.connected ? 'ok' : 'bad'} label={hw.mqtt.connected ? 'Connected' : 'Not connected'} />
+  );
 
   return (
     <>
@@ -101,21 +118,32 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
                 options={networkOptions}
                 onChange={(v) => selectNetwork(v === 'OTHER' ? '' : v)}
               />
-              <ActionButton onClick={scan} busy={scanning} busyLabel="Scanning...">Scan</ActionButton>
+              <ActionButton onClick={scan} busy={scanning} busyLabel="Scanning...">
+                Scan
+              </ActionButton>
             </div>
             {ssid === '' && <TextInput dataField="wifi.ssid" value={ssid} placeholder="Network name" onInput={(v) => selectNetwork(v)} />}
             <ResultNote result={scanError ? { type: 'error', text: scanError } : null} />
           </Field>
           {showPassword && (
             <Field label="Password">
-              <TextInput dataField="wifi.password" type="password" value={config.wifi.password} onInput={(v) => update(['wifi', 'password'], v)} />
+              <TextInput
+                dataField="wifi.password"
+                type="password"
+                value={config.wifi.password}
+                onInput={(v) => update(['wifi', 'password'], v)}
+              />
             </Field>
           )}
           <Field label="Hostname" error={error('wifi.hostname')}>
             <TextInput dataField="wifi.hostname" value={config.wifi.hostname} onInput={(v) => update(['wifi', 'hostname'], v)} />
           </Field>
         </div>
-        <Toggle label="Reconnect automatically" checked={config.wifi.autoReconnect} onChange={(v) => update(['wifi', 'autoReconnect'], v)} />
+        <Toggle
+          label="Reconnect automatically"
+          checked={config.wifi.autoReconnect}
+          onChange={(v) => update(['wifi', 'autoReconnect'], v)}
+        />
         <DepToggle
           entry={deps.get('wifi.mdns')}
           onFix={fix}
@@ -132,7 +160,12 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
           <>
             <div class="form-grid">
               <Field label="Broker" error={error('mqttBroker')}>
-                <TextInput dataField="mqttBroker" value={config.mqtt.broker} placeholder="192.168.1.100" onInput={(v) => update(['mqtt', 'broker'], v)} />
+                <TextInput
+                  dataField="mqttBroker"
+                  value={config.mqtt.broker}
+                  placeholder="192.168.1.100"
+                  onInput={(v) => update(['mqtt', 'broker'], v)}
+                />
               </Field>
               <Field label="Port" error={error('mqttPort')}>
                 <NumberInput
@@ -148,14 +181,24 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
                 <TextInput value={config.mqtt.username} placeholder="Optional" onInput={(v) => update(['mqtt', 'username'], v)} />
               </Field>
               <Field label="Password">
-                <TextInput type="password" value={config.mqtt.password} placeholder="Optional" onInput={(v) => update(['mqtt', 'password'], v)} />
+                <TextInput
+                  type="password"
+                  value={config.mqtt.password}
+                  placeholder="Optional"
+                  onInput={(v) => update(['mqtt', 'password'], v)}
+                />
               </Field>
               <Field
                 label="Base topic"
                 error={error('mqttTopic')}
                 hint={`Readings go to ${base}/state; also ${base}/availability, /safe, /safety, /alerts and /alerts/armed.`}
               >
-                <TextInput dataField="mqttTopic" value={config.mqtt.topic} placeholder="sqmeter" onInput={(v) => update(['mqtt', 'topic'], v)} />
+                <TextInput
+                  dataField="mqttTopic"
+                  value={config.mqtt.topic}
+                  placeholder="sqmeter"
+                  onInput={(v) => update(['mqtt', 'topic'], v)}
+                />
               </Field>
               <Field label="Publish every" error={error('mqttInterval')}>
                 <NumberInput
@@ -170,7 +213,12 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
               </Field>
             </div>
             <div class="btn-row">
-              <ActionButton onClick={testMqtt} busy={testingMqtt} busyLabel="Testing..." disabled={!config.mqtt.broker || !config.mqtt.port}>
+              <ActionButton
+                onClick={testMqtt}
+                busy={testingMqtt}
+                busyLabel="Testing..."
+                disabled={!config.mqtt.broker || !config.mqtt.port}
+              >
                 Test connection
               </ActionButton>
               <ResultNote result={mqttResult} />
@@ -207,7 +255,11 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
               )}
               {homeAssistant.enabled && (
                 <div class="form-grid indent">
-                  <Field label="Discovery prefix" error={error('mqtt.homeAssistant.discoveryPrefix')} hint="Home Assistant's default is homeassistant.">
+                  <Field
+                    label="Discovery prefix"
+                    error={error('mqtt.homeAssistant.discoveryPrefix')}
+                    hint="Home Assistant's default is homeassistant."
+                  >
                     <TextInput
                       value={homeAssistant.discoveryPrefix}
                       placeholder="homeassistant"

@@ -160,9 +160,13 @@ namespace SQM
             snapshot.sky = SkyQuality::calculate(snapshot.tsl.lux);
             snapshot.humidityMeasured = snapshot.bmeInitialized && snapshot.bme.status == SensorStatus::OK;
             snapshot.cloudHumidity = snapshot.humidityMeasured ? snapshot.bme.humidity : ASSUMED_HUMIDITY_PERCENT;
-            snapshot.cloud = CloudDetection::calculate(snapshot.mlx.objectTemp, snapshot.mlx.ambientTemp, snapshot.cloudHumidity,
-                                                       cfg.cloudDetection.clearSkyThreshold, cfg.cloudDetection.cloudyThreshold,
-                                                       cfg.cloudDetection.humidityCorrection);
+            snapshot.cloud = CloudDetection::calculate(
+                snapshot.mlx.objectTemp,
+                snapshot.mlx.ambientTemp,
+                snapshot.cloudHumidity,
+                cfg.cloudDetection.clearSkyThreshold,
+                cfg.cloudDetection.cloudyThreshold,
+                cfg.cloudDetection.humidityCorrection);
         }
 
         Readings::Snapshot buildReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now, int64_t epoch)
@@ -224,10 +228,10 @@ namespace SQM
             if (r.gps.present)
             {
                 const GPSReading &gps = snapshot.gps;
-                r.gps.status = snapshot.gpsInitialized ? (gps.status == SensorStatus::OK || gps.status == SensorStatus::TIMEOUT
-                                                              ? Readings::Status::Ok
-                                                              : Readings::Status::Error)
-                                                       : Readings::Status::Missing;
+                r.gps.status = snapshot.gpsInitialized
+                                   ? (gps.status == SensorStatus::OK || gps.status == SensorStatus::TIMEOUT ? Readings::Status::Ok
+                                                                                                            : Readings::Status::Error)
+                                   : Readings::Status::Missing;
                 r.gps.ageMs = gps.age;
                 r.gps.fix = gps.hasFix;
                 r.gps.satellites = gps.satellites;
@@ -242,8 +246,8 @@ namespace SQM
             {
                 const RG15Reading &rain = snapshot.rg15;
                 r.rain.status = !snapshot.rg15Initialized || !rain.online ? Readings::Status::Missing
-                                : rain.stale                             ? Readings::Status::Stale
-                                                                         : Readings::Status::Ok;
+                                : rain.stale                              ? Readings::Status::Stale
+                                                                          : Readings::Status::Ok;
                 r.rain.ageMs = ageMs(now, rain.timestamp);
                 // Always metric: the RG-15 can be switched to inches.
                 const double toMm = rain.imperial ? 25.4 : 1.0;
@@ -261,7 +265,7 @@ namespace SQM
             if (r.wind.present)
             {
                 const WindReading &wind = snapshot.wind;
-                r.wind.status = wind.status == SensorStatus::OK               ? Readings::Status::Ok
+                r.wind.status = wind.status == SensorStatus::OK                ? Readings::Status::Ok
                                 : wind.status == SensorStatus::NOT_INITIALIZED ? Readings::Status::Missing
                                                                                : Readings::Status::Error;
                 r.wind.ageMs = ageMs(now, wind.timestamp);
@@ -333,8 +337,8 @@ namespace SQM
             in.environmentSensorFault = !snapshot.humidityMeasured;
 
             in.rainSensorEnabled = cfg.rain.enabled;
-            in.rainSensorHealthy = snapshot.rg15.online && !snapshot.rg15.stale && snapshot.rg15.status == SensorStatus::OK &&
-                                   !snapshot.rg15.lensBad;
+            in.rainSensorHealthy =
+                snapshot.rg15.online && !snapshot.rg15.stale && snapshot.rg15.status == SensorStatus::OK && !snapshot.rg15.lensBad;
             // rainLatched holds for rain.rainClearDelayMs after the last drop -
             // the hold-off before a roof should re-open.
             in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
@@ -418,8 +422,8 @@ namespace SQM
             return snap;
         }
 
-        bool updateSafety(SafetyStatus &status, Alpaca::SafeDelayFilter &filter, const Alpaca::SafetyResult &result,
-                          const Config &cfg, uint32_t now)
+        bool updateSafety(
+            SafetyStatus &status, Alpaca::SafeDelayFilter &filter, const Alpaca::SafetyResult &result, const Config &cfg, uint32_t now)
         {
             const bool reportedSafe = filter.update(result.isSafe, now / 1000, cfg.alpaca.safeDelaySeconds);
             const bool changed = reportedSafe != status.isSafe || status.evaluatedAtMs == 0;
@@ -492,9 +496,13 @@ namespace SQM
             }
         }
 
-        Alerts::AlertInputs alertInputs(const SafetyStatus &status, const SensorSnapshot &snapshot,
-                                        const Alpaca::ObservingConditionsSnapshot &obs, const Config &cfg, const NightState &n,
-                                        uint32_t now)
+        Alerts::AlertInputs alertInputs(
+            const SafetyStatus &status,
+            const SensorSnapshot &snapshot,
+            const Alpaca::ObservingConditionsSnapshot &obs,
+            const Config &cfg,
+            const NightState &n,
+            uint32_t now)
         {
             Alerts::AlertInputs in;
             in.nowSeconds = now / 1000;
@@ -571,9 +579,13 @@ namespace SQM
             }
         }
 
-        std::vector<std::pair<std::string, std::string>> alertVars(const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs,
-                                                                   const NightState &n, const Alerts::Alert &alert,
-                                                                   const std::string &localTime, const std::string &localDate)
+        std::vector<std::pair<std::string, std::string>> alertVars(
+            const Config &cfg,
+            const Alpaca::ObservingConditionsSnapshot &obs,
+            const NightState &n,
+            const Alerts::Alert &alert,
+            const std::string &localTime,
+            const std::string &localDate)
         {
             auto num = [](bool valid, double value, int decimals) -> std::string
             {
@@ -616,8 +628,8 @@ namespace SQM
             return vars;
         }
 
-        void applyAlertTemplate(Alerts::Alert &alert, const AlertsConfig::EventSetting &setting,
-                                const std::vector<std::pair<std::string, std::string>> &vars)
+        void applyAlertTemplate(
+            Alerts::Alert &alert, const AlertsConfig::EventSetting &setting, const std::vector<std::pair<std::string, std::string>> &vars)
         {
             if (!setting.title.empty())
                 alert.title = Alerts::renderTemplate(setting.title, vars);
@@ -628,9 +640,16 @@ namespace SQM
             alert.vars.shrink_to_fit();
         }
 
-        AlertStep runAlerts(Alerts::AlertEngine &engine, const Alerts::AlertInputs &inputs, const Alerts::AlertRules &rules,
-                            const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs, const NightState &n,
-                            const SafetyStatus &status, const std::string &localTime, const std::string &localDate)
+        AlertStep runAlerts(
+            Alerts::AlertEngine &engine,
+            const Alerts::AlertInputs &inputs,
+            const Alerts::AlertRules &rules,
+            const Config &cfg,
+            const Alpaca::ObservingConditionsSnapshot &obs,
+            const NightState &n,
+            const SafetyStatus &status,
+            const std::string &localTime,
+            const std::string &localDate)
         {
             AlertStep step;
             for (Alerts::Alert alert : engine.update(inputs, rules))
@@ -642,8 +661,7 @@ namespace SQM
                 alert.sound = setting->sound;
                 applyAlertTemplate(alert, *setting, alertVars(cfg, obs, n, alert, localTime, localDate));
                 if (alert.level == Alerts::AlertLevel::Wake)
-                    step.alarmFlags |= status.reasonFlags |
-                                       (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UNSAFE_RAIN : 0u) |
+                    step.alarmFlags |= status.reasonFlags | (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UNSAFE_RAIN : 0u) |
                                        (alert.type == Alerts::AlertType::SensorFault || alert.type == Alerts::AlertType::LensFault
                                             ? Alpaca::UNSAFE_SENSOR_FAULT
                                             : 0u);
@@ -675,10 +693,18 @@ namespace SQM
             return nullptr;
         }
 
-        Alerts::Alert buildTestAlert(const SampleAlert *sample, uint8_t level, const std::string &sound, const std::string &title,
-                                     const std::string &message, const SafetyStatus &safety, const Config &cfg,
-                                     const Alpaca::ObservingConditionsSnapshot &obs, const NightState &n,
-                                     const std::string &localTime, const std::string &localDate)
+        Alerts::Alert buildTestAlert(
+            const SampleAlert *sample,
+            uint8_t level,
+            const std::string &sound,
+            const std::string &title,
+            const std::string &message,
+            const SafetyStatus &safety,
+            const Config &cfg,
+            const Alpaca::ObservingConditionsSnapshot &obs,
+            const NightState &n,
+            const std::string &localTime,
+            const std::string &localDate)
         {
             Alerts::Alert test;
             if (sample == nullptr)
@@ -705,7 +731,10 @@ namespace SQM
                 std::string inline_;
                 for (const std::string &reason : reasons)
                     inline_ += (inline_.empty() ? "" : "; ") + reason;
-                test.vars = {{"reasons", Alerts::joinReasons(reasons)}, {"reasons_inline", inline_}, {"reason_count", std::to_string(reasons.size())}};
+                test.vars = {
+                    {"reasons", Alerts::joinReasons(reasons)},
+                    {"reasons_inline", inline_},
+                    {"reason_count", std::to_string(reasons.size())}};
             }
             else if (sample->type == Alerts::AlertType::SensorFault || sample->type == Alerts::AlertType::SensorRecovered)
                 test.vars = {{"sensor", "TSL2591 light (example)"}};

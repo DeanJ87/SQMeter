@@ -21,7 +21,15 @@ import { listReasons, restartReasons } from './settings/restart';
 import { DEP_LABELS } from './settings/depLabels';
 import { showToast } from './toast';
 import { Button, Note } from './ui';
-import { effectiveEntries, evaluate, newlyInactive, viewOf, type DepEntry, type EffectiveReport } from '../lib/settingsDeps';
+import {
+  effectiveEntries,
+  fetchEffectiveReport,
+  fixTarget,
+  previewInactive,
+  viewOf,
+  type DepEntry,
+  type EffectiveReport,
+} from '../lib/settingsDeps';
 
 const STATUS_REFRESH_MS = 10000;
 
@@ -37,6 +45,16 @@ const setPath = (target: Config, path: ConfigPath, value: unknown): Config => {
   current[path[path.length - 1]] = value;
   return root;
 };
+
+// Saving would switch these off in practice (FR-006); harmless defaults aren't news.
+const SavePreview: FunctionalComponent<{ entries: DepEntry[] }> = ({ entries }) =>
+  entries.length === 0 ? null : (
+    <Note tone="warn">
+      <span data-preview="inactive">
+        Saving makes these inactive: {entries.map((e) => `${DEP_LABELS[e.setting] ?? e.setting} (${e.text})`).join(', ')}.
+      </span>
+    </Note>
+  );
 
 const Settings: FunctionalComponent = () => {
   const initial = tabFromLocation(typeof window !== 'undefined' ? locationQuery(window.location) : '');
@@ -54,10 +72,7 @@ const Settings: FunctionalComponent = () => {
   const [effective, setEffective] = useState<EffectiveReport | null>(null);
 
   const loadStatus = () => {
-    fetch('/api/settings/effective')
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => data && Array.isArray(data.settings) && setEffective(data))
-      .catch(() => undefined);
+    void fetchEffectiveReport().then((report) => report && setEffective(report));
     return fetch('/api/status')
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => data && setStatus(data))
@@ -118,13 +133,12 @@ const Settings: FunctionalComponent = () => {
 
   const applyStored = (changes: [ConfigPath, unknown][]) => {
     applyChanges(changes);
-    setSaved((current) => (current ? toConfigPayload(changes.reduce((acc, [path, value]) => setPath(acc, path, value), current)) : current));
+    setSaved((current) =>
+      current ? toConfigPayload(changes.reduce((acc, [path, value]) => setPath(acc, path, value), current)) : current,
+    );
   };
 
-  const dirty = useMemo(
-    () => Boolean(config && saved && JSON.stringify(config) !== JSON.stringify(saved)),
-    [config, saved]
-  );
+  const dirty = useMemo(() => Boolean(config && saved && JSON.stringify(config) !== JSON.stringify(saved)), [config, saved]);
 
   const errorsByTab = useMemo(() => {
     const counts: Partial<Record<SettingsTabId, number>> = {};
@@ -142,8 +156,9 @@ const Settings: FunctionalComponent = () => {
     if (owner !== tab) goTo(owner);
     setTimeout(() => {
       const alias = Object.entries(fieldErrorAliases).find(([, path]) => path === firstField)?.[0];
-      const target = document.querySelector<HTMLElement>(`[data-field="${firstField}"]`)
-        ?? (alias ? document.querySelector<HTMLElement>(`[data-field="${alias}"]`) : null);
+      const target =
+        document.querySelector<HTMLElement>(`[data-field="${firstField}"]`) ??
+        (alias ? document.querySelector<HTMLElement>(`[data-field="${alias}"]`) : null);
       target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) target.focus({ preventScroll: true });
     }, 60);
@@ -181,8 +196,13 @@ const Settings: FunctionalComponent = () => {
         const reasons = restartReasons(saved, payload);
         showToast(
           reasons.length > 0
-            ? { message: `Saved. Restart to apply ${listReasons(reasons)}.`, tone: 'warn', durationMs: 0, action: { label: 'Restart', onClick: restart } }
-            : { message: 'Saved.' }
+            ? {
+                message: `Saved. Restart to apply ${listReasons(reasons)}.`,
+                tone: 'warn',
+                durationMs: 0,
+                action: { label: 'Restart', onClick: restart },
+              }
+            : { message: 'Saved.' },
         );
         setSaved(payload);
         setConfig(payload);
@@ -215,16 +235,10 @@ const Settings: FunctionalComponent = () => {
     return <div class="empty-state tone-red">Failed to load configuration</div>;
   }
 
-  const entries = effectiveEntries(config, effective, dirty);
-  // Saving would switch these off in practice (FR-006); harmless defaults aren't news.
-  const willBeInactive = dirty && saved ? newlyInactive(effectiveEntries(saved, effective, false), evaluate(config, effective?.facts ?? null)) : [];
   const fix = (entry: DepEntry) => {
-    if (entry.fix === 'restart') {
-      restart();
-      return;
-    }
-    const [target, anchor] = (entry.fix ?? '').split('#');
-    if (SETTINGS_TABS.some((t) => t.id === target)) goTo(target as SettingsTabId, anchor);
+    const target = fixTarget(entry);
+    if ('restart' in target) void restart();
+    else if (SETTINGS_TABS.some((t) => t.id === target.tab)) goTo(target.tab as SettingsTabId, target.anchor);
   };
 
   const props: SettingsTabProps = {
@@ -237,7 +251,7 @@ const Settings: FunctionalComponent = () => {
     status,
     dirty,
     goTo,
-    deps: viewOf(entries),
+    deps: viewOf(effectiveEntries(config, effective, dirty)),
     fix,
   };
 
@@ -268,13 +282,7 @@ const Settings: FunctionalComponent = () => {
         {tab === 'alerts' && <AlertsTab {...props} />}
       </div>
 
-      {willBeInactive.length > 0 && (
-        <Note tone="warn">
-          <span data-preview="inactive">
-            Saving makes these inactive: {willBeInactive.map((e) => `${DEP_LABELS[e.setting] ?? e.setting} (${e.text})`).join(', ')}.
-          </span>
-        </Note>
-      )}
+      <SavePreview entries={previewInactive(config, saved, effective, dirty)} />
       {dirty && (
         <div class="save-bar">
           <span class="save-bar-state">Unsaved changes</span>

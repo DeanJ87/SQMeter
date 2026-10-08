@@ -98,74 +98,91 @@ export const FIX_LABEL: Record<string, string> = {
 // make the setting inactive. `met === null`: unknown (no facts yet).
 type Link = [id: string, reason: string, met: boolean | null];
 
-const EVENT_KEYS: AlertEventKey[] = ['unsafe', 'safe', 'rain_started', 'rain_stopped', 'sensor_fault', 'sensor_recovered', 'dew_risk', 'clear_sky', 'clouded_over'];
+const EVENT_KEYS: AlertEventKey[] = [
+  'unsafe',
+  'safe',
+  'rain_started',
+  'rain_stopped',
+  'sensor_fault',
+  'sensor_recovered',
+  'dew_risk',
+  'clear_sky',
+  'clouded_over',
+];
 
-/**
- * Every reported setting, in catalogue order. With `facts === null` (status
- * not loaded yet) runtime and hardware links are unknown: they never make a
- * setting inactive, and a setting only they could decide is "unknown".
- */
-export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
-  const out: DepEntry[] = [];
-  const fact = <K extends keyof DepFacts>(key: K): DepFacts[K] | null => (facts ? facts[key] : null);
-  const add = (setting: string, id: string, on: boolean, chain: Link[], extra: { unmet?: Unmet; neutral?: boolean } = {}) => {
-    const entry: DepEntry = { id, setting, state: 'off', ...extra };
-    if (!on) {
-      const unmet = chain.find(([, , met]) => met === false);
-      if (unmet) entry.blockedBy = { id: unmet[0], reason: unmet[1], ...REASONS[unmet[1]] };
-    } else {
-      entry.state = 'active';
-      for (const [linkId, reason, met] of chain) {
-        if (met === null) {
-          entry.state = 'unknown';
-          continue;
-        }
-        if (met) continue;
-        entry.state = 'inactive';
-        entry.id = linkId;
-        entry.reason = reason;
-        entry.text = REASONS[reason].text;
-        entry.fix = REASONS[reason].fix;
-        break;
-      }
-    }
-    out.push(entry);
-  };
-  const and = (...values: (boolean | null)[]): boolean | null =>
-    values.some((v) => v === false) ? false : values.some((v) => v === null) ? null : true;
-  const or = (...values: (boolean | null)[]): boolean | null =>
-    values.some((v) => v === true) ? true : values.some((v) => v === null) ? null : false;
+// Three-valued logic for links whose facts may be unknown (null).
+const and = (...values: (boolean | null)[]): boolean | null => {
+  if (values.includes(false)) return false;
+  return values.includes(null) ? null : true;
+};
+const or = (...values: (boolean | null)[]): boolean | null => {
+  if (values.includes(true)) return true;
+  return values.includes(null) ? null : false;
+};
 
-  const a = config.alerts;
-  const alertsEnabled = a?.enabled ?? false;
-  const level = (key: AlertEventKey) => a?.events?.[key]?.level ?? 0;
-  const ble = config.ble ?? { enabled: false, passkey: '' };
-  const phoneAlarm = (ble.passkey ?? '') !== '';
-  const locationKnown = or(config.location?.set ?? false, and(fact('gpsRunning'), fact('gpsFix')));
-  const phonesRing = and(fact('bluetoothBuild'), ble.enabled, fact('bluetoothRunning'), phoneAlarm, facts ? facts.pairedPhones > 0 : null);
+// A setting from the config, or the device's default when the config
+// doesn't carry it (older firmware, partial mocks).
+const read = <T>(config: Config, path: string, fallback: T): T => {
+  let value: unknown = config;
+  for (const key of path.split('.')) value = value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined;
+  return value === undefined || value === null ? fallback : (value as T);
+};
+const on = (config: Config, path: string, fallback = false) => read(config, path, fallback);
 
-  const alertsOn: Link = ['D-04', 'alerts-off', alertsEnabled];
-  const wifi: Link = ['D-03', 'wifi-disconnected', fact('wifiConnected')];
-  const alerting: Link = ['D-04', 'alerts-off', or(alertsEnabled, phonesRing)];
-  const event = (key: AlertEventKey): Link => ['D-04', 'alerts-off', or(alertsEnabled, and(level(key) === 4, phonesRing))];
+type Shown = { unmet?: Unmet; neutral?: boolean };
+const NEUTRAL: Shown = { neutral: true };
+const FAIL_SAFE: Shown = { unmet: 'fail-safe' };
 
-  // Alert channels (push only: they need the master switch). Links in
-  // catalogue order, so the channel's own dependency comes before "alerts
-  // are off" - a test send ignores the latter.
-  add('alerts.pushover.enabled', 'D-03', a?.pushover?.enabled ?? false, [wifi, alertsOn]);
-  add('alerts.ntfy.enabled', 'D-03', a?.ntfy?.enabled ?? false, [wifi, alertsOn]);
-  add('alerts.webhook.enabled', 'D-03', a?.webhook?.enabled ?? false, [wifi, alertsOn]);
-  add('alerts.mqtt.enabled', 'D-01', a?.mqtt?.enabled ?? false, [
-    ['D-01', 'mqtt-off', config.mqtt.enabled],
-    ['D-02', 'mqtt-disconnected', fact('mqttConnected')],
+// The first unmet link makes an entry inactive; a link that's unknown makes
+// it unknown unless a later one is unmet.
+const decide = (entry: DepEntry, chain: Link[]) => {
+  entry.state = 'active';
+  for (const [linkId, reason, met] of chain) {
+    if (met === null) entry.state = 'unknown';
+    if (met !== false) continue;
+    Object.assign(entry, { state: 'inactive', id: linkId, reason, ...REASONS[reason] });
+    return;
+  }
+};
+
+// While off: what would make it inactive if it were switched on.
+const blocker = (chain: Link[]) => {
+  const unmet = chain.find(([, , met]) => met === false);
+  return unmet ? { id: unmet[0], reason: unmet[1], ...REASONS[unmet[1]] } : undefined;
+};
+
+// What every section needs, worked out once.
+interface Context {
+  config: Config;
+  fact: <K extends keyof DepFacts>(key: K) => DepFacts[K] | null;
+  hasPhones: boolean | null;
+  locationKnown: boolean | null;
+  phonesRing: boolean | null; // paired phones ring for Wake-level events, alerts on or not
+  add: (setting: string, id: string, isOn: boolean, chain: Link[], shown?: Shown) => void;
+}
+
+const level = (c: Context, key: AlertEventKey) => read(c.config, `alerts.events.${key}.level`, 0);
+
+// Alert channels are push only: they need the master switch. Links in
+// catalogue order, so the channel's own dependency comes before "alerts are
+// off" - a test send ignores the latter.
+const addAlertChannels = (c: Context) => {
+  const alertsOn: Link = ['D-04', 'alerts-off', on(c.config, 'alerts.enabled')];
+  const wifi: Link = ['D-03', 'wifi-disconnected', c.fact('wifiConnected')];
+  for (const channel of ['pushover', 'ntfy', 'webhook'])
+    c.add(`alerts.${channel}.enabled`, 'D-03', on(c.config, `alerts.${channel}.enabled`), [wifi, alertsOn]);
+  c.add('alerts.mqtt.enabled', 'D-01', on(c.config, 'alerts.mqtt.enabled'), [
+    ['D-01', 'mqtt-off', on(c.config, 'mqtt.enabled')],
+    ['D-02', 'mqtt-disconnected', c.fact('mqttConnected')],
     alertsOn,
   ]);
+};
 
-  // Alert events.
-  const rainEnabled = config.rain?.enabled ?? false;
-  const rainOn: Link = ['D-05', 'rain-off', rainEnabled];
-  const bmeFound: Link = ['D-06', 'environment-missing', fact('environmentDetected')];
-  const mlxFound: Link = ['D-07', 'infrared-missing', fact('infraredDetected')];
+const addAlertEvents = (c: Context) => {
+  const alertsEnabled = on(c.config, 'alerts.enabled');
+  const rainOn: Link = ['D-05', 'rain-off', on(c.config, 'rain.enabled')];
+  const bmeFound: Link = ['D-06', 'environment-missing', c.fact('environmentDetected')];
+  const mlxFound: Link = ['D-07', 'infrared-missing', c.fact('infraredDetected')];
   const eventLinks: Partial<Record<AlertEventKey, [string, Link[]]>> = {
     rain_started: ['D-05', [rainOn]],
     rain_stopped: ['D-05', [rainOn]],
@@ -175,72 +192,154 @@ export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
   };
   for (const key of EVENT_KEYS) {
     const [id, links] = eventLinks[key] ?? ['D-04', []];
-    add(`alerts.events.${key}.level`, id, level(key) !== 0, [event(key), ...links]);
+    // Wake-level events still ring paired phones with push alerts off.
+    const event: Link = ['D-04', 'alerts-off', or(alertsEnabled, and(level(c, key) === 4, c.phonesRing))];
+    c.add(`alerts.events.${key}.level`, id, level(c, key) !== 0, [event, ...links]);
   }
-  // "Wake me" also escalates Pushover and ntfy; only the phone ringing needs Bluetooth.
-  add('alerts.wakePhones', 'D-08', EVENT_KEYS.some((key) => level(key) === 4), [
-    ['D-08', 'ble-build', fact('bluetoothBuild')],
-    ['D-08', 'ble-off', ble.enabled],
-    ['D-35', 'ble-restart', fact('bluetoothRunning')],
-    ['D-08', 'no-passkey', phoneAlarm],
-    ['D-08', 'no-phones', facts ? facts.pairedPhones > 0 : null],
-  ], { neutral: true }); // muted: the default events at Wake me shouldn't warn on a standard build
-  const skyNightOnly = a?.skyNightOnly ?? true;
-  const safetyNightOnly = a?.safetyNightOnly ?? true;
-  add('alerts.skyNightOnly', 'D-09', skyNightOnly, [alerting, ['D-09', 'location-unknown', locationKnown]]);
-  add('alerts.safetyNightOnly', 'D-10', safetyNightOnly, [alerting, ['D-10', 'location-unknown', locationKnown]]);
-  add('alerts.nightSunAltitudeDeg', 'D-11', skyNightOnly || safetyNightOnly, [alerting]);
-  add('alerts.armWithAlpaca', 'D-12', a?.armWithAlpaca ?? false, [alerting, ['D-12', 'alpaca-off', config.alpaca?.enabled ?? false]]);
+};
 
-  // MQTT and Home Assistant.
-  const mqttOn: Link = ['D-13', 'mqtt-off', config.mqtt.enabled];
-  const homeAssistant = config.mqtt.homeAssistant?.enabled ?? false;
-  add('mqtt.homeAssistant.enabled', 'D-13', homeAssistant, [mqttOn]);
-  add('mqtt.homeAssistant.alertsSwitch', 'D-13', homeAssistant, [mqttOn, ['D-13', 'alerts-off', or(alertsEnabled, phonesRing)]]);
-  const publish = config.mqtt.publish;
-  const publishMqtt: Link = ['D-14', 'mqtt-off', config.mqtt.enabled];
-  add('mqtt.publish.gps', 'D-14', publish?.gps ?? true, [publishMqtt, ['D-14', 'gps-off', config.gps.enabled], ['D-35', 'gps-restart', fact('gpsRunning')]], {
-    neutral: true,
-  });
-  add('mqtt.publish.rain', 'D-14', publish?.rain ?? true, [publishMqtt, ['D-14', 'rain-off', rainEnabled]], { neutral: true });
-  add('mqtt.publish.wind', 'D-14', publish?.wind ?? true, [publishMqtt, ['D-14', 'wind-off', config.wind?.enabled ?? false]], { neutral: true });
+const addAlertOptions = (c: Context) => {
+  // "Wake me" also escalates Pushover and ntfy; only the phone ringing needs
+  // Bluetooth. Muted: the default events at Wake me shouldn't warn on a
+  // standard build.
+  const wakePhones: Link[] = [
+    ['D-08', 'ble-build', c.fact('bluetoothBuild')],
+    ['D-08', 'ble-off', on(c.config, 'ble.enabled')],
+    ['D-35', 'ble-restart', c.fact('bluetoothRunning')],
+    ['D-08', 'no-passkey', read(c.config, 'ble.passkey', '') !== ''],
+    ['D-08', 'no-phones', c.hasPhones],
+  ];
+  c.add(
+    'alerts.wakePhones',
+    'D-08',
+    EVENT_KEYS.some((key) => level(c, key) === 4),
+    wakePhones,
+    NEUTRAL,
+  );
+  const alerting: Link = ['D-04', 'alerts-off', or(on(c.config, 'alerts.enabled'), c.phonesRing)];
+  const skyNightOnly = on(c.config, 'alerts.skyNightOnly', true);
+  const safetyNightOnly = on(c.config, 'alerts.safetyNightOnly', true);
+  c.add('alerts.skyNightOnly', 'D-09', skyNightOnly, [alerting, ['D-09', 'location-unknown', c.locationKnown]]);
+  c.add('alerts.safetyNightOnly', 'D-10', safetyNightOnly, [alerting, ['D-10', 'location-unknown', c.locationKnown]]);
+  c.add('alerts.nightSunAltitudeDeg', 'D-11', skyNightOnly || safetyNightOnly, [alerting]);
+  c.add('alerts.armWithAlpaca', 'D-12', on(c.config, 'alerts.armWithAlpaca'), [
+    alerting,
+    ['D-12', 'alpaca-off', on(c.config, 'alpaca.enabled')],
+  ]);
+};
 
-  // Safety rules (unmet behaviour confirmed from the device's SafetyEvaluator).
-  const s = config.alpaca;
-  const rainRule: Link = ['D-15', 'rain-off', rainEnabled];
+const addMqtt = (c: Context) => {
+  const mqttOn: Link = ['D-13', 'mqtt-off', on(c.config, 'mqtt.enabled')];
+  const homeAssistant = on(c.config, 'mqtt.homeAssistant.enabled');
+  c.add('mqtt.homeAssistant.enabled', 'D-13', homeAssistant, [mqttOn]);
+  c.add('mqtt.homeAssistant.alertsSwitch', 'D-13', homeAssistant, [
+    mqttOn,
+    ['D-13', 'alerts-off', or(on(c.config, 'alerts.enabled'), c.phonesRing)],
+  ]);
+  // Publishing a switched-off sensor sends nothing: harmless, shown muted.
+  const publishMqtt: Link = ['D-14', 'mqtt-off', on(c.config, 'mqtt.enabled')];
+  const gpsLinks: Link[] = [publishMqtt, ['D-14', 'gps-off', on(c.config, 'gps.enabled')], ['D-35', 'gps-restart', c.fact('gpsRunning')]];
+  c.add('mqtt.publish.gps', 'D-14', on(c.config, 'mqtt.publish.gps', true), gpsLinks, NEUTRAL);
+  c.add(
+    'mqtt.publish.rain',
+    'D-14',
+    on(c.config, 'mqtt.publish.rain', true),
+    [publishMqtt, ['D-14', 'rain-off', on(c.config, 'rain.enabled')]],
+    NEUTRAL,
+  );
+  c.add(
+    'mqtt.publish.wind',
+    'D-14',
+    on(c.config, 'mqtt.publish.wind', true),
+    [publishMqtt, ['D-14', 'wind-off', on(c.config, 'wind.enabled')]],
+    NEUTRAL,
+  );
+};
+
+// Unmet behaviour confirmed from the device's SafetyEvaluator (research R4).
+const addSafetyRules = (c: Context) => {
+  const rule = (key: string) => on(c.config, `alpaca.${key}`);
   // Both ship on while the rain sensor ships off: not in effect, shown muted.
-  add('alpaca.rainUnsafeEnabled', 'D-15', s?.rainUnsafeEnabled ?? false, [rainRule], { unmet: 'inactive', neutral: true });
-  add('alpaca.rainSensorRequired', 'D-15', s?.rainSensorRequired ?? false, [rainRule], { unmet: 'inactive', neutral: true });
-  const windOn: Link = ['D-16', 'wind-off', config.wind?.enabled ?? false];
-  add('alpaca.windSpeedUnsafeEnabled', 'D-16', s?.windSpeedUnsafeEnabled ?? false, [windOn], { unmet: 'fail-safe' });
-  add('alpaca.windGustUnsafeEnabled', 'D-16', s?.windGustUnsafeEnabled ?? false, [windOn], { unmet: 'fail-safe' });
-  add('alpaca.cloudCoverEnabled', 'D-17', s?.cloudCoverEnabled ?? false, [['D-17', 'infrared-missing', fact('infraredDetected')]], { unmet: 'fail-safe' });
-  add('alpaca.sqmMinEnabled', 'D-18', s?.sqmMinEnabled ?? false, [['D-18', 'light-missing', fact('lightDetected')]], { unmet: 'fail-safe' });
-  const bme: Link = ['D-19', 'environment-missing', fact('environmentDetected')];
-  add('alpaca.humidityMaxEnabled', 'D-19', s?.humidityMaxEnabled ?? false, [bme], { unmet: 'fail-safe' });
-  add('alpaca.dewpointMarginEnabled', 'D-19', s?.dewpointMarginEnabled ?? false, [bme], { unmet: 'fail-safe' });
+  const rainOn: Link = ['D-15', 'rain-off', on(c.config, 'rain.enabled')];
+  const ignored: Shown = { unmet: 'inactive', neutral: true };
+  c.add('alpaca.rainUnsafeEnabled', 'D-15', rule('rainUnsafeEnabled'), [rainOn], ignored);
+  c.add('alpaca.rainSensorRequired', 'D-15', rule('rainSensorRequired'), [rainOn], ignored);
+  const windOn: Link = ['D-16', 'wind-off', on(c.config, 'wind.enabled')];
+  c.add('alpaca.windSpeedUnsafeEnabled', 'D-16', rule('windSpeedUnsafeEnabled'), [windOn], FAIL_SAFE);
+  c.add('alpaca.windGustUnsafeEnabled', 'D-16', rule('windGustUnsafeEnabled'), [windOn], FAIL_SAFE);
+  c.add(
+    'alpaca.cloudCoverEnabled',
+    'D-17',
+    rule('cloudCoverEnabled'),
+    [['D-17', 'infrared-missing', c.fact('infraredDetected')]],
+    FAIL_SAFE,
+  );
+  c.add('alpaca.sqmMinEnabled', 'D-18', rule('sqmMinEnabled'), [['D-18', 'light-missing', c.fact('lightDetected')]], FAIL_SAFE);
+  const bme: Link = ['D-19', 'environment-missing', c.fact('environmentDetected')];
+  c.add('alpaca.humidityMaxEnabled', 'D-19', rule('humidityMaxEnabled'), [bme], FAIL_SAFE);
+  c.add('alpaca.dewpointMarginEnabled', 'D-19', rule('dewpointMarginEnabled'), [bme], FAIL_SAFE);
+};
 
-  // Sensors, time and location.
-  add('wind.directionEnabled', 'D-23', config.wind?.directionEnabled ?? false, [['D-23', 'wind-off', config.wind?.enabled ?? false]]);
-  add('rain.dailyResetEnabled', 'D-24', config.rain?.dailyResetEnabled ?? false, [
-    ['D-24', 'rain-off', rainEnabled],
-    ['D-24', 'clock-unset', fact('clockSet')],
+const addSensorsAndTime = (c: Context) => {
+  c.add('wind.directionEnabled', 'D-23', on(c.config, 'wind.directionEnabled'), [['D-23', 'wind-off', on(c.config, 'wind.enabled')]]);
+  c.add('rain.dailyResetEnabled', 'D-24', on(c.config, 'rain.dailyResetEnabled'), [
+    ['D-24', 'rain-off', on(c.config, 'rain.enabled')],
+    ['D-24', 'clock-unset', c.fact('clockSet')],
   ]);
-  add('location.showSunMoon', 'D-25', config.location?.showSunMoon ?? true, [['D-25', 'location-unknown', locationKnown]], { neutral: true });
-  add('gps.enabled', 'D-26', config.gps.enabled, [
-    ['D-35', 'gps-restart', fact('gpsRunning')],
-    ['D-26', 'gps-no-fix', fact('gpsFix')],
+  c.add(
+    'location.showSunMoon',
+    'D-25',
+    on(c.config, 'location.showSunMoon', true),
+    [['D-25', 'location-unknown', c.locationKnown]],
+    NEUTRAL,
+  );
+  c.add('gps.enabled', 'D-26', on(c.config, 'gps.enabled'), [
+    ['D-35', 'gps-restart', c.fact('gpsRunning')],
+    ['D-26', 'gps-no-fix', c.fact('gpsFix')],
   ]);
-  add('ntp.enabled', 'D-28', config.ntp.enabled, [['D-28', 'wifi-disconnected', fact('wifiConnected')]]);
-  add('skyCalibration.enabled', 'D-29', config.skyCalibration?.enabled ?? false, [['D-29', 'light-missing', fact('lightDetected')]]);
+  c.add('ntp.enabled', 'D-28', on(c.config, 'ntp.enabled'), [['D-28', 'wifi-disconnected', c.fact('wifiConnected')]]);
+  c.add('skyCalibration.enabled', 'D-29', on(c.config, 'skyCalibration.enabled'), [['D-29', 'light-missing', c.fact('lightDetected')]]);
+};
 
-  // Device.
-  const bleBuild: Link = ['D-30', 'ble-build', fact('bluetoothBuild')];
-  const bleRunning: Link = ['D-35', 'ble-restart', fact('bluetoothRunning')];
-  add('ble.enabled', 'D-30', ble.enabled, [bleBuild, bleRunning]);
-  add('ble.phoneAlarm', 'D-31', phoneAlarm, [bleBuild, ['D-31', 'ble-off', ble.enabled], bleRunning]);
-  add('ota.enabled', 'D-32', config.ota.enabled, [['D-32', 'ota-no-password', (config.ota.password ?? '') !== '']]);
-  add('wifi.mdns', 'D-36', config.wifi.mdns ?? true, [['D-36', 'wifi-disconnected', fact('wifiConnected')]]);
+const addDevice = (c: Context) => {
+  const bleEnabled = on(c.config, 'ble.enabled');
+  const bleBuild: Link = ['D-30', 'ble-build', c.fact('bluetoothBuild')];
+  const bleRunning: Link = ['D-35', 'ble-restart', c.fact('bluetoothRunning')];
+  c.add('ble.enabled', 'D-30', bleEnabled, [bleBuild, bleRunning]);
+  c.add('ble.phoneAlarm', 'D-31', read(c.config, 'ble.passkey', '') !== '', [bleBuild, ['D-31', 'ble-off', bleEnabled], bleRunning]);
+  c.add('ota.enabled', 'D-32', on(c.config, 'ota.enabled'), [['D-32', 'ota-no-password', read(c.config, 'ota.password', '') !== '']]);
+  c.add('wifi.mdns', 'D-36', on(c.config, 'wifi.mdns', true), [['D-36', 'wifi-disconnected', c.fact('wifiConnected')]]);
+};
+
+/**
+ * Every reported setting, in catalogue order. With `facts === null` (status
+ * not loaded yet) runtime and hardware links are unknown: they never make a
+ * setting inactive, and a setting only they could decide is "unknown".
+ */
+export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
+  const out: DepEntry[] = [];
+  const fact = <K extends keyof DepFacts>(key: K): DepFacts[K] | null => (facts ? facts[key] : null);
+  const hasPhones = facts ? facts.pairedPhones > 0 : null;
+  const phoneAlarm = read(config, 'ble.passkey', '') !== '';
+  const context: Context = {
+    config,
+    fact,
+    hasPhones,
+    locationKnown: or(on(config, 'location.set'), and(fact('gpsRunning'), fact('gpsFix'))),
+    // Paired phones ring for Wake-level events even with push alerts off, so
+    // events, arming and the night-only options still matter to them.
+    phonesRing: and(fact('bluetoothBuild'), on(config, 'ble.enabled'), fact('bluetoothRunning'), phoneAlarm, hasPhones),
+    add: (setting, id, isOn, chain, shown = {}) => {
+      const entry: DepEntry = { id, setting, state: 'off', ...shown };
+      if (isOn) decide(entry, chain);
+      else entry.blockedBy = blocker(chain);
+      if (!entry.blockedBy) delete entry.blockedBy;
+      out.push(entry);
+    },
+  };
+  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafetyRules, addSensorsAndTime, addDevice].forEach((section) =>
+    section(context),
+  );
   return out;
 }
 
@@ -285,11 +384,62 @@ export const effectiveEntries = (draft: Config, report: EffectiveReport | null, 
 // toggle; settings and missing hardware do (FR-005, constitution V).
 // The OTA password and the passkey are typed in once the setting is on, so
 // they don't block it either.
-const NON_BLOCKING = new Set(['wifi-disconnected', 'mqtt-disconnected', 'clock-unset', 'gps-no-fix', 'gps-restart', 'ble-restart', 'ota-no-password', 'no-passkey', 'no-phones']);
+const NON_BLOCKING = new Set([
+  'wifi-disconnected',
+  'mqtt-disconnected',
+  'clock-unset',
+  'gps-no-fix',
+  'gps-restart',
+  'ble-restart',
+  'ota-no-password',
+  'no-passkey',
+  'no-phones',
+]);
 export const blocksSwitchingOn = (reason: string | undefined) => reason !== undefined && !NON_BLOCKING.has(reason);
 
 /** Settings that saving the draft would make inactive (were active or off before). */
 export const newlyInactive = (saved: DepEntry[], draft: DepEntry[]): DepEntry[] => {
   const before = new Map(saved.map((e) => [e.setting, e.state]));
   return draft.filter((e) => e.state === 'inactive' && !e.neutral && before.get(e.setting) !== 'inactive');
+};
+
+/** The note under a dependent setting: why it's inactive, or what keeps it from being switched on. */
+export interface DepNoteContent {
+  id: string;
+  reason: string;
+  text: string;
+  tone: 'warn' | 'info';
+  target: DepEntry; // what its fix action goes to
+}
+
+export const noteFor = (entry: DepEntry, prefix = 'Inactive'): DepNoteContent | null => {
+  if (entry.state === 'inactive' && entry.reason) {
+    return { id: entry.id, reason: entry.reason, text: `${prefix} - ${entry.text}`, tone: entry.neutral ? 'info' : 'warn', target: entry };
+  }
+  const blocked = entry.state === 'off' ? entry.blockedBy : undefined;
+  return blocked
+    ? { id: blocked.id, reason: blocked.reason, text: `${blocked.text}.`, tone: 'info', target: { ...entry, ...blocked } }
+    : null;
+};
+
+/** What saving the draft would make inactive; nothing while the form is clean (FR-006). */
+export const previewInactive = (draft: Config, saved: Config | null, report: EffectiveReport | null, dirty: boolean): DepEntry[] =>
+  dirty && saved ? newlyInactive(effectiveEntries(saved, report, false), evaluate(draft, report?.facts ?? null)) : [];
+
+/** Where an inactive setting's one-click fix goes: a Settings tab and section, or a restart. */
+export const fixTarget = (entry: DepEntry): { restart: true } | { tab: string; anchor?: string } => {
+  if (entry.fix === 'restart') return { restart: true };
+  const [tab, anchor] = (entry.fix ?? '').split('#');
+  return { tab, anchor };
+};
+
+/** GET /api/settings/effective: the device's report, or null if it can't be read. */
+export const fetchEffectiveReport = async (): Promise<EffectiveReport | null> => {
+  try {
+    const response = await fetch('/api/settings/effective');
+    const data = response.ok ? await response.json() : null;
+    return data && Array.isArray(data.settings) ? (data as EffectiveReport) : null;
+  } catch {
+    return null; // device unreachable: Settings previews from the form alone
+  }
 };

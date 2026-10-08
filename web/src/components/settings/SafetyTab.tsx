@@ -36,7 +36,16 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
   // safety refresh doesn't remount inputs (and drop focus) mid-edit.
   // A rule whose sensor is off or missing either isn't in effect or reports
   // unsafe, as the device decides (D-15..D-19).
-  const rule = ({ enabledKey, valueKey, label, unit, min, max, step, hint }: {
+  const rule = ({
+    enabledKey,
+    valueKey,
+    label,
+    unit,
+    min,
+    max,
+    step,
+    hint,
+  }: {
     enabledKey: BoolKey;
     valueKey?: NumericKey;
     label: string;
@@ -96,7 +105,11 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
 
       <SafetyCard safety={safety} showRulesLink={false} />
 
-      <SettingsCard id="safety" title="Safety rules" hint="Any enabled rule that fails makes the verdict unsafe. The verdict drives the Dashboard, alerts and IsSafe in N.I.N.A.">
+      <SettingsCard
+        id="safety"
+        title="Safety rules"
+        hint="Any enabled rule that fails makes the verdict unsafe. The verdict drives the Dashboard, alerts and IsSafe in N.I.N.A."
+      >
         <Group title="General">
           <Toggle
             label="Force unsafe"
@@ -106,32 +119,115 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
           />
           <div class="form-grid">
             <Field label="Stale after" error={error('alpaca.staleAfterSeconds')} hint="Sensor data older than this is unsafe.">
-              <NumberInput dataField="alpaca.staleAfterSeconds" integer min={1} max={3600} unit="s" value={alpaca.staleAfterSeconds} onChange={(v) => set('staleAfterSeconds', v)} />
+              <NumberInput
+                dataField="alpaca.staleAfterSeconds"
+                integer
+                min={1}
+                max={3600}
+                unit="s"
+                value={alpaca.staleAfterSeconds}
+                onChange={(v) => set('staleAfterSeconds', v)}
+              />
             </Field>
-            <Field label="Safe delay" error={error('alpaca.safeDelaySeconds')} hint="Must stay safe this long before reporting safe again. Unsafe is always immediate.">
-              <NumberInput dataField="alpaca.safeDelaySeconds" integer min={0} max={3600} unit="s" value={alpaca.safeDelaySeconds} onChange={(v) => set('safeDelaySeconds', v)} />
+            <Field
+              label="Safe delay"
+              error={error('alpaca.safeDelaySeconds')}
+              hint="Must stay safe this long before reporting safe again. Unsafe is always immediate."
+            >
+              <NumberInput
+                dataField="alpaca.safeDelaySeconds"
+                integer
+                min={0}
+                max={3600}
+                unit="s"
+                value={alpaca.safeDelaySeconds}
+                onChange={(v) => set('safeDelaySeconds', v)}
+              />
             </Field>
           </div>
         </Group>
 
-        <Group title="Rain" aside={hw.rain.enabled && hw.rain.detected === false ? <StatusBadge tone="bad" label="Not responding" /> : undefined}>
-          {rule({ enabledKey: 'rainUnsafeEnabled', label: 'Unsafe while raining', hint: `Including ${clearDelay} min after the last drop. Checked even when other sensors are stale.` })}
-          {rule({ enabledKey: 'rainSensorRequired', label: 'Unsafe if the rain sensor fails', hint: 'No reply, stale readings or a lens fault.' })}
+        <Group
+          title="Rain"
+          aside={hw.rain.enabled && hw.rain.detected === false ? <StatusBadge tone="bad" label="Not responding" /> : undefined}
+        >
+          {rule({
+            enabledKey: 'rainUnsafeEnabled',
+            label: 'Unsafe while raining',
+            hint: `Including ${clearDelay} min after the last drop. Checked even when other sensors are stale.`,
+          })}
+          {rule({
+            enabledKey: 'rainSensorRequired',
+            label: 'Unsafe if the rain sensor fails',
+            hint: 'No reply, stale readings or a lens fault.',
+          })}
         </Group>
 
         <Group title="Wind">
-          {rule({ enabledKey: 'windSpeedUnsafeEnabled', valueKey: 'windSpeedUnsafeMs', label: 'Max wind speed', unit: `m/s · ${Math.round(alpaca.windSpeedUnsafeMs * 3.6)} km/h`, min: 0.1, max: 60, step: 0.5, hint: '2-minute mean.' })}
-          {rule({ enabledKey: 'windGustUnsafeEnabled', valueKey: 'windGustUnsafeMs', label: 'Max gust', unit: `m/s · ${Math.round(alpaca.windGustUnsafeMs * 3.6)} km/h`, min: 0.1, max: 80, step: 0.5, hint: 'Highest 3-second mean in 10 minutes.' })}
+          {rule({
+            enabledKey: 'windSpeedUnsafeEnabled',
+            valueKey: 'windSpeedUnsafeMs',
+            label: 'Max wind speed',
+            unit: `m/s · ${Math.round(alpaca.windSpeedUnsafeMs * 3.6)} km/h`,
+            min: 0.1,
+            max: 60,
+            step: 0.5,
+            hint: '2-minute mean.',
+          })}
+          {rule({
+            enabledKey: 'windGustUnsafeEnabled',
+            valueKey: 'windGustUnsafeMs',
+            label: 'Max gust',
+            unit: `m/s · ${Math.round(alpaca.windGustUnsafeMs * 3.6)} km/h`,
+            min: 0.1,
+            max: 80,
+            step: 0.5,
+            hint: 'Highest 3-second mean in 10 minutes.',
+          })}
         </Group>
 
         <Group title="Sky">
-          {rule({ enabledKey: 'cloudCoverEnabled', valueKey: 'cloudCoverUnsafePercent', label: 'Max cloud cover', unit: '%', min: 0, max: 100, step: 1 })}
-          {rule({ enabledKey: 'sqmMinEnabled', valueKey: 'sqmMinSafe', label: 'Min sky darkness', unit: 'mag/arcsec²', min: 0, max: 30, step: 0.1, hint: 'E.g. 18 to treat twilight and moonlight as unsafe.' })}
+          {rule({
+            enabledKey: 'cloudCoverEnabled',
+            valueKey: 'cloudCoverUnsafePercent',
+            label: 'Max cloud cover',
+            unit: '%',
+            min: 0,
+            max: 100,
+            step: 1,
+          })}
+          {rule({
+            enabledKey: 'sqmMinEnabled',
+            valueKey: 'sqmMinSafe',
+            label: 'Min sky darkness',
+            unit: 'mag/arcsec²',
+            min: 0,
+            max: 30,
+            step: 0.1,
+            hint: 'E.g. 18 to treat twilight and moonlight as unsafe.',
+          })}
         </Group>
 
         <Group title="Environment">
-          {rule({ enabledKey: 'humidityMaxEnabled', valueKey: 'humidityMaxSafe', label: 'Max humidity', unit: '%', min: 0, max: 100, step: 1 })}
-          {rule({ enabledKey: 'dewpointMarginEnabled', valueKey: 'dewpointMarginMinC', label: 'Min margin above dew point', unit: '°C', min: 0, max: 20, step: 0.1, hint: 'Dew forms on optics below this.' })}
+          {rule({
+            enabledKey: 'humidityMaxEnabled',
+            valueKey: 'humidityMaxSafe',
+            label: 'Max humidity',
+            unit: '%',
+            min: 0,
+            max: 100,
+            step: 1,
+          })}
+          {rule({
+            enabledKey: 'dewpointMarginEnabled',
+            valueKey: 'dewpointMarginMinC',
+            label: 'Min margin above dew point',
+            unit: '°C',
+            min: 0,
+            max: 20,
+            step: 0.1,
+            hint: 'Dew forms on optics below this.',
+          })}
         </Group>
       </SettingsCard>
     </>

@@ -14,13 +14,13 @@ namespace
 
     std::string release(const char *tag, bool prerelease, const std::string &assets, bool draft = false)
     {
-        return std::string("{\"tag_name\":\"") + tag + "\",\"name\":\"" + tag + " title\",\"prerelease\":" +
-               (prerelease ? "true" : "false") + ",\"draft\":" + (draft ? "true" : "false") +
+        return std::string("{\"tag_name\":\"") + tag + "\",\"name\":\"" + tag +
+               " title\",\"prerelease\":" + (prerelease ? "true" : "false") + ",\"draft\":" + (draft ? "true" : "false") +
                ",\"published_at\":\"2026-10-01T00:00:00Z\",\"body\":\"long release notes\",\"assets\":[" + assets + "]}";
     }
 
-    const std::string FULL = asset("sqmeter-firmware-v1.bin", 1500000) + "," + asset("sqmeter-ble-firmware-v1.bin", 1700000) +
-                             "," + asset("sqmeter-littlefs-v1.bin", 500000);
+    const std::string FULL = asset("sqmeter-firmware-v1.bin", 1500000) + "," + asset("sqmeter-ble-firmware-v1.bin", 1700000) + "," +
+                             asset("sqmeter-littlefs-v1.bin", 500000);
 
     std::vector<GithubRelease> parse(const std::string &json, const char *track, bool ble)
     {
@@ -92,19 +92,27 @@ void test_full_page_of_releases_fits()
     {
         const std::string tag = "v1.2." + std::to_string(i) + "-beta.10";
         std::string assets;
-        for (const char *kind : {"sqmeter-firmware-", "sqmeter-ble-firmware-", "sqmeter-littlefs-",
-                                 "sqmeter-complete-flash-", "sqmeter-ble-complete-flash-", "sqmeter-checksums-"})
+        for (const char *kind :
+             {"sqmeter-firmware-",
+              "sqmeter-ble-firmware-",
+              "sqmeter-littlefs-",
+              "sqmeter-complete-flash-",
+              "sqmeter-ble-complete-flash-",
+              "sqmeter-checksums-"})
         {
             if (!assets.empty())
                 assets += ",";
-            assets += "{\"name\":\"" + std::string(kind) + tag + ".bin\",\"size\":1700000,"
-                      "\"browser_download_url\":\"https://github.com/DeanJ87/SQMeter/releases/download/" + tag + "/" +
-                      kind + tag + ".bin\",\"uploader\":{\"login\":\"github-actions[bot]\",\"id\":41898282}}";
+            assets += "{\"name\":\"" + std::string(kind) + tag +
+                      ".bin\",\"size\":1700000,"
+                      "\"browser_download_url\":\"https://github.com/DeanJ87/SQMeter/releases/download/" +
+                      tag + "/" + kind + tag + ".bin\",\"uploader\":{\"login\":\"github-actions[bot]\",\"id\":41898282}}";
         }
         if (i > 0)
             json += ",";
-        json += "{\"tag_name\":\"" + tag + "\",\"name\":\"SQMeter " + tag + "\",\"prerelease\":true,\"draft\":false,"
-                "\"published_at\":\"2026-10-08T16:20:00Z\",\"body\":\"" + std::string(3000, 'x') + "\",\"assets\":[" + assets + "]}";
+        json += "{\"tag_name\":\"" + tag + "\",\"name\":\"SQMeter " + tag +
+                "\",\"prerelease\":true,\"draft\":false,"
+                "\"published_at\":\"2026-10-08T16:20:00Z\",\"body\":\"" +
+                std::string(3000, 'x') + "\",\"assets\":[" + assets + "]}";
     }
     json += "]";
 
@@ -112,8 +120,9 @@ void test_full_page_of_releases_fits()
     std::string error;
     TEST_ASSERT_TRUE_MESSAGE(Releases::parse(json, "beta", true, out, error), error.c_str());
     TEST_ASSERT_EQUAL(Releases::PER_PAGE, out.size());
-    TEST_ASSERT_EQUAL_STRING("https://github.com/DeanJ87/SQMeter/releases/download/v1.2.7-beta.10/sqmeter-ble-firmware-v1.2.7-beta.10.bin",
-                             out.back().firmwareAssetUrl.c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "https://github.com/DeanJ87/SQMeter/releases/download/v1.2.7-beta.10/sqmeter-ble-firmware-v1.2.7-beta.10.bin",
+        out.back().firmwareAssetUrl.c_str());
 }
 
 void test_bad_json()

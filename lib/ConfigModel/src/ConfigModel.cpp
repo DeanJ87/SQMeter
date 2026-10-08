@@ -25,9 +25,7 @@ namespace SQM
 
         bool isPlaceholderSecret(const char *value)
         {
-            return value == nullptr || value[0] == '\0' ||
-                   std::strcmp(value, SECRET_MASK) == 0 ||
-                   std::strcmp(value, "***") == 0;
+            return value == nullptr || value[0] == '\0' || std::strcmp(value, SECRET_MASK) == 0 || std::strcmp(value, "***") == 0;
         }
 
         void assignSecret(JsonObject obj, const char *key, std::string &target, bool preservePlaceholders)
@@ -52,7 +50,7 @@ namespace SQM
 
             target = secret;
         }
-    }
+    } // namespace
 
     namespace
     {
@@ -94,8 +92,8 @@ namespace SQM
 
         bool isValidBaudRate(uint32_t baudRate)
         {
-            return baudRate == 2400 || baudRate == 4800 || baudRate == 9600 || baudRate == 19200 ||
-                   baudRate == 38400 || baudRate == 57600 || baudRate == 115200;
+            return baudRate == 2400 || baudRate == 4800 || baudRate == 9600 || baudRate == 19200 || baudRate == 38400 ||
+                   baudRate == 57600 || baudRate == 115200;
         }
 
         bool setError(std::string *error, const std::string &message)
@@ -126,9 +124,7 @@ namespace SQM
 
             if (!isTimeSourceEnabled(cfg, cfg.secondaryTimeSource))
             {
-                cfg.secondaryTimeSource = cfg.gps.enabled && cfg.primaryTimeSource != TimeSource::GPS
-                                            ? TimeSource::GPS
-                                            : TimeSource::NTP;
+                cfg.secondaryTimeSource = cfg.gps.enabled && cfg.primaryTimeSource != TimeSource::GPS ? TimeSource::GPS : TimeSource::NTP;
             }
 
             if (cfg.ntp.enabled && cfg.gps.enabled && cfg.primaryTimeSource == cfg.secondaryTimeSource)
@@ -178,7 +174,7 @@ namespace SQM
         cfg.ntp.enabled = true;
         cfg.ntp.server1 = "pool.ntp.org";
         cfg.ntp.server2 = "time.nist.gov";
-        cfg.ntp.timezone = "UTC0"; // POSIX format
+        cfg.ntp.timezone = "UTC0";       // POSIX format
         cfg.ntp.syncIntervalMs = 600000; // 10 minutes
 
         cfg.gps.enabled = false;
@@ -289,23 +285,22 @@ namespace SQM
         // JSON key for each configurable event, matching the alert event names.
         std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, 9> eventSettings(const AlertsConfig &a)
         {
-            return {{{"unsafe", &a.unsafe},
-                     {"safe", &a.safe},
-                     {"rain_started", &a.rainStarted},
-                     {"rain_stopped", &a.rainStopped},
-                     {"sensor_fault", &a.sensorFault},
-                     {"sensor_recovered", &a.sensorRecovered},
-                     {"dew_risk", &a.dewRisk},
-                     {"clear_sky", &a.clearSky},
-                     {"clouded_over", &a.cloudedOver}}};
+            return {
+                {{"unsafe", &a.unsafe},
+                 {"safe", &a.safe},
+                 {"rain_started", &a.rainStarted},
+                 {"rain_stopped", &a.rainStopped},
+                 {"sensor_fault", &a.sensorFault},
+                 {"sensor_recovered", &a.sensorRecovered},
+                 {"dew_risk", &a.dewRisk},
+                 {"clear_sky", &a.clearSky},
+                 {"clouded_over", &a.cloudedOver}}};
         }
 
         void appendAlerts(JsonObject alerts, const AlertsConfig &a, bool redactSecrets)
         {
             auto secret = [redactSecrets](const std::string &value) -> const char *
-            {
-                return redactSecrets && !value.empty() ? SECRET_MASK : value.c_str();
-            };
+            { return redactSecrets && !value.empty() ? SECRET_MASK : value.c_str(); };
 
             alerts["enabled"] = a.enabled;
             JsonObject events = alerts.createNestedObject("events");
@@ -347,7 +342,7 @@ namespace SQM
             JsonObject mqtt = alerts.createNestedObject("mqtt");
             mqtt["enabled"] = a.mqttEnabled;
         }
-    }
+    } // namespace
 
     std::string Config::alertsToJson(bool redactSecrets) const
     {
@@ -540,9 +535,8 @@ namespace SQM
             return setError(error, "Time sources must be different when both NTP and GPS are enabled");
         }
 
-        if (wifi.reconnectDelayMs == 0 || wifi.maxReconnectDelayMs == 0 ||
-            wifi.reconnectDelayMs > 86400000 || wifi.maxReconnectDelayMs > 86400000 ||
-            wifi.reconnectDelayMs > wifi.maxReconnectDelayMs)
+        if (wifi.reconnectDelayMs == 0 || wifi.maxReconnectDelayMs == 0 || wifi.reconnectDelayMs > 86400000 ||
+            wifi.maxReconnectDelayMs > 86400000 || wifi.reconnectDelayMs > wifi.maxReconnectDelayMs)
         {
             return setError(error, "WiFi reconnect delays are invalid");
         }
@@ -701,7 +695,8 @@ namespace SQM
             return setError(error, "Alpaca: stale data threshold must be between 1 and 3600 seconds");
         }
 
-        if (!std::isfinite(alpaca.cloudCoverUnsafePercent) || alpaca.cloudCoverUnsafePercent < 0.0F || alpaca.cloudCoverUnsafePercent > 100.0F)
+        if (!std::isfinite(alpaca.cloudCoverUnsafePercent) || alpaca.cloudCoverUnsafePercent < 0.0F ||
+            alpaca.cloudCoverUnsafePercent > 100.0F)
         {
             return setError(error, "Alpaca: cloud cover threshold must be between 0 and 100 percent");
         }
@@ -737,8 +732,13 @@ namespace SQM
                 return setError(error, "Wind: anemometer pin is not a valid GPIO");
             if (wind.directionEnabled && (wind.directionPin < 32 || wind.directionPin > 39))
                 return setError(error, "Wind: vane pin must be an ADC1 pin (GPIO 32-39)");
-            const int used[] = {sensor.i2cSDA, sensor.i2cSCL, gps.enabled ? gps.rxPin : -1, gps.enabled ? gps.txPin : -1,
-                                rain.enabled ? rain.rxPin : -1, rain.enabled ? rain.txPin : -1};
+            const int used[] = {
+                sensor.i2cSDA,
+                sensor.i2cSCL,
+                gps.enabled ? gps.rxPin : -1,
+                gps.enabled ? gps.txPin : -1,
+                rain.enabled ? rain.rxPin : -1,
+                rain.enabled ? rain.txPin : -1};
             for (int pin : used)
             {
                 if (pin == wind.speedPin || (wind.directionEnabled && pin == wind.directionPin))
@@ -761,18 +761,15 @@ namespace SQM
                 return setError(error, "Bluetooth: pairing passkey must be 6 digits (not 000000)");
         }
 
-        auto isHttpUrl = [](const std::string &url)
-        {
-            return url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0;
-        };
+        auto isHttpUrl = [](const std::string &url) { return url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0; };
         if (alerts.cooldownSeconds > 86400)
             return setError(error, "Alerts: cooldown must be between 0 and 86400 seconds");
         if (!std::isfinite(alerts.dewRiskMarginC) || alerts.dewRiskMarginC < 0.0F || alerts.dewRiskMarginC > 10.0F)
             return setError(error, "Alerts: dew risk margin must be between 0 and 10 degrees C");
         if (!std::isfinite(alerts.clearSkyCloudPercent) || alerts.clearSkyCloudPercent < 0.0F || alerts.clearSkyCloudPercent > 100.0F)
             return setError(error, "Alerts: clear sky threshold must be between 0 and 100 percent");
-        if (!std::isfinite(alerts.cloudedOverCloudPercent) || alerts.cloudedOverCloudPercent < 0.0F || alerts.cloudedOverCloudPercent > 100.0F ||
-            alerts.cloudedOverCloudPercent <= alerts.clearSkyCloudPercent)
+        if (!std::isfinite(alerts.cloudedOverCloudPercent) || alerts.cloudedOverCloudPercent < 0.0F ||
+            alerts.cloudedOverCloudPercent > 100.0F || alerts.cloudedOverCloudPercent <= alerts.clearSkyCloudPercent)
             return setError(error, "Alerts: the clouded-over threshold must be above the clear threshold");
         if (!std::isfinite(alerts.nightSunAltitudeDeg) || alerts.nightSunAltitudeDeg < -20.0F || alerts.nightSunAltitudeDeg > 0.0F)
             return setError(error, "Alerts: night must start with the sun between 0 and -20 degrees");
@@ -783,7 +780,8 @@ namespace SQM
         {
             if (entry.second->level > 4)
                 return setError(error, "Alerts: event levels are 0 (off) to 4 (wake me)");
-            if (entry.second->title.size() > AlertsConfig::MAX_TEMPLATE_TITLE || entry.second->message.size() > AlertsConfig::MAX_TEMPLATE_MESSAGE)
+            if (entry.second->title.size() > AlertsConfig::MAX_TEMPLATE_TITLE ||
+                entry.second->message.size() > AlertsConfig::MAX_TEMPLATE_MESSAGE)
                 return setError(error, "Alerts: custom titles are up to 80 characters and messages up to 240");
         }
         // NVS strings top out just under 4000 bytes.
@@ -1067,8 +1065,16 @@ namespace SQM
             JsonObject events = alertsObj["events"];
             if (!events.isNull())
             {
-                AlertsConfig::EventSetting *targets[] = {&a.unsafe, &a.safe, &a.rainStarted, &a.rainStopped, &a.sensorFault,
-                                                         &a.sensorRecovered, &a.dewRisk, &a.clearSky, &a.cloudedOver};
+                AlertsConfig::EventSetting *targets[] = {
+                    &a.unsafe,
+                    &a.safe,
+                    &a.rainStarted,
+                    &a.rainStopped,
+                    &a.sensorFault,
+                    &a.sensorRecovered,
+                    &a.dewRisk,
+                    &a.clearSky,
+                    &a.cloudedOver};
                 size_t i = 0;
                 for (const auto &entry : eventSettings(a))
                 {

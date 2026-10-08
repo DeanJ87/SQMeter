@@ -11,8 +11,7 @@ namespace SQM
             std::string toLower(const std::string &s)
             {
                 std::string out = s;
-                std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c)
-                               { return std::tolower(c); });
+                std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { return std::tolower(c); });
                 return out;
             }
 
@@ -75,7 +74,7 @@ namespace SQM
                 }
                 return nullptr;
             }
-        }
+        } // namespace
 
         PropertyResult getObservingConditionsProperty(const std::string &propertyName, const ObservingConditionsSnapshot &snapshot)
         {
@@ -150,7 +149,8 @@ namespace SQM
             {
                 bool any = false;
                 double youngest = 0.0;
-                for (const SourceState *source : {&snapshot.skyLight, &snapshot.irSky, &snapshot.environment, &snapshot.rain, &snapshot.wind, &snapshot.windVane})
+                for (const SourceState *source :
+                     {&snapshot.skyLight, &snapshot.irSky, &snapshot.environment, &snapshot.rain, &snapshot.wind, &snapshot.windVane})
                 {
                     if (!source->present || !source->valid)
                         continue;

@@ -61,8 +61,8 @@ describe('Settings', () => {
   it('greys out sky rules when the MLX90614 was not detected', async () => {
     server.use(
       http.get('/api/status', () =>
-        HttpResponse.json({ ...mockStatus, sensors: { ...mockStatus.sensors, infrared: { status: 'missing', ageMs: 0 } } })
-      )
+        HttpResponse.json({ ...mockStatus, sensors: { ...mockStatus.sensors, infrared: { status: 'missing', ageMs: 0 } } }),
+      ),
     );
     mockDevice({ config: { alpaca: { ...mockConfig.alpaca, cloudCoverEnabled: false } }, facts: { infraredDetected: false } });
     window.history.replaceState(null, '', '/settings?tab=safety');

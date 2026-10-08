@@ -271,8 +271,8 @@ public:
     bool isArmed() const { return armed; }
     std::string armedDocument() const
     {
-        return std::string("{\"armed\":") + (armed ? "true" : "false") + ",\"armWithAlpaca\":" +
-               (cfg.alerts.armWithAlpaca ? "true" : "false") + "}";
+        return std::string("{\"armed\":") + (armed ? "true" : "false") +
+               ",\"armWithAlpaca\":" + (cfg.alerts.armWithAlpaca ? "true" : "false") + "}";
     }
 
     void setArmed(bool on)
@@ -293,7 +293,8 @@ public:
             else if (safety.isSafe)
                 alertsOn.message = "Observatory safe.";
             else
-                alertsOn.message = "Observatory UNSAFE" + (safety.reasons.empty() ? std::string(".") : ":\n" + Alerts::joinReasons(safety.reasons));
+                alertsOn.message =
+                    "Observatory UNSAFE" + (safety.reasons.empty() ? std::string(".") : ":\n" + Alerts::joinReasons(safety.reasons));
             record(alertsOn, 0x0F);
         }
     }
@@ -341,9 +342,18 @@ public:
         if ((mask & enabledChannels()) == 0)
             return response(400, errorJson("That channel isn't enabled - enable it and save settings first"));
 
-        const Alerts::Alert test = Core::buildTestAlert(sample, level, sound, title, message, safety, cfg,
-                                                        Core::observingConditions(snapshot, cfg, nowMs),
-                                                        Core::night(snapshot, cfg, epoch), clockTime, clockDate);
+        const Alerts::Alert test = Core::buildTestAlert(
+            sample,
+            level,
+            sound,
+            title,
+            message,
+            safety,
+            cfg,
+            Core::observingConditions(snapshot, cfg, nowMs),
+            Core::night(snapshot, cfg, epoch),
+            clockTime,
+            clockDate);
         record(test, mask);
         return response(202, "{\"success\":true,\"message\":\"Test notification queued\",\"demo\":true}");
     }
@@ -514,7 +524,8 @@ private:
         // Switched on but inactive (e.g. MQTT alerts with MQTT off): skipped
         // with the reason, like the device. Alerts being off doesn't block.
         const std::vector<Deps::Entry> entries = Deps::evaluate(cfg, facts());
-        static const char *const SETTINGS[] = {"alerts.mqtt.enabled", "alerts.pushover.enabled", "alerts.ntfy.enabled", "alerts.webhook.enabled"};
+        static const char *const SETTINGS[] = {
+            "alerts.mqtt.enabled", "alerts.pushover.enabled", "alerts.ntfy.enabled", "alerts.webhook.enabled"};
         for (size_t i = 0; i < 4; ++i)
         {
             if ((send & (1u << i)) == 0)
@@ -718,8 +729,14 @@ private:
             rd.lastPollMs = rd.lastResponseMs = rd.lastSuccessfulReadMs = now;
             rd.successfulReads++;
             char line[96];
-            std::snprintf(line, sizeof(line), "Acc %.2f mm, EventAcc %.2f mm, TotalAcc %.2f mm, RInt %.2f mmph", rain.acc / (rain.imperial ? 1 / 25.4f : 1.0f),
-                          rain.eventAcc, rain.totalAcc, rain.rInt);
+            std::snprintf(
+                line,
+                sizeof(line),
+                "Acc %.2f mm, EventAcc %.2f mm, TotalAcc %.2f mm, RInt %.2f mmph",
+                rain.acc / (rain.imperial ? 1 / 25.4f : 1.0f),
+                rain.eventAcc,
+                rain.totalAcc,
+                rain.rInt);
             rd.lastRawResponse = std::string(line);
         }
         rd.lastRainDetectedMs = rainLatch.lastRainMs;

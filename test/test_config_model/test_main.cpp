@@ -84,9 +84,9 @@ void test_constraints_rejected_with_messages()
         const char *json;
         const char *message;
     } cases[] = {
-        {R"({"ntp":{"enabled":false},"gps":{"enabled":false}})", "At least one time source must be enabled"},                         // D-27
-        {R"({"mqtt":{"enabled":true,"broker":"","topic":"sqmeter"}})", "MQTT broker and topic are required when MQTT is enabled"},       // D-33
-        {R"({"auth":{"enabled":true,"username":"admin","password":""}})", "HTTP auth password is required when auth is enabled"},       // D-34
+        {R"({"ntp":{"enabled":false},"gps":{"enabled":false}})", "At least one time source must be enabled"},                      // D-27
+        {R"({"mqtt":{"enabled":true,"broker":"","topic":"sqmeter"}})", "MQTT broker and topic are required when MQTT is enabled"}, // D-33
+        {R"({"auth":{"enabled":true,"username":"admin","password":""}})", "HTTP auth password is required when auth is enabled"},  // D-34
     };
     for (const auto &c : cases)
     {
