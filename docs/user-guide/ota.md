@@ -35,7 +35,7 @@ Progress and errors are pushed to the page over the status WebSocket; if the con
 5. The device reboots automatically into the new firmware
 
 !!! warning "Don't interrupt"
-    Keep the browser open during upload. A power cut mid-flash can corrupt the active partition — the device will fall back to the previous app slot on next boot.
+    Keep the browser open during upload. A power cut mid-flash leaves the slot being written incomplete; it's never booted, so the device keeps starting the firmware it was running.
 
 !!! note "Web UI updates"
     To update the web UI (the dashboard/settings pages), upload `sqmeter-littlefs-vX.Y.Z.bin` under **Manual upload** with **Web UI (littlefs.bin)** as the image, or use esptool directly. The web UI update doesn't touch the firmware.
@@ -101,9 +101,56 @@ esptool.py --chip esp32 --port PORT --baud 115200 \
 
 ## How OTA Works
 
-The partition table has two app slots (`app0` at `0x10000`, `app1` at `0x190000`). OTA writes the new firmware to the inactive slot, then updates the `otadata` partition to point the bootloader at it on next boot. If the new firmware fails to boot, the bootloader stays on the old slot.
+The partition table has two app slots (`app0` at `0x10000`, `app1` at `0x190000`). OTA writes the new firmware to the slot that isn't running; the image is verified when the write finishes, and only then is the bootloader pointed at it for the next boot. A partial or corrupt download is therefore never booted.
 
-This means you always have a working rollback as long as you don't erase the flash.
+If the new firmware is invalid or fails before it has started, the bootloader goes back to the previous slot. Once the new firmware has started it is kept, even if it misbehaves later, so the way back from a bad release is to install another one (or the previous one) from **Updates**, or over USB.
+
+<!-- diagram: DIA-08
+sources: src/OtaUpdater.cpp#OtaUpdater::runApply src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFirmware src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFilesystem lib/ReleaseLogic/ src/OtaUpdater.cpp#OtaUpdater::checkForUpdate
+blocking: false
+fingerprint: c6651a1f12020f2c
+-->
+<figure class="diagram" markdown>
+
+```mermaid
+sequenceDiagram
+    accTitle: Updating from GitHub releases
+    accDescr: The browser asks the device for releases; the device fetches the list from GitHub itself. On Update, the device downloads and writes the web UI image first and the firmware last, switching the boot slot only after the firmware is verified, then restarts. Any failure before that leaves the old firmware booting.
+    participant B as Browser
+    participant D as SQMeter
+    participant G as GitHub
+    B->>D: Check for updates, stable or beta
+    D->>G: List releases, over HTTPS with pinned root certificates
+    G-->>D: Releases
+    D-->>B: Releases with both a firmware and a web UI image
+    B->>D: Update to the chosen release
+    D->>G: Download the web UI image
+    D->>D: Erase and rewrite the web UI partition
+    D->>G: Download the firmware image
+    D->>D: Write the unused app slot, verify it
+    opt Every step succeeded
+        D->>D: Point the bootloader at the new slot
+        D-->>B: Progress 100 %
+        D->>D: Restart into the new firmware
+    end
+    opt A download or write failed
+        D-->>B: The error
+        Note over D: The boot slot is unchanged:<br/>the old firmware keeps running
+    end
+    Note over B,D: Manual upload: the browser sends a firmware<br/>or web UI file, written the same way, then restart
+```
+
+<figcaption>Updating from GitHub releases, and manual upload. Progress reaches the page over the status WebSocket.</figcaption>
+</figure>
+
+??? info "Diagram in words"
+
+    1. **Check**: the browser asks the device for releases on the stable or beta track. The device fetches the list from GitHub itself, over HTTPS checked against pinned root certificates, and returns only releases that have both a firmware image (the Bluetooth one on the BLE build) and a web UI image.
+    2. **Update**: the browser sends the chosen release. The device downloads the **web UI image first**, erasing and rewriting the web UI (LittleFS) partition as it goes, then the **firmware**, written to the app slot that isn't running and verified when complete.
+    3. **Success**: only after the firmware is verified does the device point the bootloader at the new slot, report 100 % and restart into the new firmware.
+    4. **Failure** (no internet, a failed download or write): the device reports the error and the boot slot is unchanged, so the old firmware keeps running. A failure during the web UI write can leave the web UI unusable until a later update succeeds; the REST API and update endpoints still work.
+    5. **Manual upload**: the browser sends a firmware or web UI file to the device, which writes it the same way and restarts.
+    6. If the new firmware is invalid or fails before it has started, the bootloader returns to the previous slot; once it has started, it's kept.
 
 The LittleFS filesystem update is separate from app OTA slots. It replaces the dashboard/settings assets and preserves NVS configuration, but an interrupted filesystem upload can leave the web UI unavailable until LittleFS is flashed again over USB or a later successful OTA filesystem upload.
 

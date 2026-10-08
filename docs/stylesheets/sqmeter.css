@@ -334,3 +334,48 @@
 .md-typeset a:not(.md-button):not(.headerlink):hover {
   text-decoration-thickness: 2px;
 }
+
+/* Diagrams (spec 024). Colours come from Material's --md-mermaid-* variables,
+   which follow the palette above (accent = cyan); no diagram sets its own.
+   A diagram wider than the column scrolls inside its own box, never the page. */
+[data-md-color-scheme="slate"] {
+  --md-mermaid-font-family: var(--md-text-font), sans-serif;
+  --md-mermaid-label-bg-color: var(--sqm-panel);
+}
+
+.md-typeset figure.diagram {
+  display: block;
+  max-width: 100%;
+  margin: 1.5em 0;
+  padding: 1rem;
+  border: 1px solid var(--sqm-line-soft);
+  border-radius: 0.6rem;
+  background: var(--sqm-panel-3);
+}
+
+.md-typeset figure.diagram .mermaid {
+  margin: 0;
+  overflow-x: auto;
+  text-align: center;
+}
+
+/* Material draws each diagram scaled to the column, which leaves phone text
+   unreadable. On narrow screens give it a minimum canvas and let the figure
+   scroll sideways instead (the page itself never does). */
+@media screen and (max-width: 44.9375em) {
+  .md-typeset figure.diagram {
+    overflow-x: auto;
+  }
+
+  .md-typeset figure.diagram .mermaid {
+    min-width: 38rem;
+  }
+}
+
+.md-typeset figure.diagram figcaption {
+  max-width: none;
+  margin: 0.75em 0 0;
+  color: var(--sqm-muted);
+  font-size: 0.68rem;
+  font-style: normal;
+}

@@ -131,6 +131,14 @@ Test files are exempt from LIMIT-01 (a `describe` block is long by nature) but n
 
 ---
 
+## Docs (DOC)
+
+| ID | Rule | Check |
+|---|---|---|
+| DOC-01 | A change to behaviour shown in a docs diagram updates the diagram, its caption and its "Diagram in words" in the same PR, then re-confirms it with `python3 tools/docs/diagrams.py --confirm DIA-NN` (spec 024). | auto (stale diagrams warn; safety diagrams fail) |
+
+---
+
 ## Errors and logging (ERR, LOG)
 
 | ID | Rule | Check |

@@ -18,6 +18,7 @@ extra:
 
 theme:
   name: material
+  custom_dir: overrides
   # Dark only, in the device UI's colours (docs/stylesheets/sqmeter.css).
   palette:
     scheme: slate
@@ -45,7 +46,13 @@ extra_css:
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  # Diagrams (spec 024): ```mermaid fences, rendered by Material with a
+  # self-hosted mermaid (overrides/main.html, web/scripts/vendor-mermaid.mjs).
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
