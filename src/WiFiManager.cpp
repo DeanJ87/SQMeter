@@ -1,6 +1,7 @@
 #include "WiFiManager.h"
 #include "Logger.h"
 #include <WiFi.h>
+#include <ESPmDNS.h>
 
 namespace SQM
 {
@@ -41,7 +42,27 @@ namespace SQM
             dnsServer->processNextRequest();
         }
 
-        if (apMode || !config.autoReconnect)
+        if (isConnected())
+        {
+            if (stationConnectedAt == 0)
+                stationConnectedAt = millis() | 1;
+            startMdns();
+        }
+        else
+        {
+            stationConnectedAt = 0;
+        }
+
+        if (apMode)
+        {
+            // Keep trying the saved network (e.g. the router came up after the
+            // device after a power cut) so the device doesn't sit in setup mode.
+            if (!config.ssid.empty() && !retryPaused && !isConnected())
+                handleReconnect();
+            return;
+        }
+
+        if (!config.autoReconnect)
         {
             return;
         }
@@ -98,13 +119,37 @@ namespace SQM
         onDisconnectedCallback = callback;
     }
 
+    bool WiFiManager::connectedFromHotspotFor(uint32_t ms) const
+    {
+        return apMode && stationConnectedAt != 0 && isConnected() && millis() - stationConnectedAt >= ms;
+    }
+
+    void WiFiManager::startMdns()
+    {
+        if (mdnsStarted || !config.mdns || !isConnected())
+            return;
+        if (!MDNS.begin(config.hostname.c_str()))
+        {
+            Logger::warn(TAG, "mDNS failed to start");
+            mdnsStarted = true; // don't retry every loop
+            return;
+        }
+        MDNS.addService("http", "tcp", 80);
+        mdnsStarted = true;
+        Logger::info(TAG, "mDNS: http://%s.local", config.hostname.c_str());
+    }
+
     void WiFiManager::startCaptivePortal()
     {
         Logger::info(TAG, "Starting captive portal: %s", AP_SSID);
 
         apMode = true;
-        WiFi.mode(WIFI_AP);
+        // AP+STA so the setup screen can scan and try networks, and the saved
+        // network keeps being retried.
+        WiFi.mode(WIFI_AP_STA);
         WiFi.softAP(AP_SSID);
+        currentReconnectDelay = std::max<uint32_t>(config.reconnectDelayMs, 30000);
+        lastReconnectAttempt = millis();
 
         dnsServer.emplace();
         dnsServer->start(DNS_PORT, "*", WiFi.softAPIP());

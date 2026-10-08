@@ -39,6 +39,17 @@ namespace SQM
         void stopCaptivePortal();
         bool updateCredentials(const std::string &ssid, const std::string &password);
 
+        // While the setup hotspot is up, the saved network is retried in the
+        // background; pause that while the setup screen tries new credentials.
+        void setRetryPaused(bool paused) { retryPaused = paused; }
+        // True once the station has been connected for `ms` while the hotspot
+        // is still up - time to restart into normal operation.
+        bool connectedFromHotspotFor(uint32_t ms) const;
+
+        // Starts mDNS (<hostname>.local + HTTP service) if enabled; idempotent.
+        void startMdns();
+        bool isMdnsRunning() const { return mdnsStarted; }
+
     private:
         static constexpr const char *TAG = "WiFiManager";
         static constexpr const char *AP_SSID = "SQM-Setup";
@@ -48,6 +59,9 @@ namespace SQM
         bool apMode;
         uint32_t lastReconnectAttempt;
         uint32_t currentReconnectDelay;
+        bool retryPaused = false;
+        bool mdnsStarted = false;
+        uint32_t stationConnectedAt = 0;
 
         std::optional<DNSServer> dnsServer;
         OnConnectedCallback onConnectedCallback;

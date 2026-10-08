@@ -12,7 +12,9 @@ export const wifiConfigSchema = z.object({
   hostname: z
     .string()
     .min(1, "Hostname is required")
-    .regex(/^[a-zA-Z0-9-]+$/, "Hostname can only contain letters, numbers, and hyphens"),
+    .max(32, "Hostname can be at most 32 characters")
+    .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/, "Use letters, numbers and hyphens (not at either end)"),
+  mdns: z.boolean().optional(),
   autoReconnect: z.boolean(),
   reconnectDelayMs: z.number().int().positive(),
   maxReconnectDelayMs: z.number().int().positive(),

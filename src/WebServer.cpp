@@ -32,6 +32,12 @@ namespace SQM
 
         constexpr const char *ARMED_NVS_NAMESPACE = "sqm-alerts";
 
+        // Where captive-portal probes land: the WiFi setup screen on the hotspot.
+        std::string setupScreenUrl()
+        {
+            return std::string("http://") + WiFi.softAPIP().toString().c_str() + "/wifi";
+        }
+
         // "1"/"0", "on"/"off", "true"/"false", "arm"/"disarm" (any case).
         bool parseArmPayload(std::string text, bool &armed)
         {
@@ -313,6 +319,13 @@ namespace SQM
                 request->send(400, "text/plain", "Invalid Alpaca device type, device number, method or HTTP verb");
                 return;
             }
+            // In setup mode every hostname resolves here; send other sites'
+            // pages to the setup screen.
+            if ((WiFi.getMode() & WIFI_AP) && !path.startsWith("/api/") &&
+                request->host() != WiFi.softAPIP().toString()) {
+                request->redirect(setupScreenUrl().c_str());
+                return;
+            }
             // If it's an API route, return 404 JSON
             if (path.startsWith("/api/")) {
                 Logger::debug(TAG, "404 Not Found (API): %s", path.c_str());
@@ -464,28 +477,15 @@ namespace SQM
 
     void WebServer::setupStaticRoutes()
     {
-        // Captive portal detection URLs for iOS, Android, etc.
-        server.on("/hotspot-detect.html", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->redirect("/"); });
-
-        server.on("/library/test/success.html", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->redirect("/"); });
-
-        server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->redirect("/"); });
-
-        server.on("/gen_204", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->redirect("/"); });
-
-        server.on("/success.txt", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->send(200, "text/plain", "Success"); });
-
-        server.on("/connecttest.txt", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->redirect("/"); });
-
-        // Catch-all for Microsoft Windows captive portal detection
-        server.on("/ncsi.txt", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->send(200, "text/plain", "Microsoft NCSI"); });
+        // Captive portal detection (iOS/macOS, Android, Windows, Firefox):
+        // answer every probe with a redirect so the OS opens its sign-in
+        // window on the WiFi setup screen.
+        for (const char *probe : {"/hotspot-detect.html", "/library/test/success.html", "/generate_204", "/gen_204",
+                                  "/success.txt", "/connecttest.txt", "/ncsi.txt", "/redirect", "/canonical.html"})
+        {
+            server.on(probe, HTTP_GET, [](AsyncWebServerRequest *request)
+                      { request->redirect(setupScreenUrl().c_str()); });
+        }
 
         // Serve files from LittleFS
         server.serveStatic("/", LittleFS, "/")
@@ -1882,6 +1882,10 @@ namespace SQM
             }
 
             Logger::info(TAG, "WiFi connected. IP: %s", WiFi.localIP().toString().c_str());
+            // Restart onto the new network once the setup screen has had time
+            // to show the new address.
+            if (wifiConnectConfigSaved)
+                scheduleRestart(15000);
             wifiConnectActive = false;
             pendingWifiSSID.clear();
             pendingWifiPassword.clear();
@@ -2514,6 +2518,12 @@ namespace SQM
         wifi["rssi"] = WiFi.RSSI();
         wifi["mac"] = WiFi.macAddress();
         wifi["connectPending"] = wifiConnectActive;
+        wifi["apMode"] = (WiFi.getMode() & WIFI_AP) != 0;
+        {
+            const Config &cfg = getConfigCallback();
+            wifi["hostname"] = cfg.wifi.hostname;
+            wifi["mdns"] = cfg.wifi.mdns;
+        }
 
         // Per-sensor health for present hardware, and bring-up diagnostics.
         // Readings themselves are in /api/sensors.

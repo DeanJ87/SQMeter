@@ -2123,3 +2123,40 @@ input[type="file"].input::file-selector-button {
 .alerts-bell-button.is-off {
   opacity: 0.6;
 }
+
+/* WiFi setup (captive portal) */
+.wifi-list {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.wifi-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wifi-option.is-selected {
+  border-color: var(--cyan);
+}
+
+.wifi-option:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.wifi-addresses {
+  margin: 0.5rem 0 0.75rem;
+  padding-left: 1.2rem;
+  font-size: 1.05rem;
+}

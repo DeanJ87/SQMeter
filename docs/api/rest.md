@@ -20,7 +20,7 @@ All endpoints are on port 80. Base URL: `http://<device-ip>/api`
 Firmware, memory, flash, partitions, time, WiFi, MQTT, Bluetooth, darkness, sensor health and diagnostics.
 
 ```bash
-curl http://sqm-esp32.local/api/status
+curl http://sqmeter.local/api/status
 ```
 
 ```json
@@ -28,7 +28,7 @@ curl http://sqm-esp32.local/api/status
   "uptime": 3600,
   "freeHeap": 128728,
   "firmware": { "name": "SQMeter", "version": "0.3.0", "buildDate": "Oct  8 2026", "buildTime": "12:00:00", "variant": "standard" },
-  "wifi": { "connected": true, "ssid": "MyNetwork", "ip": "192.168.1.42", "rssi": -62, "mac": "AA:BB:CC:DD:EE:FF" },
+  "wifi": { "connected": true, "ssid": "MyNetwork", "ip": "192.168.1.42", "rssi": -62, "mac": "AA:BB:CC:DD:EE:FF", "connectPending": false, "apMode": false, "hostname": "sqmeter", "mdns": true },
   "sky": { "locationSource": "manual", "nightKnown": true, "latitude": 51.4779, "longitude": -0.0015, "isNight": false, "sunAltitudeDeg": 19.4 },
   "sensors": {
     "light": { "status": "ok", "ageMs": 400 },
@@ -54,7 +54,7 @@ curl http://sqm-esp32.local/api/status
 The current readings plus the safety verdict. The document is the same as `/ws/sensors` and MQTT `<base>/state`; see [MQTT → Readings](../user-guide/mqtt.md#readings-basestate) for every field.
 
 ```bash
-curl http://sqm-esp32.local/api/sensors
+curl http://sqmeter.local/api/sensors
 ```
 
 ```json
@@ -81,7 +81,7 @@ A group whose sensor isn't `ok` carries only `status` and `ageMs` (like `environ
 Stores the current rolling TSL2591 visible count as the dark visible offset. Cover the aperture with an opaque cap, wait for the rolling window to fill, then call this endpoint.
 
 ```bash
-curl -X POST http://sqm-esp32.local/api/sensors/tsl2591/calibrate-dark
+curl -X POST http://sqmeter.local/api/sensors/tsl2591/calibrate-dark
 ```
 
 ```json
@@ -100,7 +100,7 @@ Trigger a manual RG-15 read and return communication diagnostics.
 When HTTP auth is enabled, this endpoint requires credentials.
 
 ```bash
-curl -X POST http://sqm-esp32.local/api/sensors/rg15/test
+curl -X POST http://sqmeter.local/api/sensors/rg15/test
 ```
 
 Success is 200 `{"success": true, "command": "R", "bytesWritten": 2, "elapsedMs": 140, "rawResponse": "Acc 0.00 mm, ...", "ack": "R", "online": true, "lastSuccessfulReadAgeMs": 40}`. With no valid reply it's 502 with `error` and a wiring `hint`, plus the same diagnostic fields.
@@ -116,7 +116,7 @@ Send the RG-15 its `O` (reset total accumulation) or `K` (reboot) command. Retur
 Read the full device configuration. Password fields are returned as `********` when a stored password exists.
 
 ```bash
-curl http://sqm-esp32.local/api/config
+curl http://sqmeter.local/api/config
 ```
 
 !!! warning "LAN-sensitive endpoint"
@@ -129,7 +129,7 @@ curl http://sqm-esp32.local/api/config
 Update configuration. Partial updates are supported — only the fields you send are changed.
 
 ```bash
-curl -X POST http://sqm-esp32.local/api/config \
+curl -X POST http://sqmeter.local/api/config \
   -H "Content-Type: application/json" \
   -d '{"deviceName": "backyard-sqm", "sensor": {"readIntervalMs": 10000}}'
 ```
@@ -149,35 +149,40 @@ Successful saves return:
 
 ### `GET /api/wifi/scan`
 
-Scan for nearby WiFi networks.
+Scan for nearby WiFi networks. The scan runs in the background: the first call starts it and returns `202` with `"scanning": true`; call again (about once a second) until `"scanning": false` and the list arrives.
 
 ```bash
-curl http://sqm-esp32.local/api/wifi/scan
+curl http://sqmeter.local/api/wifi/scan
 ```
 
 ```json
 {
+  "success": true,
+  "scanning": false,
   "networks": [
     { "ssid": "MyNetwork", "rssi": -55, "encryption": "secured" },
-    { "ssid": "Neighbour", "rssi": -80, "encryption": "secured" }
+    { "ssid": "Guest", "rssi": -80, "encryption": "open" }
   ]
 }
 ```
-
-!!! warning "Blocking scan"
-    This endpoint currently calls `WiFi.scanNetworks()` synchronously inside the async web-server handler. Avoid repeated scans while streaming WebSocket data or performing OTA updates.
 
 ---
 
 ### `POST /api/wifi/connect`
 
-Connect to a WiFi network and save credentials to NVS.
+Join a network - what the WiFi setup screen (`/wifi`) uses. Returns `202` at once; the attempt takes up to 10 seconds. Poll [`GET /api/status`](#get-apistatus): `wifi.connectPending` is `true` while it's trying; afterwards `wifi.connected` and `wifi.ssid` tell you whether it worked. On success the credentials are saved and the device restarts onto the network 15 seconds later.
 
 ```bash
-curl -X POST http://sqm-esp32.local/api/wifi/connect \
+curl -X POST http://sqmeter.local/api/wifi/connect \
   -H "Content-Type: application/json" \
   -d '{"ssid": "MyNetwork", "password": "hunter2"}'
 ```
+
+```json
+{ "success": true, "pending": true, "message": "Connection started" }
+```
+
+`400 {"error": "Missing SSID or password"}` if either field is absent (send `""` for an open network).
 
 ---
 
@@ -186,7 +191,7 @@ curl -X POST http://sqm-esp32.local/api/wifi/connect \
 Restart the device.
 
 ```bash
-curl -X POST http://sqm-esp32.local/api/restart
+curl -X POST http://sqmeter.local/api/restart
 ```
 
 ---
@@ -196,7 +201,7 @@ curl -X POST http://sqm-esp32.local/api/restart
 OTA firmware update. Send a raw `.bin` file as `multipart/form-data`.
 
 ```bash
-curl -X POST http://sqm-esp32.local/api/update \
+curl -X POST http://sqmeter.local/api/update \
   -F "firmware=@sqmeter-firmware-v0.0.1.bin"
 ```
 
@@ -209,7 +214,7 @@ Returns 200 `{"success": true}` and reboots, or 500 `{"error": "..."}` (for exam
 OTA filesystem update. Send a LittleFS image as `multipart/form-data`.
 
 ```bash
-curl -X POST http://sqm-esp32.local/api/update/fs \
+curl -X POST http://sqmeter.local/api/update/fs \
   -F "filesystem=@sqmeter-littlefs-v0.0.1.bin"
 ```
 
@@ -230,7 +235,7 @@ Tries to connect to a broker with the given details, without saving them: `{"bro
 Checks GitHub Releases for the given track and returns matched firmware+filesystem asset pairs. See [OTA Updates](../user-guide/ota.md#check-for-updates-recommended) for the full flow.
 
 ```bash
-curl "http://sqm-esp32.local/api/updates/check?track=stable"
+curl "http://sqmeter.local/api/updates/check?track=stable"
 ```
 
 ```json
@@ -257,7 +262,7 @@ curl "http://sqm-esp32.local/api/updates/check?track=stable"
 Starts a self-download-and-flash of a release returned by `check`, using its asset URLs directly.
 
 ```bash
-curl -X POST http://sqm-esp32.local/api/updates/apply \
+curl -X POST http://sqmeter.local/api/updates/apply \
   -H "Content-Type: application/json" \
   -d '{
     "firmwareAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.1.3/sqmeter-firmware-v0.1.3.bin",

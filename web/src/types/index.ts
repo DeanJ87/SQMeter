@@ -216,6 +216,10 @@ export interface SystemStatus {
     ip: string;
     rssi: number;
     mac: string;
+    connectPending?: boolean;
+    apMode?: boolean; // the "SQM-Setup" hotspot is up
+    hostname?: string;
+    mdns?: boolean;
   };
   mqtt?: {
     enabled: boolean;
@@ -246,6 +250,7 @@ export interface WiFiConfig {
   ssid: string;
   password: string;
   hostname: string;
+  mdns?: boolean;
   autoReconnect: boolean;
   reconnectDelayMs: number;
   maxReconnectDelayMs: number;
@@ -486,7 +491,7 @@ export interface RainSensorConfig {
 export interface WiFiNetwork {
   ssid: string;
   rssi: number;
-  encryption: string;
+  encryption: 'open' | 'secured';
 }
 
 export interface GithubRelease {

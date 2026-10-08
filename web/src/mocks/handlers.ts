@@ -108,7 +108,9 @@ export const handlers = [
   http.get("/api/wifi/scan", () =>
     HttpResponse.json({ networks: mockWifiNetworks })
   ),
-  http.post("/api/wifi/connect", () => HttpResponse.json({ ok: true })),
+  http.post("/api/wifi/connect", () =>
+    HttpResponse.json({ success: true, pending: true, message: "Connection started" }, { status: 202 })
+  ),
 
   // REST — MQTT test
   http.post("/api/mqtt/test", () =>
