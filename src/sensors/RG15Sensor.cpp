@@ -1,5 +1,6 @@
 #include "sensors/RG15Sensor.h"
 #include "Logger.h"
+#include "RainLogic.h"
 #include <ArduinoJson.h>
 #include <cctype>
 #include <cstdio>
@@ -33,45 +34,6 @@ namespace SQM
             SemaphoreHandle_t mutex;
             bool locked;
         };
-
-        bool extractFloatField(const std::string &line, const char *label, float &value)
-        {
-            size_t labelPos = line.find(label);
-            const size_t labelLength = std::strlen(label);
-
-            while (labelPos != std::string::npos)
-            {
-                const bool startsField = labelPos == 0 ||
-                                         line[labelPos - 1] == ',' ||
-                                         std::isspace(static_cast<unsigned char>(line[labelPos - 1]));
-                const size_t valuePos = labelPos + labelLength;
-                const bool hasValueSeparator = valuePos < line.length() &&
-                                               std::isspace(static_cast<unsigned char>(line[valuePos]));
-
-                if (startsField && hasValueSeparator)
-                {
-                    const char *cursor = line.c_str() + valuePos;
-                    while (*cursor != '\0' && std::isspace(static_cast<unsigned char>(*cursor)))
-                    {
-                        cursor++;
-                    }
-
-                    char *end = nullptr;
-                    const float parsed = std::strtof(cursor, &end);
-                    if (end == cursor)
-                    {
-                        return false;
-                    }
-
-                    value = parsed;
-                    return true;
-                }
-
-                labelPos = line.find(label, labelPos + 1);
-            }
-
-            return false;
-        }
 
         bool extractIntField(const std::string &line, const char *label, int &value)
         {
@@ -112,30 +74,6 @@ namespace SQM
             return false;
         }
 
-        bool hasFlagToken(const std::string &flags, const char *token)
-        {
-            size_t pos = flags.find(token);
-            const size_t tokenLength = std::strlen(token);
-
-            while (pos != std::string::npos)
-            {
-                const bool leftOk = pos == 0 ||
-                                    std::isspace(static_cast<unsigned char>(flags[pos - 1])) ||
-                                    flags[pos - 1] == ',';
-                const size_t right = pos + tokenLength;
-                const bool rightOk = right >= flags.length() ||
-                                     std::isspace(static_cast<unsigned char>(flags[right])) ||
-                                     flags[right] == ',';
-                if (leftOk && rightOk)
-                {
-                    return true;
-                }
-
-                pos = flags.find(token, pos + 1);
-            }
-
-            return false;
-        }
     } // namespace
 
     const char *RG15Sensor::stateToString(RG15State state)
@@ -541,11 +479,11 @@ namespace SQM
 
         const uint32_t now = millis();
         maybeRunScheduledTotalReset(now);
-        if (reading.rainLatched && diagnostics.lastRainDetectedMs != 0 &&
-            now - diagnostics.lastRainDetectedMs > rainClearDelayMs)
+        if (reading.rainLatched)
         {
-            reading.rainLatched = false;
-            reading.localEventAcc = 0.0f;
+            Rain::Latch latch = currentLatch();
+            Rain::expire(latch, now, rainClearDelayMs);
+            applyLatch(latch);
         }
         bool gotCommunication = false;
         if (diagnostics.lastPollMs == 0 || now - diagnostics.lastPollMs >= pollIntervalMs)
@@ -908,61 +846,25 @@ namespace SQM
 
     bool RG15Sensor::parseLine(const std::string &line)
     {
-        if (line.length() < 20)
+        Rain::Line parsed;
+        const Rain::ParseResult result = Rain::parseLine(line, parsed);
+        if (result != Rain::ParseResult::Ok)
         {
-            if (debugUart)
-            {
+            if (result == Rain::ParseResult::OutOfRange)
+                Logger::warn(TAG, "Out-of-range values in line: '%s'", line.c_str());
+            else if (debugUart && result == Rain::ParseResult::TooShort)
                 Logger::info(TAG, "line too short to parse: \"%s\"", line.c_str());
-            }
             return false;
         }
 
-        float acc = 0.0f, eventAcc = 0.0f, totalAcc = 0.0f, rInt = 0.0f;
-        if (!extractFloatField(line, "Acc", acc) ||
-            !extractFloatField(line, "EventAcc", eventAcc) ||
-            !extractFloatField(line, "TotalAcc", totalAcc) ||
-            !extractFloatField(line, "RInt", rInt))
-        {
-            return false;
-        }
-
-        if (acc < 0.0f || acc > 9999.0f ||
-            eventAcc < 0.0f || eventAcc > 9999.0f ||
-            totalAcc < 0.0f || totalAcc > 999999.0f ||
-            rInt < 0.0f || rInt > 9999.0f)
-        {
-            Logger::warn(TAG, "Out-of-range values in line: '%s'", line.c_str());
-            return false;
-        }
-
-        reading.acc = acc;
-        reading.eventAcc = eventAcc;
-        reading.totalAcc = totalAcc;
-        reading.rInt = rInt;
-        reading.isRaining = (rInt > 0.0f);
-
-        reading.lensBad = false;
-        reading.emSat = false;
-
-        const size_t rIntPos = line.find("RInt");
-        size_t unitPos = rIntPos == std::string::npos ? std::string::npos : line.find("mmph", rIntPos);
-        reading.imperial = false;
-        if (unitPos == std::string::npos)
-        {
-            unitPos = rIntPos == std::string::npos ? std::string::npos : line.find("iph", rIntPos);
-            reading.imperial = unitPos != std::string::npos;
-        }
-
-        if (unitPos != std::string::npos)
-        {
-            const size_t flagsStart = line.find(' ', unitPos);
-            if (flagsStart != std::string::npos && flagsStart < line.length())
-            {
-                const std::string flags = line.substr(flagsStart);
-                reading.lensBad = hasFlagToken(flags, "i") || hasFlagToken(flags, "LensBad");
-                reading.emSat = hasFlagToken(flags, "o") || hasFlagToken(flags, "EmSat");
-            }
-        }
+        reading.acc = parsed.acc;
+        reading.eventAcc = parsed.eventAcc;
+        reading.totalAcc = parsed.totalAcc;
+        reading.rInt = parsed.rInt;
+        reading.isRaining = parsed.rInt > 0.0f;
+        reading.imperial = parsed.imperial;
+        reading.lensBad = parsed.lensBad;
+        reading.emSat = parsed.emSat;
 
         reading.timestamp = millis();
         reading.ageMs = 0;
@@ -977,31 +879,25 @@ namespace SQM
 
     void RG15Sensor::updateRainLatch(uint32_t now)
     {
-        const bool sawRain = reading.rInt > 0.0f || reading.acc > 0.0f;
-        if (sawRain)
-        {
-            if (!reading.rainLatched)
-            {
-                reading.localEventAcc = 0.0f;
-            }
-            reading.localEventAcc += reading.acc;
-            diagnostics.lastRainDetectedMs = now;
-            reading.rainLatched = true;
-            return;
-        }
+        Rain::Latch latch = currentLatch();
+        Rain::observe(latch, reading.rInt, reading.acc, now, rainClearDelayMs);
+        applyLatch(latch);
+    }
 
-        if (diagnostics.lastRainDetectedMs == 0)
-        {
-            reading.rainLatched = false;
-            reading.localEventAcc = 0.0f;
-            return;
-        }
+    Rain::Latch RG15Sensor::currentLatch() const
+    {
+        Rain::Latch latch;
+        latch.latched = reading.rainLatched;
+        latch.eventAccumulation = reading.localEventAcc;
+        latch.lastRainMs = diagnostics.lastRainDetectedMs;
+        return latch;
+    }
 
-        reading.rainLatched = (now - diagnostics.lastRainDetectedMs) <= rainClearDelayMs;
-        if (!reading.rainLatched)
-        {
-            reading.localEventAcc = 0.0f;
-        }
+    void RG15Sensor::applyLatch(const Rain::Latch &latch)
+    {
+        reading.rainLatched = latch.latched;
+        reading.localEventAcc = latch.eventAccumulation;
+        diagnostics.lastRainDetectedMs = latch.lastRainMs;
     }
 
     void RG15Sensor::maybeRunScheduledTotalReset(uint32_t now)

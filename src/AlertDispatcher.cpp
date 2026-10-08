@@ -377,9 +377,7 @@ namespace SQM
 
     bool AlertDispatcher::sendPushover(const Job &job, std::string &detail)
     {
-        // quiet -1 (no sound), normal 0, urgent 1 (bypasses quiet hours),
-        // wake 2 (emergency: repeats until acknowledged).
-        const int priority = static_cast<int>(job.alert.level) - 2;
+        const int priority = Alerts::pushoverPriority(job.alert.level);
 
         std::string body = "token=" + urlEncode(job.cfg.pushoverAppToken) +
                            "&user=" + urlEncode(job.cfg.pushoverUserKey) +
@@ -402,8 +400,7 @@ namespace SQM
         while (!server.empty() && server.back() == '/')
             server.pop_back();
 
-        static const char *const NTFY_PRIORITY[] = {"min", "low", "default", "high", "max"};
-        const char *priority = NTFY_PRIORITY[static_cast<uint8_t>(job.alert.level) <= 4 ? static_cast<uint8_t>(job.alert.level) : 2];
+        const char *priority = Alerts::ntfyPriority(job.alert.level);
         std::vector<std::pair<std::string, std::string>> headers = {
             {"Title", fullTitle(job.deviceName, job.alert.title)},
             {"Priority", priority},

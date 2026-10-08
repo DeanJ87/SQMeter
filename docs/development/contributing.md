@@ -11,6 +11,25 @@ See [CONTRIBUTING.md](https://github.com/DeanJ87/SQMeter/blob/main/CONTRIBUTING.
 pio run
 ```
 
+**Unit tests (logic in `lib/`, run on your computer):**
+```bash
+pio test -e native
+cd web && npm test
+```
+
+Decision logic lives in `lib/` with a native test suite under `test/`, so it can be tested without hardware:
+
+| Library | What |
+|---|---|
+| `AlpacaLogic` | Alpaca API router, safety verdict, ObservingConditions mapping |
+| `AlertLogic` | Alert engine, delivery priorities, sun position |
+| `SkyLogic` | Lux → SQM, NELM, Bortle; cloud model; dew point |
+| `RainLogic` | RG-15 line parsing and the rain latch |
+| `SafetyHistoryLogic` | The safety history kept across restarts |
+| `WindLogic`, `BleLogic` | Wind statistics; Bluetooth payloads |
+| `Readings` | The readings document (REST, WebSocket, MQTT) and Home Assistant discovery |
+| `ReleaseLogic` | GitHub release list for updates |
+
 **Web UI dev server:**
 ```bash
 cd web

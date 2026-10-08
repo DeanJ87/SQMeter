@@ -47,6 +47,38 @@ namespace SQM
             }
         }
 
+        int pushoverPriority(AlertLevel level)
+        {
+            switch (level)
+            {
+            case AlertLevel::Quiet:
+                return -1;
+            case AlertLevel::Urgent:
+                return 1;
+            case AlertLevel::Wake:
+                return 2;
+            case AlertLevel::Normal:
+            default:
+                return 0;
+            }
+        }
+
+        const char *ntfyPriority(AlertLevel level)
+        {
+            switch (level)
+            {
+            case AlertLevel::Quiet:
+                return "low";
+            case AlertLevel::Urgent:
+                return "high";
+            case AlertLevel::Wake:
+                return "max";
+            case AlertLevel::Normal:
+            default:
+                return "default";
+            }
+        }
+
         const char *alertTypeName(AlertType type)
         {
             switch (type)
