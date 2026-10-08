@@ -4,6 +4,7 @@ import type { AlertChannelName, AlertEventKey, AlertRecord } from '../../types';
 import { mergeAlertsConfig } from './defaults';
 import { showToast } from '../toast';
 import { darkness, formatClock, formatDuration, sunPosition } from '../../lib/astro';
+import { deviceTime } from '../../lib/deviceTime';
 import type { SettingsTabProps } from './context';
 import { InfoTip, Note } from '../ui';
 import { ActionButton, Field, Group, NumberInput, Requires, ResultNote, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
@@ -37,8 +38,8 @@ const CHANNEL_LABEL: Record<AlertChannelName, string> = { pushover: 'Pushover', 
 // Dark-or-not comes from the device's own sun position (what the alerts
 // use); the start/end times are a prediction made here, shown in this
 // browser's time zone.
-const describeDarkness = (latitude: number, longitude: number, darkAltitude: number, deviceSunAltitude?: number) => {
-  const now = new Date();
+const describeDarkness = (latitude: number, longitude: number, darkAltitude: number, deviceSunAltitude?: number, deviceNow?: Date) => {
+  const now = deviceNow ?? new Date();
   const sun = deviceSunAltitude ?? sunPosition(now, latitude, longitude).altitude;
   const darkNow = sun <= darkAltitude;
   const predicted = darkness(latitude, longitude, darkAltitude, now);
@@ -375,7 +376,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         ? config.location
         : null;
   const darknessNote = location
-    ? describeDarkness(location.latitude, location.longitude, alerts.nightSunAltitudeDeg, status?.sky?.sunAltitudeDeg)
+    ? describeDarkness(location.latitude, location.longitude, alerts.nightSunAltitudeDeg, status?.sky?.sunAltitudeDeg, deviceTime(status))
     : null;
   const channelCount = [alerts.pushover.enabled, alerts.ntfy.enabled, alerts.webhook.enabled, alerts.mqtt.enabled].filter(Boolean).length;
 

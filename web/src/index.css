@@ -2286,6 +2286,12 @@ input[type="file"].input::file-selector-button {
   gap: 0.4rem;
 }
 
+.demo-clock {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
 .demo-speed {
   display: flex;
   gap: 0.5rem;
