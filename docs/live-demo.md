@@ -13,7 +13,7 @@ The demo is a simulated SQMeter in your browser. It runs **the firmware's own co
 
 | Real (the device's code) | Simulated (the demo) |
 |---|---|
-| SQM, NELM, Bortle, cloud cover, dew point | The raw sensor values: light, sky and air temperature, humidity, pressure, rain, wind, GPS |
+| SQM, NELM, Bortle, cloud cover, dew point | The raw sensor values, which you set in the Demo panel: light, sky and air temperature, humidity, pressure, rain, wind, GPS |
 | The safety verdict, its reasons and the safe delay | The weather, and sensor faults you trigger |
 | Alerts: which events fire, their level, wording and stacking | Delivery - nothing is sent to Pushover, ntfy, a webhook or MQTT |
 | Settings: defaults, validation and error messages | WiFi, restarts, firmware updates and uploads |
@@ -25,19 +25,74 @@ Because the dashboard, the Alpaca page and the Alpaca API all come from one emul
 
 ## Things to try
 
-Open the **✦ Demo** button (bottom right) for weather and fault scenarios:
+Open the **✦ Demo** button (bottom right). It controls what the demo's sensors report, the same raw readings the hardware produces. The device's own code works out everything else.
 
-| Scenario | What you'll see |
+### Set the sensor readings
+
+Each group sets what one sensor reports:
+
+| Group | Readings |
 |---|---|
-| **Night sky** | The device's clock jumps to the darkest moment tonight, with a clear sky - Sun & Moon, darkness and the sky readings all follow |
-| **Rain** ¹ | Raining on the dashboard, the verdict turns unsafe ("Rain detected"), an alert under the bell, and Alpaca IsSafe false - then it clears after the rain clear delay |
-| **Cloud over** / **Clear** | Cloud rolls in over about 40 seconds: cover rises past the alert and safety limits, the "Clouded over" alert, an unsafe verdict - and back |
-| **Dawn** | The device's clock jumps to the next dawn (sun 12° below the horizon and rising) - turn on 10× to watch the sky brighten, and try an SQM minimum in the safety rules |
-| **Sensor fails** ¹ | A sensor stops answering: its card goes, the verdict counts it, a "sensor fault" alert |
+| **Sky and light** (MLX90614, TSL2591) | Sky temperature, the IR sensor's own temperature, their difference, and illuminance (or **Light follows the sun**) |
+| **Air** (BME280) | Temperature, humidity, pressure |
+| **Rain** (RG-15) | Rain rate and a lens fault |
+| **Wind** | Speed, gust and direction |
+| **GPS** | Whether it has a fix (it reports the device's location) |
 
-¹ The rain scenarios need the rain sensor: they're unavailable while it's switched off in Settings → Sensors.
+- **Not responding** on any sensor makes it stop answering until you clear it. Its card goes, the verdict counts it, and a "sensor fault" alert follows.
+- Values outside a sensor's real range are limited to it.
+- The rain and wind controls are unavailable while that sensor is switched off in **Settings → Sensors**.
+- **Hold steady** turns off the small natural variation, for exact readings.
 
-The panel shows the device's date and time. **Run the device clock 10× faster** runs it - and the sun and moon - ten times faster, and shortens the device's own delays (rain clear delay, safe delay, alert cooldowns) so you don't wait 15 minutes.
+The device reads these through its own settings. With your clear-sky threshold at -30 °C, a sky 32 °C colder than the IR sensor reads clear. Raise the sky temperature and cloud cover rises the way your thresholds say.
+
+### What the device makes of it, and what it's waiting for
+
+At the top of the panel are the device's own results:
+- sky quality (SQM, NELM, Bortle)
+- cloud cover
+- dew point
+- rain
+- the safety verdict and its reasons
+- whether alerts are on
+
+The device smooths and holds some things on purpose. The panel shows what it's waiting for and how long is left, so a change that hasn't shown yet doesn't look broken:
+
+- **Sky brightness averages over 90 s - settled in 40 s**: at night the light sensor averages over the sky averaging window.
+- **Rain clear delay**: the time until the device calls it dry again.
+- **Safe delay**: the time until the verdict can turn safe.
+- **Alert cooldowns and settle times**: why an alert hasn't gone out yet.
+
+### Shortcuts
+
+Shortcuts set the readings for an outcome, **worked out from your current settings**, and say what they used:
+
+| Shortcut | Sets |
+|---|---|
+| **Clear** / **Overcast** | A sky temperature past your clear-sky or overcast threshold, allowing for the humidity correction |
+| **Cloud just unsafe** | Cloud cover just past your cloud cover safety limit |
+| **Rain** / **Rain stops** | Rain at 2.5 mm/h, or none |
+| **Dark sky** | Illuminance for SQM 21.5 (allowing for your calibration offset) |
+| **Dew risk** | Humidity that brings the dew point inside your dew-risk margin |
+
+Cloud changes roll in over 40 seconds; **Change** picks another pace.
+
+If a shortcut can't work with your settings, it says why and changes nothing. Two examples: **Cloud just unsafe** with the cloud rule switched off, and **Rain** with the rain sensor off.
+
+### Time and place
+
+The panel shows the device's date, time, time zone and location. You can set the date and time exactly, or use presets:
+
+- **Now**
+- **Darkest tonight**
+- **Dawn**, 45 minutes before sunrise
+- **Dusk**
+- **Midsummer** and **Midwinter midnight**
+- **31 Dec 23:00**
+
+The places (**London**, **La Palma**, **Atacama**, **Sydney**, **75° N 1° W** and the **North Pole**) save the location and its time zone, as Settings does. Sun & Moon, darkness, the night-only alerts and the light (when it follows the sun) all follow. Where a preset can't happen, the panel says why and the clock stays put. One example is dawn at the North Pole in December.
+
+**Run the device clock 10× faster** runs the clock, the sun and the device's own delays (rain clear delay, safe delay, alert cooldowns) ten times faster.
 
 Then change settings and watch them take effect:
 
@@ -49,7 +104,16 @@ Then change settings and watch them take effect:
 
 Device addresses work too: open [`/management/v1/description`](https://demo.sqmeter.dev/management/v1/description) or [`/api/sensors`](https://demo.sqmeter.dev/api/sensors) to see what the device would answer.
 
-Links can start a scenario: `https://demo.sqmeter.dev/?scenario=rain` (also `night`, `cloud`, `clear`, `dawn`, `fail-light`, `fail-ir`, `fail-environment`, `fail-rain`).
+Links can set things up: `https://demo.sqmeter.dev/?scenario=rain`.
+
+| Link | Sets up |
+|---|---|
+| `night` | Darkest tonight, clear |
+| `rain` | Rain |
+| `cloud` | Overcast over 40 s |
+| `clear` | Clear |
+| `dawn` | Dawn |
+| `fail-light`, `fail-ir`, `fail-environment`, `fail-rain` | That sensor not responding |
 
 ---
 
