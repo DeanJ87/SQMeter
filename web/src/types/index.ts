@@ -145,7 +145,18 @@ export interface SystemStatus {
     buildTime: string;
     variant?: 'standard' | 'ble';
   };
-  ble?: { available: boolean; active: boolean; clients: number };
+  ble?: {
+    available: boolean;
+    active: boolean;
+    clients: number;
+    alarm?: {
+      serviceActive: boolean;
+      active: boolean;
+      sequence: number;
+      acknowledgedSequence: number;
+      bondedPhones: number;
+    };
+  };
   uptime: number;
   freeHeap: number;
   heapSize: number;
@@ -226,6 +237,12 @@ export interface SystemStatus {
       initialized: boolean;
       status: number;
       lastUpdate: number;
+    };
+    wind?: {
+      enabled: boolean;
+      status: number;
+      vaneFault: boolean;
+      ageMs: number;
     };
     rg15?: {
       enabled: boolean;
@@ -360,6 +377,14 @@ export interface AlpacaConfig {
   windGustUnsafeMs: number;
 }
 
+export interface BleConfig {
+  enabled: boolean;
+  passkey: string;
+  alarmOnUnsafe: boolean;
+  alarmOnRain: boolean;
+  alarmOnSensorFault: boolean;
+}
+
 export interface WindConfig {
   enabled: boolean;
   speedPin: number;
@@ -441,7 +466,7 @@ export interface Config {
   rain?: RainSensorConfig;
   alpaca?: AlpacaConfig;
   alerts?: AlertsConfig;
-  ble?: { enabled: boolean };
+  ble?: BleConfig;
   wind?: WindConfig;
 }
 

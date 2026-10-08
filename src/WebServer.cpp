@@ -301,7 +301,7 @@ namespace SQM
         alertDispatcher->begin();
 
         if (BleService::available() && getConfigCallback().ble.enabled)
-            ble.begin(getConfigCallback().deviceName);
+            ble.begin(getConfigCallback().deviceName, getConfigCallback().ble.passkey);
 
         if (getConfigCallback().alpaca.enabled)
         {
@@ -1144,6 +1144,8 @@ namespace SQM
             ble.update(bleState, summaryJson);
         }
 
+        processBleAlarms(in, status, cfg);
+
         // Always run the engine so its state tracks reality while alerts are
         // off; only deliver when the master switch is on.
         const std::vector<Alerts::Alert> alerts = alertEngine.update(in, rules);
@@ -1153,6 +1155,56 @@ namespace SQM
         {
             alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName);
             ble.publishAlert(alert);
+        }
+    }
+
+    void WebServer::processBleAlarms(const Alerts::AlertInputs &inputs, const SafetyStatus &status, const Config &cfg)
+    {
+        if (!ble.isActive())
+            return;
+
+        const time_t now = time(nullptr);
+        const uint32_t epoch = now >= 1704067200 ? static_cast<uint32_t>(now) : 0;
+
+        Alerts::AlertRules rules;
+        rules.onSafetyChange = cfg.ble.alarmOnUnsafe;
+        rules.onRain = cfg.ble.alarmOnRain;
+        rules.onSensorFault = cfg.ble.alarmOnSensorFault;
+        rules.onDewRisk = false;
+        rules.onClearSky = false;
+        rules.cooldownSeconds = 60;
+
+        for (const Alerts::Alert &alert : bleAlarmEngine.update(inputs, rules))
+        {
+            switch (alert.type)
+            {
+            case Alerts::AlertType::Unsafe:
+                ble.raiseAlarm(status.reasonFlags, epoch);
+                break;
+            case Alerts::AlertType::RainStarted:
+                ble.raiseAlarm(status.reasonFlags | Alpaca::UNSAFE_RAIN, epoch);
+                break;
+            case Alerts::AlertType::SensorFault:
+            case Alerts::AlertType::LensFault:
+                ble.raiseAlarm(status.reasonFlags | Alpaca::UNSAFE_SENSOR_FAULT, epoch);
+                break;
+            default:
+                ble.raiseInfo(status.reasonFlags, epoch);
+                break;
+            }
+        }
+
+        uint32_t acknowledged = 0;
+        bool fromPhone = false;
+        if (ble.processAcks(acknowledged, fromPhone) && cfg.alerts.enabled)
+        {
+            Alerts::Alert ack;
+            ack.type = Alerts::AlertType::Acknowledged;
+            ack.priority = Alerts::AlertPriority::Low;
+            ack.title = "Alarm acknowledged";
+            ack.message = std::string("Phone alarm #") + std::to_string(acknowledged) + " was acknowledged " +
+                          (fromPhone ? "on a phone." : "in the web UI.");
+            alertDispatcher->dispatch(ack, cfg.alerts, cfg.deviceName);
         }
     }
 
@@ -1216,6 +1268,28 @@ namespace SQM
 
             pendingAlertTestMask.fetch_or(mask & enabledMask);
             request->send(202, "application/json", "{\"success\":true,\"message\":\"Test notification queued\"}"); });
+
+        server.on("/api/ble/ack", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+            if (!ble.alarmStatus().alarmActive) {
+                request->send(409, "application/json", createErrorJson("No phone alarm is active").c_str());
+                return;
+            }
+            ble.requestLocalAck();
+            request->send(202, "application/json", "{\"success\":true}"); });
+
+        server.on("/api/ble/forget-bonds", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+            if (!ble.isActive()) {
+                request->send(409, "application/json", createErrorJson("Bluetooth is off").c_str());
+                return;
+            }
+            ble.requestForgetBonds();
+            request->send(202, "application/json", "{\"success\":true}"); });
 
         server.on("/api/alerts/recent", HTTP_GET, [this](AsyncWebServerRequest *request)
                   {
@@ -2215,7 +2289,7 @@ namespace SQM
 
     std::string WebServer::createStatusJson() const
     {
-        StaticJsonDocument<4096> doc; // Includes MQTT, partition, and boot diagnostics
+        DynamicJsonDocument doc(6144); // Includes MQTT, partition, boot, sensor and BLE diagnostics
         const SensorSnapshot snapshot = getSensorSnapshot();
         const uint32_t now = millis();
 
@@ -2231,6 +2305,13 @@ namespace SQM
         bleStatus["available"] = BleService::available();
         bleStatus["active"] = ble.isActive();
         bleStatus["clients"] = ble.connectedClients();
+        const BleAlarmStatus bleAlarm = ble.alarmStatus();
+        JsonObject bleAlarmJson = bleStatus.createNestedObject("alarm");
+        bleAlarmJson["serviceActive"] = bleAlarm.serviceActive;
+        bleAlarmJson["active"] = bleAlarm.alarmActive;
+        bleAlarmJson["sequence"] = bleAlarm.sequence;
+        bleAlarmJson["acknowledgedSequence"] = bleAlarm.acknowledgedSequence;
+        bleAlarmJson["bondedPhones"] = bleAlarm.bondedPhones;
 
         // System stats
         doc["uptime"] = millis() / 1000;
@@ -2371,6 +2452,12 @@ namespace SQM
         appendRG15Diagnostics(rg15, snapshot.rg15, snapshot.rg15Diagnostics, now);
         rg15["initialized"] = snapshot.rg15Initialized;
         rg15["lastUpdate"] = snapshot.rg15LastUpdate;
+
+        JsonObject windStatus = sensors.createNestedObject("wind");
+        windStatus["enabled"] = getConfigCallback().wind.enabled;
+        windStatus["status"] = static_cast<int>(snapshot.wind.status);
+        windStatus["vaneFault"] = snapshot.wind.vaneFault;
+        windStatus["ageMs"] = ageMs(now, snapshot.wind.timestamp);
 
         // GPS data
         if (snapshot.gpsInitialized)

@@ -207,6 +207,13 @@ namespace SQM
     struct BleConfig
     {
         bool enabled; // advertise the SQMeter GATT service (takes effect after a restart)
+
+        // Phone alarm service (pairing required). Without a passkey the
+        // alarm/ack/heartbeat characteristics aren't offered at all.
+        std::string passkey;     // 6 digits, entered on the phone when pairing
+        bool alarmOnUnsafe;      // SafetyMonitor goes unsafe
+        bool alarmOnRain;        // rain starts
+        bool alarmOnSensorFault; // a sensor stops responding / RG-15 lens fault
     };
 
     struct Config
