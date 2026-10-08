@@ -1,11 +1,12 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { AlertChannelName, AlertEventKey, AlertRecord } from '../../types';
+import type { AlertChannelName, AlertEventKey, AlertRecord, AlertSchedule, AlertSendMode } from '../../types';
 import { mergeAlertsConfig } from './defaults';
 import { showToast } from '../toast';
 import { darkness, formatClock, formatDuration, sunPosition } from '../../lib/astro';
 import { deviceTime } from '../../lib/deviceTime';
 import type { SettingsTabProps } from './context';
+import { PAUSE_HINT, SEND_MODE_OPTIONS, describeSchedule, minutesToSeconds, secondsToMinutes } from './alertSchedule';
 import { InfoTip, Note } from '../ui';
 import { ActionButton, Field, Group, NumberInput, Requires, ResultNote, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
 
@@ -64,6 +65,9 @@ const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = 
   dew_risk: { title: 'Dew risk', message: 'Temperature {temp} °C is within {dew_margin} °C of the dew point ({dewpoint} °C).' },
   clear_sky: { title: 'Dark and clear', message: 'Cloud cover is down to {cloud}% (clear below {clear_below}%).' },
   clouded_over: { title: 'Clouded over', message: 'Cloud cover is up to {cloud}% (cloudy above {cloudy_above}%).' },
+  client_lost: { title: 'Imaging app stopped checking', message: 'No request to the {device} for {silent_for} - last checked {last_checked}.' },
+  client_back: { title: 'Imaging app is back', message: 'The {device} is being checked again.' },
+  client_disconnected: { title: 'Imaging app disconnected', message: 'The {device} was disconnected.' },
 };
 
 // "Dark and clear" only when sky alerts wait for darkness, as on the device.
@@ -98,13 +102,22 @@ const VAR_HELP: Record<string, string> = {
   wind: 'Wind m/s',
   gust: 'Gust m/s',
   sun_alt: 'Sun altitude °',
+  silent_for: 'The "silent for" time, e.g. 2 min',
+  last_checked: 'When the imaging app last checked: a time, or "N min ago"',
+  client_id: 'The Alpaca ClientID the imaging app sent, if any',
 };
+// For the imaging-app events {device} is the Alpaca device, not the device name.
+const CLIENT_VAR_HELP: Record<string, string> = { device: '"safety monitor" or "weather device"' };
+const CLIENT_EVENTS: AlertEventKey[] = ['client_lost', 'client_back', 'client_disconnected'];
 const COMMON_VARS = ['event', 'device', 'time', 'date', 'level', 'sqm', 'sqm_min', 'cloud', 'cloud_max', 'clear_below', 'cloudy_above', 'sky_temp', 'temp', 'humidity', 'humidity_max', 'dewpoint', 'dew_margin', 'pressure', 'rain_rate', 'wind', 'gust', 'sun_alt'];
 const EVENT_VARS: Partial<Record<AlertEventKey, string[]>> = {
   unsafe: ['reasons', 'reasons_inline', 'reason_count'],
   sensor_fault: ['sensor'],
   sensor_recovered: ['sensor'],
   dew_risk: ['dew_margin_min'],
+  client_lost: ['silent_for', 'last_checked', 'client_id'],
+  client_back: ['last_checked', 'client_id'],
+  client_disconnected: ['client_id'],
 };
 
 const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw, status, dirty, goTo }) => {
@@ -206,25 +219,37 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
   const skyReason = hw.irSky.detected === false ? 'MLX90614 not detected.' : null;
   const pushoverOn = alerts.pushover.enabled;
 
-  // Alerts on/off is live device state, not a saved setting.
-  const [armed, setArmed] = useState<boolean | null>(null);
+  // Paused or sending is live device state, not a saved setting. The status
+  // updates (every few seconds) keep it current when Home Assistant or a
+  // script pauses alerts; the document is fetched once for a quick start.
+  const [fetchedSchedule, setFetchedSchedule] = useState<AlertSchedule | null>(null);
+  const [scheduleBusy, setScheduleBusy] = useState(false);
+  // After the button, its answer is newer than a status update for a moment.
+  const [preferFetchedUntil, setPreferFetchedUntil] = useState(0);
   useEffect(() => {
     fetch('/api/alerts/armed')
       .then((response) => (response.ok ? response.json() : null))
-      .then((body) => setArmed(body ? body.armed !== false : true))
-      .catch(() => setArmed(true));
+      .then((body: AlertSchedule | null) => setFetchedSchedule(body ?? { armed: true }))
+      .catch(() => setFetchedSchedule({ armed: true }));
   }, []);
-  const switchAlerts = async (on: boolean) => {
-    const previous = armed;
-    setArmed(on);
+  const schedule = status?.alerts ?? fetchedSchedule;
+  const pauseOrResume = async (resume: boolean) => {
+    setScheduleBusy(true);
     try {
-      const response = await fetch(on ? '/api/alerts/arm' : '/api/alerts/disarm', { method: 'POST' });
+      const response = await fetch(`${resume ? '/api/alerts/arm' : '/api/alerts/disarm'}?source=ui`, { method: 'POST' });
       if (!response.ok) throw new Error();
+      const updated = await fetch('/api/alerts/armed').then((r) => (r.ok ? r.json() : null));
+      setFetchedSchedule(updated ?? { armed: resume });
+      setPreferFetchedUntil(Date.now() + 5000);
     } catch {
-      setArmed(previous);
       showToast({ message: 'Could not reach the device', tone: 'bad' });
+    } finally {
+      setScheduleBusy(false);
     }
   };
+  const shownSchedule = scheduleBusy || Date.now() < preferFetchedUntil ? fetchedSchedule : schedule;
+  const sendMode: AlertSendMode = alerts.sendMode ?? (alerts.armWithAlpaca ? 'whileConnected' : 'any');
+  const alpacaOff = config.alpaca?.enabled === false;
   const [editing, setEditing] = useState<AlertEventKey | null>(null);
   // Where a clicked {variable} goes: the last focused title/message field.
   const lastField = useRef<{ key: AlertEventKey; field: 'title' | 'message'; el: HTMLInputElement | HTMLTextAreaElement } | null>(null);
@@ -284,7 +309,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
               key={name}
               type="button"
               class="var-chip"
-              title={VAR_HELP[name]}
+              title={(CLIENT_EVENTS.includes(key) ? CLIENT_VAR_HELP[name] : undefined) ?? VAR_HELP[name]}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => insertVar(key, name)}
             >
@@ -396,20 +421,28 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         <Toggle label="Send alerts" checked={alerts.enabled} onChange={(v) => set(['enabled'], v)} />
         {!off && channelCount === 0 && <Requires tone="warn">Turn on a channel below.</Requires>}
         {!off && (
-          <Group title="When you're not imaging">
-            <Toggle
-              label="Alerts on now"
-              checked={armed !== false}
-              disabled={armed === null}
-              onChange={switchAlerts}
-              hint="Off: nothing is sent and phones don't ring, but the device keeps watching. Takes effect straight away. Home Assistant and scripts can switch it too - MQTT <topic>/alerts/armed/set, or POST /api/alerts/arm and /disarm."
+          <Group title="When to send">
+            <SelectInput
+              value={sendMode}
+              ariaLabel="When to send"
+              options={SEND_MODE_OPTIONS.map(({ value, label }) => ({ value, label }))}
+              onChange={(v) => updateMany([[['alerts', 'sendMode'], v], [['alerts', 'armWithAlpaca'], v === 'whileConnected']])}
             />
-            <Toggle
-              label="On while N.I.N.A. is connected"
-              checked={Boolean(alerts.armWithAlpaca)}
-              onChange={(v) => set(['armWithAlpaca'], v)}
-              hint="Switches alerts on when N.I.N.A. connects the SafetyMonitor or ObservingConditions, and off when it disconnects."
-            />
+            <Note>{SEND_MODE_OPTIONS.find((option) => option.value === sendMode)?.help}</Note>
+            {sendMode === 'whileConnected' && alpacaOff && (
+              <Requires tone="warn" onFix={() => goTo('safety', 'alpaca')}>
+                Imaging apps connect over Alpaca, which is switched off.
+              </Requires>
+            )}
+            <div class="btn-row" data-schedule-status>
+              {shownSchedule && (
+                <Note tone={shownSchedule.armed ? 'ok' : 'warn'}>{describeSchedule({ ...shownSchedule, mode: shownSchedule.mode ?? sendMode })}</Note>
+              )}
+              <ActionButton onClick={() => pauseOrResume(!(shownSchedule?.armed ?? true))} disabled={shownSchedule === null || scheduleBusy}>
+                {shownSchedule?.armed === false ? 'Resume alerts' : 'Pause alerts'}
+              </ActionButton>
+              <InfoTip text={PAUSE_HINT} />
+            </div>
           </Group>
         )}
       </SettingsCard>
@@ -461,8 +494,57 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
               ),
               hint: 'Cloud cover.',
             })}
+            {eventRow('client_lost', 'The imaging app stops checking', {
+              hint: 'No request reached the safety monitor or weather device for the time below. A crash, a sleeping PC or a network drop.',
+              blocked: alpacaOff ? 'Alpaca is switched off.' : null,
+              fix: () => goTo('safety', 'alpaca'),
+            })}
+            {eventRow('client_back', 'The imaging app is back', {
+              hint: 'It started checking again after going quiet.',
+              blocked: alpacaOff ? 'Alpaca is switched off.' : null,
+              fix: () => goTo('safety', 'alpaca'),
+            })}
+            {eventRow('client_disconnected', 'The imaging app disconnects', {
+              hint: 'It disconnected normally, for example at the end of a session.',
+              blocked: alpacaOff ? 'Alpaca is switched off.' : null,
+              fix: () => goTo('safety', 'alpaca'),
+            })}
           </div>
           {err('cloudedOverCloudPercent') && <Note tone="bad">{err('cloudedOverCloudPercent')}</Note>}
+          <div class="form-grid">
+            <Field
+              label="Silent for - safety monitor"
+              error={err('clientSilentSafetySeconds')}
+              hint="How long without a request before you're told. Imaging apps usually check the safety monitor every few seconds."
+            >
+              <NumberInput
+                min={0.5}
+                max={60}
+                step={0.5}
+                unit="min"
+                ariaLabel="Silent for - safety monitor"
+                value={secondsToMinutes(alerts.clientSilentSafetySeconds ?? 120)}
+                disabled={off}
+                onChange={(v) => set(['clientSilentSafetySeconds'], minutesToSeconds(v))}
+              />
+            </Field>
+            <Field
+              label="Silent for - weather device"
+              error={err('clientSilentWeatherSeconds')}
+              hint="Imaging apps check weather less often; keep this longer than their weather interval."
+            >
+              <NumberInput
+                min={0.5}
+                max={60}
+                step={0.5}
+                unit="min"
+                ariaLabel="Silent for - weather device"
+                value={secondsToMinutes(alerts.clientSilentWeatherSeconds ?? 600)}
+                disabled={off}
+                onChange={(v) => set(['clientSilentWeatherSeconds'], minutesToSeconds(v))}
+              />
+            </Field>
+          </div>
           <div class="rule-row">
             <div class="toggle-stack">
               <Toggle

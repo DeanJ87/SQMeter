@@ -183,11 +183,17 @@ namespace SQM
             const size_t deviceIndex = isSafetyMonitor ? SAFETY_MONITOR : OBSERVING_CONDITIONS;
             const bool enabled = backend.alpacaEnabled();
             DeviceActivity &activity = devices[deviceIndex];
-            ++activity.requests;
-            if (const std::string *clientId = findParam(request, "ClientID"))
+            // The device's own web UI (the Alpaca page's live state) tags its
+            // requests source=ui: it isn't an imaging app watching the device.
+            const std::string *source = findParam(request, "source");
+            if (source == nullptr || *source != "ui")
             {
-                activity.hasClientId = true;
-                activity.clientId = parseClientTransactionId(*clientId);
+                ++activity.requests;
+                if (const std::string *clientId = findParam(request, "ClientID"))
+                {
+                    activity.hasClientId = true;
+                    activity.clientId = parseClientTransactionId(*clientId);
+                }
             }
             auto setConnected = [&activity](bool value)
             {

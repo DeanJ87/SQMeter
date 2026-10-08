@@ -12,6 +12,12 @@
         "clearSkyCloudPercent": {
           "type": "number"
         },
+        "clientSilentSafetySeconds": {
+          "type": "number"
+        },
+        "clientSilentWeatherSeconds": {
+          "type": "number"
+        },
         "cloudedOverCloudPercent": {
           "type": "number"
         },
@@ -28,6 +34,78 @@
           "type": "object",
           "properties": {
             "clear_sky": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "client_back": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "client_disconnected": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "client_lost": {
               "type": "object",
               "properties": {
                 "level": {
@@ -246,6 +324,9 @@
           },
           "required": [
             "clear_sky",
+            "client_back",
+            "client_disconnected",
+            "client_lost",
             "clouded_over",
             "dew_risk",
             "rain_started",
@@ -323,6 +404,13 @@
         "safetyNightOnly": {
           "type": "boolean"
         },
+        "sendMode": {
+          "type": "string",
+          "enum": [
+            "any",
+            "whileConnected"
+          ]
+        },
         "skyNightOnly": {
           "type": "boolean"
         },
@@ -354,6 +442,8 @@
       "required": [
         "armWithAlpaca",
         "clearSkyCloudPercent",
+        "clientSilentSafetySeconds",
+        "clientSilentWeatherSeconds",
         "cloudedOverCloudPercent",
         "cooldownSeconds",
         "dewRiskMarginC",
@@ -364,6 +454,7 @@
         "ntfy",
         "pushover",
         "safetyNightOnly",
+        "sendMode",
         "skyNightOnly",
         "webhook"
       ],

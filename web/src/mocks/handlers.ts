@@ -1,4 +1,5 @@
 import { http, HttpResponse, ws } from "msw";
+import type { AlertScheduleReason } from "../types";
 import {
   generateSensorData,
   mockStatus,
@@ -10,7 +11,20 @@ import {
 } from "./data";
 
 // Demo-only: alerts switched on/off.
-const mockAlertsArmed = { value: true };
+const mockAlertsArmed: { value: boolean; reason: AlertScheduleReason; since: string | null } = { value: true, reason: "none", since: null };
+const mockSchedule = () => ({
+  armed: mockAlertsArmed.value,
+  armWithAlpaca: false,
+  mode: "any" as const,
+  reason: mockAlertsArmed.reason as AlertScheduleReason,
+  since: mockAlertsArmed.since,
+  sinceAgeMs: mockAlertsArmed.since ? Date.now() - Date.parse(mockAlertsArmed.since) : null,
+});
+const setMockArmed = (request: Request, armed: boolean) => {
+  mockAlertsArmed.value = armed;
+  mockAlertsArmed.reason = new URL(request.url).searchParams.get("source") === "ui" ? "user-ui" : "user-rest";
+  mockAlertsArmed.since = new Date().toISOString();
+};
 
 const alpacaEnvelope = <T,>(Value: T) => ({
   Value,
@@ -36,6 +50,7 @@ export const handlers = [
   http.get("/api/status", () =>
     HttpResponse.json({
       ...mockStatus,
+      alerts: mockSchedule(),
       uptime: demoUptime(),
       time: { iso: new Date().toISOString(), timezone: "GMT0" },
     })
@@ -86,14 +101,14 @@ export const handlers = [
 
   // REST — alerts
   http.get("/api/alerts/recent", () => HttpResponse.json({ enabled: true, armed: mockAlertsArmed.value, alerts: mockRecentAlerts })),
-  http.get("/api/alerts/armed", () => HttpResponse.json({ armed: mockAlertsArmed.value, armWithAlpaca: false })),
-  http.post("/api/alerts/arm", () => {
-    mockAlertsArmed.value = true;
-    return HttpResponse.json({ armed: true }, { status: 202 });
+  http.get("/api/alerts/armed", () => HttpResponse.json(mockSchedule())),
+  http.post("/api/alerts/arm", ({ request }) => {
+    setMockArmed(request, true);
+    return HttpResponse.json({ success: true, armed: true }, { status: 202 });
   }),
-  http.post("/api/alerts/disarm", () => {
-    mockAlertsArmed.value = false;
-    return HttpResponse.json({ armed: false }, { status: 202 });
+  http.post("/api/alerts/disarm", ({ request }) => {
+    setMockArmed(request, false);
+    return HttpResponse.json({ success: true, armed: false }, { status: 202 });
   }),
   http.post("/api/alerts/clear", () => {
     mockRecentAlerts.splice(0, mockRecentAlerts.length);

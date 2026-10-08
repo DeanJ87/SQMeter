@@ -686,6 +686,7 @@ void test_router_counts_requests_disconnects_and_client_id(void)
     route(router, true, "/api/v1/safetymonitor/0/connected", {{"Connected", "True"}, {"ClientID", "42"}});
     route(router, false, "/api/v1/safetymonitor/0/issafe", {{"ClientID", "42"}});
     route(router, false, "/management/v1/description"); // management requests don't count
+    route(router, false, "/api/v1/safetymonitor/0/devicestate", {{"source", "ui"}}); // nor the web UI's own
     DeviceActivity sm = router.activity(Device::SafetyMonitor);
     TEST_ASSERT_TRUE(sm.connected);
     TEST_ASSERT_EQUAL_UINT32(2, sm.requests);

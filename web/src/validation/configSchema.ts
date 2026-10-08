@@ -285,7 +285,10 @@ export const alertsConfigSchema = z
     cloudedOverCloudPercent: z.number().min(0).max(100),
     skyNightOnly: z.boolean(),
     safetyNightOnly: z.boolean().optional(),
+    sendMode: z.enum(["any", "whileConnected"]).optional(),
     armWithAlpaca: z.boolean().optional(),
+    clientSilentSafetySeconds: z.number().int().min(30, "At least 30 seconds").max(3600, "At most 60 minutes").optional(),
+    clientSilentWeatherSeconds: z.number().int().min(30, "At least 30 seconds").max(3600, "At most 60 minutes").optional(),
     nightSunAltitudeDeg: z.number().min(-20).max(0),
     cooldownSeconds: z.number().int().min(0).max(86400, "Must be at most 24 hours"),
     pushover: z.object({

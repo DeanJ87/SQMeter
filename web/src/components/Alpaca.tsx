@@ -1,7 +1,8 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { route } from 'preact-router';
-import type { AlpacaConfiguredDevice, AlpacaDeviceStateItem, AlpacaResponse, Config, SafetyStatus } from '../types';
+import type { AlpacaConfiguredDevice, AlpacaDeviceStateItem, AlpacaResponse, Config, SafetyStatus, SystemStatus } from '../types';
+import { describeClient } from '../lib/alpacaClients';
 import SafetyCard from './SafetyCard';
 import { Button, Card, Note, Pill, ReadingRow } from './ui';
 
@@ -63,6 +64,7 @@ const Alpaca: FunctionalComponent = () => {
   const [deviceStates, setDeviceStates] = useState<Record<string, AlpacaDeviceStateItem[] | null>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [safety, setSafety] = useState<SafetyStatus | null>(null);
+  const [clients, setClients] = useState<NonNullable<SystemStatus['alpaca']>['clients'] | null>(null);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
@@ -85,8 +87,18 @@ const Alpaca: FunctionalComponent = () => {
         .then((response) => (response.ok ? response.json() : null))
         .then((data) => setSafety(data))
         .catch(() => setSafety(null));
+    // Whether an imaging app is checking each device (older firmware: not reported).
+    const pollClients = () =>
+      fetch('/api/status')
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data: SystemStatus | null) => setClients(data?.alpaca?.clients ?? null))
+        .catch(() => setClients(null));
     pollSafety();
-    const timer = setInterval(pollSafety, POLL_INTERVAL_MS);
+    pollClients();
+    const timer = setInterval(() => {
+      pollSafety();
+      pollClients();
+    }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
   }, []);
 
@@ -96,7 +108,8 @@ const Alpaca: FunctionalComponent = () => {
     const poll = async () => {
       const entries = await Promise.all(
         devices.map(async (device) => {
-          const response = await alpacaGet<AlpacaDeviceStateItem[]>(`${deviceBasePath(device)}/devicestate`);
+          // source=ui: this page isn't an imaging app watching the device.
+          const response = await alpacaGet<AlpacaDeviceStateItem[]>(`${deviceBasePath(device)}/devicestate?source=ui`);
           return [device.UniqueID, response && response.ErrorNumber === 0 ? response.Value : null] as const;
         })
       );
@@ -132,6 +145,20 @@ const Alpaca: FunctionalComponent = () => {
             <CopyableUrl label="Description" url={`${origin}/management/v1/description`} open />
             <CopyableUrl label="Devices" url={`${origin}/management/v1/configureddevices`} open />
           </div>
+          {enabled && clients && (
+            <div class="card-group">
+              <h3 class="card-group-title">Imaging app</h3>
+              {(
+                [
+                  ['Safety monitor', clients.safetymonitor],
+                  ['Weather device', clients.observingconditions],
+                ] as const
+              ).map(([label, state]) => {
+                const { text, tone } = describeClient(state);
+                return <ReadingRow key={label} label={label} value={text} valueClass={tone === 'ok' ? 'tone-green' : tone === 'warn' ? 'tone-amber' : ''} />;
+              })}
+            </div>
+          )}
           <div>
             <Button variant="link" onClick={() => route('/settings?tab=safety')}>
               Alpaca and safety settings →

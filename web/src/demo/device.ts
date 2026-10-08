@@ -22,7 +22,7 @@ interface Core {
   clearAlerts(): void;
   isArmed(): boolean;
   armedDocument(): string;
-  setArmed(on: boolean): void;
+  setArmed(on: boolean, source: string): void;
   testAlert(params: string): string;
   calibrateDark(): string;
   alpaca(method: string, path: string, params: string): string;
@@ -143,8 +143,9 @@ class DemoDevice {
     return { status: ok ? 200 : 400, body: result };
   }
 
-  setArmed(on: boolean) {
-    this.core.setArmed(on);
+  /** Pause or resume alerts; `source` is "ui", "rest" or "mqtt". */
+  setArmed(on: boolean, source: string) {
+    this.core.setArmed(on, source);
     this.step();
   }
 
