@@ -34,5 +34,5 @@ description: "As-built task list (backfill) for Bluetooth"
 
 ## Phase 6: Convergence
 
-- [ ] T008 Update docs/user-guide/ble.md install step: "Settings → Bluetooth (BLE) → Enable Bluetooth" is now Settings → Device → Bluetooth → "Turn on Bluetooth" per FR-005 / SC-002 (contradicts)
-- [ ] T009 Clarify in docs/user-guide/ble.md that phones ring when "Send alerts" is off but not when alerts are switched off ("Alerts on now" / not imaging) per FR-003 / FR-005 (contradicts)
+- [X] T008 Update docs/user-guide/ble.md install step: "Settings → Bluetooth (BLE) → Enable Bluetooth" is now Settings → Device → Bluetooth → "Turn on Bluetooth" per FR-005 / SC-002 (contradicts)
+- [X] T009 Clarify in docs/user-guide/ble.md that phones ring when "Send alerts" is off but not when alerts are switched off ("Alerts on now" / not imaging) per FR-003 / FR-005 (contradicts)

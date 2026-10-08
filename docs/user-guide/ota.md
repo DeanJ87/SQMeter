@@ -6,6 +6,8 @@ Update firmware over WiFi without a USB cable.
 
 ## Check for Updates (Recommended)
 
+![Updates page](../assets/screenshots/updates.png)
+
 The **Updates** page can check GitHub Releases directly and update the device itself - no downloading or uploading required.
 
 1. Open the web UI and go to **Updates**
@@ -39,7 +41,7 @@ Progress and errors are pushed to the page over the status WebSocket; if the con
     To update the web UI (the dashboard/settings pages), upload `sqmeter-littlefs-vX.Y.Z.bin` under **Manual upload** with **Web UI (littlefs.bin)** as the image, or use esptool directly. The web UI update doesn't touch the firmware.
 
 !!! warning "Security"
-    The current OTA endpoints are unauthenticated LAN endpoints. Anyone who can reach the device web UI can attempt firmware or filesystem uploads. Keep the device on a trusted network and do not expose it through port forwarding.
+    Updates are open to anyone who can reach the web UI unless **Settings → Device → Security → Password-protect changes** is on. Even then the login is plain HTTP: keep the device on a trusted network and don't expose it through port forwarding.
 
 ---
 
@@ -54,7 +56,13 @@ The Updates page uses these endpoints:
 | `POST /api/update` | Manual firmware upload | `sqmeter-firmware-vX.Y.Z.bin` |
 | `POST /api/update/fs` | Manual LittleFS/web UI upload | `sqmeter-littlefs-vX.Y.Z.bin` |
 
-Both endpoints expect `multipart/form-data` uploads and return JSON with `success` on completion or `error` on failure. The firmware endpoint reboots automatically after a successful upload.
+Both upload endpoints take `multipart/form-data` and return `200 {"success": true}` or `500 {"error": "..."}`. The firmware endpoint reboots automatically after a successful upload.
+
+---
+
+## Version Numbers
+
+The badge on the Updates page compares the running version with each release using semantic-version order: `0.2.0-beta.1` < `0.2.0-beta.2` < `0.2.0`. Release builds report their tag (without the `v`). A build you compile yourself reports the latest release plus `+dev` (for example `0.2.0-beta.1+dev`), which counts as that release - so newer releases show as updates and older ones don't.
 
 ---
 

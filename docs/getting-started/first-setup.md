@@ -29,19 +29,23 @@ Connect your phone or laptop to **SQM-Setup**. No password required.
     Click the network notification or open a browser — Windows will redirect you to the portal.
 
 === "Linux"
-    Open a browser and navigate to `http://192.168.4.1` manually.
+    Open a browser and navigate to `http://192.168.4.1/wifi` manually.
+
+If no sign-in window appears on any system, open `http://192.168.4.1/wifi`.
 
 ---
 
 ## Step 3 — Configure WiFi
 
-The captive portal shows a list of nearby networks:
+The sign-in window opens the **WiFi setup** screen with a list of nearby networks:
 
-1. Select your home/lab network
+1. Select your home/lab network (or **Other network...** for a hidden one)
 2. Enter the password
 3. Tap **Connect**
 
-The device restarts and joins your network. The hotspot disappears.
+When the device has joined, the screen shows its new address — `http://sqmeter.local` and its IP. About 15 seconds later the device restarts on your network and the hotspot disappears. Reconnect your phone or laptop to your own network and open that address.
+
+If the password is wrong the screen says so and you can try again.
 
 !!! note "2.4 GHz only"
     ESP32 does not support 5 GHz. If your router broadcasts both bands under the same SSID, the device will pick the 2.4 GHz band automatically.
@@ -57,6 +61,8 @@ http://sqmeter.local      # mDNS — works on most networks
 http://<device-ip>        # Direct IP — always works
 ```
 
+The name comes from **Settings → Network → WiFi → Hostname** (default `sqmeter`). **Advertise on the network (mDNS)** can be turned off there if your network doesn't allow multicast; then use the IP.
+
 The IP address is logged over serial (115200 baud) if you have a monitor connected. You can also check your router's DHCP client list for a host named `sqmeter`.
 
 ---
@@ -64,6 +70,12 @@ The IP address is logged over serial (115200 baud) if you have a monitor connect
 ## Step 5 — Access the Dashboard
 
 Open the web UI. You should see live sensor readings on the Dashboard within a few seconds of the sensors initialising.
+
+---
+
+## If the WiFi is Down at Startup
+
+If the saved network can't be reached within about 10 seconds of power-on (for example the router is slower to start after a power cut), SQMeter opens the **SQM-Setup** hotspot so you can change the network — and keeps retrying the saved one in the background. As soon as it reconnects, it restarts onto your network.
 
 ---
 

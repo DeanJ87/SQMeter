@@ -12,7 +12,9 @@ export const wifiConfigSchema = z.object({
   hostname: z
     .string()
     .min(1, "Hostname is required")
-    .regex(/^[a-zA-Z0-9-]+$/, "Hostname can only contain letters, numbers, and hyphens"),
+    .max(32, "Hostname can be at most 32 characters")
+    .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/, "Use letters, numbers and hyphens (not at either end)"),
+  mdns: z.boolean().optional(),
   autoReconnect: z.boolean(),
   reconnectDelayMs: z.number().int().positive(),
   maxReconnectDelayMs: z.number().int().positive(),
@@ -35,7 +37,8 @@ export const mqttConfigSchema = z
     publishIntervalMs: z
       .number()
       .int()
-      .min(1000, "Publish interval must be at least 1 second"),
+      .min(1000, "Publish interval must be at least 1 second")
+      .max(86400000, "Publish interval can be at most 24 hours"),
     publish: z
       .object({
         sky: z.boolean(),
@@ -98,12 +101,11 @@ export const ntpConfigSchema = z.object({
   server1: z.string().min(1, "Primary NTP server is required"),
   server2: z.string(),
   timezone: z.string().min(1, "Timezone is required"),
-  gmtOffsetSec: z.number().int(),
-  daylightOffsetSec: z.number().int(),
   syncIntervalMs: z
     .number()
     .int()
-    .min(600000, "Sync interval must be at least 10 minutes"),
+    .min(600000, "Sync interval must be at least 10 minutes")
+    .max(86400000, "Sync interval can be at most 24 hours"),
 });
 
 export const gpsConfigSchema = z
@@ -324,7 +326,6 @@ export const alertsConfigSchema = z
 export const configSchema = z
   .object({
     deviceName: z.string().min(1, "Device name is required"),
-    timezone: z.string(),
     primaryTimeSource: z.number().int().min(0).max(1),
     secondaryTimeSource: z.number().int().min(0).max(1),
     wifi: wifiConfigSchema,

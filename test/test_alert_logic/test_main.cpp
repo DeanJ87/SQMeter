@@ -475,6 +475,18 @@ void test_safety_alerts_only_when_dark(void)
     TEST_ASSERT_TRUE(hasType(always.update(dawn, rules), AlertType::Unsafe));
 }
 
+void test_level_priorities()
+{
+    TEST_ASSERT_EQUAL(-1, pushoverPriority(AlertLevel::Quiet));
+    TEST_ASSERT_EQUAL(0, pushoverPriority(AlertLevel::Normal));
+    TEST_ASSERT_EQUAL(1, pushoverPriority(AlertLevel::Urgent));
+    TEST_ASSERT_EQUAL(2, pushoverPriority(AlertLevel::Wake));
+    TEST_ASSERT_EQUAL_STRING("low", ntfyPriority(AlertLevel::Quiet));
+    TEST_ASSERT_EQUAL_STRING("default", ntfyPriority(AlertLevel::Normal));
+    TEST_ASSERT_EQUAL_STRING("high", ntfyPriority(AlertLevel::Urgent));
+    TEST_ASSERT_EQUAL_STRING("max", ntfyPriority(AlertLevel::Wake));
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -501,5 +513,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_safe_delay_hold_after_restart_is_not_news);
     RUN_TEST(test_restart_compares_with_what_was_last_sent);
     RUN_TEST(test_safety_alerts_only_when_dark);
+    RUN_TEST(test_level_priorities);
     return UNITY_END();
 }

@@ -101,6 +101,11 @@ const Settings: FunctionalComponent = () => {
     });
   };
 
+  const applyStored = (changes: [ConfigPath, unknown][]) => {
+    applyChanges(changes);
+    setSaved((current) => (current ? toConfigPayload(changes.reduce((acc, [path, value]) => setPath(acc, path, value), current)) : current));
+  };
+
   const dirty = useMemo(
     () => Boolean(config && saved && JSON.stringify(config) !== JSON.stringify(saved)),
     [config, saved]
@@ -199,6 +204,7 @@ const Settings: FunctionalComponent = () => {
     config,
     update: (path, value) => applyChanges([[path, value]]),
     updateMany: applyChanges,
+    applyStored,
     error: (key) => validationErrors[fieldErrorAliases[key] ?? key],
     hw: deriveHardware(config, status),
     status,

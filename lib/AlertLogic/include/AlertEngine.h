@@ -57,6 +57,12 @@ namespace SQM
         const char *alertTypeName(AlertType type);
         const char *alertLevelName(AlertLevel level);
 
+        // How each level is delivered. Pushover: quiet -1 (no sound), normal
+        // 0, urgent 1 (bypasses quiet hours), wake 2 (emergency: repeats until
+        // acknowledged, so it needs retry/expire). ntfy: low/default/high/max.
+        int pushoverPriority(AlertLevel level);
+        const char *ntfyPriority(AlertLevel level);
+
         struct AlertRules
         {
             bool onSafetyChange = true;

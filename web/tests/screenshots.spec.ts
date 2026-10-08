@@ -20,10 +20,38 @@ const waitForDemoApp = async (page: import("@playwright/test").Page) => {
   await page.evaluate(() => window.__mswReady);
 };
 
+// The dashboard re-lays out its cards as live data arrives (with a short
+// transition); wait until card positions and sizes stop changing.
+const waitForLayout = async (page: import("@playwright/test").Page) => {
+  await page.evaluate(async () => {
+    const snapshot = () =>
+      Array.from(document.querySelectorAll(".masonry-item"))
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.height)}`;
+        })
+        .join("|");
+    let last = "";
+    let stableSince = performance.now();
+    const deadline = performance.now() + 8000;
+    while (performance.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const now = snapshot();
+      if (now !== last) {
+        last = now;
+        stableSince = performance.now();
+      } else if (performance.now() - stableSince > 700) {
+        return;
+      }
+    }
+  });
+};
+
 const capturePage = async (
   page: import("@playwright/test").Page,
   name: string
 ) => {
+  await waitForLayout(page);
   await page.screenshot({ path: save(name), fullPage: true });
 };
 
@@ -48,14 +76,6 @@ test("dashboard", async ({ page }) => {
   await capturePage(page, "dashboard");
 });
 
-test("settings", async ({ page }) => {
-  await page.goto("./#/settings");
-  await waitForDemoApp(page);
-  await expect(page.getByRole("tab", { name: "Device" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
-  await capturePage(page, "settings");
-});
-
 test("system", async ({ page }) => {
   await page.goto("./#/system");
   await waitForDemoApp(page);
@@ -70,4 +90,40 @@ test("updates", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Firmware" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Manual upload" })).toBeVisible();
   await capturePage(page, "updates");
+});
+
+test("alpaca", async ({ page }) => {
+  await page.goto("./#/alpaca");
+  await waitForDemoApp(page);
+  await expect(page.getByRole("heading", { name: "ASCOM Alpaca" })).toBeVisible();
+  await capturePage(page, "alpaca");
+});
+
+for (const [id, label] of [
+  ["device", "Device"],
+  ["network", "Network"],
+  ["time", "Time & Location"],
+  ["sensors", "Sensors"],
+  ["safety", "Safety"],
+  ["alerts", "Alerts"],
+] as const) {
+  test(`settings ${label}`, async ({ page }) => {
+    await page.goto(`./#/settings?tab=${id}`);
+    await waitForDemoApp(page);
+    const tab = page.getByRole("tab", { name: label });
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+    await capturePage(page, `settings-${id}`);
+  });
+}
+
+test("alerts flyout", async ({ page }) => {
+  await page.goto("./");
+  await waitForDemoApp(page);
+  await waitForLayout(page);
+  await page.getByRole("button", { name: /^Alerts/ }).click();
+  const flyout = page.getByRole("dialog", { name: "Recent alerts" });
+  await expect(flyout).toBeVisible();
+  await waitForLayout(page);
+  await page.screenshot({ path: save("alerts-flyout") });
 });

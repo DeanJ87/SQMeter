@@ -8,8 +8,8 @@ interface LayoutProps {
   default?: boolean;
 }
 
-const navItems = [
-  { path: '/', label: 'Dashboard', icon: 'chart' },
+const navItems: { path: string; label: string; short?: string; icon: string }[] = [
+  { path: '/', label: 'Dashboard', short: 'Home', icon: 'chart' },
   { path: '/alpaca', label: 'Alpaca', icon: 'scope' },
   { path: '/system', label: 'System', icon: 'cpu' },
   { path: '/settings', label: 'Settings', icon: 'gear' },
@@ -63,7 +63,14 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
                 class={`nav-button ${router.url.split('?')[0] === item.path ? 'is-active' : ''}`}
               >
                 <TinyIcon name={item.icon} />
-                <span>{item.label}</span>
+                {item.short ? (
+                  <>
+                    <span class="nav-label-full">{item.label}</span>
+                    <span class="nav-label-short">{item.short}</span>
+                  </>
+                ) : (
+                  <span>{item.label}</span>
+                )}
               </button>
             ))}
             <AlertsBell />

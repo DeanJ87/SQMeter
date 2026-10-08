@@ -1,4 +1,5 @@
 #include "sensors/BME280Sensor.h"
+#include "calculations/Dewpoint.h"
 #include "Logger.h"
 #include <ArduinoJson.h>
 
@@ -116,23 +117,7 @@ namespace SQM
 
     float BME280Sensor::calculateDewpoint(float temperature, float humidity) const
     {
-        // Magnus formula for dewpoint calculation
-        // Valid for temperatures from -40°C to 50°C
-        const float a = 17.27f;
-        const float b = 237.7f;
-
-        // Handle edge cases
-        if (humidity <= 0.0f || humidity > 100.0f)
-            return 0.0f;
-
-        float alpha = ((a * temperature) / (b + temperature)) + logf(humidity / 100.0f);
-        float dewpoint = (b * alpha) / (a - alpha);
-
-        // Sanity check result
-        if (isnan(dewpoint) || isinf(dewpoint))
-            return 0.0f;
-
-        return dewpoint;
+        return dewpointMagnus(temperature, humidity);
     }
 
 } // namespace SQM

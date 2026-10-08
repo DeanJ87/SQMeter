@@ -9,8 +9,13 @@
 #include <Update.h>
 #include <LittleFS.h>
 #include <esp_partition.h>
+#include <esp_ota_ops.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+
+#ifndef SQM_ENABLE_BLE
+#define SQM_ENABLE_BLE 0
+#endif
 
 namespace SQM
 {
@@ -24,38 +29,8 @@ namespace SQM
         // 6 KB leaves room for 8 releases with the BLE assets added.
         constexpr size_t JSON_DOC_CAPACITY = 6144;
 
-        // Keep only the fields parseReleases() reads. Release notes and
-        // uploader details are most of each release's JSON.
-        void buildReleaseFilter(JsonDocument &filter)
-        {
-            JsonObject release = filter.createNestedObject();
-            release["tag_name"] = true;
-            release["name"] = true;
-            release["prerelease"] = true;
-            release["published_at"] = true;
-            JsonObject asset = release["assets"].createNestedObject();
-            asset["name"] = true;
-            asset["browser_download_url"] = true;
-            asset["size"] = true;
-        }
         constexpr uint32_t HTTP_TIMEOUT_MS = 15000;
         constexpr size_t OTA_TASK_STACK_WORDS = 8192;
-
-        bool findAsset(JsonArrayConst assets, const char *prefix, std::string &url, size_t &size)
-        {
-            const size_t prefixLen = strlen(prefix);
-            for (JsonObjectConst asset : assets)
-            {
-                const char *name = asset["name"] | "";
-                if (strncmp(name, prefix, prefixLen) == 0 && strstr(name, ".bin") != nullptr)
-                {
-                    url = asset["browser_download_url"] | "";
-                    size = asset["size"] | 0;
-                    return !url.empty();
-                }
-            }
-            return false;
-        }
 
         // Streams an HTTPS GET body to `onChunk`, reporting progress scaled
         // into [progressFrom, progressTo]. Shared by the firmware and
@@ -142,71 +117,6 @@ namespace SQM
         }
     }
 
-    namespace
-    {
-        std::vector<GithubRelease> parseReleases(const JsonDocument &doc, const std::string &track);
-    }
-
-    std::vector<GithubRelease> parseGithubReleases(const std::string &json, const std::string &track)
-    {
-        StaticJsonDocument<256> filter;
-        buildReleaseFilter(filter);
-        DynamicJsonDocument doc(JSON_DOC_CAPACITY);
-        DeserializationError err = deserializeJson(doc, json, DeserializationOption::Filter(filter));
-        if (err)
-        {
-            Logger::error(TAG, "Failed to parse releases JSON: %s", err.c_str());
-            return {};
-        }
-        return parseReleases(doc, track);
-    }
-
-    namespace
-    {
-    std::vector<GithubRelease> parseReleases(const JsonDocument &doc, const std::string &track)
-    {
-        std::vector<GithubRelease> results;
-        const bool wantPrerelease = (track == "beta");
-
-        for (JsonObjectConst release : doc.as<JsonArrayConst>())
-        {
-            const bool prerelease = release["prerelease"] | false;
-            if (prerelease != wantPrerelease)
-                continue;
-
-            GithubRelease entry;
-            entry.tag = std::string(release["tag_name"] | "");
-            entry.name = std::string(release["name"] | entry.tag.c_str());
-            entry.prerelease = prerelease;
-            entry.publishedAt = std::string(release["published_at"] | "");
-
-            if (entry.tag.empty())
-                continue;
-
-            JsonArrayConst assets = release["assets"].as<JsonArrayConst>();
-            // BLE builds use larger app partitions and ship as their own asset;
-            // installing the standard firmware would silently drop BLE.
-#if SQM_ENABLE_BLE
-            const char *firmwarePrefix = "sqmeter-ble-firmware-";
-#else
-            const char *firmwarePrefix = "sqmeter-firmware-";
-#endif
-            const bool hasFirmware = findAsset(assets, firmwarePrefix, entry.firmwareAssetUrl, entry.firmwareAssetSize);
-            const bool hasFs = findAsset(assets, "sqmeter-littlefs-", entry.fsAssetUrl, entry.fsAssetSize);
-
-            // Firmware and web UI must always ship as a matched pair - a
-            // release missing either asset (e.g. still building) is not
-            // offered as an update target, to prevent frontend/backend drift.
-            if (!hasFirmware || !hasFs)
-                continue;
-
-            results.push_back(std::move(entry));
-        }
-
-        return results;
-    }
-    } // namespace
-
     OtaUpdater::OtaUpdater(ProgressCallback onProgress, ErrorCallback onError, RestartCallback onRestart)
         : progressCb(std::move(onProgress)), errorCb(std::move(onError)), restartCb(std::move(onRestart))
     {
@@ -219,8 +129,8 @@ namespace SQM
         // Allocate the parse buffer before the TLS session takes its ~45 KB:
         // afterwards there may be no contiguous block left for it.
         DynamicJsonDocument doc(JSON_DOC_CAPACITY);
-        StaticJsonDocument<256> filter;
-        buildReleaseFilter(filter);
+        StaticJsonDocument<384> filter;
+        Releases::buildFilter(filter);
         if (doc.capacity() == 0)
         {
             error = "Not enough free memory to check for updates";
@@ -285,7 +195,7 @@ namespace SQM
             Logger::warn(TAG, "Release list truncated - JSON_DOC_CAPACITY too small");
 
         currentPhase = Phase::Idle;
-        return parseReleases(doc, track);
+        return Releases::parse(doc, track, SQM_ENABLE_BLE != 0);
     }
 
     bool OtaUpdater::applyUpdate(const GithubRelease &release)
@@ -354,10 +264,17 @@ namespace SQM
 
         if (!Update.end(true))
         {
-            Logger::error(TAG, "Update.end failed: %d", Update.getError());
-            if (errorCb)
-                errorCb("Firmware update finalization failed");
-            return false;
+            // Same as a manual upload: if only switching the boot partition
+            // failed, retry it once (it re-verifies the written image).
+            const esp_partition_t *target = esp_ota_get_next_update_partition(nullptr);
+            const bool activated = Update.getError() == UPDATE_ERROR_ACTIVATE && esp_ota_set_boot_partition(target) == ESP_OK;
+            Logger::error(TAG, "Update.end failed: %d%s", Update.getError(), activated ? " (activated on retry)" : "");
+            if (!activated)
+            {
+                if (errorCb)
+                    errorCb("Firmware update finalization failed");
+                return false;
+            }
         }
 
         Logger::info(TAG, "Firmware flashed successfully (%u bytes)", static_cast<unsigned>(written));

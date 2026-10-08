@@ -7,6 +7,37 @@ All notable changes to SQMeter are documented here.
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
 
+## [0.2.0-beta.2] — unreleased
+
+### ⚠️ Breaking changes
+
+- **MQTT**: readings move to one retained JSON document on `<base>/state` (default base topic `sqmeter`). Other topics: `availability`, `safe` (`1`/`0`), `safety`, `alerts`, `alerts/armed` (+ `/set`), `diagnostics`. The old per-reading payload is gone. Home Assistant users can switch on MQTT discovery instead of writing YAML. See docs/user-guide/mqtt.md.
+- **`GET /api/sensors` and `/ws/sensors`** use the same document: camelCase keys, a `status` per group (`ok` / `missing` / `error` / `stale`), values only when `ok`, Unix-second `timestamp` with `timeValid`, metric units (an RG-15 in inches is converted).
+- **`GET /api/status`**: per-sensor health under `sensors`, bring-up counters under `diagnostics`; `gpsData` removed. The safety object uses `safe` (was `isSafe`).
+- **REST responses**: success is `2xx {"success": true, ...}`, failure `4xx/5xx {"error": "..."}` - including uploads, the RG-15 commands and the MQTT test.
+- **Settings removed**: top-level `timezone`, `ntp.gmtOffsetSec`, `ntp.daylightOffsetSec` (never used; `ntp.timezone` sets the clock).
+- **Default hostname** is `sqmeter` (`http://sqmeter.local`) on new installs; saved hostnames are kept.
+
+### Added
+
+- Home Assistant MQTT discovery (sensors, raining, observatory safety, alerts switch) and per-group MQTT publish switches
+- WiFi setup screen on the captive portal (`/wifi`); mDNS (`<hostname>.local`) with an on/off setting; the hotspot keeps retrying the saved network
+- Sky quality settings: averaging window, SQM offset, dark calibration (refused until the sensor is dark and the window is full)
+- Dashboard guide and screenshots of every page
+
+### Fixed
+
+- Firmware upload failing with "Could not activate partition" on the first attempt
+- Update checks ignoring beta tags; local builds report `<release>+dev`
+- WiFi scan in Settings showing nothing on the first press
+- Cloud cover, SQM and the safety verdict computed from one set of numbers (three different humidity fallbacks before)
+- Alpaca discovery answers immediately (was up to ~1 s)
+- Demo uptime, units (°C), wind highlighting against your limits, alert default wording
+
+### Internal
+
+- Sky, cloud, rain, safety-history, release and readings logic moved into `lib/` with native tests
+
 ## [0.0.1] — 2026-04-25
 
 Initial alpha release.

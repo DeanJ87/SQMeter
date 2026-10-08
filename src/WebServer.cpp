@@ -32,6 +32,12 @@ namespace SQM
 
         constexpr const char *ARMED_NVS_NAMESPACE = "sqm-alerts";
 
+        // Where captive-portal probes land: the WiFi setup screen on the hotspot.
+        std::string setupScreenUrl()
+        {
+            return std::string("http://") + WiFi.softAPIP().toString().c_str() + "/wifi";
+        }
+
         // "1"/"0", "on"/"off", "true"/"false", "arm"/"disarm" (any case).
         bool parseArmPayload(std::string text, bool &armed)
         {
@@ -162,12 +168,24 @@ namespace SQM
                 root["emitterTotal"] = *diag.emitterTotal;
         }
 
+        // Samples the averaging window holds when full (one per integration,
+        // capped by the sensor's buffer).
+        uint16_t windowSamples(const TSL2591Diagnostics &diag)
+        {
+            if (diag.integrationMs == 0)
+                return 0;
+            const uint32_t samples = static_cast<uint32_t>(diag.averagingWindowSeconds) * 1000UL / diag.integrationMs;
+            return static_cast<uint16_t>(std::max<uint32_t>(1, std::min<uint32_t>(samples, 512)));
+        }
+
         void appendLightDiagnostics(JsonObject root, const TSL2591Diagnostics &diag)
         {
             root["rollingVisible"] = diag.rollingVisible;
             root["correctedVisible"] = diag.correctedVisible;
             root["darkVisibleOffset"] = diag.darkVisibleOffset;
             root["sampleCount"] = diag.sampleCount;
+            root["windowSamples"] = windowSamples(diag);
+            root["nightMode"] = diag.nightMode;
             root["rejectedSamples"] = diag.rejectedSamples;
             root["consecutiveSaturatedSamples"] = diag.consecutiveSaturatedSamples;
             root["consecutiveLowSamples"] = diag.consecutiveLowSamples;
@@ -291,9 +309,16 @@ namespace SQM
 
         if (getConfigCallback().alpaca.enabled)
         {
-            if (alpacaDiscoveryUdp.begin(Alpaca::DISCOVERY_UDP_PORT))
+            if (alpacaDiscoveryUdp.listen(Alpaca::DISCOVERY_UDP_PORT))
             {
-                alpacaDiscoveryStarted = true;
+                // Replies straight from the UDP task: discovery answers
+                // within milliseconds instead of waiting for a main-loop pass.
+                alpacaDiscoveryUdp.onPacket([](AsyncUDPPacket &packet)
+                                            {
+                    if (!Alpaca::isValidDiscoveryRequest(packet.data(), packet.length()))
+                        return;
+                    const std::string response = Alpaca::buildDiscoveryResponse(PORT);
+                    packet.write(reinterpret_cast<const uint8_t *>(response.data()), response.size()); });
                 Logger::info(TAG, "Alpaca UDP discovery listening on port %u", Alpaca::DISCOVERY_UDP_PORT);
             }
             else
@@ -311,6 +336,13 @@ namespace SQM
             if (path.startsWith("/api/v1/")) {
                 Logger::debug(TAG, "400 Invalid Alpaca request: %s %s", request->methodToString(), path.c_str());
                 request->send(400, "text/plain", "Invalid Alpaca device type, device number, method or HTTP verb");
+                return;
+            }
+            // In setup mode every hostname resolves here; send other sites'
+            // pages to the setup screen.
+            if ((WiFi.getMode() & WIFI_AP) && !path.startsWith("/api/") &&
+                request->host() != WiFi.softAPIP().toString()) {
+                request->redirect(setupScreenUrl().c_str());
                 return;
             }
             // If it's an API route, return 404 JSON
@@ -332,7 +364,6 @@ namespace SQM
         wsSensors.cleanupClients();
         wsStatus.cleanupClients();
         pollWiFiConnect();
-        handleAlpacaDiscovery();
 
         const uint32_t now = millis();
 
@@ -447,6 +478,14 @@ namespace SQM
         next.dataTimestamp = dataTimestampMs;
         next.capturedAt = millis();
 
+        const Config &cfg = getConfigCallback();
+        next.sky = SkyQuality::calculate(next.tsl.lux);
+        next.humidityMeasured = next.bmeInitialized && next.bme.status == SensorStatus::OK;
+        next.cloudHumidity = next.humidityMeasured ? next.bme.humidity : ASSUMED_HUMIDITY_PERCENT;
+        next.cloud = CloudDetection::calculate(next.mlx.objectTemp, next.mlx.ambientTemp, next.cloudHumidity,
+                                               cfg.cloudDetection.clearSkyThreshold, cfg.cloudDetection.cloudyThreshold,
+                                               cfg.cloudDetection.humidityCorrection);
+
         if (!sensorSnapshotMutex)
         {
             sensorSnapshot = next;
@@ -464,28 +503,17 @@ namespace SQM
 
     void WebServer::setupStaticRoutes()
     {
-        // Captive portal detection URLs for iOS, Android, etc.
-        server.on("/hotspot-detect.html", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->redirect("/"); });
-
-        server.on("/library/test/success.html", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->redirect("/"); });
-
-        server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->redirect("/"); });
-
-        server.on("/gen_204", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->redirect("/"); });
-
-        server.on("/success.txt", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->send(200, "text/plain", "Success"); });
-
-        server.on("/connecttest.txt", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->redirect("/"); });
-
-        // Catch-all for Microsoft Windows captive portal detection
-        server.on("/ncsi.txt", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->send(200, "text/plain", "Microsoft NCSI"); });
+        // Captive portal detection (iOS/macOS, Android, Windows, Firefox):
+        // answer every probe with a redirect so the OS opens its sign-in
+        // window on the WiFi setup screen.
+        for (const char *probe : {"/hotspot-detect.html", "/library/test/success.html", "/generate_204", "/gen_204",
+                                  "/success.txt", "/connecttest.txt", "/ncsi.txt", "/redirect", "/canonical.html"})
+        {
+            server.on(probe, HTTP_GET, [](AsyncWebServerRequest *request)
+                      {
+                Logger::info(TAG, "Captive check %s%s -> setup screen", request->host().c_str(), request->url().c_str());
+                request->redirect(setupScreenUrl().c_str()); });
+        }
 
         // Serve files from LittleFS
         server.serveStatic("/", LittleFS, "/")
@@ -767,11 +795,14 @@ namespace SQM
         // Firmware OTA update (app partition). Registered after /api/update/fs:
         // this server also matches "/api/update" as a prefix of
         // "/api/update/fs", so registered first it took filesystem uploads too.
+        // Set when the updater's own activation failed but a second
+        // esp_ota_set_boot_partition() (which re-verifies the image) succeeded.
+        static bool activatedOnRetry = false;
         server.on("/api/update", HTTP_POST, [this](AsyncWebServerRequest *request)
                   {
             if (!requireAuth(request))
                 return;
-            bool success = !Update.hasError();
+            bool success = !Update.hasError() || activatedOnRetry;
             String response_json;
             
             if (success) {
@@ -809,6 +840,12 @@ namespace SQM
                   {
             if (!index) {
                 Logger::info("OTA", "Firmware update started: %s", filename.c_str());
+                activatedOnRetry = false;
+                if (Update.isRunning()) {
+                    // An earlier upload was cut off; start clean.
+                    Logger::warn("OTA", "Aborting an unfinished update");
+                    Update.abort();
+                }
                 if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
                     Logger::error("OTA", "Update.begin failed: %d", Update.getError());
                     Update.printError(Serial);
@@ -823,6 +860,18 @@ namespace SQM
             if (final) {
                 if (Update.end(true)) {
                     Logger::info("OTA", "Firmware update success, rebooting...");
+                } else if (Update.getError() == UPDATE_ERROR_ACTIVATE) {
+                    // The image is fully written and its first block restored;
+                    // only switching the boot partition failed. Uploads used to
+                    // fail like this on the first attempt and succeed on a
+                    // retry, so retry the switch here. It verifies the image
+                    // again, so a bad image still can't be booted.
+                    const esp_partition_t *target = esp_ota_get_next_update_partition(nullptr);
+                    const esp_err_t first = esp_ota_set_boot_partition(target);
+                    Logger::warn("OTA", "Activating %s failed; retry: %s", target ? target->label : "?", esp_err_to_name(first));
+                    activatedOnRetry = first == ESP_OK;
+                    if (activatedOnRetry)
+                        Logger::info("OTA", "Firmware update success on retry, rebooting...");
                 } else {
                     Logger::error("OTA", "Update.end failed: %d", Update.getError());
                     Update.printError(Serial);
@@ -928,23 +977,12 @@ namespace SQM
         in.requiredSensorFault = snapshot.tsl.status != SensorStatus::OK ||
                                   snapshot.mlx.status != SensorStatus::OK;
 
-        SkyQualityMetrics sqm = SkyQuality::calculate(snapshot.tsl.lux);
-        in.sqm = sqm.sqm;
-
-        bool usingHumidityFallback = snapshot.bme.status != SensorStatus::OK;
-        float humidity = usingHumidityFallback ? 53.0f : snapshot.bme.humidity;
-        CloudMetrics cloudMetrics = CloudDetection::calculate(
-            snapshot.mlx.objectTemp,
-            snapshot.mlx.ambientTemp,
-            humidity,
-            cfg.cloudDetection.clearSkyThreshold,
-            cfg.cloudDetection.cloudyThreshold,
-            cfg.cloudDetection.humidityCorrection);
-        in.cloudCoverPercent = cloudMetrics.cloudCoverPercent;
-        in.humidityPercent = humidity;
+        in.sqm = snapshot.sky.sqm;
+        in.cloudCoverPercent = snapshot.cloud.cloudCoverPercent;
+        in.humidityPercent = snapshot.cloudHumidity;
         in.temperatureC = snapshot.bme.temperature;
         in.dewpointC = snapshot.bme.dewpoint;
-        in.environmentSensorFault = usingHumidityFallback;
+        in.environmentSensorFault = !snapshot.humidityMeasured;
 
         in.rainSensorEnabled = cfg.rain.enabled;
         in.rainSensorHealthy = snapshot.rg15.online && !snapshot.rg15.stale &&
@@ -1570,21 +1608,11 @@ namespace SQM
         snap.windGustMs = snapshot.wind.gustMs;
         snap.windDirectionDeg = snapshot.wind.directionValid ? snapshot.wind.directionDeg : 0.0f;
 
-        // Cloud cover may use a nominal humidity when the BME280 is down -
+        // Cloud cover may use the assumed humidity when the BME280 is down -
         // it only shifts the correction term - but Alpaca's Humidity
         // property must never report that made-up value.
-        const float humidityForCloud = snap.environment.valid ? snapshot.bme.humidity : 53.0f;
-        CloudMetrics cloudMetrics = CloudDetection::calculate(
-            snapshot.mlx.objectTemp,
-            snapshot.mlx.ambientTemp,
-            humidityForCloud,
-            cfg.cloudDetection.clearSkyThreshold,
-            cfg.cloudDetection.cloudyThreshold,
-            cfg.cloudDetection.humidityCorrection);
-        snap.cloudCoverPercent = cloudMetrics.cloudCoverPercent;
-
-        SkyQualityMetrics sqm = SkyQuality::calculate(snapshot.tsl.lux);
-        snap.skyQualityMagArcsec2 = sqm.sqm;
+        snap.cloudCoverPercent = snapshot.cloud.cloudCoverPercent;
+        snap.skyQualityMagArcsec2 = snapshot.sky.sqm;
         snap.skyBrightnessLux = snapshot.tsl.lux;
         snap.skyTemperatureC = snapshot.mlx.objectTemp;
         snap.temperatureC = snapshot.bme.temperature;
@@ -1665,26 +1693,6 @@ namespace SQM
         request->send(response.status, response.contentType, response.body.c_str());
     }
 
-    void WebServer::handleAlpacaDiscovery()
-    {
-        if (!alpacaDiscoveryStarted)
-            return;
-
-        int packetSize = alpacaDiscoveryUdp.parsePacket();
-        if (packetSize <= 0)
-            return;
-
-        uint8_t buf[64];
-        int len = alpacaDiscoveryUdp.read(buf, sizeof(buf));
-        if (len > 0 && Alpaca::isValidDiscoveryRequest(buf, static_cast<size_t>(len)))
-        {
-            std::string response = Alpaca::buildDiscoveryResponse(PORT);
-            alpacaDiscoveryUdp.beginPacket(alpacaDiscoveryUdp.remoteIP(), alpacaDiscoveryUdp.remotePort());
-            alpacaDiscoveryUdp.write(reinterpret_cast<const uint8_t *>(response.data()), response.size());
-            alpacaDiscoveryUdp.endPacket();
-        }
-    }
-
     void WebServer::handleGetStatus(AsyncWebServerRequest *request)
     {
         std::string json = createStatusJson();
@@ -1760,6 +1768,12 @@ namespace SQM
         if (!requireAuth(request))
             return;
 
+        if (!getConfigCallback().rain.enabled)
+        {
+            request->send(409, "application/json", createErrorJson("The rain sensor is switched off (Settings → Sensors → Rain sensor)").c_str());
+            return;
+        }
+
         const uint32_t startedAt = millis();
         const bool ok = rg15Sensor.testCommunication();
         const RG15Reading reading = rg15Sensor.copyReading();
@@ -1798,9 +1812,32 @@ namespace SQM
             return;
 
         const TSL2591Diagnostics diagnostics = tslSensor.getDiagnostics();
-        if (diagnostics.sampleCount == 0)
+        if (!tslSensor.isInitialized() || diagnostics.sampleCount == 0)
         {
-            request->send(400, "application/json", createErrorJson("No TSL2591 samples available for dark calibration").c_str());
+            request->send(409, "application/json", createErrorJson("No light-sensor readings to calibrate from").c_str());
+            return;
+        }
+        // A covered sensor reads near zero at maximum gain. Out of night mode
+        // it's seeing light, and the offset would wipe out real readings.
+        if (!diagnostics.nightMode)
+        {
+            request->send(409, "application/json",
+                          createErrorJson("The sensor is seeing light. Cover it completely and wait for the averaging window to fill.").c_str());
+            return;
+        }
+        // The offset is the window's average: wait until the window holds only
+        // covered readings, not a mix from before it was covered.
+        const uint16_t needed = windowSamples(diagnostics);
+        if (diagnostics.sampleCount < needed)
+        {
+            DynamicJsonDocument error(256);
+            error["error"] = "The averaging window isn't full yet (" + std::to_string(diagnostics.sampleCount) + " of " +
+                             std::to_string(needed) + " samples). Keep the sensor covered and try again.";
+            error["sampleCount"] = diagnostics.sampleCount;
+            error["windowSamples"] = needed;
+            std::string body;
+            serializeJson(error, body);
+            request->send(409, "application/json", body.c_str());
             return;
         }
 
@@ -1882,6 +1919,10 @@ namespace SQM
             }
 
             Logger::info(TAG, "WiFi connected. IP: %s", WiFi.localIP().toString().c_str());
+            // Restart onto the new network once the setup screen has had time
+            // to show the new address.
+            if (wifiConnectConfigSaved)
+                scheduleRestart(15000);
             wifiConnectActive = false;
             pendingWifiSSID.clear();
             pendingWifiPassword.clear();
@@ -2247,7 +2288,7 @@ namespace SQM
         r.light.integrationMs = snapshot.tslDiagnostics.integrationMs;
         r.light.saturated = snapshot.tslDiagnostics.saturated;
         r.light.nightMode = snapshot.tslDiagnostics.nightMode;
-        const SkyQualityMetrics sky = SkyQuality::calculate(tsl.lux);
+        const SkyQualityMetrics &sky = snapshot.sky;
         r.sky.sqm = sky.sqm;
         r.sky.rawSqm = tsl.rawSqm;
         r.sky.nelm = sky.nelm;
@@ -2270,18 +2311,14 @@ namespace SQM
         r.infrared.skyTemperature = mlx.objectTemp;
         r.infrared.ambientTemperature = mlx.ambientTemp;
         // Without the BME280 the cloud model assumes 53% humidity, and says so.
-        const bool humidityMeasured = r.environment.status == Readings::Status::Ok;
-        const float humidity = humidityMeasured ? bme.humidity : 53.0f;
-        const CloudMetrics cloud = CloudDetection::calculate(mlx.objectTemp, mlx.ambientTemp, humidity,
-                                                             cfg.cloudDetection.clearSkyThreshold, cfg.cloudDetection.cloudyThreshold,
-                                                             cfg.cloudDetection.humidityCorrection);
+        const CloudMetrics &cloud = snapshot.cloud;
         r.clouds.coverPercent = cloud.cloudCoverPercent;
         r.clouds.condition = cloudConditionName(cloud.condition);
         r.clouds.description = cloud.description;
         r.clouds.temperatureDelta = cloud.temperatureDelta;
         r.clouds.correctedDelta = cloud.correctedDelta;
-        r.clouds.humidity = humidity;
-        r.clouds.humidityMeasured = humidityMeasured;
+        r.clouds.humidity = snapshot.cloudHumidity;
+        r.clouds.humidityMeasured = snapshot.humidityMeasured;
 
         r.gps.present = cfg.gps.enabled;
         if (r.gps.present)
@@ -2514,6 +2551,12 @@ namespace SQM
         wifi["rssi"] = WiFi.RSSI();
         wifi["mac"] = WiFi.macAddress();
         wifi["connectPending"] = wifiConnectActive;
+        wifi["apMode"] = (WiFi.getMode() & WIFI_AP) != 0;
+        {
+            const Config &cfg = getConfigCallback();
+            wifi["hostname"] = cfg.wifi.hostname;
+            wifi["mdns"] = cfg.wifi.mdns;
+        }
 
         // Per-sensor health for present hardware, and bring-up diagnostics.
         // Readings themselves are in /api/sensors.
@@ -2523,7 +2566,8 @@ namespace SQM
         {
             JsonObject sensor = sensors.createNestedObject(name);
             sensor["status"] = Readings::statusName(status);
-            sensor["ageMs"] = age;
+            if (status != Readings::Status::Missing) // never answered: no age
+                sensor["ageMs"] = age;
             return sensor;
         };
         sensorHealth("light", readings.light.status, readings.light.ageMs);

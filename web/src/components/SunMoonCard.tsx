@@ -80,6 +80,8 @@ const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number }> 
         </div>
       </div>
       <NightChart latitude={latitude} longitude={longitude} now={now} />
+      {/* Worked out in the browser for the device's location; times are this browser's clock. */}
+      <p class="note note-muted">Times in {Intl.DateTimeFormat().resolvedOptions().timeZone || 'your time zone'}</p>
     </Card>
   );
 };

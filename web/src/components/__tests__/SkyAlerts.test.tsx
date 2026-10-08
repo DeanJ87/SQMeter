@@ -69,3 +69,25 @@ describe('Alerts on/off', () => {
     expect(screen.queryByRole('button', { name: /save/i })).toBeNull();
   });
 });
+
+describe('Alert text defaults', () => {
+  it("shows the device's wording for 'Skies clear' and offers {event}", async () => {
+    window.history.replaceState(null, '', '/settings?tab=alerts');
+    render(<Settings />);
+    await screen.findByText('Skies clear up below');
+    const clearSky = (await screen.findAllByTitle('Write your own title and message')).find((b) => b.closest('[data-event="clear_sky"]'));
+    fireEvent.click(clearSky!);
+    const editor = await waitFor(() => {
+      const el = document.querySelector('[data-template="clear_sky"]');
+      if (!el) throw new Error('editor not open');
+      return el as HTMLElement;
+    });
+    const title = editor.querySelector('input[aria-label="Alert title"]') as HTMLInputElement;
+    // Sky alerts default to darkness-only in the mock config.
+    const nightOnly = (screen.getByLabelText("Sky alerts only when it's dark") as HTMLInputElement).checked;
+    expect(title.placeholder).toBe(nightOnly ? 'Dark and clear' : 'Skies clear');
+    fireEvent.click(screen.getByLabelText("Sky alerts only when it's dark"));
+    await waitFor(() => expect(title.placeholder).toBe(nightOnly ? 'Skies clear' : 'Dark and clear'));
+    expect(editor.querySelector('button[title^="Event name"]')).not.toBeNull();
+  });
+});

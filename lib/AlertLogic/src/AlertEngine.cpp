@@ -47,6 +47,38 @@ namespace SQM
             }
         }
 
+        int pushoverPriority(AlertLevel level)
+        {
+            switch (level)
+            {
+            case AlertLevel::Quiet:
+                return -1;
+            case AlertLevel::Urgent:
+                return 1;
+            case AlertLevel::Wake:
+                return 2;
+            case AlertLevel::Normal:
+            default:
+                return 0;
+            }
+        }
+
+        const char *ntfyPriority(AlertLevel level)
+        {
+            switch (level)
+            {
+            case AlertLevel::Quiet:
+                return "low";
+            case AlertLevel::Urgent:
+                return "high";
+            case AlertLevel::Wake:
+                return "max";
+            case AlertLevel::Normal:
+            default:
+                return "default";
+            }
+        }
+
         const char *alertTypeName(AlertType type)
         {
             switch (type)
@@ -294,7 +326,7 @@ namespace SQM
                 if (sync(dew, dewObserved, now, cooldown, pastGrace && rules.onDewRisk) && dewObserved)
                 {
                     alerts.push_back(make(AlertType::DewRisk, "Dew risk",
-                                          format("Temperature %.1f C is within %.1f C of the dew point (%.1f C).",
+                                          format("Temperature %.1f °C is within %.1f °C of the dew point (%.1f °C).",
                                                  in.temperatureC, margin, in.dewpointC)));
                     alerts.back().vars = {{"dew_margin", format("%.1f", margin)}, {"dew_margin_min", format("%.1f", rules.dewRiskMarginC)}};
                 }

@@ -1,4 +1,4 @@
-import type { SensorData, SystemStatus, Config, GithubRelease, AlpacaConfiguredDevice, AlertRecord } from "../types";
+import type { SensorData, SystemStatus, Config, GithubRelease, AlpacaConfiguredDevice, AlertRecord, WiFiNetwork } from "../types";
 
 const jitter = (base: number, range: number) =>
   base + (Math.random() - 0.5) * range;
@@ -107,7 +107,7 @@ export const mockStatus: SystemStatus = {
   sky: { locationSource: "gps", nightKnown: true, isNight: true, sunAltitudeDeg: -24.3 },
   firmware: {
     name: "SQMeter",
-    version: "0.0.1",
+    version: "0.2.0-beta.1",
     buildDate: "Apr 24 2026",
     buildTime: "12:00:00",
   },
@@ -160,6 +160,10 @@ export const mockStatus: SystemStatus = {
     ip: "192.168.1.42",
     rssi: -58,
     mac: "AA:BB:CC:DD:EE:FF",
+    connectPending: false,
+    apMode: false,
+    hostname: "sqmeter",
+    mdns: true,
   },
   mqtt: {
     enabled: true,
@@ -185,6 +189,8 @@ export const mockStatus: SystemStatus = {
       correctedVisible: 3.1,
       darkVisibleOffset: 0,
       sampleCount: 150,
+      windowSamples: 150,
+      nightMode: true,
       rejectedSamples: 0,
       consecutiveSaturatedSamples: 0,
       consecutiveLowSamples: 0,
@@ -216,13 +222,13 @@ export const mockStatus: SystemStatus = {
 
 export const mockConfig: Config = {
   deviceName: "SQMeter Demo",
-  timezone: "GMT0",
   primaryTimeSource: 0,
   secondaryTimeSource: 1,
   wifi: {
     ssid: "DarkSkyLab",
     password: "",
     hostname: "sqmeter",
+    mdns: true,
     autoReconnect: true,
     reconnectDelayMs: 1000,
     maxReconnectDelayMs: 300000,
@@ -232,8 +238,6 @@ export const mockConfig: Config = {
     server1: "pool.ntp.org",
     server2: "time.cloudflare.com",
     timezone: "GMT0",
-    gmtOffsetSec: 0,
-    daylightOffsetSec: 3600,
     syncIntervalMs: 3600000,
   },
   gps: {
@@ -265,6 +269,16 @@ export const mockConfig: Config = {
     i2cSDA: 21,
     i2cSCL: 22,
     i2cFrequency: 100000,
+  },
+  skyAveraging: { windowSeconds: 90 },
+  skyCalibration: {
+    enabled: false,
+    sqmOffset: 0,
+    darkVisibleOffset: 0,
+    darkFullOffset: 0,
+    darkIrOffset: 0,
+    darkSampleCount: 0,
+    darkCalibratedAt: 0,
   },
   cloudDetection: {
     clearSkyThreshold: -13.0,
@@ -345,31 +359,32 @@ export const mockConfig: Config = {
   },
 };
 
-export const mockWifiNetworks = [
-  { ssid: "DarkSkyLab", rssi: -42, encryption: "WPA2" },
-  { ssid: "NeighbourNet", rssi: -71, encryption: "WPA2" },
-  { ssid: "TeleCom_5G", rssi: -85, encryption: "WPA3" },
+export const mockWifiNetworks: WiFiNetwork[] = [
+  { ssid: "DarkSkyLab", rssi: -42, encryption: "secured" },
+  { ssid: "NeighbourNet", rssi: -71, encryption: "secured" },
+  { ssid: "Observatory-Guest", rssi: -78, encryption: "open" },
+  { ssid: "TeleCom_5G", rssi: -85, encryption: "secured" },
 ];
 
 export const mockGithubReleases: GithubRelease[] = [
   {
-    tag: "v0.0.3",
-    name: "v0.0.3 - RG-15 diagnostics",
+    tag: "v0.1.4",
+    name: "v0.1.4 - RG-15 diagnostics",
     prerelease: false,
     publishedAt: "2026-07-01T12:00:00Z",
-    firmwareAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.0.3/sqmeter-firmware-v0.0.3.bin",
+    firmwareAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.1.4/sqmeter-firmware-v0.1.4.bin",
     firmwareAssetSize: 1273285,
-    fsAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.0.3/sqmeter-littlefs-v0.0.3.bin",
+    fsAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.1.4/sqmeter-littlefs-v0.1.4.bin",
     fsAssetSize: 274432,
   },
   {
-    tag: "v0.0.4-beta.1",
-    name: "v0.0.4-beta.1 - Alpaca preview",
+    tag: "v0.2.0-beta.2",
+    name: "v0.2.0-beta.2 - MQTT, Home Assistant and WiFi setup",
     prerelease: true,
     publishedAt: "2026-08-10T09:30:00Z",
-    firmwareAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.0.4-beta.1/sqmeter-firmware-v0.0.4-beta.1.bin",
+    firmwareAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.2.0-beta.2/sqmeter-firmware-v0.2.0-beta.2.bin",
     firmwareAssetSize: 1301022,
-    fsAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.0.4-beta.1/sqmeter-littlefs-v0.0.4-beta.1.bin",
+    fsAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.2.0-beta.2/sqmeter-littlefs-v0.2.0-beta.2.bin",
     fsAssetSize: 280100,
   },
 ];

@@ -1,10 +1,10 @@
 {
   "deviceName": "SQM-ESP32",
-  "timezone": "UTC",
   "wifi": {
     "ssid": "YourWiFiSSID",
     "password": "YourWiFiPassword",
-    "hostname": "sqm-esp32",
+    "hostname": "sqmeter",
+    "mdns": true,
     "autoReconnect": true,
     "reconnectDelayMs": 1000,
     "maxReconnectDelayMs": 300000
@@ -15,7 +15,7 @@
     "port": 1883,
     "username": "",
     "password": "",
-    "topic": "sqm/data",
+    "topic": "sqmeter",
     "publishIntervalMs": 60000
   },
   "ota": {

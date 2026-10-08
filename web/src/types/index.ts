@@ -129,6 +129,8 @@ export interface LightDiagnostics {
   correctedVisible: number;
   darkVisibleOffset: number;
   sampleCount: number;
+  windowSamples?: number; // samples in a full averaging window
+  nightMode?: boolean;
   rejectedSamples: number;
   consecutiveSaturatedSamples: number;
   consecutiveLowSamples: number;
@@ -136,7 +138,7 @@ export interface LightDiagnostics {
 
 export interface SensorStatusEntry {
   status: SensorHealth;
-  ageMs: number;
+  ageMs?: number; // absent when missing
 }
 
 export interface SystemStatus {
@@ -216,6 +218,10 @@ export interface SystemStatus {
     ip: string;
     rssi: number;
     mac: string;
+    connectPending?: boolean;
+    apMode?: boolean; // the "SQM-Setup" hotspot is up
+    hostname?: string;
+    mdns?: boolean;
   };
   mqtt?: {
     enabled: boolean;
@@ -246,6 +252,7 @@ export interface WiFiConfig {
   ssid: string;
   password: string;
   hostname: string;
+  mdns?: boolean;
   autoReconnect: boolean;
   reconnectDelayMs: number;
   maxReconnectDelayMs: number;
@@ -289,9 +296,7 @@ export interface NTPConfig {
   enabled: boolean;
   server1: string;
   server2: string;
-  timezone: string;
-  gmtOffsetSec: number;
-  daylightOffsetSec: number;
+  timezone: string; // POSIX, e.g. "GMT0BST,M3.5.0/1,M10.5.0"
   syncIntervalMs: number;
 }
 
@@ -439,7 +444,6 @@ export interface AlertsRecent {
 
 export interface Config {
   deviceName: string;
-  timezone: string;
   primaryTimeSource: number; // 0=NTP, 1=GPS
   secondaryTimeSource: number; // 0=NTP, 1=GPS
   wifi: WiFiConfig;
@@ -486,7 +490,7 @@ export interface RainSensorConfig {
 export interface WiFiNetwork {
   ssid: string;
   rssi: number;
-  encryption: string;
+  encryption: 'open' | 'secured';
 }
 
 export interface GithubRelease {

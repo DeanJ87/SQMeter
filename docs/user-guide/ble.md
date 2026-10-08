@@ -17,7 +17,7 @@ pio run -e esp32dev-ble -t uploadfs
 
 or flash `sqmeter-ble-complete-flash-<version>.bin` from a release at offset `0x0`.
 
-Then enable **Settings → Bluetooth (BLE) → Enable Bluetooth**, save, and restart. Going back to the standard build is the same, using `-e esp32dev`.
+Then turn on **Settings → Device → Bluetooth → Turn on Bluetooth**, save, and restart. Going back to the standard build is the same, using `-e esp32dev`.
 
 ## What a phone sees
 
@@ -64,7 +64,7 @@ Set a 6-digit **pairing passkey** in **Settings → Device → Bluetooth** (or p
 
 - **Pairing** uses LE Secure Connections with bonding and the static passkey (the device "displays" it via Settings; you type it on the phone). Bonds are stored on the device; **Unpair all phones** removes them. Links that aren't paired this way never receive alarm or heartbeat data - the device doesn't send them to unencrypted connections.
 - **Levels:** `2` = alarm (wake someone), `1` = information (e.g. safe again, rain cleared), `0` = nothing active / acknowledged.
-- **Which events alarm** is set on the Alerts tab: every event whose level is **Wake me** rings paired phones (by default rain starting and a sensor failing). Phones ring even when push alerts are switched off.
+- **Which events alarm** is set on the Alerts tab: every event whose level is **Wake me** rings paired phones (by default rain starting and a sensor failing). Phones ring even when **Send alerts** is off (no push channels), but not while alerts are switched off with **Alerts on now** / the bell - that's the "not imaging" switch, and it silences everything.
 - **An alarm repeats** (re-indicated every 30 s) **until a phone writes its `seq` to Ack** - even if the condition clears meanwhile, since someone should still know it rained with the roof open. Information events never overwrite an active alarm. An ack with an old `seq` is ignored, so it can't cancel a newer alarm. After an ack the alarm is re-sent with level `0`, so every paired phone stops ringing.
 - An alarm can also be acknowledged from **Settings → Device → Bluetooth**. Acknowledgements appear in the recent alerts and are sent to the alert channels when alerts are on.
 - **Heartbeat:** if a phone hears nothing for a few minutes, the link or the device is down - an app should alarm on that too.

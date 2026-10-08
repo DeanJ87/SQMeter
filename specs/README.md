@@ -12,22 +12,29 @@ from the documentation, the maintainer's stated requirements and the code, then 
 
 | Spec | Feature | Open convergence tasks |
 |---|---|---|
-| [001](001-sky-quality/spec.md) | Sky quality (SQM, NELM, Bortle, calibration) | 7 (1 critical) |
-| [002](002-environment-cloud/spec.md) | Environment and cloud cover | 6 (1 critical) |
-| [003](003-rain-sensor/spec.md) | Rain sensor (RG-15) | 4 (1 critical) |
-| [004](004-wind/spec.md) | Wind | 3 |
-| [005](005-time-location/spec.md) | Time, location and Sun & Moon | 3 |
-| [006](006-safety-monitor/spec.md) | Safety monitor | 3 (1 critical) |
-| [007](007-ascom-alpaca/spec.md) | ASCOM Alpaca | 2 |
-| [008](008-alerts/spec.md) | Alerts | 4 |
-| [009](009-bluetooth/spec.md) | Bluetooth | 2 |
-| [010](010-dashboard/spec.md) | Dashboard, demo and screenshots | 4 |
-| [011](011-settings-security/spec.md) | Settings, configuration and security | 2 |
-| [012](012-ota-updates/spec.md) | Firmware and web UI updates | 5 |
+| [001](001-sky-quality/spec.md) | Sky quality (SQM, NELM, Bortle, calibration) | 0 — converged |
+| [002](002-environment-cloud/spec.md) | Environment and cloud cover | 0 — converged |
+| [003](003-rain-sensor/spec.md) | Rain sensor (RG-15) | 0 — converged |
+| [004](004-wind/spec.md) | Wind | 0 — converged |
+| [005](005-time-location/spec.md) | Time, location and Sun & Moon | 0 — converged |
+| [006](006-safety-monitor/spec.md) | Safety monitor | 0 — converged |
+| [007](007-ascom-alpaca/spec.md) | ASCOM Alpaca | 0 — converged |
+| [008](008-alerts/spec.md) | Alerts | 0 — converged |
+| [009](009-bluetooth/spec.md) | Bluetooth | 0 — converged |
+| [010](010-dashboard/spec.md) | Dashboard, demo and screenshots | 0 — converged |
+| [011](011-settings-security/spec.md) | Settings, configuration and security | 0 — converged |
+| [012](012-ota-updates/spec.md) | Firmware and web UI updates | 0 — converged |
 | [013](013-data-interfaces/spec.md) | MQTT, REST and WebSocket | 0 — converged |
-| [014](014-wifi-setup/spec.md) | WiFi setup and network presence | 5 |
+| [014](014-wifi-setup/spec.md) | WiFi setup and network presence | 0 — converged |
 
-Some documentation tasks are already addressed by the docs refresh PR (#73); they are marked
-as such where known.
+All convergence tasks were implemented in the v0.2.0-beta.2 work (PR #75); the tasks stay in
+each `tasks.md`, checked off, as the record.
 
-New features start at 015 with `/speckit-specify`.
+## New features
+
+| Spec | Feature | Status |
+|---|---|---|
+| [015](015-ipv6-dual-stack/spec.md) | IPv6 (dual stack) | Specified - next: `/speckit-plan` |
+| [016](016-demo-device-emulation/spec.md) | Demo that behaves like the device | Specified - next: `/speckit-plan` |
+
+New features continue at 017 with `/speckit-specify`.

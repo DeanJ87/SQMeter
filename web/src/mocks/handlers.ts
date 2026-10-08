@@ -21,6 +21,10 @@ const alpacaEnvelope = <T,>(Value: T) => ({
 });
 
 // WebSocket handlers — wildcard host works on both localhost and GitHub Pages
+// The demo "booted" when the page loaded, mockStatus.uptime seconds ago.
+const demoStartedAt = Date.now();
+const demoUptime = () => mockStatus.uptime + Math.floor((Date.now() - demoStartedAt) / 1000);
+
 const sensorSocket = ws.link("*/ws/sensors");
 const statusSocket = ws.link("*/ws/status");
 
@@ -32,7 +36,7 @@ export const handlers = [
   http.get("/api/status", () =>
     HttpResponse.json({
       ...mockStatus,
-      uptime: mockStatus.uptime + Math.floor(Math.random() * 10),
+      uptime: demoUptime(),
       time: { iso: new Date().toISOString(), timezone: "GMT0" },
     })
   ),
@@ -108,7 +112,14 @@ export const handlers = [
   http.get("/api/wifi/scan", () =>
     HttpResponse.json({ networks: mockWifiNetworks })
   ),
-  http.post("/api/wifi/connect", () => HttpResponse.json({ ok: true })),
+  http.post("/api/wifi/connect", () =>
+    HttpResponse.json({ success: true, pending: true, message: "Connection started" }, { status: 202 })
+  ),
+
+  // REST — dark calibration
+  http.post("/api/sensors/tsl2591/calibrate-dark", () =>
+    HttpResponse.json({ success: true, darkVisibleOffset: 2.4, sampleCount: 150, darkCalibratedAt: Math.floor(Date.now() / 1000) })
+  ),
 
   // REST — MQTT test
   http.post("/api/mqtt/test", () =>
@@ -168,19 +179,19 @@ export const handlers = [
     client.addEventListener("close", () => clearInterval(interval));
   }),
 
-  // WebSocket — push system status every 5 seconds
+  // WebSocket — push system status every 2 seconds, like the device
   statusSocket.addEventListener("connection", ({ client }) => {
     const send = () =>
       client.send(
         JSON.stringify({
           ...mockStatus,
-          uptime: mockStatus.uptime + Math.floor(Date.now() / 1000),
+          uptime: demoUptime(),
           time: { iso: new Date().toISOString(), timezone: "GMT0" },
         })
       );
 
     send();
-    const interval = setInterval(send, 5000);
+    const interval = setInterval(send, 2000);
     client.addEventListener("close", () => clearInterval(interval));
   }),
 ];

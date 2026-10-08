@@ -33,3 +33,19 @@ describe('isVersionStale', () => {
     expect(isVersionStale('garbage', 'v0.0.3')).toBe(false);
   });
 });
+
+describe('prerelease ordering', () => {
+  it('orders betas before their release and by number', () => {
+    expect(isVersionStale('0.2.0-beta.1', 'v0.2.0-beta.2')).toBe(true);
+    expect(isVersionStale('0.2.0-beta.2', 'v0.2.0-beta.10')).toBe(true);
+    expect(isVersionStale('0.2.0-beta.2', 'v0.2.0')).toBe(true);
+    expect(isVersionStale('0.2.0', 'v0.2.0-beta.2')).toBe(false);
+    expect(isVersionStale('0.1.4', 'v0.2.0-beta.1')).toBe(true);
+  });
+
+  it('treats a local +dev build as its base release', () => {
+    expect(isVersionStale('0.2.0-beta.1+dev', 'v0.2.0-beta.1')).toBe(false);
+    expect(isVersionStale('0.2.0-beta.1+dev', 'v0.2.0-beta.2')).toBe(true);
+    expect(isVersionStale('0.2.0-beta.1+dev', 'v0.1.4')).toBe(false);
+  });
+});

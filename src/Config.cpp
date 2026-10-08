@@ -290,11 +290,11 @@ namespace SQM
         Config cfg;
 
         cfg.deviceName = "SQM-ESP32";
-        cfg.timezone = "UTC";
 
         cfg.wifi.ssid = "";
         cfg.wifi.password = "";
-        cfg.wifi.hostname = "sqm-esp32";
+        cfg.wifi.hostname = "sqmeter";
+        cfg.wifi.mdns = true;
         cfg.wifi.autoReconnect = true;
         cfg.wifi.reconnectDelayMs = 1000;
         cfg.wifi.maxReconnectDelayMs = 300000; // 5 minutes
@@ -321,8 +321,6 @@ namespace SQM
         cfg.ntp.server1 = "pool.ntp.org";
         cfg.ntp.server2 = "time.nist.gov";
         cfg.ntp.timezone = "UTC0"; // POSIX format
-        cfg.ntp.gmtOffsetSec = 0;
-        cfg.ntp.daylightOffsetSec = 0;
         cfg.ntp.syncIntervalMs = 600000; // 10 minutes
 
         cfg.gps.enabled = false;
@@ -507,7 +505,6 @@ namespace SQM
         DynamicJsonDocument doc(8192);
 
         doc["deviceName"] = deviceName;
-        doc["timezone"] = timezone;
         doc["primaryTimeSource"] = static_cast<int>(primaryTimeSource);
         doc["secondaryTimeSource"] = static_cast<int>(secondaryTimeSource);
 
@@ -515,6 +512,7 @@ namespace SQM
         wifi["ssid"] = this->wifi.ssid;
         wifi["password"] = redactSecrets && !this->wifi.password.empty() ? SECRET_MASK : this->wifi.password.c_str();
         wifi["hostname"] = this->wifi.hostname;
+        wifi["mdns"] = this->wifi.mdns;
         wifi["autoReconnect"] = this->wifi.autoReconnect;
         wifi["reconnectDelayMs"] = this->wifi.reconnectDelayMs;
         wifi["maxReconnectDelayMs"] = this->wifi.maxReconnectDelayMs;
@@ -554,8 +552,6 @@ namespace SQM
         ntp["server1"] = this->ntp.server1;
         ntp["server2"] = this->ntp.server2;
         ntp["timezone"] = this->ntp.timezone;
-        ntp["gmtOffsetSec"] = this->ntp.gmtOffsetSec;
-        ntp["daylightOffsetSec"] = this->ntp.daylightOffsetSec;
         ntp["syncIntervalMs"] = this->ntp.syncIntervalMs;
 
         JsonObject gps = doc.createNestedObject("gps");
@@ -713,6 +709,19 @@ namespace SQM
                     return false;
             return true;
         };
+        // A DNS label, so it works as <hostname>.local (same rule as the web UI).
+        auto validHostname = [](const std::string &name)
+        {
+            if (name.empty() || name.size() > 32 || name.front() == '-' || name.back() == '-')
+                return false;
+            for (char c : name)
+                if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '-'))
+                    return false;
+            return true;
+        };
+        if (!validHostname(wifi.hostname))
+            return setError(error, "Hostname: use up to 32 letters, numbers and hyphens (not at either end)");
+
         if (mqtt.enabled && !validTopic(mqtt.topic))
             return setError(error, "MQTT topic: use letters, numbers, _ and -, with / between levels");
         if (mqtt.homeAssistant && !validTopic(mqtt.discoveryPrefix))
@@ -955,8 +964,6 @@ namespace SQM
 
         if (doc.containsKey("deviceName"))
             cfg.deviceName = doc["deviceName"] | "SQM-ESP32";
-        if (doc.containsKey("timezone"))
-            cfg.timezone = doc["timezone"] | "UTC";
         if (doc.containsKey("primaryTimeSource"))
             cfg.primaryTimeSource = static_cast<TimeSource>(doc["primaryTimeSource"] | 0); // 0 = NTP
         if (doc.containsKey("secondaryTimeSource"))
@@ -969,7 +976,9 @@ namespace SQM
                 cfg.wifi.ssid = wifi["ssid"] | "";
             assignSecret(wifi, "password", cfg.wifi.password, preserveSecretPlaceholders);
             if (wifi.containsKey("hostname"))
-                cfg.wifi.hostname = wifi["hostname"] | "sqm-esp32";
+                cfg.wifi.hostname = wifi["hostname"] | "sqmeter";
+            if (wifi.containsKey("mdns"))
+                cfg.wifi.mdns = wifi["mdns"] | true;
             if (wifi.containsKey("autoReconnect"))
                 cfg.wifi.autoReconnect = wifi["autoReconnect"] | true;
             if (wifi.containsKey("reconnectDelayMs"))
@@ -1050,10 +1059,6 @@ namespace SQM
                 cfg.ntp.server2 = ntp["server2"] | "time.nist.gov";
             if (ntp.containsKey("timezone"))
                 cfg.ntp.timezone = ntp["timezone"] | "UTC0";
-            if (ntp.containsKey("gmtOffsetSec"))
-                cfg.ntp.gmtOffsetSec = ntp["gmtOffsetSec"] | 0;
-            if (ntp.containsKey("daylightOffsetSec"))
-                cfg.ntp.daylightOffsetSec = ntp["daylightOffsetSec"] | 0;
             if (ntp.containsKey("syncIntervalMs"))
                 cfg.ntp.syncIntervalMs = ntp["syncIntervalMs"] | 3600000;
         }

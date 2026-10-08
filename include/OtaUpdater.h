@@ -4,29 +4,10 @@
 #include <vector>
 #include <functional>
 
+#include "ReleaseLogic.h"
+
 namespace SQM
 {
-
-    struct GithubRelease
-    {
-        std::string tag;         // e.g. "v0.0.3"
-        std::string name;        // release title
-        bool prerelease = false; // GitHub's native beta/stable flag
-        std::string publishedAt;
-        std::string firmwareAssetUrl; // browser_download_url for sqmeter-firmware-<tag>.bin
-        size_t firmwareAssetSize = 0;
-        std::string fsAssetUrl; // browser_download_url for sqmeter-littlefs-<tag>.bin
-        size_t fsAssetSize = 0;
-    };
-
-    // Parses a GitHub "list releases" API JSON body and returns entries that
-    // have BOTH a sqmeter-firmware-*.bin and a sqmeter-littlefs-*.bin asset,
-    // filtered by track ("stable" -> prerelease == false, "beta" ->
-    // prerelease == true). A release missing either asset is skipped
-    // entirely - firmware and web UI must always be flashed as a matched
-    // pair to avoid frontend/backend drift.
-    // Exposed standalone (no networking) so it's unit-testable natively.
-    std::vector<GithubRelease> parseGithubReleases(const std::string &json, const std::string &track);
 
     class OtaUpdater
     {

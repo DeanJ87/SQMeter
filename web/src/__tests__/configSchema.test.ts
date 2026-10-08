@@ -15,7 +15,6 @@ import type { Config } from "../types";
 // Minimal valid config satisfying all schema rules
 const validBase: Config = {
   deviceName: "test-sqm",
-  timezone: "UTC0",
   primaryTimeSource: 0,
   secondaryTimeSource: 1,
   wifi: {
@@ -42,8 +41,6 @@ const validBase: Config = {
     server1: "pool.ntp.org",
     server2: "time.nist.gov",
     timezone: "UTC0",
-    gmtOffsetSec: 0,
-    daylightOffsetSec: 0,
     syncIntervalMs: 600000,
   },
   gps: { enabled: false, rxPin: 16, txPin: 17, baudRate: 9600 },

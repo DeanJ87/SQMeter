@@ -42,9 +42,9 @@ Your device is in **captive portal mode** at `192.168.4.1` because it has no WiF
 
 ### To Configure WiFi:
 1. Connect to "SQM-Setup" WiFi network
-2. Go to http://192.168.4.1
+2. Go to http://192.168.4.1/wifi (the sign-in window usually opens it)
 3. Select your network and enter password
-4. It will connect and give you the new IP address
+4. It will connect, show the new address, and restart onto your network
 5. **Your WiFi config is now saved in NVS!**
 
 ### For Development After WiFi is Configured:

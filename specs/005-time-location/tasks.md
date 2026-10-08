@@ -40,6 +40,6 @@ description: "As-built task list (backfill) for Time, Location and Sun & Moon"
 
 ## Phase 7: Convergence
 
-- [ ] T011 Show the device's sun altitude and dark/not-dark (status.sky) in the Alerts tab darkness readout, keeping browser predictions only for start/end times, in web/src/components/settings/AlertsTab.tsx per FR-005 / US2-AC2 (partial)
-- [ ] T012 Remove or wire up the stored-but-unused settings `timezone` (top level, "Display timezone"), `ntp.gmtOffsetSec` and `ntp.daylightOffsetSec` in src/Config.cpp and docs/user-guide/configuration.md per FR-008 / SC-003 (unrequested)
-- [ ] T013 Show Sun & Moon and darkness times in the device's time zone (or label them as browser time) in web/src/components/SunMoonCard.tsx, web/src/components/NightChart.tsx and web/src/components/settings/AlertsTab.tsx per FR-007 (partial)
+- [X] T011 Show the device's sun altitude and dark/not-dark (status.sky) in the Alerts tab darkness readout, keeping browser predictions only for start/end times, in web/src/components/settings/AlertsTab.tsx per FR-005 / US2-AC2 (partial)
+- [X] T012 Remove or wire up the stored-but-unused settings `timezone` (top level, "Display timezone"), `ntp.gmtOffsetSec` and `ntp.daylightOffsetSec` in src/Config.cpp and docs/user-guide/configuration.md per FR-008 / SC-003 (unrequested)
+- [X] T013 Show Sun & Moon and darkness times in the device's time zone (or label them as browser time) in web/src/components/SunMoonCard.tsx, web/src/components/NightChart.tsx and web/src/components/settings/AlertsTab.tsx per FR-007 (partial)

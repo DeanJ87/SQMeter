@@ -8,6 +8,8 @@
 #include "sensors/RG15Sensor.h"
 #include "sensors/WindSensor.h"
 #include "calculations/SkyQuality.h"
+#include "calculations/CloudDetection.h"
+#include "calculations/Dewpoint.h"
 #include "TimeManager.h"
 #include "MQTTClient.h"
 #include "OtaUpdater.h"
@@ -24,9 +26,9 @@
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
 #include <ArduinoJson.h>
-#include <WiFiUdp.h>
 #include <memory>
 #include <vector>
+#include <AsyncUDP.h>
 #include <functional>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -72,6 +74,10 @@ namespace SQM
         void setOTAProgress(int progress);
         void setOTAError(const char *error);
 
+        // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
+        bool isWifiConnectPending() const { return wifiConnectActive; }
+        static bool scheduleRestart(uint32_t delayMs);
+
     private:
         static constexpr const char *TAG = "WebServer";
         static constexpr uint16_t PORT = 80;
@@ -102,6 +108,13 @@ namespace SQM
             WindReading wind;
             uint32_t dataTimestamp = 0;
             uint32_t capturedAt = 0;
+
+            // Derived once per reading so REST, MQTT, Alpaca and the safety
+            // verdict all see the same numbers.
+            SkyQualityMetrics sky;
+            CloudMetrics cloud;
+            bool humidityMeasured = false;                  // else the cloud model assumed:
+            float cloudHumidity = ASSUMED_HUMIDITY_PERCENT; // humidity it used
         };
 
         AsyncWebServer server;
@@ -131,8 +144,7 @@ namespace SQM
 
         std::unique_ptr<OtaUpdater> otaUpdater;
 
-        WiFiUDP alpacaDiscoveryUdp;
-        bool alpacaDiscoveryStarted = false;
+        AsyncUDP alpacaDiscoveryUdp; // answers in the network task, not the main loop
         // The Alpaca HTTP API lives in lib/AlpacaLogic (Alpaca::Router) so the
         // CI simulator runs the same code; this feeds it the device's state.
         class AlpacaBackend : public Alpaca::Backend
@@ -233,7 +245,6 @@ namespace SQM
         void setupGithubUpdates();
         void setupAlpacaRoutes();
         void handleAlpacaRequest(AsyncWebServerRequest *request);
-        void handleAlpacaDiscovery();
 
         // API endpoint handlers
         void handleGetStatus(AsyncWebServerRequest *request);
@@ -272,7 +283,6 @@ namespace SQM
         void appendSafetyStatus(JsonObject target) const;
         std::string createStatusJson() const;
         static std::string createErrorJson(const char *error);
-        static bool scheduleRestart(uint32_t delayMs);
         static uint32_t ageMs(uint32_t now, uint32_t timestamp);
 
         // Alpaca helpers

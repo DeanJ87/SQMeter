@@ -1,5 +1,6 @@
 #include "sensors/RG15Sensor.h"
 #include "Logger.h"
+#include "RainLogic.h"
 #include <ArduinoJson.h>
 #include <cctype>
 #include <cstdio>
@@ -33,45 +34,6 @@ namespace SQM
             SemaphoreHandle_t mutex;
             bool locked;
         };
-
-        bool extractFloatField(const std::string &line, const char *label, float &value)
-        {
-            size_t labelPos = line.find(label);
-            const size_t labelLength = std::strlen(label);
-
-            while (labelPos != std::string::npos)
-            {
-                const bool startsField = labelPos == 0 ||
-                                         line[labelPos - 1] == ',' ||
-                                         std::isspace(static_cast<unsigned char>(line[labelPos - 1]));
-                const size_t valuePos = labelPos + labelLength;
-                const bool hasValueSeparator = valuePos < line.length() &&
-                                               std::isspace(static_cast<unsigned char>(line[valuePos]));
-
-                if (startsField && hasValueSeparator)
-                {
-                    const char *cursor = line.c_str() + valuePos;
-                    while (*cursor != '\0' && std::isspace(static_cast<unsigned char>(*cursor)))
-                    {
-                        cursor++;
-                    }
-
-                    char *end = nullptr;
-                    const float parsed = std::strtof(cursor, &end);
-                    if (end == cursor)
-                    {
-                        return false;
-                    }
-
-                    value = parsed;
-                    return true;
-                }
-
-                labelPos = line.find(label, labelPos + 1);
-            }
-
-            return false;
-        }
 
         bool extractIntField(const std::string &line, const char *label, int &value)
         {
@@ -112,30 +74,6 @@ namespace SQM
             return false;
         }
 
-        bool hasFlagToken(const std::string &flags, const char *token)
-        {
-            size_t pos = flags.find(token);
-            const size_t tokenLength = std::strlen(token);
-
-            while (pos != std::string::npos)
-            {
-                const bool leftOk = pos == 0 ||
-                                    std::isspace(static_cast<unsigned char>(flags[pos - 1])) ||
-                                    flags[pos - 1] == ',';
-                const size_t right = pos + tokenLength;
-                const bool rightOk = right >= flags.length() ||
-                                     std::isspace(static_cast<unsigned char>(flags[right])) ||
-                                     flags[right] == ',';
-                if (leftOk && rightOk)
-                {
-                    return true;
-                }
-
-                pos = flags.find(token, pos + 1);
-            }
-
-            return false;
-        }
     } // namespace
 
     const char *RG15Sensor::stateToString(RG15State state)
@@ -541,11 +479,11 @@ namespace SQM
 
         const uint32_t now = millis();
         maybeRunScheduledTotalReset(now);
-        if (reading.rainLatched && diagnostics.lastRainDetectedMs != 0 &&
-            now - diagnostics.lastRainDetectedMs > rainClearDelayMs)
+        if (reading.rainLatched)
         {
-            reading.rainLatched = false;
-            reading.localEventAcc = 0.0f;
+            Rain::Latch latch = currentLatch();
+            Rain::expire(latch, now, rainClearDelayMs);
+            applyLatch(latch);
         }
         bool gotCommunication = false;
         if (diagnostics.lastPollMs == 0 || now - diagnostics.lastPollMs >= pollIntervalMs)
@@ -908,61 +846,25 @@ namespace SQM
 
     bool RG15Sensor::parseLine(const std::string &line)
     {
-        if (line.length() < 20)
+        Rain::Line parsed;
+        const Rain::ParseResult result = Rain::parseLine(line, parsed);
+        if (result != Rain::ParseResult::Ok)
         {
-            if (debugUart)
-            {
+            if (result == Rain::ParseResult::OutOfRange)
+                Logger::warn(TAG, "Out-of-range values in line: '%s'", line.c_str());
+            else if (debugUart && result == Rain::ParseResult::TooShort)
                 Logger::info(TAG, "line too short to parse: \"%s\"", line.c_str());
-            }
             return false;
         }
 
-        float acc = 0.0f, eventAcc = 0.0f, totalAcc = 0.0f, rInt = 0.0f;
-        if (!extractFloatField(line, "Acc", acc) ||
-            !extractFloatField(line, "EventAcc", eventAcc) ||
-            !extractFloatField(line, "TotalAcc", totalAcc) ||
-            !extractFloatField(line, "RInt", rInt))
-        {
-            return false;
-        }
-
-        if (acc < 0.0f || acc > 9999.0f ||
-            eventAcc < 0.0f || eventAcc > 9999.0f ||
-            totalAcc < 0.0f || totalAcc > 999999.0f ||
-            rInt < 0.0f || rInt > 9999.0f)
-        {
-            Logger::warn(TAG, "Out-of-range values in line: '%s'", line.c_str());
-            return false;
-        }
-
-        reading.acc = acc;
-        reading.eventAcc = eventAcc;
-        reading.totalAcc = totalAcc;
-        reading.rInt = rInt;
-        reading.isRaining = (rInt > 0.0f);
-
-        reading.lensBad = false;
-        reading.emSat = false;
-
-        const size_t rIntPos = line.find("RInt");
-        size_t unitPos = rIntPos == std::string::npos ? std::string::npos : line.find("mmph", rIntPos);
-        reading.imperial = false;
-        if (unitPos == std::string::npos)
-        {
-            unitPos = rIntPos == std::string::npos ? std::string::npos : line.find("iph", rIntPos);
-            reading.imperial = unitPos != std::string::npos;
-        }
-
-        if (unitPos != std::string::npos)
-        {
-            const size_t flagsStart = line.find(' ', unitPos);
-            if (flagsStart != std::string::npos && flagsStart < line.length())
-            {
-                const std::string flags = line.substr(flagsStart);
-                reading.lensBad = hasFlagToken(flags, "i") || hasFlagToken(flags, "LensBad");
-                reading.emSat = hasFlagToken(flags, "o") || hasFlagToken(flags, "EmSat");
-            }
-        }
+        reading.acc = parsed.acc;
+        reading.eventAcc = parsed.eventAcc;
+        reading.totalAcc = parsed.totalAcc;
+        reading.rInt = parsed.rInt;
+        reading.isRaining = parsed.rInt > 0.0f;
+        reading.imperial = parsed.imperial;
+        reading.lensBad = parsed.lensBad;
+        reading.emSat = parsed.emSat;
 
         reading.timestamp = millis();
         reading.ageMs = 0;
@@ -977,31 +879,25 @@ namespace SQM
 
     void RG15Sensor::updateRainLatch(uint32_t now)
     {
-        const bool sawRain = reading.rInt > 0.0f || reading.acc > 0.0f;
-        if (sawRain)
-        {
-            if (!reading.rainLatched)
-            {
-                reading.localEventAcc = 0.0f;
-            }
-            reading.localEventAcc += reading.acc;
-            diagnostics.lastRainDetectedMs = now;
-            reading.rainLatched = true;
-            return;
-        }
+        Rain::Latch latch = currentLatch();
+        Rain::observe(latch, reading.rInt, reading.acc, now, rainClearDelayMs);
+        applyLatch(latch);
+    }
 
-        if (diagnostics.lastRainDetectedMs == 0)
-        {
-            reading.rainLatched = false;
-            reading.localEventAcc = 0.0f;
-            return;
-        }
+    Rain::Latch RG15Sensor::currentLatch() const
+    {
+        Rain::Latch latch;
+        latch.latched = reading.rainLatched;
+        latch.eventAccumulation = reading.localEventAcc;
+        latch.lastRainMs = diagnostics.lastRainDetectedMs;
+        return latch;
+    }
 
-        reading.rainLatched = (now - diagnostics.lastRainDetectedMs) <= rainClearDelayMs;
-        if (!reading.rainLatched)
-        {
-            reading.localEventAcc = 0.0f;
-        }
+    void RG15Sensor::applyLatch(const Rain::Latch &latch)
+    {
+        reading.rainLatched = latch.latched;
+        reading.localEventAcc = latch.eventAccumulation;
+        diagnostics.lastRainDetectedMs = latch.lastRainMs;
     }
 
     void RG15Sensor::maybeRunScheduledTotalReset(uint32_t now)
@@ -1101,172 +997,24 @@ namespace SQM
         return snapshot;
     }
 
+    // The full diagnostics are in /api/status (WebServer::appendRainDiagnostics);
+    // this is the plain reading, one name per value.
     std::string RG15Sensor::toJson() const
     {
-        StaticJsonDocument<2048> doc;
+        StaticJsonDocument<384> doc;
         const RG15Reading current = copyReading();
-        const RG15Diagnostics diag = getDiagnostics();
-        const uint32_t now = millis();
-
-        doc["sensor"] = "hydreon_rg15";
-        doc["enabled"] = diag.enabled;
-        doc["initialized"] = diag.uartOpened;
         doc["online"] = current.online;
         doc["stale"] = current.stale;
-        doc["state"] = stateToString(diag.state);
-        doc["timestamp"] = current.timestamp;
         doc["ageMs"] = current.ageMs;
-        doc["status"] = static_cast<int>(current.status);
-        doc["isRaining"] = current.isRaining;
-        doc["raining"] = current.rainLatched;
-        doc["acc"] = current.acc;
-        doc["eventAcc"] = current.eventAcc;
-        doc["totalAcc"] = current.totalAcc;
-        doc["rInt"] = current.rInt;
-        doc["accumulation_since_last_read"] = current.acc;
-        doc["event_accumulation"] = current.localEventAcc;
-        doc["local_event_accumulation"] = current.localEventAcc;
-        doc["hydreon_event_accumulation"] = current.eventAcc;
-        doc["total_accumulation"] = current.totalAcc;
-        doc["rain_intensity"] = current.rInt;
-        doc["lensBad"] = current.lensBad;
-        doc["emSat"] = current.emSat;
-
-        JsonObject uart = doc.createNestedObject("uart");
-        uart["configured"] = diag.configured;
-        uart["opened"] = diag.uartOpened;
-        uart["rx_pin"] = diag.rxPin;
-        uart["tx_pin"] = diag.txPin;
-        uart["baud_rate"] = diag.baudRate;
-        uart["uart_port"] = diag.uartPort;
-        uart["mode"] = diag.mode;
-        uart["resolution"] = diag.resolution;
-        uart["units"] = diag.units;
-        uart["debug_uart"] = diag.debugUart;
-        uart["poll_interval_ms"] = diag.pollIntervalMs;
-        uart["rain_clear_delay_ms"] = diag.rainClearDelayMs;
-        uart["daily_reset_enabled"] = diag.dailyResetEnabled;
-        uart["daily_reset_hour"] = diag.dailyResetHour;
-        uart["daily_reset_minute"] = diag.dailyResetMinute;
-        if (diag.lastCommand)
-            uart["last_command"] = diag.lastCommand->c_str();
-        else
-            uart["last_command"] = nullptr;
-        if (diag.lastCommandMs != 0)
-            uart["last_command_ms"] = static_cast<uint32_t>(diag.lastCommandMs);
-        else
-            uart["last_command_ms"] = nullptr;
-        uart["last_bytes_written"] = diag.lastBytesWritten;
-        if (diag.expectedAck)
-            uart["expected_ack"] = diag.expectedAck->c_str();
-        else
-            uart["expected_ack"] = nullptr;
-        if (diag.lastAck)
-            uart["last_ack"] = diag.lastAck->c_str();
-        else
-            uart["last_ack"] = nullptr;
-        if (diag.lastAckMs != 0)
-            uart["last_ack_ms"] = static_cast<uint32_t>(diag.lastAckMs);
-        else
-            uart["last_ack_ms"] = nullptr;
-        if (diag.lastRawResponse)
-            uart["last_raw_response"] = diag.lastRawResponse->c_str();
-        else
-            uart["last_raw_response"] = nullptr;
-        if (diag.lastResponseMs != 0)
-            uart["last_response_ms"] = static_cast<uint32_t>(diag.lastResponseMs);
-        else
-            uart["last_response_ms"] = nullptr;
-        if (diag.lastError)
-            uart["last_error"] = diag.lastError->c_str();
-        else
-            uart["last_error"] = nullptr;
-        uart["timeouts"] = diag.timeouts;
-        uart["parse_errors"] = diag.parseErrors;
-        uart["successful_reads"] = diag.successfulReads;
-        uart["response_timeout_ms"] = diag.responseTimeoutMs;
-        uart["stale_timeout_ms"] = diag.staleTimeoutMs;
-        if (diag.lastHealthCheckMs != 0)
-            uart["last_health_check_ms"] = static_cast<uint32_t>(diag.lastHealthCheckMs);
-        else
-            uart["last_health_check_ms"] = nullptr;
-        if (diag.lastPollMs != 0)
-            uart["last_poll_ms"] = static_cast<uint32_t>(diag.lastPollMs);
-        else
-            uart["last_poll_ms"] = nullptr;
-        if (diag.lastPollMs != 0)
-            uart["last_poll_age_ms"] = static_cast<uint32_t>(now - diag.lastPollMs);
-        else
-            uart["last_poll_age_ms"] = nullptr;
-        if (diag.lastRainDetectedMs != 0)
-            uart["last_rain_detected_ms"] = static_cast<uint32_t>(diag.lastRainDetectedMs);
-        else
-            uart["last_rain_detected_ms"] = nullptr;
-        if (diag.lastRainDetectedMs != 0)
-            uart["last_rain_detected_age_ms"] = static_cast<uint32_t>(now - diag.lastRainDetectedMs);
-        else
-            uart["last_rain_detected_age_ms"] = nullptr;
-        if (diag.lastTotalResetMs != 0)
-            uart["last_total_reset_ms"] = static_cast<uint32_t>(diag.lastTotalResetMs);
-        else
-            uart["last_total_reset_ms"] = nullptr;
-        if (diag.lastTotalResetMs != 0)
-            uart["last_total_reset_age_ms"] = static_cast<uint32_t>(now - diag.lastTotalResetMs);
-        else
-            uart["last_total_reset_age_ms"] = nullptr;
-        if (diag.lastRebootCommandMs != 0)
-            uart["last_reboot_command_ms"] = static_cast<uint32_t>(diag.lastRebootCommandMs);
-        else
-            uart["last_reboot_command_ms"] = nullptr;
-        if (diag.lastRebootCommandMs != 0)
-            uart["last_reboot_command_age_ms"] = static_cast<uint32_t>(now - diag.lastRebootCommandMs);
-        else
-            uart["last_reboot_command_age_ms"] = nullptr;
-        if (diag.lastStatusLine)
-            uart["last_status_line"] = diag.lastStatusLine->c_str();
-        else
-            uart["last_status_line"] = nullptr;
-        if (diag.softwareVersion)
-            uart["software_version"] = diag.softwareVersion->c_str();
-        else
-            uart["software_version"] = nullptr;
-        if (diag.softwareBuildDate)
-            uart["software_build_date"] = diag.softwareBuildDate->c_str();
-        else
-            uart["software_build_date"] = nullptr;
-        if (diag.resetReason)
-            uart["reset_reason"] = diag.resetReason->c_str();
-        else
-            uart["reset_reason"] = nullptr;
-        if (diag.powerOnDays)
-            uart["power_on_days"] = *diag.powerOnDays;
-        else
-            uart["power_on_days"] = nullptr;
-        if (diag.emitter1)
-            uart["emitter_1"] = *diag.emitter1;
-        else
-            uart["emitter_1"] = nullptr;
-        if (diag.emitter2)
-            uart["emitter_2"] = *diag.emitter2;
-        else
-            uart["emitter_2"] = nullptr;
-        if (diag.emitterTotal)
-            uart["emitter_total"] = *diag.emitterTotal;
-        else
-            uart["emitter_total"] = nullptr;
-        if (diag.lastResponseMs != 0)
-            uart["last_response_age_ms"] = static_cast<uint32_t>(now - diag.lastResponseMs);
-        else
-            uart["last_response_age_ms"] = nullptr;
-        if (diag.lastSuccessfulReadMs != 0)
-            uart["last_successful_read_ms"] = static_cast<uint32_t>(diag.lastSuccessfulReadMs);
-        else
-            uart["last_successful_read_ms"] = nullptr;
-        if (diag.lastSuccessfulReadMs != 0)
-            uart["last_successful_read_age_ms"] = static_cast<uint32_t>(now - diag.lastSuccessfulReadMs);
-        else
-            uart["last_successful_read_age_ms"] = nullptr;
-
+        doc["raining"] = current.isRaining || current.rainLatched;
+        doc["rainingNow"] = current.isRaining;
+        doc["intensity"] = current.rInt;
+        doc["eventAccumulation"] = current.localEventAcc;
+        doc["sensorEventAccumulation"] = current.eventAcc;
+        doc["totalAccumulation"] = current.totalAcc;
+        doc["imperial"] = current.imperial;
+        doc["lensFault"] = current.lensBad;
+        doc["emitterSaturated"] = current.emSat;
         std::string output;
         serializeJson(doc, output);
         return output;
