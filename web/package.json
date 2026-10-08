@@ -11,6 +11,8 @@
     "preview": "vite preview",
     "preview:demo": "vite preview --config vite.demo.config.ts",
     "screenshots": "playwright test tests/screenshots.spec.ts",
+    "docs:vendor": "node scripts/vendor-mermaid.mjs",
+    "docs:diagrams": "node scripts/check-diagrams.mjs",
     "lint": "eslint src --ext ts,tsx",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
@@ -30,6 +32,7 @@
     "ajv": "^8.20.0",
     "autoprefixer": "^10.4.16",
     "jsdom": "^30.0.1",
+    "mermaid": "11.17.2",
     "msw": "^2.3.0",
     "postcss": "^8.5.25",
     "terser": "^5.46.1",
