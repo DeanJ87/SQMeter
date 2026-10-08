@@ -4,8 +4,8 @@
 namespace SQM
 {
 
-    CloudMetrics CloudDetection::calculate(float skyTemp, float ambientTemp, float relativeHumidity,
-                                            float clearSkyThreshold, float cloudyThreshold, float humidityCorrection)
+    CloudMetrics CloudDetection::calculate(
+        float skyTemp, float ambientTemp, float relativeHumidity, float clearSkyThreshold, float cloudyThreshold, float humidityCorrection)
     {
         CloudMetrics metrics;
 

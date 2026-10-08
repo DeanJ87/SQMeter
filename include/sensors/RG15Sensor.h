@@ -12,25 +12,23 @@
 namespace SQM
 {
 
-
-
-
-
-
     class RG15Sensor : public SensorBase
     {
     public:
-        RG15Sensor(uint8_t rxPin = 18, uint8_t txPin = 19, uint32_t baudRate = 9600,
-                   const std::string &mode = "polling",
-                   const std::string &resolution = "high",
-                   const std::string &units = "metric",
-                   bool enabled = false,
-                   bool debugUart = false,
-                   uint32_t pollIntervalMs = 5000,
-                   uint32_t rainClearDelayMs = 900000,
-                   bool dailyResetEnabled = false,
-                   uint8_t dailyResetHour = 0,
-                   uint8_t dailyResetMinute = 0);
+        RG15Sensor(
+            uint8_t rxPin = 18,
+            uint8_t txPin = 19,
+            uint32_t baudRate = 9600,
+            const std::string &mode = "polling",
+            const std::string &resolution = "high",
+            const std::string &units = "metric",
+            bool enabled = false,
+            bool debugUart = false,
+            uint32_t pollIntervalMs = 5000,
+            uint32_t rainClearDelayMs = 900000,
+            bool dailyResetEnabled = false,
+            uint8_t dailyResetHour = 0,
+            uint8_t dailyResetMinute = 0);
         ~RG15Sensor() override = default;
 
         bool begin() override;
@@ -46,12 +44,19 @@ namespace SQM
         bool resetTotalAccumulation();
         bool rebootSensor();
 
-        void reconfigure(uint8_t newRxPin, uint8_t newTxPin, uint32_t newBaudRate,
-                         const std::string &newMode, const std::string &newResolution,
-                         const std::string &newUnits, bool newDebugUart,
-                         uint32_t newPollIntervalMs, uint32_t newRainClearDelayMs,
-                         bool newDailyResetEnabled, uint8_t newDailyResetHour,
-                         uint8_t newDailyResetMinute);
+        void reconfigure(
+            uint8_t newRxPin,
+            uint8_t newTxPin,
+            uint32_t newBaudRate,
+            const std::string &newMode,
+            const std::string &newResolution,
+            const std::string &newUnits,
+            bool newDebugUart,
+            uint32_t newPollIntervalMs,
+            uint32_t newRainClearDelayMs,
+            bool newDailyResetEnabled,
+            uint8_t newDailyResetHour,
+            uint8_t newDailyResetMinute);
 
         void stop();
 

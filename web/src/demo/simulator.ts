@@ -16,7 +16,11 @@ export const SCENARIOS: { id: ScenarioId; label: string; hint: string; needsRain
   { id: 'rain', label: 'Rain', hint: 'A shower: rain, then the rain clear delay', needsRain: true },
   { id: 'cloud', label: 'Cloud over', hint: 'Cloud rolls in until it is overcast' },
   { id: 'clear', label: 'Clear', hint: 'Back to a clear, dark sky' },
-  { id: 'dawn', label: 'Dawn', hint: "Moves the device's clock to the next dawn (sun 12° below the horizon and rising) - run 10× to watch it brighten" },
+  {
+    id: 'dawn',
+    label: 'Dawn',
+    hint: "Moves the device's clock to the next dawn (sun 12° below the horizon and rising) - run 10× to watch it brighten",
+  },
   { id: 'fail-light', label: 'Light sensor fails', hint: 'The TSL2591 stops responding for a while' },
   { id: 'fail-ir', label: 'IR sensor fails', hint: 'The MLX90614 stops responding for a while' },
   { id: 'fail-environment', label: 'BME280 fails', hint: 'Temperature and humidity stop for a while' },
@@ -133,22 +137,39 @@ export function simulate(nowMs: number, now: Date, settings: SimulatorSettings, 
   if (active?.id === 'cloud') cloud = 0.05 + 0.95 * ramp(elapsed, CLOUD_ROLL_IN_MS);
   if (active?.id === 'rain') cloud = 0.97;
 
-  let lux = skyLux(sun) * (1 + cloud * 0.5) * (1 + wobble(nowMs, 47, 0.04));
+  const lux = skyLux(sun) * (1 + cloud * 0.5) * (1 + wobble(nowMs, 47, 0.04));
   const counts = Math.min(65535, Math.round(Math.max(lux, 0.0001) * 1_000_000));
 
   const ambient = 11 + 5 * Math.sin((sun * Math.PI) / 180) + wobble(nowMs, 900, 0.3);
   const humidity = Math.min(98, 62 + 20 * cloud - 8 * Math.sin((sun * Math.PI) / 180) + wobble(nowMs, 600, 1.5));
   const irAmbient = ambient + 0.4;
-  const skyTemperature = skyTemperatureFor(cloud, irAmbient, humidity, settings.cloudDetection ?? DEFAULT_CLOUD_DETECTION) + wobble(nowMs, 120, 0.4);
+  const skyTemperature =
+    skyTemperatureFor(cloud, irAmbient, humidity, settings.cloudDetection ?? DEFAULT_CLOUD_DETECTION) + wobble(nowMs, 120, 0.4);
 
   const rainRate = active?.id === 'rain' ? (elapsed < 2.5 * 60_000 ? 2.4 + wobble(nowMs, 20, 0.6) : 0) : 0;
   const speed = Math.max(0, 3 + (active?.id === 'rain' ? 4 : 0) + wobble(nowMs, 90, 1.2));
 
   return {
-    light: { present: true, failed: active?.id === 'fail-light', lux, visible: Math.round(counts * 0.86), infrared: Math.round(counts * 0.14), full: counts, nightMode: lux < 0.5 },
-    environment: { present: true, failed: active?.id === 'fail-environment', temperature: ambient, humidity, pressure: 1013 + wobble(nowMs, 3600, 2) },
+    light: {
+      present: true,
+      failed: active?.id === 'fail-light',
+      lux,
+      visible: Math.round(counts * 0.86),
+      infrared: Math.round(counts * 0.14),
+      full: counts,
+      nightMode: lux < 0.5,
+    },
+    environment: {
+      present: true,
+      failed: active?.id === 'fail-environment',
+      temperature: ambient,
+      humidity,
+      pressure: 1013 + wobble(nowMs, 3600, 2),
+    },
     infrared: { present: true, failed: active?.id === 'fail-ir', sky: skyTemperature, ambient: irAmbient },
-    gps: settings.gpsEnabled ? { fix: true, latitude: where.latitude, longitude: where.longitude, altitude: 42, satellites: 9 } : { fix: false },
+    gps: settings.gpsEnabled
+      ? { fix: true, latitude: where.latitude, longitude: where.longitude, altitude: 42, satellites: 9 }
+      : { fix: false },
     rain: { failed: active?.id === 'fail-rain', rate: Math.max(0, rainRate) },
     wind: { speed, gust: speed * 1.8 + 0.5, direction: (240 + wobble(nowMs, 200, 25) + 360) % 360 },
   };

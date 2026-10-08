@@ -1,0 +1,36 @@
+# C++ lint for the portable code in lib/ (coding standard NAME-01..03, LINT-01).
+# src/ needs the ESP32 toolchain headers; it's covered by -Werror builds,
+# the limits and structure checks in tools/quality/check.py, and convergence.
+Checks: >
+  -*,
+  readability-identifier-naming,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-branch-clone,
+  performance-*,
+  -performance-enum-size,
+  -performance-avoid-endl,
+  modernize-use-nullptr,
+  modernize-use-override,
+  misc-unused-using-decls,
+  readability-else-after-return,
+  readability-redundant-string-cstr
+HeaderFilterRegex: '.*/lib/.*'
+CheckOptions:
+  readability-identifier-naming.NamespaceCase: CamelCase
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.TypeAliasCase: CamelCase
+  readability-identifier-naming.FunctionCase: camelBack
+  readability-identifier-naming.MethodCase: camelBack
+  readability-identifier-naming.ParameterCase: camelBack
+  readability-identifier-naming.LocalVariableCase: camelBack
+  readability-identifier-naming.LocalConstantCase: camelBack
+  readability-identifier-naming.MemberCase: camelBack
+  readability-identifier-naming.ConstexprVariableCase: UPPER_CASE
+  readability-identifier-naming.GlobalConstantCase: UPPER_CASE
+  readability-identifier-naming.StaticConstantCase: UPPER_CASE
+  readability-identifier-naming.EnumConstantCase: CamelCase

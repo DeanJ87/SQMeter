@@ -9,18 +9,18 @@ import type { Config, SystemStatus } from '../../types';
 // blocks anything; it just doesn't show a warning.
 
 export interface SensorAvailability {
-  enabled: boolean;           // switched on in this config (always true for built-in I2C sensors)
-  detected: boolean | null;   // found / responding on the device
+  enabled: boolean; // switched on in this config (always true for built-in I2C sensors)
+  detected: boolean | null; // found / responding on the device
   savedEnabled: boolean | null; // enabled in the config the device is running
 }
 
 export interface Hardware {
   statusLoaded: boolean;
-  skyLight: SensorAvailability;    // TSL2591
-  irSky: SensorAvailability;       // MLX90614
+  skyLight: SensorAvailability; // TSL2591
+  irSky: SensorAvailability; // MLX90614
   environment: SensorAvailability; // BME280
-  rain: SensorAvailability;        // RG-15
-  wind: SensorAvailability;        // anemometer
+  rain: SensorAvailability; // RG-15
+  wind: SensorAvailability; // anemometer
   windVane: SensorAvailability;
   gps: SensorAvailability;
   mqtt: { enabled: boolean; connected: boolean | null };
@@ -79,9 +79,7 @@ export const deriveHardware = (config: Config, status: SystemStatus | null): Har
 export const unavailableReason = (sensor: SensorAvailability, name: string, how: 'enable' | 'wire'): string | null => {
   if (!sensor.enabled) return `${name} is turned off.`;
   if (sensor.detected === false) {
-    return how === 'wire'
-      ? `${name} wasn't detected - check its wiring, then restart the device.`
-      : `${name} isn't responding.`;
+    return how === 'wire' ? `${name} wasn't detected - check its wiring, then restart the device.` : `${name} isn't responding.`;
   }
   return null;
 };

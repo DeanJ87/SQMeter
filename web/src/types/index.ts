@@ -395,15 +395,7 @@ export interface SafetyStatus {
 export type AlertLevel = 0 | 1 | 2 | 3 | 4;
 
 export type AlertEventKey =
-  | 'unsafe'
-  | 'safe'
-  | 'rain_started'
-  | 'rain_stopped'
-  | 'sensor_fault'
-  | 'sensor_recovered'
-  | 'dew_risk'
-  | 'clear_sky'
-  | 'clouded_over';
+  'unsafe' | 'safe' | 'rain_started' | 'rain_stopped' | 'sensor_fault' | 'sensor_recovered' | 'dew_risk' | 'clear_sky' | 'clouded_over';
 
 // sound: Pushover sound name; empty uses the Pushover default.
 export interface AlertEventSetting {

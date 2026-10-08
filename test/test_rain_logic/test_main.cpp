@@ -10,8 +10,9 @@ void tearDown() {}
 void test_parses_metric_line()
 {
     Rain::Line line;
-    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ParseResult::Ok),
-                      static_cast<int>(Rain::parseLine("Acc  0.01 mm, EventAcc  0.20 mm, TotalAcc 12.60 mm, RInt  0.47 mmph", line)));
+    TEST_ASSERT_EQUAL(
+        static_cast<int>(Rain::ParseResult::Ok),
+        static_cast<int>(Rain::parseLine("Acc  0.01 mm, EventAcc  0.20 mm, TotalAcc 12.60 mm, RInt  0.47 mmph", line)));
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.01f, line.acc);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.20f, line.eventAcc);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 12.60f, line.totalAcc);
@@ -24,14 +25,16 @@ void test_parses_metric_line()
 void test_parses_imperial_and_flags()
 {
     Rain::Line line;
-    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ParseResult::Ok),
-                      static_cast<int>(Rain::parseLine("Acc 0.001 in, EventAcc 0.010 in, TotalAcc 0.500 in, RInt 0.020 iph i o", line)));
+    TEST_ASSERT_EQUAL(
+        static_cast<int>(Rain::ParseResult::Ok),
+        static_cast<int>(Rain::parseLine("Acc 0.001 in, EventAcc 0.010 in, TotalAcc 0.500 in, RInt 0.020 iph i o", line)));
     TEST_ASSERT_TRUE(line.imperial);
     TEST_ASSERT_TRUE(line.lensBad);
     TEST_ASSERT_TRUE(line.emSat);
 
-    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ParseResult::Ok),
-                      static_cast<int>(Rain::parseLine("Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 1.00 mm, RInt 0.00 mmph LensBad", line)));
+    TEST_ASSERT_EQUAL(
+        static_cast<int>(Rain::ParseResult::Ok),
+        static_cast<int>(Rain::parseLine("Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 1.00 mm, RInt 0.00 mmph LensBad", line)));
     TEST_ASSERT_TRUE(line.lensBad);
     TEST_ASSERT_FALSE(line.emSat);
 }
@@ -42,18 +45,23 @@ void test_rejects_garbled_lines()
     line.totalAcc = 42.0f;
     TEST_ASSERT_EQUAL(static_cast<int>(Rain::ParseResult::TooShort), static_cast<int>(Rain::parseLine("Acc 0.01 mm", line)));
     // Truncated mid-line: RInt missing.
-    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ParseResult::MissingField),
-                      static_cast<int>(Rain::parseLine("Acc 0.01 mm, EventAcc 0.20 mm, TotalAcc 12.6", line)));
+    TEST_ASSERT_EQUAL(
+        static_cast<int>(Rain::ParseResult::MissingField),
+        static_cast<int>(Rain::parseLine("Acc 0.01 mm, EventAcc 0.20 mm, TotalAcc 12.6", line)));
     // Corrupt number.
-    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ParseResult::MissingField),
-                      static_cast<int>(Rain::parseLine("Acc x.01 mm, EventAcc 0.20 mm, TotalAcc 12.60 mm, RInt 0.47 mmph", line)));
+    TEST_ASSERT_EQUAL(
+        static_cast<int>(Rain::ParseResult::MissingField),
+        static_cast<int>(Rain::parseLine("Acc x.01 mm, EventAcc 0.20 mm, TotalAcc 12.60 mm, RInt 0.47 mmph", line)));
     // "Acc" only inside "EventAcc" doesn't count as the Acc field.
-    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ParseResult::MissingField),
-                      static_cast<int>(Rain::parseLine("EventAcc 0.20 mm, TotalAcc 12.60 mm, RInt 0.47 mmph", line)));
-    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ParseResult::OutOfRange),
-                      static_cast<int>(Rain::parseLine("Acc -1.00 mm, EventAcc 0.20 mm, TotalAcc 12.60 mm, RInt 0.47 mmph", line)));
-    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ParseResult::OutOfRange),
-                      static_cast<int>(Rain::parseLine("Acc 0.00 mm, EventAcc 0.20 mm, TotalAcc 12.60 mm, RInt 99999 mmph", line)));
+    TEST_ASSERT_EQUAL(
+        static_cast<int>(Rain::ParseResult::MissingField),
+        static_cast<int>(Rain::parseLine("EventAcc 0.20 mm, TotalAcc 12.60 mm, RInt 0.47 mmph", line)));
+    TEST_ASSERT_EQUAL(
+        static_cast<int>(Rain::ParseResult::OutOfRange),
+        static_cast<int>(Rain::parseLine("Acc -1.00 mm, EventAcc 0.20 mm, TotalAcc 12.60 mm, RInt 0.47 mmph", line)));
+    TEST_ASSERT_EQUAL(
+        static_cast<int>(Rain::ParseResult::OutOfRange),
+        static_cast<int>(Rain::parseLine("Acc 0.00 mm, EventAcc 0.20 mm, TotalAcc 12.60 mm, RInt 99999 mmph", line)));
     // A failed parse leaves the output untouched.
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 42.0f, line.totalAcc);
 }

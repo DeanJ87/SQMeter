@@ -29,7 +29,14 @@ void test_bortle_boundaries()
         float atLeast;
         float bortle;
     } const classes[] = {
-        {21.99f, 1}, {21.89f, 2}, {21.69f, 3}, {20.49f, 4}, {19.50f, 5}, {18.94f, 6}, {18.38f, 7}, {17.00f, 8},
+        {21.99f, 1},
+        {21.89f, 2},
+        {21.69f, 3},
+        {20.49f, 4},
+        {19.50f, 5},
+        {18.94f, 6},
+        {18.38f, 7},
+        {17.00f, 8},
     };
     for (const auto &c : classes)
     {
@@ -80,7 +87,8 @@ void test_cloud_thresholds()
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 50.0f, CloudDetection::estimateCloudCover(-8.0f, clear, cloudy));
     // Just below the cloudy threshold: cloudy; at it: overcast, 100%.
     TEST_ASSERT_EQUAL(static_cast<int>(CloudCondition::CLOUDY), static_cast<int>(CloudDetection::classifyCondition(-3.01f, clear, cloudy)));
-    TEST_ASSERT_EQUAL(static_cast<int>(CloudCondition::OVERCAST), static_cast<int>(CloudDetection::classifyCondition(-3.0f, clear, cloudy)));
+    TEST_ASSERT_EQUAL(
+        static_cast<int>(CloudCondition::OVERCAST), static_cast<int>(CloudDetection::classifyCondition(-3.0f, clear, cloudy)));
     TEST_ASSERT_EQUAL_FLOAT(100.0f, CloudDetection::estimateCloudCover(-3.0f, clear, cloudy));
 }
 

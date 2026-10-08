@@ -8,9 +8,7 @@ describe('Alpaca', () => {
 
     expect(await screen.findByText('SQMeter SafetyMonitor')).toBeInTheDocument();
     expect(screen.getByText('SQMeter ObservingConditions')).toBeInTheDocument();
-    expect(
-      screen.getByText(`${window.location.origin}/setup/v1/observingconditions/0/setup`)
-    ).toBeInTheDocument();
+    expect(screen.getByText(`${window.location.origin}/setup/v1/observingconditions/0/setup`)).toBeInTheDocument();
     expect(await screen.findByText('IsSafe')).toBeInTheDocument();
     expect(await screen.findByText('CloudCover')).toBeInTheDocument();
   });

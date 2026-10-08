@@ -116,7 +116,10 @@ namespace SQM
         class AlpacaBackend : public Alpaca::Backend
         {
         public:
-            explicit AlpacaBackend(WebServer &owner) : owner(owner) {}
+            explicit AlpacaBackend(WebServer &owner)
+                : owner(owner)
+            {
+            }
             bool alpacaEnabled() const override;
             bool isSafe() const override;
             Alpaca::ObservingConditionsSnapshot observingConditions() const override;
@@ -215,20 +218,10 @@ namespace SQM
 
         // WebSocket handlers
         void onSensorWebSocketEvent(
-            AsyncWebSocket *server,
-            AsyncWebSocketClient *client,
-            AwsEventType type,
-            void *arg,
-            uint8_t *data,
-            size_t len);
+            AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 
         void onStatusWebSocketEvent(
-            AsyncWebSocket *server,
-            AsyncWebSocketClient *client,
-            AwsEventType type,
-            void *arg,
-            uint8_t *data,
-            size_t len);
+            AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 
         // Helper functions
         bool requireAuth(AsyncWebServerRequest *request) const;

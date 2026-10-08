@@ -8,8 +8,6 @@
 namespace SQM
 {
 
-
-
     class GPSSensor : public SensorBase
     {
     public:

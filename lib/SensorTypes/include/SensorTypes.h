@@ -30,9 +30,9 @@ namespace SQM
 
     struct TSL2591Reading : public SensorReading
     {
-        float lux;         // Illuminance in lux
-        float rawLux;      // Lux before SQM calibration offset
-        float rawSqm;      // SQM before SQM calibration offset
+        float lux;    // Illuminance in lux
+        float rawLux; // Lux before SQM calibration offset
+        float rawSqm; // SQM before SQM calibration offset
         float calibratedSqm;
         float rollingVisible;
         float correctedVisible;
@@ -50,10 +50,24 @@ namespace SQM
         bool nightMode;
 
         TSL2591Reading()
-            : lux(0.0f), rawLux(0.0f), rawSqm(0.0f), calibratedSqm(0.0f), rollingVisible(0.0f),
-              correctedVisible(0.0f), darkVisibleOffset(0.0f), visible(0), infrared(0), full(0),
-              integrationMs(600), averagingWindowSeconds(90), sampleCount(0), gainIndex(3),
-              gainFactor(9876.0f), calibrated(false), saturated(false), nightMode(false)
+            : lux(0.0f),
+              rawLux(0.0f),
+              rawSqm(0.0f),
+              calibratedSqm(0.0f),
+              rollingVisible(0.0f),
+              correctedVisible(0.0f),
+              darkVisibleOffset(0.0f),
+              visible(0),
+              infrared(0),
+              full(0),
+              integrationMs(600),
+              averagingWindowSeconds(90),
+              sampleCount(0),
+              gainIndex(3),
+              gainFactor(9876.0f),
+              calibrated(false),
+              saturated(false),
+              nightMode(false)
         {
             timestamp = 0;
             status = SensorStatus::NOT_INITIALIZED;
@@ -89,7 +103,11 @@ namespace SQM
         float pressure;    // Atmospheric pressure in hPa
         float dewpoint;    // Calculated dewpoint in Celsius
 
-        BME280Reading() : temperature(0.0f), humidity(0.0f), pressure(0.0f), dewpoint(0.0f)
+        BME280Reading()
+            : temperature(0.0f),
+              humidity(0.0f),
+              pressure(0.0f),
+              dewpoint(0.0f)
         {
             timestamp = 0;
             status = SensorStatus::NOT_INITIALIZED;
@@ -100,8 +118,7 @@ namespace SQM
         {
             return !std::isnan(temperature) && !std::isnan(humidity) && !std::isnan(pressure) && !std::isnan(dewpoint) &&
                    temperature >= -40.0f && temperature <= 85.0f && // BME280 valid range
-                   humidity >= 0.0f && humidity <= 100.0f &&
-                   pressure >= 300.0f && pressure <= 1100.0f;
+                   humidity >= 0.0f && humidity <= 100.0f && pressure >= 300.0f && pressure <= 1100.0f;
         }
     };
 
@@ -121,8 +138,14 @@ namespace SQM
         uint32_t hdop;       // Horizontal Dilution of Precision (x100)
         uint32_t age;        // Age of fix data in milliseconds
 
-        GPSReading() : hasFix(false), satellites(0), latitude(0.0), longitude(0.0),
-                       altitude(0.0), hdop(0), age(0)
+        GPSReading()
+            : hasFix(false),
+              satellites(0),
+              latitude(0.0),
+              longitude(0.0),
+              altitude(0.0),
+              hdop(0),
+              age(0)
         {
             timestamp = 0;
             status = SensorStatus::NOT_INITIALIZED;
@@ -151,19 +174,30 @@ namespace SQM
         bool rainLatched;
         bool online;
         bool stale;
-        float acc;      // Accumulation since last poll (mm or in)
-        float eventAcc; // Event accumulation (mm or in)
+        float acc;           // Accumulation since last poll (mm or in)
+        float eventAcc;      // Event accumulation (mm or in)
         float localEventAcc; // SQMeter event accumulation using rainClearDelayMs
-        float totalAcc; // Total accumulation since power-on (mm or in)
-        float rInt;     // Rain intensity (mm/h or in/h)
-        bool lensBad;   // Hardware / lens fault
-        bool emSat;     // Emitter saturation
-        bool imperial;  // Last response reported inches ("iph") rather than mm ("mmph")
+        float totalAcc;      // Total accumulation since power-on (mm or in)
+        float rInt;          // Rain intensity (mm/h or in/h)
+        bool lensBad;        // Hardware / lens fault
+        bool emSat;          // Emitter saturation
+        bool imperial;       // Last response reported inches ("iph") rather than mm ("mmph")
         uint32_t ageMs;
 
-        RG15Reading() : isRaining(false), rainLatched(false), online(false), stale(true), acc(0.0f),
-                        eventAcc(0.0f), localEventAcc(0.0f), totalAcc(0.0f), rInt(0.0f), lensBad(false),
-                        emSat(false), imperial(false), ageMs(0)
+        RG15Reading()
+            : isRaining(false),
+              rainLatched(false),
+              online(false),
+              stale(true),
+              acc(0.0f),
+              eventAcc(0.0f),
+              localEventAcc(0.0f),
+              totalAcc(0.0f),
+              rInt(0.0f),
+              lensBad(false),
+              emSat(false),
+              imperial(false),
+              ageMs(0)
         {
             timestamp = 0;
             status = SensorStatus::NOT_INITIALIZED;
@@ -222,20 +256,54 @@ namespace SQM
         uint32_t staleTimeoutMs;
 
         RG15Diagnostics()
-            : enabled(false), configured(false), uartOpened(false), online(false), stale(false),
-              debugUart(false), state(RG15State::RG15_DISABLED), rxPin(0), txPin(0), baudRate(9600),
-              uartPort(1), mode("polling"), resolution("high"), units("metric"),
-              pollIntervalMs(5000), rainClearDelayMs(900000), dailyResetEnabled(false),
-              dailyResetHour(0), dailyResetMinute(0), lastCommand(std::nullopt),
-              lastCommandMs(0), lastBytesWritten(0), expectedAck(std::nullopt), lastAck(std::nullopt),
-              lastAckMs(0), lastRawResponse(std::nullopt), lastResponseMs(0), lastError(std::nullopt),
-              lastStatusLine(std::nullopt), softwareVersion(std::nullopt), softwareBuildDate(std::nullopt),
-              resetReason(std::nullopt), powerOnDays(std::nullopt), emitter1(std::nullopt),
-              emitter2(std::nullopt), emitterTotal(std::nullopt), lastHealthCheckMs(0),
-              lastPollMs(0), lastRainDetectedMs(0), lastTotalResetMs(0), lastRebootCommandMs(0),
+            : enabled(false),
+              configured(false),
+              uartOpened(false),
+              online(false),
+              stale(false),
+              debugUart(false),
+              state(RG15State::RG15_DISABLED),
+              rxPin(0),
+              txPin(0),
+              baudRate(9600),
+              uartPort(1),
+              mode("polling"),
+              resolution("high"),
+              units("metric"),
+              pollIntervalMs(5000),
+              rainClearDelayMs(900000),
+              dailyResetEnabled(false),
+              dailyResetHour(0),
+              dailyResetMinute(0),
+              lastCommand(std::nullopt),
+              lastCommandMs(0),
+              lastBytesWritten(0),
+              expectedAck(std::nullopt),
+              lastAck(std::nullopt),
+              lastAckMs(0),
+              lastRawResponse(std::nullopt),
+              lastResponseMs(0),
+              lastError(std::nullopt),
+              lastStatusLine(std::nullopt),
+              softwareVersion(std::nullopt),
+              softwareBuildDate(std::nullopt),
+              resetReason(std::nullopt),
+              powerOnDays(std::nullopt),
+              emitter1(std::nullopt),
+              emitter2(std::nullopt),
+              emitterTotal(std::nullopt),
+              lastHealthCheckMs(0),
+              lastPollMs(0),
+              lastRainDetectedMs(0),
+              lastTotalResetMs(0),
+              lastRebootCommandMs(0),
               lastDailyResetYearDay(-1),
-              lastSuccessfulReadMs(0), timeouts(0), parseErrors(0), successfulReads(0),
-              responseTimeoutMs(500), staleTimeoutMs(30000)
+              lastSuccessfulReadMs(0),
+              timeouts(0),
+              parseErrors(0),
+              successfulReads(0),
+              responseTimeoutMs(500),
+              staleTimeoutMs(30000)
         {
         }
     };
@@ -247,8 +315,8 @@ namespace SQM
         float instantMs = 0.0f;    // last 1 s
         float directionDeg = 0.0f; // 0 = North, clockwise; valid only when directionValid
         bool directionValid = false;
-        bool vaneFault = false;    // vane enabled but its reading matches no position
-        uint32_t samples = 0;      // seconds of history (up to 600)
+        bool vaneFault = false; // vane enabled but its reading matches no position
+        uint32_t samples = 0;   // seconds of history (up to 600)
 
         WindReading()
         {

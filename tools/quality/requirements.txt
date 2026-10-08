@@ -1,0 +1,6 @@
+# Pinned so CI and local runs agree (spec 017). Install into a venv:
+#   python3 -m venv .venv-quality && .venv-quality/bin/pip install -r tools/quality/requirements.txt
+clang-format==19.1.7
+clang-tidy==19.1.0
+lizard==1.17.13
+ruff==0.7.4

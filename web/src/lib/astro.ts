@@ -37,7 +37,7 @@ const horizontal = (ra: number, dec: number, d: number, lat: number, lon: number
   const altitude = Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(h));
   const azimuth = Math.atan2(Math.sin(h), Math.cos(h) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi));
   // Degrees; azimuth from north, clockwise.
-  return { altitude: altitude / RAD, azimuth: ((azimuth / RAD + 180) % 360 + 360) % 360 };
+  return { altitude: altitude / RAD, azimuth: (((azimuth / RAD + 180) % 360) + 360) % 360 };
 };
 
 export const sunPosition = (date: Date, lat: number, lon: number) => {
@@ -62,13 +62,22 @@ export const moonIllumination = (date: Date) => {
   const inc = Math.atan2(sunDistKm * Math.sin(phi), m.distKm - sunDistKm * Math.cos(phi));
   const angle = Math.atan2(
     Math.cos(s.dec) * Math.sin(s.ra - m.ra),
-    Math.sin(s.dec) * Math.cos(m.dec) - Math.cos(s.dec) * Math.sin(m.dec) * Math.cos(s.ra - m.ra)
+    Math.sin(s.dec) * Math.cos(m.dec) - Math.cos(s.dec) * Math.sin(m.dec) * Math.cos(s.ra - m.ra),
   );
   return { fraction: (1 + Math.cos(inc)) / 2, phase: 0.5 + (0.5 * inc * (angle < 0 ? -1 : 1)) / Math.PI };
 };
 
 export const moonPhaseName = (phase: number) => {
-  const names = ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'];
+  const names = [
+    'New moon',
+    'Waxing crescent',
+    'First quarter',
+    'Waxing gibbous',
+    'Full moon',
+    'Waning gibbous',
+    'Last quarter',
+    'Waning crescent',
+  ];
   return names[Math.round(phase * 8) % 8];
 };
 
@@ -92,12 +101,12 @@ export const crossings = (altitudeAt: (date: Date) => number, threshold: number,
   while (t0 < end) {
     const t1 = Math.min(t0 + step, end);
     const a1 = altitudeAt(new Date(t1)) - threshold;
-    if ((a0 < 0) !== (a1 < 0)) {
+    if (a0 < 0 !== a1 < 0) {
       let lo = t0;
       let hi = t1;
       while (hi - lo > 1000) {
         const mid = (lo + hi) / 2;
-        if ((altitudeAt(new Date(mid)) - threshold < 0) === (a0 < 0)) lo = mid;
+        if (altitudeAt(new Date(mid)) - threshold < 0 === a0 < 0) lo = mid;
         else hi = mid;
       }
       result.push({ time: new Date(Math.round((lo + hi) / 2)), rising: a1 > a0 });
@@ -114,7 +123,15 @@ export const nextCrossing = (altitudeAt: (date: Date) => number, threshold: numb
 export type SkyPhase = 'day' | 'civil' | 'nautical' | 'astronomical' | 'night';
 
 export const skyPhase = (sunAltitude: number): SkyPhase =>
-  sunAltitude > SUN_HORIZON ? 'day' : sunAltitude > -6 ? 'civil' : sunAltitude > -12 ? 'nautical' : sunAltitude > -18 ? 'astronomical' : 'night';
+  sunAltitude > SUN_HORIZON
+    ? 'day'
+    : sunAltitude > -6
+      ? 'civil'
+      : sunAltitude > -12
+        ? 'nautical'
+        : sunAltitude > -18
+          ? 'astronomical'
+          : 'night';
 
 export const SKY_PHASE_LABEL: Record<SkyPhase, string> = {
   day: 'Daylight',
@@ -136,8 +153,7 @@ export const darkness = (lat: number, lon: number, darkAltitude: number, now: Da
   return { darkNow, start, end };
 };
 
-export const formatClock = (date: Date | null) =>
-  date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
+export const formatClock = (date: Date | null) => (date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--');
 
 export const formatDuration = (ms: number) => {
   const minutes = Math.max(0, Math.round(ms / 60000));
