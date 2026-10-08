@@ -16,19 +16,13 @@ extra:
 
 theme:
   name: material
+  # Dark only, in the device UI's colours (docs/stylesheets/sqmeter.css).
   palette:
-    - scheme: slate
-      primary: deep purple
-      accent: cyan
-      toggle:
-        icon: material/weather-sunny
-        name: Switch to light mode
-    - scheme: default
-      primary: deep purple
-      accent: cyan
-      toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
+    scheme: slate
+    primary: custom
+    accent: custom
+  font: false # Inter and JetBrains Mono ship with the site, like the device UI
+  logo: assets/logo.svg
   features:
     - navigation.tabs
     - navigation.sections
@@ -41,7 +35,10 @@ theme:
     - content.tabs.link
   icon:
     repo: fontawesome/brands/github
-  favicon: assets/favicon.png
+  favicon: assets/favicon.svg
+
+extra_css:
+  - stylesheets/sqmeter.css
 
 markdown_extensions:
   - admonition
