@@ -6,6 +6,7 @@
 #include "sensors/MLX90614Sensor.h"
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
+#include "sensors/WindSensor.h"
 #include "calculations/SkyQuality.h"
 #include "TimeManager.h"
 #include "MQTTClient.h"
@@ -13,6 +14,12 @@
 #include "SafetyEvaluator.h"
 #include "ObservingConditionsMapper.h"
 #include "AlpacaProtocol.h"
+#include "AlpacaRouter.h"
+#include "AlertDispatcher.h"
+#include "AlertEngine.h"
+#include "SafetyStatus.h"
+#include "BleService.h"
+#include <atomic>
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
 #include <ArduinoJson.h>
@@ -38,6 +45,7 @@ namespace SQM
             MLX90614Sensor &mlx,
             GPSSensor &gps,
             RG15Sensor &rg15,
+            WindSensor &wind,
             TimeManager *timeMgr,
             MQTTClient *mqtt,
             GetConfigCallback getConfig,
@@ -51,6 +59,7 @@ namespace SQM
         void begin();
         void handle();
         void refreshSensorSnapshot(uint32_t dataTimestampMs);
+        SafetyStatus getSafetyStatus() const;
 
         // Broadcast sensor data to Dashboard WebSocket clients
         void broadcastSensorData();
@@ -89,6 +98,7 @@ namespace SQM
             uint32_t mlxLastUpdate = 0;
             uint32_t gpsLastUpdate = 0;
             uint32_t rg15LastUpdate = 0;
+            WindReading wind;
             uint32_t dataTimestamp = 0;
             uint32_t capturedAt = 0;
         };
@@ -102,6 +112,7 @@ namespace SQM
         MLX90614Sensor &mlxSensor;
         GPSSensor &gpsSensor;
         RG15Sensor &rg15Sensor;
+        WindSensor &windSensor;
         TimeManager *timeManager;
         MQTTClient *mqttClient;
         GetConfigCallback getConfigCallback;
@@ -121,11 +132,86 @@ namespace SQM
 
         WiFiUDP alpacaDiscoveryUdp;
         bool alpacaDiscoveryStarted = false;
-        mutable uint32_t alpacaServerTransactionId = 0;
-        // Per-device Connected state (index 0 = SafetyMonitor, 1 = ObservingConditions).
-        // Shared by all clients - the device is always reachable, so this
-        // only reflects what clients last set via Connect/Disconnect/Connected.
-        bool alpacaConnected[2] = {false, false};
+        // The Alpaca HTTP API lives in lib/AlpacaLogic (Alpaca::Router) so the
+        // CI simulator runs the same code; this feeds it the device's state.
+        class AlpacaBackend : public Alpaca::Backend
+        {
+        public:
+            explicit AlpacaBackend(WebServer &owner) : owner(owner) {}
+            bool alpacaEnabled() const override;
+            bool isSafe() const override;
+            Alpaca::ObservingConditionsSnapshot observingConditions() const override;
+            std::string location() const override;
+            std::string timestampUtc() const override;
+
+        private:
+            WebServer &owner;
+        };
+        static Alpaca::ServerIdentity alpacaIdentity();
+        AlpacaBackend alpacaBackend{*this};
+        Alpaca::Router alpacaRouter{alpacaBackend, alpacaIdentity()};
+
+        SafetyStatus safetyStatus;
+        Alpaca::SafeDelayFilter safeDelayFilter;
+        SemaphoreHandle_t safetyMutex = xSemaphoreCreateMutex();
+        TaskHandle_t loopTaskHandle = nullptr;
+        uint32_t lastSafetyEvaluation = 0;
+        static constexpr uint32_t SAFETY_EVALUATION_INTERVAL_MS = 1000;
+        void updateSafetyStatus();
+
+        // Alerts
+        Alerts::AlertEngine alertEngine;
+        bool alertEngineSeeded = false;
+
+        // Alerts on/off ("armed"): off while you're not imaging, so weather
+        // flapping with the scope packed away doesn't wake anyone. Saved in
+        // NVS. Requests come from HTTP (AsyncTCP task), MQTT and Alpaca
+        // connects; the loop task applies them.
+        bool alertsArmed = true;
+        std::atomic<int8_t> pendingArm{-1}; // -1 none, 0 off, 1 on
+        bool lastAlpacaConnected = false;
+        uint32_t mqttArmedConnection = 0xFFFFFFFF;
+        void applyPendingArm();
+        void publishArmedState();
+        std::unique_ptr<AlertDispatcher> alertDispatcher;
+        // Set by the HTTP handler, sent from the loop task. event < 0 is the
+        // plain channel test; otherwise an index into the sample events.
+        struct PendingAlertTest
+        {
+            uint8_t mask = 0;
+            int8_t event = -1;
+            uint8_t level = 2;
+            char sound[33] = {};
+            char title[AlertsConfig::MAX_TEMPLATE_TITLE + 1] = {};
+            char message[AlertsConfig::MAX_TEMPLATE_MESSAGE + 1] = {};
+        };
+        PendingAlertTest pendingAlertTest;
+        portMUX_TYPE pendingAlertTestLock = portMUX_INITIALIZER_UNLOCKED;
+        bool mqttSafetyPublished = false;
+        bool mqttLastPublishedSafe = false;
+        uint32_t mqttSafetyPublishedAt = 0;
+        static constexpr uint32_t MQTT_SAFETY_REPUBLISH_MS = 60000;
+        void processAlerts(const SafetyStatus &status);
+
+        struct NightState
+        {
+            const char *source = nullptr; // "gps", "manual" or null
+            double latitude = 0.0;
+            double longitude = 0.0;
+            bool known = false;
+            bool isNight = false;
+            double sunAltitudeDeg = 0.0;
+        };
+        static NightState computeNight(const SensorSnapshot &snapshot, const Config &cfg);
+        void publishMqttSafety(const SafetyStatus &status);
+        void setupAlertRoutes();
+
+        BleService ble;
+        static const AlertsConfig::EventSetting *eventSettingFor(const AlertsConfig &alerts, Alerts::AlertType type);
+        static std::vector<std::pair<std::string, std::string>> alertVars(const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs,
+                                                                         const NightState &night, const Alerts::Alert &alert);
+        static void applyAlertTemplate(Alerts::Alert &alert, const AlertsConfig::EventSetting &setting,
+                                       const std::vector<std::pair<std::string, std::string>> &vars);
 
         // Setup route handlers
         void setupStaticRoutes();
@@ -134,6 +220,7 @@ namespace SQM
         void setupOTA();
         void setupGithubUpdates();
         void setupAlpacaRoutes();
+        void handleAlpacaRequest(AsyncWebServerRequest *request);
         void handleAlpacaDiscovery();
 
         // API endpoint handlers
@@ -170,6 +257,7 @@ namespace SQM
         bool requireAuth(AsyncWebServerRequest *request) const;
         SensorSnapshot getSensorSnapshot() const;
         std::string createSensorDataJson() const;
+        void appendSafetyStatus(JsonObject target) const;
         std::string createStatusJson() const;
         static std::string createErrorJson(const char *error);
         static bool scheduleRestart(uint32_t delayMs);
@@ -180,9 +268,6 @@ namespace SQM
         static Alpaca::SafetyThresholds buildAlpacaSafetyThresholds(const Config &cfg);
         Alpaca::SafetyResult evaluateAlpacaSafety() const;
         Alpaca::ObservingConditionsSnapshot buildAlpacaObservingConditionsSnapshot() const;
-        std::string buildAlpacaResponseBool(AsyncWebServerRequest *request, bool value, int errorNumber, const std::string &errorMessage) const;
-        std::string buildAlpacaResponseDouble(AsyncWebServerRequest *request, double value, int errorNumber, const std::string &errorMessage) const;
-        std::string buildAlpacaResponseVoid(AsyncWebServerRequest *request, int errorNumber, const std::string &errorMessage) const;
     };
 
 } // namespace SQM

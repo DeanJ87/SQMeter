@@ -17,6 +17,10 @@
 #include "calculations/CloudDetection.h"
 #include "sensors/RG15Sensor.h"
 #include "AlpacaDiscovery.h"
+#include "HeapTrace.h"
+#include "SunPosition.h"
+#include "SafetyHistory.h"
+#include <Preferences.h>
 
 extern uint32_t bootCount;
 
@@ -24,7 +28,49 @@ namespace SQM
 {
     namespace
     {
-        constexpr size_t CONFIG_JSON_BUFFER_SIZE = 4096;
+        constexpr size_t CONFIG_JSON_BUFFER_SIZE = 12288; // full config incl. custom alert texts
+
+        constexpr const char *ARMED_NVS_NAMESPACE = "sqm-alerts";
+
+        // "1"/"0", "on"/"off", "true"/"false", "arm"/"disarm" (any case).
+        bool parseArmPayload(std::string text, bool &armed)
+        {
+            while (!text.empty() && isspace(static_cast<unsigned char>(text.back())))
+                text.pop_back();
+            for (char &c : text)
+                c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+            if (text == "1" || text == "on" || text == "true" || text == "arm" || text == "armed")
+                armed = true;
+            else if (text == "0" || text == "off" || text == "false" || text == "disarm" || text == "disarmed")
+                armed = false;
+            else
+                return false;
+            return true;
+        }
+
+        // Test sends that only ring paired phones (no push channel enabled).
+        constexpr uint8_t BLE_ONLY_TEST = 0x80;
+
+        // Samples for "Test" on each event row of the Alerts settings.
+        struct SampleAlert
+        {
+            const char *key;
+            Alerts::AlertType type;
+            const char *title;
+            const char *label;
+            uint32_t bleFlags;
+        };
+        constexpr SampleAlert SAMPLE_ALERTS[] = {
+            {"unsafe", Alerts::AlertType::Unsafe, "Observatory UNSAFE", "It turns unsafe", Alpaca::UNSAFE_CLOUD_COVER},
+            {"safe", Alerts::AlertType::Safe, "Observatory safe", "It's safe again", 0},
+            {"rain_started", Alerts::AlertType::RainStarted, "Rain detected", "Rain starts", Alpaca::UNSAFE_RAIN},
+            {"rain_stopped", Alerts::AlertType::RainStopped, "Rain cleared", "Rain stops", 0},
+            {"sensor_fault", Alerts::AlertType::SensorFault, "Sensor fault", "A sensor fails", Alpaca::UNSAFE_SENSOR_FAULT},
+            {"sensor_recovered", Alerts::AlertType::SensorRecovered, "Sensor recovered", "A sensor recovers", 0},
+            {"dew_risk", Alerts::AlertType::DewRisk, "Dew risk", "Dew risk", Alpaca::UNSAFE_DEWPOINT},
+            {"clear_sky", Alerts::AlertType::ClearSky, "Dark and clear", "Skies clear up", 0},
+            {"clouded_over", Alerts::AlertType::CloudedOver, "Clouded over", "Skies cloud over", Alpaca::UNSAFE_CLOUD_COVER},
+        };
 
         esp_timer_handle_t restartTimer = nullptr;
 
@@ -224,6 +270,7 @@ namespace SQM
         MLX90614Sensor &mlx,
         GPSSensor &gps,
         RG15Sensor &rg15,
+        WindSensor &wind,
         TimeManager *timeMgr,
         MQTTClient *mqtt,
         GetConfigCallback getConfig,
@@ -236,6 +283,7 @@ namespace SQM
           mlxSensor(mlx),
           gpsSensor(gps),
           rg15Sensor(rg15),
+          windSensor(wind),
           timeManager(timeMgr),
           mqttClient(mqtt),
           getConfigCallback(getConfig),
@@ -248,6 +296,14 @@ namespace SQM
           wifiConnectStartedAt(0)
     {
         refreshSensorSnapshot(0);
+
+        alertDispatcher = std::make_unique<AlertDispatcher>(
+            mqttClient,
+            [this]
+            {
+                const OtaUpdater::Phase phase = otaUpdater ? otaUpdater->phase() : OtaUpdater::Phase::Idle;
+                return phase == OtaUpdater::Phase::Downloading || phase == OtaUpdater::Phase::Writing;
+            });
 
         otaUpdater = std::make_unique<OtaUpdater>(
             [this](int percent)
@@ -267,10 +323,35 @@ namespace SQM
             vSemaphoreDelete(sensorSnapshotMutex);
             sensorSnapshotMutex = nullptr;
         }
+        if (safetyMutex)
+        {
+            vSemaphoreDelete(safetyMutex);
+            safetyMutex = nullptr;
+        }
     }
 
     void WebServer::begin()
     {
+        loopTaskHandle = xTaskGetCurrentTaskHandle();
+
+        {
+            Preferences prefs;
+            if (prefs.begin(ARMED_NVS_NAMESPACE, true))
+            {
+                alertsArmed = prefs.getBool("armed", true);
+                prefs.end();
+            }
+        }
+        if (mqttClient != nullptr)
+        {
+            // Home Assistant MQTT switch: command <topic>/alerts/armed/set,
+            // state <topic>/alerts/armed.
+            mqttClient->onCommand("alerts/armed/set", [this](const std::string &payload)
+                                  {
+                bool armed = false;
+                if (parseArmPayload(payload, armed))
+                    pendingArm = armed ? 1 : 0; });
+        }
         Logger::info(TAG, "Starting web server on port %d", PORT);
 
         // CRITICAL: Register API routes BEFORE static file serving
@@ -280,7 +361,23 @@ namespace SQM
         setupOTA();
         setupGithubUpdates();
         setupAlpacaRoutes();
+        setupAlertRoutes();
         setupStaticRoutes(); // Must be last - has catch-all serveStatic
+
+        HeapTrace::mark("web server routes");
+        alertDispatcher->begin();
+        HeapTrace::mark("alert dispatcher");
+
+        if (BleService::available() && !getConfigCallback().ble.enabled)
+        {
+            BleService::releaseControllerMemory();
+            HeapTrace::mark("bluetooth memory released");
+        }
+        if (BleService::available() && getConfigCallback().ble.enabled)
+        {
+            ble.begin(getConfigCallback().deviceName, getConfigCallback().ble.passkey);
+            HeapTrace::mark("bluetooth");
+        }
 
         if (getConfigCallback().alpaca.enabled)
         {
@@ -329,6 +426,77 @@ namespace SQM
 
         const uint32_t now = millis();
 
+        // N.I.N.A. connecting/disconnecting the Alpaca devices switches
+        // alerts on/off, when that's enabled.
+        const bool alpacaConnectedNow = alpacaRouter.anyConnected();
+        if (alpacaConnectedNow != lastAlpacaConnected)
+        {
+            lastAlpacaConnected = alpacaConnectedNow;
+            if (getConfigCallback().alerts.armWithAlpaca)
+                pendingArm = alpacaConnectedNow ? 1 : 0;
+        }
+        applyPendingArm();
+        if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
+            publishArmedState();
+
+        if (now - lastSafetyEvaluation >= SAFETY_EVALUATION_INTERVAL_MS)
+        {
+            updateSafetyStatus();
+            lastSafetyEvaluation = now;
+        }
+
+        PendingAlertTest pendingTest;
+        portENTER_CRITICAL(&pendingAlertTestLock);
+        pendingTest = pendingAlertTest;
+        pendingAlertTest.mask = 0;
+        portEXIT_CRITICAL(&pendingAlertTestLock);
+        if (pendingTest.mask != 0)
+        {
+            const Config &cfg = getConfigCallback();
+            Alerts::Alert test;
+            if (pendingTest.event < 0)
+            {
+                test.type = Alerts::AlertType::Test;
+                test.level = Alerts::AlertLevel::Normal;
+                test.title = "Test notification";
+                test.message = "Alerts from this SQMeter are working.";
+            }
+            else
+            {
+                const SampleAlert &sample = SAMPLE_ALERTS[pendingTest.event];
+                test.type = sample.type;
+                test.level = static_cast<Alerts::AlertLevel>(pendingTest.level);
+                test.sound = pendingTest.sound;
+                test.title = sample.title;
+                test.message = std::string("This is how a \"") + sample.label + "\" alert arrives.";
+
+                // Custom wording is filled in from live readings; values
+                // only a real event has (the reasons, which sensor) are
+                // examples unless they apply right now.
+                const SafetyStatus safety = getSafetyStatus();
+                if (sample.type == Alerts::AlertType::Unsafe)
+                {
+                    std::vector<std::string> reasons = safety.isSafe ? std::vector<std::string>{"Cloud 62% >= 35% (example)"} : safety.reasons;
+                    std::string inline_;
+                    for (const std::string &reason : reasons)
+                        inline_ += (inline_.empty() ? "" : "; ") + reason;
+                    test.vars = {{"reasons", Alerts::joinReasons(reasons)}, {"reasons_inline", inline_}, {"reason_count", std::to_string(reasons.size())}};
+                }
+                else if (sample.type == Alerts::AlertType::SensorFault || sample.type == Alerts::AlertType::SensorRecovered)
+                    test.vars = {{"sensor", "TSL2591 light (example)"}};
+                AlertsConfig::EventSetting custom{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
+                applyAlertTemplate(test, custom, alertVars(cfg, buildAlpacaObservingConditionsSnapshot(), computeNight(getSensorSnapshot(), cfg), test));
+                test.title = "Test: " + test.title;
+                if (test.level == Alerts::AlertLevel::Wake)
+                {
+                    const time_t wallClock = time(nullptr);
+                    ble.raiseAlarm(sample.bleFlags, wallClock >= 1704067200 ? static_cast<uint32_t>(wallClock) : 0);
+                }
+            }
+            if (pendingTest.mask != BLE_ONLY_TEST)
+                alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, pendingTest.mask);
+        }
+
         // Broadcast sensor data every 1 second (for Dashboard)
         if (now - lastSensorBroadcast >= WS_SENSOR_BROADCAST_INTERVAL_MS)
         {
@@ -364,6 +532,7 @@ namespace SQM
         next.mlxLastUpdate = mlxSensor.getLastUpdateTime();
         next.gpsLastUpdate = gpsSensor.getLastUpdateTime();
         next.rg15LastUpdate = rg15Sensor.getLastUpdateTime();
+        next.wind = windSensor.getReading();
         next.dataTimestamp = dataTimestampMs;
         next.capturedAt = millis();
 
@@ -422,6 +591,52 @@ namespace SQM
         // Sensors endpoint
         server.on("/api/sensors", HTTP_GET, [this](AsyncWebServerRequest *request)
                   { handleGetSensors(request); });
+
+        // Plain-text "1" (safe) or "0" (unsafe) - the SafetyMonitor verdict
+        // for scripts and loggers.
+        server.on("/api/safe", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  { request->send(200, "text/plain", getSafetyStatus().isSafe ? "1" : "0"); });
+
+        // Before /api/safety, which would otherwise match this path too.
+        server.on("/api/safety/history", HTTP_GET, [](AsyncWebServerRequest *request)
+                  {
+            static SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
+            const size_t n = SafetyHistory::entries(entries, SafetyHistory::CAPACITY);
+            static const char *const KIND[] = {"boot", "change", "alert", "armed"};
+            DynamicJsonDocument doc(256 + n * 160);
+            doc["boot"] = SafetyHistory::currentBoot();
+            doc["uptime"] = millis() / 1000;
+            JsonArray list = doc.createNestedArray("entries");
+            for (size_t i = n; i-- > 0;) // newest first
+            {
+                const SafetyHistory::Entry &e = entries[i];
+                JsonObject item = list.createNestedObject();
+                item["kind"] = KIND[static_cast<uint8_t>(e.kind) <= 3 ? static_cast<uint8_t>(e.kind) : 1];
+                item["boot"] = e.boot;
+                item["uptime"] = e.uptimeS;
+                if (e.epoch != 0)
+                    item["timestamp"] = e.epoch;
+                if (e.kind == SafetyHistory::Kind::Boot)
+                    item["resetReason"] = e.resetReason;
+                else
+                    item["safe"] = static_cast<bool>(e.safe);
+                if (e.kind == SafetyHistory::Kind::Change)
+                {
+                    item["held"] = static_cast<bool>(e.held);
+                    item["reasonFlags"] = e.flags;
+                }
+            }
+            std::string json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json.c_str()); });
+
+        server.on("/api/safety", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            DynamicJsonDocument doc(1536);
+            appendSafetyStatus(doc.to<JsonObject>());
+            std::string json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json.c_str()); });
 
         server.on("/api/sensors/tsl2591/calibrate-dark", HTTP_POST, [this](AsyncWebServerRequest *request)
                   { handleTSL2591DarkCalibration(request); });
@@ -545,69 +760,6 @@ namespace SQM
 
     void WebServer::setupOTA()
     {
-        // Firmware OTA update (app partition)
-        server.on("/api/update", HTTP_POST, [this](AsyncWebServerRequest *request)
-                  {
-            if (!requireAuth(request))
-                return;
-            bool success = !Update.hasError();
-            String response_json;
-            
-            if (success) {
-                response_json = "{\"success\":true}";
-            } else {
-                // Get detailed error message
-                String error_msg = "Unknown error";
-                uint8_t error = Update.getError();
-                switch(error) {
-                    case UPDATE_ERROR_OK: error_msg = "No error"; break;
-                    case UPDATE_ERROR_WRITE: error_msg = "Flash write failed"; break;
-                    case UPDATE_ERROR_ERASE: error_msg = "Flash erase failed"; break;
-                    case UPDATE_ERROR_READ: error_msg = "Flash read failed"; break;
-                    case UPDATE_ERROR_SPACE: error_msg = "Not enough space"; break;
-                    case UPDATE_ERROR_SIZE: error_msg = "Bad size given"; break;
-                    case UPDATE_ERROR_STREAM: error_msg = "Stream read timeout"; break;
-                    case UPDATE_ERROR_MD5: error_msg = "MD5 check failed"; break;
-                    case UPDATE_ERROR_MAGIC_BYTE: error_msg = "Wrong magic byte"; break;
-                    case UPDATE_ERROR_ACTIVATE: error_msg = "Could not activate partition"; break;
-                    case UPDATE_ERROR_NO_PARTITION: error_msg = "Partition not found"; break;
-                    case UPDATE_ERROR_BAD_ARGUMENT: error_msg = "Bad argument"; break;
-                    case UPDATE_ERROR_ABORT: error_msg = "Update aborted"; break;
-                    default: error_msg = "Error code: " + String(error); break;
-                }
-                response_json = "{\"success\":false,\"error\":\"" + error_msg + "\"}";
-            }
-            
-            AsyncWebServerResponse* response = request->beginResponse(200, "application/json", response_json);
-            response->addHeader("Connection", "close");
-            request->send(response);
-            
-            if (success) {
-                WebServer::scheduleRestart(1000);
-            } }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-                  {
-            if (!index) {
-                Logger::info("OTA", "Firmware update started: %s", filename.c_str());
-                if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
-                    Logger::error("OTA", "Update.begin failed: %d", Update.getError());
-                    Update.printError(Serial);
-                }
-            }
-            
-            if (Update.write(data, len) != len) {
-                Logger::error("OTA", "Update.write failed: %d", Update.getError());
-                Update.printError(Serial);
-            }
-            
-            if (final) {
-                if (Update.end(true)) {
-                    Logger::info("OTA", "Firmware update success, rebooting...");
-                } else {
-                    Logger::error("OTA", "Update.end failed: %d", Update.getError());
-                    Update.printError(Serial);
-                }
-            } });
-
         // Filesystem OTA update (LittleFS partition)
         // Static variables to track filesystem update progress
         static const esp_partition_t *fs_partition = nullptr;
@@ -699,6 +851,71 @@ namespace SQM
                     Logger::error("OTA", "Filesystem update failed: %s", fs_error_msg.c_str());
                 }
             } });
+
+        // Firmware OTA update (app partition). Registered after /api/update/fs:
+        // this server also matches "/api/update" as a prefix of
+        // "/api/update/fs", so registered first it took filesystem uploads too.
+        server.on("/api/update", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+            bool success = !Update.hasError();
+            String response_json;
+            
+            if (success) {
+                response_json = "{\"success\":true}";
+            } else {
+                // Get detailed error message
+                String error_msg = "Unknown error";
+                uint8_t error = Update.getError();
+                switch(error) {
+                    case UPDATE_ERROR_OK: error_msg = "No error"; break;
+                    case UPDATE_ERROR_WRITE: error_msg = "Flash write failed"; break;
+                    case UPDATE_ERROR_ERASE: error_msg = "Flash erase failed"; break;
+                    case UPDATE_ERROR_READ: error_msg = "Flash read failed"; break;
+                    case UPDATE_ERROR_SPACE: error_msg = "Not enough space"; break;
+                    case UPDATE_ERROR_SIZE: error_msg = "Bad size given"; break;
+                    case UPDATE_ERROR_STREAM: error_msg = "Stream read timeout"; break;
+                    case UPDATE_ERROR_MD5: error_msg = "MD5 check failed"; break;
+                    case UPDATE_ERROR_MAGIC_BYTE: error_msg = "Wrong magic byte"; break;
+                    case UPDATE_ERROR_ACTIVATE: error_msg = "Could not activate partition"; break;
+                    case UPDATE_ERROR_NO_PARTITION: error_msg = "Partition not found"; break;
+                    case UPDATE_ERROR_BAD_ARGUMENT: error_msg = "Bad argument"; break;
+                    case UPDATE_ERROR_ABORT: error_msg = "Update aborted"; break;
+                    default: error_msg = "Error code: " + String(error); break;
+                }
+                response_json = "{\"success\":false,\"error\":\"" + error_msg + "\"}";
+            }
+            
+            AsyncWebServerResponse* response = request->beginResponse(200, "application/json", response_json);
+            response->addHeader("Connection", "close");
+            request->send(response);
+            
+            if (success) {
+                WebServer::scheduleRestart(1000);
+            } }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+                  {
+            if (!index) {
+                Logger::info("OTA", "Firmware update started: %s", filename.c_str());
+                if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+                    Logger::error("OTA", "Update.begin failed: %d", Update.getError());
+                    Update.printError(Serial);
+                }
+            }
+            
+            if (Update.write(data, len) != len) {
+                Logger::error("OTA", "Update.write failed: %d", Update.getError());
+                Update.printError(Serial);
+            }
+            
+            if (final) {
+                if (Update.end(true)) {
+                    Logger::info("OTA", "Firmware update success, rebooting...");
+                } else {
+                    Logger::error("OTA", "Update.end failed: %d", Update.getError());
+                    Update.printError(Serial);
+                }
+            } });
     }
 
     void WebServer::setupGithubUpdates()
@@ -785,126 +1002,6 @@ namespace SQM
         server.addHandler(applyHandler);
     }
 
-    namespace
-    {
-        // Alpaca parameter names are case-insensitive, and may arrive in the
-        // query string (GET) or the form-encoded body (PUT) - search both.
-        const AsyncWebParameter *findAlpacaParam(AsyncWebServerRequest *request, const char *name)
-        {
-            const size_t count = request->params();
-            for (size_t i = 0; i < count; ++i)
-            {
-                const AsyncWebParameter *param = request->getParam(i);
-                if (param != nullptr && !param->isFile() && Alpaca::paramNameEquals(param->name().c_str(), name))
-                    return param;
-            }
-            return nullptr;
-        }
-
-        uint32_t getAlpacaClientTransactionId(AsyncWebServerRequest *request)
-        {
-            const AsyncWebParameter *param = findAlpacaParam(request, "ClientTransactionID");
-            return param != nullptr ? Alpaca::parseClientTransactionId(param->value().c_str()) : 0;
-        }
-    }
-
-    std::string WebServer::buildAlpacaResponseBool(AsyncWebServerRequest *request, bool value, int errorNumber, const std::string &errorMessage) const
-    {
-        StaticJsonDocument<192> doc;
-        doc["Value"] = value;
-        doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-        doc["ServerTransactionID"] = ++alpacaServerTransactionId;
-        doc["ErrorNumber"] = errorNumber;
-        doc["ErrorMessage"] = errorMessage;
-        std::string json;
-        serializeJson(doc, json);
-        return json;
-    }
-
-    std::string WebServer::buildAlpacaResponseDouble(AsyncWebServerRequest *request, double value, int errorNumber, const std::string &errorMessage) const
-    {
-        StaticJsonDocument<192> doc;
-        doc["Value"] = value;
-        doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-        doc["ServerTransactionID"] = ++alpacaServerTransactionId;
-        doc["ErrorNumber"] = errorNumber;
-        doc["ErrorMessage"] = errorMessage;
-        std::string json;
-        serializeJson(doc, json);
-        return json;
-    }
-
-    std::string WebServer::buildAlpacaResponseVoid(AsyncWebServerRequest *request, int errorNumber, const std::string &errorMessage) const
-    {
-        StaticJsonDocument<192> doc;
-        doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-        doc["ServerTransactionID"] = ++alpacaServerTransactionId;
-        doc["ErrorNumber"] = errorNumber;
-        doc["ErrorMessage"] = errorMessage;
-        std::string json;
-        serializeJson(doc, json);
-        return json;
-    }
-
-    namespace
-    {
-        std::string buildAlpacaResponseString(AsyncWebServerRequest *request, const std::string &value, uint32_t &txnCounter)
-        {
-            StaticJsonDocument<256> doc;
-            doc["Value"] = value;
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++txnCounter;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            return json;
-        }
-
-        std::string buildAlpacaResponseInt(AsyncWebServerRequest *request, int value, uint32_t &txnCounter)
-        {
-            StaticJsonDocument<192> doc;
-            doc["Value"] = value;
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++txnCounter;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            return json;
-        }
-
-        std::string buildAlpacaResponseIntArray(AsyncWebServerRequest *request, const std::vector<int> &values, uint32_t &txnCounter)
-        {
-            DynamicJsonDocument doc(256);
-            JsonArray arr = doc.createNestedArray("Value");
-            for (int v : values)
-                arr.add(v);
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++txnCounter;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            return json;
-        }
-
-        std::string buildAlpacaResponseStringArray(AsyncWebServerRequest *request, const std::vector<std::string> &values, uint32_t &txnCounter)
-        {
-            DynamicJsonDocument doc(256);
-            JsonArray arr = doc.createNestedArray("Value");
-            for (const auto &v : values)
-                arr.add(v);
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++txnCounter;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            return json;
-        }
-    }
-
     Alpaca::SafetyInputs WebServer::buildAlpacaSafetyInputs() const
     {
         const SensorSnapshot snapshot = getSensorSnapshot();
@@ -914,6 +1011,8 @@ namespace SQM
         Alpaca::SafetyInputs in;
         in.hasEverHadGoodData = snapshot.dataTimestamp != 0;
         in.secondsSinceLastGoodData = ageMs(now, snapshot.dataTimestamp) / 1000;
+        in.skyLightFault = snapshot.tsl.status != SensorStatus::OK;
+        in.irSkyFault = snapshot.mlx.status != SensorStatus::OK;
         in.requiredSensorFault = snapshot.tsl.status != SensorStatus::OK ||
                                   snapshot.mlx.status != SensorStatus::OK;
 
@@ -933,6 +1032,21 @@ namespace SQM
         in.humidityPercent = humidity;
         in.temperatureC = snapshot.bme.temperature;
         in.dewpointC = snapshot.bme.dewpoint;
+        in.environmentSensorFault = usingHumidityFallback;
+
+        in.rainSensorEnabled = cfg.rain.enabled;
+        in.rainSensorHealthy = snapshot.rg15.online && !snapshot.rg15.stale &&
+                               snapshot.rg15.status == SensorStatus::OK && !snapshot.rg15.lensBad;
+        // rainLatched holds for rain.rainClearDelayMs after the last drop -
+        // the hold-off before a roof should re-open.
+        in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
+
+        constexpr uint32_t WIND_STALE_MS = 5000;
+        in.windSensorEnabled = cfg.wind.enabled;
+        in.windSensorHealthy = snapshot.wind.status == SensorStatus::OK && snapshot.wind.timestamp != 0 &&
+                               ageMs(now, snapshot.wind.timestamp) <= WIND_STALE_MS;
+        in.windSpeedMs = snapshot.wind.speedMs;
+        in.windGustMs = snapshot.wind.gustMs;
 
         return in;
     }
@@ -950,6 +1064,12 @@ namespace SQM
         thresholds.humidityMaxSafe = cfg.alpaca.humidityMaxSafe;
         thresholds.dewpointMarginEnabled = cfg.alpaca.dewpointMarginEnabled;
         thresholds.dewpointMarginMinC = cfg.alpaca.dewpointMarginMinC;
+        thresholds.rainUnsafeEnabled = cfg.alpaca.rainUnsafeEnabled;
+        thresholds.rainSensorRequired = cfg.alpaca.rainSensorRequired;
+        thresholds.windSpeedUnsafeEnabled = cfg.alpaca.windSpeedUnsafeEnabled;
+        thresholds.windSpeedUnsafeMs = cfg.alpaca.windSpeedUnsafeMs;
+        thresholds.windGustUnsafeEnabled = cfg.alpaca.windGustUnsafeEnabled;
+        thresholds.windGustUnsafeMs = cfg.alpaca.windGustUnsafeMs;
         return thresholds;
     }
 
@@ -958,23 +1078,599 @@ namespace SQM
         return Alpaca::evaluateSafety(buildAlpacaSafetyInputs(), buildAlpacaSafetyThresholds(getConfigCallback()));
     }
 
+    void WebServer::updateSafetyStatus()
+    {
+        const Alpaca::SafetyResult result = evaluateAlpacaSafety();
+        const uint32_t now = millis();
+        const bool reportedSafe = safeDelayFilter.update(result.isSafe, now / 1000, getConfigCallback().alpaca.safeDelaySeconds);
+
+        if (safetyMutex && xSemaphoreTake(safetyMutex, pdMS_TO_TICKS(100)) == pdTRUE)
+        {
+            if (reportedSafe != safetyStatus.isSafe || safetyStatus.evaluatedAtMs == 0)
+            {
+                if (safetyStatus.evaluatedAtMs != 0)
+                    Logger::info(TAG, "SafetyMonitor now %s", reportedSafe ? "SAFE" : "UNSAFE");
+                safetyStatus.changedAtMs = now;
+                SafetyHistory::recordChange(reportedSafe, !reportedSafe && result.isSafe, result.reasonFlags);
+            }
+            safetyStatus.isSafe = reportedSafe;
+            safetyStatus.rawSafe = result.isSafe;
+            safetyStatus.reasonFlags = result.reasonFlags;
+            safetyStatus.reasons = result.unsafeReasons;
+            safetyStatus.secondsUntilSafe = safeDelayFilter.secondsUntilSafe();
+            safetyStatus.evaluatedAtMs = now;
+            xSemaphoreGive(safetyMutex);
+        }
+
+        processAlerts(getSafetyStatus());
+    }
+
+    WebServer::NightState WebServer::computeNight(const SensorSnapshot &snapshot, const Config &cfg)
+    {
+        NightState night;
+        const time_t now = time(nullptr);
+        if (snapshot.gps.hasFix)
+        {
+            night.source = "gps";
+            night.latitude = snapshot.gps.latitude;
+            night.longitude = snapshot.gps.longitude;
+        }
+        else if (cfg.location.set)
+        {
+            night.source = "manual";
+            night.latitude = cfg.location.latitude;
+            night.longitude = cfg.location.longitude;
+        }
+        if (now < 1704067200 || night.source == nullptr)
+            return night; // no clock or no location: unknown
+        night.known = true;
+        night.sunAltitudeDeg = Astro::sunElevationDeg(static_cast<int64_t>(now), night.latitude, night.longitude);
+        night.isNight = night.sunAltitudeDeg < cfg.alerts.nightSunAltitudeDeg;
+        return night;
+    }
+
+    void WebServer::processAlerts(const SafetyStatus &status)
+    {
+        const Config &cfg = getConfigCallback();
+        if (cfg.mqtt.enabled && status.evaluatedAtMs != 0)
+            publishMqttSafety(status);
+
+        const SensorSnapshot snapshot = getSensorSnapshot();
+        const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
+
+        Alerts::AlertInputs in;
+        in.nowSeconds = millis() / 1000;
+        in.safetyKnown = status.evaluatedAtMs != 0;
+        in.safetySettling = (!status.isSafe && status.rawSafe) || (status.reasonFlags & Alpaca::UNSAFE_NO_DATA) != 0;
+        if (!alertEngineSeeded)
+        {
+            alertEngineSeeded = true;
+            bool toldSafe = false;
+            if (SafetyHistory::lastAlert(toldSafe))
+                alertEngine.seedSafety(!toldSafe);
+        }
+        in.isSafe = status.isSafe;
+        in.unsafeReasons = status.reasons;
+
+        in.rainEnabled = cfg.rain.enabled;
+        in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
+        in.rainRateMmPerHour = obs.rainRateMmPerHour;
+        in.lensFault = snapshot.rg15.lensBad;
+
+        in.sensors[0] = {"TSL2591 light", true, obs.skyLight.valid};
+        in.sensors[1] = {"MLX90614 IR", true, obs.irSky.valid};
+        in.sensors[2] = {"BME280 environment", true, obs.environment.valid};
+        in.sensors[3] = {"RG-15 rain", cfg.rain.enabled, obs.rain.valid};
+        in.sensors[4] = {"Wind", obs.wind.present, obs.wind.valid};
+
+        in.environmentValid = obs.environment.valid;
+        in.temperatureC = obs.temperatureC;
+        in.dewpointC = obs.dewpointC;
+        in.skyValid = obs.irSky.valid;
+        in.cloudCoverPercent = obs.cloudCoverPercent;
+        const NightState night = computeNight(snapshot, cfg);
+        in.nightKnown = night.known;
+        in.isNight = night.isNight;
+
+        Alerts::AlertRules rules;
+        const AlertsConfig &a = cfg.alerts;
+        rules.onSafetyChange = a.unsafe.level || a.safe.level;
+        rules.onRain = a.rainStarted.level || a.rainStopped.level;
+        rules.onSensorFault = a.sensorFault.level || a.sensorRecovered.level;
+        rules.onDewRisk = a.dewRisk.level != 0;
+        rules.dewRiskMarginC = a.dewRiskMarginC;
+        rules.onClearSky = a.clearSky.level != 0;
+        rules.clearSkyCloudPercent = a.clearSkyCloudPercent;
+        rules.onCloudedOver = a.cloudedOver.level != 0;
+        rules.cloudedOverCloudPercent = cfg.alerts.cloudedOverCloudPercent;
+        rules.skyNightOnly = cfg.alerts.skyNightOnly;
+        rules.safetyNightOnly = cfg.alerts.safetyNightOnly;
+        rules.cooldownSeconds = cfg.alerts.cooldownSeconds;
+
+        if (ble.isActive())
+        {
+            Ble::State bleState;
+            bleState.safetyKnown = in.safetyKnown;
+            bleState.isSafe = status.isSafe;
+            bleState.rawSafe = status.rawSafe;
+            bleState.reasonFlags = status.reasonFlags;
+            bleState.rainEnabled = cfg.rain.enabled;
+            bleState.rainHealthy = obs.rain.valid;
+            bleState.raining = in.raining;
+            bleState.rainRateMmPerHour = obs.rainRateMmPerHour;
+            bleState.sqmValid = obs.skyLight.valid;
+            bleState.sqm = obs.skyQualityMagArcsec2;
+
+            StaticJsonDocument<256> summary;
+            auto put = [&summary](const char *key, bool valid, float value)
+            {
+                if (valid)
+                    summary[key] = serialized(String(value, 2));
+            };
+            put("sqm", obs.skyLight.valid, obs.skyQualityMagArcsec2);
+            put("cloud", obs.irSky.valid, obs.cloudCoverPercent);
+            put("skyT", obs.irSky.valid, obs.skyTemperatureC);
+            put("temp", obs.environment.valid, obs.temperatureC);
+            put("hum", obs.environment.valid, obs.humidityPercent);
+            put("dew", obs.environment.valid, obs.dewpointC);
+            put("press", obs.environment.valid, obs.pressureHPa);
+            put("wind", obs.wind.valid, obs.windSpeedMs);
+            put("gust", obs.wind.valid, obs.windGustMs);
+            std::string summaryJson;
+            serializeJson(summary, summaryJson);
+            ble.update(bleState, summaryJson);
+        }
+
+
+        // Always run the engine so its state tracks reality while alerts are
+        // off. Each alert gets its configured level, sound and wording;
+        // everything raised in the same pass goes out as one notification.
+        // Push channels need the master switch, paired phones only Bluetooth.
+        const time_t wallClock = time(nullptr);
+        const uint32_t epoch = wallClock >= 1704067200 ? static_cast<uint32_t>(wallClock) : 0;
+        std::vector<Alerts::Alert> outgoing;
+        uint32_t alarmFlags = 0;
+        for (Alerts::Alert alert : alertEngine.update(in, rules))
+        {
+            const AlertsConfig::EventSetting *setting = eventSettingFor(a, alert.type);
+            if (setting == nullptr || setting->level == 0)
+                continue;
+            alert.level = static_cast<Alerts::AlertLevel>(setting->level);
+            alert.sound = setting->sound;
+            applyAlertTemplate(alert, *setting, alertVars(cfg, obs, night, alert));
+            if (alert.level == Alerts::AlertLevel::Wake)
+                alarmFlags |= status.reasonFlags | (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UNSAFE_RAIN : 0u) |
+                              (alert.type == Alerts::AlertType::SensorFault || alert.type == Alerts::AlertType::LensFault ? Alpaca::UNSAFE_SENSOR_FAULT : 0u);
+            outgoing.push_back(std::move(alert));
+        }
+        // Switched off (not imaging): state is still tracked above, nothing goes out.
+        if (!outgoing.empty() && alertsArmed)
+        {
+            const Alerts::Alert notification = Alerts::stackAlerts(outgoing);
+            if (cfg.alerts.enabled)
+            {
+                alertDispatcher->dispatch(notification, cfg.alerts, cfg.deviceName);
+                ble.publishAlert(notification);
+                for (const Alerts::Alert &sent : outgoing)
+                    if (sent.type == Alerts::AlertType::Unsafe || sent.type == Alerts::AlertType::Safe)
+                        SafetyHistory::recordAlert(sent.type == Alerts::AlertType::Safe);
+            }
+            if (notification.level == Alerts::AlertLevel::Wake)
+                ble.raiseAlarm(alarmFlags, epoch);
+            else
+                ble.raiseInfo(status.reasonFlags, epoch);
+        }
+
+        uint32_t acknowledged = 0;
+        bool fromPhone = false;
+        if (ble.processAcks(acknowledged, fromPhone) && cfg.alerts.enabled)
+        {
+            Alerts::Alert ack;
+            ack.type = Alerts::AlertType::Acknowledged;
+            ack.level = Alerts::AlertLevel::Quiet;
+            ack.title = "Alarm acknowledged";
+            ack.message = std::string("Phone alarm #") + std::to_string(acknowledged) + " was acknowledged " +
+                          (fromPhone ? "on a phone." : "in the web UI.");
+            alertDispatcher->dispatch(ack, cfg.alerts, cfg.deviceName);
+        }
+    }
+
+    void WebServer::applyPendingArm()
+    {
+        const int8_t requested = pendingArm.exchange(-1);
+        if (requested < 0 || (requested == 1) == alertsArmed)
+            return;
+        alertsArmed = requested == 1;
+        Logger::info(TAG, "Alerts %s", alertsArmed ? "on" : "off");
+        Preferences prefs;
+        if (prefs.begin(ARMED_NVS_NAMESPACE, false))
+        {
+            prefs.putBool("armed", alertsArmed);
+            prefs.end();
+        }
+        SafetyHistory::recordArmed(alertsArmed);
+        publishArmedState();
+
+        const Config &cfg = getConfigCallback();
+        if (alertsArmed && cfg.alerts.enabled)
+        {
+            // One quiet line so you know where things stand as you start.
+            const SafetyStatus safety = getSafetyStatus();
+            Alerts::Alert on;
+            on.type = Alerts::AlertType::AlertsOn;
+            on.level = Alerts::AlertLevel::Quiet;
+            on.title = "Alerts on";
+            if (safety.evaluatedAtMs == 0)
+                on.message = "Safety not evaluated yet.";
+            else if (safety.isSafe)
+                on.message = "Observatory safe.";
+            else
+                on.message = "Observatory UNSAFE" + (safety.reasons.empty() ? std::string(".") : ":\n" + Alerts::joinReasons(safety.reasons));
+            alertDispatcher->dispatch(on, cfg.alerts, cfg.deviceName);
+        }
+    }
+
+    void WebServer::publishArmedState()
+    {
+        if (mqttClient == nullptr || !mqttClient->isConnected())
+            return;
+        if (mqttClient->publishSubtopic("alerts/armed", alertsArmed ? "1" : "0", true))
+            mqttArmedConnection = mqttClient->connectionCount();
+    }
+
+    std::vector<std::pair<std::string, std::string>> WebServer::alertVars(const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs,
+                                                                           const NightState &night, const Alerts::Alert &alert)
+    {
+        auto num = [](bool valid, double value, int decimals) -> std::string
+        {
+            if (!valid)
+                return "--";
+            char buffer[24];
+            snprintf(buffer, sizeof(buffer), "%.*f", decimals, value);
+            return buffer;
+        };
+        const AlertsConfig &a = cfg.alerts;
+        const AlpacaConfig &limits = cfg.alpaca;
+        char clock[8] = "--:--";
+        char date[12] = "--";
+        const time_t now = time(nullptr);
+        if (now >= 1704067200)
+        {
+            struct tm local;
+            localtime_r(&now, &local);
+            strftime(clock, sizeof(clock), "%H:%M", &local);
+            strftime(date, sizeof(date), "%Y-%m-%d", &local);
+        }
+
+        // Readings and settings first; the event's own values (reasons,
+        // sensor, ...) come after and win on a name clash.
+        std::vector<std::pair<std::string, std::string>> vars = {
+            {"device", cfg.deviceName},
+            {"event", Alerts::alertTypeName(alert.type)},
+            {"level", Alerts::alertLevelName(alert.level)},
+            {"time", clock},
+            {"date", date},
+            {"sqm", num(obs.skyLight.valid, obs.skyQualityMagArcsec2, 2)},
+            {"sqm_min", num(true, limits.sqmMinSafe, 2)},
+            {"cloud", num(obs.irSky.valid, obs.cloudCoverPercent, 0)},
+            {"cloud_max", num(true, limits.cloudCoverUnsafePercent, 0)},
+            {"clear_below", num(true, a.clearSkyCloudPercent, 0)},
+            {"cloudy_above", num(true, a.cloudedOverCloudPercent, 0)},
+            {"sky_temp", num(obs.irSky.valid, obs.skyTemperatureC, 1)},
+            {"temp", num(obs.environment.valid, obs.temperatureC, 1)},
+            {"humidity", num(obs.environment.valid, obs.humidityPercent, 0)},
+            {"humidity_max", num(true, limits.humidityMaxSafe, 0)},
+            {"dewpoint", num(obs.environment.valid, obs.dewpointC, 1)},
+            {"dew_margin", num(obs.environment.valid, obs.temperatureC - obs.dewpointC, 1)},
+            {"pressure", num(obs.environment.valid, obs.pressureHPa, 0)},
+            {"rain_rate", num(obs.rain.valid, obs.rainRateMmPerHour, 1)},
+            {"wind", num(obs.wind.valid, obs.windSpeedMs, 1)},
+            {"gust", num(obs.wind.valid, obs.windGustMs, 1)},
+            {"sun_alt", num(night.known, night.sunAltitudeDeg, 1)},
+        };
+        vars.insert(vars.end(), alert.vars.begin(), alert.vars.end());
+        return vars;
+    }
+
+    void WebServer::applyAlertTemplate(Alerts::Alert &alert, const AlertsConfig::EventSetting &setting,
+                                       const std::vector<std::pair<std::string, std::string>> &vars)
+    {
+        if (!setting.title.empty())
+            alert.title = Alerts::renderTemplate(setting.title, vars);
+        if (!setting.message.empty())
+            alert.message = Alerts::renderTemplate(setting.message, vars);
+        // Not needed past this point, and the recent-alerts list keeps alerts.
+        alert.vars.clear();
+        alert.vars.shrink_to_fit();
+    }
+
+    const AlertsConfig::EventSetting *WebServer::eventSettingFor(const AlertsConfig &a, Alerts::AlertType type)
+    {
+        switch (type)
+        {
+        case Alerts::AlertType::Unsafe:
+            return &a.unsafe;
+        case Alerts::AlertType::Safe:
+            return &a.safe;
+        case Alerts::AlertType::RainStarted:
+            return &a.rainStarted;
+        case Alerts::AlertType::RainStopped:
+            return &a.rainStopped;
+        case Alerts::AlertType::SensorFault:
+        case Alerts::AlertType::LensFault:
+            return &a.sensorFault;
+        case Alerts::AlertType::SensorRecovered:
+            return &a.sensorRecovered;
+        case Alerts::AlertType::DewRisk:
+            return &a.dewRisk;
+        case Alerts::AlertType::ClearSky:
+            return &a.clearSky;
+        case Alerts::AlertType::CloudedOver:
+            return &a.cloudedOver;
+        default:
+            return nullptr;
+        }
+    }
+
+    void WebServer::publishMqttSafety(const SafetyStatus &status)
+    {
+        const uint32_t now = millis();
+        const bool changed = !mqttSafetyPublished || status.isSafe != mqttLastPublishedSafe;
+        if (!changed && now - mqttSafetyPublishedAt < MQTT_SAFETY_REPUBLISH_MS)
+            return;
+
+        if (mqttClient != nullptr)
+            mqttClient->setSafety(status.isSafe);
+
+        DynamicJsonDocument doc(1024);
+        doc["isSafe"] = status.isSafe;
+        doc["safe"] = status.isSafe ? 1 : 0;
+        JsonArray reasons = doc.createNestedArray("reasons");
+        for (const std::string &reason : status.reasons)
+            reasons.add(reason);
+        std::string payload;
+        serializeJson(doc, payload);
+
+        // <topic>/safe is the bare 1/0 for loggers and simple automations.
+        if (mqttClient != nullptr && mqttClient->publishSubtopic("safety", payload, true) &&
+            mqttClient->publishSubtopic("safe", status.isSafe ? "1" : "0", true))
+        {
+            mqttSafetyPublished = true;
+            mqttLastPublishedSafe = status.isSafe;
+            mqttSafetyPublishedAt = now;
+        }
+    }
+
+    void WebServer::setupAlertRoutes()
+    {
+        server.on("/api/alerts/test", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+
+            const String channel = request->hasParam("channel") ? request->getParam("channel")->value() : String("all");
+            const AlertsConfig &alerts = getConfigCallback().alerts;
+            uint8_t mask = 0;
+            if (channel == "all")
+                mask = ALERT_CHANNELS_ALL;
+            else if (channel == "mqtt")
+                mask = alertChannelBit(AlertChannel::Mqtt);
+            else if (channel == "pushover")
+                mask = alertChannelBit(AlertChannel::Pushover);
+            else if (channel == "ntfy")
+                mask = alertChannelBit(AlertChannel::Ntfy);
+            else if (channel == "webhook")
+                mask = alertChannelBit(AlertChannel::Webhook);
+            else {
+                request->send(400, "application/json", createErrorJson("Unknown channel (expected mqtt, pushover, ntfy, webhook or all)").c_str());
+                return;
+            }
+
+            const uint8_t enabledMask =
+                (alerts.mqttEnabled ? alertChannelBit(AlertChannel::Mqtt) : 0) |
+                (alerts.pushoverEnabled ? alertChannelBit(AlertChannel::Pushover) : 0) |
+                (alerts.ntfyEnabled ? alertChannelBit(AlertChannel::Ntfy) : 0) |
+                (alerts.webhookEnabled ? alertChannelBit(AlertChannel::Webhook) : 0);
+            // ?event=rain_started&level=4&sound=siren sends a sample of that
+            // event at the given level, so unsaved choices can be tried out.
+            int8_t event = -1;
+            uint8_t level = 2;
+            String sound;
+            String title;
+            String message;
+            if (request->hasParam("event"))
+            {
+                const String key = request->getParam("event")->value();
+                for (size_t i = 0; i < sizeof(SAMPLE_ALERTS) / sizeof(SAMPLE_ALERTS[0]); ++i)
+                    if (key == SAMPLE_ALERTS[i].key)
+                        event = static_cast<int8_t>(i);
+                if (event < 0) {
+                    request->send(400, "application/json", createErrorJson("Unknown event").c_str());
+                    return;
+                }
+                level = request->hasParam("level") ? static_cast<uint8_t>(request->getParam("level")->value().toInt()) : 2;
+                if (level < 1 || level > 4) {
+                    request->send(400, "application/json", createErrorJson("Level must be 1-4").c_str());
+                    return;
+                }
+                sound = request->hasParam("sound") ? request->getParam("sound")->value() : String();
+                if (sound.length() > 32) {
+                    request->send(400, "application/json", createErrorJson("Sound name too long").c_str());
+                    return;
+                }
+                title = request->hasParam("title") ? request->getParam("title")->value() : String();
+                message = request->hasParam("message") ? request->getParam("message")->value() : String();
+                if (title.length() > AlertsConfig::MAX_TEMPLATE_TITLE || message.length() > AlertsConfig::MAX_TEMPLATE_MESSAGE) {
+                    request->send(400, "application/json", createErrorJson("Title is up to 80 characters and message up to 240").c_str());
+                    return;
+                }
+            }
+
+            uint8_t sendMask = mask & enabledMask;
+            const bool ringsPhone = event >= 0 && level == 4 && ble.alarmStatus().serviceActive;
+            if (sendMask == 0 && ringsPhone)
+                sendMask = BLE_ONLY_TEST;
+            if (sendMask == 0) {
+                request->send(400, "application/json", createErrorJson("That channel isn't enabled - enable it and save settings first").c_str());
+                return;
+            }
+
+            portENTER_CRITICAL(&pendingAlertTestLock);
+            pendingAlertTest.mask |= sendMask;
+            pendingAlertTest.event = event;
+            pendingAlertTest.level = level;
+            strlcpy(pendingAlertTest.sound, sound.c_str(), sizeof(pendingAlertTest.sound));
+            strlcpy(pendingAlertTest.title, title.c_str(), sizeof(pendingAlertTest.title));
+            strlcpy(pendingAlertTest.message, message.c_str(), sizeof(pendingAlertTest.message));
+            portEXIT_CRITICAL(&pendingAlertTestLock);
+            request->send(202, "application/json", "{\"success\":true,\"message\":\"Test notification queued\"}"); });
+
+        server.on("/api/alerts/clear", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+            alertDispatcher->clearRecent();
+            request->send(200, "application/json", "{\"success\":true}"); });
+
+        server.on("/api/ble/ack", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+            if (!ble.alarmStatus().alarmActive) {
+                request->send(409, "application/json", createErrorJson("No phone alarm is active").c_str());
+                return;
+            }
+            ble.requestLocalAck();
+            request->send(202, "application/json", "{\"success\":true}"); });
+
+        server.on("/api/ble/forget-bonds", HTTP_POST, [this](AsyncWebServerRequest *request)
+                  {
+            if (!requireAuth(request))
+                return;
+            if (!ble.isActive()) {
+                request->send(409, "application/json", createErrorJson("Bluetooth is off").c_str());
+                return;
+            }
+            ble.requestForgetBonds();
+            request->send(202, "application/json", "{\"success\":true}"); });
+
+        // Alerts on/off for automations (Home Assistant rest_command,
+        // N.I.N.A. sequence scripts): POST /api/alerts/arm or /disarm.
+        auto armRoute = [this](bool armed)
+        {
+            return [this, armed](AsyncWebServerRequest *request)
+            {
+                if (!requireAuth(request))
+                    return;
+                pendingArm = armed ? 1 : 0;
+                request->send(202, "application/json", armed ? "{\"armed\":true}" : "{\"armed\":false}");
+            };
+        };
+        server.on("/api/alerts/arm", HTTP_POST, armRoute(true));
+        server.on("/api/alerts/disarm", HTTP_POST, armRoute(false));
+        server.on("/api/alerts/armed", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            const int8_t pending = pendingArm.load();
+            const bool armed = pending >= 0 ? pending == 1 : alertsArmed;
+            std::string json = std::string("{\"armed\":") + (armed ? "true" : "false") +
+                               ",\"armWithAlpaca\":" + (getConfigCallback().alerts.armWithAlpaca ? "true" : "false") + "}";
+            request->send(200, "application/json", json.c_str()); });
+
+        server.on("/api/alerts/recent", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            const std::vector<AlertRecord> records = alertDispatcher->recent();
+            DynamicJsonDocument doc(8192);
+            doc["enabled"] = getConfigCallback().alerts.enabled;
+            const int8_t pending = pendingArm.load();
+            doc["armed"] = pending >= 0 ? pending == 1 : alertsArmed;
+            JsonArray arr = doc.createNestedArray("alerts");
+            const uint32_t nowSeconds = millis() / 1000;
+            // Newest first
+            for (auto it = records.rbegin(); it != records.rend(); ++it) {
+                JsonObject item = arr.createNestedObject();
+                item["id"] = it->id;
+                item["event"] = Alerts::alertTypeName(it->alert.type);
+                item["title"] = it->alert.title;
+                item["message"] = it->alert.message;
+                item["level"] = Alerts::alertLevelName(it->alert.level);
+                item["ageSeconds"] = nowSeconds - it->uptimeSeconds;
+                if (it->epochSeconds != 0)
+                    item["timestamp"] = it->epochSeconds;
+                JsonObject channels = item.createNestedObject("channels");
+                for (size_t i = 0; i < ALERT_CHANNEL_COUNT; ++i) {
+                    if (it->status[i] == DeliveryStatus::NotSent)
+                        continue;
+                    JsonObject ch = channels.createNestedObject(alertChannelName(static_cast<AlertChannel>(i)));
+                    ch["status"] = deliveryStatusName(it->status[i]);
+                    ch["detail"] = it->detail[i];
+                }
+            }
+            std::string json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json.c_str()); });
+    }
+
+    SafetyStatus WebServer::getSafetyStatus() const
+    {
+        SafetyStatus copy;
+        if (safetyMutex && xSemaphoreTake(safetyMutex, pdMS_TO_TICKS(100)) == pdTRUE)
+        {
+            copy = safetyStatus;
+            xSemaphoreGive(safetyMutex);
+        }
+        return copy;
+    }
+
     Alpaca::ObservingConditionsSnapshot WebServer::buildAlpacaObservingConditionsSnapshot() const
     {
         const SensorSnapshot snapshot = getSensorSnapshot();
         const uint32_t now = millis();
-        const uint32_t staleAfter = getConfigCallback().sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
-        const bool stale = snapshot.dataTimestamp == 0 || ageMs(now, snapshot.dataTimestamp) > staleAfter;
+        const Config &cfg = getConfigCallback();
+        const uint32_t staleAfter = cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
+
+        auto sourceState = [now, staleAfter](bool present, SensorStatus status, uint32_t lastUpdate)
+        {
+            Alpaca::SourceState state;
+            state.present = present;
+            state.ageSeconds = ageMs(now, lastUpdate) / 1000.0;
+            state.valid = present && status == SensorStatus::OK && lastUpdate != 0 && ageMs(now, lastUpdate) <= staleAfter;
+            return state;
+        };
 
         Alpaca::ObservingConditionsSnapshot snap;
-        snap.dataValid = !stale;
+        snap.skyLight = sourceState(true, snapshot.tsl.status, snapshot.tslLastUpdate);
+        snap.irSky = sourceState(true, snapshot.mlx.status, snapshot.mlxLastUpdate);
+        snap.environment = sourceState(true, snapshot.bme.status, snapshot.bmeLastUpdate);
 
-        const Config &cfg = getConfigCallback();
-        bool usingHumidityFallback = snapshot.bme.status != SensorStatus::OK;
-        float humidity = usingHumidityFallback ? 53.0f : snapshot.bme.humidity;
+        // The RG-15 polls on its own interval and tracks its own staleness.
+        snap.rain.present = cfg.rain.enabled;
+        snap.rain.ageSeconds = ageMs(now, snapshot.rg15.timestamp) / 1000.0;
+        snap.rain.valid = cfg.rain.enabled && snapshot.rg15.online && !snapshot.rg15.stale &&
+                          snapshot.rg15.status == SensorStatus::OK && snapshot.rg15.timestamp != 0;
+
+        // The anemometer samples every second; allow a few missed ticks.
+        constexpr uint32_t WIND_STALE_MS = 5000;
+        const bool windFresh = snapshot.wind.status == SensorStatus::OK && snapshot.wind.timestamp != 0 &&
+                               ageMs(now, snapshot.wind.timestamp) <= WIND_STALE_MS;
+        snap.wind.present = cfg.wind.enabled;
+        snap.wind.valid = cfg.wind.enabled && windFresh;
+        snap.wind.ageSeconds = ageMs(now, snapshot.wind.timestamp) / 1000.0;
+        snap.windVane.present = cfg.wind.enabled && cfg.wind.directionEnabled;
+        // Calm is valid (direction reported as 0); only a vane fault isn't.
+        snap.windVane.valid = snap.windVane.present && windFresh && !snapshot.wind.vaneFault;
+        snap.windVane.ageSeconds = snap.wind.ageSeconds;
+        snap.windSpeedMs = snapshot.wind.speedMs;
+        snap.windGustMs = snapshot.wind.gustMs;
+        snap.windDirectionDeg = snapshot.wind.directionValid ? snapshot.wind.directionDeg : 0.0f;
+
+        // Cloud cover may use a nominal humidity when the BME280 is down -
+        // it only shifts the correction term - but Alpaca's Humidity
+        // property must never report that made-up value.
+        const float humidityForCloud = snap.environment.valid ? snapshot.bme.humidity : 53.0f;
         CloudMetrics cloudMetrics = CloudDetection::calculate(
             snapshot.mlx.objectTemp,
             snapshot.mlx.ambientTemp,
-            humidity,
+            humidityForCloud,
             cfg.cloudDetection.clearSkyThreshold,
             cfg.cloudDetection.cloudyThreshold,
             cfg.cloudDetection.humidityCorrection);
@@ -985,83 +1681,12 @@ namespace SQM
         snap.skyBrightnessLux = snapshot.tsl.lux;
         snap.skyTemperatureC = snapshot.mlx.objectTemp;
         snap.temperatureC = snapshot.bme.temperature;
-        snap.humidityPercent = humidity;
+        snap.humidityPercent = snapshot.bme.humidity;
         snap.dewpointC = snapshot.bme.dewpoint;
+        snap.pressureHPa = snapshot.bme.pressure;
+        snap.rainRateMmPerHour = Alpaca::rainRateToMmPerHour(snapshot.rg15.rInt, snapshot.rg15.imperial);
 
         return snap;
-    }
-
-    namespace
-    {
-        constexpr size_t ALPACA_SAFETY_MONITOR = 0;
-        constexpr size_t ALPACA_OBSERVING_CONDITIONS = 1;
-
-        // Interface versions advertised via InterfaceVersion. These are the
-        // ASCOM Platform 7 versions, which add Connect/Disconnect/Connecting/
-        // DeviceState to every device.
-        constexpr int SAFETY_MONITOR_INTERFACE_VERSION = 3;
-        constexpr int OBSERVING_CONDITIONS_INTERFACE_VERSION = 2;
-
-        struct ObservingPropertyName
-        {
-            const char *route;      // lowercase Alpaca method name
-            const char *stateName;  // PascalCase name used in DeviceState
-        };
-
-        constexpr ObservingPropertyName OBSERVING_PROPERTIES[] = {
-            {"cloudcover", "CloudCover"},
-            {"dewpoint", "DewPoint"},
-            {"humidity", "Humidity"},
-            {"pressure", "Pressure"},
-            {"rainrate", "RainRate"},
-            {"skybrightness", "SkyBrightness"},
-            {"skyquality", "SkyQuality"},
-            {"skytemperature", "SkyTemperature"},
-            {"starfwhm", "StarFWHM"},
-            {"temperature", "Temperature"},
-            {"winddirection", "WindDirection"},
-            {"windgust", "WindGust"},
-            {"windspeed", "WindSpeed"}};
-
-        // ISO 8601 UTC timestamp for DeviceState, or empty if the clock has
-        // never been set (NTP/GPS) - a 1970 timestamp would be worse than none.
-        std::string alpacaTimestampNow()
-        {
-            const time_t now = time(nullptr);
-            if (now < 1704067200)
-                return "";
-            struct tm utc;
-            gmtime_r(&now, &utc);
-            char buffer[32];
-            strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &utc);
-            return buffer;
-        }
-
-        std::string buildAlpacaResponseDeviceState(AsyncWebServerRequest *request, const std::function<void(JsonArray &)> &fill, uint32_t &txnCounter)
-        {
-            DynamicJsonDocument doc(1536);
-            JsonArray arr = doc.createNestedArray("Value");
-            fill(arr);
-            const std::string timestamp = alpacaTimestampNow();
-            if (!timestamp.empty())
-            {
-                JsonObject item = arr.createNestedObject();
-                item["Name"] = "TimeStamp";
-                item["Value"] = timestamp;
-            }
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++txnCounter;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            return json;
-        }
-
-        void sendAlpacaBadRequest(AsyncWebServerRequest *request, const char *message)
-        {
-            request->send(400, "text/plain", message);
-        }
     }
 
     void WebServer::setupAlpacaRoutes()
@@ -1075,179 +1700,62 @@ namespace SQM
         server.on("/setup", HTTP_GET, [](AsyncWebServerRequest *request)
                   { request->redirect("/settings?section=alpaca"); });
 
-        // --- Management API ---
-        server.on("/management/apiversions", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  { request->send(200, "application/json", buildAlpacaResponseIntArray(request, {1}, alpacaServerTransactionId).c_str()); });
+        // --- Management + device API ---
+        // Everything is handled by Alpaca::Router (lib/AlpacaLogic), which the
+        // native simulator ConformU tests in CI also runs. One handler per
+        // prefix: registering ~50 routes separately cost ~10 KB of heap.
+        server.on("/management", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  { handleAlpacaRequest(request); });
+        server.on("/api/v1", HTTP_ANY, [this](AsyncWebServerRequest *request)
+                  { handleAlpacaRequest(request); });
+    }
 
-        server.on("/management/v1/description", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  {
-            DynamicJsonDocument doc(384);
-            JsonObject value = doc.createNestedObject("Value");
-            value["ServerName"] = FIRMWARE_NAME;
-            value["Manufacturer"] = "SQMeter";
-            value["ManufacturerVersion"] = FIRMWARE_VERSION;
-            value["Location"] = getConfigCallback().deviceName;
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++alpacaServerTransactionId;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            request->send(200, "application/json", json.c_str()); });
+    Alpaca::ServerIdentity WebServer::alpacaIdentity()
+    {
+        return {FIRMWARE_NAME, "SQMeter", FIRMWARE_VERSION, ESP.getEfuseMac()};
+    }
 
-        server.on("/management/v1/configureddevices", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  {
-            const uint64_t mac = ESP.getEfuseMac();
-            DynamicJsonDocument doc(768);
-            JsonArray value = doc.createNestedArray("Value");
-            if (getConfigCallback().alpaca.enabled) {
-                JsonObject safety = value.createNestedObject();
-                safety["DeviceName"] = "SQMeter SafetyMonitor";
-                safety["DeviceType"] = "SafetyMonitor";
-                safety["DeviceNumber"] = 0;
-                safety["UniqueID"] = Alpaca::buildUniqueId(mac, "safetymonitor", 0);
+    bool WebServer::AlpacaBackend::alpacaEnabled() const { return owner.getConfigCallback().alpaca.enabled; }
+    bool WebServer::AlpacaBackend::isSafe() const { return owner.getSafetyStatus().isSafe; }
+    Alpaca::ObservingConditionsSnapshot WebServer::AlpacaBackend::observingConditions() const { return owner.buildAlpacaObservingConditionsSnapshot(); }
+    std::string WebServer::AlpacaBackend::location() const { return owner.getConfigCallback().deviceName; }
 
-                JsonObject obsCond = value.createNestedObject();
-                obsCond["DeviceName"] = "SQMeter ObservingConditions";
-                obsCond["DeviceType"] = "ObservingConditions";
-                obsCond["DeviceNumber"] = 0;
-                obsCond["UniqueID"] = Alpaca::buildUniqueId(mac, "observingconditions", 0);
-            }
-            doc["ClientTransactionID"] = getAlpacaClientTransactionId(request);
-            doc["ServerTransactionID"] = ++alpacaServerTransactionId;
-            doc["ErrorNumber"] = 0;
-            doc["ErrorMessage"] = "";
-            std::string json;
-            serializeJson(doc, json);
-            request->send(200, "application/json", json.c_str()); });
+    // ISO 8601 UTC for DeviceState, or empty if the clock has never been set
+    // (NTP/GPS) - a 1970 timestamp would be worse than none.
+    std::string WebServer::AlpacaBackend::timestampUtc() const
+    {
+        const time_t now = time(nullptr);
+        if (now < 1704067200)
+            return "";
+        struct tm utc;
+        gmtime_r(&now, &utc);
+        char buffer[32];
+        strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &utc);
+        return buffer;
+    }
 
-        // --- Common ASCOM device API, registered identically for both devices ---
-        auto registerCommonRoutes = [this](const std::string &basePath, size_t deviceIndex, int interfaceVersion,
-                                           const std::string &name, const std::string &description)
+    void WebServer::handleAlpacaRequest(AsyncWebServerRequest *request)
+    {
+        Alpaca::Request alpaca;
+        alpaca.get = request->method() == HTTP_GET;
+        alpaca.put = request->method() == HTTP_PUT;
+        alpaca.path = request->url().c_str();
+        const size_t count = request->params();
+        alpaca.params.reserve(count);
+        for (size_t i = 0; i < count; ++i)
         {
-            server.on((basePath + "/connected").c_str(), HTTP_GET, [this, deviceIndex](AsyncWebServerRequest *request)
-                      {
-                const bool connected = getConfigCallback().alpaca.enabled && alpacaConnected[deviceIndex];
-                request->send(200, "application/json", buildAlpacaResponseBool(request, connected, 0, "").c_str()); });
-
-            server.on((basePath + "/connected").c_str(), HTTP_PUT, [this, deviceIndex](AsyncWebServerRequest *request)
-                      {
-                const AsyncWebParameter *param = findAlpacaParam(request, "Connected");
-                bool connected = false;
-                if (param == nullptr || !Alpaca::parseAlpacaBool(param->value().c_str(), connected)) {
-                    sendAlpacaBadRequest(request, "Missing or invalid Connected parameter (expected true or false)");
-                    return;
-                }
-                if (connected && !getConfigCallback().alpaca.enabled) {
-                    request->send(200, "application/json", buildAlpacaResponseVoid(request, Alpaca::ALPACA_ERR_NOT_CONNECTED, "Alpaca support is disabled in device settings").c_str());
-                    return;
-                }
-                alpacaConnected[deviceIndex] = connected;
-                request->send(200, "application/json", buildAlpacaResponseVoid(request, 0, "").c_str()); });
-
-            // Platform 7 asynchronous connect: connecting completes instantly,
-            // so Connecting is always false.
-            server.on((basePath + "/connect").c_str(), HTTP_PUT, [this, deviceIndex](AsyncWebServerRequest *request)
-                      {
-                if (!getConfigCallback().alpaca.enabled) {
-                    request->send(200, "application/json", buildAlpacaResponseVoid(request, Alpaca::ALPACA_ERR_NOT_CONNECTED, "Alpaca support is disabled in device settings").c_str());
-                    return;
-                }
-                alpacaConnected[deviceIndex] = true;
-                request->send(200, "application/json", buildAlpacaResponseVoid(request, 0, "").c_str()); });
-            server.on((basePath + "/disconnect").c_str(), HTTP_PUT, [this, deviceIndex](AsyncWebServerRequest *request)
-                      {
-                alpacaConnected[deviceIndex] = false;
-                request->send(200, "application/json", buildAlpacaResponseVoid(request, 0, "").c_str()); });
-            server.on((basePath + "/connecting").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
-                      { request->send(200, "application/json", buildAlpacaResponseBool(request, false, 0, "").c_str()); });
-
-            server.on((basePath + "/name").c_str(), HTTP_GET, [this, name](AsyncWebServerRequest *request)
-                      { request->send(200, "application/json", buildAlpacaResponseString(request, name, alpacaServerTransactionId).c_str()); });
-            server.on((basePath + "/description").c_str(), HTTP_GET, [this, description](AsyncWebServerRequest *request)
-                      { request->send(200, "application/json", buildAlpacaResponseString(request, description, alpacaServerTransactionId).c_str()); });
-            server.on((basePath + "/driverinfo").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
-                      { request->send(200, "application/json", buildAlpacaResponseString(request, "Native ESP32 firmware, no external bridge - https://github.com/DeanJ87/SQMeter", alpacaServerTransactionId).c_str()); });
-            server.on((basePath + "/driverversion").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
-                      { request->send(200, "application/json", buildAlpacaResponseString(request, FIRMWARE_VERSION, alpacaServerTransactionId).c_str()); });
-            server.on((basePath + "/interfaceversion").c_str(), HTTP_GET, [this, interfaceVersion](AsyncWebServerRequest *request)
-                      { request->send(200, "application/json", buildAlpacaResponseInt(request, interfaceVersion, alpacaServerTransactionId).c_str()); });
-            server.on((basePath + "/supportedactions").c_str(), HTTP_GET, [this](AsyncWebServerRequest *request)
-                      { request->send(200, "application/json", buildAlpacaResponseStringArray(request, {}, alpacaServerTransactionId).c_str()); });
-
-            // No custom actions or raw commands are supported.
-            for (const char *method : {"/action", "/commandblind", "/commandbool", "/commandstring"})
-            {
-                server.on((basePath + method).c_str(), HTTP_PUT, [this](AsyncWebServerRequest *request)
-                          { request->send(200, "application/json", buildAlpacaResponseVoid(request, Alpaca::ALPACA_ERR_NOT_IMPLEMENTED, "Custom actions and commands are not supported").c_str()); });
-            }
-        };
-
-        registerCommonRoutes("/api/v1/safetymonitor/0", ALPACA_SAFETY_MONITOR, SAFETY_MONITOR_INTERFACE_VERSION,
-                             "SQMeter SafetyMonitor",
-                             "Reports observatory safety based on cloud cover, sky brightness, humidity, and dew-point margin from the onboard SQMeter sensors.");
-        registerCommonRoutes("/api/v1/observingconditions/0", ALPACA_OBSERVING_CONDITIONS, OBSERVING_CONDITIONS_INTERFACE_VERSION,
-                             "SQMeter ObservingConditions",
-                             "Reports sky quality, cloud cover, sky temperature, humidity, dew point, and ambient temperature from the onboard SQMeter sensors.");
-
-        // --- SafetyMonitor-specific ---
-        server.on("/api/v1/safetymonitor/0/issafe", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  {
-            if (!getConfigCallback().alpaca.enabled) {
-                request->send(200, "application/json", buildAlpacaResponseBool(request, false, Alpaca::ALPACA_ERR_NOT_CONNECTED, "Alpaca support is disabled in device settings").c_str());
-                return;
-            }
-            request->send(200, "application/json", buildAlpacaResponseBool(request, evaluateAlpacaSafety().isSafe, 0, "").c_str()); });
-
-        server.on("/api/v1/safetymonitor/0/devicestate", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  {
-            const bool isSafe = getConfigCallback().alpaca.enabled && evaluateAlpacaSafety().isSafe;
-            request->send(200, "application/json", buildAlpacaResponseDeviceState(request, [isSafe](JsonArray &arr) {
-                JsonObject item = arr.createNestedObject();
-                item["Name"] = "IsSafe";
-                item["Value"] = isSafe;
-            }, alpacaServerTransactionId).c_str()); });
-
-        // --- ObservingConditions-specific: one route per Alpaca property ---
-        server.on("/api/v1/observingconditions/0/averageperiod", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  { request->send(200, "application/json", buildAlpacaResponseDouble(request, 0.0, 0, "").c_str()); });
-
-        for (const ObservingPropertyName &property : OBSERVING_PROPERTIES)
-        {
-            std::string path = std::string("/api/v1/observingconditions/0/") + property.route;
-            std::string propertyName = property.route;
-            server.on(path.c_str(), HTTP_GET, [this, propertyName](AsyncWebServerRequest *request)
-                      {
-                if (!getConfigCallback().alpaca.enabled) {
-                    request->send(200, "application/json", buildAlpacaResponseDouble(request, 0, Alpaca::ALPACA_ERR_NOT_CONNECTED, "Alpaca support is disabled in device settings").c_str());
-                    return;
-                }
-
-                Alpaca::PropertyResult result = Alpaca::getObservingConditionsProperty(propertyName, buildAlpacaObservingConditionsSnapshot());
-                if (result.ok) {
-                    request->send(200, "application/json", buildAlpacaResponseDouble(request, result.value, 0, "").c_str());
-                } else {
-                    request->send(200, "application/json", buildAlpacaResponseDouble(request, 0, result.errorNumber, result.errorMessage).c_str());
-                } });
+            const AsyncWebParameter *param = request->getParam(i);
+            if (param != nullptr && !param->isFile())
+                alpaca.params.emplace_back(param->name().c_str(), param->value().c_str());
         }
-
-        server.on("/api/v1/observingconditions/0/devicestate", HTTP_GET, [this](AsyncWebServerRequest *request)
-                  {
-            const bool enabled = getConfigCallback().alpaca.enabled;
-            const Alpaca::ObservingConditionsSnapshot snapshot = buildAlpacaObservingConditionsSnapshot();
-            request->send(200, "application/json", buildAlpacaResponseDeviceState(request, [enabled, &snapshot](JsonArray &arr) {
-                if (!enabled)
-                    return;
-                // DeviceState lists only properties that currently have a value.
-                for (const ObservingPropertyName &property : OBSERVING_PROPERTIES) {
-                    Alpaca::PropertyResult result = Alpaca::getObservingConditionsProperty(property.route, snapshot);
-                    if (!result.ok)
-                        continue;
-                    JsonObject item = arr.createNestedObject();
-                    item["Name"] = property.stateName;
-                    item["Value"] = result.value;
-                }
-            }, alpacaServerTransactionId).c_str()); });
+        Alpaca::Response response;
+        if (!alpacaRouter.handle(alpaca, response))
+        {
+            response.status = 400;
+            response.contentType = "text/plain";
+            response.body = "Invalid Alpaca device type, device number, method or HTTP verb";
+        }
+        request->send(response.status, response.contentType, response.body.c_str());
     }
 
     void WebServer::handleAlpacaDiscovery()
@@ -1588,7 +2096,8 @@ namespace SQM
 
     void WebServer::broadcastSensorData()
     {
-        if (wsSensors.count() == 0)
+        // Skip a beat rather than queue more behind a slow client.
+        if (wsSensors.count() == 0 || !wsSensors.availableForWriteAll())
             return;
 
         // Send only sensor data to Dashboard clients
@@ -1598,7 +2107,7 @@ namespace SQM
 
     void WebServer::broadcastStatusData()
     {
-        if (wsStatus.count() == 0)
+        if (wsStatus.count() == 0 || !wsStatus.availableForWriteAll())
             return;
 
         // Send only status data to System page clients
@@ -1689,9 +2198,26 @@ namespace SQM
         return timestamp == 0 ? 0 : now - timestamp;
     }
 
+    void WebServer::appendSafetyStatus(JsonObject target) const
+    {
+        const SafetyStatus status = getSafetyStatus();
+        const uint32_t now = millis();
+        target["isSafe"] = status.isSafe;
+        target["safe"] = status.isSafe ? 1 : 0; // numeric, for loggers
+        target["rawSafe"] = status.rawSafe;
+        target["alpacaEnabled"] = getConfigCallback().alpaca.enabled;
+        target["reasonFlags"] = status.reasonFlags;
+        JsonArray reasons = target.createNestedArray("reasons");
+        for (const std::string &reason : status.reasons)
+            reasons.add(reason);
+        target["secondsUntilSafe"] = status.secondsUntilSafe;
+        target["evaluatedAgeMs"] = ageMs(now, status.evaluatedAtMs);
+        target["changedAgeMs"] = ageMs(now, status.changedAtMs);
+    }
+
     std::string WebServer::createSensorDataJson() const
     {
-        DynamicJsonDocument doc(5120);
+        DynamicJsonDocument doc(6144);
         const SensorSnapshot snapshot = getSensorSnapshot();
         const uint32_t now = millis();
         const uint32_t dataAge = ageMs(now, snapshot.dataTimestamp);
@@ -1798,11 +2324,29 @@ namespace SQM
             gps["ageMs"] = ageMs(now, gpsReading.timestamp);
         }
 
-        // RG-15 rain sensor data
+        // RG-15 rain sensor data (only when it's switched on)
+        if (getConfigCallback().rain.enabled)
         {
             JsonObject rain = doc.createNestedObject("rainSensor");
             appendRG15Diagnostics(rain, snapshot.rg15, snapshot.rg15Diagnostics, now);
         }
+
+        if (getConfigCallback().wind.enabled)
+        {
+            JsonObject wind = doc.createNestedObject("wind");
+            wind["status"] = static_cast<int>(snapshot.wind.status);
+            wind["speedMs"] = snapshot.wind.speedMs;
+            wind["gustMs"] = snapshot.wind.gustMs;
+            wind["instantMs"] = snapshot.wind.instantMs;
+            wind["directionValid"] = snapshot.wind.directionValid;
+            wind["directionDeg"] = snapshot.wind.directionDeg;
+            wind["vaneFault"] = snapshot.wind.vaneFault;
+            wind["samples"] = snapshot.wind.samples;
+            wind["ageMs"] = ageMs(now, snapshot.wind.timestamp);
+        }
+
+        JsonObject safety = doc.createNestedObject("safety");
+        appendSafetyStatus(safety);
 
         std::string json;
         serializeJson(doc, json);
@@ -1811,7 +2355,7 @@ namespace SQM
 
     std::string WebServer::createStatusJson() const
     {
-        StaticJsonDocument<4096> doc; // Includes MQTT, partition, and boot diagnostics
+        DynamicJsonDocument doc(6144); // Includes MQTT, partition, boot, sensor and BLE diagnostics
         const SensorSnapshot snapshot = getSensorSnapshot();
         const uint32_t now = millis();
 
@@ -1821,10 +2365,54 @@ namespace SQM
         firmware["version"] = FIRMWARE_VERSION;
         firmware["buildDate"] = FIRMWARE_BUILD_DATE;
         firmware["buildTime"] = FIRMWARE_BUILD_TIME;
+        firmware["variant"] = BleService::available() ? "ble" : "standard";
+
+        JsonObject bleStatus = doc.createNestedObject("ble");
+        bleStatus["available"] = BleService::available();
+        bleStatus["active"] = ble.isActive();
+        bleStatus["clients"] = ble.connectedClients();
+        const BleAlarmStatus bleAlarm = ble.alarmStatus();
+        JsonObject bleAlarmJson = bleStatus.createNestedObject("alarm");
+        bleAlarmJson["serviceActive"] = bleAlarm.serviceActive;
+        bleAlarmJson["active"] = bleAlarm.alarmActive;
+        bleAlarmJson["sequence"] = bleAlarm.sequence;
+        bleAlarmJson["acknowledgedSequence"] = bleAlarm.acknowledgedSequence;
+        bleAlarmJson["bondedPhones"] = bleAlarm.bondedPhones;
 
         // System stats
         doc["uptime"] = millis() / 1000;
         doc["freeHeap"] = ESP.getFreeHeap();
+        // Stack headroom (bytes never used). This handler runs on the
+        // AsyncTCP task, so "asyncTcp" is that task's own high-water mark.
+        JsonObject stacks = doc.createNestedObject("stackFree");
+        stacks["asyncTcp"] = uxTaskGetStackHighWaterMark(nullptr);
+        stacks["loop"] = loopTaskHandle != nullptr ? uxTaskGetStackHighWaterMark(loopTaskHandle) : 0;
+        doc["sensorSnapshotBytes"] = sizeof(SensorSnapshot);
+
+        const NightState night = computeNight(snapshot, getConfigCallback());
+        JsonObject sky = doc.createNestedObject("sky");
+        sky["locationSource"] = night.source != nullptr ? night.source : "none";
+        sky["nightKnown"] = night.known;
+        if (night.source != nullptr)
+        {
+            sky["latitude"] = serialized(String(night.latitude, 4));
+            sky["longitude"] = serialized(String(night.longitude, 4));
+        }
+        if (night.known)
+        {
+            sky["isNight"] = night.isNight;
+            sky["sunAltitudeDeg"] = serialized(String(night.sunAltitudeDeg, 1));
+        }
+
+        JsonArray heapStages = doc.createNestedArray("heapStages");
+        for (size_t i = 0; i < HeapTrace::count(); ++i)
+        {
+            const HeapTrace::Checkpoint &checkpoint = HeapTrace::at(i);
+            JsonObject stage = heapStages.createNestedObject();
+            stage["stage"] = checkpoint.stage;
+            stage["free"] = checkpoint.freeBytes;
+            stage["largest"] = checkpoint.largestBlock;
+        }
         doc["minFreeHeap"] = ESP.getMinFreeHeap();
         doc["maxAllocHeap"] = ESP.getMaxAllocHeap();
         doc["heapSize"] = ESP.getHeapSize();
@@ -1962,6 +2550,12 @@ namespace SQM
         rg15["initialized"] = snapshot.rg15Initialized;
         rg15["lastUpdate"] = snapshot.rg15LastUpdate;
 
+        JsonObject windStatus = sensors.createNestedObject("wind");
+        windStatus["enabled"] = getConfigCallback().wind.enabled;
+        windStatus["status"] = static_cast<int>(snapshot.wind.status);
+        windStatus["vaneFault"] = snapshot.wind.vaneFault;
+        windStatus["ageMs"] = ageMs(now, snapshot.wind.timestamp);
+
         // GPS data
         if (snapshot.gpsInitialized)
         {
@@ -1986,11 +2580,11 @@ namespace SQM
             mqtt["state"] = mqttStatus.state;
             mqtt["lastPublish"] = mqttStatus.lastPublishMs;
             mqtt["lastReconnectAttempt"] = mqttStatus.lastReconnectAttemptMs;
-            mqtt["broker"] = mqttStatus.broker.c_str(); // Explicitly convert std::string
+            mqtt["broker"] = mqttStatus.broker; // std::string: copied into the doc (mqttStatus dies before serializing)
             mqtt["port"] = mqttStatus.port;
-            mqtt["topic"] = mqttStatus.topic.c_str(); // Explicitly convert std::string
-            mqtt["availabilityTopic"] = mqttStatus.availabilityTopic.c_str();
-            mqtt["clientId"] = mqttStatus.clientId.c_str();
+            mqtt["topic"] = mqttStatus.topic;
+            mqtt["availabilityTopic"] = mqttStatus.availabilityTopic;
+            mqtt["clientId"] = mqttStatus.clientId;
         }
 
         std::string json;

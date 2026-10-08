@@ -1,7 +1,11 @@
 #include "Config.h"
+#include "BleAlarm.h"
 #include "Logger.h"
 #include <ArduinoJson.h>
 #include <Preferences.h>
+#include <nvs.h>
+#include <array>
+#include <cctype>
 #include <cmath>
 #include <cstring>
 
@@ -9,10 +13,22 @@ namespace SQM
 {
     static const char *NVS_NAMESPACE = "sqm";
     static const char *NVS_CONFIG_KEY = "config";
+    static const char *NVS_ALERTS_KEY = "alerts";
     static const char *SECRET_MASK = "********";
 
     namespace
     {
+        void trimInPlace(std::string &value)
+        {
+            const size_t start = value.find_first_not_of(" \t\r\n");
+            if (start == std::string::npos)
+            {
+                value.clear();
+                return;
+            }
+            value = value.substr(start, value.find_last_not_of(" \t\r\n") - start + 1);
+        }
+
         bool isPlaceholderSecret(const char *value)
         {
             return value == nullptr || value[0] == '\0' ||
@@ -133,47 +149,86 @@ namespace SQM
         }
     } // namespace
 
-    std::optional<Config> Config::load()
+    namespace
+    {
+        // Reads an NVS string straight into heap memory. Preferences::getString()
+        // copies through a variable-length array on the stack - ~2 KB for the
+        // config JSON, which nearly overflowed the 8 KB loop task during setup().
+        bool readNvsString(const char *key, std::string &out)
+        {
+            nvs_handle_t handle;
+            if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK)
+                return false;
+            size_t length = 0;
+            bool ok = nvs_get_str(handle, key, nullptr, &length) == ESP_OK && length > 0;
+            if (ok)
+            {
+                out.assign(length, '\0');
+                ok = nvs_get_str(handle, key, &out[0], &length) == ESP_OK;
+                out.resize(length > 0 ? length - 1 : 0); // drop the terminator
+            }
+            nvs_close(handle);
+            return ok;
+        }
+
+        size_t nvsStringLength(const char *key)
+        {
+            nvs_handle_t handle;
+            if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK)
+                return 0;
+            size_t length = 0;
+            if (nvs_get_str(handle, key, nullptr, &length) != ESP_OK)
+                length = 0;
+            nvs_close(handle);
+            return length > 0 ? length - 1 : 0;
+        }
+    }
+
+    bool Config::load(Config &out)
     {
         Logger::info(TAG, "Loading configuration from NVS");
 
-        Preferences prefs;
-        if (!prefs.begin(NVS_NAMESPACE, true))
-        {
-            Logger::error(TAG, "Failed to open NVS namespace");
-            return std::nullopt;
-        }
-
-        String jsonStr = prefs.getString(NVS_CONFIG_KEY, "");
-        prefs.end();
-
-        if (jsonStr.length() == 0)
+        std::string json;
+        if (!readNvsString(NVS_CONFIG_KEY, json) || json.empty())
         {
             Logger::warn(TAG, "No config found in NVS, creating default");
-            Config defaultCfg = createDefault();
-            if (defaultCfg.save())
+            out = createDefault();
+            if (out.save())
             {
                 Logger::info(TAG, "Default config saved successfully");
-                return defaultCfg;
+                return true;
             }
             Logger::error(TAG, "Failed to save default config");
-            return std::nullopt;
+            return false;
         }
 
-        Logger::info(TAG, "Loaded config JSON (%u bytes)", static_cast<unsigned>(jsonStr.length()));
+        Logger::info(TAG, "Loaded config JSON (%u bytes)", static_cast<unsigned>(json.length()));
 
-        std::string json = jsonStr.c_str();
-        auto config = fromJson(json);
-        if (config)
+        // Alerts live under their own NVS key; splice them into the main
+        // document and parse once, straight into the caller's Config.
+        std::string alertsJson;
+        const size_t close = json.rfind('}');
+        const bool haveAlerts = readNvsString(NVS_ALERTS_KEY, alertsJson) && !alertsJson.empty() && close != std::string::npos;
+        if (haveAlerts)
+            json.insert(close, std::string(",\"alerts\":") + alertsJson);
+
+        out = createDefault();
+        bool ok = applyJson(json, out, false);
+        if (!ok && haveAlerts)
         {
-            Logger::info(TAG, "Config parsed successfully - SSID: '%s'", config->wifi.ssid.c_str());
+            // A corrupt alerts entry mustn't take the whole config down.
+            Logger::error(TAG, "Failed to parse config JSON with alerts - retrying without them");
+            json.erase(close, std::string(",\"alerts\":").size() + alertsJson.size());
+            out = createDefault();
+            ok = applyJson(json, out, false);
         }
+
+        if (ok)
+            Logger::info(TAG, "Config parsed successfully - SSID: '%s'", out.wifi.ssid.c_str());
         else
-        {
             Logger::error(TAG, "Failed to parse config JSON");
-        }
 
-        return config;
+        return ok;
     }
 
     bool Config::save() const
@@ -187,8 +242,10 @@ namespace SQM
             return false;
         }
 
-        std::string json = toJson();
-        Logger::info(TAG, "Config JSON to save (%u bytes)", static_cast<unsigned>(json.length()));
+        std::string json = toJson(false, false);
+        const std::string alertsJson = alertsToJson(false);
+        Logger::info(TAG, "Config JSON to save (%u bytes, alerts %u bytes)", static_cast<unsigned>(json.length()),
+                     static_cast<unsigned>(alertsJson.length()));
 
         if (json.length() > MAX_PERSISTED_JSON_BYTES)
         {
@@ -206,7 +263,14 @@ namespace SQM
         }
 
         size_t written = prefs.putString(NVS_CONFIG_KEY, json.c_str());
+        const size_t alertsWritten = prefs.putString(NVS_ALERTS_KEY, alertsJson.c_str());
         prefs.end();
+
+        if (alertsWritten == 0)
+        {
+            Logger::error(TAG, "Failed to write alerts config to NVS");
+            return false;
+        }
 
         if (written == 0)
         {
@@ -216,14 +280,7 @@ namespace SQM
 
         Logger::info(TAG, "Configuration saved successfully to NVS (%u bytes)", static_cast<unsigned>(written));
 
-        // Verify by reading back
-        Preferences verifyPrefs;
-        if (verifyPrefs.begin(NVS_NAMESPACE, true))
-        {
-            String verified = verifyPrefs.getString(NVS_CONFIG_KEY, "");
-            verifyPrefs.end();
-            Logger::info(TAG, "Verification: NVS contains %u bytes", static_cast<unsigned>(verified.length()));
-        }
+        Logger::info(TAG, "Verification: NVS contains %u bytes", static_cast<unsigned>(nvsStringLength(NVS_CONFIG_KEY)));
 
         return true;
     }
@@ -317,13 +374,134 @@ namespace SQM
         cfg.alpaca.humidityMaxSafe = 100.0f;
         cfg.alpaca.dewpointMarginEnabled = false;
         cfg.alpaca.dewpointMarginMinC = 0.0f;
+        cfg.alpaca.rainUnsafeEnabled = true;
+        cfg.alpaca.rainSensorRequired = true;
+        cfg.alpaca.safeDelaySeconds = 0;
+
+        cfg.alerts.enabled = false;
+        cfg.alerts.unsafe = {3, "", "", ""};
+        cfg.alerts.safe = {2, "", "", ""};
+        cfg.alerts.rainStarted = {4, "", "", ""};
+        cfg.alerts.rainStopped = {2, "", "", ""};
+        cfg.alerts.sensorFault = {4, "", "", ""};
+        cfg.alerts.sensorRecovered = {1, "", "", ""};
+        cfg.alerts.dewRisk = {0, "", "", ""};
+        cfg.alerts.clearSky = {0, "", "", ""};
+        cfg.alerts.cloudedOver = {0, "", "", ""};
+        cfg.alerts.dewRiskMarginC = 2.0f;
+        cfg.alerts.clearSkyCloudPercent = 20.0f;
+        cfg.alerts.cloudedOverCloudPercent = 70.0f;
+        cfg.alerts.skyNightOnly = true;
+        cfg.alerts.safetyNightOnly = true;
+        cfg.alerts.armWithAlpaca = false;
+        cfg.alerts.nightSunAltitudeDeg = -12.0f;
+        cfg.alerts.cooldownSeconds = 300;
+        cfg.alerts.pushoverEnabled = false;
+        cfg.alerts.ntfyEnabled = false;
+        cfg.alerts.ntfyServer = "https://ntfy.sh";
+        cfg.alerts.webhookEnabled = false;
+        cfg.alerts.webhookInsecureTls = false;
+        cfg.alerts.mqttEnabled = false;
+
+        cfg.ble.enabled = false;
+
+        cfg.location.set = false;
+        cfg.location.latitude = 0.0;
+        cfg.location.longitude = 0.0;
+        cfg.location.showSunMoon = true;
+
+        cfg.wind.enabled = false;
+        cfg.wind.speedPin = 27;
+        cfg.wind.directionEnabled = false;
+        cfg.wind.directionPin = 35;
+        cfg.wind.kmhPerHz = 2.4f;
+        cfg.wind.directionOffsetDeg = 0.0f;
+        cfg.wind.vanePullupOhms = 10000.0f;
+        cfg.alpaca.windSpeedUnsafeEnabled = false;
+        cfg.alpaca.windSpeedUnsafeMs = 10.0f;
+        cfg.alpaca.windGustUnsafeEnabled = false;
+        cfg.alpaca.windGustUnsafeMs = 15.0f;
 
         return cfg;
     }
 
-    std::string Config::toJson(bool redactSecrets) const
+    namespace
     {
-        DynamicJsonDocument doc(5120);
+        // JSON key for each configurable event, matching the alert event names.
+        std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, 9> eventSettings(const AlertsConfig &a)
+        {
+            return {{{"unsafe", &a.unsafe},
+                     {"safe", &a.safe},
+                     {"rain_started", &a.rainStarted},
+                     {"rain_stopped", &a.rainStopped},
+                     {"sensor_fault", &a.sensorFault},
+                     {"sensor_recovered", &a.sensorRecovered},
+                     {"dew_risk", &a.dewRisk},
+                     {"clear_sky", &a.clearSky},
+                     {"clouded_over", &a.cloudedOver}}};
+        }
+
+        void appendAlerts(JsonObject alerts, const AlertsConfig &a, bool redactSecrets)
+        {
+            auto secret = [redactSecrets](const std::string &value) -> const char *
+            {
+                return redactSecrets && !value.empty() ? SECRET_MASK : value.c_str();
+            };
+
+            alerts["enabled"] = a.enabled;
+            JsonObject events = alerts.createNestedObject("events");
+            for (const auto &entry : eventSettings(a))
+            {
+                JsonObject event = events.createNestedObject(entry.first);
+                event["level"] = entry.second->level;
+                event["sound"] = entry.second->sound.c_str();
+                event["title"] = entry.second->title.c_str();
+                event["message"] = entry.second->message.c_str();
+            }
+            alerts["dewRiskMarginC"] = a.dewRiskMarginC;
+            alerts["clearSkyCloudPercent"] = a.clearSkyCloudPercent;
+            alerts["cloudedOverCloudPercent"] = a.cloudedOverCloudPercent;
+            alerts["skyNightOnly"] = a.skyNightOnly;
+            alerts["safetyNightOnly"] = a.safetyNightOnly;
+            alerts["armWithAlpaca"] = a.armWithAlpaca;
+            alerts["nightSunAltitudeDeg"] = a.nightSunAltitudeDeg;
+            alerts["cooldownSeconds"] = a.cooldownSeconds;
+
+            JsonObject pushover = alerts.createNestedObject("pushover");
+            pushover["enabled"] = a.pushoverEnabled;
+            pushover["userKey"] = secret(a.pushoverUserKey);
+            pushover["appToken"] = secret(a.pushoverAppToken);
+            pushover["sound"] = a.pushoverSound.c_str();
+
+            JsonObject ntfy = alerts.createNestedObject("ntfy");
+            ntfy["enabled"] = a.ntfyEnabled;
+            ntfy["server"] = a.ntfyServer.c_str();
+            ntfy["topic"] = a.ntfyTopic.c_str();
+            ntfy["token"] = secret(a.ntfyToken);
+
+            JsonObject webhook = alerts.createNestedObject("webhook");
+            webhook["enabled"] = a.webhookEnabled;
+            webhook["url"] = a.webhookUrl.c_str();
+            webhook["authHeader"] = secret(a.webhookAuthHeader);
+            webhook["insecureTls"] = a.webhookInsecureTls;
+
+            JsonObject mqtt = alerts.createNestedObject("mqtt");
+            mqtt["enabled"] = a.mqttEnabled;
+        }
+    }
+
+    std::string Config::alertsToJson(bool redactSecrets) const
+    {
+        DynamicJsonDocument doc(2048); // strings are referenced, not copied
+        appendAlerts(doc.to<JsonObject>(), alerts, redactSecrets);
+        std::string json;
+        serializeJson(doc, json);
+        return json;
+    }
+
+    std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
+    {
+        DynamicJsonDocument doc(8192);
 
         doc["deviceName"] = deviceName;
         doc["timezone"] = timezone;
@@ -421,6 +599,35 @@ namespace SQM
         alpaca["humidityMaxSafe"] = this->alpaca.humidityMaxSafe;
         alpaca["dewpointMarginEnabled"] = this->alpaca.dewpointMarginEnabled;
         alpaca["dewpointMarginMinC"] = this->alpaca.dewpointMarginMinC;
+        alpaca["rainUnsafeEnabled"] = this->alpaca.rainUnsafeEnabled;
+        alpaca["rainSensorRequired"] = this->alpaca.rainSensorRequired;
+        alpaca["safeDelaySeconds"] = this->alpaca.safeDelaySeconds;
+        alpaca["windSpeedUnsafeEnabled"] = this->alpaca.windSpeedUnsafeEnabled;
+        alpaca["windSpeedUnsafeMs"] = this->alpaca.windSpeedUnsafeMs;
+        alpaca["windGustUnsafeEnabled"] = this->alpaca.windGustUnsafeEnabled;
+        alpaca["windGustUnsafeMs"] = this->alpaca.windGustUnsafeMs;
+
+        JsonObject ble = doc.createNestedObject("ble");
+        ble["enabled"] = this->ble.enabled;
+        ble["passkey"] = redactSecrets && !this->ble.passkey.empty() ? SECRET_MASK : this->ble.passkey.c_str();
+
+        JsonObject location = doc.createNestedObject("location");
+        location["set"] = this->location.set;
+        location["latitude"] = this->location.latitude;
+        location["longitude"] = this->location.longitude;
+        location["showSunMoon"] = this->location.showSunMoon;
+
+        JsonObject wind = doc.createNestedObject("wind");
+        wind["enabled"] = this->wind.enabled;
+        wind["speedPin"] = this->wind.speedPin;
+        wind["directionEnabled"] = this->wind.directionEnabled;
+        wind["directionPin"] = this->wind.directionPin;
+        wind["kmhPerHz"] = this->wind.kmhPerHz;
+        wind["directionOffsetDeg"] = this->wind.directionOffsetDeg;
+        wind["vanePullupOhms"] = this->wind.vanePullupOhms;
+
+        if (includeAlerts)
+            appendAlerts(doc.createNestedObject("alerts"), this->alerts, redactSecrets);
 
         std::string output;
         serializeJson(doc, output);
@@ -618,22 +825,104 @@ namespace SQM
             return setError(error, "Alpaca: dewpoint margin threshold must be between 0 and 20 degrees C");
         }
 
+        if (alpaca.safeDelaySeconds > 3600)
+        {
+            return setError(error, "Alpaca: safe delay must be between 0 and 3600 seconds");
+        }
+
+        if (!std::isfinite(alpaca.windSpeedUnsafeMs) || alpaca.windSpeedUnsafeMs <= 0.0F || alpaca.windSpeedUnsafeMs > 60.0F)
+            return setError(error, "Alpaca: wind speed threshold must be between 0 and 60 m/s");
+        if (!std::isfinite(alpaca.windGustUnsafeMs) || alpaca.windGustUnsafeMs <= 0.0F || alpaca.windGustUnsafeMs > 80.0F)
+            return setError(error, "Alpaca: wind gust threshold must be between 0 and 80 m/s");
+
+        if (wind.enabled)
+        {
+            if (!isValidGpio(wind.speedPin))
+                return setError(error, "Wind: anemometer pin is not a valid GPIO");
+            if (wind.directionEnabled && (wind.directionPin < 32 || wind.directionPin > 39))
+                return setError(error, "Wind: vane pin must be an ADC1 pin (GPIO 32-39)");
+            const int used[] = {sensor.i2cSDA, sensor.i2cSCL, gps.enabled ? gps.rxPin : -1, gps.enabled ? gps.txPin : -1,
+                                rain.enabled ? rain.rxPin : -1, rain.enabled ? rain.txPin : -1};
+            for (int pin : used)
+            {
+                if (pin == wind.speedPin || (wind.directionEnabled && pin == wind.directionPin))
+                    return setError(error, "Wind: pin is already used by I2C, GPS or the rain sensor");
+            }
+            if (wind.directionEnabled && wind.directionPin == wind.speedPin)
+                return setError(error, "Wind: anemometer and vane need different pins");
+        }
+        if (!std::isfinite(wind.kmhPerHz) || wind.kmhPerHz <= 0.0F || wind.kmhPerHz > 20.0F)
+            return setError(error, "Wind: km/h per Hz must be between 0 and 20");
+        if (!std::isfinite(wind.directionOffsetDeg) || wind.directionOffsetDeg < -360.0F || wind.directionOffsetDeg > 360.0F)
+            return setError(error, "Wind: direction offset must be between -360 and 360 degrees");
+        if (!std::isfinite(wind.vanePullupOhms) || wind.vanePullupOhms < 1000.0F || wind.vanePullupOhms > 100000.0F)
+            return setError(error, "Wind: vane pull-up must be between 1k and 100k ohms");
+
+        if (!ble.passkey.empty())
+        {
+            uint32_t passkey = 0;
+            if (!Ble::parsePasskey(ble.passkey, passkey))
+                return setError(error, "Bluetooth: pairing passkey must be 6 digits (not 000000)");
+        }
+
+        auto isHttpUrl = [](const std::string &url)
+        {
+            return url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0;
+        };
+        if (alerts.cooldownSeconds > 86400)
+            return setError(error, "Alerts: cooldown must be between 0 and 86400 seconds");
+        if (!std::isfinite(alerts.dewRiskMarginC) || alerts.dewRiskMarginC < 0.0F || alerts.dewRiskMarginC > 10.0F)
+            return setError(error, "Alerts: dew risk margin must be between 0 and 10 degrees C");
+        if (!std::isfinite(alerts.clearSkyCloudPercent) || alerts.clearSkyCloudPercent < 0.0F || alerts.clearSkyCloudPercent > 100.0F)
+            return setError(error, "Alerts: clear sky threshold must be between 0 and 100 percent");
+        if (!std::isfinite(alerts.cloudedOverCloudPercent) || alerts.cloudedOverCloudPercent < 0.0F || alerts.cloudedOverCloudPercent > 100.0F ||
+            alerts.cloudedOverCloudPercent <= alerts.clearSkyCloudPercent)
+            return setError(error, "Alerts: the clouded-over threshold must be above the clear threshold");
+        if (!std::isfinite(alerts.nightSunAltitudeDeg) || alerts.nightSunAltitudeDeg < -20.0F || alerts.nightSunAltitudeDeg > 0.0F)
+            return setError(error, "Alerts: night must start with the sun between 0 and -20 degrees");
+        if (location.set && (!std::isfinite(location.latitude) || std::fabs(location.latitude) > 90.0 ||
+                             !std::isfinite(location.longitude) || std::fabs(location.longitude) > 180.0))
+            return setError(error, "Location: latitude must be -90..90 and longitude -180..180");
+        for (const auto &entry : eventSettings(alerts))
+        {
+            if (entry.second->level > 4)
+                return setError(error, "Alerts: event levels are 0 (off) to 4 (wake me)");
+            if (entry.second->title.size() > AlertsConfig::MAX_TEMPLATE_TITLE || entry.second->message.size() > AlertsConfig::MAX_TEMPLATE_MESSAGE)
+                return setError(error, "Alerts: custom titles are up to 80 characters and messages up to 240");
+        }
+        // NVS strings top out just under 4000 bytes.
+        if (alertsToJson(false).size() > 3900)
+            return setError(error, "Alerts: the custom alert texts are too long in total - shorten some");
+        if (alerts.pushoverEnabled && (alerts.pushoverUserKey.empty() || alerts.pushoverAppToken.empty()))
+            return setError(error, "Alerts: Pushover needs both a user key and an application token");
+        if (alerts.ntfyEnabled && (!isHttpUrl(alerts.ntfyServer) || alerts.ntfyTopic.empty()))
+            return setError(error, "Alerts: ntfy needs an http(s):// server and a topic");
+        if (alerts.webhookEnabled && !isHttpUrl(alerts.webhookUrl))
+            return setError(error, "Alerts: webhook URL must start with http:// or https://");
+
         return true;
     }
 
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig)
     {
-        DynamicJsonDocument doc(5120);
+        std::optional<Config> cfg(baseConfig != nullptr ? *baseConfig : createDefault());
+        if (!applyJson(json, *cfg, baseConfig != nullptr))
+            return std::nullopt;
+        return cfg;
+    }
+
+    bool Config::applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders)
+    {
+        // Parsing copies every string; custom alert texts can make the JSON
+        // bigger than the old fixed 8 KB.
+        DynamicJsonDocument doc(json.size() + 6144 > 8192 ? json.size() + 6144 : 8192);
         DeserializationError error = deserializeJson(doc, json);
 
         if (error)
         {
             Logger::error(TAG, "JSON parse error: %s", error.c_str());
-            return std::nullopt;
+            return false;
         }
-
-        Config cfg = baseConfig != nullptr ? *baseConfig : createDefault();
-        const bool preserveSecretPlaceholders = baseConfig != nullptr;
 
         if (doc.containsKey("deviceName"))
             cfg.deviceName = doc["deviceName"] | "SQM-ESP32";
@@ -836,6 +1125,168 @@ namespace SQM
                 cfg.alpaca.dewpointMarginEnabled = alpacaObj["dewpointMarginEnabled"] | false;
             if (alpacaObj.containsKey("dewpointMarginMinC"))
                 cfg.alpaca.dewpointMarginMinC = alpacaObj["dewpointMarginMinC"] | 0.0f;
+            if (alpacaObj.containsKey("rainUnsafeEnabled"))
+                cfg.alpaca.rainUnsafeEnabled = alpacaObj["rainUnsafeEnabled"] | true;
+            if (alpacaObj.containsKey("rainSensorRequired"))
+                cfg.alpaca.rainSensorRequired = alpacaObj["rainSensorRequired"] | true;
+            if (alpacaObj.containsKey("safeDelaySeconds"))
+                cfg.alpaca.safeDelaySeconds = alpacaObj["safeDelaySeconds"] | 0U;
+            if (alpacaObj.containsKey("windSpeedUnsafeEnabled"))
+                cfg.alpaca.windSpeedUnsafeEnabled = alpacaObj["windSpeedUnsafeEnabled"] | false;
+            if (alpacaObj.containsKey("windSpeedUnsafeMs"))
+                cfg.alpaca.windSpeedUnsafeMs = alpacaObj["windSpeedUnsafeMs"] | 10.0f;
+            if (alpacaObj.containsKey("windGustUnsafeEnabled"))
+                cfg.alpaca.windGustUnsafeEnabled = alpacaObj["windGustUnsafeEnabled"] | false;
+            if (alpacaObj.containsKey("windGustUnsafeMs"))
+                cfg.alpaca.windGustUnsafeMs = alpacaObj["windGustUnsafeMs"] | 15.0f;
+        }
+
+        JsonObject alertsObj = doc["alerts"];
+        if (!alertsObj.isNull())
+        {
+            AlertsConfig &a = cfg.alerts;
+            if (alertsObj.containsKey("enabled"))
+                a.enabled = alertsObj["enabled"] | false;
+            JsonObject events = alertsObj["events"];
+            if (!events.isNull())
+            {
+                AlertsConfig::EventSetting *targets[] = {&a.unsafe, &a.safe, &a.rainStarted, &a.rainStopped, &a.sensorFault,
+                                                         &a.sensorRecovered, &a.dewRisk, &a.clearSky, &a.cloudedOver};
+                size_t i = 0;
+                for (const auto &entry : eventSettings(a))
+                {
+                    JsonObject event = events[entry.first];
+                    if (!event.isNull())
+                    {
+                        if (event.containsKey("level"))
+                            targets[i]->level = event["level"] | targets[i]->level;
+                        if (event.containsKey("sound"))
+                            targets[i]->sound = event["sound"] | "";
+                        if (event.containsKey("title"))
+                            targets[i]->title = event["title"] | "";
+                        if (event.containsKey("message"))
+                            targets[i]->message = event["message"] | "";
+                    }
+                    ++i;
+                }
+            }
+            else
+            {
+                // Settings saved before per-event levels: on/off toggles.
+                auto off = [&alertsObj](const char *key) { return alertsObj.containsKey(key) && !(alertsObj[key] | true); };
+                auto on = [&alertsObj](const char *key) { return alertsObj[key] | false; };
+                if (off("onSafetyChange"))
+                    a.unsafe.level = a.safe.level = 0;
+                if (off("onRain"))
+                    a.rainStarted.level = a.rainStopped.level = 0;
+                if (off("onSensorFault"))
+                    a.sensorFault.level = a.sensorRecovered.level = 0;
+                if (on("onDewRisk"))
+                    a.dewRisk.level = 2;
+                if (on("onClearSky"))
+                    a.clearSky.level = 2;
+                if (on("onCloudedOver"))
+                    a.cloudedOver.level = 3;
+            }
+            if (alertsObj.containsKey("dewRiskMarginC"))
+                a.dewRiskMarginC = alertsObj["dewRiskMarginC"] | 2.0f;
+            if (alertsObj.containsKey("clearSkyCloudPercent"))
+                a.clearSkyCloudPercent = alertsObj["clearSkyCloudPercent"] | 20.0f;
+            if (alertsObj.containsKey("cloudedOverCloudPercent"))
+                a.cloudedOverCloudPercent = alertsObj["cloudedOverCloudPercent"] | 70.0f;
+            if (alertsObj.containsKey("skyNightOnly"))
+                a.skyNightOnly = alertsObj["skyNightOnly"] | true;
+            if (alertsObj.containsKey("safetyNightOnly"))
+                a.safetyNightOnly = alertsObj["safetyNightOnly"] | true;
+            if (alertsObj.containsKey("armWithAlpaca"))
+                a.armWithAlpaca = alertsObj["armWithAlpaca"] | false;
+            if (alertsObj.containsKey("nightSunAltitudeDeg"))
+                a.nightSunAltitudeDeg = alertsObj["nightSunAltitudeDeg"] | -12.0f;
+            if (alertsObj.containsKey("cooldownSeconds"))
+                a.cooldownSeconds = alertsObj["cooldownSeconds"] | 300U;
+
+            JsonObject pushover = alertsObj["pushover"];
+            if (!pushover.isNull())
+            {
+                if (pushover.containsKey("enabled"))
+                    a.pushoverEnabled = pushover["enabled"] | false;
+                assignSecret(pushover, "userKey", a.pushoverUserKey, preserveSecretPlaceholders);
+                assignSecret(pushover, "appToken", a.pushoverAppToken, preserveSecretPlaceholders);
+                // Pasted keys often carry a stray space or newline, which
+                // Pushover rejects as "not a valid user".
+                trimInPlace(a.pushoverUserKey);
+                trimInPlace(a.pushoverAppToken);
+                if (pushover.containsKey("sound"))
+                    a.pushoverSound = pushover["sound"] | "";
+            }
+
+            JsonObject ntfy = alertsObj["ntfy"];
+            if (!ntfy.isNull())
+            {
+                if (ntfy.containsKey("enabled"))
+                    a.ntfyEnabled = ntfy["enabled"] | false;
+                if (ntfy.containsKey("server"))
+                    a.ntfyServer = ntfy["server"] | "https://ntfy.sh";
+                if (ntfy.containsKey("topic"))
+                    a.ntfyTopic = ntfy["topic"] | "";
+                assignSecret(ntfy, "token", a.ntfyToken, preserveSecretPlaceholders);
+            }
+
+            JsonObject webhook = alertsObj["webhook"];
+            if (!webhook.isNull())
+            {
+                if (webhook.containsKey("enabled"))
+                    a.webhookEnabled = webhook["enabled"] | false;
+                if (webhook.containsKey("url"))
+                    a.webhookUrl = webhook["url"] | "";
+                assignSecret(webhook, "authHeader", a.webhookAuthHeader, preserveSecretPlaceholders);
+                if (webhook.containsKey("insecureTls"))
+                    a.webhookInsecureTls = webhook["insecureTls"] | false;
+            }
+
+            JsonObject mqtt = alertsObj["mqtt"];
+            if (!mqtt.isNull() && mqtt.containsKey("enabled"))
+                a.mqttEnabled = mqtt["enabled"] | false;
+        }
+
+        JsonObject locationObj = doc["location"];
+        if (!locationObj.isNull())
+        {
+            if (locationObj.containsKey("set"))
+                cfg.location.set = locationObj["set"] | false;
+            if (locationObj.containsKey("latitude"))
+                cfg.location.latitude = locationObj["latitude"] | 0.0;
+            if (locationObj.containsKey("longitude"))
+                cfg.location.longitude = locationObj["longitude"] | 0.0;
+            if (locationObj.containsKey("showSunMoon"))
+                cfg.location.showSunMoon = locationObj["showSunMoon"] | true;
+        }
+
+        JsonObject windObj = doc["wind"];
+        if (!windObj.isNull())
+        {
+            if (windObj.containsKey("enabled"))
+                cfg.wind.enabled = windObj["enabled"] | false;
+            if (windObj.containsKey("speedPin"))
+                cfg.wind.speedPin = windObj["speedPin"] | 27;
+            if (windObj.containsKey("directionEnabled"))
+                cfg.wind.directionEnabled = windObj["directionEnabled"] | false;
+            if (windObj.containsKey("directionPin"))
+                cfg.wind.directionPin = windObj["directionPin"] | 35;
+            if (windObj.containsKey("kmhPerHz"))
+                cfg.wind.kmhPerHz = windObj["kmhPerHz"] | 2.4f;
+            if (windObj.containsKey("directionOffsetDeg"))
+                cfg.wind.directionOffsetDeg = windObj["directionOffsetDeg"] | 0.0f;
+            if (windObj.containsKey("vanePullupOhms"))
+                cfg.wind.vanePullupOhms = windObj["vanePullupOhms"] | 10000.0f;
+        }
+
+        JsonObject bleObj = doc["ble"];
+        if (!bleObj.isNull())
+        {
+            if (bleObj.containsKey("enabled"))
+                cfg.ble.enabled = bleObj["enabled"] | false;
+            assignSecret(bleObj, "passkey", cfg.ble.passkey, preserveSecretPlaceholders);
         }
 
         normalizeTimeSources(cfg);
@@ -844,10 +1295,35 @@ namespace SQM
         if (!cfg.validate(&validationError))
         {
             Logger::error(TAG, "Configuration validation failed: %s", validationError.c_str());
-            return std::nullopt;
+            return false;
         }
 
-        return cfg;
+        // Key format is only enforced for changes coming from the UI/API, so a
+        // key stored by older firmware never stops the config from loading.
+        if (preserveSecretPlaceholders && cfg.alerts.pushoverEnabled)
+        {
+            auto isPushoverKey = [](const std::string &key)
+            {
+                if (key.size() != 30)
+                    return false;
+                for (char c : key)
+                    if (!std::isalnum(static_cast<unsigned char>(c)))
+                        return false;
+                return true;
+            };
+            if (!isPushoverKey(cfg.alerts.pushoverUserKey))
+            {
+                Logger::error(TAG, "Pushover user key must be 30 letters and digits");
+                return false;
+            }
+            if (!isPushoverKey(cfg.alerts.pushoverAppToken))
+            {
+                Logger::error(TAG, "Pushover app token must be 30 letters and digits");
+                return false;
+            }
+        }
+
+        return true;
     }
 
 } // namespace SQM

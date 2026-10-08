@@ -3,6 +3,8 @@ import {
   configSchema,
   authConfigSchema,
   alpacaConfigSchema,
+  alertsConfigSchema,
+  windConfigSchema,
   getConfigValidationErrors,
   getConfigValidationMessage,
   hasConfigValidationErrors,
@@ -109,7 +111,7 @@ describe("frontend settings validation", () => {
     for (const part of parts.slice(0, -1)) {
       target = target[part] as Record<string, unknown>;
     }
-    target[parts.at(-1)!] = value;
+    target[parts[parts.length - 1]] = value;
     return candidate;
   };
 
@@ -234,7 +236,20 @@ describe("alpacaConfigSchema", () => {
     humidityMaxSafe: 100,
     dewpointMarginEnabled: false,
     dewpointMarginMinC: 0,
+    rainUnsafeEnabled: true,
+    rainSensorRequired: true,
+    safeDelaySeconds: 0,
+    windSpeedUnsafeEnabled: false,
+    windSpeedUnsafeMs: 10,
+    windGustUnsafeEnabled: false,
+    windGustUnsafeMs: 15,
   };
+
+  it("rejects a safe delay outside 0-3600 seconds", () => {
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, safeDelaySeconds: -1 }).success).toBe(false);
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, safeDelaySeconds: 3601 }).success).toBe(false);
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, safeDelaySeconds: 600 }).success).toBe(true);
+  });
 
   it("passes with valid defaults", () => {
     expect(alpacaConfigSchema.safeParse(validAlpaca).success).toBe(true);
@@ -304,5 +319,108 @@ describe("mockConfig", () => {
 
   it("does not expose a real password value in mqtt mock", () => {
     expect(mockConfig.mqtt.password).toBe("");
+  });
+});
+
+describe("alertsConfigSchema", () => {
+  const validAlerts = {
+    enabled: true,
+    events: { unsafe: { level: 3, sound: "" }, rain_started: { level: 4, sound: "siren" } },
+    dewRiskMarginC: 2,
+    clearSkyCloudPercent: 20,
+    cloudedOverCloudPercent: 70,
+    skyNightOnly: true,
+    safetyNightOnly: true,
+    nightSunAltitudeDeg: -12,
+    cooldownSeconds: 300,
+    pushover: { enabled: false, userKey: "", appToken: "", sound: "" },
+    ntfy: { enabled: false, server: "https://ntfy.sh", topic: "", token: "" },
+    webhook: { enabled: false, url: "", authHeader: "", insecureTls: false },
+    mqtt: { enabled: false },
+  };
+
+  it("passes with valid defaults", () => {
+    expect(alertsConfigSchema.safeParse(validAlerts).success).toBe(true);
+  });
+
+  it("rejects out-of-range levels and odd sound names", () => {
+    const withEvent = (level: number, sound: string) =>
+      alertsConfigSchema.safeParse({ ...validAlerts, events: { unsafe: { level, sound } } }).success;
+    expect(withEvent(5, "")).toBe(false);
+    expect(withEvent(2, "not a sound!")).toBe(false);
+    expect(withEvent(4, "persistent")).toBe(true);
+  });
+
+  it("requires 30-character Pushover keys (or the stored mask)", () => {
+    const key = "a".repeat(30);
+    const withKeys = (userKey: string, appToken: string) =>
+      alertsConfigSchema.safeParse({ ...validAlerts, pushover: { ...validAlerts.pushover, enabled: true, userKey, appToken } }).success;
+    expect(withKeys(key, key)).toBe(true);
+    expect(withKeys("********", "********")).toBe(true);
+    expect(withKeys(`${key} `, key)).toBe(true); // trailing space from a paste is trimmed
+    expect(withKeys("me@example.com", key)).toBe(false);
+    expect(withKeys(key, "short")).toBe(false);
+  });
+
+  it("requires Pushover credentials when Pushover is enabled", () => {
+    const result = alertsConfigSchema.safeParse({ ...validAlerts, pushover: { ...validAlerts.pushover, enabled: true } });
+    expect(result.success).toBe(false);
+  });
+
+  it("requires an ntfy topic and http(s) server", () => {
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, ntfy: { ...validAlerts.ntfy, enabled: true } }).success).toBe(false);
+    expect(
+      alertsConfigSchema.safeParse({ ...validAlerts, ntfy: { ...validAlerts.ntfy, enabled: true, topic: "x", server: "ntfy.sh" } }).success
+    ).toBe(false);
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, ntfy: { ...validAlerts.ntfy, enabled: true, topic: "x" } }).success).toBe(true);
+  });
+
+  it("requires an http(s) webhook URL", () => {
+    expect(
+      alertsConfigSchema.safeParse({ ...validAlerts, webhook: { ...validAlerts.webhook, enabled: true, url: "ftp://x" } }).success
+    ).toBe(false);
+  });
+
+  it("needs the clouded-over threshold above the clear one", () => {
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, clearSkyCloudPercent: 60, cloudedOverCloudPercent: 50 }).success).toBe(false);
+  });
+
+  it("caps the cooldown at 24 hours", () => {
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, cooldownSeconds: 86401 }).success).toBe(false);
+  });
+});
+
+describe("windConfigSchema", () => {
+  const validWind = {
+    enabled: true,
+    speedPin: 27,
+    directionEnabled: true,
+    directionPin: 35,
+    kmhPerHz: 2.4,
+    directionOffsetDeg: 0,
+    vanePullupOhms: 10000,
+  };
+
+  it("passes with valid defaults", () => {
+    expect(windConfigSchema.safeParse(validWind).success).toBe(true);
+  });
+
+  it("requires the vane on an ADC1 pin", () => {
+    expect(windConfigSchema.safeParse({ ...validWind, directionPin: 25 }).success).toBe(false);
+  });
+
+  it("rejects the same pin for anemometer and vane", () => {
+    expect(windConfigSchema.safeParse({ ...validWind, speedPin: 34, directionPin: 34 }).success).toBe(false);
+  });
+});
+
+describe("ble passkey", () => {
+  const base = { enabled: true };
+  const ble = configSchema.shape.ble.unwrap();
+  it("accepts empty, 6 digits, or the stored mask", () => {
+    for (const passkey of ["", "482913", "********"]) expect(ble.safeParse({ ...base, passkey }).success).toBe(true);
+  });
+  it("rejects anything else", () => {
+    for (const passkey of ["12345", "1234567", "abcdef", "000000"]) expect(ble.safeParse({ ...base, passkey }).success).toBe(false);
   });
 });

@@ -431,6 +431,84 @@ Returns immediately with `{"success":true,"message":"Update started"}` - the dow
 
 ---
 
+## Safety
+
+### `GET /api/safe`
+
+Plain text `1` (safe) or `0` (unsafe) - the SafetyMonitor verdict, for scripts and loggers (`curl -s http://sqmeter.local/api/safe`).
+
+### `GET /api/safety`
+
+The current SafetyMonitor verdict - the same value served to Alpaca clients as `IsSafe`, also as a numeric `safe` (1/0) - with the reasons behind it. The same object is included as `safety` in every `/ws/sensors` message.
+
+```json
+{
+  "isSafe": false,
+  "safe": 0,
+  "rawSafe": false,
+  "alpacaEnabled": true,
+  "reasonFlags": 512,
+  "reasons": ["Rain detected"],
+  "secondsUntilSafe": 0,
+  "evaluatedAgeMs": 412,
+  "changedAgeMs": 1260000
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `isSafe` | Reported verdict, after the safe delay |
+| `rawSafe` | Instantaneous rule evaluation, before the safe delay |
+| `reasons` / `reasonFlags` | Why it's unsafe (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault) |
+| `secondsUntilSafe` | Remaining safe-delay countdown while `rawSafe` is true but `isSafe` isn't yet |
+| `changedAgeMs` | Time since `isSafe` last changed |
+
+---
+
+## Alerts
+
+See [Alerts](../user-guide/alerts.md) for setup.
+
+### `POST /api/alerts/test?channel=<mqtt|pushover|ntfy|webhook|all>`
+
+Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. `400` if the channel is unknown or not enabled. Requires HTTP auth when enabled.
+
+Add `event=<unsafe|safe|rain_started|rain_stopped|sensor_fault|sensor_recovered|dew_risk|clear_sky|clouded_over>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Level 4 (wake me) also rings paired Bluetooth phones; with no push channel enabled, it only rings the phones. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`, filled in from current readings.
+
+### `GET /api/alerts/armed`, `POST /api/alerts/arm`, `POST /api/alerts/disarm`
+
+Alerts on/off, for automations: `{"armed": true, "armWithAlpaca": false}`. `arm`/`disarm` switch immediately (202) and the state survives restarts; while off nothing is sent and paired phones don't ring. POSTs require HTTP auth when enabled. `/api/alerts/recent` also carries `armed`.
+
+### `POST /api/alerts/clear`
+
+Empties the recent-alerts list. Requires HTTP auth when enabled.
+
+### `GET /api/safety/history`
+
+The last 32 safety changes, device restarts and safe/unsafe alerts sent, newest first. Kept in RTC memory, so it survives software restarts, crashes and OTA updates, not power cuts.
+
+```json
+{"boot":3,"uptime":4000,"entries":[
+  {"kind":"alert","boot":3,"uptime":3900,"timestamp":1759500000,"safe":false},
+  {"kind":"change","boot":3,"uptime":3899,"timestamp":1759499999,"safe":false,"held":false,"reasonFlags":48},
+  {"kind":"boot","boot":3,"uptime":0,"resetReason":3}]}
+```
+
+`held` marks unsafe only because of the safe delay. `resetReason` is ESP-IDF's `esp_reset_reason_t` (1 power on, 3 software restart, 4 crash, 5-7 watchdog, 9 brownout). `timestamp` is missing for entries from before the clock was set.
+
+### `GET /api/alerts/recent`
+
+Whether alerts are on, and the last 20 alerts since boot, newest first:
+
+```json
+{"enabled":true,"alerts":[{"id":2,"event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.4 mm/h).","level":"wake","ageSeconds":42,"timestamp":1759500000,
+  "channels":{"pushover":{"status":"sent","detail":"HTTP 200"},"mqtt":{"status":"failed","detail":"MQTT not connected"}}}]}
+```
+
+`status` is `pending`, `sent`, `failed` or `skipped`.
+
+---
+
 ## ASCOM Alpaca API
 
 SQMeter can emit itself directly as an ASCOM Alpaca **SafetyMonitor** and **ObservingConditions** device - see [ASCOM Alpaca](../user-guide/alpaca.md) for the full setup guide, N.I.N.A. configuration, and safety-rule reference. Summary of the HTTP surface (all under the same port-80 server as the rest of the API, response envelope per the [ASCOM Alpaca API spec](https://ascom-standards.org/api/)):
@@ -446,7 +524,9 @@ SQMeter can emit itself directly as an ASCOM Alpaca **SafetyMonitor** and **Obse
 | `GET /api/v1/<device>/0/name`, `description`, `driverinfo`, `driverversion`, `interfaceversion`, `supportedactions` | Common ASCOM device API |
 | `PUT /api/v1/<device>/0/action`, `commandblind`, `commandbool`, `commandstring` | Not supported - Alpaca error `0x400` (NotImplemented) |
 | `GET /api/v1/safetymonitor/0/issafe` | `true`/`false` from the safety-rule evaluation |
-| `GET /api/v1/observingconditions/0/<property>` | One route per Alpaca property (`cloudcover`, `dewpoint`, `humidity`, `skybrightness`, `skyquality`, `skytemperature`, `temperature`, `averageperiod`); unsupported properties (`pressure`, `rainrate`, `starfwhm`, `wind*`) return Alpaca error `0x400` (NotImplemented) |
+| `GET /api/v1/observingconditions/0/<property>` | One route per Alpaca property: `cloudcover`, `dewpoint`, `humidity`, `pressure`, `rainrate` (RG-15, mm/h), `skybrightness`, `skyquality`, `skytemperature`, `temperature`, `windspeed`/`windgust` (anemometer, m/s), `winddirection` (vane), `averageperiod`. `starfwhm`, and sensors that aren't enabled, return Alpaca error `0x400` (NotImplemented) |
+| `PUT /api/v1/observingconditions/0/averageperiod`, `refresh` | `AveragePeriod` must be `0`; `refresh` is a no-op |
+| `GET /api/v1/observingconditions/0/sensordescription`, `timesincelastupdate` | Require `SensorName` (a property name; empty = any sensor for `timesincelastupdate`) |
 
 `<device>` is `safetymonitor` or `observingconditions`. Parameter names (`ClientTransactionID`, `Connected`, ...) are case-insensitive, per the Alpaca spec. Any other path under `/api/v1/` (unknown device type/number, method, or HTTP verb) returns HTTP `400` with a plain-text message.
 

@@ -1,4 +1,4 @@
-import type { SensorData, SystemStatus, Config, GithubRelease, AlpacaConfiguredDevice } from "../types";
+import type { SensorData, SystemStatus, Config, GithubRelease, AlpacaConfiguredDevice, AlertRecord } from "../types";
 
 const jitter = (base: number, range: number) =>
   base + (Math.random() - 0.5) * range;
@@ -50,6 +50,28 @@ export function generateSensorData(): SensorData {
       altitude: 42.0,
       hdop: 1.1,
       age: Math.round(jitter(800, 100)),
+    },
+    wind: {
+      status: 0,
+      speedMs: parseFloat(jitter(3.2, 0.4).toFixed(1)),
+      gustMs: parseFloat(jitter(6.8, 0.3).toFixed(1)),
+      instantMs: parseFloat(jitter(3.5, 1.0).toFixed(1)),
+      directionValid: true,
+      directionDeg: Math.round(jitter(247, 8)),
+      vaneFault: false,
+      samples: 600,
+      ageMs: 400,
+    },
+    // Demo data shows rain, so the SafetyMonitor reports unsafe.
+    safety: {
+      isSafe: false,
+      rawSafe: false,
+      alpacaEnabled: true,
+      reasonFlags: 1 << 9,
+      reasons: ["Rain detected"],
+      secondsUntilSafe: 0,
+      evaluatedAgeMs: 400,
+      changedAgeMs: 1260000,
     },
     rainSensor: {
       enabled: true,
@@ -131,6 +153,7 @@ export function generateSensorData(): SensorData {
 }
 
 export const mockStatus: SystemStatus = {
+  sky: { locationSource: "gps", nightKnown: true, isNight: true, sunAltitudeDeg: -24.3 },
   firmware: {
     name: "SQMeter",
     version: "0.0.1",
@@ -351,6 +374,50 @@ export const mockConfig: Config = {
     humidityMaxSafe: 100,
     dewpointMarginEnabled: false,
     dewpointMarginMinC: 0,
+    rainUnsafeEnabled: true,
+    rainSensorRequired: true,
+    safeDelaySeconds: 0,
+    windSpeedUnsafeEnabled: true,
+    windSpeedUnsafeMs: 10,
+    windGustUnsafeEnabled: true,
+    windGustUnsafeMs: 15,
+  },
+  alerts: {
+    enabled: true,
+    events: {
+      unsafe: { level: 3, sound: "" },
+      safe: { level: 2, sound: "" },
+      rain_started: { level: 4, sound: "siren" },
+      rain_stopped: { level: 2, sound: "" },
+      sensor_fault: { level: 4, sound: "persistent" },
+      sensor_recovered: { level: 1, sound: "" },
+      dew_risk: { level: 1, sound: "" },
+      clear_sky: { level: 2, sound: "magic" },
+      clouded_over: { level: 4, sound: "" },
+    },
+    dewRiskMarginC: 2,
+    clearSkyCloudPercent: 20,
+    cloudedOverCloudPercent: 70,
+    skyNightOnly: true,
+    safetyNightOnly: true,
+    armWithAlpaca: false,
+    nightSunAltitudeDeg: -12,
+    cooldownSeconds: 300,
+    pushover: { enabled: true, userKey: "********", appToken: "********", sound: "" },
+    ntfy: { enabled: false, server: "https://ntfy.sh", topic: "", token: "" },
+    webhook: { enabled: false, url: "", authHeader: "", insecureTls: false },
+    mqtt: { enabled: false },
+  },
+  location: { set: false, latitude: 0, longitude: 0, showSunMoon: true },
+  ble: { enabled: false, passkey: '' },
+  wind: {
+    enabled: true,
+    speedPin: 27,
+    directionEnabled: true,
+    directionPin: 35,
+    kmhPerHz: 2.4,
+    directionOffsetDeg: 0,
+    vanePullupOhms: 10000,
   },
   rain: {
     enabled: true,
@@ -401,4 +468,25 @@ export const mockGithubReleases: GithubRelease[] = [
 export const mockAlpacaDevices: AlpacaConfiguredDevice[] = [
   { DeviceName: "SQMeter SafetyMonitor", DeviceType: "SafetyMonitor", DeviceNumber: 0, UniqueID: "sqmeter-a1b2c3d4e5f6-safetymonitor-0" },
   { DeviceName: "SQMeter ObservingConditions", DeviceType: "ObservingConditions", DeviceNumber: 0, UniqueID: "sqmeter-a1b2c3d4e5f6-observingconditions-0" },
+];
+
+export const mockRecentAlerts: AlertRecord[] = [
+  {
+    id: 2,
+    event: "unsafe",
+    title: "Observatory UNSAFE",
+    message: "\u2022 SQM 18.21 < 19.50\n\u2022 Cloud 62% >= 35%\n\u2022 Humidity 92% > 90%",
+    level: "urgent",
+    ageSeconds: 1260,
+    channels: { pushover: { status: "sent", detail: "HTTP 200" } },
+  },
+  {
+    id: 1,
+    event: "rain_started",
+    title: "Rain detected",
+    message: "The rain sensor reports rain (2.4 mm/h).",
+    level: "urgent",
+    ageSeconds: 1261,
+    channels: { pushover: { status: "sent", detail: "HTTP 200" } },
+  },
 ];

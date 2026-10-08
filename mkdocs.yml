@@ -76,9 +76,12 @@ nav:
     - MQTT Integration: user-guide/mqtt.md
     - OTA Updates: user-guide/ota.md
     - ASCOM Alpaca: user-guide/alpaca.md
+    - Alerts: user-guide/alerts.md
+    - Bluetooth (BLE): user-guide/ble.md
   - Hardware:
     - Overview: hardware/overview.md
     - RG-15 Rain Sensor: hardware/rg15.md
+    - Wind (anemometer): hardware/wind.md
     - Schematic: hardware/schematic.md
     - PCB: hardware/pcb.md
     - Enclosure: hardware/enclosure.md

@@ -946,9 +946,11 @@ namespace SQM
 
         const size_t rIntPos = line.find("RInt");
         size_t unitPos = rIntPos == std::string::npos ? std::string::npos : line.find("mmph", rIntPos);
+        reading.imperial = false;
         if (unitPos == std::string::npos)
         {
             unitPos = rIntPos == std::string::npos ? std::string::npos : line.find("iph", rIntPos);
+            reading.imperial = unitPos != std::string::npos;
         }
 
         if (unitPos != std::string::npos)

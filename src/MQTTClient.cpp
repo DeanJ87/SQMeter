@@ -31,6 +31,21 @@ namespace SQM
         connect();
     }
 
+    void MQTTClient::onCommand(const std::string &subtopic, CommandHandler handler)
+    {
+        commandSubtopic = subtopic;
+        commandHandler = std::move(handler);
+        mqttClient->setCallback([this](char *topic, uint8_t *payload, unsigned int length)
+                                {
+            if (commandHandler && config.topic + "/" + commandSubtopic == topic)
+                commandHandler(std::string(reinterpret_cast<const char *>(payload), length)); });
+        if (config.enabled && mqttClient->connected())
+        {
+            const std::string topic = config.topic + "/" + commandSubtopic;
+            mqttClient->subscribe(topic.c_str(), 1);
+        }
+    }
+
     void MQTTClient::handle()
     {
         if (!config.enabled)
@@ -156,6 +171,12 @@ namespace SQM
         {
             Logger::info(TAG, "Connected to MQTT broker as %s", clientId.c_str());
             publishAvailability(true);
+            if (commandHandler)
+            {
+                const std::string topic = config.topic + "/" + commandSubtopic;
+                mqttClient->subscribe(topic.c_str(), 1);
+            }
+            ++connections;
         }
         else
         {
@@ -200,6 +221,14 @@ namespace SQM
         return std::string(id);
     }
 
+    bool MQTTClient::publishSubtopic(const std::string &subtopic, const std::string &payload, bool retained)
+    {
+        if (!config.enabled || !mqttClient || !mqttClient->connected())
+            return false;
+        const std::string topic = config.topic + "/" + subtopic;
+        return mqttClient->publish(topic.c_str(), payload.c_str(), retained);
+    }
+
     std::string MQTTClient::getAvailabilityTopic() const
     {
         return config.topic + "/availability";
@@ -214,6 +243,8 @@ namespace SQM
         const bool timeValid = epochSeconds >= 1704067200; // 2024-01-01T00:00:00Z
         doc["timestamp"] = timeValid ? static_cast<int64_t>(epochSeconds) : static_cast<int64_t>(millis());
         doc["timeValid"] = timeValid;
+        if (safeState >= 0)
+            doc["safe"] = safeState;
 
         // TSL2591 data
         const auto &tslReading = tsl.getReading();

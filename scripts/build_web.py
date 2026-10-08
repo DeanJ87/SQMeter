@@ -57,6 +57,10 @@ def build_web_ui(*args, **kwargs):
         print("❌ Build failed: dist folder not found")
         raise Exception("Web UI build failed")
 
-# Hook into both buildfs and uploadfs targets
-env.AddPreAction("buildfs", build_web_ui)
-env.AddPreAction("uploadfs", build_web_ui)
+# Build the UI as soon as a filesystem target is requested, before SCons
+# plans the build. A pre-action on the "buildfs"/"uploadfs" aliases runs only
+# after littlefs.bin has already been packed from the old data/ folder, so
+# uploads shipped the previous web UI.
+FS_TARGETS = {"buildfs", "uploadfs", "uploadfsota"}
+if FS_TARGETS.intersection(COMMAND_LINE_TARGETS):
+    build_web_ui()

@@ -140,6 +140,11 @@ jobs:
       - name: Build LittleFS image
         run: pio run --target buildfs
 
+      # Optional BLE variant (larger app partitions, see partitions_ble.csv).
+      # Shares the standard LittleFS image - same 512 KB size.
+      - name: Build BLE firmware
+        run: pio run -e esp32dev-ble
+
       # Merge all pieces into a single binary for fresh ESP32 flashing.
       # NVS (0x9000) is intentionally excluded — it is user config and should
       # start empty so the device can be configured via the web UI on first boot.
@@ -156,6 +161,16 @@ jobs:
             0xe000  "${BOOT_APP0}" \
             0x10000 .pio/build/esp32dev/firmware.bin \
             0x310000 .pio/build/esp32dev/littlefs.bin
+          esptool.py --chip esp32 merge_bin \
+            -o .pio/build/esp32dev-ble/complete-flash.bin \
+            --flash_mode dio \
+            --flash_freq 40m \
+            --flash_size 4MB \
+            0x1000  .pio/build/esp32dev-ble/bootloader.bin \
+            0x8000  .pio/build/esp32dev-ble/partitions.bin \
+            0xe000  "${BOOT_APP0}" \
+            0x10000 .pio/build/esp32dev-ble/firmware.bin \
+            0x380000 .pio/build/esp32dev/littlefs.bin
 
       # PR builds: keep 5 days (inspection only). Tag builds go into GitHub Releases permanently.
       - name: Upload firmware artifact
@@ -182,6 +197,22 @@ jobs:
           if-no-files-found: error
           retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
+      - name: Upload BLE firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-ble
+          path: .pio/build/esp32dev-ble/firmware.bin
+          if-no-files-found: error
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
+
+      - name: Upload BLE complete flash artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: complete-flash-ble
+          path: .pio/build/esp32dev-ble/complete-flash.bin
+          if-no-files-found: error
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
+
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -199,6 +230,8 @@ jobs:
           mv firmware/firmware.bin             sqmeter-firmware-${VERSION}.bin
           mv littlefs/littlefs.bin             sqmeter-littlefs-${VERSION}.bin
           mv complete-flash/complete-flash.bin sqmeter-complete-flash-${VERSION}.bin
+          mv firmware-ble/firmware.bin             sqmeter-ble-firmware-${VERSION}.bin
+          mv complete-flash-ble/complete-flash.bin sqmeter-ble-complete-flash-${VERSION}.bin
 
       # Any tag with a semver prerelease segment (e.g. v0.1.4-beta.1) is
       # published as a GitHub prerelease, which is what the device's
@@ -224,3 +257,5 @@ jobs:
             sqmeter-firmware-*.bin
             sqmeter-littlefs-*.bin
             sqmeter-complete-flash-*.bin
+            sqmeter-ble-firmware-*.bin
+            sqmeter-ble-complete-flash-*.bin

@@ -1,6 +1,7 @@
 #include "OtaUpdater.h"
 #include "GithubRootCA.h"
 #include "Logger.h"
+#include "TlsLock.h"
 #include "version.h"
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -16,8 +17,27 @@ namespace SQM
     namespace
     {
         constexpr const char *TAG = "OtaUpdater";
-        constexpr const char *RELEASES_URL = "https://api.github.com/repos/DeanJ87/SQMeter/releases";
-        constexpr size_t JSON_DOC_CAPACITY = 24576;
+        // Only the newest few releases matter, and per_page keeps the
+        // response (and parse time over TLS) small.
+        constexpr const char *RELEASES_URL = "https://api.github.com/repos/DeanJ87/SQMeter/releases?per_page=8";
+        // Filtered, the current releases (6 releases x 3 assets) take 3.2 KB;
+        // 6 KB leaves room for 8 releases with the BLE assets added.
+        constexpr size_t JSON_DOC_CAPACITY = 6144;
+
+        // Keep only the fields parseReleases() reads. Release notes and
+        // uploader details are most of each release's JSON.
+        void buildReleaseFilter(JsonDocument &filter)
+        {
+            JsonObject release = filter.createNestedObject();
+            release["tag_name"] = true;
+            release["name"] = true;
+            release["prerelease"] = true;
+            release["published_at"] = true;
+            JsonObject asset = release["assets"].createNestedObject();
+            asset["name"] = true;
+            asset["browser_download_url"] = true;
+            asset["size"] = true;
+        }
         constexpr uint32_t HTTP_TIMEOUT_MS = 15000;
         constexpr size_t OTA_TASK_STACK_WORDS = 8192;
 
@@ -122,18 +142,30 @@ namespace SQM
         }
     }
 
+    namespace
+    {
+        std::vector<GithubRelease> parseReleases(const JsonDocument &doc, const std::string &track);
+    }
+
     std::vector<GithubRelease> parseGithubReleases(const std::string &json, const std::string &track)
     {
-        std::vector<GithubRelease> results;
-
+        StaticJsonDocument<256> filter;
+        buildReleaseFilter(filter);
         DynamicJsonDocument doc(JSON_DOC_CAPACITY);
-        DeserializationError err = deserializeJson(doc, json);
+        DeserializationError err = deserializeJson(doc, json, DeserializationOption::Filter(filter));
         if (err)
         {
             Logger::error(TAG, "Failed to parse releases JSON: %s", err.c_str());
-            return results;
+            return {};
         }
+        return parseReleases(doc, track);
+    }
 
+    namespace
+    {
+    std::vector<GithubRelease> parseReleases(const JsonDocument &doc, const std::string &track)
+    {
+        std::vector<GithubRelease> results;
         const bool wantPrerelease = (track == "beta");
 
         for (JsonObjectConst release : doc.as<JsonArrayConst>())
@@ -152,7 +184,14 @@ namespace SQM
                 continue;
 
             JsonArrayConst assets = release["assets"].as<JsonArrayConst>();
-            const bool hasFirmware = findAsset(assets, "sqmeter-firmware-", entry.firmwareAssetUrl, entry.firmwareAssetSize);
+            // BLE builds use larger app partitions and ship as their own asset;
+            // installing the standard firmware would silently drop BLE.
+#if SQM_ENABLE_BLE
+            const char *firmwarePrefix = "sqmeter-ble-firmware-";
+#else
+            const char *firmwarePrefix = "sqmeter-firmware-";
+#endif
+            const bool hasFirmware = findAsset(assets, firmwarePrefix, entry.firmwareAssetUrl, entry.firmwareAssetSize);
             const bool hasFs = findAsset(assets, "sqmeter-littlefs-", entry.fsAssetUrl, entry.fsAssetSize);
 
             // Firmware and web UI must always ship as a matched pair - a
@@ -166,6 +205,7 @@ namespace SQM
 
         return results;
     }
+    } // namespace
 
     OtaUpdater::OtaUpdater(ProgressCallback onProgress, ErrorCallback onError, RestartCallback onRestart)
         : progressCb(std::move(onProgress)), errorCb(std::move(onError)), restartCb(std::move(onRestart))
@@ -175,6 +215,27 @@ namespace SQM
     std::vector<GithubRelease> OtaUpdater::checkForUpdate(const std::string &track, std::string &error)
     {
         currentPhase = Phase::Checking;
+
+        // Allocate the parse buffer before the TLS session takes its ~45 KB:
+        // afterwards there may be no contiguous block left for it.
+        DynamicJsonDocument doc(JSON_DOC_CAPACITY);
+        StaticJsonDocument<256> filter;
+        buildReleaseFilter(filter);
+        if (doc.capacity() == 0)
+        {
+            error = "Not enough free memory to check for updates";
+            Logger::error(TAG, "%s (free %u, largest block %u)", error.c_str(), ESP.getFreeHeap(), ESP.getMaxAllocHeap());
+            currentPhase = Phase::Error;
+            return {};
+        }
+
+        TlsLock::Guard tls(15000);
+        if (!tls.ok())
+        {
+            error = "Busy sending alerts - try again in a moment";
+            currentPhase = Phase::Idle;
+            return {};
+        }
 
         WiFiClientSecure client;
         client.setCACert(GITHUB_ROOT_CA_PEM);
@@ -189,6 +250,9 @@ namespace SQM
         }
         http.addHeader("User-Agent", "SQMeter-ESP32");
         http.addHeader("Accept", "application/vnd.github+json");
+        // HTTP/1.0 means no chunked transfer encoding, so the JSON can be
+        // parsed straight off the TLS stream.
+        http.useHTTP10(true);
 
         int httpCode = http.GET();
         if (httpCode != HTTP_CODE_OK)
@@ -200,11 +264,28 @@ namespace SQM
             return {};
         }
 
-        std::string body = http.getString().c_str();
+        // Stream-parse with a filter instead of http.getString(): the full
+        // releases body (tens of KB of release notes) used to be held twice,
+        // on top of the TLS session, dropping free heap to ~10 KB.
+        // ArduinoJson reads through Stream::timedRead(), whose timeout (1 s
+        // by default) is separate from the socket timeout above; a slow TLS
+        // read on weak WiFi would otherwise end the parse early.
+        static_cast<Stream &>(client).setTimeout(HTTP_TIMEOUT_MS);
+        DeserializationError err = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
         http.end();
+        if (err)
+        {
+            error = err == DeserializationError::NoMemory ? std::string("Release list too large to read")
+                                                          : std::string("Couldn't read the GitHub releases list: ") + err.c_str();
+            Logger::error(TAG, "%s", error.c_str());
+            currentPhase = Phase::Error;
+            return {};
+        }
+        if (doc.overflowed())
+            Logger::warn(TAG, "Release list truncated - JSON_DOC_CAPACITY too small");
 
         currentPhase = Phase::Idle;
-        return parseGithubReleases(body, track);
+        return parseReleases(doc, track);
     }
 
     bool OtaUpdater::applyUpdate(const GithubRelease &release)
@@ -346,6 +427,9 @@ namespace SQM
 
     void OtaUpdater::runApply(GithubRelease release)
     {
+        // Hold the TLS lock for the whole download so an alert send can't
+        // grab the heap the download sessions need.
+        TlsLock::Guard tls(60000);
         // Firmware first (0-50% of progress), then filesystem (50-100%).
         // Only reboot once both have succeeded, so the device never boots
         // with a firmware/web-UI version mismatch.

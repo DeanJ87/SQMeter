@@ -3,7 +3,8 @@ import { useState } from 'preact/hooks';
 import { getTimezoneFriendlyName } from '../utils/timezone';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { SystemStatus } from '../types';
-import { Card, Pill, ProgressMeter, ReadingRow } from './ui';
+import { Button, Card, Note, Pill, ProgressMeter, ReadingRow } from './ui';
+import { showToast } from './toast';
 
 const formatUptime = (seconds: number): string => {
   const days = Math.floor(seconds / 86400);
@@ -58,6 +59,7 @@ const SensorRow: FunctionalComponent<{ name: string; status: number }> = ({ name
 const System: FunctionalComponent = () => {
   const { data: status, connected } = useWebSocket<SystemStatus>('/ws/status');
   const [rg15Action, setRg15Action] = useState<{ loading: boolean; message: string | null }>({ loading: false, message: null });
+  const [confirmRestart, setConfirmRestart] = useState(false);
 
   if (!connected || !status) {
     return (
@@ -69,13 +71,12 @@ const System: FunctionalComponent = () => {
   }
 
   const handleRestart = async () => {
-    if (!confirm('Are you sure you want to restart the device?')) return;
-
+    setConfirmRestart(false);
     try {
       await fetch('/api/restart', { method: 'POST' });
-      alert('Device is restarting...');
+      showToast({ message: 'Restarting...' });
     } catch {
-      alert('Failed to restart device');
+      showToast({ message: 'Could not reach the device', tone: 'bad' });
     }
   };
 
@@ -86,10 +87,10 @@ const System: FunctionalComponent = () => {
       const data = await response.json().catch(() => ({}));
       setRg15Action({
         loading: false,
-        message: response.ok ? successMessage : (data.message || 'RG-15 action failed'),
+        message: response.ok ? successMessage : (data.message || 'Failed'),
       });
     } catch {
-      setRg15Action({ loading: false, message: 'RG-15 action failed' });
+      setRg15Action({ loading: false, message: 'Could not reach the device' });
     }
   };
 
@@ -144,32 +145,23 @@ const System: FunctionalComponent = () => {
           <SensorRow name="TSL2591 Light Sensor" status={status.sensors.tsl2591.status} />
           <SensorRow name="BME280 Environment" status={status.sensors.bme280.status} />
           <SensorRow name="MLX90614 IR Temperature" status={status.sensors.mlx90614.status} />
-          <SensorRow name="GPS Module" status={status.sensors.gps.status} />
-          {rg15 && <SensorRow name="RG-15 Rain Sensor" status={rg15.status} />}
+          {status.sensors.gps.initialized && <SensorRow name="GPS Module" status={status.sensors.gps.status} />}
+          {rg15?.enabled && <SensorRow name="RG-15 Rain Sensor" status={rg15.status} />}
+          {status.sensors.wind?.enabled && <SensorRow name="Anemometer" status={status.sensors.wind.status} />}
         </div>
       </Card>
 
-      {rg15 && (
+      {rg15?.enabled && (
         <Card title="RG-15 Diagnostics" icon="rain" tone="cyan">
-          <div class="system-actions">
-            <button
-              type="button"
-              disabled={rg15Action.loading}
-              onClick={() => runRg15Action('/api/sensors/rg15/reset-total', 'RG-15 total reset command sent')}
-              class="bg-blue-600"
-            >
+          <div class="btn-row">
+            <Button small disabled={rg15Action.loading} onClick={() => runRg15Action('/api/sensors/rg15/reset-total', 'Total reset.')}>
               Reset total
-            </button>
-            <button
-              type="button"
-              disabled={rg15Action.loading}
-              onClick={() => runRg15Action('/api/sensors/rg15/reboot', 'RG-15 reboot command sent')}
-              class="bg-amber-600"
-            >
+            </Button>
+            <Button small variant="danger" disabled={rg15Action.loading} onClick={() => runRg15Action('/api/sensors/rg15/reboot', 'RG-15 rebooting.')}>
               Reboot RG-15
-            </button>
+            </Button>
+            {rg15Action.message && <Note>{rg15Action.message}</Note>}
           </div>
-          {rg15Action.message && <p class="system-message">{rg15Action.message}</p>}
 
           <div class="system-diagnostic-grid">
             <InfoRow label="Online" value={rg15.online ? 'Yes' : 'No'} tone={rg15.online ? 'tone-green' : 'tone-red'} />
@@ -289,9 +281,22 @@ const System: FunctionalComponent = () => {
       </Card>
 
       <Card title="Actions" icon="cpu" tone="red">
-        <button onClick={handleRestart} class="bg-red-600 system-wide-button">
-          Restart Device
-        </button>
+        <div class="btn-row">
+          {confirmRestart ? (
+            <>
+              <Button variant="danger" onClick={handleRestart}>
+                Restart now
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmRestart(false)}>
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button variant="danger" onClick={() => setConfirmRestart(true)}>
+              Restart device
+            </Button>
+          )}
+        </div>
       </Card>
     </div>
   );

@@ -54,18 +54,28 @@ The **Setup** (cog) button next to either device in N.I.N.A. opens `http://<devi
 
 ## Safety rules
 
-`SafetyMonitor.IsSafe` is computed fresh on every request from the current sensor readings against the thresholds configured in **Settings → ASCOM Alpaca**. In order, any of the following makes it unsafe:
+The safety verdict is re-evaluated every second from the current sensor readings against the rules in **Settings → ASCOM Alpaca & Safety**. It is shown on the Dashboard's **Safety Monitor** card, on the **Alpaca** page, from `GET /api/safety`, and served to Alpaca clients as `SafetyMonitor.IsSafe`. Any of the following makes it unsafe:
 
 1. **Manual override** - the "Force SafetyMonitor unsafe" checkbox is on
-2. **No data yet** - the device hasn't completed a sensor read since boot
-3. **Stale data** - the last successful read is older than the stale-data threshold (default 30s)
-4. **Sensor fault** - the light sensor (TSL2591) or IR temperature sensor (MLX90614) is reporting a non-OK status
-5. **Cloud cover** - at or above the configured threshold (default 90%, if enabled)
-6. **Sky brightness (SQM)** - below the configured minimum (disabled by default)
-7. **Humidity** - above the configured maximum (disabled by default)
-8. **Temperature-dewpoint margin** - below the configured minimum (disabled by default)
+2. **Rain** - the RG-15 reports rain, *or* it rained within the rain sensor's "rain clear delay" (default 15 min). Enabled by default whenever the rain sensor is enabled
+3. **Rain sensor offline/faulty** - the rain sensor is enabled but not responding, its data is stale, or it reports a lens fault (fail safe; enabled by default)
+4. **Wind / gust** - the 2-minute mean wind speed or the 10-minute peak gust is at or above its limit (both disabled by default). If a wind limit is enabled but the [anemometer](../hardware/wind.md) is disabled or not reporting, that's unsafe too
+5. **No data yet** - the device hasn't completed a sensor read since boot
+6. **Stale data** - the last successful read is older than the stale-data threshold (default 30s)
+7. **Sensor fault** - the light sensor (TSL2591) or IR temperature sensor (MLX90614) is reporting a non-OK status
+8. **Cloud cover** - at or above the configured threshold (default 90%, if enabled)
+9. **Sky brightness (SQM)** - below the configured minimum (disabled by default)
+10. **Humidity** - above the configured maximum (disabled by default)
+11. **Temperature-dewpoint margin** - below the configured minimum (disabled by default)
+12. **Humidity sensor fault** - the humidity or dew-point rule is enabled but the BME280 isn't reporting, so it can't be evaluated
 
-Each threshold has its own enable/disable toggle - a disabled threshold never contributes to the verdict. This mirrors the rule set from the standalone bridge it replaces, so behavior should feel identical if you're migrating.
+Rain and wind rules (2-4) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining or blowing a gale. Rules 8-12 only apply to fresh data.
+
+Each threshold has its own enable/disable toggle - a disabled threshold never contributes to the verdict.
+
+### Safe delay
+
+**Safe delay** (seconds, default `0`) holds a "safe" verdict back until conditions have been continuously safe for that long, so a brief gap in the clouds doesn't reopen the roof. Unsafe is always reported immediately, and the delay also applies after a reboot. While the delay is running, the Safety Monitor card shows "Safe in Ns".
 
 ---
 
@@ -76,16 +86,38 @@ Each threshold has its own enable/disable toggle - a disabled threshold never co
 | `cloudcover` | Cloud detection (IR sky temperature vs. ambient, humidity-corrected) |
 | `dewpoint` | BME280 |
 | `humidity` | BME280 |
+| `pressure` | BME280 (hPa, station level) |
+| `rainrate` | Hydreon RG-15 rain intensity, in mm/h (converted if the RG-15 reports inches). `NotImplemented` when the rain sensor is disabled in Settings |
 | `skybrightness` | TSL2591 lux |
 | `skyquality` | Calculated SQM (mag/arcsec²) |
 | `skytemperature` | MLX90614 IR object temperature |
 | `temperature` | BME280 |
-| `averageperiod` | Always `0` (no averaging is performed) |
-| `pressure`, `rainrate`, `starfwhm`, `winddirection`, `windgust`, `windspeed` | Not implemented - no sensor for these; returns Alpaca error `0x400` |
+| `averageperiod` | Always `0`. `PUT` accepts only `0`; other values return `InvalidValue` (`0x401`) |
+| `windspeed` | Anemometer, 2-minute mean in m/s ([wiring](../hardware/wind.md)). `NotImplemented` when the anemometer is disabled |
+| `windgust` | Anemometer, highest 3-second mean in the last 10 minutes, m/s |
+| `winddirection` | Wind vane, degrees clockwise from north (`0` when calm). `NotImplemented` when no vane is enabled |
+| `starfwhm` | Never implemented. Star FWHM needs a camera imaging real stars; N.I.N.A. measures HFR from your own frames |
 
-If sensor data is stale or hasn't been read yet, implemented properties return a driver error instead of a stale/zeroed value.
+Each property is tied to the sensor that produces it, so a fault in one sensor (say the BME280) only makes *its* properties return a driver error (`0x500`) - the others keep reporting. A stale or never-read sensor is treated the same way.
+
+`sensordescription` and `timesincelastupdate` take a `SensorName` (any property name above) and report which sensor serves it and how many seconds ago it last updated; an empty `SensorName` to `timesincelastupdate` returns the age of the most recent update from any sensor. `PUT refresh` is accepted and does nothing - readings already refresh every sensor cycle.
 
 ---
+
+## Conformance testing
+
+The Alpaca API is implemented once, in `lib/AlpacaLogic` (`Alpaca::Router`), and used by both the firmware and a small desktop simulator, `tools/alpaca-sim`, which serves it with fixed, healthy sensor readings. Every pull request that touches it runs [ASCOM ConformU](https://github.com/ASCOMInitiative/ConformU) against the simulator - full conformance and the Alpaca protocol check, for both devices - and fails on any error, issue or configuration alert. The logs are attached to the run as `conformu-results`.
+
+To run it yourself (Linux or macOS):
+
+```bash
+tools/alpaca-sim/build.sh
+./alpaca-sim 11111
+conformu conformance http://127.0.0.1:11111/api/v1/observingconditions/0
+conformu alpacaprotocol http://127.0.0.1:11111/api/v1/safetymonitor/0
+```
+
+To test a real device, point ConformU at `http://<device-ip>:80/api/v1/<safetymonitor|observingconditions>/0`.
 
 ## Reference
 

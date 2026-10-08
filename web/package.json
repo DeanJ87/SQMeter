@@ -26,16 +26,15 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/preact": "^3.2.4",
     "@types/node": "^20.10.6",
-    "@vitest/coverage-v8": "^3.2.7",
+    "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.4.16",
     "jsdom": "^30.0.1",
     "msw": "^2.3.0",
     "postcss": "^8.5.25",
-    "tailwindcss": "^3.4.0",
     "terser": "^5.46.1",
     "typescript": "^5.3.3",
     "vite": "^8.0.10",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.11"
   },
   "msw": {
     "workerDirectory": [

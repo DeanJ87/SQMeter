@@ -6,7 +6,11 @@ import {
   mockWifiNetworks,
   mockGithubReleases,
   mockAlpacaDevices,
+  mockRecentAlerts,
 } from "./data";
+
+// Demo-only: alerts switched on/off.
+const mockAlertsArmed = { value: true };
 
 const alpacaEnvelope = <T,>(Value: T) => ({
   Value,
@@ -51,9 +55,49 @@ export const handlers = [
       { Name: "Humidity", Value: data.environment?.humidity ?? 0 },
       { Name: "SkyQuality", Value: data.skyQuality?.sqm ?? 0 },
       { Name: "Temperature", Value: data.environment?.temperature ?? 0 },
+      { Name: "WindDirection", Value: data.wind?.directionDeg ?? 0 },
+      { Name: "WindGust", Value: data.wind?.gustMs ?? 0 },
+      { Name: "WindSpeed", Value: data.wind?.speedMs ?? 0 },
       { Name: "TimeStamp", Value: new Date().toISOString() },
     ]));
   }),
+
+  // REST — SafetyMonitor verdict
+  http.get("/api/safety/history", () => {
+    const now = Math.floor(Date.now() / 1000);
+    return HttpResponse.json({
+      boot: 3,
+      uptime: 4000,
+      entries: [
+        { kind: "alert", boot: 3, uptime: 3900, timestamp: now - 100, safe: false },
+        { kind: "change", boot: 3, uptime: 3899, timestamp: now - 101, safe: false, held: false, reasonFlags: 0x30 },
+        { kind: "change", boot: 3, uptime: 181, timestamp: now - 3819, safe: true },
+        { kind: "change", boot: 3, uptime: 1, safe: false, held: true, reasonFlags: 0 },
+        { kind: "boot", boot: 3, uptime: 0, resetReason: 3 },
+        { kind: "alert", boot: 2, uptime: 900, timestamp: now - 5000, safe: false },
+      ],
+    });
+  }),
+  http.get("/api/safety", () => HttpResponse.json(generateSensorData().safety)),
+
+  // REST — alerts
+  http.get("/api/alerts/recent", () => HttpResponse.json({ enabled: true, armed: mockAlertsArmed.value, alerts: mockRecentAlerts })),
+  http.get("/api/alerts/armed", () => HttpResponse.json({ armed: mockAlertsArmed.value, armWithAlpaca: false })),
+  http.post("/api/alerts/arm", () => {
+    mockAlertsArmed.value = true;
+    return HttpResponse.json({ armed: true }, { status: 202 });
+  }),
+  http.post("/api/alerts/disarm", () => {
+    mockAlertsArmed.value = false;
+    return HttpResponse.json({ armed: false }, { status: 202 });
+  }),
+  http.post("/api/alerts/clear", () => {
+    mockRecentAlerts.splice(0, mockRecentAlerts.length);
+    return HttpResponse.json({ success: true });
+  }),
+  http.post("/api/alerts/test", () =>
+    HttpResponse.json({ success: true, message: "Test notification queued" }, { status: 202 })
+  ),
 
   // REST — config
   http.get("/api/config", () => HttpResponse.json(mockConfig)),

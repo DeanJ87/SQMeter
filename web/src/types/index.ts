@@ -38,6 +38,8 @@ export interface CloudConditions {
 
 export interface SensorData {
   dataTimestamp?: number;
+  safety?: SafetyStatus;
+  wind?: WindReading;
   lightSensor?: LightSensorReading;
   environment?: EnvironmentReading;
   irTemperature?: IRTemperatureReading;
@@ -141,6 +143,27 @@ export interface SystemStatus {
     version: string;
     buildDate: string;
     buildTime: string;
+    variant?: 'standard' | 'ble';
+  };
+  sky?: {
+    locationSource: 'gps' | 'manual' | 'none';
+    nightKnown: boolean;
+    isNight?: boolean;
+    sunAltitudeDeg?: number;
+    latitude?: number;
+    longitude?: number;
+  };
+  ble?: {
+    available: boolean;
+    active: boolean;
+    clients: number;
+    alarm?: {
+      serviceActive: boolean;
+      active: boolean;
+      sequence: number;
+      acknowledgedSequence: number;
+      bondedPhones: number;
+    };
   };
   uptime: number;
   freeHeap: number;
@@ -222,6 +245,12 @@ export interface SystemStatus {
       initialized: boolean;
       status: number;
       lastUpdate: number;
+    };
+    wind?: {
+      enabled: boolean;
+      status: number;
+      vaneFault: boolean;
+      ageMs: number;
     };
     rg15?: {
       enabled: boolean;
@@ -347,6 +376,113 @@ export interface AlpacaConfig {
   humidityMaxSafe: number;
   dewpointMarginEnabled: boolean;
   dewpointMarginMinC: number;
+  rainUnsafeEnabled: boolean;
+  rainSensorRequired: boolean;
+  safeDelaySeconds: number;
+  windSpeedUnsafeEnabled: boolean;
+  windSpeedUnsafeMs: number;
+  windGustUnsafeEnabled: boolean;
+  windGustUnsafeMs: number;
+}
+
+export interface BleConfig {
+  enabled: boolean;
+  passkey: string;
+}
+
+export interface WindConfig {
+  enabled: boolean;
+  speedPin: number;
+  directionEnabled: boolean;
+  directionPin: number;
+  kmhPerHz: number;
+  directionOffsetDeg: number;
+  vanePullupOhms: number;
+}
+
+export interface WindReading {
+  status: number;
+  speedMs: number;
+  gustMs: number;
+  instantMs: number;
+  directionValid: boolean;
+  directionDeg: number;
+  vaneFault: boolean;
+  samples: number;
+  ageMs: number;
+}
+
+// Live SafetyMonitor verdict (GET /api/safety, and `safety` on /ws/sensors)
+export interface SafetyStatus {
+  isSafe: boolean;
+  safe?: 0 | 1;
+  rawSafe: boolean;
+  alpacaEnabled: boolean;
+  reasonFlags: number;
+  reasons: string[];
+  secondsUntilSafe: number;
+  evaluatedAgeMs: number;
+  changedAgeMs: number;
+}
+
+// 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me
+export type AlertLevel = 0 | 1 | 2 | 3 | 4;
+
+export type AlertEventKey =
+  | 'unsafe'
+  | 'safe'
+  | 'rain_started'
+  | 'rain_stopped'
+  | 'sensor_fault'
+  | 'sensor_recovered'
+  | 'dew_risk'
+  | 'clear_sky'
+  | 'clouded_over';
+
+// sound: Pushover sound name; empty uses the Pushover default.
+export interface AlertEventSetting {
+  level: AlertLevel;
+  sound: string;
+  // Custom wording with {variables}; empty or missing uses the default.
+  title?: string;
+  message?: string;
+}
+
+export interface AlertsConfig {
+  enabled: boolean;
+  events: Record<AlertEventKey, AlertEventSetting>;
+  dewRiskMarginC: number;
+  clearSkyCloudPercent: number;
+  cloudedOverCloudPercent: number;
+  skyNightOnly: boolean;
+  safetyNightOnly: boolean;
+  armWithAlpaca?: boolean;
+  nightSunAltitudeDeg: number;
+  cooldownSeconds: number;
+  pushover: { enabled: boolean; userKey: string; appToken: string; sound: string };
+  ntfy: { enabled: boolean; server: string; topic: string; token: string };
+  webhook: { enabled: boolean; url: string; authHeader: string; insecureTls: boolean };
+  mqtt: { enabled: boolean };
+}
+
+export type AlertChannelName = 'mqtt' | 'pushover' | 'ntfy' | 'webhook';
+
+export interface AlertRecord {
+  id: number;
+  event: string;
+  title: string;
+  message: string;
+  level: 'quiet' | 'normal' | 'urgent' | 'wake' | 'off';
+  ageSeconds: number;
+  timestamp?: number;
+  channels: Partial<Record<AlertChannelName, { status: 'pending' | 'sent' | 'failed' | 'skipped'; detail: string }>>;
+}
+
+export interface AlertsRecent {
+  enabled: boolean;
+  // Alerts switched on (imaging) or off; missing from older firmware = on.
+  armed?: boolean;
+  alerts: AlertRecord[];
 }
 
 export interface Config {
@@ -366,6 +502,17 @@ export interface Config {
   cloudDetection: CloudDetectionConfig;
   rain?: RainSensorConfig;
   alpaca?: AlpacaConfig;
+  alerts?: AlertsConfig;
+  ble?: BleConfig;
+  wind?: WindConfig;
+  location?: LocationConfig;
+}
+
+export interface LocationConfig {
+  set: boolean;
+  latitude: number;
+  longitude: number;
+  showSunMoon?: boolean;
 }
 
 export interface RainSensorReading {

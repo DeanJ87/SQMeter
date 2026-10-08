@@ -4,6 +4,8 @@
 #include <LittleFS.h>
 #include <ArduinoOTA.h>
 #include "Logger.h"
+#include "SafetyHistory.h"
+#include "HeapTrace.h"
 #include "Config.h"
 #include "WiFiManager.h"
 #include "WebServer.h"
@@ -14,6 +16,7 @@
 #include "sensors/MLX90614Sensor.h"
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
+#include "sensors/WindSensor.h"
 
 using namespace SQM;
 
@@ -25,16 +28,34 @@ static std::unique_ptr<BME280Sensor> bmeSensor;
 static std::unique_ptr<MLX90614Sensor> mlxSensor;
 static std::unique_ptr<GPSSensor> gpsSensor;
 static std::unique_ptr<RG15Sensor> rg15Sensor;
+static std::unique_ptr<WindSensor> windSensor;
 static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 
+// Default is 8 KB, which left only ~1.5 KB spare at peak (alert processing,
+// config saves). 4 KB more heap is cheap insurance against a stack-overflow reboot.
+SET_LOOP_TASK_STACK_SIZE(12 * 1024);
+
 // Timing
 static uint32_t lastSensorUpdate = 0;
 static uint32_t lastTslUpdate = 0;
 static constexpr uint32_t TSL_SAMPLE_INTERVAL_MS = 650;
+
+static WindSensorSettings toWindSettings(const WindConfig &wind)
+{
+    WindSensorSettings settings;
+    settings.enabled = wind.enabled;
+    settings.speedPin = wind.speedPin;
+    settings.directionEnabled = wind.directionEnabled;
+    settings.directionPin = wind.directionPin;
+    settings.kmhPerHz = wind.kmhPerHz;
+    settings.directionOffsetDeg = wind.directionOffsetDeg;
+    settings.vanePullupOhms = wind.vanePullupOhms;
+    return settings;
+}
 
 // Callbacks for WebServer
 const Config &getConfigCallback()
@@ -87,6 +108,11 @@ bool saveConfigCallback(const Config &newConfig)
             {
                 rg15Sensor->stop();
             }
+        }
+
+        if (windSensor)
+        {
+            windSensor->configure(toWindSettings(config.wind));
         }
     }
 
@@ -169,6 +195,10 @@ void setupSensors()
         rg15Sensor = std::make_unique<RG15Sensor>();
         Logger::info("Main", "RG-15 rain sensor disabled in configuration");
     }
+
+    windSensor = std::make_unique<WindSensor>();
+    windSensor->configure(toWindSettings(config.wind));
+    windSensor->begin();
 }
 
 void setup()
@@ -176,22 +206,21 @@ void setup()
     Serial.begin(115200);
     delay(100);
     bootCount++;
+    SQM::SafetyHistory::begin(static_cast<uint8_t>(esp_reset_reason()));
 
     // Initialize logging
     Logger::init();
     Logger::info("Main", "=== SQMeter Starting ===");
     Logger::info("Main", "ESP32 Chip: %s Rev %d", ESP.getChipModel(), ESP.getChipRevision());
     Logger::info("Main", "Flash: %d bytes", ESP.getFlashChipSize());
-    Logger::info("Main", "Free heap: %d bytes", ESP.getFreeHeap());
+    HeapTrace::mark("boot");
 
     // Setup watchdog
     setupWatchdog();
 
     // Load configuration
-    auto configOpt = Config::load();
-    if (configOpt)
+    if (Config::load(config))
     {
-        config = *configOpt;
         Logger::info("Main", "Configuration loaded");
     }
     else
@@ -199,6 +228,8 @@ void setup()
         config = Config::createDefault();
         Logger::warn("Main", "Using default configuration");
     }
+
+    HeapTrace::mark("config loaded");
 
     // Mount LittleFS for serving web files
     if (!LittleFS.begin(false))
@@ -215,6 +246,8 @@ void setup()
 
     // Initialize sensors
     setupSensors();
+
+    HeapTrace::mark("sensors");
 
     // Initialize WiFi
     wifiManager = std::make_unique<WiFiManager>(config.wifi);
@@ -233,6 +266,8 @@ void setup()
         Logger::warn("Main", "WiFi connection failed, starting captive portal");
         wifiManager->startCaptivePortal();
     }
+
+    HeapTrace::mark("wifi");
 
     // Initialize ArduinoOTA for command-line firmware uploads only when configured securely.
     if (wifiManager->isConnected() && config.ota.enabled && !config.ota.password.empty())
@@ -293,9 +328,12 @@ void setup()
         timeManager->begin();
     }
 
+    HeapTrace::mark("ota + time");
+
     // Initialize MQTT
     mqttClient = std::make_unique<MQTTClient>(config.mqtt);
     mqttClient->begin();
+    HeapTrace::mark("mqtt");
 
     // Initialize web server
     webServer = std::make_unique<WebServer>(
@@ -304,12 +342,14 @@ void setup()
         *mlxSensor,
         *gpsSensor,
         *rg15Sensor,
+        *windSensor,
         timeManager.get(),
         mqttClient.get(),
         getConfigCallback,
         saveConfigCallback);
     webServer->begin();
     webServer->refreshSensorSnapshot(lastSensorUpdate);
+    HeapTrace::mark("setup complete");
 
     Logger::info("Main", "=== Setup complete ===");
     Logger::info("Main", "IP Address: %s", wifiManager->getIPAddress().c_str());
@@ -344,6 +384,9 @@ void loop()
     {
         mqttClient->handle();
     }
+
+    // Anemometer samples itself once a second.
+    windSensor->update();
 
     // Update TSL2591 on its own cadence so dark-sky rolling averages are based on 600ms samples.
     const uint32_t now = millis();

@@ -51,10 +51,8 @@ test("dashboard", async ({ page }) => {
 test("settings", async ({ page }) => {
   await page.goto("./#/settings");
   await waitForDemoApp(page);
-  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
-  await expect(page.getByText("Device Name")).toBeVisible();
-  await page.getByRole("button", { name: "Save Configuration" }).click();
-  await expect(page.getByText("Configuration saved successfully!")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Device" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
   await capturePage(page, "settings");
 });
 
@@ -69,7 +67,7 @@ test("system", async ({ page }) => {
 test("updates", async ({ page }) => {
   await page.goto("./#/updates");
   await waitForDemoApp(page);
-  await expect(page.getByRole("heading", { name: "OTA Updates" })).toBeVisible();
-  await expect(page.getByText("Update Type")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Firmware" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Manual upload" })).toBeVisible();
   await capturePage(page, "updates");
 });

@@ -1,0 +1,95 @@
+import { describe, it, expect } from 'vitest';
+import { deriveHardware, unavailableReason } from '../components/settings/hardware';
+import { tabForErrorPath, tabFromLocation } from '../components/settings/tabs';
+import { toConfigPayload } from '../components/settings/payload';
+import { listReasons, restartReasons } from '../components/settings/restart';
+import { parseCoordinates } from '../components/settings/TimeTab';
+import { mockConfig, mockStatus } from '../mocks/data';
+
+describe('tabFromLocation', () => {
+  it('opens the requested tab', () => {
+    expect(tabFromLocation('?tab=alerts')).toEqual({ tab: 'alerts', anchor: undefined });
+  });
+
+  it('maps the Alpaca setup link onto the Safety tab', () => {
+    expect(tabFromLocation('?section=alpaca')).toEqual({ tab: 'safety', anchor: 'alpaca' });
+  });
+
+  it('falls back to Device for unknown values', () => {
+    expect(tabFromLocation('?tab=bogus').tab).toBe('device');
+    expect(tabFromLocation('').tab).toBe('device');
+  });
+});
+
+describe('tabForErrorPath', () => {
+  it('assigns validation errors to the tab that shows the field', () => {
+    expect(tabForErrorPath('alerts.ntfy.topic')).toBe('alerts');
+    expect(tabForErrorPath('alpaca.windGustUnsafeMs')).toBe('safety');
+    expect(tabForErrorPath('rain.rxPin')).toBe('sensors');
+    expect(tabForErrorPath('mqtt.broker')).toBe('network');
+    expect(tabForErrorPath('primaryTimeSource')).toBe('time');
+    expect(tabForErrorPath('deviceName')).toBe('device');
+  });
+});
+
+describe('deriveHardware', () => {
+  const config = toConfigPayload(mockConfig);
+
+  it('treats sensors as unknown until status loads', () => {
+    const hw = deriveHardware(config, null);
+    expect(hw.statusLoaded).toBe(false);
+    expect(hw.irSky.detected).toBeNull();
+    expect(unavailableReason(hw.irSky, 'MLX', 'wire')).toBeNull();
+  });
+
+  it('reports undetected I2C sensors', () => {
+    const status = { ...mockStatus, sensors: { ...mockStatus.sensors!, mlx90614: { initialized: false, status: 1, lastUpdate: 0 } } };
+    const hw = deriveHardware(config, status);
+    expect(hw.irSky.detected).toBe(false);
+    expect(unavailableReason(hw.irSky, 'The MLX90614', 'wire')).toMatch(/wasn't detected/);
+  });
+
+  it('follows the form, not the device, for optional sensors', () => {
+    const hw = deriveHardware({ ...config, rain: { ...config.rain!, enabled: false } }, mockStatus);
+    expect(hw.rain.enabled).toBe(false);
+    expect(unavailableReason(hw.rain, 'The rain sensor', 'enable')).toBe('The rain sensor is turned off.');
+  });
+
+  it('only judges rain sensor health when the device is running it', () => {
+    const status = { ...mockStatus, sensors: { ...mockStatus.sensors!, rg15: { ...mockStatus.sensors!.rg15!, enabled: false } } };
+    expect(deriveHardware(config, status).rain.detected).toBeNull();
+  });
+});
+
+describe('restartReasons', () => {
+  const base = toConfigPayload(mockConfig);
+
+  it('is empty for settings applied live', () => {
+    const next = { ...base, mqtt: { ...base.mqtt, topic: 'x' }, rain: { ...base.rain!, enabled: !base.rain!.enabled } };
+    expect(restartReasons(base, next)).toEqual([]);
+  });
+
+  it('lists boot-time settings that changed', () => {
+    const next = {
+      ...base,
+      alpaca: { ...base.alpaca!, enabled: !base.alpaca!.enabled },
+      sensor: { ...base.sensor, i2cFrequency: 400000 },
+      ble: { ...base.ble!, enabled: true },
+    };
+    expect(restartReasons(base, next)).toEqual(['I2C', 'Alpaca discovery', 'Bluetooth']);
+    expect(listReasons(['I2C', 'Alpaca discovery', 'Bluetooth'])).toBe('I2C, Alpaca discovery and Bluetooth');
+  });
+});
+
+describe('parseCoordinates', () => {
+  it('accepts "lat, lon" as pasted from a maps app', () => {
+    expect(parseCoordinates('51.4779, -0.0015')).toEqual([51.4779, -0.0015]);
+    expect(parseCoordinates('  -33.87 151.21 ')).toEqual([-33.87, 151.21]);
+  });
+
+  it('rejects anything else', () => {
+    expect(parseCoordinates('London')).toBeNull();
+    expect(parseCoordinates('91, 0')).toBeNull();
+    expect(parseCoordinates('51.5')).toBeNull();
+  });
+});
