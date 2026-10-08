@@ -6,6 +6,7 @@ import { Button, Card, Icon, MetricTile, Note, Pill, ReadingRow, SensorReadingRo
 import SafetyCard from './SafetyCard';
 import SunMoonCard from './SunMoonCard';
 import { deviceTime } from '../lib/deviceTime';
+import { summariseSeries, useAnnounceChange } from '../lib/a11y';
 import Masonry, { MasonryItem, mergeOrder, moveInOrder } from './Masonry';
 
 const formatNumber = (value: number | undefined, digits: number) =>
@@ -62,8 +63,10 @@ const StatusDot: FunctionalComponent<{ ok: boolean }> = ({ ok }) => (
   <span class={`status-dot ${ok ? 'is-ok' : 'is-bad'}`} aria-hidden="true" />
 );
 
-const MiniSpark: FunctionalComponent<{ values: number[]; tone: string }> = ({ values, tone }) => {
-  if (values.length < 2) return <div class="sparkline" />;
+// `label` names the series; screen readers get its trend in words (spec 022).
+const MiniSpark: FunctionalComponent<{ values: number[]; tone: string; label: string }> = ({ values, tone, label }) => {
+  const summary = summariseSeries(label, values, (value) => value.toFixed(2));
+  if (values.length < 2) return <div class="sparkline" role="img" aria-label={summary} />;
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
@@ -101,7 +104,7 @@ const MiniSpark: FunctionalComponent<{ values: number[]; tone: string }> = ({ va
   const fillPath = `${linePath} L 100 36 L 0 36 Z`;
 
   return (
-    <svg class={`sparkline ${tone}`} viewBox="0 0 100 36" preserveAspectRatio="none" aria-hidden="true">
+    <svg class={`sparkline ${tone}`} viewBox="0 0 100 36" preserveAspectRatio="none" role="img" aria-label={summary}>
       <path d={fillPath} class="spark-fill" />
       <path d={linePath} class="spark-line" />
     </svg>
@@ -150,6 +153,12 @@ const Dashboard: FunctionalComponent = () => {
     // Real readings only: the trend draws once there are two.
     setSqmHistory((history) => [...history.slice(-23), sqm]);
   }, [sensors?.sky?.sqm]);
+
+  // The verdict is the one live value announced on its own, once per change
+  // (spec 022 FR-009); readings are read on demand.
+  useAnnounceChange(sensors?.safety?.safe, (safe) =>
+    safe ? 'Observatory safe' : `Observatory unsafe${sensors?.safety?.reasons?.length ? `: ${sensors.safety.reasons.join(', ')}` : ''}`,
+  );
 
   // The device reports rain in mm; show it in the units the RG-15 is set to.
   const imperialRain = config?.rain?.units === 'imperial';
@@ -220,7 +229,7 @@ const Dashboard: FunctionalComponent = () => {
             <p>{sensors.sky.description ?? 'Sky quality data unavailable'}</p>
           </div>
 
-          <MiniSpark values={sqmHistory} tone={skyTone} />
+          <MiniSpark values={sqmHistory} tone={skyTone} label="Sky quality" />
 
           <div class="metric-grid compact">
             <MetricTile label="Bortle" value={formatNumber(sensors.sky.bortle, 0)} tone={skyTone} />

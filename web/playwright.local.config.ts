@@ -1,8 +1,7 @@
 import base from './playwright.config';
 import { defineConfig } from '@playwright/test';
 
-// Local only (not committed): a port of its own for parallel runs.
-const PORT = 4183;
+const PORT = 4184;
 export default defineConfig({
   ...base,
   use: { ...base.use, baseURL: `http://localhost:${PORT}/` },
