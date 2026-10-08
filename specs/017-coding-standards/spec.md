@@ -12,6 +12,13 @@
 > (firmware C++, web TypeScript, Python tools) - they are the subject, not an
 > implementation choice. Which tools enforce the rules is left to the plan.
 
+## Clarifications
+
+### Session 2026-10-08
+
+- Q: Reformat existing code all at once, or file by file? → A: All at once, in one formatting-only
+  commit that `git blame` is told to ignore.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - One written standard to code against (Priority: P1)
@@ -118,7 +125,7 @@ name), the contributor records a justified exception next to the code; unjustifi
   (e.g. volatile globals) - via a justified exception.
 - A rule that produces many false positives is downgraded to a convergence-only (review) rule
   rather than disabled silently.
-- Formatting changes to existing files: see FR-016.
+- Formatting existing files: one formatting-only commit (FR-016), so formatting never needs a baseline.
 
 ## Requirements *(mandatory)*
 
@@ -169,9 +176,9 @@ name), the contributor records a justified exception next to the code; unjustifi
   when violations are fixed (it may never grow without an explicit, reviewed change).
 - **FR-014**: Suppressions MUST name the rule and give a reason; CI MUST reject bare suppressions.
 - **FR-015**: Generated and vendored code MUST be excluded by an explicit list.
-- **FR-016**: Applying the formatter to existing files MUST happen [NEEDS CLARIFICATION: all at
-  once in a single formatting-only change (simple, one noisy commit, blame skips it), or file by
-  file as files are touched (no big commit, but formatting mixes into feature changes for months)?]
+- **FR-016**: The formatter MUST be applied to all existing files at once, in a single
+  formatting-only commit with no other changes, listed in a blame-ignore file so `git blame` shows
+  the real authors; from then on, formatting is checked like any other rule (no baseline for it).
 
 **Governance**
 
