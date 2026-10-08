@@ -18,8 +18,10 @@ import SensorsTab from './settings/SensorsTab';
 import { SETTINGS_TABS, locationQuery, tabForErrorPath, tabFromLocation, type SettingsTabId } from './settings/tabs';
 import TimeTab from './settings/TimeTab';
 import { listReasons, restartReasons } from './settings/restart';
+import { DEP_LABELS } from './settings/depLabels';
 import { showToast } from './toast';
-import { Button } from './ui';
+import { Button, Note } from './ui';
+import { effectiveEntries, evaluate, newlyInactive, viewOf, type DepEntry, type EffectiveReport } from '../lib/settingsDeps';
 
 const STATUS_REFRESH_MS = 10000;
 
@@ -48,11 +50,19 @@ const Settings: FunctionalComponent = () => {
   const [originalWifiSsid, setOriginalWifiSsid] = useState<string | null>(null);
   const pendingAnchor = useRef<string | undefined>(initial.anchor);
 
-  const loadStatus = () =>
-    fetch('/api/status')
+  // What the device says is in effect (specs/020-settings-dependencies).
+  const [effective, setEffective] = useState<EffectiveReport | null>(null);
+
+  const loadStatus = () => {
+    fetch('/api/settings/effective')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => data && Array.isArray(data.settings) && setEffective(data))
+      .catch(() => undefined);
+    return fetch('/api/status')
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => data && setStatus(data))
       .catch(() => undefined);
+  };
 
   useEffect(() => {
     (async () => {
@@ -205,6 +215,18 @@ const Settings: FunctionalComponent = () => {
     return <div class="empty-state tone-red">Failed to load configuration</div>;
   }
 
+  const entries = effectiveEntries(config, effective, dirty);
+  // Saving would switch these off in practice (FR-006); harmless defaults aren't news.
+  const willBeInactive = dirty && saved ? newlyInactive(effectiveEntries(saved, effective, false), evaluate(config, effective?.facts ?? null)) : [];
+  const fix = (entry: DepEntry) => {
+    if (entry.fix === 'restart') {
+      restart();
+      return;
+    }
+    const [target, anchor] = (entry.fix ?? '').split('#');
+    if (SETTINGS_TABS.some((t) => t.id === target)) goTo(target as SettingsTabId, anchor);
+  };
+
   const props: SettingsTabProps = {
     config,
     update: (path, value) => applyChanges([[path, value]]),
@@ -215,6 +237,8 @@ const Settings: FunctionalComponent = () => {
     status,
     dirty,
     goTo,
+    deps: viewOf(entries),
+    fix,
   };
 
   return (
@@ -244,6 +268,13 @@ const Settings: FunctionalComponent = () => {
         {tab === 'alerts' && <AlertsTab {...props} />}
       </div>
 
+      {willBeInactive.length > 0 && (
+        <Note tone="warn">
+          <span data-preview="inactive">
+            Saving makes these inactive: {willBeInactive.map((e) => `${DEP_LABELS[e.setting] ?? e.setting} (${e.text})`).join(', ')}.
+          </span>
+        </Note>
+      )}
       {dirty && (
         <div class="save-bar">
           <span class="save-bar-state">Unsaved changes</span>

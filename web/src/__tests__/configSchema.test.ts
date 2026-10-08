@@ -68,14 +68,27 @@ describe("configSchema", () => {
     }
   });
 
-  it("rejects auth enabled with empty username", () => {
-    const cfg = { ...validBase, auth: { enabled: true, username: "", password: "s3cr3t" } };
+  // D-34: the same rule as the device - a password is required, a username isn't.
+  it("rejects auth enabled without a password, with the device's message", () => {
+    const cfg = { ...validBase, auth: { enabled: true, username: "", password: "" } };
     const result = configSchema.safeParse(cfg);
     expect(result.success).toBe(false);
     if (!result.success) {
-      const paths = result.error.issues.map((i) => i.path.join("."));
-      expect(paths).toContain("auth.username");
+      expect(result.error.issues.map((i) => i.message)).toContain("HTTP auth password is required when auth is enabled");
     }
+  });
+
+  // D-27 and D-33: the device's own messages, shown before saving (FR-010).
+  it("refuses invalid time sources and MQTT with the device's messages", () => {
+    const sameSource = { ...validBase, ntp: { ...validBase.ntp, enabled: true }, gps: { ...validBase.gps, enabled: true }, primaryTimeSource: 0, secondaryTimeSource: 0 };
+    const sameResult = configSchema.safeParse(sameSource);
+    expect(sameResult.success).toBe(false);
+    if (!sameResult.success) expect(sameResult.error.issues.map((i) => i.message)).toContain("Time sources must be different when both NTP and GPS are enabled");
+
+    const mqtt = { ...validBase, mqtt: { ...validBase.mqtt, enabled: true, broker: "", topic: "sqmeter" } };
+    const mqttResult = configSchema.safeParse(mqtt);
+    expect(mqttResult.success).toBe(false);
+    if (!mqttResult.success) expect(mqttResult.error.issues.map((i) => i.message)).toContain("MQTT broker and topic are required when MQTT is enabled");
   });
 
   it("rejects empty deviceName", () => {
@@ -88,9 +101,10 @@ describe("configSchema", () => {
     expect(configSchema.safeParse(cfg).success).toBe(false);
   });
 
-  it("rejects OTA enabled with empty password", () => {
+  // D-32: a dependency (kept, shown as not in effect), not a rejected save.
+  it("accepts OTA enabled without a password", () => {
     const cfg = { ...validBase, ota: { enabled: true, password: "" } };
-    expect(configSchema.safeParse(cfg).success).toBe(false);
+    expect(configSchema.safeParse(cfg).success).toBe(true);
   });
 
   it("rejects I2C SDA and SCL on the same pin", () => {
@@ -187,11 +201,11 @@ describe("frontend settings validation", () => {
     const errors = getConfigValidationErrors(candidate);
 
     expect(errors).toEqual({
-      "ntp.enabled": "Enable at least one time source: NTP or GPS",
+      "ntp.enabled": "At least one time source must be enabled",
     });
     expect(hasConfigValidationErrors(errors)).toBe(true);
     expect(getConfigValidationMessage(errors)).toBe(
-      "Please fix 1 validation error: Enable at least one time source: NTP or GPS",
+      "Please fix 1 validation error: At least one time source must be enabled",
     );
   });
 });
@@ -213,10 +227,10 @@ describe("authConfigSchema", () => {
     ).toBe(false);
   });
 
-  it("fails when enabled with empty username", () => {
+  it("accepts an empty username, like the device (D-34)", () => {
     expect(
       authConfigSchema.safeParse({ enabled: true, username: "", password: "hunter2" }).success
-    ).toBe(false);
+    ).toBe(true);
   });
 });
 

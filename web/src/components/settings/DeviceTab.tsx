@@ -2,7 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
 import type { SettingsTabProps } from './context';
 import { Note } from '../ui';
-import { ActionButton, Field, Group, Requires, ResultNote, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
+import { ActionButton, DepNote, DepToggle, Field, Group, Requires, ResultNote, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
 import { defaultBleConfig } from './defaults';
 
 const randomPasskey = () => {
@@ -11,7 +11,7 @@ const randomPasskey = () => {
   return String(100000 + (values[0] % 900000));
 };
 
-const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, status, goTo }) => {
+const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, status, goTo, deps, fix }) => {
   const auth = config.auth ?? { enabled: false, username: 'admin', password: '' };
   const ble = status?.ble;
   const alarm = ble?.alarm;
@@ -41,7 +41,7 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         </Field>
       </SettingsCard>
 
-      <SettingsCard title="Security">
+      <SettingsCard id="security" title="Security">
         <Toggle
           label="Password-protect changes"
           checked={auth.enabled}
@@ -58,7 +58,9 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
             </Field>
           </div>
         )}
-        <Toggle
+        <DepToggle
+          entry={deps.get('ota.enabled')}
+          onFix={fix}
           label="Command-line uploads (ArduinoOTA)"
           checked={config.ota.enabled}
           onChange={(v) => update(['ota', 'enabled'], v)}
@@ -82,7 +84,9 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         {hw.bleAvailable === false && <Requires>Needs the Bluetooth firmware build, installed over USB.</Requires>}
         {hw.bleAvailable && (
           <>
-            <Toggle
+            <DepToggle
+              entry={deps.get('ble.enabled')}
+              onFix={fix}
               label="Turn on Bluetooth"
               checked={bleConfig.enabled}
               onChange={(v) => update(['ble', 'enabled'], v)}
@@ -112,6 +116,7 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
                   {newPasskey && <Requires>New passkey {newPasskey} - it's hidden once saved. Paired phones need re-pairing.</Requires>}
                 </Field>
 
+                {hasPasskey && deps.get('ble.phoneAlarm').state === 'inactive' && <DepNote entry={deps.get('ble.phoneAlarm')} onFix={fix} prefix="Phone alarm off" />}
                 {hasPasskey ? (
                   <Note action={{ label: 'Choose events', onClick: () => goTo('alerts', 'alerts') }}>Events set to Wake me ring paired phones.</Note>
                 ) : (

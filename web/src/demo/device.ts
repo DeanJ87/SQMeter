@@ -17,6 +17,7 @@ interface Core {
   readings(): string;
   statusParts(): string;
   safety(): string;
+  effective(): string;
   safetyHistory(): string;
   recentAlerts(): string;
   clearAlerts(): void;
@@ -122,6 +123,7 @@ class DemoDevice {
 
   readings = () => this.core.readings();
   safety = () => this.core.safety();
+  effective = () => this.core.effective();
   safetyHistory = () => this.core.safetyHistory();
   recentAlerts = () => this.core.recentAlerts();
   armedDocument = () => this.core.armedDocument();

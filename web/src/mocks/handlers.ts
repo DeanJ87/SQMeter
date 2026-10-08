@@ -8,6 +8,22 @@ import {
   mockAlpacaDevices,
   mockRecentAlerts,
 } from "./data";
+import { evaluate, type DepFacts } from "../lib/settingsDeps";
+
+// What a healthy standard-build device would report as its facts.
+const mockFacts: DepFacts = {
+  wifiConnected: true,
+  mqttConnected: mockStatus.mqtt?.connected ?? false,
+  clockSet: true,
+  gpsRunning: mockConfig.gps.enabled,
+  gpsFix: mockConfig.gps.enabled,
+  bluetoothBuild: false,
+  bluetoothRunning: false,
+  pairedPhones: 0,
+  lightDetected: true,
+  infraredDetected: true,
+  environmentDetected: true,
+};
 
 // Demo-only: alerts switched on/off.
 const mockAlertsArmed = { value: true };
@@ -105,6 +121,9 @@ export const handlers = [
 
   // REST — config
   http.get("/api/config", () => HttpResponse.json(mockConfig)),
+  http.get("/api/settings/effective", () =>
+    HttpResponse.json({ facts: mockFacts, settings: evaluate(mockConfig, mockFacts).map(({ blockedBy: _blockedBy, ...entry }) => entry) })
+  ),
   http.post("/api/config", () => HttpResponse.json({ success: true })),
   http.put("/api/config", () => HttpResponse.json({ success: true })),
 
