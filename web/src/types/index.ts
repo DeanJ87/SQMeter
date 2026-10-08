@@ -455,6 +455,7 @@ export interface AlertsConfig {
   clearSkyCloudPercent: number;
   cloudedOverCloudPercent: number;
   skyNightOnly: boolean;
+  safetyNightOnly: boolean;
   nightSunAltitudeDeg: number;
   cooldownSeconds: number;
   pushover: { enabled: boolean; userKey: string; appToken: string; sound: string };

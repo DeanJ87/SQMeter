@@ -79,6 +79,7 @@ export const defaultAlertsConfig: AlertsConfig = {
   clearSkyCloudPercent: 20,
   cloudedOverCloudPercent: 70,
   skyNightOnly: true,
+  safetyNightOnly: true,
   nightSunAltitudeDeg: -12,
   cooldownSeconds: 300,
   pushover: { enabled: false, userKey: '', appToken: '', sound: '' },

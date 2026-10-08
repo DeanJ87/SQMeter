@@ -74,6 +74,10 @@ namespace SQM
             // Only announce sky changes while it's dark. Becoming dark while
             // the sky is already clear counts as "clear" (once).
             bool skyNightOnly = true;
+            // Safety changes only while it's dark too: dawn brightening the
+            // sky past the SQM limit mustn't page anyone. At nightfall the
+            // verdict is compared with what was last announced.
+            bool safetyNightOnly = true;
             uint32_t cooldownSeconds = 300;
             // A sensor fault (or recovery) must hold this long before it's
             // announced, so blips - saving settings, reconfiguring a sensor,

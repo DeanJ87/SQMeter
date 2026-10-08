@@ -441,6 +441,40 @@ void test_restart_compares_with_what_was_last_sent(void)
     }
 }
 
+void test_safety_alerts_only_when_dark(void)
+{
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    AlertInputs night = safeInputs(0);
+    night.nightKnown = true;
+    night.isNight = true;
+    engine.update(night, rules);
+
+    // Dawn: the brightening sky fails the SQM rule - not announced.
+    AlertInputs dawn = night;
+    dawn.nowSeconds = 1000;
+    dawn.isNight = false;
+    dawn.isSafe = false;
+    dawn.unsafeReasons = {"SQM 17.24 < 17.25"};
+    TEST_ASSERT_EQUAL(0, engine.update(dawn, rules).size());
+    dawn.nowSeconds = 30000;
+    TEST_ASSERT_EQUAL(0, engine.update(dawn, rules).size());
+
+    // Nightfall, cloudy: unsafe compared with the "safe" last announced.
+    AlertInputs dusk = dawn;
+    dusk.nowSeconds = 60000;
+    dusk.isNight = true;
+    dusk.unsafeReasons = {"Cloud 62% >= 35%"};
+    TEST_ASSERT_TRUE(hasType(engine.update(dusk, rules), AlertType::Unsafe));
+
+    // Turned off: daytime changes are announced.
+    AlertEngine always;
+    rules.safetyNightOnly = false;
+    always.update(night, rules);
+    dawn.nowSeconds = 1000;
+    TEST_ASSERT_TRUE(hasType(always.update(dawn, rules), AlertType::Unsafe));
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -466,5 +500,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_stack_alerts);
     RUN_TEST(test_safe_delay_hold_after_restart_is_not_news);
     RUN_TEST(test_restart_compares_with_what_was_last_sent);
+    RUN_TEST(test_safety_alerts_only_when_dark);
     return UNITY_END();
 }

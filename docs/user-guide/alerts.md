@@ -74,6 +74,9 @@ Nothing is sent in the first minute after boot, so a restart doesn't announce th
 
 ### Only when it's dark
 
+**Safety alerts only when it's dark** (on by default) does the same for safe/unsafe: at dawn the brightening sky fails the SQM rule, and without this you'd be woken by "Observatory UNSAFE: SQM 17.24 < 17.25" every clear morning. While it's light, changes aren't announced; at nightfall the verdict is compared with the last safe/unsafe alert, so you hear "unsafe" if it's dark but cloudy and nothing if nothing changed. Rain and sensor alerts are separate events and still come at any time. N.I.N.A. still sees the real verdict all day.
+
+
 Sky alerts are limited to darkness by default: **after sunset**, **nautical dark** (sun 12° below the horizon, the default) or **astronomical dark** (18°). Darkness comes from the sun's position, so the device needs to know where it is - a GPS fix if there is one, otherwise the coordinates under **Settings → Time & Location → Location** (paste "latitude, longitude" from any maps app). If the sky is already clear when it gets dark, you get one "Dark and clear" alert. Without a clock or a location, sky alerts aren't held back.
 
 Below the setting, the tab shows where the sun is now and when the chosen darkness starts and ends tonight, worked out in the browser from the same location.

@@ -411,18 +411,28 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           </div>
           {err('cloudedOverCloudPercent') && <Note tone="bad">{err('cloudedOverCloudPercent')}</Note>}
           <div class="rule-row">
-            <Toggle
-              label="Sky alerts only when it's dark"
-              checked={alerts.skyNightOnly}
-              onChange={(v) => set(['skyNightOnly'], v)}
-              disabled={off}
-              hint="From the sun's position at your location. If it's already clear at nightfall, you get one 'Dark and clear' alert."
-              blockedReason={noLocation ? 'Needs your location.' : null}
-              onFix={() => goTo('time', 'location')}
-            />
+            <div class="toggle-stack">
+              <Toggle
+                label="Sky alerts only when it's dark"
+                checked={alerts.skyNightOnly}
+                onChange={(v) => set(['skyNightOnly'], v)}
+                disabled={off}
+                hint="From the sun's position at your location. If it's already clear at nightfall, you get one 'Dark and clear' alert."
+                blockedReason={noLocation ? 'Needs your location.' : null}
+                onFix={() => goTo('time', 'location')}
+              />
+              <Toggle
+                label="Safety alerts only when it's dark"
+                checked={alerts.safetyNightOnly}
+                onChange={(v) => set(['safetyNightOnly'], v)}
+                disabled={off}
+                hint="So dawn brightening the sky past the SQM limit doesn't wake you. At nightfall you hear about it if safe/unsafe changed since the last alert. Rain and sensor alerts still come at any time."
+              />
+            </div>
             <SelectInput
               value={String(alerts.nightSunAltitudeDeg)}
-              disabled={off || !alerts.skyNightOnly}
+              ariaLabel="Dark means"
+              disabled={off || (!alerts.skyNightOnly && !alerts.safetyNightOnly)}
               options={[
                 { value: '-0.833', label: 'After sunset' },
                 { value: '-12', label: 'Nautical dark (-12°)' },

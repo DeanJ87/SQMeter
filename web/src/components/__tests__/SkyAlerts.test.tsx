@@ -27,3 +27,23 @@ describe('Sky alerts', () => {
     expect(screen.getByText('Using GPS')).toBeInTheDocument();
   });
 });
+
+describe('Safety alerts at night', () => {
+  it('can be limited to darkness and saves the setting', async () => {
+    let saved: any = null;
+    server.use(
+      http.post('/api/config', async ({ request }) => {
+        saved = await request.json();
+        return HttpResponse.json({ success: true });
+      })
+    );
+    window.history.replaceState(null, '', '/settings?tab=alerts');
+    render(<Settings />);
+    const toggle = (await screen.findByLabelText("Safety alerts only when it's dark")) as HTMLInputElement;
+    expect(toggle.checked).toBe(true);
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(saved).not.toBeNull());
+    expect(saved.alerts.safetyNightOnly).toBe(false);
+  });
+});

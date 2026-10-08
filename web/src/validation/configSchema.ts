@@ -262,6 +262,7 @@ export const alertsConfigSchema = z
     clearSkyCloudPercent: z.number().min(0).max(100),
     cloudedOverCloudPercent: z.number().min(0).max(100),
     skyNightOnly: z.boolean(),
+    safetyNightOnly: z.boolean().optional(),
     nightSunAltitudeDeg: z.number().min(-20).max(0),
     cooldownSeconds: z.number().int().min(0).max(86400, "Must be at most 24 hours"),
     pushover: z.object({

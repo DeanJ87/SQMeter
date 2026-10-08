@@ -2114,3 +2114,8 @@ input[type="file"].input::file-selector-button {
 .history-list .history-alert {
   color: var(--text);
 }
+
+.toggle-stack {
+  display: grid;
+  gap: 0.5rem;
+}

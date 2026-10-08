@@ -1133,6 +1133,7 @@ namespace SQM
         rules.onCloudedOver = a.cloudedOver.level != 0;
         rules.cloudedOverCloudPercent = cfg.alerts.cloudedOverCloudPercent;
         rules.skyNightOnly = cfg.alerts.skyNightOnly;
+        rules.safetyNightOnly = cfg.alerts.safetyNightOnly;
         rules.cooldownSeconds = cfg.alerts.cooldownSeconds;
 
         if (ble.isActive())

@@ -214,7 +214,8 @@ namespace SQM
             // A seeded verdict waits out the startup grace instead of being
             // overwritten by whatever the sensors say while starting up.
             const bool holdSeed = safetySeeded && !pastGrace;
-            if (in.safetyKnown && !in.safetySettling && !holdSeed)
+            const bool safetyDaylight = rules.safetyNightOnly && in.nightKnown && !in.isNight;
+            if (in.safetyKnown && !in.safetySettling && !holdSeed && !safetyDaylight)
             {
                 const bool unsafe = !in.isSafe;
                 if (sync(safety, unsafe, now, cooldown, pastGrace && rules.onSafetyChange))
