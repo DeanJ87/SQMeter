@@ -1,74 +1,180 @@
-# Feature Specification: Demo Conditions
+# Feature Specification: Demo Conditions - Set the Sensor Readings
 
 **Feature Branch**: `feat/demo-conditions` (to be created when implementation starts)
 
 **Created**: 2026-10-08
 
+**Revised**: 2026-10-08: the primary controls are now the raw sensor readings, not outcome labels.
+
 **Status**: Draft
 
-**Input**: User description: "The demo's Demo panel should let you set conditions directly instead of only canned scenarios: set the device date/time (with presets, e.g. Dec 31 at the North Pole, midsummer midnight, tonight's darkest moment, dawn - Dawn must move the clock to before sunrise rather than faking light), set location presets (e.g. London, Atacama, high Arctic like 75,-1, Sydney, La Palma), rain on/off and rain rate, sky brightness/Bortle (target SQM), cloud state (clear, clouding over, clearing, overcast, broken/patchy), wind, sensor faults; combinations of conditions persist and compose; scenarios become presets of conditions. Respect device settings (rain controls disabled when the rain sensor is off, with link). Values are fed as raw simulated sensor inputs so the firmware's own logic derives everything; sensor averaging means changes take some seconds - the UI should show target vs current. Must remain nothing-outbound, session-only, and mobile-friendly (the panel must not cover page controls like Save buttons on phones)."
+**Input**: User description:
+- First version: "The demo's Demo panel should let you set conditions directly instead of only canned scenarios: set the device date/time (with presets …), set location presets …, rain on/off and rain rate, sky brightness/Bortle, cloud state (clear, clouding over, clearing, overcast …), wind, sensor faults …"
+- Revision: "the demo params rely on predictions that we expect things haven't been adjusted and take time (which isn't obvious when adjusting) for example if i press cloud over but i have set the differential of clear to be -30c it wont ever reach clear. I think that's a big part of why we shouldn't have labels like this and instead allow setting differentials, or rather, set the ambient, set the sky temp, set the rain rate etc."
 
-**Related**: [spec 016 - Demo that behaves like the device](../016-demo-device-emulation/spec.md) (the emulated device, FR-006 nothing outbound, FR-008 session-only state, FR-009 scenarios); spec 018 - demo tour and opt-in notifications (its tour steps will use these conditions).
+**Related**:
+- [Spec 016: a demo that behaves like the device](../016-demo-device-emulation/spec.md): the emulated device, FR-006 (nothing outbound), FR-008 (session-only state) and FR-009 (scenarios).
+- Spec 018: the demo tour and opt-in notifications. Its tour steps drive these controls.
 
 ## Background
 
-Today the Demo panel offers fixed scenarios (Night sky, Rain, Cloud over, Clear, Dawn, sensor
-fails). Each one replaces the previous one, runs for a fixed time and then reverts. Visitors
-reported that:
+Today the Demo panel offers fixed scenarios: Night sky, Rain, Cloud over, Clear, Dawn and sensor
+faults. Each one is an *outcome label* backed by hidden assumptions about the device's settings.
 
-- **Dawn** only brightens the light sensor; the device's clock, sun and moon don't move to dawn, and
-  the device's light averaging hides much of the change.
-- You can't combine conditions, for example rain on a moonlit night in the high Arctic.
-- You can't pick a date or place to see what the device does there, for example 31 December at the
-  North Pole.
+**Cloud over** writes a sky temperature that the device's *default* cloud thresholds read as
+overcast. Change the thresholds (for example, set the clear-sky differential to -30 °C) and
+"Cloud over" or "Clear" may never be reached. Nothing in the panel says why.
 
-The firmware's own logic (compiled for the browser, spec 016) already turns raw sensor values into
-every derived reading and decision. This feature changes only *what the simulated sensors report*
-and *the device's clock*. It does not change the logic.
+The device also averages its readings and holds some states, so a change takes time to show:
+- the sky brightness averaging window
+- the rain clear delay
+- the safe delay
+
+That isn't visible either, so a working control looks broken.
+
+The demo runs the firmware's own logic (spec 016), so the honest control is the one the real
+hardware has: **what each sensor reports**. The visitor sets:
+- the air temperature
+- the sky temperature
+- the rain rate
+- and so on
+
+The device then works out cloud cover, SQM, dew point and the verdict exactly as it would on the
+roof. Named shortcuts such as "Overcast" or "Just unsafe" still exist. They **work out the sensor
+readings from the device's current settings**, say which settings they used, and say so when a
+target can't be reached.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Set the sky's conditions and combine them (Priority: P1)
+### User Story 1 - Set what each sensor reports (Priority: P1)
 
-A visitor opens the Demo panel and sets individual conditions: cloud (clear, patchy, clouding over,
-clearing, overcast), rain (off, or on at a chosen rate), sky brightness (as a Bortle class or a
-target SQM), wind (calm to gale, with gusts) and sensor faults (one per sensor). Each condition stays
-as set until changed. Conditions combine, and the dashboard, safety verdict, alerts and Alpaca all
-react the way a real device would.
+The Demo panel has one control per raw reading the hardware produces:
+- **Air (BME280)**: temperature, humidity and pressure.
+- **Infrared (MLX90614)**: sky (object) temperature and the sensor's own ambient temperature, plus
+  a linked **sky minus ambient** differential.
+- **Light (TSL2591)**: illuminance in lux.
+- **Rain (RG-15)**: rate in mm/h and a lens fault.
+- **Wind**: speed, gust and direction.
+- **GPS**: fix on or off, and position.
+- **Every sensor**: a "not responding" fault.
 
-**Why this priority**: Visitors can't explore the device's behaviour today. Composable conditions
-are the core of the request, and every other story builds on them.
+Each value stays as set until changed, and changing one never changes another, except the linked
+differential (FR-003). Everything the device derives from these readings comes from the
+firmware's own logic.
 
-**Independent Test**: Set cloud to overcast and rain to 3 mm/h together. Within the settling time,
-the dashboard shows rain and full cloud cover, the verdict is unsafe with both reasons, and Alpaca
-IsSafe is false. Then set rain off: the rain reason clears after the device's rain clear delay, and
-the cloud reason remains.
+**Why this priority**: Outcome labels hide assumptions that break when settings change. Raw
+readings are exactly what the device receives, so every behaviour, including the visitor's own
+thresholds, can be explored truthfully.
+
+**Independent Test**: Set the clear-sky threshold in Settings to -30 °C. In the panel, set air
+20 °C, sky -12 °C (a differential of -32 °C) and humidity 40%. The device reads clear sky. Raise
+the sky temperature to -5 °C: cloud cover rises, as the device's formula gives for the visitor's
+thresholds.
 
 **Acceptance Scenarios**:
 
-1. **Given** a clear night, **When** the visitor sets cloud to "overcast", **Then** cloud cover rises
-   and passes the device's cloud limits, and the verdict turns unsafe with a cloud reason.
-2. **Given** cloud "overcast", **When** the visitor also sets rain on, **Then** both conditions
-   apply at once and setting one does not reset the other.
-3. **Given** rain on, **When** the visitor changes the rain rate, **Then** the device's rain rate
-   reading moves toward the new rate.
-4. **Given** a dark sky, **When** the visitor picks Bortle 8 (or a target SQM of 18.0), **Then** the
-   device's SQM settles near the target, and its Bortle and NELM follow from the device's own
-   calculation.
-5. **Given** any conditions, **When** the visitor sets a sensor fault, **Then** that sensor stops
-   answering until the fault is cleared, with no time limit.
-6. **Given** the rain sensor is switched off in the device's settings, **When** the visitor opens
-   the panel, **Then** the rain controls and rain-sensor fault are unavailable, with the reason and a
-   link to Settings → Sensors.
+1. **Given** any settings, **When** the visitor sets the sky and air temperatures, **Then** the
+   device's temperature delta, humidity-corrected delta, cloud cover and condition are those its
+   own cloud logic computes for those readings and the current thresholds.
+2. **Given** the visitor changes the differential control, **When** it is applied, **Then** the
+   sky temperature moves to keep the air temperature fixed, and the sky and air controls show the
+   new values.
+3. **Given** rain at 0 mm/h, **When** the visitor sets 3 mm/h, **Then** the device's rain reading,
+   its "raining" state, the verdict and the alerts follow its own rain logic.
+4. **Given** the visitor sets illuminance, **When** the device has averaged it, **Then** SQM, NELM
+   and Bortle are the device's own conversion of that light level.
+5. **Given** any readings, **When** a sensor is set to "not responding", **Then** the device
+   treats it as missing until it is cleared, with no time limit.
+6. **Given** the rain sensor (or anemometer) is switched off in the device's settings, **When**
+   the panel is open, **Then** its controls are unavailable, with the reason and a link to
+   Settings → Sensors.
 
 ---
 
-### User Story 2 - Choose the date, time and place (Priority: P1)
+### User Story 2 - See what the device makes of it, and how long it takes (Priority: P1)
 
-A visitor sets the device's date and time and its location, either exactly or from presets. The
-sun, moon, darkness, sky brightness and every time-dependent feature follow.
+Next to the inputs, the panel shows what the device currently derives:
+- SQM, NELM and Bortle
+- cloud cover and condition
+- dew point
+- rain state
+- the safety verdict and its reasons
+- alerts armed or not
 
-Date and time presets:
+Where the device smooths or holds something, the panel shows it and the time left. Examples:
+
+- "Sky brightness averages over 90 s - settled in 40 s"
+- "Rain clear delay - 11 min 20 s until rain is cleared"
+- "Safe delay - safe in 2 min"
+
+**Why this priority**: The device smooths and delays on purpose, so a change can look ignored.
+Showing the reading and the remaining time makes every control's effect visible and explains
+waits.
+
+**Independent Test**: Set rain to 2 mm/h, then to 0. The panel shows the device "raining" with the
+rain clear delay counting down, and the verdict reason clears when it reaches zero.
+
+**Acceptance Scenarios**:
+
+1. **Given** an input has just changed, **When** the device's derived value hasn't caught up,
+   **Then** the panel shows the input, the current derived value, and which averaging or delay it
+   is waiting for, with the time remaining.
+2. **Given** nothing is pending, **When** the panel is open, **Then** no wait indicator is shown.
+3. **Given** the device's settings change, such as a longer averaging window, **When** the panel
+   next updates, **Then** the shown waits use the new values.
+
+---
+
+### User Story 3 - Shortcuts worked out from the device's settings (Priority: P1)
+
+Named shortcuts set several inputs at once, worked out from the device's **current** settings:
+
+| Shortcut | What it sets |
+|---|---|
+| **Clear** | A differential safely below the clear-sky threshold, allowing for the humidity correction at the current humidity |
+| **Overcast** | A differential just above the cloudy threshold |
+| **Cloud just unsafe** | Cover just past the cloud-cover safety limit |
+| **Rain** / **Rain stops** | Rain rate on or off |
+| **Dark sky** | Illuminance for a chosen SQM |
+| **Dew risk** | Humidity and temperature that put the dew point inside the alert margin |
+| **Sensor fails** | One sensor fault |
+
+Each shortcut says which settings it used, for example "sky -24 °C: your clear-sky threshold is
+-13 °C". If the current settings make the target impossible, the shortcut says why and changes
+nothing. One example is the cloud-cover rule being switched off.
+
+A shortcut can optionally **ramp** an input over a set time, such as clouding over in 40 s. Once
+applied, the inputs remain individually adjustable.
+
+**Why this priority**: Visitors still want one-click outcomes, and docs links (`?scenario=`) and
+the tour depend on them. Working them out from the live settings means they keep working however
+the visitor has configured the device.
+
+**Independent Test**: Set the clear-sky threshold to -30 °C and the cloudy threshold to -20 °C,
+then press "Clear". The panel sets a differential below -30 °C (after humidity correction), says
+so, and the device reads clear. Then press "Overcast": the differential is set above -20 °C and the
+device reads overcast.
+
+**Acceptance Scenarios**:
+
+1. **Given** any valid cloud thresholds, **When** "Clear" or "Overcast" is pressed, **Then** the
+   device reaches that condition once its averaging allows.
+2. **Given** the cloud-cover safety rule is switched off, **When** "Cloud just unsafe" is pressed,
+   **Then** the panel explains that the rule is off, with a link to it, and changes nothing.
+3. **Given** a shortcut was applied, **When** the visitor changes one input, **Then** only that
+   input changes.
+4. **Given** a ramp is chosen, **When** the shortcut runs, **Then** the input moves smoothly from
+   its current value to the target over the ramp time, running on the device clock.
+5. **Given** the URL has `?scenario=<id>` (night, rain, cloud, clear, dawn, fail-light, fail-ir,
+   fail-environment, fail-rain), **When** the demo loads, **Then** the matching shortcut applies.
+
+---
+
+### User Story 4 - Choose the date, time and place (Priority: P1)
+
+The visitor sets the device's date, time and location, exactly or from presets.
+
+Time presets:
 - now
 - tonight's darkest moment
 - dawn (before sunrise)
@@ -85,226 +191,218 @@ Location presets:
 - the high Arctic (75° N, 1° W)
 - the North Pole
 
-**Why this priority**: Visitors reported that Dawn didn't actually go to dawn and that they can't see
-the device elsewhere or at another time. Time and place drive darkness, Sun & Moon, the night alerts
-and the light level, so they must be real.
+The real sun position at that time and place drives the light input unless the visitor has set
+illuminance directly. Sun & Moon, darkness and the night-only alerts all follow.
 
-**Independent Test**: Pick North Pole and 31 December. The device reports the sun well below the
-horizon all day, Sun & Moon shows no sunrise, and darkness reads as continuous. Then pick "dawn":
-the device clock moves to before sunrise there (or reports that there is no sunrise), and as the
-clock runs, the sky brightens from the device's real sun position.
+**Why this priority**: Dawn, darkness and the night rules depend on the real clock and place, and
+visitors asked for them, for example 31 December at the North Pole.
 
-**Acceptance Scenarios**:
-
-1. **Given** any time, **When** the visitor picks "dawn", **Then** the device clock moves to a set
-   time before sunrise at the device's location (default 45 minutes), and the light level then
-   follows the real sun as the clock runs.
-2. **Given** a location with no sunrise on that date (polar night) or no darkness (midnight sun),
-   **When** a preset that needs one is picked, **Then** the panel says why it can't apply and the
-   clock does not jump.
-3. **Given** any time, **When** the visitor enters an exact date and time, **Then** the device clock
-   is set to it and keeps running from there, at 1× or 10×.
-4. **Given** the visitor picks a location preset, **When** it is applied, **Then** the device's
-   saved location changes, the device's time zone changes to the place's, and Sun & Moon, darkness
-   and the device's sun altitude all follow, exactly as when the location is changed in Settings.
-5. **Given** GPS is on, **When** the visitor picks a location, **Then** the simulated GPS reports
-   that place, because GPS outranks the saved location on the device.
-
----
-
-### User Story 3 - See what has been set and what the device reads now (Priority: P2)
-
-The device averages and smooths its readings, so a condition takes some seconds to show. For each
-condition, the panel shows the target the visitor set next to what the device currently reads, for
-example "Cloud: overcast (target 100%) - device reads 63%". It also shows the device's date, time,
-time zone and location.
-
-**Why this priority**: Without it, visitors think a condition did nothing (as reported for Cloud
-over and Dawn) when the device is simply settling.
-
-**Independent Test**: Set rain to 5 mm/h. The panel immediately shows the target 5 mm/h and the
-device's current rain rate, which converges to it.
+**Independent Test**: Pick North Pole and 31 December. The device reports the sun below the horizon
+all day, and Sun & Moon shows no sunrise. Pick "dawn": the panel explains there is no sunrise and
+the clock does not jump.
 
 **Acceptance Scenarios**:
 
-1. **Given** a condition has just changed, **When** the device has not settled yet, **Then** the
-   panel shows the target and the current reading, with a "settling" note.
-2. **Given** the device has settled, **When** the panel is open, **Then** the target and current
-   reading agree within a stated tolerance and the note goes away.
-
----
-
-### User Story 4 - Scenarios as presets (Priority: P2)
-
-The existing scenarios remain as one-click presets. Each preset sets a group of conditions:
-- Night sky: darkest moment tonight, clear, dark sky.
-- Rain shower: rain at 2.4 mm/h, overcast.
-- Cloud over / Clearing: cloud set to clouding over or clearing.
-- Dawn: the clock goes to dawn.
-- Sensor fails: one sensor fault.
-
-After applying a preset, the visitor can adjust any single condition. Timed presets such as "a
-shower that stops" return their conditions to the previous values when they end.
-
-**Why this priority**: Presets keep the quick path that docs links (`?scenario=`) and the tour
-(spec 018) rely on.
-
-**Independent Test**: Open `?scenario=rain`. The rain shower preset applies, and the panel shows
-rain on and cloud overcast as individual conditions that the visitor can then change.
-
-**Acceptance Scenarios**:
-
-1. **Given** the demo URL has `?scenario=<id>` for any existing scenario, **When** it loads, **Then**
-   the matching preset applies.
-2. **Given** a preset is applied, **When** the visitor changes one condition, **Then** only that
-   condition changes.
-3. **Given** a timed preset ends, **When** its time runs out, **Then** its conditions revert and
-   the panel shows the change.
+1. **Given** any time, **When** "dawn" is picked, **Then** the clock moves to before sunrise at
+   the device's location (default 45 min) and the light follows the real sun as the clock runs.
+2. **Given** polar night or midnight sun, **When** a preset needs a sunrise or darkness that
+   doesn't occur, **Then** the panel says why and the clock doesn't change.
+3. **Given** an exact date and time is entered, **When** it is applied, **Then** the device clock
+   runs from it at 1× or 10×.
+4. **Given** a location preset is picked, **When** it is applied, **Then** the device's saved
+   location and time zone change exactly as saving them in Settings would.
+5. **Given** GPS is on, **When** a location is picked, **Then** the simulated GPS reports that
+   place.
 
 ---
 
 ### User Story 5 - The panel works on a phone (Priority: P2)
 
-On a phone, the Demo button and panel never cover the page's own controls, such as a settings tab's
-Save button. The open panel can be scrolled and closed with one tap.
+On a phone, the Demo button and panel never cover the page's own controls. The open panel scrolls
+within itself, and its close control stays reachable. The inputs are grouped by sensor and
+collapsible, so the panel stays short.
 
-**Why this priority**: The floating Demo button currently covers the Save button on mobile, which
-blocks the main thing visitors try (changing settings).
+**Why this priority**: The panel gains many controls, so it must stay usable on small screens.
 
-**Independent Test**: At 375×667, open every settings tab and scroll to the bottom. Every Save
-button can be tapped with the panel closed. Then open the panel and set a condition without the
-page scrolling horizontally.
+**Independent Test**: At 375×667, open every settings tab and confirm every Save button can be
+tapped. Open the panel and change an input in each group without horizontal scrolling.
 
 **Acceptance Scenarios**:
 
-1. **Given** a phone-sized screen, **When** a page has controls at the bottom, **Then** the page
-   leaves room for the Demo button, so no control sits under it.
+1. **Given** a phone-sized screen, **When** a page has controls at the bottom, **Then** none sits
+   under the Demo button.
 2. **Given** the panel is open on a phone, **When** it is taller than the screen, **Then** it
-   scrolls within itself and its close control stays reachable.
+   scrolls and can be closed with one tap.
 
 ---
 
 ### Edge Cases
 
-- Polar night and midnight sun: presets that need a sunrise, sunset or darkness say why they can't
-  apply rather than jumping somewhere arbitrary (US2-2).
-- The rain sensor is switched off while it is raining: rain stops being simulated, and the rain
-  controls become unavailable. When the sensor is switched back on, rain returns to "off" rather
-  than resuming silently.
-- A sensor fault is set on a sensor the device has switched off (rain, wind): no fault control is
-  offered for it.
-- A target SQM brighter than the sun allows (asking for Bortle 1 at noon): the panel shows that the
-  sun outshines the target. The device reads what the sun gives and does not report a false dark
-  sky.
-- The device restarts (demo restart or GPS change): conditions persist across the restart, as
+- **Thresholds that make a shortcut impossible.** Examples: the cloud rule is off, or a sensor the
+  target needs is off. The shortcut explains why and changes nothing (US3-2).
+- **A differential requiring a sky temperature outside the sensor's range.** The MLX90614 reads
+  roughly -70 °C to +380 °C, so the target is clamped to the range and the panel says so.
+- **The visitor sets humidity above 100% or another physically impossible value.** The input is
+  limited to the sensor's real range.
+- **Rain sensor switched off while rain is set.** Rain stops being simulated and the controls
+  become unavailable. When the sensor is switched back on, rain is 0 mm/h.
+- **Illuminance set while the sun is up.** The visitor's value wins until they choose "follow the
+  sun" again; the panel shows which source is active.
+- **The device restarts** (demo restart, or GPS turned on). Inputs persist across the restart, as
   weather would.
-- 10× speed with a timed preset: the preset's duration runs on the device clock, so it is 10×
-  shorter in wall time.
-- The visitor enters an invalid date or time, or one outside the range the device can represent:
-  the input is rejected with a message, and the clock does not change.
-- "Reset demo" returns all conditions, the clock and the location to defaults.
+- **10× speed.** Ramps, timed shortcuts and the shown waits run on the device clock.
+- **An invalid or out-of-range date.** The date is rejected with a message and the clock doesn't
+  change.
+- **"Reset demo".** All inputs, the clock and the location return to defaults.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The Demo panel MUST let the visitor set each condition independently: cloud state
-  (clear, patchy/broken, clouding over, clearing, overcast), rain (off, or on with a rate in mm/h),
-  sky brightness (Bortle class 1-9 or target SQM in mag/arcsec²), wind (speed, with gusts and
-  direction) and per-sensor faults.
-- **FR-002**: Conditions MUST compose: setting one condition MUST NOT change another, and every set
-  condition stays in force until changed or until a timed preset that set it ends.
-- **FR-003**: Conditions MUST be applied only as raw simulated sensor inputs (and the device clock
-  and location). Every derived value MUST come from the device's own logic, as in spec 016 FR-004:
-  - SQM, NELM, Bortle and cloud cover
+- **FR-001**: The panel's primary controls MUST be the raw readings each simulated sensor reports:
+  - BME280: air temperature (°C), humidity (%) and pressure (hPa).
+  - MLX90614: sky (object) temperature (°C) and sensor ambient temperature (°C).
+  - TSL2591: illuminance (lux), with a "follow the sun" option.
+  - RG-15: rain rate (mm/h) and lens fault.
+  - Anemometer: wind speed and gust (m/s) and direction (°).
+  - GPS: fix on or off, and position.
+  - Every sensor: "not responding".
+- **FR-002**: Each input MUST stay as set until changed. Changing one input MUST NOT change
+  another, except as in FR-003.
+- **FR-003**: The panel MUST offer a **sky minus ambient** differential control linked to the
+  infrared readings. Changing the differential sets the sky temperature, keeping the ambient
+  fixed. Changing either temperature updates the shown differential.
+- **FR-004**: Inputs MUST be limited to each sensor's real measuring range. Out-of-range entries
+  MUST be refused or clamped with a message.
+- **FR-005**: Every derived value MUST come from the device's own logic, as in spec 016 FR-004:
+  - cloud cover and condition
+  - humidity-corrected delta
+  - SQM, NELM and Bortle
   - dew point
+  - rain state
   - the safety verdict and its reasons
   - alerts
   - Alpaca
-- **FR-004**: The panel MUST let the visitor set the device's date and time exactly, and offer
-  presets:
+
+  The panel MUST NOT compute or display any outcome the device didn't produce.
+- **FR-006**: The panel MUST show the device's current derived values next to the inputs:
+  - SQM, NELM and Bortle
+  - cloud cover and condition
+  - dew point
+  - rain state
+  - the verdict and its reasons
+  - alerts armed
+- **FR-007**: Where the device averages or holds a value, the panel MUST show which mechanism is
+  pending and the time remaining. This covers the sky brightness averaging window, the rain clear
+  delay, the safe delay and alert cooldowns. The values MUST come from the device's current
+  settings.
+- **FR-008**: Shortcuts MUST compute the inputs they set from the device's **current** settings:
+  - **Clear** and **Overcast** use the clear-sky and cloudy thresholds plus the humidity
+    correction at the current humidity.
+  - **Cloud just unsafe** uses the cloud-cover limit.
+  - **Dew risk** uses the dew-risk margin.
+  - **Dark sky** uses a target SQM converted to illuminance with the device's own sky-brightness
+    conversion.
+  - **Rain** and **Rain stops** set the rain rate.
+  - **Sensor fails** sets one sensor fault.
+
+  Each shortcut MUST state the settings and values it used.
+- **FR-009**: A shortcut whose target can't be reached with the current settings MUST say why,
+  link to the relevant setting, and change nothing.
+- **FR-010**: Any shortcut MAY ramp its inputs over a chosen time, running on the device clock.
+  The default ramp for cloud changes is 40 s.
+- **FR-011**: Outcome-only labels (for example, a "Cloud over" button that writes a fixed sky
+  temperature) MUST NOT be primary controls. Shortcuts are secondary to the inputs, and
+  everything they set is visible in the inputs afterwards.
+- **FR-012**: `?scenario=<id>` links MUST keep working: night, rain, cloud, clear, dawn,
+  fail-light, fail-ir, fail-environment and fail-rain each map to a shortcut, a time preset, or
+  both.
+- **FR-013**: The panel MUST let the visitor set the device's date and time exactly, and offer
+  time presets:
   - now
   - tonight's darkest moment
-  - dawn (a set time before sunrise, default 45 minutes)
+  - dawn (default 45 min before sunrise)
   - dusk
   - midsummer midnight
   - midwinter midnight
   - 31 December 23:00
 
-  The clock MUST keep running from the set time at the chosen speed (1× or 10×).
-- **FR-005**: Dawn MUST move the device clock to before sunrise at the device's location. The light
-  level MUST then follow the real sun position as the clock runs. Faking light levels for dawn MUST
-  be removed.
-- **FR-006**: The panel MUST offer location presets: London, La Palma, Atacama, Sydney, the high
-  Arctic (75° N, 1° W) and the North Pole.
-  - Applying one MUST change the device's saved location and time zone the same way saving them
-    in Settings does.
-  - The simulated GPS, when on, MUST report the chosen place.
-- **FR-007**: Where a time preset cannot apply at the current place and date (no sunrise, no
-  darkness), the panel MUST say why and leave the clock unchanged.
-- **FR-008**: Controls that depend on a sensor the device has switched off MUST be unavailable,
-  showing the reason and a link to the setting. This applies to the rain controls, the rain-sensor
-  fault and the wind controls.
-- **FR-009**: For each condition, the panel MUST show the target and the device's current reading
-  of it, and indicate "settling" until they agree within a tolerance.
-- **FR-010**: The panel MUST show the device's date, time, time zone and location.
-- **FR-011**: The existing scenarios MUST remain available as presets that set groups of conditions.
-  `?scenario=<id>` links (night, rain, cloud, clear, dawn, fail-light, fail-ir, fail-environment,
-  fail-rain) MUST keep working.
-- **FR-012**: Timed presets MUST run on the device clock and, when they end, revert only the
-  conditions they set.
-- **FR-013**: Conditions, the clock and the location MUST persist for the browser session,
-  including through a page refresh and an emulated restart, and MUST be cleared by "Reset demo"
-  (spec 016 FR-008).
-- **FR-014**: Nothing in this feature may make a network request beyond the demo's own files
-  (spec 016 FR-006). Location presets and time zone data MUST be bundled.
-- **FR-015**: On phone-sized screens, the Demo button and panel MUST NOT cover any page control.
-  The open panel MUST scroll within itself and keep its close control reachable.
-- **FR-016**: Every control in the panel MUST be usable by keyboard and labelled for screen readers.
-- **FR-017**: The docs' Live Demo page MUST describe the conditions, presets and links.
+  The clock MUST run from the set time at 1× or 10×. Dawn and Night MUST move the clock; they MUST
+  NOT fake the light.
+- **FR-014**: The panel MUST offer location presets: London, La Palma, Atacama, Sydney, 75° N 1° W
+  and the North Pole.
+  - Applying one MUST change the device's saved location and time zone as Settings does.
+  - The simulated GPS, when on, MUST report that place.
+- **FR-015**: Where a time preset can't apply (no sunrise, no darkness), the panel MUST say why
+  and leave the clock unchanged.
+- **FR-016**: Controls for a sensor the device has switched off (rain, wind, GPS) MUST be
+  unavailable, with the reason and a link to the setting.
+- **FR-017**: The panel MUST show the device's date, time, time zone and location.
+- **FR-018**: Inputs, the clock and the location MUST persist for the browser session, including
+  across a refresh and an emulated restart, and MUST be cleared by "Reset demo" (spec 016 FR-008).
+- **FR-019**: Nothing in this feature may make a network request beyond the demo's own files
+  (spec 016 FR-006). Presets and time zone rules MUST be bundled.
+- **FR-020**: On phone-sized screens, the Demo button and panel MUST NOT cover any page control.
+  The panel MUST scroll within itself, with inputs grouped by sensor and collapsible.
+- **FR-021**: Every control MUST be keyboard-usable and labelled for screen readers, with units in
+  the accessible name.
+- **FR-022**: The docs' Live Demo page MUST describe the inputs, shortcuts, waits and links.
 
 ### Key Entities
 
-- **Condition**: one adjustable aspect of the simulated world (cloud, rain, sky brightness, wind,
-  sensor fault), with a target value, the time it was set, and optionally the preset that set it.
-- **Device clock**: the emulated device's date and time. It can be set and runs at 1× or 10×.
-- **Location preset**: a named place with latitude, longitude, elevation and time zone.
-- **Preset**: a named group of conditions, optionally with a clock or location change and a
-  duration. The existing scenarios become presets.
+- **Sensor input**: one raw reading a simulated sensor reports, with its unit, real range, current
+  value, and an optional ramp in progress.
+- **Derived reading**: a value the device computed from the inputs (cloud cover, SQM, verdict and
+  so on), shown as read from the device.
+- **Pending wait**: an averaging window or hold the device applies, with its source setting and
+  remaining time.
+- **Shortcut**: a named set of input targets computed from the current settings. It records the
+  settings it used, an optional ramp, an optional duration, and whether it is reachable.
+- **Device clock** and **location preset**: as before. The clock is settable and runs at 1× or
+  10×. A location preset has latitude, longitude, elevation and a POSIX time zone.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: Every combination of two conditions from different groups (cloud, rain, brightness,
-  wind, faults) can be set at once, and the device reflects both within 60 seconds at 1×.
-- **SC-002**: After a condition is changed, the device's reading reaches the target (within
-  tolerance) within 60 seconds at 1×, and the panel shows target and current throughout.
-- **SC-003**: "Dawn" at London on any date puts the device's sun between 6° and 12° below the
-  horizon and rising. At the North Pole on 31 December, the panel explains that there is no sunrise.
-- **SC-004**: All existing `?scenario=` links produce the same visible outcome as before:
-  - rain: unsafe with "Rain detected"
+- **SC-001**: For any valid pair of cloud thresholds, "Clear" and "Overcast" make the device read
+  that condition within its averaging time plus 10 s.
+- **SC-002**: For every input, the device's derived value matches what its own logic gives for that
+  input within one device tick after any pending wait ends. Checked by comparing with the native
+  test build on the same inputs.
+- **SC-003**: Every wait the device applies is shown with a remaining time accurate to within 2 s.
+- **SC-004**: A shortcut that is unreachable with the current settings always explains why and
+  changes no input. Covered by tests with the cloud rule off and with thresholds changed.
+- **SC-005**: All existing `?scenario=` links still produce their visible outcome with default
+  settings:
+  - rain: unsafe, "Rain detected"
   - cloud: unsafe with a cloud reason
   - night: dark sky and "Dark now"
-- **SC-005**: At 375×667, every Save button on every settings tab can be tapped with the Demo button
-  present.
-- **SC-006**: An automated run that exercises every control and preset records zero requests
+- **SC-006**: "Dawn" at London puts the device's sun between 6° and 12° below the horizon and
+  rising. At the North Pole on 31 December, the panel explains there's no sunrise.
+- **SC-007**: At 375×667, every Save button on every settings tab can be tapped with the Demo
+  button present.
+- **SC-008**: An automated run exercising every input, shortcut and preset records zero requests
   leaving the demo's origin.
 
 ## Assumptions
 
-- The demo stays a browser-only, single-visitor emulation (spec 016). Conditions are per tab and are
-  not shared.
-- Patchy/broken cloud varies cover around about 50% over a few minutes, so the device's averaging and
-  the cloud alerts see realistic movement.
-- Wind controls apply only when the anemometer is on in Settings. Wind faults are not separately
-  offered (spec 004 has no wind fault behaviour beyond "missing").
-- Sky brightness is set as a target zenith brightness for a moonless, sun-free sky. The moon and sun
-  still add their light, so the device's SQM is brighter than the target when either is up. The
-  panel says so.
-- Time zones for presets are bundled as fixed POSIX rules (the format the device's time zone setting
-  already uses). A full time zone database is not needed.
-- Settling tolerances: cloud ±5%, rain ±0.2 mm/h, SQM ±0.2, wind ±0.5 m/s.
-- The exact layout of the panel (sections, collapsible groups, sheet vs floating on phones) is a
-  planning decision. Requirements constrain only behaviour and reachability.
-- The tour in spec 018 will drive these conditions. This spec does not define the tour.
+- The demo stays a browser-only, single-visitor emulation (spec 016). Inputs are per tab.
+- **Shortcut margins.** "Clear" targets 3 °C below the clear-sky threshold, "Overcast" 1 °C above
+  the cloudy threshold, and "Cloud just unsafe" 3% cover past the limit, all after the humidity
+  correction. Each margin is chosen so the device's smoothing doesn't hover on the boundary.
+- **Default inputs** are a typical clear night at the default location:
+  - air 11 °C, humidity 62%, pressure 1013 hPa
+  - sky -10 °C, IR ambient air +0.4 °C
+  - light following the sun
+  - rain 0, wind 3 m/s
+- **Small natural variation.** Inputs keep a small variation so readings look alive. It is smaller
+  than the shortcut margins and can be switched off ("hold steady") for exact testing.
+- **Illuminance vs raw counts.** Illuminance is the light input; the raw TSL2591 channels are
+  derived from it as today. Setting raw channels directly is out of scope.
+- **Wind faults.** Only "not responding" is offered for the anemometer, matching the device's
+  existing wind states.
+- **Time zones** for presets are bundled as fixed POSIX rules, the device's own time zone format.
+- **Panel layout** (grouping, sliders vs numbers, sheet vs floating on phones) is a planning
+  decision. The requirements constrain only behaviour and reachability.
+- **Tour (spec 018).** The tour drives these inputs and shortcuts; this spec doesn't define it.
