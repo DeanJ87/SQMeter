@@ -767,11 +767,14 @@ namespace SQM
         // Firmware OTA update (app partition). Registered after /api/update/fs:
         // this server also matches "/api/update" as a prefix of
         // "/api/update/fs", so registered first it took filesystem uploads too.
+        // Set when the updater's own activation failed but a second
+        // esp_ota_set_boot_partition() (which re-verifies the image) succeeded.
+        static bool activatedOnRetry = false;
         server.on("/api/update", HTTP_POST, [this](AsyncWebServerRequest *request)
                   {
             if (!requireAuth(request))
                 return;
-            bool success = !Update.hasError();
+            bool success = !Update.hasError() || activatedOnRetry;
             String response_json;
             
             if (success) {
@@ -809,6 +812,12 @@ namespace SQM
                   {
             if (!index) {
                 Logger::info("OTA", "Firmware update started: %s", filename.c_str());
+                activatedOnRetry = false;
+                if (Update.isRunning()) {
+                    // An earlier upload was cut off; start clean.
+                    Logger::warn("OTA", "Aborting an unfinished update");
+                    Update.abort();
+                }
                 if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
                     Logger::error("OTA", "Update.begin failed: %d", Update.getError());
                     Update.printError(Serial);
@@ -823,6 +832,18 @@ namespace SQM
             if (final) {
                 if (Update.end(true)) {
                     Logger::info("OTA", "Firmware update success, rebooting...");
+                } else if (Update.getError() == UPDATE_ERROR_ACTIVATE) {
+                    // The image is fully written and its first block restored;
+                    // only switching the boot partition failed. Uploads used to
+                    // fail like this on the first attempt and succeed on a
+                    // retry, so retry the switch here. It verifies the image
+                    // again, so a bad image still can't be booted.
+                    const esp_partition_t *target = esp_ota_get_next_update_partition(nullptr);
+                    const esp_err_t first = esp_ota_set_boot_partition(target);
+                    Logger::warn("OTA", "Activating %s failed; retry: %s", target ? target->label : "?", esp_err_to_name(first));
+                    activatedOnRetry = first == ESP_OK;
+                    if (activatedOnRetry)
+                        Logger::info("OTA", "Firmware update success on retry, rebooting...");
                 } else {
                     Logger::error("OTA", "Update.end failed: %d", Update.getError());
                     Update.printError(Serial);
