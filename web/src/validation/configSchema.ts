@@ -304,7 +304,19 @@ export const configSchema = z
     cloudDetection: cloudDetectionConfigSchema,
     alpaca: alpacaConfigSchema.optional(),
     alerts: alertsConfigSchema.optional(),
-    ble: z.object({ enabled: z.boolean() }).optional(),
+    ble: z
+      .object({
+        enabled: z.boolean(),
+        // 6 digits, or the masked stored value
+        passkey: z
+          .string()
+          .regex(/^(\d{6}|\*{8})?$/, "Passkey must be 6 digits")
+          .refine((value) => value !== "000000", "Passkey can't be 000000"),
+        alarmOnUnsafe: z.boolean(),
+        alarmOnRain: z.boolean(),
+        alarmOnSensorFault: z.boolean(),
+      })
+      .optional(),
     wind: windConfigSchema.optional(),
   })
   .superRefine((data, ctx) => {

@@ -396,7 +396,7 @@ export const mockConfig: Config = {
     webhook: { enabled: false, url: "", authHeader: "", insecureTls: false },
     mqtt: { enabled: false },
   },
-  ble: { enabled: false },
+  ble: { enabled: false, passkey: '', alarmOnUnsafe: true, alarmOnRain: true, alarmOnSensorFault: false },
   wind: {
     enabled: true,
     speedPin: 27,

@@ -54,6 +54,8 @@ namespace SQM
                 return "dew_risk";
             case AlertType::ClearSky:
                 return "clear_sky";
+            case AlertType::Acknowledged:
+                return "acknowledged";
             case AlertType::Test:
                 return "test";
             }

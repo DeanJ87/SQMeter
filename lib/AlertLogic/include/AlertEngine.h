@@ -21,6 +21,7 @@ namespace SQM
             LensFault,
             DewRisk,
             ClearSky,
+            Acknowledged, // someone acknowledged a phone alarm
             Test,
         };
 
