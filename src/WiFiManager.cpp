@@ -2,6 +2,7 @@
 #include "Logger.h"
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#include "CaptiveDns.h"
 
 namespace SQM
 {
@@ -37,11 +38,6 @@ namespace SQM
 
     void WiFiManager::handle()
     {
-        if (apMode && dnsServer)
-        {
-            dnsServer->processNextRequest();
-        }
-
         if (isConnected())
         {
             if (stationConnectedAt == 0)
@@ -152,7 +148,20 @@ namespace SQM
         lastReconnectAttempt = millis();
 
         dnsServer.emplace();
-        dnsServer->start(DNS_PORT, "*", WiFi.softAPIP());
+        if (dnsServer->listen(CaptiveDns::PORT))
+        {
+            dnsServer->onPacket([](AsyncUDPPacket &packet)
+                                {
+                const IPAddress ip = WiFi.softAPIP();
+                const uint8_t address[4] = {ip[0], ip[1], ip[2], ip[3]};
+                std::vector<uint8_t> reply;
+                if (CaptiveDns::buildResponse(packet.data(), packet.length(), address, reply))
+                    packet.write(reply.data(), reply.size()); });
+        }
+        else
+        {
+            Logger::error(TAG, "Captive DNS failed to start");
+        }
 
         Logger::info(TAG, "Captive portal started at %s", getIPAddress().c_str());
     }
@@ -166,7 +175,7 @@ namespace SQM
 
         if (dnsServer)
         {
-            dnsServer->stop();
+            dnsServer->close();
             dnsServer.reset();
         }
 

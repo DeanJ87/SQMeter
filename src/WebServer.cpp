@@ -510,7 +510,9 @@ namespace SQM
                                   "/success.txt", "/connecttest.txt", "/ncsi.txt", "/redirect", "/canonical.html"})
         {
             server.on(probe, HTTP_GET, [](AsyncWebServerRequest *request)
-                      { request->redirect(setupScreenUrl().c_str()); });
+                      {
+                Logger::info(TAG, "Captive check %s%s -> setup screen", request->host().c_str(), request->url().c_str());
+                request->redirect(setupScreenUrl().c_str()); });
         }
 
         // Serve files from LittleFS
