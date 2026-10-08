@@ -66,7 +66,7 @@ The demo only talks to itself: there is no server behind it, and the page's secu
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/demo/simulator.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: 3e8c4b97ce65fd1a
+fingerprint: 4490c5c082ed066a
 -->
 <figure class="diagram" markdown>
 
