@@ -176,4 +176,14 @@ test.describe("demo scenarios follow the device", () => {
     const overlap = a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
     expect(overlap).toBe(false);
   });
+
+  test("Cloud over and Clear follow the cloud detection settings", async ({ page }) => {
+    test.setTimeout(120_000);
+    await openPanel(page);
+    await api(page, "/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"cloudDetection":{"clearSkyThreshold":-30,"cloudyThreshold":-20}}' });
+    await page.waitForTimeout(3000);
+    expect(JSON.parse((await api(page, "/api/sensors")).body).clouds.condition).toBe("clear");
+    await page.getByRole("button", { name: "Cloud over" }).click();
+    await expect.poll(async () => JSON.parse((await api(page, "/api/sensors")).body).clouds.condition, { timeout: 60_000 }).toBe("overcast");
+  });
 });
