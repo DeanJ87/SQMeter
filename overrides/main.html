@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{#- Diagrams (spec 024): Material fetches mermaid from unpkg unless a global
+    `mermaid` already exists when its bundle runs, so load the pinned copy the
+    site serves itself (web/scripts/vendor-mermaid.mjs) just before the
+    bundle - and only on pages that have a diagram. -#}
+{% block scripts %}
+  {%- if page and page.content and 'class="mermaid"' in page.content %}
+  <script src="{{ 'assets/javascripts/vendor/mermaid.min.js' | url }}"></script>
+  {%- endif %}
+  {{ super() }}
+{% endblock %}
