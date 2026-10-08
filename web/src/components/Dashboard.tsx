@@ -5,6 +5,7 @@ import type { Config, SensorData, SystemStatus } from '../types';
 import { Button, Card, Icon, MetricTile, Note, Pill, ReadingRow, SensorReadingRow } from './ui';
 import SafetyCard from './SafetyCard';
 import SunMoonCard from './SunMoonCard';
+import { deviceTime } from '../lib/deviceTime';
 import Masonry, { MasonryItem, mergeOrder, moveInOrder } from './Masonry';
 
 const formatNumber = (value: number | undefined, digits: number) =>
@@ -225,7 +226,7 @@ const Dashboard: FunctionalComponent = () => {
             </div>
           </section>
           ) },
-    showSunMoon && location && { id: 'sunmoon', title: 'Sun & Moon', node: <SunMoonCard latitude={location.latitude} longitude={location.longitude} /> },
+    showSunMoon && location && { id: 'sunmoon', title: 'Sun & Moon', node: <SunMoonCard latitude={location.latitude} longitude={location.longitude} deviceNow={deviceTime(status)} /> },
     irOk && { id: 'cloud', title: 'Cloud Conditions', node: (
 <Card
               title="Cloud Conditions"

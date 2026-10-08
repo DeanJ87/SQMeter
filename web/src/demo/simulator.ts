@@ -11,16 +11,16 @@ export interface Scenario {
   startedAtMs: number; // device clock (demo time)
 }
 
-export const SCENARIOS: { id: ScenarioId; label: string; hint: string }[] = [
-  { id: 'night', label: 'Night sky', hint: 'A dark, clear sky for half an hour, whatever the time of day (the device still knows the real sun)' },
-  { id: 'rain', label: 'Rain', hint: 'A shower: rain, then the rain clear delay' },
+export const SCENARIOS: { id: ScenarioId; label: string; hint: string; needsRain?: boolean }[] = [
+  { id: 'night', label: 'Night sky', hint: "Moves the device's clock to the darkest part of tonight, with a clear sky" },
+  { id: 'rain', label: 'Rain', hint: 'A shower: rain, then the rain clear delay', needsRain: true },
   { id: 'cloud', label: 'Cloud over', hint: 'Cloud rolls in until it is overcast' },
   { id: 'clear', label: 'Clear', hint: 'Back to a clear, dark sky' },
   { id: 'dawn', label: 'Dawn', hint: 'The sky brightens as if the sun were rising' },
   { id: 'fail-light', label: 'Light sensor fails', hint: 'The TSL2591 stops responding for a while' },
   { id: 'fail-ir', label: 'IR sensor fails', hint: 'The MLX90614 stops responding for a while' },
   { id: 'fail-environment', label: 'BME280 fails', hint: 'Temperature and humidity stop for a while' },
-  { id: 'fail-rain', label: 'Rain sensor fails', hint: 'The RG-15 stops answering for a while' },
+  { id: 'fail-rain', label: 'Rain sensor fails', hint: 'The RG-15 stops answering for a while', needsRain: true },
 ];
 
 // How long each scenario lasts in demo time before the sky goes back to baseline.
@@ -66,16 +66,43 @@ export const skyLux = (sunAltitudeDeg: number) => {
   return 0.00028;
 };
 
+export const simulatorLocation = (settings: SimulatorSettings) => (settings.location?.set ? settings.location : DEFAULT_LOCATION);
+
+// The darkest moment (lowest sun) in the 24 hours from `from`, to the minute
+// at 10-minute resolution: where "Night sky" moves the device's clock.
+export function darkestTime(from: Date, latitude: number, longitude: number) {
+  let best = from;
+  let lowest = Infinity;
+  for (let minutes = 0; minutes < 24 * 60; minutes += 10) {
+    const at = new Date(from.getTime() + minutes * 60_000);
+    const altitude = sunPosition(at, latitude, longitude).altitude;
+    if (altitude < lowest) {
+      lowest = altitude;
+      best = at;
+    }
+  }
+  return best;
+}
+
+// Cloud takes this long (demo time) to roll in fully.
+const CLOUD_ROLL_IN_MS = 40_000;
+
+// Sky minus air temperature for a cloud amount: about -20 °C under a clear
+// sky, close to 0 under overcast (the device's default thresholds read
+// below -13 °C as clear and above -3 °C as overcast).
+const CLEAR_SKY_DELTA = -20;
+const OVERCAST_SKY_DELTA = -1;
+
+/** `now` is the device's clock: the sun comes from it, as on the device. */
 export function simulate(nowMs: number, now: Date, settings: SimulatorSettings, scenario: Scenario | null) {
-  const where = settings.location?.set ? settings.location : DEFAULT_LOCATION;
+  const where = simulatorLocation(settings);
   const active = scenarioActive(scenario, nowMs) ? scenario : null;
-  // "Night sky" lights the sensors as if the sun were well below the horizon.
-  const sun = active?.id === 'night' ? -30 : sunPosition(now, where.latitude, where.longitude).altitude;
+  const sun = sunPosition(now, where.latitude, where.longitude).altitude;
   const elapsed = active ? nowMs - active.startedAtMs : 0;
 
   // Cloud amount 0 (clear) .. 1 (overcast).
   let cloud = 0.05 + wobble(nowMs, 300, 0.03);
-  if (active?.id === 'cloud') cloud = 0.05 + 0.92 * ramp(elapsed, 3 * 60_000);
+  if (active?.id === 'cloud') cloud = 0.05 + 0.95 * ramp(elapsed, CLOUD_ROLL_IN_MS);
   if (active?.id === 'rain') cloud = 0.97;
 
   let lux = skyLux(sun) * (1 + cloud * 0.5) * (1 + wobble(nowMs, 47, 0.04));
@@ -84,7 +111,7 @@ export function simulate(nowMs: number, now: Date, settings: SimulatorSettings, 
 
   const ambient = 11 + 5 * Math.sin((sun * Math.PI) / 180) + wobble(nowMs, 900, 0.3);
   const humidity = Math.min(98, 62 + 20 * cloud - 8 * Math.sin((sun * Math.PI) / 180) + wobble(nowMs, 600, 1.5));
-  const skyTemperature = ambient - 38 * (1 - cloud) - 2 + wobble(nowMs, 120, 0.4);
+  const skyTemperature = ambient + CLEAR_SKY_DELTA + (OVERCAST_SKY_DELTA - CLEAR_SKY_DELTA) * cloud + wobble(nowMs, 120, 0.4);
 
   const rainRate = active?.id === 'rain' ? (elapsed < 2.5 * 60_000 ? 2.4 + wobble(nowMs, 20, 0.6) : 0) : 0;
   const speed = Math.max(0, 3 + (active?.id === 'rain' ? 4 : 0) + wobble(nowMs, 90, 1.2));

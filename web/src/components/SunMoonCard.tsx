@@ -38,12 +38,14 @@ const MoonDisc: FunctionalComponent<{ phase: number; southern: boolean }> = ({ p
   );
 };
 
-const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number }> = ({ latitude, longitude }) => {
-  const [now, setNow] = useState(() => new Date());
+// `deviceNow` is the device's clock when it has one; otherwise this browser's.
+const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; deviceNow?: Date }> = ({ latitude, longitude, deviceNow }) => {
+  const [browserNow, setBrowserNow] = useState(() => new Date());
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60000);
+    const timer = setInterval(() => setBrowserNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+  const now = deviceNow ?? browserNow;
 
   const sun = sunPosition(now, latitude, longitude);
   const illumination = moonIllumination(now);

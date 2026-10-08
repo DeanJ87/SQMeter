@@ -29,13 +29,15 @@ Open the **✦ Demo** button (bottom right) for weather and fault scenarios:
 
 | Scenario | What you'll see |
 |---|---|
-| **Night sky** | A dark, clear sky for half an hour, whatever the time of day |
-| **Rain** | Raining on the dashboard, the verdict turns unsafe ("Rain detected"), an alert under the bell, and Alpaca IsSafe false - then it clears after the rain clear delay |
-| **Cloud over** / **Clear** | Cloud cover rising past your limit, the "Clouded over" alert, and back |
+| **Night sky** | The device's clock jumps to the darkest moment tonight, with a clear sky - Sun & Moon, darkness and the sky readings all follow |
+| **Rain** ¹ | Raining on the dashboard, the verdict turns unsafe ("Rain detected"), an alert under the bell, and Alpaca IsSafe false - then it clears after the rain clear delay |
+| **Cloud over** / **Clear** | Cloud rolls in over about 40 seconds: cover rises past the alert and safety limits, the "Clouded over" alert, an unsafe verdict - and back |
 | **Dawn** | The sky brightening - try an SQM minimum in the safety rules |
-| **Sensor fails** | A sensor stops answering: its card goes, the verdict counts it, a "sensor fault" alert |
+| **Sensor fails** ¹ | A sensor stops answering: its card goes, the verdict counts it, a "sensor fault" alert |
 
-**Run the device clock 10× faster** shortens the device's own delays (rain clear delay, safe delay, alert cooldowns) so you don't wait 15 minutes.
+¹ The rain scenarios need the rain sensor: they're unavailable while it's switched off in Settings → Sensors.
+
+The panel shows the device's date and time. **Run the device clock 10× faster** runs it - and the sun and moon - ten times faster, and shortens the device's own delays (rain clear delay, safe delay, alert cooldowns) so you don't wait 15 minutes.
 
 Then change settings and watch them take effect:
 

@@ -1,4 +1,5 @@
 import { FunctionalComponent } from 'preact';
+import { route } from 'preact-router';
 import { useEffect, useState } from 'preact/hooks';
 import { Button, Note } from '../components/ui';
 import { demoDevice } from './device';
@@ -20,6 +21,7 @@ const DemoPanel: FunctionalComponent = () => {
 
   const active = scenarioActive(demoDevice.scenario, demoDevice.nowMs) ? demoDevice.scenario : null;
   const remaining = scenarioRemainingMs(active, demoDevice.nowMs);
+  const rainEnabled = demoDevice.rainEnabled;
 
   return (
     <div class={`demo-panel${open ? ' is-open' : ''}`}>
@@ -40,13 +42,22 @@ const DemoPanel: FunctionalComponent = () => {
                 key={scenario.id}
                 small
                 variant={active?.id === scenario.id ? 'primary' : 'default'}
-                title={scenario.hint}
+                title={scenario.needsRain && !rainEnabled ? 'The rain sensor is switched off' : scenario.hint}
+                disabled={scenario.needsRain && !rainEnabled}
                 onClick={() => demoDevice.startScenario(scenario.id)}
               >
                 {scenario.label}
               </Button>
             ))}
           </div>
+          {!rainEnabled && (
+            <Note action={{ label: 'Sensors', onClick: () => route('/settings?tab=sensors') }}>
+              Rain scenarios need the rain sensor: it is switched off in Settings → Sensors.
+            </Note>
+          )}
+          <p class="demo-clock">
+            Device time <span class="mono">{demoDevice.now.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+          </p>
           {active && (
             <Note tone="ok">
               {SCENARIOS.find((s) => s.id === active.id)?.label} - {formatRemaining(remaining)} left

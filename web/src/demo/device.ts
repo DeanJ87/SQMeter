@@ -1,5 +1,5 @@
 import createSqmCore from './core/sqm-core.mjs';
-import { SCENARIOS, simulate, type Scenario, type ScenarioId } from './simulator';
+import { SCENARIOS, darkestTime, simulate, simulatorLocation, type Scenario, type ScenarioId } from './simulator';
 
 // The demo's emulated SQMeter: the firmware's own logic (device core,
 // WebAssembly) fed by the sky simulator, ticking once a second like the
@@ -36,6 +36,7 @@ interface Saved {
   scenario: Scenario | null;
   timeMultiplier: number;
   demoMs: number;
+  clockMs?: number;
   savedAt: number;
 }
 
@@ -49,7 +50,8 @@ type Listener = () => void;
 
 class DemoDevice {
   private core!: Core;
-  private demoMs = 1000; // device clock (millis()), runs faster at 10x
+  private demoMs = 1000; // device uptime clock (millis()), runs faster at 10x
+  private clockMs = Date.now(); // device date and time (NTP), runs faster at 10x and moves for "Night sky"
   private lastWall = 0;
   private timer: ReturnType<typeof setInterval> | null = null;
   private listeners = new Set<Listener>();
@@ -66,7 +68,7 @@ class DemoDevice {
     // for screenshots.
     const requested = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('scenario');
     const known = SCENARIOS.find((s) => s.id === requested);
-    if (known) this.scenario = { id: known.id, startedAtMs: this.demoMs };
+    if (known) this.beginScenario(known.id);
     this.step();
     this.timer = setInterval(() => this.step(), 1000);
   }
@@ -78,6 +80,11 @@ class DemoDevice {
   /** Device clock, ms since the emulated device was first started. */
   get nowMs() {
     return this.demoMs;
+  }
+
+  /** The device's date and time. */
+  get now() {
+    return new Date(this.clockMs);
   }
 
   get restarting() {
@@ -95,16 +102,18 @@ class DemoDevice {
 
   private step() {
     const wall = Date.now();
-    this.demoMs += Math.max(0, wall - this.lastWall) * this.timeMultiplier;
+    const elapsed = Math.max(0, wall - this.lastWall) * this.timeMultiplier;
+    this.demoMs += elapsed;
+    this.clockMs += elapsed;
     this.lastWall = wall;
     if (this.restarting) return;
     const cfg = this.config();
-    const now = new Date(wall);
+    const now = this.now;
     const inputs = simulate(this.demoMs, now, { location: cfg.location, gpsEnabled: cfg.gps?.enabled ?? false }, this.scenario);
     const pad = (n: number) => String(n).padStart(2, '0');
     const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
     const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-    this.core.tick(this.demoMs, Math.floor(wall / 1000), JSON.stringify(inputs), time, date);
+    this.core.tick(this.demoMs, Math.floor(this.clockMs / 1000), JSON.stringify(inputs), time, date);
     this.persist();
     this.listeners.forEach((listener) => listener());
   }
@@ -175,8 +184,23 @@ class DemoDevice {
   // --- Demo controls ----------------------------------------------------------
 
   startScenario(id: ScenarioId) {
-    this.scenario = { id, startedAtMs: this.demoMs };
+    this.beginScenario(id);
     this.step();
+  }
+
+  private beginScenario(id: ScenarioId) {
+    this.scenario = { id, startedAtMs: this.demoMs };
+    if (id === 'night') {
+      // Night falls by moving the device's clock to tonight's darkest moment,
+      // so the sun, moon and darkness all agree with the sky.
+      const where = simulatorLocation({ location: this.config().location, gpsEnabled: false });
+      this.clockMs = darkestTime(this.now, where.latitude, where.longitude).getTime();
+    }
+  }
+
+  /** The rain sensor is switched on in the device's settings. */
+  get rainEnabled() {
+    return this.config().rain?.enabled === true;
   }
 
   setTimeMultiplier(multiplier: number) {
@@ -204,6 +228,7 @@ class DemoDevice {
         scenario: this.scenario,
         timeMultiplier: this.timeMultiplier,
         demoMs: this.demoMs,
+        clockMs: this.clockMs,
         savedAt: Date.now(),
       };
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
@@ -222,7 +247,9 @@ class DemoDevice {
     if (saved?.version === 1 && this.core.loadState(saved.device)) {
       this.scenario = saved.scenario;
       this.timeMultiplier = saved.timeMultiplier === 10 ? 10 : 1;
-      this.demoMs = Math.max(1000, saved.demoMs + Math.max(0, Date.now() - saved.savedAt));
+      const away = Math.max(0, Date.now() - saved.savedAt);
+      this.demoMs = Math.max(1000, saved.demoMs + away);
+      this.clockMs = (saved.clockMs ?? saved.savedAt) + away;
       return;
     }
     this.applyDefaults();
