@@ -116,9 +116,9 @@ Rain and wind rules (2-4) are checked even when the other sensors' data is stale
 Each threshold has its own enable/disable toggle - a disabled threshold never contributes to the verdict.
 
 <!-- diagram: DIA-02
-sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#evaluateSafety lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceCore.cpp#safetyThresholds
+sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#evaluateSafety lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceCore.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: true
-fingerprint: 530d1cc418d5bceb
+fingerprint: afbbe79b25c91c67
 -->
 <figure class="diagram" markdown>
 
@@ -139,6 +139,9 @@ flowchart TB
     RAWSAFE --> DELAY["Safe delay"]
     RAWUNSAFE --> DELAY
     DELAY --> REPORTED["Reported verdict<br/>dashboard, /api/safety, /api/safe,<br/>MQTT safe, Alpaca IsSafe"]
+    REPORTED --> ALPACA{"Alpaca switched on?"}
+    ALPACA -->|yes| ISSAFE["IsSafe = the reported verdict"]
+    ALPACA -->|no| NOTCONNECTED["IsSafe false, with a NotConnected error"]
 ```
 
 <figcaption>How the safety verdict is decided. Each rule only counts when it's switched on; every failing rule adds its reason.</figcaption>
@@ -161,6 +164,7 @@ flowchart TB
         - if the humidity or dew-point rule is on but there's no humidity reading, "Humidity sensor fault"; otherwise humidity above its maximum, or air temperature minus dew point below the margin.
     5. No reasons: the raw verdict is safe. Any reason: unsafe, with all the reasons.
     6. The raw verdict passes through the [safe delay](#safe-delay), and the result is what the dashboard, `/api/safety`, `/api/safe`, MQTT `<base>/safe` and Alpaca `IsSafe` report.
+    7. With Alpaca switched off, `IsSafe` returns false with a NotConnected error instead (see [Connecting from N.I.N.A.](#connecting-from-nina)).
 
 ### Reasons
 
