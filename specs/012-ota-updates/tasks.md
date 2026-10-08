@@ -33,8 +33,8 @@ description: "As-built task list (backfill) for Firmware and Web UI Updates"
 
 ## Phase 6: Convergence
 
-- [ ] T007 Investigate and fix manual firmware uploads failing with "Could not activate partition" on the first attempt and succeeding on retry (seen on every flash 2026-10-04…08) in src/WebServer.cpp (/api/update) per FR-003 / SC-001 (contradicts)
-- [ ] T008 Give local builds a version that orders correctly against releases (include/version.h says 0.0.2 while releases are 0.2.x, so every release looks newer) — e.g. bump with each release plus a dev suffix — per FR-005 / SC-002 (contradicts)
-- [ ] T009 Move release-list parsing (track filter, asset matching for standard/BLE) out of src/OtaUpdater.cpp into lib/ with native tests per FR-006 (missing)
-- [ ] T010 Return non-2xx on failed uploads (see 013 T019) per FR-004 (contradicts)
-- [ ] T011 Update docs/user-guide/ota.md to the Updates page's labels (Firmware / Release track / Manual upload / image type) — addressed by PR #73 — per FR-007 (contradicts)
+- [X] T007 Investigate and fix manual firmware uploads failing with "Could not activate partition" on the first attempt and succeeding on retry (seen on every flash 2026-10-04…08) in src/WebServer.cpp (/api/update) per FR-003 / SC-001 (contradicts)
+- [X] T008 Give local builds a version that orders correctly against releases (include/version.h says 0.0.2 while releases are 0.2.x, so every release looks newer) — e.g. bump with each release plus a dev suffix — per FR-005 / SC-002 (contradicts)
+- [X] T009 Move release-list parsing (track filter, asset matching for standard/BLE) out of src/OtaUpdater.cpp into lib/ with native tests per FR-006 (missing)
+- [X] T010 Return non-2xx on failed uploads (see 013 T019) per FR-004 (contradicts)
+- [X] T011 Update docs/user-guide/ota.md to the Updates page's labels (Firmware / Release track / Manual upload / image type) — addressed by PR #73 — per FR-007 (contradicts)
