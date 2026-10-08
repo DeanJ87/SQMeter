@@ -11,7 +11,7 @@ SQMeter can read a standard reed-switch cup anemometer and an optional resistor-
 
 On the common RJ11 weather-meter cables, the anemometer uses the middle pair and the vane the outer pair - check your sensor's datasheet.
 
-Keep these pins clear of I2C (21/22), GPS (16/17) and the RG-15 (18/19); the settings page rejects conflicts.
+Keep these pins clear of I2C (21/22), GPS (16/17) and the RG-15 (18/19); **Settings → Sensors → Wind** rejects conflicts.
 
 ## Settings
 

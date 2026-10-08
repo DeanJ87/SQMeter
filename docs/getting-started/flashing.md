@@ -56,6 +56,17 @@ Replace `PORT` with your serial port:
     ```
     esptool will scan and print the detected port.
 
+### Standard or Bluetooth build?
+
+Each release has two builds:
+
+| Build | Files | Choose it if |
+|---|---|---|
+| Standard | `sqmeter-complete-flash-*.bin`, `sqmeter-firmware-*.bin` | You don't need Bluetooth - recommended |
+| Bluetooth | `sqmeter-ble-complete-flash-*.bin`, `sqmeter-ble-firmware-*.bin` | You want the phone alarm or BLE broadcasts ([Bluetooth](../user-guide/ble.md)) |
+
+The Bluetooth build uses a different partition layout, so the **first** install has to be a USB flash of `sqmeter-ble-complete-flash-*.bin` at `0x0`, as above. After that it updates over the web UI like the standard build. Going back to the standard build is also a USB flash.
+
 ---
 
 ## Selective Updates (Existing Devices)
@@ -73,6 +84,8 @@ esptool.py --chip esp32 --port PORT --baud 115200 \
 esptool.py --chip esp32 --port PORT --baud 115200 \
   write_flash 0x310000 sqmeter-littlefs-v0.0.1.bin
 ```
+
+On the Bluetooth build the firmware goes to `0x10000` too, but the web UI filesystem lives at `0x380000`.
 
 !!! note "NVS is safe"
     Firmware and filesystem updates never touch the NVS partition where your WiFi credentials and settings are stored.

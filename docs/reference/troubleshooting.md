@@ -42,6 +42,35 @@
 
 If the device stops responding after a failed OTA, it should fall back to the previous app slot on next boot. If it doesn't, reflash via USB.
 
+"Could not activate partition" after an upload usually means the transfer was corrupted on a weak link - upload again.
+
+---
+
+## N.I.N.A. Can't See the Device
+
+1. **Settings → Safety → ASCOM Alpaca** must be on.
+2. Discovery is a UDP broadcast, which doesn't cross subnets or VLANs. If N.I.N.A.'s PC is on another network, add the device manually: its IP, port `80`.
+3. After updating from a release before v0.2.0, re-select the devices in N.I.N.A. once - their unique IDs now include the MAC address.
+4. Test from the PC: `curl http://<device-ip>/management/v1/configureddevices` should list both devices.
+
+---
+
+## An Alert Didn't Arrive (or One Did That Shouldn't Have)
+
+Open **History** on the dashboard's Safety card. It lists safety changes, restarts (and why) and every safe/unsafe alert actually sent, and survives restarts. Common reasons for no alert:
+
+- Alerts are switched off (the bell in the header is crossed out) or **Send alerts** is off
+- It isn't dark yet and **Safety alerts only when it's dark** is on
+- The device restarted - start-up and the safe delay aren't announced, see [Alerts](../user-guide/alerts.md#restarts)
+- The cooldown held it back; it's sent when the cooldown ends if things haven't changed back
+- The channel failed - the bell's list shows each channel's result, e.g. Pushover "user identifier is not a valid user" means the user key (not the app token) is wrong
+
+---
+
+## Web UI Slow With Bluetooth On
+
+WiFi and Bluetooth share one radio. Expect slower page loads with Bluetooth on; turn it off in **Settings → Device** if you don't use the phone alarm.
+
 ---
 
 ## MQTT Not Publishing
