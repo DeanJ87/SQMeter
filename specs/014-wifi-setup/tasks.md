@@ -34,3 +34,7 @@ description: "As-built task list (backfill) for WiFi Setup and Network Presence"
 - [ ] T008 Use /api/wifi/connect from the setup screen or remove it — only the demo mocks call it today — in src/WebServer.cpp per FR-005 (unrequested)
 - [ ] T009 Use one hostname in the docs: examples mix sqmeter.local (first-setup, configuration, alerts) and sqm-esp32.local (rg15) while the default hostname is sqm-esp32, in docs/ per FR-006 / SC-003 (contradicts)
 - [ ] T010 Describe the actual first-boot flow in docs/getting-started/first-setup.md (portal lands on the dashboard today; WiFi is under Settings → Network) until T007 lands, per FR-006 (contradicts)
+
+## Phase 6: Convergence
+
+- [ ] T011 Add an mDNS on/off setting (default on) to the wifi config in src/Config.cpp and web/src/components/settings/NetworkTab.tsx, and advertise the HTTP service, per FR-003 (clarified 2026-10-08) (missing)

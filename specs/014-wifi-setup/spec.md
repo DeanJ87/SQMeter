@@ -8,6 +8,12 @@
 
 **Input**: User description: "Backfill first boot: the setup hotspot and captive portal, joining WiFi, finding the device on the network, and reconnecting."
 
+## Clarifications
+
+### Session 2026-10-08
+
+- Q: Should mDNS be added? → A: Yes, and it must be configurable.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Get it on my WiFi (Priority: P1)
@@ -68,7 +74,8 @@ from Settings.
 - **FR-001**: Without saved WiFi the device MUST start the open "SQM-Setup" hotspot with DNS-based
   captive portal detection for iOS, Android, macOS and Windows.
 - **FR-002**: The captive portal MUST land on a WiFi setup screen (scan, choose, password, Connect).
-- **FR-003**: The device MUST advertise itself via mDNS as `<hostname>.local`.
+- **FR-003**: The device MUST advertise itself via mDNS as `<hostname>.local` (and advertise its
+  HTTP service), and users MUST be able to turn mDNS off in settings.
 - **FR-004**: The device MUST reconnect automatically with back-off when enabled.
 - **FR-005**: Every API endpoint MUST be used by the UI or documented for integrators; unused
   endpoints MUST be removed.

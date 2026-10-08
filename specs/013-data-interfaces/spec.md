@@ -8,6 +8,13 @@
 
 **Input**: User description: "Backfill MQTT, the REST API and the WebSocket streams. There are inconsistencies around MQTT topics and their naming, unused or superfluous values emitted, things that should be emitted but aren't, things that are emitted but shouldn't be, no control over what is emitted (there should be), and the API is probably inconsistent too."
 
+## Clarifications
+
+### Session 2026-10-08
+
+- Q: Renaming fields and topics breaks existing integrations — clean break or deprecated aliases? → A: Clean break. The project is pre-1.0 beta; breaking changes are fine and no aliases are kept.
+- Q: Should Home Assistant MQTT discovery be part of this? → A: Yes.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - One data model everywhere (Priority: P1)
@@ -112,7 +119,7 @@ The dashboard and integrators get live data over WebSockets with the same schema
 - **FR-006**: Values from disabled or faulted sensors MUST NOT be emitted as if valid, on any
   interface.
 - **FR-007**: Users MUST be able to choose which MQTT groups are published and the interval.
-- **FR-008**: The device SHOULD support Home Assistant MQTT discovery (opt-in).
+- **FR-008**: The device MUST support Home Assistant MQTT discovery, switchable in settings.
 - **FR-009**: REST endpoints MUST use one success shape and HTTP status codes for failure, with
   `{"error": "..."}` bodies.
 - **FR-010**: REST and WebSocket payloads MUST omit data for disabled hardware.
@@ -138,6 +145,4 @@ The dashboard and integrators get live data over WebSockets with the same schema
 
 ## Assumptions
 
-- Renaming fields is a breaking change for existing integrations: it ships with release notes,
-  and may keep a deprecated alias for one release only.
-- Home Assistant discovery is opt-in.
+- Renamed fields and topics ship as a clean break (pre-1.0 beta), listed in the release notes.
