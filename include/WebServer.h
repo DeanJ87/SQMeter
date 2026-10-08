@@ -12,6 +12,7 @@
 #include "OtaUpdater.h"
 #include "SafetyEvaluator.h"
 #include "ObservingConditionsMapper.h"
+#include "AlpacaProtocol.h"
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
 #include <ArduinoJson.h>
@@ -121,6 +122,10 @@ namespace SQM
         WiFiUDP alpacaDiscoveryUdp;
         bool alpacaDiscoveryStarted = false;
         mutable uint32_t alpacaServerTransactionId = 0;
+        // Per-device Connected state (index 0 = SafetyMonitor, 1 = ObservingConditions).
+        // Shared by all clients - the device is always reachable, so this
+        // only reflects what clients last set via Connect/Disconnect/Connected.
+        bool alpacaConnected[2] = {false, false};
 
         // Setup route handlers
         void setupStaticRoutes();
@@ -172,6 +177,8 @@ namespace SQM
 
         // Alpaca helpers
         Alpaca::SafetyInputs buildAlpacaSafetyInputs() const;
+        static Alpaca::SafetyThresholds buildAlpacaSafetyThresholds(const Config &cfg);
+        Alpaca::SafetyResult evaluateAlpacaSafety() const;
         Alpaca::ObservingConditionsSnapshot buildAlpacaObservingConditionsSnapshot() const;
         std::string buildAlpacaResponseBool(AsyncWebServerRequest *request, bool value, int errorNumber, const std::string &errorMessage) const;
         std::string buildAlpacaResponseDouble(AsyncWebServerRequest *request, double value, int errorNumber, const std::string &errorMessage) const;

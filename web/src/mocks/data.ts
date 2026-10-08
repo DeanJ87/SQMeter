@@ -1,4 +1,4 @@
-import type { SensorData, SystemStatus, Config, GithubRelease } from "../types";
+import type { SensorData, SystemStatus, Config, GithubRelease, AlpacaConfiguredDevice } from "../types";
 
 const jitter = (base: number, range: number) =>
   base + (Math.random() - 0.5) * range;
@@ -340,7 +340,7 @@ export const mockConfig: Config = {
     humidityCorrection: 0.75,
   },
   alpaca: {
-    enabled: false,
+    enabled: true,
     manualOverrideUnsafe: false,
     staleAfterSeconds: 30,
     cloudCoverEnabled: true,
@@ -396,4 +396,9 @@ export const mockGithubReleases: GithubRelease[] = [
     fsAssetUrl: "https://github.com/DeanJ87/SQMeter/releases/download/v0.0.4-beta.1/sqmeter-littlefs-v0.0.4-beta.1.bin",
     fsAssetSize: 280100,
   },
+];
+
+export const mockAlpacaDevices: AlpacaConfiguredDevice[] = [
+  { DeviceName: "SQMeter SafetyMonitor", DeviceType: "SafetyMonitor", DeviceNumber: 0, UniqueID: "sqmeter-a1b2c3d4e5f6-safetymonitor-0" },
+  { DeviceName: "SQMeter ObservingConditions", DeviceType: "ObservingConditions", DeviceNumber: 0, UniqueID: "sqmeter-a1b2c3d4e5f6-observingconditions-0" },
 ];

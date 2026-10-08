@@ -5,7 +5,16 @@ import {
   mockConfig,
   mockWifiNetworks,
   mockGithubReleases,
+  mockAlpacaDevices,
 } from "./data";
+
+const alpacaEnvelope = <T,>(Value: T) => ({
+  Value,
+  ClientTransactionID: 0,
+  ServerTransactionID: 1,
+  ErrorNumber: 0,
+  ErrorMessage: "",
+});
 
 // WebSocket handlers — wildcard host works on both localhost and GitHub Pages
 const sensorSocket = ws.link("*/ws/sensors");
@@ -23,6 +32,28 @@ export const handlers = [
       time: { iso: new Date().toISOString(), timezone: "GMT0" },
     })
   ),
+
+  // ASCOM Alpaca — management + device state
+  http.get("/management/v1/configureddevices", () =>
+    HttpResponse.json(alpacaEnvelope(mockAlpacaDevices))
+  ),
+  http.get("/management/v1/description", () =>
+    HttpResponse.json(alpacaEnvelope({ ServerName: "SQMeter", Manufacturer: "SQMeter", ManufacturerVersion: "demo", Location: "Demo" }))
+  ),
+  http.get("/api/v1/safetymonitor/0/devicestate", () =>
+    HttpResponse.json(alpacaEnvelope([{ Name: "IsSafe", Value: true }, { Name: "TimeStamp", Value: new Date().toISOString() }]))
+  ),
+  http.get("/api/v1/observingconditions/0/devicestate", () => {
+    const data = generateSensorData();
+    return HttpResponse.json(alpacaEnvelope([
+      { Name: "CloudCover", Value: data.cloudConditions?.cloudCoverPercent ?? 0 },
+      { Name: "DewPoint", Value: data.environment?.dewpoint ?? 0 },
+      { Name: "Humidity", Value: data.environment?.humidity ?? 0 },
+      { Name: "SkyQuality", Value: data.skyQuality?.sqm ?? 0 },
+      { Name: "Temperature", Value: data.environment?.temperature ?? 0 },
+      { Name: "TimeStamp", Value: new Date().toISOString() },
+    ]));
+  }),
 
   // REST — config
   http.get("/api/config", () => HttpResponse.json(mockConfig)),

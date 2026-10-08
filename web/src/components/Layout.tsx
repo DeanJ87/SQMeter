@@ -8,6 +8,7 @@ interface LayoutProps {
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: 'chart' },
+  { path: '/alpaca', label: 'Alpaca', icon: 'scope' },
   { path: '/system', label: 'System', icon: 'cpu' },
   { path: '/settings', label: 'Settings', icon: 'gear' },
   { path: '/updates', label: 'Updates', icon: 'upload' },
@@ -26,6 +27,7 @@ const TinyIcon: FunctionalComponent<{ name: string }> = ({ name }) => {
     cpu: <><rect {...common} x="5" y="5" width="14" height="14" rx="2" /><path {...common} d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4" /></>,
     gear: <><circle {...common} cx="12" cy="12" r="3" /><path {...common} d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7.8 7.8 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.6a7.8 7.8 0 0 0-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7.8 7.8 0 0 0 2 1.2l.4 2.6h4.4l.4-2.6a7.8 7.8 0 0 0 2-1.2l2.4 1 2-3.5-2-1.5A7 7 0 0 0 19 12Z" /></>,
     upload: <><path {...common} d="M12 16V4M7 9l5-5 5 5" /><path {...common} d="M5 18v2h14v-2" /></>,
+    scope: <><path {...common} d="m3 14 13-7 2 4-13 7-2-4Z" /><path {...common} d="m16 7 3-1.5 2 4L18 11M10 14.5 8 21M10 14.5l4 6.5" /></>,
   };
 
   return (
@@ -56,7 +58,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
                 key={item.path}
                 type="button"
                 onClick={() => route(item.path)}
-                class={`nav-button ${router.url === item.path ? 'is-active' : ''}`}
+                class={`nav-button ${router.url.split('?')[0] === item.path ? 'is-active' : ''}`}
               >
                 <TinyIcon name={item.icon} />
                 <span>{item.label}</span>
