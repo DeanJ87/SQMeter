@@ -29,12 +29,11 @@ async function alpacaParams(request: Request): Promise<[string, string][]> {
 export function statusDocument() {
   const parts = demoDevice.statusParts();
   const cfg = demoDevice.rawConfig();
-  const now = demoDevice.now;
   return {
     ...mockStatus,
     ...parts,
     firmware: { ...mockStatus.firmware, version: '0.2.0-beta.3' },
-    time: { iso: now.toISOString(), timezone: cfg.ntp?.timezone ?? 'UTC0' },
+    time: { iso: demoDevice.isoTime, timezone: cfg.ntp?.timezone ?? 'UTC0' },
     wifi: { ...mockStatus.wifi, ssid: joinedSsid ?? (cfg.wifi?.ssid || mockStatus.wifi.ssid), hostname: cfg.wifi?.hostname, mdns: cfg.wifi?.mdns ?? true, apMode: false, connectPending: false },
     mqtt: cfg.mqtt?.enabled
       ? { ...mockStatus.mqtt, enabled: true, connected: true, broker: cfg.mqtt.broker, port: cfg.mqtt.port, topic: cfg.mqtt.topic, availabilityTopic: `${cfg.mqtt.topic}/availability` }

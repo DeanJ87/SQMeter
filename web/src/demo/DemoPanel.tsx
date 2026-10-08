@@ -1,17 +1,15 @@
 import { FunctionalComponent } from 'preact';
-import { route } from 'preact-router';
 import { useEffect, useState } from 'preact/hooks';
 import { Button, Note } from '../components/ui';
 import { demoDevice } from './device';
-import { SCENARIOS, scenarioActive, scenarioRemainingMs } from './simulator';
+import DeviceReadout from './panel/DeviceReadout';
+import SensorInputs from './panel/SensorInputs';
+import Shortcuts from './panel/Shortcuts';
+import TimePlace from './panel/TimePlace';
 
-// The demo's own controls: weather and fault scenarios, demo speed, reset.
-// Only in the demo build (mounted from main.tsx).
-
-const formatRemaining = (ms: number) => {
-  const s = Math.ceil(ms / 1000);
-  return s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
-};
+// The demo's own controls (spec 019): what each sensor reports, what the
+// device makes of it, shortcuts worked out from its settings, and its date,
+// time and place. Only in the demo build (mounted from main.tsx).
 
 const DemoPanel: FunctionalComponent = () => {
   const [open, setOpen] = useState(false);
@@ -23,10 +21,6 @@ const DemoPanel: FunctionalComponent = () => {
     return () => document.body.classList.remove('has-demo-panel');
   }, []);
 
-  const active = scenarioActive(demoDevice.scenario, demoDevice.nowMs) ? demoDevice.scenario : null;
-  const remaining = scenarioRemainingMs(active, demoDevice.nowMs);
-  const rainEnabled = demoDevice.rainEnabled;
-
   return (
     <div class={`demo-panel${open ? ' is-open' : ''}`}>
       {open && (
@@ -37,44 +31,11 @@ const DemoPanel: FunctionalComponent = () => {
               Close
             </Button>
           </div>
-          <Note>
-            A simulated SQMeter running the real firmware's logic in your browser. Settings work; nothing is sent anywhere.
-          </Note>
-          <div class="demo-scenarios">
-            {SCENARIOS.map((scenario) => (
-              <Button
-                key={scenario.id}
-                small
-                variant={active?.id === scenario.id ? 'primary' : 'default'}
-                title={scenario.needsRain && !rainEnabled ? 'The rain sensor is switched off' : scenario.hint}
-                disabled={scenario.needsRain && !rainEnabled}
-                onClick={() => demoDevice.startScenario(scenario.id)}
-              >
-                {scenario.label}
-              </Button>
-            ))}
-          </div>
-          {!rainEnabled && (
-            <Note action={{ label: 'Sensors', onClick: () => route('/settings?tab=sensors') }}>
-              Rain scenarios need the rain sensor: it is switched off in Settings → Sensors.
-            </Note>
-          )}
-          <p class="demo-clock">
-            Device time <span class="mono">{demoDevice.now.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
-          </p>
-          {active && (
-            <Note tone="ok">
-              {SCENARIOS.find((s) => s.id === active.id)?.label} - {formatRemaining(remaining)} left
-            </Note>
-          )}
-          <label class="demo-speed">
-            <input
-              type="checkbox"
-              checked={demoDevice.timeMultiplier === 10}
-              onChange={(e) => demoDevice.setTimeMultiplier((e.target as HTMLInputElement).checked ? 10 : 1)}
-            />
-            Run the device clock 10× faster (rain clear delay, safe delay, cooldowns)
-          </label>
+          <Note>Set what each sensor reports; the device's own code works out the rest. Nothing is sent anywhere.</Note>
+          <DeviceReadout />
+          <Shortcuts />
+          <SensorInputs />
+          <TimePlace />
           <div class="btn-row">
             <Button small variant="danger" onClick={() => demoDevice.reset()}>
               Reset demo
@@ -83,7 +44,7 @@ const DemoPanel: FunctionalComponent = () => {
         </section>
       )}
       <button type="button" class="demo-panel-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span aria-hidden="true">✦</span> Demo{active ? ` · ${SCENARIOS.find((s) => s.id === active.id)?.label}` : ''}
+        <span aria-hidden="true">✦</span> Demo
       </button>
     </div>
   );
