@@ -11,23 +11,23 @@ moved into `lib/`.
 
 - [ ] T001 Add Emscripten (pinned) instructions and version file in tools/demo-core/VERSION and a build script tools/demo-core/build.sh that compiles lib/*/src/*.cpp + tools/demo-core/bridge.cpp with embind to web/src/demo/core/sqm-core.mjs (+ .wasm), `-O2 -sMODULARIZE -sEXPORT_ES6 -sENVIRONMENT=web,node -sALLOW_MEMORY_GROWTH`
 - [ ] T002 [P] Add `npm run build:core` (calls tools/demo-core/build.sh) and `ajv` dev dependency in web/package.json
-- [ ] T003 [P] Add native test env include paths for the new libs (lib/SensorTypes, lib/ConfigModel, lib/DeviceCore) in platformio.ini
+- [X] T003 [P] Add native test env include paths for the new libs (lib/SensorTypes, lib/ConfigModel, lib/DeviceCore) in platformio.ini
 
 ## Phase 2: Foundational (move device logic into lib/, no behaviour change)
 
 **Purpose**: One implementation for firmware, native tests and the demo (research R1/R2). Blocks all stories.
 
-- [ ] T004 Move the plain reading structs (TSL2591Reading, TSL2591Diagnostics, BME280Reading, MLX90614Reading, GPSReading, RG15Reading, RG15Diagnostics, RG15State, WindReading, SensorStatus) into lib/SensorTypes/include/SensorTypes.h; sensor class headers in include/sensors/ include it
-- [ ] T005 Move the Config struct and its model code (createDefault, toJson, alertsToJson, fromJson, applyJson, validate) from include/Config.h + src/Config.cpp into lib/ConfigModel/{include/Config.h,src/ConfigModel.cpp} without Logger/Preferences; keep NVS load/save in src/ConfigStore.cpp; firmware behaviour identical
-- [ ] T006 [P] Native tests for ConfigModel (defaults round-trip, secret redaction + placeholder preservation, every validate() rule's boundary, fromJson merge onto a base) in test/test_config_model/test_main.cpp
-- [ ] T007 Create lib/DeviceCore with `SensorSnapshot` (moved from include/WebServer.h) and the derivations from refreshSensorSnapshot (sky, cloud, humidityMeasured/cloudHumidity) in lib/DeviceCore/{include/DeviceCore.h,src/DeviceCore.cpp}
-- [ ] T008 Move buildReadings, appendDiagnostics/appendLightDiagnostics/appendRainDiagnostics, readingStatus and cloudConditionName from src/WebServer.cpp into lib/DeviceCore (pure: snapshot + config + now in, Readings::Snapshot / JSON out)
-- [ ] T009 Move buildAlpacaSafetyInputs, buildAlpacaSafetyThresholds, buildAlpacaObservingConditionsSnapshot, computeNight and the safety-status document (appendSafetyStatus) into lib/DeviceCore
-- [ ] T010 Move alertVars, applyAlertTemplate, eventSettingFor and the alert decision part of processAlerts (inputs/rules from config, engine update, level/sound/template, stacking, BLE alarm flags) into lib/DeviceCore as `AlertStep run(...)` returning what to dispatch; WebServer keeps dispatch, BLE and NVS
-- [ ] T011 Move the status document's shape from createStatusJson into lib/DeviceCore `writeStatus(JsonObject, const StatusInputs&)`, where StatusInputs carries what the firmware reads from hardware (firmware/heap/partitions/wifi/mqtt/ble/time/OTA); WebServer fills StatusInputs
-- [ ] T012 src/WebServer.cpp calls lib/DeviceCore for everything moved in T007-T011; no change in REST/WS/MQTT/Alpaca output (compare `/api/sensors`, `/api/status`, `/api/safety` from a device before/after)
-- [ ] T013 [P] Native tests for DeviceCore (readings statuses incl. missing/no age, safety reasons + safe delay, night computation, alert templating/vars, status document keys) in test/test_device_core/test_main.cpp
-- [ ] T014 Verify: `pio test -e native`, both firmware builds (state flash delta), ConformU against tools/alpaca-sim, OTA to the spare and compare responses
+- [X] T004 Move the plain reading structs (TSL2591Reading, TSL2591Diagnostics, BME280Reading, MLX90614Reading, GPSReading, RG15Reading, RG15Diagnostics, RG15State, WindReading, SensorStatus) into lib/SensorTypes/include/SensorTypes.h; sensor class headers in include/sensors/ include it
+- [X] T005 Move the Config struct and its model code (createDefault, toJson, alertsToJson, fromJson, applyJson, validate) from include/Config.h + src/Config.cpp into lib/ConfigModel/{include/Config.h,src/ConfigModel.cpp} without Logger/Preferences; keep NVS load/save in src/ConfigStore.cpp; firmware behaviour identical
+- [X] T006 [P] Native tests for ConfigModel (defaults round-trip, secret redaction + placeholder preservation, every validate() rule's boundary, fromJson merge onto a base) in test/test_config_model/test_main.cpp
+- [X] T007 Create lib/DeviceCore with `SensorSnapshot` (moved from include/WebServer.h) and the derivations from refreshSensorSnapshot (sky, cloud, humidityMeasured/cloudHumidity) in lib/DeviceCore/{include/DeviceCore.h,src/DeviceCore.cpp}
+- [X] T008 Move buildReadings, appendDiagnostics/appendLightDiagnostics/appendRainDiagnostics, readingStatus and cloudConditionName from src/WebServer.cpp into lib/DeviceCore (pure: snapshot + config + now in, Readings::Snapshot / JSON out)
+- [X] T009 Move buildAlpacaSafetyInputs, buildAlpacaSafetyThresholds, buildAlpacaObservingConditionsSnapshot, computeNight and the safety-status document (appendSafetyStatus) into lib/DeviceCore
+- [X] T010 Move alertVars, applyAlertTemplate, eventSettingFor and the alert decision part of processAlerts (inputs/rules from config, engine update, level/sound/template, stacking, BLE alarm flags) into lib/DeviceCore as `AlertStep run(...)` returning what to dispatch; WebServer keeps dispatch, BLE and NVS
+- [X] T011 Move the status document's decision parts from createStatusJson into lib/DeviceCore (`writeSky`, `writeSensorHealth`, `writeDiagnostics`); the hardware sections (firmware/heap/partitions/wifi/mqtt/ble/time/OTA) stay in the firmware and are emulated by the demo, guarded by the status schema (T030-T032)
+- [X] T012 src/WebServer.cpp calls lib/DeviceCore for everything moved in T007-T011; no change in REST/WS/MQTT/Alpaca output (compare `/api/sensors`, `/api/status`, `/api/safety` from a device before/after)
+- [X] T013 [P] Native tests for DeviceCore (readings statuses incl. missing/no age, safety reasons + safe delay, night computation, alert templating/vars, status document keys) in test/test_device_core/test_main.cpp
+- [X] T014 Verify: `pio test -e native`, both firmware builds (state flash delta), ConformU against tools/alpaca-sim, OTA to the spare and compare responses
 
 **Checkpoint**: firmware unchanged in behaviour; all device decisions available as portable C++.
 

@@ -7,9 +7,7 @@
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
 #include "sensors/WindSensor.h"
-#include "calculations/SkyQuality.h"
-#include "calculations/CloudDetection.h"
-#include "calculations/Dewpoint.h"
+#include "DeviceCore.h"
 #include "TimeManager.h"
 #include "MQTTClient.h"
 #include "OtaUpdater.h"
@@ -83,39 +81,7 @@ namespace SQM
         static constexpr uint16_t PORT = 80;
         static constexpr uint32_t WS_SENSOR_BROADCAST_INTERVAL_MS = 1000; // Sensors update every 1s
         static constexpr uint32_t WS_STATUS_BROADCAST_INTERVAL_MS = 2000; // Status updates every 2s
-        static constexpr uint32_t SENSOR_STALE_GRACE_MS = 1000;
         static constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 10000;
-
-        struct SensorSnapshot
-        {
-            TSL2591Reading tsl;
-            TSL2591Diagnostics tslDiagnostics;
-            BME280Reading bme;
-            MLX90614Reading mlx;
-            GPSReading gps;
-            RG15Reading rg15;
-            RG15Diagnostics rg15Diagnostics;
-            bool gpsInitialized = false;
-            bool rg15Initialized = false;
-            bool tslInitialized = false;
-            bool bmeInitialized = false;
-            bool mlxInitialized = false;
-            uint32_t tslLastUpdate = 0;
-            uint32_t bmeLastUpdate = 0;
-            uint32_t mlxLastUpdate = 0;
-            uint32_t gpsLastUpdate = 0;
-            uint32_t rg15LastUpdate = 0;
-            WindReading wind;
-            uint32_t dataTimestamp = 0;
-            uint32_t capturedAt = 0;
-
-            // Derived once per reading so REST, MQTT, Alpaca and the safety
-            // verdict all see the same numbers.
-            SkyQualityMetrics sky;
-            CloudMetrics cloud;
-            bool humidityMeasured = false;                  // else the cloud model assumed:
-            float cloudHumidity = ASSUMED_HUMIDITY_PERCENT; // humidity it used
-        };
 
         AsyncWebServer server;
         AsyncWebSocket wsSensors; // /ws/sensors for Dashboard
@@ -217,25 +183,13 @@ namespace SQM
         static constexpr uint32_t MQTT_SAFETY_REPUBLISH_MS = 60000;
         void processAlerts(const SafetyStatus &status);
 
-        struct NightState
-        {
-            const char *source = nullptr; // "gps", "manual" or null
-            double latitude = 0.0;
-            double longitude = 0.0;
-            bool known = false;
-            bool isNight = false;
-            double sunAltitudeDeg = 0.0;
-        };
-        static NightState computeNight(const SensorSnapshot &snapshot, const Config &cfg);
+        static Core::NightState computeNight(const SensorSnapshot &snapshot, const Config &cfg);
+        // "HH:MM" and "YYYY-MM-DD" in the device's time zone, or "--:--"/"--" before the clock is set.
+        static void localClock(std::string &timeText, std::string &dateText);
         void publishMqttSafety(const SafetyStatus &status);
         void setupAlertRoutes();
 
         BleService ble;
-        static const AlertsConfig::EventSetting *eventSettingFor(const AlertsConfig &alerts, Alerts::AlertType type);
-        static std::vector<std::pair<std::string, std::string>> alertVars(const Config &cfg, const Alpaca::ObservingConditionsSnapshot &obs,
-                                                                         const NightState &night, const Alerts::Alert &alert);
-        static void applyAlertTemplate(Alerts::Alert &alert, const AlertsConfig::EventSetting &setting,
-                                       const std::vector<std::pair<std::string, std::string>> &vars);
 
         // Setup route handlers
         void setupStaticRoutes();
