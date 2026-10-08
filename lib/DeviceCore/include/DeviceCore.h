@@ -18,6 +18,7 @@
 #include "Readings.h"
 #include "SafetyEvaluator.h"
 #include "SafetyStatus.h"
+#include "SettingsDeps.h"
 #include "SensorTypes.h"
 #include "calculations/CloudDetection.h"
 #include "calculations/Dewpoint.h"
@@ -77,6 +78,10 @@ namespace SQM
         void writeDiagnostics(JsonObject root, const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
         // Per-sensor health (/api/status "sensors").
         void writeSensorHealth(JsonObject sensors, const Readings::Snapshot &readings, const Config &cfg);
+
+        // The sensor and GPS facts settings dependencies need (the caller
+        // adds network, clock and Bluetooth facts).
+        void sensorFacts(Deps::Facts &facts, const SensorSnapshot &snapshot, const Readings::Snapshot &readings);
 
         // Safety verdict inputs and limits.
         Alpaca::SafetyInputs safetyInputs(const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
