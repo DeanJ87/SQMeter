@@ -97,4 +97,5 @@ nav:
     - Contributing: development/contributing.md
   - Reference:
     - Sky Quality Calculations: reference/sky-quality.md
+    - Settings Dependencies: reference/settings-dependencies.md
     - Troubleshooting: reference/troubleshooting.md
