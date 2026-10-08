@@ -31,5 +31,5 @@ em++ -std=gnu++17 -O2 -Wall -Wextra \
   --bind "${SOURCES[@]}" -o "$OUT/sqm-core.mjs"
 
 # Hash of everything that went in, so CI can tell the output is current.
-cat "${SOURCES[@]}" lib/*/include/*.h lib/*/include/*/*.h tools/demo-core/build.sh 2>/dev/null | shasum -a 256 | cut -d' ' -f1 > "$OUT/SOURCE_HASH"
+python3 tools/demo-core/source_hash.py > "$OUT/SOURCE_HASH"
 echo "Built $OUT/sqm-core.mjs ($(wc -c < "$OUT/sqm-core.wasm") bytes wasm)"

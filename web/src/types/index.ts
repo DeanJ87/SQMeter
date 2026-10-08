@@ -170,8 +170,15 @@ export interface SystemStatus {
     };
   };
   uptime: number;
+  bootCount?: number;
+  resetReason?: number; // ESP-IDF esp_reset_reason_t
   freeHeap: number;
+  minFreeHeap?: number;
+  maxAllocHeap?: number;
   heapSize: number;
+  stackFree?: { asyncTcp: number; loop: number };
+  sensorSnapshotBytes?: number;
+  heapStages?: { stage: string; free: number; largest: number }[];
   cpuFreqMHz: number;
   flashSize: number;
   sketchSize: number;
@@ -232,6 +239,8 @@ export interface SystemStatus {
     broker: string;
     port: number;
     topic: string;
+    availabilityTopic?: string;
+    clientId?: string;
   };
   // Present hardware only; readings are in /api/sensors.
   sensors: {

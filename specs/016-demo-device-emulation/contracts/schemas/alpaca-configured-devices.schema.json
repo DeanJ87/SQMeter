@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "alpaca-configured-devices",
+  "type": "object",
+  "properties": {
+    "ClientTransactionID": {
+      "type": "number"
+    },
+    "ErrorMessage": {
+      "type": "string"
+    },
+    "ErrorNumber": {
+      "type": "number"
+    },
+    "ServerTransactionID": {
+      "type": "number"
+    },
+    "Value": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "DeviceName": {
+            "type": "string"
+          },
+          "DeviceNumber": {
+            "type": "number"
+          },
+          "DeviceType": {
+            "type": "string"
+          },
+          "UniqueID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "DeviceName",
+          "DeviceNumber",
+          "DeviceType",
+          "UniqueID"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "ClientTransactionID",
+    "ErrorMessage",
+    "ErrorNumber",
+    "ServerTransactionID",
+    "Value"
+  ],
+  "additionalProperties": false
+}

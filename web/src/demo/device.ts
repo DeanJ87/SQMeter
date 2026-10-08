@@ -64,7 +64,7 @@ class DemoDevice {
     this.lastWall = Date.now();
     // ?scenario=rain etc. starts a scenario - for links from the docs and
     // for screenshots.
-    const requested = new URLSearchParams(location.search).get('scenario');
+    const requested = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('scenario');
     const known = SCENARIOS.find((s) => s.id === requested);
     if (known) this.scenario = { id: known.id, startedAtMs: this.demoMs };
     this.step();

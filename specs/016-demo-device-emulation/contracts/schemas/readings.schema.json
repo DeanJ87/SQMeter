@@ -1,0 +1,330 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "readings",
+  "type": "object",
+  "properties": {
+    "clouds": {
+      "type": "object",
+      "properties": {
+        "condition": {
+          "type": "string"
+        },
+        "correctedDelta": {
+          "type": "number"
+        },
+        "coverPercent": {
+          "type": "number"
+        },
+        "description": {
+          "type": "string"
+        },
+        "humidity": {
+          "type": "number"
+        },
+        "humiditySource": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "temperatureDelta": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "dataAgeMs": {
+      "type": "number"
+    },
+    "dataStale": {
+      "type": "boolean"
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "ageMs": {
+          "type": "number"
+        },
+        "dewpoint": {
+          "type": "number"
+        },
+        "humidity": {
+          "type": "number"
+        },
+        "pressure": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string"
+        },
+        "temperature": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "gps": {
+      "type": "object",
+      "properties": {
+        "ageMs": {
+          "type": "number"
+        },
+        "altitude": {
+          "type": "number"
+        },
+        "fix": {
+          "type": "boolean"
+        },
+        "hdop": {
+          "type": "number"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "satellites": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "infrared": {
+      "type": "object",
+      "properties": {
+        "ageMs": {
+          "type": "number"
+        },
+        "ambientTemperature": {
+          "type": "number"
+        },
+        "skyTemperature": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "light": {
+      "type": "object",
+      "properties": {
+        "ageMs": {
+          "type": "number"
+        },
+        "full": {
+          "type": "number"
+        },
+        "gain": {
+          "type": "string"
+        },
+        "gainFactor": {
+          "type": "number"
+        },
+        "infrared": {
+          "type": "number"
+        },
+        "integrationMs": {
+          "type": "number"
+        },
+        "lux": {
+          "type": "number"
+        },
+        "nightMode": {
+          "type": "boolean"
+        },
+        "saturated": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "rain": {
+      "type": "object",
+      "properties": {
+        "ageMs": {
+          "type": "number"
+        },
+        "emitterSaturated": {
+          "type": "boolean"
+        },
+        "eventAccumulation": {
+          "type": "number"
+        },
+        "intensity": {
+          "type": "number"
+        },
+        "lensFault": {
+          "type": "boolean"
+        },
+        "raining": {
+          "type": "boolean"
+        },
+        "rainingNow": {
+          "type": "boolean"
+        },
+        "sensorEventAccumulation": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string"
+        },
+        "totalAccumulation": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "safety": {
+      "type": "object",
+      "properties": {
+        "alpacaEnabled": {
+          "type": "boolean"
+        },
+        "changedAgeMs": {
+          "type": "number"
+        },
+        "evaluatedAgeMs": {
+          "type": "number"
+        },
+        "rawSafe": {
+          "type": "boolean"
+        },
+        "reasonFlags": {
+          "type": "number"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "safe": {
+          "type": "boolean"
+        },
+        "secondsUntilSafe": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alpacaEnabled",
+        "changedAgeMs",
+        "evaluatedAgeMs",
+        "rawSafe",
+        "reasonFlags",
+        "reasons",
+        "safe",
+        "secondsUntilSafe"
+      ],
+      "additionalProperties": false
+    },
+    "sky": {
+      "type": "object",
+      "properties": {
+        "averagingWindowSeconds": {
+          "type": "number"
+        },
+        "bortle": {
+          "type": "number"
+        },
+        "calibrated": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "nelm": {
+          "type": "number"
+        },
+        "rawSqm": {
+          "type": "number"
+        },
+        "sqm": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "timeValid": {
+      "type": "boolean"
+    },
+    "timestamp": {
+      "type": "number"
+    },
+    "wind": {
+      "type": "object",
+      "properties": {
+        "ageMs": {
+          "type": "number"
+        },
+        "direction": {
+          "type": "number"
+        },
+        "gust": {
+          "type": "number"
+        },
+        "speed": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string"
+        },
+        "vaneFault": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "clouds",
+    "dataAgeMs",
+    "dataStale",
+    "environment",
+    "infrared",
+    "light",
+    "safety",
+    "sky",
+    "timeValid",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}

@@ -129,6 +129,11 @@ jobs:
       - name: Run native unit tests
         run: pio test -e native
 
+      # The demo runs this firmware code in the browser (web/src/demo/core);
+      # a change to lib/ must ship with a rebuilt core.
+      - name: Demo device core is current
+        run: python3 tools/demo-core/source_hash.py --check
+
       - name: Populate data directory for LittleFS
         run: |
           rm -rf data
