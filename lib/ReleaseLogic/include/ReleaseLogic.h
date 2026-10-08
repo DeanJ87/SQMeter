@@ -22,6 +22,13 @@ namespace SQM
 
     namespace Releases
     {
+        // The update check asks GitHub for this many releases...
+        constexpr int PER_PAGE = 8;
+        // ...and reads them (filtered) into a document this big. Each release
+        // now ships 5 files; 8 of them need ~7 KB on the ESP32, so 6 KB
+        // stopped working at v0.2.0-beta.2. Tested with 8 releases x 6 files.
+        constexpr size_t JSON_CAPACITY = 16384;
+
         // ArduinoJson filter keeping only the fields parse() reads; release
         // notes and uploader details are most of each release's JSON.
         void buildFilter(JsonDocument &filter);

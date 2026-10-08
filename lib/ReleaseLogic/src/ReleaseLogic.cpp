@@ -8,8 +8,6 @@ namespace SQM
     {
         namespace
         {
-            // Filtered, 8 releases with standard, BLE and filesystem assets fit.
-            constexpr size_t JSON_DOC_CAPACITY = 6144;
 
             bool findAsset(JsonArrayConst assets, const char *prefix, std::string &url, size_t &size)
             {
@@ -83,7 +81,7 @@ namespace SQM
         {
             StaticJsonDocument<512> filter; // 256 is too small on 64-bit hosts
             buildFilter(filter);
-            DynamicJsonDocument doc(JSON_DOC_CAPACITY);
+            DynamicJsonDocument doc(JSON_CAPACITY);
             const DeserializationError err = deserializeJson(doc, json, DeserializationOption::Filter(filter));
             if (err)
             {
