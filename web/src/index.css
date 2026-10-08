@@ -232,6 +232,21 @@ button {
   border-bottom-color: var(--cyan);
 }
 
+.nav-label-short {
+  display: none;
+}
+
+/* Narrow phones: "Dashboard" doesn't fit beside four other pages and the bell. */
+@media (max-width: 375px) {
+  .nav-label-full {
+    display: none;
+  }
+
+  .nav-label-short {
+    display: inline;
+  }
+}
+
 .nav-icon-svg {
   flex: 0 0 auto;
   display: block;
@@ -744,6 +759,7 @@ button {
   width: min(100%, 58rem);
   margin: 0 auto;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 
@@ -1039,16 +1055,34 @@ button {
     border-top: 1px solid var(--line-soft);
   }
 
+  /* Five pages and the bell share the width - no sideways scrolling. */
   .nav-button {
-    flex: 1 0 4.8rem;
+    flex: 1 1 0;
+    min-width: 0;
     min-height: 3rem;
     justify-content: center;
     flex-direction: column;
     gap: 0.25rem;
-    padding: 0.45rem 0.35rem 0.35rem;
-    font-size: 0.62rem;
-    letter-spacing: 0.05em;
+    padding: 0.45rem 0.1rem 0.35rem;
+    font-size: 0.58rem;
+    letter-spacing: 0;
     text-transform: uppercase;
+  }
+
+  .nav-button span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .top-nav > .alerts-bell {
+    flex: 0 0 2.75rem;
+    display: flex;
+  }
+
+  .top-nav > .alerts-bell .nav-button {
+    flex: 1 1 auto;
   }
 
   .app-main {
@@ -1290,7 +1324,7 @@ button {
   left: 50%;
   z-index: 20;
   width: max-content;
-  max-width: 17rem;
+  max-width: min(17rem, 75vw);
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--line);
   border-radius: 0.45rem;
@@ -1302,16 +1336,16 @@ button {
   text-align: left;
   text-transform: none;
   white-space: normal;
-  opacity: 0;
+  /* Not just transparent: a hidden tip near the right edge would still widen
+     the page on a phone. */
+  display: none;
   pointer-events: none;
-  transform: translate(-50%, 0.2rem);
-  transition: opacity 0.12s, transform 0.12s;
+  transform: translate(-50%, 0);
 }
 
 .info-tip:hover .info-tip-body,
 .info-tip:focus .info-tip-body {
-  opacity: 1;
-  transform: translate(-50%, 0);
+  display: block;
 }
 
 .note {
@@ -1610,7 +1644,15 @@ input[type="file"].input::file-selector-button {
 
 .card-body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.9rem;
+}
+
+/* Grid and flex children default to their content's width; long URLs and IDs
+   must shrink (ellipsis / wrap) instead of widening the page on a phone. */
+.card-body > *,
+.reading-row > * {
+  min-width: 0;
 }
 
 .rule-row {
@@ -1768,9 +1810,15 @@ input[type="file"].input::file-selector-button {
 
 .url-value {
   display: flex;
+  flex: 1 1 auto;
+  justify-content: flex-end;
   align-items: center;
   gap: 0.4rem;
   min-width: 0;
+}
+
+.url-row .reading-label {
+  flex: 0 0 auto;
 }
 
 .url-value a,
