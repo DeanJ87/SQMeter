@@ -1,0 +1,50 @@
+name: Docs diagrams
+
+# Every docs diagram names the code it reflects (spec 024). When that code
+# changes, the diagram is flagged for review; for the safety-verdict
+# diagrams the check fails until someone confirms the diagram still matches
+# (python3 tools/docs/diagrams.py --confirm DIA-NN).
+on:
+  pull_request:
+    branches: [ master, main ]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'lib/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'web/src/demo/**'
+      - 'tools/**'
+      - 'platformio.ini'
+      - '.github/workflows/diagrams.yml'
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'lib/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'web/src/demo/**'
+      - 'tools/**'
+      - 'platformio.ini'
+      - '.github/workflows/diagrams.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagrams:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Checker tests
+        run: python3 -m unittest discover -s tools/docs -p 'test_*.py'
+
+      - name: Diagrams complete and current
+        run: python3 tools/docs/diagrams.py
