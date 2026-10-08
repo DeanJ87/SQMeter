@@ -70,7 +70,7 @@ Vitest for demo logic, Playwright for the panel.
 - [x] T023 [P] Playwright in web/tests/demo.spec.ts: update existing scenario tests to the new controls; add US1 thresholds test, US2 rain-clear wait, US3 unreachable, US4 North Pole dawn + London dawn (SC-006), SC-005 links (rain/cloud/night), SC-007 phone save buttons on every settings tab, SC-008 every control with zero outbound requests
 - [x] T024 [P] Rewrite docs/live-demo.md: inputs, shortcuts, waits, time & place, links (FR-022); `mkdocs build --strict`
 - [x] T025 Full verification: native tests, both firmware builds (sizes vs T001), web typecheck + Vitest, demo build + Playwright, source hash check
-- [ ] T026 Close out: update spec status, PR #81 body (built, tests, converge, device checks)
+- [x] T026 Close out: update spec status, PR #81 body (built, tests, converge, device checks)
 
 ## Dependencies
 
