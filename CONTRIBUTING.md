@@ -42,40 +42,29 @@ New features are built with [Spec Kit](https://github.com/github/spec-kit). The 
 
 ---
 
-## Code Style — Firmware (C++)
+## Code Style
 
-The project compiles with `-Wall -Wextra -Werror`. Your changes must build cleanly.
+All code follows the [coding standard](docs/development/coding-standards.md) - naming, where code goes, smells to avoid, limits, comments, errors and tests. Every rule has an ID; CI checks the automatic ones:
 
-**Language standard:** C++17
-
-**Key rules:**
-- No stringly-typed code — use enums and structs, not `const char*` maps
-- RAII resource management — no manual `new`/`delete`
-- Const correctness — `const` on everything that shouldn't change
-- No raw `String` (Arduino) in logic code — use `std::string`
-- Prefer `std::optional` over sentinel values like `-1` or `nullptr`
-
-**Adding a sensor:** Extend `SensorBase` — see [Adding Sensors](docs/development/sensors.md).
-
-**Build and test:**
 ```bash
-pio run          # must build with zero warnings
-pio run --target upload && pio device monitor
+python3 -m pip install -r tools/quality/requirements.txt   # once
+python3 tools/quality/check.py          # what CI runs
+python3 tools/quality/check.py --fix    # apply the formatters
 ```
 
----
+Existing violations are in `tools/quality/baseline.json`; new ones fail. Fix one and run `--update-baseline` so the count goes down.
 
-## Code Style — Web UI (TypeScript / Preact)
+**Firmware build (zero warnings):**
+```bash
+pio run && pio test -e native
+```
 
-- TypeScript strict mode — no `any`
-- API and config types live in `web/src/types/`; config is validated with Zod schemas in `web/src/validation/`
-- Components in `web/src/components/`
-- No external UI component libraries or CSS frameworks — reuse the shared components (`web/src/components/ui.tsx`, `web/src/components/settings/controls.tsx`) and the existing classes in `web/src/index.css`
+**Adding a sensor:** extend `SensorBase` - see [Adding Sensors](docs/development/sensors.md).
 
-**Dev server:**
+**Web UI dev server:**
 ```bash
 cd web
-ESP32_IP=<device-ip> npm run dev
+ESP32_IP=<your-device-ip> npm run dev
 ```
 
 ---
