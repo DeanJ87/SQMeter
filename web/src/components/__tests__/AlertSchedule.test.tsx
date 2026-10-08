@@ -109,6 +109,26 @@ describe('Alert schedule status line', () => {
     expect(await screen.findByText('Paused from Home Assistant or MQTT 2m ago. Alerts resume when you resume them.')).toBeInTheDocument();
   });
 
+  it('shows a silent imaging app even while alerts are paused', async () => {
+    server.use(
+      http.get('/api/status', () =>
+        HttpResponse.json({
+          ...mockStatus,
+          alerts: { armed: false, armWithAlpaca: false, mode: 'any', reason: 'user-ui', since: null, sinceAgeMs: 60000 },
+          alpaca: {
+            enabled: true,
+            clients: {
+              safetymonitor: { connected: true, watching: true, silent: true, lastCheckedAgeMs: 240000, clientId: 1 },
+              observingconditions: { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null },
+            },
+          },
+        })
+      )
+    );
+    await openAlerts();
+    expect(await screen.findByText('The imaging app has gone quiet - safety monitor last checked 4m ago.')).toBeInTheDocument();
+  });
+
   it('warns when imaging-app mode needs Alpaca, which is off', async () => {
     server.use(
       http.get('/api/config', () => HttpResponse.json({ ...mockConfig, alpaca: { ...mockConfig.alpaca, enabled: false } }))

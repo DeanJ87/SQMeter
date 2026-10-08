@@ -45,6 +45,7 @@ Then change settings and watch them take effect:
 - **Settings → Safety**: tighten a rule (cloud cover, SQM) past the current reading and the verdict turns unsafe with that reason.
 - **Settings → Sensors**: switch the rain gauge or anemometer off and they disappear from the dashboard, the readings and Alpaca.
 - **Settings → Alerts**: change an event's level or write your own wording, then **Test** - the alert shows under the bell with "Demo: nothing was sent".
+- **Imaging app** (in the Demo panel): **Connect** a simulated imaging app, then **Go silent** - with the clock at 10× an "Imaging app stopped checking" alert arrives within a minute. Set **When to send** to *Only while an imaging app is connected* and **Disconnect** to see alerts pause with the reason.
 - Enter an invalid value and you get the device's own error message.
 
 Device addresses work too: open [`/management/v1/description`](https://demo.sqmeter.dev/management/v1/description) or [`/api/sensors`](https://demo.sqmeter.dev/api/sensors) to see what the device would answer.

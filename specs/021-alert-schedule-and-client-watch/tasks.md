@@ -41,7 +41,7 @@
 - [x] T017 [US2] Firmware: replace `alertsArmed`/`pendingArm` with `AlertSchedule` in `src/WebServer.cpp`/`include/WebServer.h`; NVS `armed`+`reason`+`since`; REST `source=ui`; MQTT source; `/api/alerts/armed` and `/api/status` `alerts`; schedule edge applied after the pass's alerts are dispatched; "Alerts resumed" quiet notification
 - [x] T018 [US2] Demo core: `setArmed(on, source)`, `armedDocument()`, `statusParts()` `alerts`, saveState/loadState of reason/since in `tools/demo-core/bridge.cpp`; `web/src/demo/{device.ts,handlers.ts}` pass `source`, include `alerts`/`alpaca` in the status document
 - [x] T019 [US2] AlertsTab: replace "When you're not imaging" with **When to send** (`SelectInput`, two options), status sentence from `/api/alerts/armed` (or status), **Pause alerts**/**Resume alerts** button with `source=ui`, using the exact Wording table
-- [x] T020 [P] [US2] Vitest wording test over the rendered Alerts card (no "?" labels, no negations, no product names in labels, status sentence) and status-line cases in `web/src/components/settings/__tests__/AlertsTab.test.tsx`
+- [x] T020 [P] [US2] Vitest wording test over the rendered Alerts card (no "?" labels, no negations, no product names in labels, status sentence) and status-line cases in `web/src/components/__tests__/AlertSchedule.test.tsx`
 - [x] T021 [US2] Bell and history wording: `web/src/components/AlertsBell.tsx` (Pause/Resume, paused note), `web/src/components/SafetyCard.tsx` ("Alerts resumed"/"Alerts paused"); update their tests
 
 ## Phase 5: User Story 3 - Settings and integrations keep working (P2)
@@ -75,3 +75,9 @@
 
 US1 (client lost alerts) + US2 (wording) together: both P1, and US2's schedule replaces the code
 US1's disconnect alert must run before.
+
+## Phase 8: Convergence
+
+- [x] T029 [US2] Edge case "the imaging app goes silent while alerts are paused by hand - the status line still shows the client as silent": the Alerts card shows a note when `status.alpaca.clients.*.silent` ("The imaging app has gone quiet - safety monitor last checked 4 min ago.") in `web/src/components/settings/AlertsTab.tsx`, with a test in `web/src/components/__tests__/AlertSchedule.test.tsx`
+- [x] T030 [US3] FR-021 "schemas are updated": add `specs/016-demo-device-emulation/contracts/schemas/alerts-armed.schema.json` for `GET /api/alerts/armed`, check it in `web/src/demo/__tests__/contracts.test.ts` and add the endpoint to `tools/contract-check.py`
+

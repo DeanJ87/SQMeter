@@ -1,4 +1,4 @@
-import type { AlertSchedule, AlertSendMode } from '../../types';
+import type { AlertSchedule, AlertSendMode, AlpacaClientState } from '../../types';
 import { formatClock, formatDuration } from '../../lib/astro';
 
 // "When to send" (specs/021): the labels and the status sentence. The
@@ -50,6 +50,20 @@ export const describeSchedule = (schedule: AlertSchedule): string => {
     default:
       return `Paused.${resume}`;
   }
+};
+
+// A silent imaging app, shown whether or not alerts are paused, e.g. "The
+// imaging app has gone quiet - safety monitor last checked 4m ago."
+export const describeSilentClients = (clients: { safetymonitor: AlpacaClientState; observingconditions: AlpacaClientState }) => {
+  const silent = (
+    [
+      ['safety monitor', clients.safetymonitor],
+      ['weather device', clients.observingconditions],
+    ] as const
+  )
+    .filter(([, state]) => state.silent)
+    .map(([name, state]) => (state.lastCheckedAgeMs === null ? name : `${name} last checked ${formatDuration(state.lastCheckedAgeMs)} ago`));
+  return silent.length ? `The imaging app has gone quiet - ${silent.join(', ')}.` : null;
 };
 
 // Settings are in seconds, shown in minutes.

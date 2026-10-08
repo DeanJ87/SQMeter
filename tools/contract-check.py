@@ -19,6 +19,7 @@ ENDPOINTS = [
     ("/api/safety", "safety"),
     ("/api/config", "config"),
     ("/api/alerts/recent", "alerts-recent"),
+    ("/api/alerts/armed", "alerts-armed"),
     ("/api/safety/history", "safety-history"),
     ("/management/v1/description", "alpaca-description"),
     ("/management/v1/configureddevices", "alpaca-configured-devices"),

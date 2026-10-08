@@ -6,7 +6,7 @@ import { showToast } from '../toast';
 import { darkness, formatClock, formatDuration, sunPosition } from '../../lib/astro';
 import { deviceTime } from '../../lib/deviceTime';
 import type { SettingsTabProps } from './context';
-import { PAUSE_HINT, SEND_MODE_OPTIONS, describeSchedule, minutesToSeconds, secondsToMinutes } from './alertSchedule';
+import { PAUSE_HINT, SEND_MODE_OPTIONS, describeSchedule, describeSilentClients, minutesToSeconds, secondsToMinutes } from './alertSchedule';
 import { InfoTip, Note } from '../ui';
 import { ActionButton, Field, Group, NumberInput, Requires, ResultNote, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
 
@@ -443,6 +443,9 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
               </ActionButton>
               <InfoTip text={PAUSE_HINT} />
             </div>
+            {status?.alpaca?.clients && describeSilentClients(status.alpaca.clients) && (
+              <Note tone="warn">{describeSilentClients(status.alpaca.clients)}</Note>
+            )}
           </Group>
         )}
       </SettingsCard>
