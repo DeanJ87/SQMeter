@@ -215,6 +215,7 @@ void test_observing_conditions_case_insensitive(void)
     TEST_ASSERT_TRUE(r.ok);
 }
 
+// D-22 (specs/020-settings-dependencies): wind properties need the anemometer.
 void test_observing_conditions_not_implemented_property(void)
 {
     ObservingConditionsSnapshot snap = allValidSnapshot(); // wind not present
@@ -276,6 +277,7 @@ void test_observing_conditions_pressure(void)
     TEST_ASSERT_EQUAL_FLOAT(1013.2f, r.value);
 }
 
+// D-21 (specs/020-settings-dependencies): RainRate needs the rain sensor.
 void test_observing_conditions_rainrate_depends_on_rain_sensor(void)
 {
     ObservingConditionsSnapshot snap = allValidSnapshot();
@@ -489,6 +491,7 @@ void test_rain_checked_even_when_other_data_stale(void)
     TEST_ASSERT_TRUE(r.reasonFlags & UNSAFE_STALE_DATA);
 }
 
+// D-15: rain rules are not in effect (ignored) without the rain sensor.
 void test_rain_rule_disabled_or_sensor_absent(void)
 {
     SafetyThresholds t;
@@ -583,6 +586,7 @@ void test_wind_limits(void)
     TEST_ASSERT_EQUAL_UINT32(UNSAFE_WIND_GUST, evaluateSafety(in, t).reasonFlags);
 }
 
+// D-16: a wind limit without an anemometer is fail-safe (unsafe).
 void test_wind_limit_without_sensor_is_unsafe(void)
 {
     SafetyThresholds t;
@@ -664,6 +668,7 @@ void test_router_put_parameter_casing(void)
     TEST_ASSERT_NOT_NULL(strstr(r.body.c_str(), "\"ClientTransactionID\":0"));
 }
 
+// D-20: with Alpaca off, nothing is served.
 void test_router_connected_and_disabled(void)
 {
     FakeBackend backend;

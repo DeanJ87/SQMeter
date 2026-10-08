@@ -11,6 +11,7 @@
 #include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <esp_timer.h>
+#include <cstring>
 #include <nvs.h>
 #include <nvs_flash.h>
 #include <ctime>
@@ -247,7 +248,8 @@ namespace SQM
         if (alpacaConnectedNow != lastAlpacaConnected)
         {
             lastAlpacaConnected = alpacaConnectedNow;
-            if (getConfigCallback().alerts.armWithAlpaca)
+            const Config &cfg = getConfigCallback();
+            if (cfg.alerts.armWithAlpaca && cfg.alpaca.enabled) // dep: D-12
                 pendingArm = alpacaConnectedNow ? 1 : 0;
         }
         applyPendingArm();
@@ -281,7 +283,7 @@ namespace SQM
                 ble.raiseAlarm(sample->bleFlags, wallClock >= Core::CLOCK_VALID_EPOCH ? static_cast<uint32_t>(wallClock) : 0);
             }
             if (pendingTest.mask != BLE_ONLY_TEST)
-                alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, pendingTest.mask);
+                alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, pendingTest.mask, channelBlocks(getSensorSnapshot()));
         }
 
         // Broadcast sensor data every 1 second (for Dashboard)
@@ -404,6 +406,17 @@ namespace SQM
                     item["reasonFlags"] = e.flags;
                 }
             }
+            std::string json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json.c_str()); });
+
+        // What's actually in effect (specs/020-settings-dependencies).
+        server.on("/api/settings/effective", HTTP_GET, [this](AsyncWebServerRequest *request)
+                  {
+            const Deps::Facts facts = settingsFacts(getSensorSnapshot());
+            const std::vector<Deps::Entry> entries = Deps::evaluate(getConfigCallback(), facts);
+            DynamicJsonDocument doc(Deps::reportCapacity(entries));
+            Deps::writeReport(doc.to<JsonObject>(), entries, facts);
             std::string json;
             serializeJson(doc, json);
             request->send(200, "application/json", json.c_str()); });
@@ -932,7 +945,7 @@ namespace SQM
             const Alerts::Alert notification = Alerts::stackAlerts(outgoing);
             if (cfg.alerts.enabled)
             {
-                alertDispatcher->dispatch(notification, cfg.alerts, cfg.deviceName);
+                alertDispatcher->dispatch(notification, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks(snapshot));
                 ble.publishAlert(notification);
                 for (const Alerts::Alert &sent : outgoing)
                     if (sent.type == Alerts::AlertType::Unsafe || sent.type == Alerts::AlertType::Safe)
@@ -954,7 +967,7 @@ namespace SQM
             ack.title = "Alarm acknowledged";
             ack.message = std::string("Phone alarm #") + std::to_string(acknowledged) + " was acknowledged " +
                           (fromPhone ? "on a phone." : "in the web UI.");
-            alertDispatcher->dispatch(ack, cfg.alerts, cfg.deviceName);
+            alertDispatcher->dispatch(ack, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks(snapshot));
         }
     }
 
@@ -989,7 +1002,7 @@ namespace SQM
                 on.message = "Observatory safe.";
             else
                 on.message = "Observatory UNSAFE" + (safety.reasons.empty() ? std::string(".") : ":\n" + Alerts::joinReasons(safety.reasons));
-            alertDispatcher->dispatch(on, cfg.alerts, cfg.deviceName);
+            alertDispatcher->dispatch(on, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks(getSensorSnapshot()));
         }
     }
 
@@ -1731,6 +1744,9 @@ namespace SQM
         groups.gps = mqtt.publish.gps;
         groups.rain = mqtt.publish.rain;
         groups.wind = mqtt.publish.wind;
+        const Config &cfg = getConfigCallback();
+        const BleAlarmStatus alarm = ble.alarmStatus();
+        groups.alertsSwitch = cfg.alerts.enabled || (cfg.ble.enabled && alarm.serviceActive && alarm.bondedPhones > 0); // dep: D-13
 
         publishDiscovery(mqtt, groups);
 
@@ -1767,7 +1783,7 @@ namespace SQM
         Readings::DiscoveryDevice device{std::string("sqmeter_") + mac, getConfigCallback().deviceName, FIRMWARE_VERSION, mqtt.topic,
                                          mqtt.discoveryPrefix};
         std::string key = std::to_string(mqtt.homeAssistant) + device.name + device.baseTopic + device.prefix;
-        for (bool on : {groups.sky, groups.environment, groups.clouds, groups.rain, groups.wind, mqtt.publish.safety})
+        for (bool on : {groups.sky, groups.environment, groups.clouds, groups.rain, groups.wind, mqtt.publish.safety, groups.alertsSwitch})
             key += on ? '1' : '0';
         if (key == discoveryKey && mqttClient->connectionCount() == discoveryConnection)
             return;
@@ -1787,6 +1803,36 @@ namespace SQM
         discoveryConnection = mqttClient->connectionCount();
         discoveryDevice = device;
         discoveryWasOn = mqtt.homeAssistant;
+    }
+
+    Deps::Facts WebServer::settingsFacts(const SensorSnapshot &snapshot) const
+    {
+        Deps::Facts facts;
+        Core::sensorFacts(facts, snapshot, Core::buildReadings(snapshot, getConfigCallback(), millis(), static_cast<int64_t>(time(nullptr))));
+        facts.wifiConnected = WiFi.status() == WL_CONNECTED;
+        facts.mqttConnected = mqttClient != nullptr && mqttClient->isConnected();
+        facts.clockSet = static_cast<int64_t>(time(nullptr)) >= Core::CLOCK_VALID_EPOCH;
+        facts.bluetoothBuild = BleService::available();
+        facts.bluetoothRunning = ble.isActive();
+        const uint32_t phones = ble.alarmStatus().bondedPhones;
+        facts.pairedPhones = static_cast<uint8_t>(phones > 255 ? 255 : phones);
+        return facts;
+    }
+
+    ChannelBlocks WebServer::channelBlocks(const SensorSnapshot &snapshot) const
+    {
+        const std::vector<Deps::Entry> entries = Deps::evaluate(getConfigCallback(), settingsFacts(snapshot));
+        auto blocked = [&entries](const char *setting) -> const char *
+        {
+            const Deps::Reason *reason = Deps::reasonFor(entries, setting);
+            return reason != nullptr && std::strcmp(reason->code, "alerts-off") != 0 ? reason->text : nullptr;
+        };
+        ChannelBlocks blocks{};
+        blocks[static_cast<size_t>(AlertChannel::Mqtt)] = blocked("alerts.mqtt.enabled"); // dep: D-01 D-02
+        blocks[static_cast<size_t>(AlertChannel::Pushover)] = blocked("alerts.pushover.enabled"); // dep: D-03
+        blocks[static_cast<size_t>(AlertChannel::Ntfy)] = blocked("alerts.ntfy.enabled");
+        blocks[static_cast<size_t>(AlertChannel::Webhook)] = blocked("alerts.webhook.enabled");
+        return blocks;
     }
 
     void WebServer::appendSafetyStatus(JsonObject target) const

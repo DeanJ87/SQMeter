@@ -175,7 +175,7 @@ namespace SQM
             const bool get = request.get;
             const bool put = request.put;
             const size_t deviceIndex = isSafetyMonitor ? SAFETY_MONITOR : OBSERVING_CONDITIONS;
-            const bool enabled = backend.alpacaEnabled();
+            const bool enabled = backend.alpacaEnabled(); // dep: D-20
             Envelope reply(request, serverTransactionId);
 
             // --- Common ASCOM device API ---

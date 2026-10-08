@@ -22,6 +22,7 @@
 #include "DeviceCore.h"
 #include "RainLogic.h"
 #include "SafetyHistoryLog.h"
+#include "SettingsDeps.h"
 #include "calculations/Dewpoint.h"
 #include "calculations/SkyQuality.h"
 
@@ -49,6 +50,7 @@ namespace
         int64_t epochSeconds = 0;
         Alerts::Alert alert;
         bool channel[4] = {false, false, false, false};
+        const char *skipped[4] = {nullptr, nullptr, nullptr, nullptr}; // switched on but inactive: why
     };
 } // namespace
 
@@ -141,7 +143,7 @@ public:
         if (connected != lastAlpacaConnected)
         {
             lastAlpacaConnected = connected;
-            if (cfg.alerts.armWithAlpaca)
+            if (cfg.alerts.armWithAlpaca && cfg.alpaca.enabled) // dep: D-12
                 setArmed(connected);
         }
 
@@ -170,6 +172,17 @@ public:
         Core::writeSky(doc.createNestedObject("sky"), Core::night(snapshot, cfg, epoch));
         Core::writeSensorHealth(doc.createNestedObject("sensors"), Core::buildReadings(snapshot, cfg, nowMs, epoch), cfg);
         Core::writeDiagnostics(doc.createNestedObject("diagnostics"), snapshot, cfg, nowMs);
+        return serialize(doc);
+    }
+
+    // GET /api/settings/effective: what's actually in effect, from the
+    // device's own dependency rules (specs/020-settings-dependencies).
+    std::string effective() const
+    {
+        const Deps::Facts f = facts();
+        const std::vector<Deps::Entry> entries = Deps::evaluate(cfg, f);
+        DynamicJsonDocument doc(Deps::reportCapacity(entries));
+        Deps::writeReport(doc.to<JsonObject>(), entries, f);
         return serialize(doc);
     }
 
@@ -235,6 +248,13 @@ public:
             JsonObject channels = item.createNestedObject("channels");
             for (size_t i = 0; i < 4; ++i)
             {
+                if (it->skipped[i] != nullptr)
+                {
+                    JsonObject ch = channels.createNestedObject(CHANNEL_NAMES[i]);
+                    ch["status"] = "skipped";
+                    ch["detail"] = it->skipped[i];
+                    continue;
+                }
                 if (!it->channel[i])
                     continue;
                 JsonObject ch = channels.createNestedObject(CHANNEL_NAMES[i]);
@@ -465,6 +485,18 @@ private:
 
     uint32_t uptimeSeconds() const { return (nowMs - bootMs) / 1000; }
 
+    // The demo's network is simulated: WiFi is up, and the broker is
+    // "connected" whenever MQTT is on.
+    Deps::Facts facts() const
+    {
+        Deps::Facts f;
+        Core::sensorFacts(f, snapshot, Core::buildReadings(snapshot, cfg, nowMs, epoch));
+        f.wifiConnected = true;
+        f.mqttConnected = cfg.mqtt.enabled;
+        f.clockSet = epoch >= Core::CLOCK_VALID_EPOCH;
+        return f;
+    }
+
     uint8_t enabledChannels() const
     {
         return (cfg.alerts.mqttEnabled ? 0x01 : 0) | (cfg.alerts.pushoverEnabled ? 0x02 : 0) | (cfg.alerts.ntfyEnabled ? 0x04 : 0) |
@@ -479,8 +511,20 @@ private:
         r.epochSeconds = epoch >= Core::CLOCK_VALID_EPOCH ? epoch : 0;
         r.alert = alert;
         const uint8_t send = mask & enabledChannels();
+        // Switched on but inactive (e.g. MQTT alerts with MQTT off): skipped
+        // with the reason, like the device. Alerts being off doesn't block.
+        const std::vector<Deps::Entry> entries = Deps::evaluate(cfg, facts());
+        static const char *const SETTINGS[] = {"alerts.mqtt.enabled", "alerts.pushover.enabled", "alerts.ntfy.enabled", "alerts.webhook.enabled"};
         for (size_t i = 0; i < 4; ++i)
-            r.channel[i] = (send & (1u << i)) != 0;
+        {
+            if ((send & (1u << i)) == 0)
+                continue;
+            const Deps::Reason *reason = Deps::reasonFor(entries, SETTINGS[i]); // dep: D-01 D-02 D-03
+            if (reason != nullptr && std::string(reason->code) != "alerts-off")
+                r.skipped[i] = reason->text;
+            else
+                r.channel[i] = true;
+        }
         records.push_back(r);
         if (records.size() > MAX_RECORDS)
             records.pop_front();
@@ -737,6 +781,7 @@ EMSCRIPTEN_BINDINGS(sqmeter_core)
         .function("readings", &EmulatedDevice::readings)
         .function("statusParts", &EmulatedDevice::statusParts)
         .function("safety", &EmulatedDevice::safetyDocument)
+        .function("effective", &EmulatedDevice::effective)
         .function("safetyHistory", &EmulatedDevice::safetyHistory)
         .function("recentAlerts", &EmulatedDevice::recentAlerts)
         .function("clearAlerts", &EmulatedDevice::clearAlerts)
