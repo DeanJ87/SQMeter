@@ -131,13 +131,26 @@ const AlertsBell: FunctionalComponent = () => {
         onClick={toggle}
       >
         <svg class="nav-icon-svg" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2ZM10 20a2 2 0 0 0 4 0" />
+          <path
+            stroke="currentColor"
+            stroke-width="1.7"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2ZM10 20a2 2 0 0 0 4 0"
+          />
           {!armed && <path stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M4 4l16 16" />}
         </svg>
         {unread > 0 && <span class="alerts-bell-count">{unread > 9 ? '9+' : unread}</span>}
       </button>
       {open && (
-        <div class="alerts-flyout" role="dialog" aria-labelledby="alerts-flyout-title" ref={flyout} style={{ top: `${anchorBottom + 6}px` }}>
+        <div
+          class="alerts-flyout"
+          role="dialog"
+          aria-labelledby="alerts-flyout-title"
+          ref={flyout}
+          style={{ top: `${anchorBottom + 6}px` }}
+        >
           <div class="alerts-flyout-head">
             <h2 id="alerts-flyout-title" tabIndex={-1} data-autofocus>
               {/* Shown as "Alerts"; read as "Recent alerts". */}

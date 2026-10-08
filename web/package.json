@@ -11,9 +11,11 @@
     "preview": "vite preview",
     "preview:demo": "vite preview --config vite.demo.config.ts",
     "screenshots": "playwright test tests/screenshots.spec.ts",
-    "lint": "eslint src --ext ts,tsx",
+    "lint": "eslint .",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"*.ts\" \"*.json\" .prettierrc.json",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"*.ts\" \"*.json\" .prettierrc.json"
   },
   "dependencies": {
     "preact": "^10.19.3",
@@ -22,6 +24,8 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
+    "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.44.0",
     "@preact/preset-vite": "^2.7.0",
     "@testing-library/jest-dom": "^7.0.1",
@@ -30,11 +34,17 @@
     "@vitest/coverage-v8": "^4.1.11",
     "ajv": "^8.20.0",
     "autoprefixer": "^10.4.16",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^15.15.0",
     "jsdom": "^30.0.1",
     "msw": "^2.3.0",
     "postcss": "^8.5.25",
+    "prettier": "^3.9.9",
     "terser": "^5.46.1",
     "typescript": "^5.3.3",
+    "typescript-eslint": "^8.71.1",
     "vite": "^8.0.10",
     "vitest": "^4.1.11"
   },

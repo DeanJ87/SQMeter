@@ -95,14 +95,15 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
     setHoverTime(fraction < 0 || fraction > 1 ? null : start.valueOf() + fraction * span);
   };
 
-  const hover = hoverTime !== null
-    ? (() => {
-        const date = new Date(hoverTime);
-        const sun = sunPosition(date, latitude, longitude).altitude;
-        const moon = moonPosition(date, latitude, longitude).altitude;
-        return { date, sun, moon, lit: moonIllumination(date).fraction };
-      })()
-    : null;
+  const hover =
+    hoverTime !== null
+      ? (() => {
+          const date = new Date(hoverTime);
+          const sun = sunPosition(date, latitude, longitude).altitude;
+          const moon = moonPosition(date, latitude, longitude).altitude;
+          return { date, sun, moon, lit: moonIllumination(date).fraction };
+        })()
+      : null;
   const nowInside = now.valueOf() >= start.valueOf() && now.valueOf() <= end.valueOf();
 
   // What the chart shows, in words (spec 022 FR-011).
@@ -117,9 +118,7 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
   const clock = (t: number) => formatClock(new Date(t));
   const description = [
     `Night chart, ${clock(start.valueOf())} to ${clock(end.valueOf())}.`,
-    darkBands.length
-      ? `Dark from ${clock(darkBands[0].from)} to ${clock(darkBands[darkBands.length - 1].to)}.`
-      : 'No full darkness.',
+    darkBands.length ? `Dark from ${clock(darkBands[0].from)} to ${clock(darkBands[darkBands.length - 1].to)}.` : 'No full darkness.',
     moonUp.length ? `Moon up ${moonUp.map((up) => `${clock(up.from)} to ${clock(up.to)}`).join(' and ')}.` : 'Moon below the horizon.',
     `Moon ${Math.round(lit * 100)}% lit.`,
   ].join(' ');
@@ -136,7 +135,14 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
         onPointerLeave={() => setHoverTime(null)}
       >
         {bands.map((band) => (
-          <rect key={band.from} class={BAND_CLASS[band.phase]} x={x(band.from)} y={PAD.top} width={Math.max(0, x(band.to) - x(band.from))} height={plotHeight} />
+          <rect
+            key={band.from}
+            class={BAND_CLASS[band.phase]}
+            x={x(band.from)}
+            y={PAD.top}
+            width={Math.max(0, x(band.to) - x(band.from))}
+            height={plotHeight}
+          />
         ))}
         {[30, 60].map((altitude) => (
           <line key={altitude} class="chart-grid" x1={PAD.left} x2={PAD.left + plotWidth} y1={y(altitude)} y2={y(altitude)} />
@@ -178,10 +184,7 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
         )}
       </svg>
       {hover && (
-        <div
-          class="chart-tip"
-          style={{ left: `${Math.min(Math.max(x(hover.date.valueOf()), 70), width - 70)}px` }}
-        >
+        <div class="chart-tip" style={{ left: `${Math.min(Math.max(x(hover.date.valueOf()), 70), width - 70)}px` }}>
           <strong>{formatClock(hover.date)}</strong>
           <span>
             Sun {hover.sun.toFixed(1)}° · {SKY_PHASE_LABEL[skyPhase(hover.sun)]}

@@ -1,39 +1,39 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: "./tests",
+  testDir: './tests',
   // The docs check needs the built mkdocs site: playwright.docs.config.ts.
-  testIgnore: "a11y-docs.spec.ts",
+  testIgnore: 'a11y-docs.spec.ts',
   fullyParallel: false,
   retries: 1,
   workers: 1,
-  reporter: "list",
+  reporter: 'list',
 
   use: {
-    baseURL: "http://localhost:4173/",
+    baseURL: 'http://localhost:4173/',
     // Give MSW time to intercept before assertions
     actionTimeout: 10_000,
-    screenshot: "only-on-failure",
-    colorScheme: "dark",
+    screenshot: 'only-on-failure',
+    colorScheme: 'dark',
     viewport: { width: 1280, height: 800 },
   },
 
   projects: [
     {
-      name: "chromium",
+      name: 'chromium',
       use: {
-        ...devices["Desktop Chrome"],
+        ...devices['Desktop Chrome'],
         // GitHub-hosted runners already include Chrome. Avoid downloading a
         // second browser during every Pages deployment.
-        channel: process.env.CI ? "chrome" : undefined,
+        channel: process.env.CI ? 'chrome' : undefined,
       },
     },
   ],
 
   // Start the demo preview server before running tests
   webServer: {
-    command: "npm run preview:demo",
-    url: "http://localhost:4173/",
+    command: 'npm run preview:demo',
+    url: 'http://localhost:4173/',
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },

@@ -7,8 +7,6 @@
 namespace SQM
 {
 
-
-
     class MLX90614Sensor : public SensorBase
     {
     public:

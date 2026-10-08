@@ -29,7 +29,7 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
     void scan();
   }, []);
 
-  const ssid = selected === OTHER ? otherSsid.trim() : selected ?? '';
+  const ssid = selected === OTHER ? otherSsid.trim() : (selected ?? '');
   const network = networks.find((n) => n.ssid === selected);
   const needsPassword = selected === OTHER || network?.encryption !== 'open';
 

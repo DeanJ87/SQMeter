@@ -6,7 +6,9 @@ namespace SQM
 {
 
     GPSSensor::GPSSensor(uint8_t rxPin, uint8_t txPin, uint32_t baudRate)
-        : rxPin(rxPin), txPin(txPin), baudRate(baudRate),
+        : rxPin(rxPin),
+          txPin(txPin),
+          baudRate(baudRate),
           serial(std::make_unique<HardwareSerial>(UART_NUM)),
           gps(std::make_unique<TinyGPSPlus>())
     {
@@ -100,8 +102,8 @@ namespace SQM
             static unsigned long lastLog = 0;
             if (millis() - lastLog > 30000) // Every 30 seconds
             {
-                Logger::info(TAG, "Waiting for GPS fix... (%d satellites visible)",
-                             gps->satellites.isValid() ? gps->satellites.value() : 0);
+                Logger::info(
+                    TAG, "Waiting for GPS fix... (%d satellites visible)", gps->satellites.isValid() ? gps->satellites.value() : 0);
                 lastLog = millis();
             }
         }

@@ -50,7 +50,7 @@ describe('summariseSeries', () => {
 
   it('describes a rising series with its range', () => {
     expect(summariseSeries('SQM', [20.9, 21.1, 21.4], (v) => v.toFixed(1))).toBe(
-      'SQM trend: rising, 20.9 to 21.4 (range 20.9 to 21.4) over the last 3 readings'
+      'SQM trend: rising, 20.9 to 21.4 (range 20.9 to 21.4) over the last 3 readings',
     );
   });
 

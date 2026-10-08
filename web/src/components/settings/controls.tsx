@@ -9,9 +9,7 @@ import { Button, Card, InfoTip, Note, Pill } from '../ui';
 type Tone = 'ok' | 'warn' | 'bad' | 'off';
 const PILL: Record<Tone, string> = { ok: 'pill-green', warn: 'pill-amber', bad: 'pill-red', off: 'pill-dim' };
 
-export const StatusBadge: FunctionalComponent<{ tone: Tone; label: string }> = ({ tone, label }) => (
-  <Pill tone={PILL[tone]}>{label}</Pill>
-);
+export const StatusBadge: FunctionalComponent<{ tone: Tone; label: string }> = ({ tone, label }) => <Pill tone={PILL[tone]}>{label}</Pill>;
 
 export const SettingsCard: FunctionalComponent<{
   id?: string;

@@ -67,7 +67,12 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         {config.ota.enabled && (
           <div class="form-grid indent">
             <Field label="Upload password" error={error('ota.password') ?? error('otaPassword')}>
-              <TextInput dataField="ota.password" type="password" value={config.ota.password} onInput={(v) => update(['ota', 'password'], v)} />
+              <TextInput
+                dataField="ota.password"
+                type="password"
+                value={config.ota.password}
+                onInput={(v) => update(['ota', 'password'], v)}
+              />
             </Field>
           </div>
         )}
@@ -95,7 +100,11 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
                   alarm?.serviceActive ? (
                     <StatusBadge
                       tone={alarm.active ? 'bad' : alarm.bondedPhones > 0 ? 'ok' : 'warn'}
-                      label={alarm.active ? `Alarm #${alarm.sequence} ringing` : `${alarm.bondedPhones} phone${alarm.bondedPhones === 1 ? '' : 's'} paired`}
+                      label={
+                        alarm.active
+                          ? `Alarm #${alarm.sequence} ringing`
+                          : `${alarm.bondedPhones} phone${alarm.bondedPhones === 1 ? '' : 's'} paired`
+                      }
                     />
                   ) : undefined
                 }
@@ -106,14 +115,21 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
                   hint="6 digits, typed on the phone when pairing. Only paired phones get alarms. Empty turns the alarm off."
                 >
                   <div class="input-row">
-                    <TextInput dataField="ble.passkey" type="password" value={bleConfig.passkey} onInput={(v) => update(['ble', 'passkey'], v)} />
+                    <TextInput
+                      dataField="ble.passkey"
+                      type="password"
+                      value={bleConfig.passkey}
+                      onInput={(v) => update(['ble', 'passkey'], v)}
+                    />
                     <ActionButton onClick={() => update(['ble', 'passkey'], randomPasskey())}>Generate</ActionButton>
                   </div>
                   {newPasskey && <Requires>New passkey {newPasskey} - it's hidden once saved. Paired phones need re-pairing.</Requires>}
                 </Field>
 
                 {hasPasskey ? (
-                  <Note action={{ label: 'Choose events', onClick: () => goTo('alerts', 'alerts') }}>Events set to Wake me ring paired phones.</Note>
+                  <Note action={{ label: 'Choose events', onClick: () => goTo('alerts', 'alerts') }}>
+                    Events set to Wake me ring paired phones.
+                  </Note>
                 ) : (
                   <Requires>Set a passkey to turn on the phone alarm.</Requires>
                 )}
@@ -121,7 +137,9 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
                 {alarm?.serviceActive && (
                   <div class="btn-row">
                     {alarm.active && (
-                      <ActionButton onClick={() => act('/api/ble/ack', 'Alarm acknowledged.')}>Acknowledge alarm #{alarm.sequence}</ActionButton>
+                      <ActionButton onClick={() => act('/api/ble/ack', 'Alarm acknowledged.')}>
+                        Acknowledge alarm #{alarm.sequence}
+                      </ActionButton>
                     )}
                     {confirmUnpair ? (
                       <>

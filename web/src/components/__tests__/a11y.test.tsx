@@ -32,7 +32,7 @@ describe('Field', () => {
     render(
       <Field label="Hostname" hint="Reachable at .local">
         <TextInput value="" onInput={() => undefined} />
-      </Field>
+      </Field>,
     );
     expect(screen.getByRole('textbox', { name: 'Hostname' })).toBeInTheDocument();
   });
@@ -41,7 +41,7 @@ describe('Field', () => {
     render(
       <Field label="Port" error="Port must be 1-65535">
         <NumberInput value={0} onChange={() => undefined} error="Port must be 1-65535" />
-      </Field>
+      </Field>,
     );
     const input = screen.getByRole('spinbutton', { name: 'Port' });
     expect(input).toHaveAttribute('aria-invalid', 'true');
@@ -52,7 +52,7 @@ describe('Field', () => {
     render(
       <Field label="Range">
         <SelectInput value="a" onChange={() => undefined} options={[{ value: 'a', label: 'A' }]} ariaLabel="Units" />
-      </Field>
+      </Field>,
     );
     expect(screen.getByRole('combobox', { name: 'Units' })).toBeInTheDocument();
   });

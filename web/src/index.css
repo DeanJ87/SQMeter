@@ -66,19 +66,19 @@ code {
 }
 
 @font-face {
-  font-family: "Inter SQM";
+  font-family: 'Inter SQM';
   font-style: normal;
   font-weight: 400 600;
   font-display: swap;
-  src: url("./assets/fonts/inter-sqm.woff2") format("woff2");
+  src: url('./assets/fonts/inter-sqm.woff2') format('woff2');
 }
 
 @font-face {
-  font-family: "JetBrains Mono SQM";
+  font-family: 'JetBrains Mono SQM';
   font-style: normal;
   font-weight: 400 600;
   font-display: swap;
-  src: url("./assets/fonts/jetbrains-mono-sqm.woff2") format("woff2");
+  src: url('./assets/fonts/jetbrains-mono-sqm.woff2') format('woff2');
 }
 
 :root {
@@ -99,8 +99,8 @@ code {
   --green: #5ee0a0;
   --amber: #f4c15d;
   --red: #f26b62;
-  --font-ui: "Inter SQM", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono SQM", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-ui: 'Inter SQM', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono SQM', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 * {
@@ -144,9 +144,7 @@ button {
 
 .app-shell {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 50% -15%, rgba(85, 199, 242, 0.12), transparent 28rem),
-    var(--bg);
+  background: radial-gradient(circle at 50% -15%, rgba(85, 199, 242, 0.12), transparent 28rem), var(--bg);
 }
 
 .app-header {
@@ -342,7 +340,7 @@ button {
 }
 
 .hero-card::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: -8rem auto auto 50%;
   width: 16rem;
@@ -443,7 +441,6 @@ button {
   color: var(--muted);
   font-weight: 550;
 }
-
 
 .sq-card {
   min-width: 0;
@@ -802,26 +799,6 @@ button {
   box-shadow: none;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 .system-page {
   display: block;
   column-count: 2;
@@ -1095,19 +1072,14 @@ button {
     padding: 0.75rem;
   }
 
-  
-
-
   .system-page {
     column-count: 1;
   }
 
   .metric-grid,
-.metric-grid.compact {
+  .metric-grid.compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  
 
   .hero-card .metric-grid.compact {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1116,7 +1088,7 @@ button {
 
 @media (max-width: 420px) {
   .hero-card,
-.sq-card {
+  .sq-card {
     padding: 0.85rem;
     border-radius: 0.7rem;
   }
@@ -1168,7 +1140,10 @@ button {
   font-size: 0.86rem;
   font-weight: 600;
   white-space: nowrap;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .panel-page .settings-tab:hover {
@@ -1226,7 +1201,10 @@ button {
   font: 650 0.84rem/1.2 var(--font-ui);
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
 }
 
 .btn:hover:not(:disabled) {
@@ -1319,7 +1297,7 @@ button {
 
 /* The visible circle stays small; the target is 24 x 24 (WCAG 2.5.8). */
 .info-tip::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: calc((1rem - 24px) / 2);
   min-width: 24px;
@@ -1565,11 +1543,11 @@ button {
   white-space: nowrap;
 }
 
-input[type="file"].input {
+input[type='file'].input {
   padding: 0.3rem;
 }
 
-input[type="file"].input::file-selector-button {
+input[type='file'].input::file-selector-button {
   margin-right: 0.6rem;
   padding: 0.3rem 0.7rem;
   border: 1px solid rgba(85, 199, 242, 0.28);
@@ -1606,11 +1584,13 @@ input[type="file"].input::file-selector-button {
   border-radius: 999px;
   background: var(--line);
   cursor: pointer;
-  transition: background 0.18s, border-color 0.18s;
+  transition:
+    background 0.18s,
+    border-color 0.18s;
 }
 
 .toggle input::before {
-  content: "";
+  content: '';
   position: absolute;
   top: 0.16rem;
   left: 0.18rem;
@@ -1751,7 +1731,7 @@ input[type="file"].input::file-selector-button {
 }
 
 .reason-list li::before {
-  content: "• ";
+  content: '• ';
 }
 
 @media (max-width: 560px) {

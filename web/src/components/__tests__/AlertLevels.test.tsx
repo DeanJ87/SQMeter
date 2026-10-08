@@ -11,7 +11,7 @@ describe('Alert levels', () => {
       http.post('/api/config', async ({ request }) => {
         saved = await request.json();
         return HttpResponse.json({ success: true });
-      })
+      }),
     );
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);
@@ -30,7 +30,6 @@ describe('Alert levels', () => {
     expect(saved.alerts.events.sensor_fault).toEqual({ level: 4, sound: 'siren' });
   });
 
-
   it('tests one event with its unsaved level and sound, and reports every channel', async () => {
     let query = '';
     let calls = 0;
@@ -44,9 +43,19 @@ describe('Alert levels', () => {
         const alerts =
           calls === 1
             ? []
-            : [{ id: 9, event: 'clouded_over', title: 'Test: Clouded over', message: '', level: 'wake', ageSeconds: 1, channels: { pushover: { status: 'sent', detail: 'HTTP 200' } } }];
+            : [
+                {
+                  id: 9,
+                  event: 'clouded_over',
+                  title: 'Test: Clouded over',
+                  message: '',
+                  level: 'wake',
+                  ageSeconds: 1,
+                  channels: { pushover: { status: 'sent', detail: 'HTTP 200' } },
+                },
+              ];
         return HttpResponse.json({ enabled: true, alerts });
-      })
+      }),
     );
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);
@@ -72,7 +81,7 @@ describe('Alert wording', () => {
       http.post('/api/config', async ({ request }) => {
         saved = await request.json();
         return HttpResponse.json({ success: true });
-      })
+      }),
     );
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);

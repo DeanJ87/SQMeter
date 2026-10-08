@@ -27,10 +27,33 @@ const TinyIcon: FunctionalComponent<{ name: string }> = ({ name }) => {
   };
   const paths = {
     chart: <path {...common} d="M4 17 9 11l4 4 7-8M15 7h5v5" />,
-    cpu: <><rect {...common} x="5" y="5" width="14" height="14" rx="2" /><path {...common} d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4" /></>,
-    gear: <><circle {...common} cx="12" cy="12" r="3" /><path {...common} d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7.8 7.8 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.6a7.8 7.8 0 0 0-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7.8 7.8 0 0 0 2 1.2l.4 2.6h4.4l.4-2.6a7.8 7.8 0 0 0 2-1.2l2.4 1 2-3.5-2-1.5A7 7 0 0 0 19 12Z" /></>,
-    upload: <><path {...common} d="M12 16V4M7 9l5-5 5 5" /><path {...common} d="M5 18v2h14v-2" /></>,
-    scope: <><path {...common} d="m3 14 13-7 2 4-13 7-2-4Z" /><path {...common} d="m16 7 3-1.5 2 4L18 11M10 14.5 8 21M10 14.5l4 6.5" /></>,
+    cpu: (
+      <>
+        <rect {...common} x="5" y="5" width="14" height="14" rx="2" />
+        <path {...common} d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4" />
+      </>
+    ),
+    gear: (
+      <>
+        <circle {...common} cx="12" cy="12" r="3" />
+        <path
+          {...common}
+          d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7.8 7.8 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.6a7.8 7.8 0 0 0-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7.8 7.8 0 0 0 2 1.2l.4 2.6h4.4l.4-2.6a7.8 7.8 0 0 0 2-1.2l2.4 1 2-3.5-2-1.5A7 7 0 0 0 19 12Z"
+        />
+      </>
+    ),
+    upload: (
+      <>
+        <path {...common} d="M12 16V4M7 9l5-5 5 5" />
+        <path {...common} d="M5 18v2h14v-2" />
+      </>
+    ),
+    scope: (
+      <>
+        <path {...common} d="m3 14 13-7 2 4-13 7-2-4Z" />
+        <path {...common} d="m16 7 3-1.5 2 4L18 11M10 14.5 8 21M10 14.5l4 6.5" />
+      </>
+    ),
   };
 
   return (
@@ -45,17 +68,23 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
 
   return (
     <div class="app-shell">
-      <a class="skip-link" href="#main" onClick={(event) => {
-        // Hash routing (demo) would treat #main as a route: move focus instead.
-        event.preventDefault();
-        document.getElementById('main')?.focus();
-      }}>
+      <a
+        class="skip-link"
+        href="#main"
+        onClick={(event) => {
+          // Hash routing (demo) would treat #main as a route: move focus instead.
+          event.preventDefault();
+          document.getElementById('main')?.focus();
+        }}
+      >
         Skip to main content
       </a>
       <header class="app-header">
         <div class="app-header-inner">
           <div class="brand">
-            <div class="brand-mark" aria-hidden="true">✦</div>
+            <div class="brand-mark" aria-hidden="true">
+              ✦
+            </div>
             <div>
               <h1>SQMeter</h1>
               <p>Dark Sky Monitor</p>

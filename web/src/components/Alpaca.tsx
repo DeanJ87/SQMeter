@@ -54,8 +54,7 @@ const CopyableUrl: FunctionalComponent<{ label: string; url: string; open?: bool
   );
 };
 
-const deviceBasePath = (device: AlpacaConfiguredDevice) =>
-  `/api/v1/${device.DeviceType.toLowerCase()}/${device.DeviceNumber}`;
+const deviceBasePath = (device: AlpacaConfiguredDevice) => `/api/v1/${device.DeviceType.toLowerCase()}/${device.DeviceNumber}`;
 
 const Alpaca: FunctionalComponent = () => {
   const [config, setConfig] = useState<Config | null>(null);
@@ -74,9 +73,7 @@ const Alpaca: FunctionalComponent = () => {
       .then((data) => setConfig(data))
       .catch(() => setConfig(null));
 
-    alpacaGet<AlpacaConfiguredDevice[]>('/management/v1/configureddevices').then((response) =>
-      setDevices(response?.Value ?? [])
-    );
+    alpacaGet<AlpacaConfiguredDevice[]>('/management/v1/configureddevices').then((response) => setDevices(response?.Value ?? []));
   }, []);
 
   useEffect(() => {
@@ -98,7 +95,7 @@ const Alpaca: FunctionalComponent = () => {
         devices.map(async (device) => {
           const response = await alpacaGet<AlpacaDeviceStateItem[]>(`${deviceBasePath(device)}/devicestate`);
           return [device.UniqueID, response && response.ErrorNumber === 0 ? response.Value : null] as const;
-        })
+        }),
       );
       setDeviceStates(Object.fromEntries(entries));
       setLastUpdated(new Date());
@@ -151,7 +148,11 @@ const Alpaca: FunctionalComponent = () => {
               <div>
                 <ReadingRow label="Type" value={`${device.DeviceType} #${device.DeviceNumber}`} />
                 <ReadingRow label="Unique ID" value={device.UniqueID} />
-                <CopyableUrl label="Setup page" url={`${origin}/setup/v1/${device.DeviceType.toLowerCase()}/${device.DeviceNumber}/setup`} open />
+                <CopyableUrl
+                  label="Setup page"
+                  url={`${origin}/setup/v1/${device.DeviceType.toLowerCase()}/${device.DeviceNumber}/setup`}
+                  open
+                />
                 <CopyableUrl label="API base" url={`${origin}${base}`} />
                 <CopyableUrl label="Device state" url={`${origin}${base}/devicestate`} open />
                 {device.DeviceType === 'SafetyMonitor' && <CopyableUrl label="IsSafe" url={`${origin}${base}/issafe`} open />}

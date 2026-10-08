@@ -6,12 +6,19 @@ const changed = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify
 // soon as it's saved (see saveConfigCallback in src/main.cpp).
 export const restartReasons = (before: Config, after: Config): string[] => {
   const reasons: string[] = [];
-  if (changed([before.wifi.ssid, before.wifi.password, before.wifi.hostname], [after.wifi.ssid, after.wifi.password, after.wifi.hostname])) {
+  if (
+    changed([before.wifi.ssid, before.wifi.password, before.wifi.hostname], [after.wifi.ssid, after.wifi.password, after.wifi.hostname])
+  ) {
     reasons.push('WiFi');
   }
   if (after.ota.enabled && changed(before.ota, after.ota)) reasons.push('command-line uploads');
   if (changed(before.gps, after.gps)) reasons.push('GPS');
-  if (changed([before.sensor.i2cSDA, before.sensor.i2cSCL, before.sensor.i2cFrequency], [after.sensor.i2cSDA, after.sensor.i2cSCL, after.sensor.i2cFrequency])) {
+  if (
+    changed(
+      [before.sensor.i2cSDA, before.sensor.i2cSCL, before.sensor.i2cFrequency],
+      [after.sensor.i2cSDA, after.sensor.i2cSCL, after.sensor.i2cFrequency],
+    )
+  ) {
     reasons.push('I2C');
   }
   if ((before.alpaca?.enabled ?? false) !== (after.alpaca?.enabled ?? false)) reasons.push('Alpaca discovery');

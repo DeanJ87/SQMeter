@@ -73,10 +73,17 @@ const check = async (page: Page, where: string): Promise<Finding[]> => {
   // and charts scroll inside their own box, which this doesn't count.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   if (overflow > 1)
-    findings.push({ rule: 'reflow', impact: 'serious', where, targets: [`page is ${overflow}px wider than the viewport`], help: 'Content must reflow without horizontal scrolling' });
+    findings.push({
+      rule: 'reflow',
+      impact: 'serious',
+      where,
+      targets: [`page is ${overflow}px wider than the viewport`],
+      help: 'Content must reflow without horizontal scrolling',
+    });
   // One h1 per page (A11Y-06): the header's "SQMeter".
   const h1s = await page.locator('h1').count();
-  if (h1s !== 1) findings.push({ rule: 'single-h1', impact: 'moderate', where, targets: [`${h1s} h1 elements`], help: 'A page has exactly one h1' });
+  if (h1s !== 1)
+    findings.push({ rule: 'single-h1', impact: 'moderate', where, targets: [`${h1s} h1 elements`], help: 'A page has exactly one h1' });
   return findings;
 };
 

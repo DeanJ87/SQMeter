@@ -1,0 +1,39 @@
+# C++ formatting (coding standard FMT-01/02): the existing style - 4 spaces,
+# braces on their own line, one parameter per line when a list wraps.
+---
+BasedOnStyle: Microsoft
+IndentWidth: 4
+ColumnLimit: 140
+NamespaceIndentation: All
+AccessModifierOffset: -4
+SortIncludes: Never
+PackConstructorInitializers: Never
+BinPackParameters: false
+BinPackArguments: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+PointerAlignment: Right
+ReferenceAlignment: Right
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: true
+  BeforeWhile: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+AlignAfterOpenBracket: AlwaysBreak
+ContinuationIndentWidth: 4
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true

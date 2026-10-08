@@ -15,7 +15,10 @@ namespace SQM
         class Guard
         {
         public:
-            explicit Guard(uint32_t timeoutMs) : held(acquire(timeoutMs)) {}
+            explicit Guard(uint32_t timeoutMs)
+                : held(acquire(timeoutMs))
+            {
+            }
             ~Guard()
             {
                 if (held)

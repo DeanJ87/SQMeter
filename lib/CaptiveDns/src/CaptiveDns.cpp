@@ -11,7 +11,10 @@ namespace SQM
             constexpr uint16_t CLASS_IN = 1;
             constexpr uint32_t TTL_SECONDS = 60;
 
-            uint16_t read16(const uint8_t *p) { return static_cast<uint16_t>((p[0] << 8) | p[1]); }
+            uint16_t read16(const uint8_t *p)
+            {
+                return static_cast<uint16_t>((p[0] << 8) | p[1]);
+            }
             void push16(std::vector<uint8_t> &out, uint16_t v)
             {
                 out.push_back(static_cast<uint8_t>(v >> 8));

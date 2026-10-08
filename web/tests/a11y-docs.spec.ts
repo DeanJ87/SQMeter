@@ -46,7 +46,13 @@ for (const page of pages(SITE).filter((p) => !SKIP.some((skip) => p.startsWith(s
 
     const fresh = results.violations.filter((v) => !known.includes(v.id));
     const report = fresh
-      .map((v) => `  ${v.id} (${v.impact}) - ${v.help}\n    ${v.nodes.slice(0, 5).map((n) => n.target.join(' ')).join('\n    ')}`)
+      .map(
+        (v) =>
+          `  ${v.id} (${v.impact}) - ${v.help}\n    ${v.nodes
+            .slice(0, 5)
+            .map((n) => n.target.join(' '))
+            .join('\n    ')}`,
+      )
       .join('\n');
     if (!UPDATE) expect(fresh, `New accessibility violations on docs page ${id}:\n${report}`).toEqual([]);
   });
