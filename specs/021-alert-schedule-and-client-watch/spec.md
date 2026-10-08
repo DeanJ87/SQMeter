@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: Draft
+**Status**: Implemented (PR #84)
 
 **Input**: User description: "'On while N.I.N.A. is connected' doesn't describe what it does - it's really 'off when the SafetyMonitor Alpaca client disconnects', and that's bad wording too. 'Alerts on now?' implies switching it on bypasses something - confusing even to a native English speaker. Add the inverse: notify me if N.I.N.A. (or any Alpaca client) disconnects or stops polling for a set time, so I know the imaging software has dropped its connection to the safety monitor."
 
@@ -259,11 +259,12 @@ misunderstand without seeing it.
   Pushover sound, title and message templates. They join the same stacking, cooldown, recent list,
   channels, test buttons and Bluetooth "wake me" behaviour.
   - Default levels: `client_lost` Urgent, `client_back` Quiet, `client_disconnected` Off.
-- **FR-012**: The templates MUST offer these variables:
+- **FR-012**: The templates MUST offer these variables (snake_case like every other template
+  variable; see research.md D11):
   - `{device}`: "safety monitor" or "weather device"
-  - `{silentFor}`: for example "2 min"
-  - `{lastChecked}`: a local clock time, or "N min ago" without a clock
-  - `{clientId}`: the Alpaca ClientID last seen, if any
+  - `{silent_for}`: for example "2 min"
+  - `{last_checked}`: a local clock time, or "N min ago" without a clock
+  - `{client_id}`: the Alpaca ClientID last seen, if any
   - The default wording MUST NOT name a specific product.
 - **FR-013**: No client event MUST fire unless a client was watching the device since the last
   restart.
@@ -333,7 +334,7 @@ misunderstand without seeing it.
 | Event row | **The imaging app disconnects** | It disconnected normally, for example at the end of a session. |
 | Field | **Silent for - safety monitor** (default 2 min) | How long without a request before you're told. Imaging apps usually check the safety monitor every few seconds. |
 | Field | **Silent for - weather device** (default 10 min) | Imaging apps check weather less often; keep this longer than their weather interval. |
-| Default title / message | "Imaging app stopped checking" / "No request to the {device} for {silentFor} - last checked {lastChecked}." | — |
+| Default title / message | "Imaging app stopped checking" / "No request to the {device} for {silent_for} - last checked {last_checked}." | — |
 | Default title / message | "Imaging app is back" / "The {device} is being checked again." | — |
 | Default title / message | "Imaging app disconnected" / "The {device} was disconnected." | — |
 

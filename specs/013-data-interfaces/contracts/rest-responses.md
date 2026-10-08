@@ -9,3 +9,9 @@
   enabled. No duplicated readings (`gpsData` removed).
 - Safety object: `safe` (boolean), `rawSafe`, `reasons`, `reasonFlags`, `secondsUntilSafe`,
   `alpacaEnabled`, `evaluatedAgeMs`, `changedAgeMs`. `GET /api/safe` stays plain `1`/`0`.
+- `GET /api/status` → `alerts` and `GET /api/alerts/armed` (spec 021): `armed` (boolean: sending or
+  paused), `armWithAlpaca`, `mode` (`any` | `whileConnected`), `reason`, `since` (ISO UTC or `null`),
+  `sinceAgeMs` (or `null`). → `alpaca`: `{ "enabled", "clients": { "safetymonitor": {...},
+  "observingconditions": {...} } }`, each client `connected`, `watching`, `silent`,
+  `lastCheckedAgeMs`, `clientId` (`null` where unknown). See
+  [specs/021 contracts](../../021-alert-schedule-and-client-watch/contracts/rest.md).

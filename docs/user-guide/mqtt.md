@@ -40,8 +40,8 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels.
 | `<base>/safe` | Yes | `1` safe, `0` unsafe | On every change, refreshed every minute |
 | `<base>/safety` | Yes | The safety object - same as [`GET /api/safety`](../api/rest.md#get-apisafety) | With `<base>/safe` |
 | `<base>/alerts` | No | One message per alert (with **Settings → Alerts → MQTT** on): `{"event","events"?,"title","message","level","device","timestamp"}` | Each alert |
-| `<base>/alerts/armed` | Yes | `1` alerts on, `0` off | On change and reconnect |
-| `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` switch alerts on or off | Command |
+| `<base>/alerts/armed` | Yes | `1` sending alerts, `0` paused | On change and reconnect |
+| `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` resume or pause alerts | Command |
 | `<base>/diagnostics` | No | Light-sensor sample counts and RG-15 serial counters - same as `/api/status` → `diagnostics` | Every publish interval, when enabled |
 
 Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
@@ -97,7 +97,7 @@ Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**.
 
 - **Sensors**: sky quality, limiting magnitude, Bortle class, illuminance, temperature, humidity, pressure, dew point, sky temperature, cloud cover, rain intensity, wind speed, gust and direction - for the groups you publish
 - **Binary sensors**: *Raining* (moisture) and *Observatory* (safety: on = unsafe)
-- **Switch**: *Alerts* - turn alerts off while you're not imaging
+- **Switch**: *Alerts* - on while sending, off while paused (see [When to send](alerts.md#when-to-send))
 
 Each entity is unavailable while the device is offline or its sensor isn't `ok`. Switching a group off removes its entities. The discovery prefix defaults to `homeassistant`.
 

@@ -40,6 +40,8 @@ Both devices are served from the same device/port - connecting one doesn't requi
 
 The web UI's **Alpaca** tab lists every advertised device with its device type, number, `UniqueID`, setup page, API base URL and live `DeviceState` (refreshed every 5 s), plus the host/port to use when adding the device manually. Use it to confirm what N.I.N.A. should see without leaving the browser.
 
+Under **Imaging app** it shows, per device, whether an imaging app is checking it - "Connected, last checked 3 s ago", "Gone quiet, last checked 4 min ago" or "Waiting for an imaging app". The page's own live-state requests (tagged `source=ui`) don't count. Alerts can tell you when an imaging app stops checking, and can be sent only while one is connected - see [Alerts → When to send](alerts.md#when-to-send).
+
 ### Setup button
 
 The **Setup** (cog) button next to either device in N.I.N.A. opens `http://<device>/setup/v1/<devicetype>/0/setup`, which redirects to **Settings → Safety** (the ASCOM Alpaca card and safety rules) in the web UI. Rules changed there apply as soon as you save.

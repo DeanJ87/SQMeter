@@ -113,3 +113,24 @@ Decisions made while planning (no open questions were put to the user).
   the emulated device's Alpaca API through `demoDevice.alpaca()` every 3 s (SafetyMonitor
   `issafe`) and 60 s (ObservingConditions `cloudcover`), measured in demo time so 10× speeds it up.
   `DemoPanel.tsx` gains one line to host it, so spec 019's rebuilt panel can host it too.
+
+## D15 The web UI isn't an imaging app
+
+- **Decision**: device requests carrying `source=ui` are not counted by the Router. The Alpaca
+  page's live `devicestate` polling adds it.
+- **Rationale**: found while implementing - the Alpaca page polls the device's own Alpaca API
+  every 5 s, so leaving the page would raise "The imaging app stops checking" two minutes later.
+  The Alpaca spec lets clients send extra parameters; ConformU never sends `source`.
+
+## D16 A user's pause survives a mode change
+
+- Switching to "Only while an imaging app is connected" while paused by the user (UI, REST, MQTT)
+  keeps that pause instead of replacing it with "waiting for an imaging app"; switching back to
+  "Any time" then still leaves it paused. Only pauses the mode itself caused end with the mode.
+
+## D17 Known limitation: downgrade then upgrade
+
+- Older firmware saves only the main alerts key. After a downgrade, a change of
+  `armWithAlpaca` there, and an upgrade again, the stale `alertclient` key's `sendMode` wins.
+  Rare, harmless (the user sees the mode in Settings) and not worth a version stamp.
+

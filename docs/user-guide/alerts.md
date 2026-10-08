@@ -17,6 +17,8 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | A sensor fails / recovers | A sensor (TSL2591, MLX90614, BME280, RG-15) goes offline or stale, or recovers. Also the RG-15 lens-fault flag | Wake me / Quiet |
 | Dew risk | Temperature comes within the configured margin of the dew point | Off |
 | Skies clear up / cloud over | Cloud cover drops below the "clear" percentage (default 20%) / rises above the "clouded over" percentage (default 70%). Between the two nothing changes, and a change has to hold for 2 minutes | Off |
+| The imaging app stops checking / is back | No request reached the safety monitor or weather device for its **Silent for** time / it started checking again. See [The imaging app](#the-imaging-app) | Urgent / Quiet |
+| The imaging app disconnects | An imaging app disconnected normally, e.g. at the end of a session | Off |
 
 | Level | Pushover | ntfy | Bluetooth phone alarm |
 |---|---|---|---|
@@ -60,6 +62,7 @@ Alerts raised at the same moment - rain starting usually makes the observatory u
 | `{sqm}`, `{cloud}`, `{sky_temp}`, `{temp}`, `{humidity}`, `{dewpoint}`, `{dew_margin}`, `{pressure}`, `{rain_rate}`, `{wind}`, `{gust}`, `{sun_alt}` | Current readings (`--` if that sensor isn't reporting) |
 | `{sqm_min}`, `{cloud_max}`, `{humidity_max}` | Your safety limits |
 | `{clear_below}`, `{cloudy_above}`, `{dew_margin_min}` | Your alert thresholds |
+| `{silent_for}`, `{last_checked}`, `{client_id}` | Imaging-app events: the **Silent for** time ("2 min"), when the app last checked ("21:04", or "3 min ago" without a clock) and the Alpaca ClientID it sent. For these events `{device}` is "safety monitor" or "weather device" |
 
 Titles are up to 80 characters and messages up to 240. An unknown `{name}` is left as typed, so a typo shows up in the test.
 
@@ -86,15 +89,44 @@ Below the setting, the tab shows the sun's altitude as the device calculates it 
 
 The browser's own location can't be used on the device's plain-HTTP pages - browsers only share it with HTTPS sites - so the "Use my location" button only appears where it works.
 
-## Turning alerts off when you're not imaging
+## When to send
 
-With the scope packed away you don't want weather flapping to wake you. **Alerts on now** (Settings → Alerts, or the bell in the header) switches every alert off - nothing is sent and phones don't ring - while the device keeps watching, so switching back on doesn't replay stale changes. It takes effect immediately, survives restarts, and switching on sends one quiet **Alerts on** with the current verdict ("Observatory UNSAFE: • Cloud 62% >= 35%") so you know where things stand.
+With the scope packed away you don't want weather flapping to wake you. **Settings → Alerts → When to send** has two choices:
 
-Ways to automate it:
+| When to send | What happens |
+|---|---|
+| **Any time** (default) | Alerts go out whenever something happens, unless you pause them. |
+| **Only while an imaging app is connected** | Alerts start when an imaging app (e.g. N.I.N.A.) connects the safety monitor or weather device, and stop when it disconnects. If it stops responding without disconnecting, alerts keep coming - and you're told it went quiet. |
 
-**N.I.N.A.** - turn on **On while N.I.N.A. is connected**: alerts switch on when N.I.N.A. connects the SafetyMonitor or ObservingConditions and off when it disconnects. Or call the API from a sequence (e.g. an *External Script* instruction): `curl -X POST http://sqmeter.local/api/alerts/arm` at the start, `.../api/alerts/disarm` at the end.
+Under it, a status line says what's happening and why, for example:
 
-**Home Assistant (MQTT)** - with [MQTT discovery](mqtt.md#home-assistant) on, an *Alerts* switch appears automatically. Without it, the device publishes `<base>/alerts/armed` (retained `1`/`0`) and listens on `<base>/alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`):
+- "Sending alerts."
+- "Paused - the imaging app disconnected at 05:42. Alerts resume when it connects again."
+- "Paused by you at 21:04 (Pause button)."
+- "Paused from Home Assistant or MQTT at 21:04."
+- "Waiting for an imaging app to connect - nothing is sent until then."
+
+**Pause alerts** / **Resume alerts** (there, or in the bell's flyout) take effect straight away, in either mode. A pause lasts until you resume; with **Only while an imaging app is connected** the next connect also resumes. While paused nothing is sent and phones don't ring, but the device keeps watching, so resuming doesn't replay stale changes. The state survives restarts. Resuming sends one quiet **Alerts resumed** with the current verdict ("Observatory UNSAFE: • Cloud 62% >= 35%") so you know where things stand.
+
+A crash isn't the end of a session: an imaging app that goes silent doesn't pause alerts - that's exactly when weather alerts matter most. Only a clean disconnect does.
+
+### The imaging app
+
+The device notices when an imaging app - anything that talks to its Alpaca devices - stops checking:
+
+- **The imaging app stops checking**: a device had a client (connected, or polling since the device restarted) and no request has reached it for its **Silent for** time - the PC slept, the app crashed or the network dropped. Sent once per loss, at Urgent by default.
+- **The imaging app is back**: the first request after that. Quiet by default.
+- **The imaging app disconnects**: a normal disconnect, e.g. at the end of a session. Off by default; no "stops checking" follows it.
+
+**Silent for** is set per device: **safety monitor** (default 2 min - imaging apps check it every few seconds) and **weather device** (default 10 min - keep it longer than your app's weather interval). 30 seconds to 60 minutes.
+
+Nothing is sent about a device no app has used since the device restarted. Requests from the device's own web page (the Alpaca page's live state) don't count. Alpaca requests don't name the application, so alerts name the device, not the app. The Alpaca page shows each device's state ("Connected, last checked 3 s ago"). These events need Alpaca switched on, and are sent at any hour (the "only when it's dark" limits don't apply).
+
+### Automating pause and resume
+
+**N.I.N.A.** - choose **Only while an imaging app is connected**, or call the API from a sequence (e.g. an *External Script* instruction): `curl -X POST http://sqmeter.local/api/alerts/arm` to resume at the start, `.../api/alerts/disarm` to pause at the end.
+
+**Home Assistant (MQTT)** - with [MQTT discovery](mqtt.md#home-assistant) on, an *Alerts* switch appears automatically (on = sending, off = paused). Without it, the device publishes `<base>/alerts/armed` (retained `1` sending / `0` paused) and listens on `<base>/alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`):
 
 ```yaml
 mqtt:
@@ -119,7 +151,7 @@ rest_command:
     method: post
 ```
 
-Add `username`/`password` if the device's password protection is on. N.I.N.A. and Alpaca keep getting the real safety verdict either way.
+Add `username`/`password` if the device's password protection is on. N.I.N.A. and Alpaca keep getting the real safety verdict either way. `GET /api/alerts/armed` says whether alerts are being sent, the mode, and why ([REST API](../api/rest.md#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm)).
 
 ## Channels
 
