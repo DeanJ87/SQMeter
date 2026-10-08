@@ -66,8 +66,7 @@ namespace SQM
         // Calculate dewpoint using Magnus formula
         reading.dewpoint = calculateDewpoint(reading.temperature, reading.humidity);
 
-        Logger::debug(TAG, "Temp: %.2f°C, Humidity: %.2f%%, Pressure: %.2f hPa",
-                      reading.temperature, reading.humidity, reading.pressure);
+        Logger::debug(TAG, "Temp: %.2f°C, Humidity: %.2f%%, Pressure: %.2f hPa", reading.temperature, reading.humidity, reading.pressure);
 
         return true;
     }

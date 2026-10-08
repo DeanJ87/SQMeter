@@ -3,7 +3,10 @@ type Version = { core: number[]; pre: string[] };
 // "v0.2.0-beta.1+dev" -> core [0,2,0], pre ["beta","1"]; build metadata
 // ("+dev", used by local builds) doesn't affect ordering.
 const parse = (v: string): Version | null => {
-  const match = v.trim().replace(/^v/i, '').match(/^(\d+(?:\.\d+)*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/);
+  const match = v
+    .trim()
+    .replace(/^v/i, '')
+    .match(/^(\d+(?:\.\d+)*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/);
   if (!match) return null;
   return { core: match[1].split('.').map(Number), pre: match[2] ? match[2].split('.') : [] };
 };
@@ -43,5 +46,4 @@ export const compareVersions = (a: string, b: string): number | null => {
  * running firmware (e.g. "0.2.0-beta.1" or a local "0.2.0-beta.1+dev").
  * Malformed input is treated as not-stale (fails safe: no update nagging).
  */
-export const isVersionStale = (currentVersion: string, latestTag: string): boolean =>
-  (compareVersions(latestTag, currentVersion) ?? 0) > 0;
+export const isVersionStale = (currentVersion: string, latestTag: string): boolean => (compareVersions(latestTag, currentVersion) ?? 0) > 0;

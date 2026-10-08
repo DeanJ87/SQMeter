@@ -13,12 +13,15 @@ namespace SQM
         float nelm;   // Naked Eye Limiting Magnitude
         float bortle; // Bortle Dark Sky Scale (1-9)
 
-        SkyQualityMetrics() : lux(0.0f), sqm(0.0f), nelm(0.0f), bortle(0.0f) {}
-
-        bool isValid() const
+        SkyQualityMetrics()
+            : lux(0.0f),
+              sqm(0.0f),
+              nelm(0.0f),
+              bortle(0.0f)
         {
-            return lux >= 0.0f && sqm >= 0.0f && nelm >= 0.0f;
         }
+
+        bool isValid() const { return lux >= 0.0f && sqm >= 0.0f && nelm >= 0.0f; }
     };
 
     class SkyQuality

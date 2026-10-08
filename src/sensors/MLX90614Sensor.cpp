@@ -52,16 +52,13 @@ namespace SQM
         reading.timestamp = millis();
 
         // Validate readings (MLX90614 valid range is -70 to +380°C)
-        if (reading.objectTemp < -70 || reading.objectTemp > 380 ||
-            reading.ambientTemp < -70 || reading.ambientTemp > 380)
+        if (reading.objectTemp < -70 || reading.objectTemp > 380 || reading.ambientTemp < -70 || reading.ambientTemp > 380)
         {
-            Logger::warn(TAG, "Invalid temperature reading - Object: %.2f°C, Ambient: %.2f°C",
-                         reading.objectTemp, reading.ambientTemp);
+            Logger::warn(TAG, "Invalid temperature reading - Object: %.2f°C, Ambient: %.2f°C", reading.objectTemp, reading.ambientTemp);
             return false;
         }
 
-        Logger::debug(TAG, "Object: %.2f°C, Ambient: %.2f°C",
-                      reading.objectTemp, reading.ambientTemp);
+        Logger::debug(TAG, "Object: %.2f°C, Ambient: %.2f°C", reading.objectTemp, reading.ambientTemp);
 
         return true;
     }

@@ -17,13 +17,13 @@ namespace SQM
 
         struct Entry
         {
-            uint32_t epoch;    // 0 if the clock wasn't set (filled in later where possible)
-            uint32_t uptimeS;  // seconds since that boot
-            uint32_t flags;    // UnsafeReasonFlag bits at the time
-            uint16_t boot;     // which boot it belongs to
+            uint32_t epoch;   // 0 if the clock wasn't set (filled in later where possible)
+            uint32_t uptimeS; // seconds since that boot
+            uint32_t flags;   // UnsafeReasonFlag bits at the time
+            uint16_t boot;    // which boot it belongs to
             Kind kind;
             uint8_t safe : 1;
-            uint8_t held : 1;  // unsafe only because of the safe delay
+            uint8_t held : 1; // unsafe only because of the safe delay
             uint8_t resetReason : 6;
         };
 

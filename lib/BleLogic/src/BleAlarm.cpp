@@ -14,7 +14,7 @@ namespace SQM
                 for (int shift = 0; shift < 32; shift += 8)
                     out += static_cast<char>((value >> shift) & 0xFF);
             }
-        }
+        } // namespace
 
         bool AlarmTracker::raiseAlarm(uint32_t reasonFlags, uint32_t epoch, uint32_t nowMs)
         {
@@ -82,8 +82,8 @@ namespace SQM
         {
             if (data == nullptr || length != 4)
                 return false;
-            seq = static_cast<uint32_t>(data[0]) | (static_cast<uint32_t>(data[1]) << 8) |
-                  (static_cast<uint32_t>(data[2]) << 16) | (static_cast<uint32_t>(data[3]) << 24);
+            seq = static_cast<uint32_t>(data[0]) | (static_cast<uint32_t>(data[1]) << 8) | (static_cast<uint32_t>(data[2]) << 16) |
+                  (static_cast<uint32_t>(data[3]) << 24);
             return true;
         }
 

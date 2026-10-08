@@ -15,7 +15,7 @@ namespace SQM
             {
                 return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
             }
-        }
+        } // namespace
 
         bool paramNameEquals(const std::string &a, const std::string &b)
         {

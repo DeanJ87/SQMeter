@@ -36,7 +36,7 @@ namespace SQM
             portEXIT_CRITICAL(&pulseMux);
             return count;
         }
-    }
+    } // namespace
 
     WindSensor::~WindSensor()
     {
@@ -77,8 +77,12 @@ namespace SQM
         attached = true;
         lastSampleAt = millis();
         reading.status = SensorStatus::OK;
-        Logger::info(TAG, "Anemometer on GPIO%u (%.3f km/h per Hz)%s", settings.speedPin, settings.kmhPerHz,
-                     settings.directionEnabled ? ", vane enabled" : "");
+        Logger::info(
+            TAG,
+            "Anemometer on GPIO%u (%.3f km/h per Hz)%s",
+            settings.speedPin,
+            settings.kmhPerHz,
+            settings.directionEnabled ? ", vane enabled" : "");
     }
 
     void WindSensor::detach()

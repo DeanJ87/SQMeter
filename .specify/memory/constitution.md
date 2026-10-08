@@ -1,3 +1,12 @@
+<!--
+Sync Impact Report
+- Version: 1.0.0 -> 1.1.0 (MINOR: new Principle VIII, expanded quality gates)
+- Added: VIII. Code Quality Standards
+- Modified: Platform Constraints (code style now points to the standard); Development Workflow
+  and Quality Gates (quality check in CI)
+- Templates: plan/spec/tasks templates unchanged (they read principles generically)
+- Follow-up: CONTRIBUTING.md Code Style replaced by a link to docs/development/coding-standards.md
+-->
 # SQMeter Constitution
 
 ## Core Principles
@@ -85,12 +94,26 @@ The device is designed for a trusted LAN and has no TLS of its own.
   WebSocket references and the configuration reference, as applicable.
 - `mkdocs build --strict` MUST pass.
 
+### VIII. Code Quality Standards
+
+Code is read far more often than it's written, by people and by AI agents working from specs.
+
+- All code MUST follow `docs/development/coding-standards.md` (spec 017). Its rules have IDs;
+  convergence findings and review comments cite them.
+- `tools/quality/check.py` MUST pass in CI: formatting, linters, limits and structure rules.
+  Existing violations live in `tools/quality/baseline.json`, which may only shrink; a change that
+  fixes a violation updates it in the same PR.
+- A rule is set aside only where it doesn't fit, with a same-line suppression naming the rule and
+  the reason (EXC-01).
+- Generated and vendored code is excluded and never edited by hand.
+
 ## Platform Constraints
 
 - **Firmware:** C++17 on Arduino-ESP32 2.0.17 via PlatformIO; ESPAsyncWebServer (handlers
   match by prefix, so register specific routes before general ones); ArduinoJson 6; NimBLE
   for the Bluetooth build. Code follows `CONTRIBUTING.md`: enums and structs over strings,
-  RAII, const-correctness, `std::string` in logic code.
+  RAII, const-correctness, `std::string` in logic code - in full in the coding standard
+  (Principle VIII).
 - **Web UI:** Preact + Vite, TypeScript strict (no `any`), Zod validation of config, served
   from LittleFS. Firmware and web UI ship as a matched pair in every release.
 - **Hardware:** I2C on 21/22, GPS on 16/17 and the RG-15 on 18/19 are reserved; analog inputs
@@ -111,6 +134,7 @@ The device is designed for a trusted LAN and has no TLS of its own.
   - the `build` workflow: typecheck, web tests with coverage, native tests, both firmware
     builds, the LittleFS image and the integrity checks;
   - ConformU against the Alpaca simulator;
+  - the quality check (`tools/quality/check.py`, Principle VIII);
   - the docs build.
 - Firmware behaviour changes SHOULD be verified on a real device before release (OTA to the
   test device, with the owner's permission when it's in use), and the PR says what was checked.
@@ -135,4 +159,4 @@ The device is designed for a trusted LAN and has no TLS of its own.
   Tracking section.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-08
+**Version**: 1.1.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-08

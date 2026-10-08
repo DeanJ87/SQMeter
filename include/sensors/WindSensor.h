@@ -8,8 +8,6 @@
 namespace SQM
 {
 
-
-
     struct WindSensorSettings
     {
         bool enabled = false;

@@ -1,0 +1,71 @@
+name: Quality
+
+# The coding standard's automatic rules (docs/development/coding-standards.md,
+# spec 017): formatters, linters, limits, structure and suppression checks,
+# compared with tools/quality/baseline.json. Runs on every pull request (no
+# path filter) so it can be a required check.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tools/quality/requirements.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: web/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            .pio/libdeps
+          key: ${{ runner.os }}-pio-quality-${{ hashFiles('platformio.ini') }}
+
+      - name: Install quality tools
+        run: pip install -r tools/quality/requirements.txt platformio
+
+      # clang-tidy needs the native test environment's ArduinoJson.
+      - name: Install native libraries
+        run: pio pkg install -e native
+
+      - name: Install web dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Quality gate tests
+        run: python -m unittest tools/quality/test_check.py
+
+      - name: Coding standard
+        run: python tools/quality/check.py

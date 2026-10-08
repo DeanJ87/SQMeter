@@ -57,3 +57,6 @@ Thumbs.db
 
 # Docs: mermaid copied in at build time (web/scripts/vendor-mermaid.mjs)
 docs/assets/javascripts/vendor/
+
+# Quality tools venv (tools/quality/requirements.txt)
+.venv-quality/

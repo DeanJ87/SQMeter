@@ -33,11 +33,16 @@ const formatShortAgeMs = (value: number | null | undefined): string => {
 
 const sensorBadge = (status: SensorHealth): { text: string; tone: string } => {
   switch (status) {
-    case 'ok': return { text: 'OK', tone: 'pill-green' };
-    case 'missing': return { text: 'Not detected', tone: 'pill-red' };
-    case 'error': return { text: 'Error', tone: 'pill-red' };
-    case 'stale': return { text: 'Stale', tone: 'pill-amber' };
-    default: return { text: 'Unknown', tone: 'pill-dim' };
+    case 'ok':
+      return { text: 'OK', tone: 'pill-green' };
+    case 'missing':
+      return { text: 'Not detected', tone: 'pill-red' };
+    case 'error':
+      return { text: 'Error', tone: 'pill-red' };
+    case 'stale':
+      return { text: 'Stale', tone: 'pill-amber' };
+    default:
+      return { text: 'Unknown', tone: 'pill-dim' };
   }
 };
 
@@ -86,7 +91,7 @@ const System: FunctionalComponent = () => {
       const data = await response.json().catch(() => ({}));
       setRg15Action({
         loading: false,
-        message: response.ok ? successMessage : (data.error || 'Failed'),
+        message: response.ok ? successMessage : data.error || 'Failed',
       });
     } catch {
       setRg15Action({ loading: false, message: 'Could not reach the device' });
@@ -130,9 +135,7 @@ const System: FunctionalComponent = () => {
           <div>
             <div class="reading-row">
               <span class="reading-label">Current Time</span>
-              {status.ntp && status.ntp.activeSource > 0 && (
-                <Pill tone="pill-green">{status.ntp.activeSource === 1 ? 'NTP' : 'GPS'}</Pill>
-              )}
+              {status.ntp && status.ntp.activeSource > 0 && <Pill tone="pill-green">{status.ntp.activeSource === 1 ? 'NTP' : 'GPS'}</Pill>}
             </div>
             <strong class="system-time">{status.time.iso}</strong>
             <p class="system-subtle">{getTimezoneFriendlyName(status.time.timezone)}</p>
@@ -157,7 +160,12 @@ const System: FunctionalComponent = () => {
             <Button small disabled={rg15Action.loading} onClick={() => runRg15Action('/api/sensors/rg15/reset-total', 'Total reset.')}>
               Reset total
             </Button>
-            <Button small variant="danger" disabled={rg15Action.loading} onClick={() => runRg15Action('/api/sensors/rg15/reboot', 'RG-15 rebooting.')}>
+            <Button
+              small
+              variant="danger"
+              disabled={rg15Action.loading}
+              onClick={() => runRg15Action('/api/sensors/rg15/reboot', 'RG-15 rebooting.')}
+            >
               Reboot RG-15
             </Button>
             {rg15Action.message && <Note>{rg15Action.message}</Note>}
@@ -208,7 +216,11 @@ const System: FunctionalComponent = () => {
         <Card title="Network Time (NTP)" icon="gps" tone="green">
           {status.ntp.enabled ? (
             <div class="system-list">
-              <InfoRow label="Status" value={status.ntp.synced ? 'Synced' : status.ntp.status === 1 ? 'Syncing' : 'Not synced'} tone={status.ntp.synced ? 'tone-green' : 'tone-amber'} />
+              <InfoRow
+                label="Status"
+                value={status.ntp.synced ? 'Synced' : status.ntp.status === 1 ? 'Syncing' : 'Not synced'}
+                tone={status.ntp.synced ? 'tone-green' : 'tone-amber'}
+              />
               <InfoRow label="Server" value={status.ntp.server} />
               <InfoRow label="Last Sync Age" value={formatShortAgeMs(status.ntp.lastSync)} />
               <InfoRow label="Next Sync" value={formatShortAgeMs(status.ntp.nextSync)} />
@@ -223,7 +235,11 @@ const System: FunctionalComponent = () => {
       {status.ntp && status.ntp.gpsEnabled && (
         <Card title="GPS Time" icon="gps" tone="green">
           <div class="system-list">
-            <InfoRow label="Status" value={status.ntp.gpsHasFix ? 'Lock acquired' : 'Searching'} tone={status.ntp.gpsHasFix ? 'tone-green' : 'tone-amber'} />
+            <InfoRow
+              label="Status"
+              value={status.ntp.gpsHasFix ? 'Lock acquired' : 'Searching'}
+              tone={status.ntp.gpsHasFix ? 'tone-green' : 'tone-amber'}
+            />
             {status.ntp.gpsHasFix && status.ntp.gpsTimeUTC && (
               <InfoRow label="GPS Time (UTC)" value={status.ntp.gpsTimeUTC} tone="tone-cyan" />
             )}
@@ -236,7 +252,11 @@ const System: FunctionalComponent = () => {
         <Card title="MQTT" icon="wifi" tone="cyan">
           {status.mqtt.enabled ? (
             <div class="system-list">
-              <InfoRow label="Status" value={status.mqtt.connected ? 'Connected' : 'Disconnected'} tone={status.mqtt.connected ? 'tone-green' : 'tone-red'} />
+              <InfoRow
+                label="Status"
+                value={status.mqtt.connected ? 'Connected' : 'Disconnected'}
+                tone={status.mqtt.connected ? 'tone-green' : 'tone-red'}
+              />
               <InfoRow label="Broker" value={`${status.mqtt.broker}:${status.mqtt.port}`} />
               <InfoRow label="Topic" value={status.mqtt.topic} />
             </div>
@@ -248,7 +268,11 @@ const System: FunctionalComponent = () => {
 
       <Card title="WiFi" icon="wifi" tone="cyan">
         <div class="system-list">
-          <InfoRow label="Status" value={status.wifi.connected ? 'Connected' : 'Disconnected'} tone={status.wifi.connected ? 'tone-green' : 'tone-red'} />
+          <InfoRow
+            label="Status"
+            value={status.wifi.connected ? 'Connected' : 'Disconnected'}
+            tone={status.wifi.connected ? 'tone-green' : 'tone-red'}
+          />
           {status.wifi.connected && (
             <>
               <InfoRow label="SSID" value={status.wifi.ssid} />

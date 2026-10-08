@@ -6,6 +6,8 @@ See [CONTRIBUTING.md](https://github.com/DeanJ87/SQMeter/blob/main/CONTRIBUTING.
 
 ## Quick Reference
 
+**Coding standard:** see [Coding Standards](coding-standards.md); `python3 tools/quality/check.py` runs what CI checks.
+
 **Firmware build (must be zero warnings):**
 ```bash
 pio run

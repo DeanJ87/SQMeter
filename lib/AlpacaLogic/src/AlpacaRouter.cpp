@@ -19,11 +19,12 @@ namespace SQM
             constexpr int OBSERVING_CONDITIONS_INTERFACE_VERSION = 2;
 
             const char *const SAFETY_NAME = "SQMeter SafetyMonitor";
-            const char *const SAFETY_DESCRIPTION =
-                "Reports observatory safety from rain (RG-15), wind (optional anemometer), cloud cover, sky brightness, humidity and dew-point margin measured by the onboard SQMeter sensors.";
+            const char *const SAFETY_DESCRIPTION = "Reports observatory safety from rain (RG-15), wind (optional anemometer), cloud cover, "
+                                                   "sky brightness, humidity and dew-point margin measured by the onboard SQMeter sensors.";
             const char *const CONDITIONS_NAME = "SQMeter ObservingConditions";
             const char *const CONDITIONS_DESCRIPTION =
-                "Reports sky quality, sky brightness, cloud cover, sky temperature, temperature, humidity, dew point, pressure, and - when fitted - rain rate (RG-15) and wind speed, gust and direction (anemometer/vane).";
+                "Reports sky quality, sky brightness, cloud cover, sky temperature, temperature, humidity, dew point, pressure, and - when "
+                "fitted - rain rate (RG-15) and wind speed, gust and direction (anemometer/vane).";
             const char *const DRIVER_INFO = "Native ESP32 firmware, no external bridge - https://github.com/DeanJ87/SQMeter";
             const char *const DISABLED_MESSAGE = "Alpaca support is disabled in device settings";
             const char *const BAD_REQUEST = "Invalid Alpaca device type, device number, method or HTTP verb";
@@ -73,10 +74,13 @@ namespace SQM
             {
             public:
                 Envelope(const Request &request, uint32_t &serverTransactionId, size_t capacity = 384)
-                    : doc(capacity), request(request), serverTransactionId(serverTransactionId) {}
+                    : doc(capacity),
+                      request(request),
+                      serverTransactionId(serverTransactionId)
+                {
+                }
 
-                template <typename T>
-                void setValue(const T &value) { doc["Value"] = value; }
+                template <typename T> void setValue(const T &value) { doc["Value"] = value; }
                 JsonArray valueArray() { return doc.createNestedArray("Value"); }
                 JsonObject valueObject() { return doc.createNestedObject("Value"); }
 
@@ -99,7 +103,11 @@ namespace SQM
             };
         } // namespace
 
-        Router::Router(Backend &backend, ServerIdentity identity) : backend(backend), identity(std::move(identity)) {}
+        Router::Router(Backend &backend, ServerIdentity identity)
+            : backend(backend),
+              identity(std::move(identity))
+        {
+        }
 
         bool Router::handle(const Request &request, Response &response)
         {

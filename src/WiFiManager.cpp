@@ -8,7 +8,10 @@ namespace SQM
 {
 
     WiFiManager::WiFiManager(const WiFiConfig &config)
-        : config(config), apMode(false), lastReconnectAttempt(0), currentReconnectDelay(config.reconnectDelayMs)
+        : config(config),
+          apMode(false),
+          lastReconnectAttempt(0),
+          currentReconnectDelay(config.reconnectDelayMs)
     {
     }
 
@@ -150,13 +153,15 @@ namespace SQM
         dnsServer.emplace();
         if (dnsServer->listen(CaptiveDns::PORT))
         {
-            dnsServer->onPacket([](AsyncUDPPacket &packet)
-                                {
-                const IPAddress ip = WiFi.softAPIP();
-                const uint8_t address[4] = {ip[0], ip[1], ip[2], ip[3]};
-                std::vector<uint8_t> reply;
-                if (CaptiveDns::buildResponse(packet.data(), packet.length(), address, reply))
-                    packet.write(reply.data(), reply.size()); });
+            dnsServer->onPacket(
+                [](AsyncUDPPacket &packet)
+                {
+                    const IPAddress ip = WiFi.softAPIP();
+                    const uint8_t address[4] = {ip[0], ip[1], ip[2], ip[3]};
+                    std::vector<uint8_t> reply;
+                    if (CaptiveDns::buildResponse(packet.data(), packet.length(), address, reply))
+                        packet.write(reply.data(), reply.size());
+                });
         }
         else
         {
@@ -214,9 +219,7 @@ namespace SQM
             connectToWiFi();
 
             // Exponential backoff
-            currentReconnectDelay = std::min(
-                currentReconnectDelay * 2,
-                config.maxReconnectDelayMs);
+            currentReconnectDelay = std::min(currentReconnectDelay * 2, config.maxReconnectDelayMs);
         }
     }
 

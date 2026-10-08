@@ -108,13 +108,12 @@ const Settings: FunctionalComponent = () => {
 
   const applyStored = (changes: [ConfigPath, unknown][]) => {
     applyChanges(changes);
-    setSaved((current) => (current ? toConfigPayload(changes.reduce((acc, [path, value]) => setPath(acc, path, value), current)) : current));
+    setSaved((current) =>
+      current ? toConfigPayload(changes.reduce((acc, [path, value]) => setPath(acc, path, value), current)) : current,
+    );
   };
 
-  const dirty = useMemo(
-    () => Boolean(config && saved && JSON.stringify(config) !== JSON.stringify(saved)),
-    [config, saved]
-  );
+  const dirty = useMemo(() => Boolean(config && saved && JSON.stringify(config) !== JSON.stringify(saved)), [config, saved]);
 
   const errorsByTab = useMemo(() => {
     const counts: Partial<Record<SettingsTabId, number>> = {};
@@ -132,8 +131,9 @@ const Settings: FunctionalComponent = () => {
     if (owner !== tab) goTo(owner);
     setTimeout(() => {
       const alias = Object.entries(fieldErrorAliases).find(([, path]) => path === firstField)?.[0];
-      const target = document.querySelector<HTMLElement>(`[data-field="${firstField}"]`)
-        ?? (alias ? document.querySelector<HTMLElement>(`[data-field="${alias}"]`) : null);
+      const target =
+        document.querySelector<HTMLElement>(`[data-field="${firstField}"]`) ??
+        (alias ? document.querySelector<HTMLElement>(`[data-field="${alias}"]`) : null);
       target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) target.focus({ preventScroll: true });
     }, 60);
@@ -171,8 +171,13 @@ const Settings: FunctionalComponent = () => {
         const reasons = restartReasons(saved, payload);
         showToast(
           reasons.length > 0
-            ? { message: `Saved. Restart to apply ${listReasons(reasons)}.`, tone: 'warn', durationMs: 0, action: { label: 'Restart', onClick: restart } }
-            : { message: 'Saved.' }
+            ? {
+                message: `Saved. Restart to apply ${listReasons(reasons)}.`,
+                tone: 'warn',
+                durationMs: 0,
+                action: { label: 'Restart', onClick: restart },
+              }
+            : { message: 'Saved.' },
         );
         setSaved(payload);
         setConfig(payload);

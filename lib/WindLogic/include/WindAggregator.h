@@ -9,8 +9,8 @@ namespace SQM
     {
 
         // Cup-anemometer speed per pulse frequency (km/h per Hz).
-        constexpr float MISOL_KMH_PER_HZ = 2.4f;    // Misol WH-SP-WS01 / Argent / SparkFun weather meter
-        constexpr float DAVIS_KMH_PER_HZ = 3.621f;  // Davis 6410: 2.25 mph per Hz
+        constexpr float MISOL_KMH_PER_HZ = 2.4f;   // Misol WH-SP-WS01 / Argent / SparkFun weather meter
+        constexpr float DAVIS_KMH_PER_HZ = 3.621f; // Davis 6410: 2.25 mph per Hz
 
         // Aggregates one-second anemometer/vane samples into the values
         // ObservingConditions reports:
