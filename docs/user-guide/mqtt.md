@@ -83,7 +83,7 @@ The same document as [`GET /api/sensors`](../api/rest.md#get-apisensors) and `/w
 ```
 
 - **`timestamp`** is Unix seconds; `timeValid` is `false` (and `timestamp` `0`) until the clock is set.
-- **`status`** is `ok`, `missing` (not detected or not responding), `error` or `stale`. A group whose status isn't `ok` carries only `status` and `ageMs` - never zeros that look like readings.
+- **`status`** is `ok`, `missing` (not detected or not responding), `error` or `stale`. A group whose status isn't `ok` carries only `status` and `ageMs` (no `ageMs` when `missing` - it has never answered) - never zeros that look like readings.
 - **`gps`, `rain`, `wind`** are only present when that hardware is enabled.
 - **Units**: °C, %, hPa, lux, mag/arcsec², m/s, degrees (0 = north), mm and mm/h (an RG-15 set to inches is converted). `wind.direction` is left out when it's calm or there's no vane.
 - **`rain.raining`** is held for the rain clear delay after the last drop; `rainingNow` is instantaneous. `eventAccumulation` is cleared by the clear delay; `sensorEventAccumulation` is the RG-15's own event total.

@@ -72,7 +72,7 @@ curl http://sqmeter.local/api/sensors
 }
 ```
 
-A group whose sensor isn't `ok` carries only `status` and `ageMs` (like `environment` above).
+A group whose sensor isn't `ok` carries only `status` and `ageMs` - just `status` when `missing` (like `environment` above).
 
 ---
 
