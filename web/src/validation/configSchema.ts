@@ -18,6 +18,8 @@ export const wifiConfigSchema = z.object({
   maxReconnectDelayMs: z.number().int().positive(),
 });
 
+const MQTT_TOPIC = /^[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*$/;
+
 export const mqttConfigSchema = z
   .object({
     enabled: z.boolean(),
@@ -34,6 +36,19 @@ export const mqttConfigSchema = z
       .number()
       .int()
       .min(1000, "Publish interval must be at least 1 second"),
+    publish: z
+      .object({
+        sky: z.boolean(),
+        environment: z.boolean(),
+        clouds: z.boolean(),
+        gps: z.boolean(),
+        rain: z.boolean(),
+        wind: z.boolean(),
+        safety: z.boolean(),
+        diagnostics: z.boolean(),
+      })
+      .optional(),
+    homeAssistant: z.object({ enabled: z.boolean(), discoveryPrefix: z.string() }).optional(),
   })
   .refine((data) => !data.enabled || data.broker.trim().length > 0, {
     message: "MQTT broker is required when MQTT is enabled",
@@ -43,9 +58,14 @@ export const mqttConfigSchema = z
     message: "MQTT topic is required when MQTT is enabled",
     path: ["topic"],
   })
-  .refine((data) => !data.enabled || /^[a-zA-Z0-9/_-]+$/.test(data.topic), {
-    message: "MQTT topic can only contain letters, numbers, slash, underscore, and hyphen",
+  // Same rule as the device: letters, digits, _ - and / between levels.
+  .refine((data) => !data.enabled || MQTT_TOPIC.test(data.topic), {
+    message: "Use letters, numbers, _ and -, with / between levels (not at either end)",
     path: ["topic"],
+  })
+  .refine((data) => !data.homeAssistant?.enabled || MQTT_TOPIC.test(data.homeAssistant.discoveryPrefix), {
+    message: "Use letters, numbers, _ and -, with / between levels (not at either end)",
+    path: ["homeAssistant", "discoveryPrefix"],
   });
 
 export const otaConfigSchema = z

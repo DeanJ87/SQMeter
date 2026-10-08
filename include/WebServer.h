@@ -15,6 +15,7 @@
 #include "ObservingConditionsMapper.h"
 #include "AlpacaProtocol.h"
 #include "AlpacaRouter.h"
+#include "Readings.h"
 #include "AlertDispatcher.h"
 #include "AlertEngine.h"
 #include "SafetyStatus.h"
@@ -187,6 +188,17 @@ namespace SQM
         };
         PendingAlertTest pendingAlertTest;
         portMUX_TYPE pendingAlertTestLock = portMUX_INITIALIZER_UNLOCKED;
+        uint32_t mqttSafetyConnection = 0xFFFFFFFF;
+        uint32_t mqttStatePublishedAt = 0;
+        uint32_t mqttStateConnection = 0xFFFFFFFF;
+        std::string discoveryKey;
+        uint32_t discoveryConnection = 0xFFFFFFFF;
+        Readings::DiscoveryDevice discoveryDevice;
+        bool discoveryWasOn = false;
+        Readings::Snapshot buildReadings() const;
+        void appendDiagnostics(JsonObject root, const SensorSnapshot &snapshot) const;
+        void publishMqttReadings(uint32_t now);
+        void publishDiscovery(const MQTTConfig &mqtt, const Readings::Groups &groups);
         bool mqttSafetyPublished = false;
         bool mqttLastPublishedSafe = false;
         uint32_t mqttSafetyPublishedAt = 0;

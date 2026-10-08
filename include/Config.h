@@ -31,8 +31,23 @@ namespace SQM
         uint16_t port;
         std::string username;
         std::string password;
-        std::string topic;
+        std::string topic; // base topic: <topic>/state, /safe, /alerts, ...
         uint32_t publishIntervalMs;
+        // What <topic>/state (and the other topics) carry; see
+        // specs/013-data-interfaces/contracts/mqtt-topics.md.
+        struct Publish
+        {
+            bool sky = true;         // light + sky quality
+            bool environment = true;
+            bool clouds = true;      // IR temperatures + cloud cover
+            bool gps = true;
+            bool rain = true;
+            bool wind = true;
+            bool safety = true;      // <topic>/safe and <topic>/safety
+            bool diagnostics = false; // <topic>/diagnostics
+        } publish;
+        bool homeAssistant = false; // MQTT discovery
+        std::string discoveryPrefix = "homeassistant";
     };
 
     struct OTAConfig

@@ -4,11 +4,20 @@ All endpoints are on port 80. Base URL: `http://<device-ip>/api`
 
 ---
 
+## Conventions
+
+- Keys are camelCase. Readings use the same names and units as `/ws/sensors` and MQTT `<base>/state`.
+- **Success** is a 2xx status. Actions return `{"success": true, ...}`: 200 when done, 202 when queued.
+- **Failure** is a 4xx or 5xx status with `{"error": "message"}`: 400 bad request, 401 unauthorised, 404 not found, 409 conflict, 500 device failure, 502 a sensor or broker didn't answer.
+- Endpoints that change something need the password when [protection](../user-guide/security.md) is on.
+
+---
+
 ## Endpoints
 
 ### `GET /api/status`
 
-System status, firmware metadata, memory, flash, filesystem, partition, time, WiFi, sensor, GPS, and MQTT diagnostics.
+Firmware, memory, flash, partitions, time, WiFi, MQTT, Bluetooth, darkness, sensor health and diagnostics.
 
 ```bash
 curl http://sqm-esp32.local/api/status
@@ -17,104 +26,32 @@ curl http://sqm-esp32.local/api/status
 ```json
 {
   "uptime": 3600,
-  "freeHeap": 210432,
-  "heapSize": 327680,
-  "cpuFreqMHz": 240,
-  "flashSize": 4194304,
-  "sketchSize": 1048576,
-  "freeSketchSpace": 786432,
-  "fsTotal": 196608,
-  "fsUsed": 40960,
-  "firmware": {
-    "name": "SQMeter",
-    "version": "0.0.1",
-    "buildDate": "Apr 25 2026",
-    "buildTime": "12:00:00"
-  },
-  "partitions": {
-    "runningSlot": "app0",
-    "runningAddress": 65536,
-    "runningSize": 1966080,
-    "bootSlot": "app0",
-    "nextSlot": "app1",
-    "nextSize": 1966080,
-    "fsAddress": 3997696,
-    "fsSize": 196608,
-    "nvs": {
-      "usedEntries": 24,
-      "freeEntries": 96,
-      "totalEntries": 120,
-      "namespaceCount": 2
-    }
-  },
-  "time": {
-    "iso": "2026-04-25T22:14:00+0000",
-    "timezone": "UTC0"
-  },
-  "ntp": {
-    "enabled": true,
-    "synced": true,
-    "status": 2,
-    "lastSync": 120000,
-    "nextSync": 720000,
-    "drift": 0,
-    "server": "pool.ntp.org",
-    "activeSource": 1,
-    "gpsEnabled": false,
-    "gpsHasFix": false,
-    "gpsTimeUTC": "",
-    "gpsSatellites": 0
-  },
-  "wifi": {
-    "connected": true,
-    "ssid": "MyNetwork",
-    "ip": "192.168.1.42",
-    "rssi": -62,
-    "mac": "AA:BB:CC:DD:EE:FF"
-  },
+  "freeHeap": 128728,
+  "firmware": { "name": "SQMeter", "version": "0.3.0", "buildDate": "Oct  8 2026", "buildTime": "12:00:00", "variant": "standard" },
+  "wifi": { "connected": true, "ssid": "MyNetwork", "ip": "192.168.1.42", "rssi": -62, "mac": "AA:BB:CC:DD:EE:FF" },
+  "sky": { "locationSource": "manual", "nightKnown": true, "latitude": 51.4779, "longitude": -0.0015, "isNight": false, "sunAltitudeDeg": 19.4 },
   "sensors": {
-    "tsl2591": { "initialized": true, "status": 0, "lastUpdate": 3595000 },
-    "bme280": { "initialized": true, "status": 0, "lastUpdate": 3595000 },
-    "mlx90614": { "initialized": true, "status": 0, "lastUpdate": 3595000 },
-    "gps": { "initialized": false, "status": 1, "lastUpdate": 0 },
-    "rg15": {
-      "enabled": true,
-      "initialized": true,
-      "online": true,
-      "stale": false,
-      "state": "online",
-      "status": 0,
-      "lastUpdate": 3595000,
-      "uart": {
-        "last_command": "R",
-        "last_raw_response": "Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 1.24 mm, RInt 0.00 mm/h",
-        "timeouts": 0,
-        "parse_errors": 0,
-        "successful_reads": 42
-      }
-    }
+    "light": { "status": "ok", "ageMs": 400 },
+    "environment": { "status": "ok", "ageMs": 3100 },
+    "infrared": { "status": "ok", "ageMs": 3100 },
+    "rain": { "status": "ok", "ageMs": 40 },
+    "wind": { "status": "ok", "ageMs": 900, "vaneStatus": "ok" }
   },
-  "mqtt": {
-    "enabled": false,
-    "connected": false,
-    "state": -1,
-    "lastPublish": 0,
-    "lastReconnectAttempt": 0,
-    "broker": "",
-    "port": 1883,
-    "topic": "sqm/data"
-  }
+  "diagnostics": {
+    "light": { "rollingVisible": 3.1, "correctedVisible": 3.1, "darkVisibleOffset": 0, "sampleCount": 150, "rejectedSamples": 0, "consecutiveSaturatedSamples": 0, "consecutiveLowSamples": 0 },
+    "rain": { "state": "online", "uartOpened": true, "rxPin": 18, "txPin": 19, "baudRate": 9600, "uartPort": 1, "lastCommand": "R", "lastResponse": "Acc 0.01 mm, ...", "timeouts": 0, "parseErrors": 0, "successfulReads": 1424, "lastPollAgeMs": 40, "lastResponseAgeMs": 40, "lastSuccessfulReadAgeMs": 40 }
+  },
+  "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "sqmeter", "availabilityTopic": "sqmeter/availability" }
 }
 ```
 
-!!! warning "Known diagnostic gaps"
-    The firmware now exposes RG-15 UART diagnostics and sensor freshness information, but it still does not expose every possible system metric such as reset reason, boot count, or `minFreeHeap`. Use serial logs for deeper system bring-up diagnostics.
+`sensors` lists the built-in sensors (`light`, `environment`, `infrared`) and, when enabled, `gps`, `rain` and `wind`. `status` is `ok`, `missing`, `error` or `stale`. `diagnostics.rain` is only present while the rain sensor is enabled. Readings are in `/api/sensors`.
 
 ---
 
 ### `GET /api/sensors`
 
-Current sensor readings (point-in-time snapshot).
+The current readings plus the safety verdict. The document is the same as `/ws/sensors` and MQTT `<base>/state`; see [MQTT → Readings](../user-guide/mqtt.md#readings-basestate) for every field.
 
 ```bash
 curl http://sqm-esp32.local/api/sensors
@@ -122,106 +59,22 @@ curl http://sqm-esp32.local/api/sensors
 
 ```json
 {
-  "lightSensor": {
-    "lux": 0.0234,
-    "rawLux": 0.0231,
-    "visible": 123,
-    "infrared": 45,
-    "full": 168,
-    "gainName": "MAX",
-    "gainFactor": 9876,
-    "integrationMs": 600,
-    "averagingWindowSeconds": 90,
-    "calibrated": true,
-    "saturated": false,
-    "status": 0
-  },
-  "skyQuality": {
-    "sqm": 21.5,
-    "rawSqm": 21.42,
-    "calibratedSqm": 21.5,
-    "nelm": 6.2,
-    "bortle": 2.0,
-    "description": "Typical truly dark site",
-    "nightMode": true
-  },
-  "lightDiagnostics": {
-    "rollingVisible": 123.4,
-    "correctedVisible": 121.9,
-    "darkVisibleOffset": 1.5,
-    "sampleCount": 138,
-    "rejectedSamples": 0
-  },
-  "environment": {
-    "temperature": 12.4,
-    "humidity": 72.1,
-    "pressure": 1013.25,
-    "dewpoint": 7.8,
-    "status": 0
-  },
-  "irTemperature": {
-    "objectTemp": -15.2,
-    "ambientTemp": 12.4,
-    "status": 0
-  },
-  "cloudConditions": {
-    "temperatureDelta": -27.6,
-    "correctedDelta": -24.1,
-    "cloudCoverPercent": 5.0,
-    "condition": 0,
-    "description": "Clear",
-    "humidityUsed": 72.1
-  },
-  "gps": {
-    "hasFix": true,
-    "satellites": 8,
-    "latitude": 51.5074,
-    "longitude": -0.1278,
-    "altitude": 42.0,
-    "hdop": 1.2,
-    "age": 800
-  },
-  "rainSensor": {
-    "enabled": true,
-    "sensor": "hydreon_rg15",
-    "initialized": true,
-    "online": true,
-    "stale": false,
-    "state": "online",
-    "timestamp": 1234567890,
-    "ageMs": 40,
-    "status": 0,
-    "isRaining": false,
-    "raining": false,
-    "acc": 0.000,
-    "eventAcc": 2.400,
-    "event_accumulation": 0.000,
-    "hydreon_event_accumulation": 2.400,
-    "totalAcc": 12.340,
-    "rInt": 0.000,
-    "lensBad": false,
-    "emSat": false,
-    "uart": {
-      "configured": true,
-      "opened": true,
-      "rx_pin": 18,
-      "tx_pin": 19,
-      "baud_rate": 9600,
-      "uart_port": 1,
-      "mode": "polling",
-      "resolution": "high",
-      "units": "metric",
-      "debug_uart": false,
-      "last_command": "R",
-      "last_raw_response": "Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 1.24 mm, RInt 0.00 mm/h",
-      "last_error": null,
-      "timeouts": 0,
-      "parse_errors": 0,
-      "successful_reads": 42
-    }
-  }
+  "timestamp": 1791401772,
+  "timeValid": true,
+  "dataAgeMs": 412,
+  "dataStale": false,
+  "light": { "status": "ok", "ageMs": 400, "lux": 0.0003, "visible": 307, "infrared": 47, "full": 357, "gain": "MAX", "gainFactor": 9876, "integrationMs": 600, "saturated": false, "nightMode": true },
+  "sky": { "status": "ok", "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90 },
+  "environment": { "status": "error", "ageMs": 61000 },
+  "infrared": { "status": "ok", "ageMs": 3100, "skyTemperature": -24.7, "ambientTemperature": 12.4 },
+  "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "description": "Clear", "temperatureDelta": -37.1, "correctedDelta": -33.0, "humidity": 53, "humiditySource": "assumed" },
+  "safety": { "safe": true, "rawSafe": true, "reasons": [], "reasonFlags": 0, "secondsUntilSafe": 0, "alpacaEnabled": true, "evaluatedAgeMs": 412, "changedAgeMs": 3600000 }
 }
 ```
+
+A group whose sensor isn't `ok` carries only `status` and `ageMs` (like `environment` above).
+
+---
 
 ### `POST /api/sensors/tsl2591/calibrate-dark`
 
@@ -240,18 +93,6 @@ curl -X POST http://sqm-esp32.local/api/sensors/tsl2591/calibrate-dark
 }
 ```
 
-!!! note "Optional fields"
-    The `gps` object is only present if a GPS module is connected and initialised. The `rainSensor` object is present whenever the RG-15 path is compiled into the firmware; check `enabled`, `initialized`, and `online` to distinguish disabled, opened, and live sensor states. All other objects are always present.
-
-### `status` values
-
-| Value | Meaning |
-|-------|---------|
-| `0` | OK |
-| `1` | Sensor not found |
-| `2` | Read error |
-| `3` | Stale data |
-
 ### `POST /api/sensors/rg15/test`
 
 Trigger a manual RG-15 read and return communication diagnostics.
@@ -262,23 +103,13 @@ When HTTP auth is enabled, this endpoint requires credentials.
 curl -X POST http://sqm-esp32.local/api/sensors/rg15/test
 ```
 
-The response includes:
-
-- `command`
-- `bytes_written`
-- `raw_response`
-- `ack`
-- `acknowledged`
-- `parsed`
-- `elapsed_ms`
-- `error`
-- `hint`
+Success is 200 `{"success": true, "command": "R", "bytesWritten": 2, "elapsedMs": 140, "rawResponse": "Acc 0.00 mm, ...", "ack": "R", "online": true, "lastSuccessfulReadAgeMs": 40}`. With no valid reply it's 502 with `error` and a wiring `hint`, plus the same diagnostic fields.
 
 ---
 
 ### `POST /api/sensors/rg15/reset-total`, `POST /api/sensors/rg15/reboot`
 
-Send the RG-15 its `O` (reset total accumulation) or `K` (reboot) command. Returns `{"ok": true, "command": "O", "message": "..."}`, or 400 if the command failed. Requires HTTP auth when enabled. See [RG-15](../hardware/rg15.md).
+Send the RG-15 its `O` (reset total accumulation) or `K` (reboot) command. Returns `{"success": true, "command": "O", "message": "..."}`, or 502 with `{"error": "..."}` if the sensor didn't take it. Requires HTTP auth when enabled. See [RG-15](../hardware/rg15.md).
 
 ### `GET /api/config`
 
@@ -369,7 +200,7 @@ curl -X POST http://sqm-esp32.local/api/update \
   -F "firmware=@sqmeter-firmware-v0.0.1.bin"
 ```
 
-The device reboots automatically on success.
+Returns 200 `{"success": true}` and reboots, or 500 `{"error": "..."}` (for example "Could not activate partition") and keeps the running firmware.
 
 ---
 
@@ -382,10 +213,15 @@ curl -X POST http://sqm-esp32.local/api/update/fs \
   -F "filesystem=@sqmeter-littlefs-v0.0.1.bin"
 ```
 
-Use this endpoint for web UI assets only. It does not update firmware and does not erase NVS configuration.
+Use this endpoint for web UI assets only. It does not update firmware and does not erase NVS configuration. Responses are as for `/api/update`.
 
-!!! warning "Unauthenticated update endpoints"
-    `/api/update` and `/api/update/fs` are LAN-only convenience endpoints and currently have no HTTP authentication. Keep SQMeter on a trusted network and do not port-forward it.
+Both upload endpoints need the password when protection is on. Keep SQMeter on a trusted network and don't port-forward it.
+
+---
+
+### `POST /api/mqtt/test`
+
+Tries to connect to a broker with the given details, without saving them: `{"broker": "192.168.1.10", "port": 1883, "username": "", "password": "", "clientId": "SQM-Test"}`. Returns 200 `{"success": true, "message": "Connection successful"}`, or 502 `{"error": "Connection timeout", "state": -4}`.
 
 ---
 
@@ -443,12 +279,11 @@ Plain text `1` (safe) or `0` (unsafe) - the SafetyMonitor verdict, for scripts a
 
 ### `GET /api/safety`
 
-The current SafetyMonitor verdict - the same value served to Alpaca clients as `IsSafe`, also as a numeric `safe` (1/0) - with the reasons behind it. The same object is included as `safety` in every `/ws/sensors` message.
+The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clients as `IsSafe` - with the reasons behind it. The same object is included as `safety` in every `/ws/sensors` message.
 
 ```json
 {
-  "isSafe": false,
-  "safe": 0,
+  "safe": false,
   "rawSafe": false,
   "alpacaEnabled": true,
   "reasonFlags": 512,
@@ -461,11 +296,11 @@ The current SafetyMonitor verdict - the same value served to Alpaca clients as `
 
 | Field | Meaning |
 |---|---|
-| `isSafe` | Reported verdict, after the safe delay |
+| `safe` | Reported verdict, after the safe delay |
 | `rawSafe` | Instantaneous rule evaluation, before the safe delay |
 | `reasons` / `reasonFlags` | Why it's unsafe (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault) |
-| `secondsUntilSafe` | Remaining safe-delay countdown while `rawSafe` is true but `isSafe` isn't yet |
-| `changedAgeMs` | Time since `isSafe` last changed |
+| `secondsUntilSafe` | Remaining safe-delay countdown while `rawSafe` is true but `safe` isn't yet |
+| `changedAgeMs` | Time since `safe` last changed |
 
 ---
 
@@ -494,7 +329,7 @@ Add `event=<unsafe|safe|rain_started|rain_stopped|sensor_fault|sensor_recovered|
 
 ### `GET /api/alerts/armed`, `POST /api/alerts/arm`, `POST /api/alerts/disarm`
 
-Alerts on/off, for automations: `{"armed": true, "armWithAlpaca": false}`. `arm`/`disarm` switch immediately (202) and the state survives restarts; while off nothing is sent and paired phones don't ring. POSTs require HTTP auth when enabled. `/api/alerts/recent` also carries `armed`.
+Alerts on/off, for automations: `{"armed": true, "armWithAlpaca": false}`. `arm`/`disarm` return 202 `{"success": true, "armed": true|false}` and switch immediately and the state survives restarts; while off nothing is sent and paired phones don't ring. POSTs require HTTP auth when enabled. `/api/alerts/recent` also carries `armed`.
 
 ### `POST /api/alerts/clear`
 

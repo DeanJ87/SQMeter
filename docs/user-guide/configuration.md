@@ -45,8 +45,10 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
     "port": 1883,
     "username": "",
     "password": "",
-    "topic": "sqm/data",
-    "publishIntervalMs": 60000
+    "topic": "sqmeter",
+    "publishIntervalMs": 60000,
+    "publish": { "sky": true, "environment": true, "clouds": true, "gps": true, "rain": true, "wind": true, "safety": true, "diagnostics": false },
+    "homeAssistant": { "enabled": false, "discoveryPrefix": "homeassistant" }
   },
 
   "ota": {
@@ -245,8 +247,13 @@ When GPS is enabled and has a fix, it can serve as the primary time source for a
 | `port` | int | `1883` | Broker port |
 | `username` | string | `""` | Auth username (leave empty if none) |
 | `password` | string | `""` | Auth password |
-| `topic` | string | `"sqm/data"` | Publish topic |
-| `publishIntervalMs` | int | `60000` | Publish interval — default 1 min |
+| `topic` | string | `"sqmeter"` | Base topic: letters, numbers, `_`, `-`, with `/` between levels. See [MQTT](mqtt.md#topics) |
+| `publishIntervalMs` | int | `60000` | How often `<topic>/state` is published (1 s – 24 h) |
+| `publish.sky`, `.environment`, `.clouds`, `.gps`, `.rain`, `.wind` | bool | `true` | Groups included in `<topic>/state` |
+| `publish.safety` | bool | `true` | Publish `<topic>/safe` and `<topic>/safety` |
+| `publish.diagnostics` | bool | `false` | Publish `<topic>/diagnostics` |
+| `homeAssistant.enabled` | bool | `false` | Home Assistant MQTT discovery |
+| `homeAssistant.discoveryPrefix` | string | `"homeassistant"` | Discovery prefix |
 
 ### ArduinoOTA
 

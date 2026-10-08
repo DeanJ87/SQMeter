@@ -2,7 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
 import { getTimezoneFriendlyName } from '../utils/timezone';
 import { useWebSocket } from '../hooks/useWebSocket';
-import type { SystemStatus } from '../types';
+import type { SensorHealth, SystemStatus } from '../types';
 import { Button, Card, Note, Pill, ProgressMeter, ReadingRow } from './ui';
 import { showToast } from './toast';
 
@@ -31,13 +31,12 @@ const formatShortAgeMs = (value: number | null | undefined): string => {
   return formatAgeMs(value);
 };
 
-const sensorBadge = (status: number): { text: string; tone: string } => {
+const sensorBadge = (status: SensorHealth): { text: string; tone: string } => {
   switch (status) {
-    case 0: return { text: 'OK', tone: 'pill-green' };
-    case 1: return { text: 'Not initialized', tone: 'pill-amber' };
-    case 2: return { text: 'Error', tone: 'pill-red' };
-    case 3: return { text: 'Timeout', tone: 'pill-amber' };
-    case 4: return { text: 'Invalid data', tone: 'pill-red' };
+    case 'ok': return { text: 'OK', tone: 'pill-green' };
+    case 'missing': return { text: 'Not detected', tone: 'pill-red' };
+    case 'error': return { text: 'Error', tone: 'pill-red' };
+    case 'stale': return { text: 'Stale', tone: 'pill-amber' };
     default: return { text: 'Unknown', tone: 'pill-dim' };
   }
 };
@@ -46,7 +45,7 @@ const InfoRow: FunctionalComponent<{ label: string; value: string; tone?: string
   <ReadingRow label={label} value={value} valueClass={tone} />
 );
 
-const SensorRow: FunctionalComponent<{ name: string; status: number }> = ({ name, status }) => {
+const SensorRow: FunctionalComponent<{ name: string; status: SensorHealth }> = ({ name, status }) => {
   const badge = sensorBadge(status);
   return (
     <div class="reading-row">
@@ -87,7 +86,7 @@ const System: FunctionalComponent = () => {
       const data = await response.json().catch(() => ({}));
       setRg15Action({
         loading: false,
-        message: response.ok ? successMessage : (data.message || 'Failed'),
+        message: response.ok ? successMessage : (data.error || 'Failed'),
       });
     } catch {
       setRg15Action({ loading: false, message: 'Could not reach the device' });
@@ -97,7 +96,8 @@ const System: FunctionalComponent = () => {
   const heapUsedPercent = status.heapSize > 0 ? ((status.heapSize - status.freeHeap) / status.heapSize) * 100 : 0;
   const flashUsedPercent = status.flashSize > 0 ? (status.sketchSize / status.flashSize) * 100 : 0;
   const fsUsedPercent = status.fsTotal > 0 ? (status.fsUsed / status.fsTotal) * 100 : 0;
-  const rg15 = status.sensors.rg15;
+  const rain = status.sensors.rain;
+  const rainDiagnostics = status.diagnostics?.rain;
 
   return (
     <div class="panel-page system-page page-enter">
@@ -142,16 +142,16 @@ const System: FunctionalComponent = () => {
 
       <Card title="Sensors" icon="eye" tone="green">
         <div class="system-list">
-          <SensorRow name="TSL2591 Light Sensor" status={status.sensors.tsl2591.status} />
-          <SensorRow name="BME280 Environment" status={status.sensors.bme280.status} />
-          <SensorRow name="MLX90614 IR Temperature" status={status.sensors.mlx90614.status} />
-          {status.sensors.gps.initialized && <SensorRow name="GPS Module" status={status.sensors.gps.status} />}
-          {rg15?.enabled && <SensorRow name="RG-15 Rain Sensor" status={rg15.status} />}
-          {status.sensors.wind?.enabled && <SensorRow name="Anemometer" status={status.sensors.wind.status} />}
+          <SensorRow name="TSL2591 Light Sensor" status={status.sensors.light.status} />
+          <SensorRow name="BME280 Environment" status={status.sensors.environment.status} />
+          <SensorRow name="MLX90614 IR Temperature" status={status.sensors.infrared.status} />
+          {status.sensors.gps && <SensorRow name="GPS Module" status={status.sensors.gps.status} />}
+          {rain && <SensorRow name="RG-15 Rain Sensor" status={rain.status} />}
+          {status.sensors.wind && <SensorRow name="Anemometer" status={status.sensors.wind.status} />}
         </div>
       </Card>
 
-      {rg15?.enabled && (
+      {rain && (
         <Card title="RG-15 Diagnostics" icon="rain" tone="cyan">
           <div class="btn-row">
             <Button small disabled={rg15Action.loading} onClick={() => runRg15Action('/api/sensors/rg15/reset-total', 'Total reset.')}>
@@ -163,27 +163,27 @@ const System: FunctionalComponent = () => {
             {rg15Action.message && <Note>{rg15Action.message}</Note>}
           </div>
 
-          <div class="system-diagnostic-grid">
-            <InfoRow label="Online" value={rg15.online ? 'Yes' : 'No'} tone={rg15.online ? 'tone-green' : 'tone-red'} />
-            <InfoRow label="Raining" value={(rg15.raining ?? rg15.isRaining) ? 'Yes' : 'No'} />
-            <InfoRow label="Rain intensity" value={String(rg15.rain_intensity ?? rg15.rInt ?? '--')} />
-            <InfoRow label="Since last read" value={String(rg15.accumulation_since_last_read ?? rg15.acc ?? '--')} />
-            <InfoRow label="Event total" value={String(rg15.event_accumulation ?? rg15.eventAcc ?? '--')} />
-            <InfoRow label="RX / TX" value={`${rg15.uart?.rx_pin ?? '--'} / ${rg15.uart?.tx_pin ?? '--'}`} />
-            <InfoRow label="Baud rate" value={String(rg15.uart?.baud_rate ?? '--')} />
-            <InfoRow label="Successful reads" value={String(rg15.uart?.successful_reads ?? 0)} />
-            <InfoRow label="Timeouts" value={String(rg15.uart?.timeouts ?? 0)} />
-            <InfoRow label="Parse errors" value={String(rg15.uart?.parse_errors ?? 0)} />
-            <InfoRow label="Last response age" value={formatAgeMs(rg15.uart?.last_response_age_ms)} />
-            <InfoRow label="Health probe age" value={formatAgeMs(rg15.uart?.last_health_check_age_ms)} />
-          </div>
+          {rainDiagnostics && (
+            <>
+              <div class="system-diagnostic-grid">
+                <InfoRow label="State" value={rainDiagnostics.state} tone={rain.status === 'ok' ? 'tone-green' : 'tone-red'} />
+                <InfoRow label="RX / TX" value={`${rainDiagnostics.rxPin} / ${rainDiagnostics.txPin}`} />
+                <InfoRow label="Baud rate" value={String(rainDiagnostics.baudRate)} />
+                <InfoRow label="Successful reads" value={String(rainDiagnostics.successfulReads)} />
+                <InfoRow label="Timeouts" value={String(rainDiagnostics.timeouts)} />
+                <InfoRow label="Parse errors" value={String(rainDiagnostics.parseErrors)} />
+                <InfoRow label="Last response age" value={formatAgeMs(rainDiagnostics.lastResponseAgeMs)} />
+                <InfoRow label="Last poll age" value={formatAgeMs(rainDiagnostics.lastPollAgeMs)} />
+              </div>
 
-          <div class="system-log-row">
-            <span>Last command / response / error</span>
-            <strong>{rg15.uart?.last_command ?? '--'}</strong>
-            <em>{rg15.uart?.last_raw_response ?? '--'}</em>
-            <em>{rg15.uart?.last_error ?? '--'}</em>
-          </div>
+              <div class="system-log-row">
+                <span>Last command / response / error</span>
+                <strong>{rainDiagnostics.lastCommand ?? '--'}</strong>
+                <em>{rainDiagnostics.lastResponse ?? '--'}</em>
+                <em>{rainDiagnostics.lastError ?? '--'}</em>
+              </div>
+            </>
+          )}
         </Card>
       )}
 
@@ -228,9 +228,6 @@ const System: FunctionalComponent = () => {
               <InfoRow label="GPS Time (UTC)" value={status.ntp.gpsTimeUTC} tone="tone-cyan" />
             )}
             <InfoRow label="Satellites" value={String(status.ntp.gpsSatellites || 0)} />
-            {status.gpsData && (
-              <InfoRow label="HDOP" value={status.gpsData.hdop.toFixed(1)} />
-            )}
           </div>
         </Card>
       )}
@@ -246,23 +243,6 @@ const System: FunctionalComponent = () => {
           ) : (
             <p class="system-subtle">MQTT is disabled.</p>
           )}
-        </Card>
-      )}
-
-      {status.gpsData && status.sensors.gps.initialized && (
-        <Card title="GPS Location" icon="gps" tone="green">
-          <div class="system-list">
-            <InfoRow label="Fix" value={status.gpsData.hasFix ? 'Lock acquired' : 'Searching'} tone={status.gpsData.hasFix ? 'tone-green' : 'tone-amber'} />
-            <InfoRow label="Satellites" value={String(status.gpsData.satellites)} />
-            {status.gpsData.hasFix && (
-              <>
-                <InfoRow label="Latitude" value={`${status.gpsData.latitude.toFixed(6)} deg`} />
-                <InfoRow label="Longitude" value={`${status.gpsData.longitude.toFixed(6)} deg`} />
-                <InfoRow label="Altitude" value={`${status.gpsData.altitude.toFixed(1)} m`} />
-                <InfoRow label="Fix Age" value={formatAgeMs(status.gpsData.age)} />
-              </>
-            )}
-          </div>
         </Card>
       )}
 

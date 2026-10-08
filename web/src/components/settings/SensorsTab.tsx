@@ -28,8 +28,8 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upd
     try {
       const response = await fetch('/api/sensors/rg15/test', { method: 'POST' });
       const result = await response.json();
-      setRainResult(response.ok && result.ok
-        ? { type: 'success', text: result.raw_response ? `Replied: ${result.raw_response}` : 'Replied' }
+      setRainResult(response.ok
+        ? { type: 'success', text: result.rawResponse ? `Replied: ${result.rawResponse}` : 'Replied' }
         : { type: 'error', text: result.error || result.hint || 'No reply' });
     } catch {
       setRainResult({ type: 'error', text: 'Could not reach the device' });

@@ -561,7 +561,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             onChange={(v) => set(['mqtt', 'enabled'], v)}
             blockedReason={!hw.mqtt.enabled ? 'MQTT is off.' : null}
             onFix={() => goTo('network', 'mqtt')}
-            hint={`Publishes to ${config.mqtt.topic}/alerts and a retained ${config.mqtt.topic}/safety.`}
+            hint={`Publishes each alert to ${config.mqtt.topic}/alerts. The safe flag is set under Network → MQTT → Publish.`}
           />
           {alerts.mqtt.enabled && hw.mqtt.enabled && testButton('mqtt')}
         </Group>

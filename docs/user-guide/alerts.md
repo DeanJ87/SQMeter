@@ -93,14 +93,14 @@ Ways to automate it:
 
 **N.I.N.A.** - turn on **On while N.I.N.A. is connected**: alerts switch on when N.I.N.A. connects the SafetyMonitor or ObservingConditions and off when it disconnects. Or call the API from a sequence (e.g. an *External Script* instruction): `curl -X POST http://sqmeter.local/api/alerts/arm` at the start, `.../api/alerts/disarm` at the end.
 
-**Home Assistant (MQTT)** - the device publishes `<topic>/alerts/armed` (retained `1`/`0`) and listens on `<topic>/alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`):
+**Home Assistant (MQTT)** - with [MQTT discovery](mqtt.md#home-assistant) on, an *Alerts* switch appears automatically. Without it, the device publishes `<base>/alerts/armed` (retained `1`/`0`) and listens on `<base>/alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`):
 
 ```yaml
 mqtt:
   switch:
     - name: "SQMeter alerts"
-      state_topic: "sqm/data/alerts/armed"
-      command_topic: "sqm/data/alerts/armed/set"
+      state_topic: "sqmeter/alerts/armed"
+      command_topic: "sqmeter/alerts/armed/set"
       payload_on: "1"
       payload_off: "0"
       icon: mdi:bell-ring
@@ -148,8 +148,9 @@ HTTPS webhooks are verified against a built-in set of common root CAs (Let's Enc
 
 Uses the broker from the MQTT settings. Publishes:
 
-- `<topic>/alerts` - each alert as JSON (`event`, `title`, `message`, `level`, `device`, `timestamp`), not retained
-- `<topic>/safety` - retained `{"isSafe": bool, "reasons": [...]}`, published on every change and refreshed every minute
+- `<base>/alerts` - each alert as JSON (`event`, `events` when several are stacked, `title`, `message`, `level`, `device`, `timestamp`), not retained
+
+The safe/unsafe flag (`<base>/safe`, `<base>/safety`) is published whenever MQTT is on - see [MQTT](mqtt.md#topics).
 
 ---
 

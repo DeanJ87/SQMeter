@@ -50,14 +50,14 @@ export const handlers = [
   http.get("/api/v1/observingconditions/0/devicestate", () => {
     const data = generateSensorData();
     return HttpResponse.json(alpacaEnvelope([
-      { Name: "CloudCover", Value: data.cloudConditions?.cloudCoverPercent ?? 0 },
+      { Name: "CloudCover", Value: data.clouds.coverPercent ?? 0 },
       { Name: "DewPoint", Value: data.environment?.dewpoint ?? 0 },
       { Name: "Humidity", Value: data.environment?.humidity ?? 0 },
-      { Name: "SkyQuality", Value: data.skyQuality?.sqm ?? 0 },
+      { Name: "SkyQuality", Value: data.sky.sqm ?? 0 },
       { Name: "Temperature", Value: data.environment?.temperature ?? 0 },
-      { Name: "WindDirection", Value: data.wind?.directionDeg ?? 0 },
-      { Name: "WindGust", Value: data.wind?.gustMs ?? 0 },
-      { Name: "WindSpeed", Value: data.wind?.speedMs ?? 0 },
+      { Name: "WindDirection", Value: data.wind?.direction ?? 0 },
+      { Name: "WindGust", Value: data.wind?.gust ?? 0 },
+      { Name: "WindSpeed", Value: data.wind?.speed ?? 0 },
       { Name: "TimeStamp", Value: new Date().toISOString() },
     ]));
   }),
@@ -159,7 +159,7 @@ export const handlers = [
     client.send(JSON.stringify(lastSensorData));
 
     const interval = setInterval(() => {
-      if (Date.now() - (lastSensorData.dataTimestamp ?? 0) >= mockConfig.sensor.readIntervalMs) {
+      if (Date.now() - lastSensorData.timestamp * 1000 >= mockConfig.sensor.readIntervalMs) {
         lastSensorData = generateSensorData();
       }
       client.send(JSON.stringify(lastSensorData));

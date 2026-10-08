@@ -124,143 +124,53 @@ namespace SQM
             }
         }
 
-        static void appendRG15Diagnostics(JsonObject root, const RG15Reading &reading, const RG15Diagnostics &diag, uint32_t now)
+        // Bring-up diagnostics for /api/status and MQTT <base>/diagnostics -
+        // not readings (those are in the readings document). Ages, not boot
+        // timestamps; camelCase like everything else.
+        void appendRainDiagnostics(JsonObject root, const RG15Diagnostics &diag, uint32_t now)
         {
-            root["enabled"] = diag.enabled;
-            root["sensor"] = "hydreon_rg15";
-            root["initialized"] = diag.uartOpened;
-            root["online"] = reading.online;
-            root["stale"] = reading.stale;
+            auto age = [&root, now](const char *key, uint32_t at)
+            {
+                if (at != 0)
+                    root[key] = now - at;
+            };
             root["state"] = rg15StateToString(diag.state);
-            root["timestamp"] = reading.timestamp;
-            root["ageMs"] = reading.ageMs;
-            root["status"] = static_cast<int>(reading.status);
-            root["isRaining"] = reading.isRaining;
-            root["raining"] = reading.rainLatched;
-            root["acc"] = reading.acc;
-            root["eventAcc"] = reading.eventAcc;
-            root["totalAcc"] = reading.totalAcc;
-            root["rInt"] = reading.rInt;
-            root["accumulation_since_last_read"] = reading.acc;
-            root["event_accumulation"] = reading.localEventAcc;
-            root["local_event_accumulation"] = reading.localEventAcc;
-            root["hydreon_event_accumulation"] = reading.eventAcc;
-            root["total_accumulation"] = reading.totalAcc;
-            root["rain_intensity"] = reading.rInt;
-            root["lensBad"] = reading.lensBad;
-            root["emSat"] = reading.emSat;
-
-            JsonObject uart = root.createNestedObject("uart");
-            uart["configured"] = diag.configured;
-            uart["opened"] = diag.uartOpened;
-            uart["rx_pin"] = diag.rxPin;
-            uart["tx_pin"] = diag.txPin;
-            uart["baud_rate"] = diag.baudRate;
-            uart["uart_port"] = diag.uartPort;
-            uart["mode"] = diag.mode;
-            uart["resolution"] = diag.resolution;
-            uart["units"] = diag.units;
-            uart["debug_uart"] = diag.debugUart;
-            uart["poll_interval_ms"] = diag.pollIntervalMs;
-            uart["rain_clear_delay_ms"] = diag.rainClearDelayMs;
-            uart["daily_reset_enabled"] = diag.dailyResetEnabled;
-            uart["daily_reset_hour"] = diag.dailyResetHour;
-            uart["daily_reset_minute"] = diag.dailyResetMinute;
-            appendOptionalString(uart, "last_command", diag.lastCommand);
-            if (diag.lastCommandMs != 0)
-                uart["last_command_ms"] = static_cast<uint32_t>(diag.lastCommandMs);
-            else
-                uart["last_command_ms"] = nullptr;
-            uart["last_bytes_written"] = diag.lastBytesWritten;
-            appendOptionalString(uart, "expected_ack", diag.expectedAck);
-            appendOptionalString(uart, "last_ack", diag.lastAck);
-            if (diag.lastAckMs != 0)
-                uart["last_ack_ms"] = static_cast<uint32_t>(diag.lastAckMs);
-            else
-                uart["last_ack_ms"] = nullptr;
-            appendOptionalString(uart, "last_raw_response", diag.lastRawResponse);
-            if (diag.lastResponseMs != 0)
-                uart["last_response_ms"] = static_cast<uint32_t>(diag.lastResponseMs);
-            else
-                uart["last_response_ms"] = nullptr;
-            appendOptionalString(uart, "last_error", diag.lastError);
-            uart["timeouts"] = diag.timeouts;
-            uart["parse_errors"] = diag.parseErrors;
-            uart["successful_reads"] = diag.successfulReads;
-            uart["response_timeout_ms"] = diag.responseTimeoutMs;
-            uart["stale_timeout_ms"] = diag.staleTimeoutMs;
-            if (diag.lastHealthCheckMs != 0)
-                uart["last_health_check_ms"] = static_cast<uint32_t>(diag.lastHealthCheckMs);
-            else
-                uart["last_health_check_ms"] = nullptr;
-            if (diag.lastHealthCheckMs != 0)
-                uart["last_health_check_age_ms"] = static_cast<uint32_t>(now - diag.lastHealthCheckMs);
-            else
-                uart["last_health_check_age_ms"] = nullptr;
-            if (diag.lastPollMs != 0)
-                uart["last_poll_ms"] = static_cast<uint32_t>(diag.lastPollMs);
-            else
-                uart["last_poll_ms"] = nullptr;
-            if (diag.lastPollMs != 0)
-                uart["last_poll_age_ms"] = static_cast<uint32_t>(now - diag.lastPollMs);
-            else
-                uart["last_poll_age_ms"] = nullptr;
-            if (diag.lastRainDetectedMs != 0)
-                uart["last_rain_detected_ms"] = static_cast<uint32_t>(diag.lastRainDetectedMs);
-            else
-                uart["last_rain_detected_ms"] = nullptr;
-            if (diag.lastRainDetectedMs != 0)
-                uart["last_rain_detected_age_ms"] = static_cast<uint32_t>(now - diag.lastRainDetectedMs);
-            else
-                uart["last_rain_detected_age_ms"] = nullptr;
-            if (diag.lastTotalResetMs != 0)
-                uart["last_total_reset_ms"] = static_cast<uint32_t>(diag.lastTotalResetMs);
-            else
-                uart["last_total_reset_ms"] = nullptr;
-            if (diag.lastTotalResetMs != 0)
-                uart["last_total_reset_age_ms"] = static_cast<uint32_t>(now - diag.lastTotalResetMs);
-            else
-                uart["last_total_reset_age_ms"] = nullptr;
-            if (diag.lastRebootCommandMs != 0)
-                uart["last_reboot_command_ms"] = static_cast<uint32_t>(diag.lastRebootCommandMs);
-            else
-                uart["last_reboot_command_ms"] = nullptr;
-            if (diag.lastRebootCommandMs != 0)
-                uart["last_reboot_command_age_ms"] = static_cast<uint32_t>(now - diag.lastRebootCommandMs);
-            else
-                uart["last_reboot_command_age_ms"] = nullptr;
-            appendOptionalString(uart, "last_status_line", diag.lastStatusLine);
-            appendOptionalString(uart, "software_version", diag.softwareVersion);
-            appendOptionalString(uart, "software_build_date", diag.softwareBuildDate);
-            appendOptionalString(uart, "reset_reason", diag.resetReason);
+            root["uartOpened"] = diag.uartOpened;
+            root["rxPin"] = diag.rxPin;
+            root["txPin"] = diag.txPin;
+            root["baudRate"] = diag.baudRate;
+            root["uartPort"] = diag.uartPort;
+            appendOptionalString(root, "lastCommand", diag.lastCommand);
+            appendOptionalString(root, "lastAck", diag.lastAck);
+            appendOptionalString(root, "lastResponse", diag.lastRawResponse);
+            appendOptionalString(root, "lastError", diag.lastError);
+            root["timeouts"] = diag.timeouts;
+            root["parseErrors"] = diag.parseErrors;
+            root["successfulReads"] = diag.successfulReads;
+            age("lastPollAgeMs", diag.lastPollMs);
+            age("lastResponseAgeMs", diag.lastResponseMs);
+            age("lastSuccessfulReadAgeMs", diag.lastSuccessfulReadMs);
+            age("lastRainDetectedAgeMs", diag.lastRainDetectedMs);
+            age("lastTotalResetAgeMs", diag.lastTotalResetMs);
+            age("lastRebootAgeMs", diag.lastRebootCommandMs);
+            appendOptionalString(root, "softwareVersion", diag.softwareVersion);
+            appendOptionalString(root, "softwareBuildDate", diag.softwareBuildDate);
+            appendOptionalString(root, "resetReason", diag.resetReason);
             if (diag.powerOnDays)
-                uart["power_on_days"] = *diag.powerOnDays;
-            else
-                uart["power_on_days"] = nullptr;
-            if (diag.emitter1)
-                uart["emitter_1"] = *diag.emitter1;
-            else
-                uart["emitter_1"] = nullptr;
-            if (diag.emitter2)
-                uart["emitter_2"] = *diag.emitter2;
-            else
-                uart["emitter_2"] = nullptr;
+                root["powerOnDays"] = *diag.powerOnDays;
             if (diag.emitterTotal)
-                uart["emitter_total"] = *diag.emitterTotal;
-            else
-                uart["emitter_total"] = nullptr;
-            if (diag.lastResponseMs != 0)
-                uart["last_response_age_ms"] = static_cast<uint32_t>(now - diag.lastResponseMs);
-            else
-                uart["last_response_age_ms"] = nullptr;
-            if (diag.lastSuccessfulReadMs != 0)
-                uart["last_successful_read_ms"] = static_cast<uint32_t>(diag.lastSuccessfulReadMs);
-            else
-                uart["last_successful_read_ms"] = nullptr;
-            if (diag.lastSuccessfulReadMs != 0)
-                uart["last_successful_read_age_ms"] = static_cast<uint32_t>(now - diag.lastSuccessfulReadMs);
-            else
-                uart["last_successful_read_age_ms"] = nullptr;
+                root["emitterTotal"] = *diag.emitterTotal;
+        }
+
+        void appendLightDiagnostics(JsonObject root, const TSL2591Diagnostics &diag)
+        {
+            root["rollingVisible"] = diag.rollingVisible;
+            root["correctedVisible"] = diag.correctedVisible;
+            root["darkVisibleOffset"] = diag.darkVisibleOffset;
+            root["sampleCount"] = diag.sampleCount;
+            root["rejectedSamples"] = diag.rejectedSamples;
+            root["consecutiveSaturatedSamples"] = diag.consecutiveSaturatedSamples;
+            root["consecutiveLowSamples"] = diag.consecutiveLowSamples;
         }
     }
 
@@ -438,6 +348,7 @@ namespace SQM
         applyPendingArm();
         if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
             publishArmedState();
+        publishMqttReadings(now);
 
         if (now - lastSafetyEvaluation >= SAFETY_EVALUATION_INTERVAL_MS)
         {
@@ -773,8 +684,9 @@ namespace SQM
                 return;
             String response_json;
             
-            if (fs_update_error) {
-                response_json = "{\"success\":false,\"error\":\"" + fs_error_msg + "\"}";
+            const bool fsFailed = fs_update_error;
+            if (fsFailed) {
+                response_json = createErrorJson(fs_error_msg.c_str()).c_str();
             } else {
                 response_json = "{\"success\":true}";
             }
@@ -785,7 +697,7 @@ namespace SQM
             fs_update_error = false;
             fs_error_msg = "";
             
-            AsyncWebServerResponse* response = request->beginResponse(200, "application/json", response_json);
+            AsyncWebServerResponse* response = request->beginResponse(fsFailed ? 500 : 200, "application/json", response_json);
             response->addHeader("Connection", "close");
             request->send(response);
             
@@ -884,10 +796,10 @@ namespace SQM
                     case UPDATE_ERROR_ABORT: error_msg = "Update aborted"; break;
                     default: error_msg = "Error code: " + String(error); break;
                 }
-                response_json = "{\"success\":false,\"error\":\"" + error_msg + "\"}";
+                response_json = createErrorJson(error_msg.c_str()).c_str();
             }
             
-            AsyncWebServerResponse* response = request->beginResponse(200, "application/json", response_json);
+            AsyncWebServerResponse* response = request->beginResponse(success ? 200 : 500, "application/json", response_json);
             response->addHeader("Connection", "close");
             request->send(response);
             
@@ -1132,7 +1044,7 @@ namespace SQM
     void WebServer::processAlerts(const SafetyStatus &status)
     {
         const Config &cfg = getConfigCallback();
-        if (cfg.mqtt.enabled && status.evaluatedAtMs != 0)
+        if (mqttClient != nullptr && mqttClient->isConnected() && cfg.mqtt.publish.safety && status.evaluatedAtMs != 0)
             publishMqttSafety(status);
 
         const SensorSnapshot snapshot = getSensorSnapshot();
@@ -1415,29 +1327,24 @@ namespace SQM
     void WebServer::publishMqttSafety(const SafetyStatus &status)
     {
         const uint32_t now = millis();
-        const bool changed = !mqttSafetyPublished || status.isSafe != mqttLastPublishedSafe;
+        const bool changed = !mqttSafetyPublished || status.isSafe != mqttLastPublishedSafe ||
+                             mqttClient->connectionCount() != mqttSafetyConnection;
         if (!changed && now - mqttSafetyPublishedAt < MQTT_SAFETY_REPUBLISH_MS)
             return;
 
-        if (mqttClient != nullptr)
-            mqttClient->setSafety(status.isSafe);
-
+        // Same object as GET /api/safety; <base>/safe is the bare 1/0 for
+        // loggers, simple automations and the Home Assistant binary sensor.
         DynamicJsonDocument doc(1024);
-        doc["isSafe"] = status.isSafe;
-        doc["safe"] = status.isSafe ? 1 : 0;
-        JsonArray reasons = doc.createNestedArray("reasons");
-        for (const std::string &reason : status.reasons)
-            reasons.add(reason);
+        appendSafetyStatus(doc.to<JsonObject>());
         std::string payload;
         serializeJson(doc, payload);
-
-        // <topic>/safe is the bare 1/0 for loggers and simple automations.
-        if (mqttClient != nullptr && mqttClient->publishSubtopic("safety", payload, true) &&
+        if (mqttClient->publishSubtopic("safety", payload, true) &&
             mqttClient->publishSubtopic("safe", status.isSafe ? "1" : "0", true))
         {
             mqttSafetyPublished = true;
             mqttLastPublishedSafe = status.isSafe;
             mqttSafetyPublishedAt = now;
+            mqttSafetyConnection = mqttClient->connectionCount();
         }
     }
 
@@ -1563,7 +1470,7 @@ namespace SQM
                 if (!requireAuth(request))
                     return;
                 pendingArm = armed ? 1 : 0;
-                request->send(202, "application/json", armed ? "{\"armed\":true}" : "{\"armed\":false}");
+                request->send(202, "application/json", armed ? "{\"success\":true,\"armed\":true}" : "{\"success\":true,\"armed\":false}");
             };
         };
         server.on("/api/alerts/arm", HTTP_POST, armRoute(true));
@@ -1858,37 +1765,31 @@ namespace SQM
         const RG15Reading reading = rg15Sensor.copyReading();
         const RG15Diagnostics diagnostics = rg15Sensor.getDiagnostics();
         const uint32_t now = millis();
+        const bool success = ok && reading.status == SensorStatus::OK;
 
+        // Success: 200 {"success": true, ...}; failure: 502 {"error": ..., ...}.
+        // Both carry what was sent and received, for bring-up.
         StaticJsonDocument<1024> response;
-        response["ok"] = ok && reading.status == SensorStatus::OK;
-        response["command"] = diagnostics.lastCommand ? diagnostics.lastCommand->c_str() : "R";
-        response["bytes_written"] = diagnostics.lastBytesWritten;
-        response["elapsed_ms"] = now - startedAt;
-        if (diagnostics.lastRawResponse)
-            response["raw_response"] = diagnostics.lastRawResponse->c_str();
+        if (success)
+            response["success"] = true;
         else
-            response["raw_response"] = nullptr;
+            response["error"] = diagnostics.lastError ? diagnostics.lastError->c_str() : "No valid response from the RG-15";
+        response["command"] = diagnostics.lastCommand ? diagnostics.lastCommand->c_str() : "R";
+        response["bytesWritten"] = diagnostics.lastBytesWritten;
+        response["elapsedMs"] = now - startedAt;
+        if (diagnostics.lastRawResponse)
+            response["rawResponse"] = diagnostics.lastRawResponse->c_str();
         if (diagnostics.lastAck)
             response["ack"] = diagnostics.lastAck->c_str();
-        else
-            response["ack"] = nullptr;
-        response["acknowledged"] = diagnostics.lastAck.has_value();
-        response["parsed"] = reading.status == SensorStatus::OK;
         response["online"] = reading.online;
-        response["stale"] = reading.stale;
         if (diagnostics.lastSuccessfulReadMs != 0)
-            response["last_successful_read_age_ms"] = static_cast<uint32_t>(now - diagnostics.lastSuccessfulReadMs);
-        else
-            response["last_successful_read_age_ms"] = nullptr;
-        if (diagnostics.lastError)
-            response["error"] = diagnostics.lastError->c_str();
-        else
-            response["error"] = nullptr;
-        response["hint"] = "Check RG-15 Serial OUT -> ESP32 RX, Serial IN -> ESP32 TX, common ground, baud rate, and voltage level.";
+            response["lastSuccessfulReadAgeMs"] = now - diagnostics.lastSuccessfulReadMs;
+        if (!success)
+            response["hint"] = "Check RG-15 Serial OUT -> ESP32 RX, Serial IN -> ESP32 TX, common ground, baud rate, and voltage level.";
 
         String responseStr;
         serializeJson(response, responseStr);
-        request->send(ok && reading.status == SensorStatus::OK ? 200 : 400, "application/json", responseStr.c_str());
+        request->send(success ? 200 : 502, "application/json", responseStr.c_str());
     }
 
     void WebServer::handleTSL2591DarkCalibration(AsyncWebServerRequest *request)
@@ -1936,14 +1837,12 @@ namespace SQM
             return;
 
         const bool ok = rg15Sensor.resetTotalAccumulation();
-        StaticJsonDocument<256> response;
-        response["ok"] = ok;
-        response["command"] = "O";
-        response["message"] = ok ? "RG-15 total accumulation reset command sent" : "RG-15 total accumulation reset failed";
-
-        String responseStr;
-        serializeJson(response, responseStr);
-        request->send(ok ? 200 : 400, "application/json", responseStr.c_str());
+        if (!ok)
+        {
+            request->send(502, "application/json", createErrorJson("RG-15 total accumulation reset failed").c_str());
+            return;
+        }
+        request->send(200, "application/json", "{\"success\":true,\"command\":\"O\",\"message\":\"RG-15 total accumulation reset command sent\"}");
     }
 
     void WebServer::handleRG15Reboot(AsyncWebServerRequest *request)
@@ -1952,14 +1851,12 @@ namespace SQM
             return;
 
         const bool ok = rg15Sensor.rebootSensor();
-        StaticJsonDocument<256> response;
-        response["ok"] = ok;
-        response["command"] = "K";
-        response["message"] = ok ? "RG-15 reboot command sent" : "RG-15 reboot command failed";
-
-        String responseStr;
-        serializeJson(response, responseStr);
-        request->send(ok ? 200 : 400, "application/json", responseStr.c_str());
+        if (!ok)
+        {
+            request->send(502, "application/json", createErrorJson("RG-15 reboot command failed").c_str());
+            return;
+        }
+        request->send(200, "application/json", "{\"success\":true,\"command\":\"K\",\"message\":\"RG-15 reboot command sent\"}");
     }
 
     void WebServer::pollWiFiConnect()
@@ -2051,7 +1948,7 @@ namespace SQM
         {
             int state = testMqtt.state();
             Logger::error(TAG, "MQTT test connection failed with state: %d", state);
-            response["success"] = false;
+
 
             // Provide detailed error messages based on state
             switch (state)
@@ -2091,7 +1988,7 @@ namespace SQM
 
         String responseStr;
         serializeJson(response, responseStr);
-        request->send(connected ? 200 : 400, "application/json", responseStr.c_str());
+        request->send(connected ? 200 : 502, "application/json", responseStr.c_str());
     }
 
     void WebServer::broadcastSensorData()
@@ -2198,12 +2095,90 @@ namespace SQM
         return timestamp == 0 ? 0 : now - timestamp;
     }
 
+    void WebServer::appendDiagnostics(JsonObject root, const SensorSnapshot &snapshot) const
+    {
+        appendLightDiagnostics(root.createNestedObject("light"), snapshot.tslDiagnostics);
+        if (getConfigCallback().rain.enabled)
+            appendRainDiagnostics(root.createNestedObject("rain"), snapshot.rg15Diagnostics, millis());
+    }
+
+    // MQTT <base>/state (+ /diagnostics) every publish interval, and Home
+    // Assistant discovery whenever the connection or the settings change.
+    void WebServer::publishMqttReadings(uint32_t now)
+    {
+        if (mqttClient == nullptr || !mqttClient->isConnected())
+            return;
+        const MQTTConfig &mqtt = getConfigCallback().mqtt;
+        Readings::Groups groups;
+        groups.sky = mqtt.publish.sky;
+        groups.environment = mqtt.publish.environment;
+        groups.clouds = mqtt.publish.clouds;
+        groups.gps = mqtt.publish.gps;
+        groups.rain = mqtt.publish.rain;
+        groups.wind = mqtt.publish.wind;
+
+        publishDiscovery(mqtt, groups);
+
+        const bool reconnected = mqttClient->connectionCount() != mqttStateConnection;
+        if (!reconnected && mqttStatePublishedAt != 0 && now - mqttStatePublishedAt < mqtt.publishIntervalMs)
+            return;
+        DynamicJsonDocument doc(3072);
+        Readings::write(doc.to<JsonObject>(), buildReadings(), groups);
+        std::string payload;
+        serializeJson(doc, payload);
+        if (!mqttClient->publishSubtopic("state", payload, true))
+        {
+            Logger::warn(TAG, "MQTT state publish failed (%u bytes)", static_cast<unsigned>(payload.size()));
+            return;
+        }
+        mqttStatePublishedAt = now == 0 ? 1 : now;
+        mqttStateConnection = mqttClient->connectionCount();
+
+        if (mqtt.publish.diagnostics)
+        {
+            DynamicJsonDocument diag(1536);
+            appendDiagnostics(diag.to<JsonObject>(), getSensorSnapshot());
+            std::string diagPayload;
+            serializeJson(diag, diagPayload);
+            mqttClient->publishSubtopic("diagnostics", diagPayload, false);
+        }
+    }
+
+    void WebServer::publishDiscovery(const MQTTConfig &mqtt, const Readings::Groups &groups)
+    {
+        // Rebuilt from scratch when anything it depends on changes.
+        char mac[13];
+        snprintf(mac, sizeof(mac), "%012llx", static_cast<unsigned long long>(ESP.getEfuseMac()));
+        Readings::DiscoveryDevice device{std::string("sqmeter_") + mac, getConfigCallback().deviceName, FIRMWARE_VERSION, mqtt.topic,
+                                         mqtt.discoveryPrefix};
+        std::string key = std::to_string(mqtt.homeAssistant) + device.name + device.baseTopic + device.prefix;
+        for (bool on : {groups.sky, groups.environment, groups.clouds, groups.rain, groups.wind, mqtt.publish.safety})
+            key += on ? '1' : '0';
+        if (key == discoveryKey && mqttClient->connectionCount() == discoveryConnection)
+            return;
+
+        auto publish = [this](const std::string &topic, const std::string &payload)
+        { mqttClient->publishTopic(topic, payload, true); };
+        if (!discoveryKey.empty() && discoveryWasOn && (!mqtt.homeAssistant || discoveryDevice.prefix != device.prefix || discoveryDevice.baseTopic != device.baseTopic))
+        {
+            // Remove what was announced under the old settings.
+            Readings::forEachDiscovery(discoveryDevice, groups, true, [&](const std::string &topic, const std::string &)
+                                       { publish(topic, ""); });
+        }
+        if (mqtt.homeAssistant)
+            Readings::forEachDiscovery(device, groups, mqtt.publish.safety, publish);
+
+        discoveryKey = key;
+        discoveryConnection = mqttClient->connectionCount();
+        discoveryDevice = device;
+        discoveryWasOn = mqtt.homeAssistant;
+    }
+
     void WebServer::appendSafetyStatus(JsonObject target) const
     {
         const SafetyStatus status = getSafetyStatus();
         const uint32_t now = millis();
-        target["isSafe"] = status.isSafe;
-        target["safe"] = status.isSafe ? 1 : 0; // numeric, for loggers
+        target["safe"] = status.isSafe;
         target["rawSafe"] = status.rawSafe;
         target["alpacaEnabled"] = getConfigCallback().alpaca.enabled;
         target["reasonFlags"] = status.reasonFlags;
@@ -2215,139 +2190,158 @@ namespace SQM
         target["changedAgeMs"] = ageMs(now, status.changedAtMs);
     }
 
+    namespace
+    {
+        // ok unless the driver reports a problem or the last good reading is too old.
+        Readings::Status readingStatus(SensorStatus status, bool initialized, uint32_t lastUpdate, uint32_t now, uint32_t staleAfter)
+        {
+            if (!initialized || status == SensorStatus::NOT_INITIALIZED)
+                return Readings::Status::Missing;
+            if (status != SensorStatus::OK)
+                return Readings::Status::Error;
+            if (lastUpdate == 0 || now - lastUpdate > staleAfter)
+                return Readings::Status::Stale;
+            return Readings::Status::Ok;
+        }
+
+        const char *cloudConditionName(CloudCondition condition)
+        {
+            switch (condition)
+            {
+            case CloudCondition::CLEAR:
+                return "clear";
+            case CloudCondition::CLOUDY:
+                return "cloudy";
+            case CloudCondition::OVERCAST:
+                return "overcast";
+            default:
+                return "unknown";
+            }
+        }
+    } // namespace
+
+    Readings::Snapshot WebServer::buildReadings() const
+    {
+        const SensorSnapshot snapshot = getSensorSnapshot();
+        const Config &cfg = getConfigCallback();
+        const uint32_t now = millis();
+        const uint32_t staleAfter = cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
+        Readings::Snapshot r;
+
+        const time_t clock = time(nullptr);
+        r.timeValid = clock >= 1704067200;
+        r.timestamp = r.timeValid ? static_cast<int64_t>(clock) : 0;
+        r.dataAgeMs = ageMs(now, snapshot.dataTimestamp);
+        r.dataStale = snapshot.dataTimestamp == 0 || r.dataAgeMs > staleAfter;
+
+        // Light sensor + sky quality. The TSL2591 samples on its own ~600 ms cadence.
+        const TSL2591Reading &tsl = snapshot.tsl;
+        r.light.status = readingStatus(tsl.status, snapshot.tslInitialized, snapshot.tslLastUpdate, now, staleAfter);
+        r.light.ageMs = ageMs(now, tsl.timestamp);
+        r.light.lux = tsl.lux;
+        r.light.visible = tsl.visible;
+        r.light.infrared = tsl.infrared;
+        r.light.full = tsl.full;
+        r.light.gain = snapshot.tslDiagnostics.gainName != nullptr ? snapshot.tslDiagnostics.gainName : "";
+        r.light.gainFactor = snapshot.tslDiagnostics.gainFactor;
+        r.light.integrationMs = snapshot.tslDiagnostics.integrationMs;
+        r.light.saturated = snapshot.tslDiagnostics.saturated;
+        r.light.nightMode = snapshot.tslDiagnostics.nightMode;
+        const SkyQualityMetrics sky = SkyQuality::calculate(tsl.lux);
+        r.sky.sqm = sky.sqm;
+        r.sky.rawSqm = tsl.rawSqm;
+        r.sky.nelm = sky.nelm;
+        r.sky.bortle = static_cast<int>(sky.bortle + 0.5f);
+        r.sky.description = SkyQuality::getBortleDescription(sky.bortle);
+        r.sky.calibrated = snapshot.tslDiagnostics.calibrated;
+        r.sky.averagingWindowSeconds = snapshot.tslDiagnostics.averagingWindowSeconds;
+
+        const BME280Reading &bme = snapshot.bme;
+        r.environment.status = readingStatus(bme.status, snapshot.bmeInitialized, snapshot.bmeLastUpdate, now, staleAfter);
+        r.environment.ageMs = ageMs(now, bme.timestamp);
+        r.environment.temperature = bme.temperature;
+        r.environment.humidity = bme.humidity;
+        r.environment.pressure = bme.pressure;
+        r.environment.dewpoint = bme.dewpoint;
+
+        const MLX90614Reading &mlx = snapshot.mlx;
+        r.infrared.status = readingStatus(mlx.status, snapshot.mlxInitialized, snapshot.mlxLastUpdate, now, staleAfter);
+        r.infrared.ageMs = ageMs(now, mlx.timestamp);
+        r.infrared.skyTemperature = mlx.objectTemp;
+        r.infrared.ambientTemperature = mlx.ambientTemp;
+        // Without the BME280 the cloud model assumes 53% humidity, and says so.
+        const bool humidityMeasured = r.environment.status == Readings::Status::Ok;
+        const float humidity = humidityMeasured ? bme.humidity : 53.0f;
+        const CloudMetrics cloud = CloudDetection::calculate(mlx.objectTemp, mlx.ambientTemp, humidity,
+                                                             cfg.cloudDetection.clearSkyThreshold, cfg.cloudDetection.cloudyThreshold,
+                                                             cfg.cloudDetection.humidityCorrection);
+        r.clouds.coverPercent = cloud.cloudCoverPercent;
+        r.clouds.condition = cloudConditionName(cloud.condition);
+        r.clouds.description = cloud.description;
+        r.clouds.temperatureDelta = cloud.temperatureDelta;
+        r.clouds.correctedDelta = cloud.correctedDelta;
+        r.clouds.humidity = humidity;
+        r.clouds.humidityMeasured = humidityMeasured;
+
+        r.gps.present = cfg.gps.enabled;
+        if (r.gps.present)
+        {
+            const GPSReading &gps = snapshot.gps;
+            r.gps.status = snapshot.gpsInitialized ? (gps.status == SensorStatus::OK || gps.status == SensorStatus::TIMEOUT
+                                                          ? Readings::Status::Ok
+                                                          : Readings::Status::Error)
+                                                   : Readings::Status::Missing;
+            r.gps.ageMs = gps.age;
+            r.gps.fix = gps.hasFix;
+            r.gps.satellites = gps.satellites;
+            r.gps.latitude = gps.latitude;
+            r.gps.longitude = gps.longitude;
+            r.gps.altitude = gps.altitude;
+            r.gps.hdop = gps.hdop / 100.0;
+        }
+
+        r.rain.present = cfg.rain.enabled;
+        if (r.rain.present)
+        {
+            const RG15Reading &rain = snapshot.rg15;
+            r.rain.status = !snapshot.rg15Initialized || !rain.online ? Readings::Status::Missing
+                            : rain.stale                             ? Readings::Status::Stale
+                                                                     : Readings::Status::Ok;
+            r.rain.ageMs = ageMs(now, rain.timestamp);
+            // Always metric: the RG-15 can be switched to inches.
+            const double toMm = rain.imperial ? 25.4 : 1.0;
+            r.rain.raining = rain.isRaining || rain.rainLatched;
+            r.rain.rainingNow = rain.isRaining;
+            r.rain.intensity = rain.rInt * toMm;
+            r.rain.eventAccumulation = rain.localEventAcc * toMm;
+            r.rain.sensorEventAccumulation = rain.eventAcc * toMm;
+            r.rain.totalAccumulation = rain.totalAcc * toMm;
+            r.rain.lensFault = rain.lensBad;
+            r.rain.emitterSaturated = rain.emSat;
+        }
+
+        r.wind.present = cfg.wind.enabled;
+        if (r.wind.present)
+        {
+            const WindReading &wind = snapshot.wind;
+            r.wind.status = wind.status == SensorStatus::OK ? Readings::Status::Ok
+                            : wind.status == SensorStatus::NOT_INITIALIZED ? Readings::Status::Missing
+                                                                           : Readings::Status::Error;
+            r.wind.ageMs = ageMs(now, wind.timestamp);
+            r.wind.speed = wind.speedMs;
+            r.wind.gust = wind.gustMs;
+            r.wind.directionValid = cfg.wind.directionEnabled && wind.directionValid;
+            r.wind.direction = wind.directionDeg;
+            r.wind.vaneFault = wind.vaneFault;
+        }
+        return r;
+    }
+
     std::string WebServer::createSensorDataJson() const
     {
-        DynamicJsonDocument doc(6144);
-        const SensorSnapshot snapshot = getSensorSnapshot();
-        const uint32_t now = millis();
-        const uint32_t dataAge = ageMs(now, snapshot.dataTimestamp);
-        const uint32_t staleAfter = getConfigCallback().sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
-
-        doc["dataTimestamp"] = snapshot.dataTimestamp;
-        doc["dataAgeMs"] = dataAge;
-        doc["dataStale"] = snapshot.dataTimestamp == 0 || dataAge > staleAfter;
-
-        // Light sensor data (TSL2591)
-        const auto &tslReading = snapshot.tsl;
-        JsonObject lightSensor = doc.createNestedObject("lightSensor");
-        lightSensor["lux"] = tslReading.lux;
-        lightSensor["rawLux"] = tslReading.rawLux;
-        lightSensor["visible"] = tslReading.visible;
-        lightSensor["infrared"] = tslReading.infrared;
-        lightSensor["full"] = tslReading.full;
-        lightSensor["status"] = static_cast<int>(tslReading.status);
-        lightSensor["timestamp"] = tslReading.timestamp;
-        lightSensor["ageMs"] = ageMs(now, tslReading.timestamp);
-        lightSensor["gainName"] = snapshot.tslDiagnostics.gainName;
-        lightSensor["gainFactor"] = snapshot.tslDiagnostics.gainFactor;
-        lightSensor["integrationMs"] = snapshot.tslDiagnostics.integrationMs;
-        lightSensor["averagingWindowSeconds"] = snapshot.tslDiagnostics.averagingWindowSeconds;
-        lightSensor["calibrated"] = snapshot.tslDiagnostics.calibrated;
-        lightSensor["saturated"] = snapshot.tslDiagnostics.saturated;
-
-        // Sky quality calculations
-        SkyQualityMetrics sqm = SkyQuality::calculate(tslReading.lux);
-        JsonObject sky = doc.createNestedObject("skyQuality");
-        sky["sqm"] = sqm.sqm;
-        sky["rawSqm"] = tslReading.rawSqm;
-        sky["calibratedSqm"] = tslReading.calibratedSqm;
-        sky["nelm"] = sqm.nelm;
-        sky["bortle"] = sqm.bortle;
-        sky["description"] = SkyQuality::getBortleDescription(sqm.bortle);
-        sky["nightMode"] = snapshot.tslDiagnostics.nightMode;
-
-        JsonObject diagnostics = doc.createNestedObject("lightDiagnostics");
-        diagnostics["rollingVisible"] = snapshot.tslDiagnostics.rollingVisible;
-        diagnostics["correctedVisible"] = snapshot.tslDiagnostics.correctedVisible;
-        diagnostics["darkVisibleOffset"] = snapshot.tslDiagnostics.darkVisibleOffset;
-        diagnostics["sampleCount"] = snapshot.tslDiagnostics.sampleCount;
-        diagnostics["rejectedSamples"] = snapshot.tslDiagnostics.rejectedSamples;
-        diagnostics["consecutiveSaturatedSamples"] = snapshot.tslDiagnostics.consecutiveSaturatedSamples;
-        diagnostics["consecutiveLowSamples"] = snapshot.tslDiagnostics.consecutiveLowSamples;
-
-        // Environmental sensor data (BME280)
-        const auto &bmeReading = snapshot.bme;
-        JsonObject environment = doc.createNestedObject("environment");
-        environment["temperature"] = bmeReading.temperature;
-        environment["humidity"] = bmeReading.humidity;
-        environment["pressure"] = bmeReading.pressure;
-        environment["dewpoint"] = bmeReading.dewpoint;
-        environment["status"] = static_cast<int>(bmeReading.status);
-        environment["timestamp"] = bmeReading.timestamp;
-        environment["ageMs"] = ageMs(now, bmeReading.timestamp);
-
-        // IR temperature sensor data (MLX90614)
-        const auto &mlxReading = snapshot.mlx;
-        JsonObject irTemperature = doc.createNestedObject("irTemperature");
-        irTemperature["objectTemp"] = mlxReading.objectTemp;
-        irTemperature["ambientTemp"] = mlxReading.ambientTemp;
-        irTemperature["status"] = static_cast<int>(mlxReading.status);
-        irTemperature["timestamp"] = mlxReading.timestamp;
-        irTemperature["ageMs"] = ageMs(now, mlxReading.timestamp);
-
-        // Cloud detection from IR temperature sensor
-        // Use BME280 humidity if available, otherwise default to 53%
-        bool usingHumidityFallback = bmeReading.status != SensorStatus::OK;
-        float humidity = usingHumidityFallback ? 53.0f : bmeReading.humidity;
-        const Config &cfg = getConfigCallback();
-        CloudMetrics cloudMetrics = CloudDetection::calculate(
-            mlxReading.objectTemp,
-            mlxReading.ambientTemp,
-            humidity,
-            cfg.cloudDetection.clearSkyThreshold,
-            cfg.cloudDetection.cloudyThreshold,
-            cfg.cloudDetection.humidityCorrection);
-
-        JsonObject cloud = doc.createNestedObject("cloudConditions");
-        cloud["temperatureDelta"] = cloudMetrics.temperatureDelta;
-        cloud["correctedDelta"] = cloudMetrics.correctedDelta;
-        cloud["cloudCoverPercent"] = cloudMetrics.cloudCoverPercent;
-        cloud["condition"] = static_cast<int>(cloudMetrics.condition);
-        cloud["description"] = cloudMetrics.description;
-        cloud["humidityUsed"] = humidity;
-        cloud["humiditySource"] = usingHumidityFallback ? "default" : "bme280";
-        cloud["bme280Available"] = !usingHumidityFallback;
-
-        // GPS data (if initialized)
-        if (snapshot.gpsInitialized)
-        {
-            const GPSReading &gpsReading = snapshot.gps;
-            JsonObject gps = doc.createNestedObject("gps");
-            gps["hasFix"] = gpsReading.hasFix;
-            gps["satellites"] = gpsReading.satellites;
-            gps["latitude"] = gpsReading.latitude;
-            gps["longitude"] = gpsReading.longitude;
-            gps["altitude"] = gpsReading.altitude;
-            gps["hdop"] = gpsReading.hdop / 100.0;
-            gps["age"] = gpsReading.age;
-            gps["timestamp"] = gpsReading.timestamp;
-            gps["ageMs"] = ageMs(now, gpsReading.timestamp);
-        }
-
-        // RG-15 rain sensor data (only when it's switched on)
-        if (getConfigCallback().rain.enabled)
-        {
-            JsonObject rain = doc.createNestedObject("rainSensor");
-            appendRG15Diagnostics(rain, snapshot.rg15, snapshot.rg15Diagnostics, now);
-        }
-
-        if (getConfigCallback().wind.enabled)
-        {
-            JsonObject wind = doc.createNestedObject("wind");
-            wind["status"] = static_cast<int>(snapshot.wind.status);
-            wind["speedMs"] = snapshot.wind.speedMs;
-            wind["gustMs"] = snapshot.wind.gustMs;
-            wind["instantMs"] = snapshot.wind.instantMs;
-            wind["directionValid"] = snapshot.wind.directionValid;
-            wind["directionDeg"] = snapshot.wind.directionDeg;
-            wind["vaneFault"] = snapshot.wind.vaneFault;
-            wind["samples"] = snapshot.wind.samples;
-            wind["ageMs"] = ageMs(now, snapshot.wind.timestamp);
-        }
-
-        JsonObject safety = doc.createNestedObject("safety");
-        appendSafetyStatus(safety);
-
+        DynamicJsonDocument doc(4096);
+        Readings::write(doc.to<JsonObject>(), buildReadings());
+        appendSafetyStatus(doc.createNestedObject("safety"));
         std::string json;
         serializeJson(doc, json);
         return json;
@@ -2357,7 +2351,6 @@ namespace SQM
     {
         DynamicJsonDocument doc(6144); // Includes MQTT, partition, boot, sensor and BLE diagnostics
         const SensorSnapshot snapshot = getSensorSnapshot();
-        const uint32_t now = millis();
 
         // Firmware version
         JsonObject firmware = doc.createNestedObject("firmware");
@@ -2522,53 +2515,32 @@ namespace SQM
         wifi["mac"] = WiFi.macAddress();
         wifi["connectPending"] = wifiConnectActive;
 
-        // Sensor status
+        // Per-sensor health for present hardware, and bring-up diagnostics.
+        // Readings themselves are in /api/sensors.
+        const Readings::Snapshot readings = buildReadings();
         JsonObject sensors = doc.createNestedObject("sensors");
-
-        JsonObject tsl = sensors.createNestedObject("tsl2591");
-        tsl["initialized"] = snapshot.tslInitialized;
-        tsl["status"] = static_cast<int>(snapshot.tsl.status);
-        tsl["lastUpdate"] = snapshot.tslLastUpdate;
-
-        JsonObject bme = sensors.createNestedObject("bme280");
-        bme["initialized"] = snapshot.bmeInitialized;
-        bme["status"] = static_cast<int>(snapshot.bme.status);
-        bme["lastUpdate"] = snapshot.bmeLastUpdate;
-
-        JsonObject mlx = sensors.createNestedObject("mlx90614");
-        mlx["initialized"] = snapshot.mlxInitialized;
-        mlx["status"] = static_cast<int>(snapshot.mlx.status);
-        mlx["lastUpdate"] = snapshot.mlxLastUpdate;
-
-        JsonObject gps = sensors.createNestedObject("gps");
-        gps["initialized"] = snapshot.gpsInitialized;
-        gps["status"] = static_cast<int>(snapshot.gps.status);
-        gps["lastUpdate"] = snapshot.gpsLastUpdate;
-
-        JsonObject rg15 = sensors.createNestedObject("rg15");
-        appendRG15Diagnostics(rg15, snapshot.rg15, snapshot.rg15Diagnostics, now);
-        rg15["initialized"] = snapshot.rg15Initialized;
-        rg15["lastUpdate"] = snapshot.rg15LastUpdate;
-
-        JsonObject windStatus = sensors.createNestedObject("wind");
-        windStatus["enabled"] = getConfigCallback().wind.enabled;
-        windStatus["status"] = static_cast<int>(snapshot.wind.status);
-        windStatus["vaneFault"] = snapshot.wind.vaneFault;
-        windStatus["ageMs"] = ageMs(now, snapshot.wind.timestamp);
-
-        // GPS data
-        if (snapshot.gpsInitialized)
+        auto sensorHealth = [&sensors](const char *name, Readings::Status status, uint32_t age) -> JsonObject
         {
-            const GPSReading &gpsReading = snapshot.gps;
-            JsonObject gpsData = doc.createNestedObject("gpsData");
-            gpsData["hasFix"] = gpsReading.hasFix;
-            gpsData["satellites"] = gpsReading.satellites;
-            gpsData["latitude"] = gpsReading.latitude;
-            gpsData["longitude"] = gpsReading.longitude;
-            gpsData["altitude"] = gpsReading.altitude;
-            gpsData["hdop"] = gpsReading.hdop / 100.0; // Convert to actual value
-            gpsData["age"] = gpsReading.age;
+            JsonObject sensor = sensors.createNestedObject(name);
+            sensor["status"] = Readings::statusName(status);
+            sensor["ageMs"] = age;
+            return sensor;
+        };
+        sensorHealth("light", readings.light.status, readings.light.ageMs);
+        sensorHealth("environment", readings.environment.status, readings.environment.ageMs);
+        sensorHealth("infrared", readings.infrared.status, readings.infrared.ageMs);
+        if (readings.gps.present)
+            sensorHealth("gps", readings.gps.status, readings.gps.ageMs);
+        if (readings.rain.present)
+            sensorHealth("rain", readings.rain.status, readings.rain.ageMs);
+        if (readings.wind.present)
+        {
+            JsonObject wind = sensorHealth("wind", readings.wind.status, readings.wind.ageMs);
+            wind["vaneStatus"] = !getConfigCallback().wind.directionEnabled ? "off" : readings.wind.vaneFault ? "fault" : "ok";
         }
+
+        JsonObject diagnostics = doc.createNestedObject("diagnostics");
+        appendDiagnostics(diagnostics, snapshot);
 
         // MQTT status
         if (mqttClient)
