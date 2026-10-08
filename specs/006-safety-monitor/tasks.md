@@ -44,5 +44,5 @@ description: "As-built task list (backfill) for Safety Monitor"
 ## Phase 8: Convergence
 
 - [X] T011 CRITICAL: Move the safety-history ring buffer and last-alert lookup (they decide what the alert engine is seeded with after a restart) into lib/ with native tests per Constitution III (partial)
-- [ ] T012 Update docs/user-guide/alpaca.md Safety rules: "Settings → ASCOM Alpaca & Safety" is now Settings → Safety, and the "Force SafetyMonitor unsafe" checkbox is the "Force unsafe" toggle, per FR-008 / SC-003 (contradicts)
-- [ ] T013 State in docs/user-guide/alpaca.md that reasons carry the measured value and limit, and link the dashboard History, per FR-004 / FR-007 (partial)
+- [X] T012 Update docs/user-guide/alpaca.md Safety rules: "Settings → ASCOM Alpaca & Safety" is now Settings → Safety, and the "Force SafetyMonitor unsafe" checkbox is the "Force unsafe" toggle, per FR-008 / SC-003 (contradicts)
+- [X] T013 State in docs/user-guide/alpaca.md that reasons carry the measured value and limit, and link the dashboard History, per FR-004 / FR-007 (partial)

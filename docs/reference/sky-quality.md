@@ -16,6 +16,8 @@ Light below 0.0001 lux is treated as 0.0001 lux (SQM 22.6), the darkest the form
 
 Firmware averages raw TSL2591 counts before this conversion. The night SQM path uses MAX gain and 600 ms integration, applies a rolling average, subtracts the saved dark visible offset, then applies the optional SQM calibration offset.
 
+To calibrate in **Settings → Sensors → Sky quality**: cover the sensor completely (lens cap or foil), wait until **Averaging window** shows the window full, then press **Calibrate dark**. The device refuses while the sensor still sees light or the window holds readings from before it was covered. **Averaging window** (10-300 s, default 90) and **Apply SQM offset** (±5 mag/arcsec², e.g. to match a reference SQM-L) are in the same card.
+
 Dark calibration should be repeated whenever the lens, baffle, aperture, lens-to-sensor distance, or internal finish changes.
 
 Typical values:

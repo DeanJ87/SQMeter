@@ -1,7 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
 import type { SettingsTabProps } from './context';
-import { defaultRainConfig, defaultWindConfig } from './defaults';
+import { defaultRainConfig, defaultSkyAveraging, defaultSkyCalibration, defaultWindConfig } from './defaults';
 import type { SensorAvailability } from './hardware';
 import { ActionButton, Field, Group, NumberInput, Requires, ResultNote, SelectInput, SettingsCard, StatusBadge, Toggle } from './controls';
 
@@ -16,7 +16,41 @@ const detectionBadge = (sensor: SensorAvailability, labels = { ok: 'Detected', b
   return <StatusBadge tone={sensor.detected ? 'ok' : 'bad'} label={sensor.detected ? labels.ok : labels.bad} />;
 };
 
-const SensorsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw, dirty }) => {
+const CLOCK_VALID = 1704067200; // calibration times below this are uptime, not dates
+
+const SensorsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, applyStored, error, hw, status, dirty }) => {
+  const [calibrating, setCalibrating] = useState(false);
+  const [calibrationResult, setCalibrationResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const averaging = { ...defaultSkyAveraging, ...config.skyAveraging };
+  const calibration = { ...defaultSkyCalibration, ...config.skyCalibration };
+  const light = status?.diagnostics?.light;
+
+  const calibrateDark = async () => {
+    setCalibrating(true);
+    setCalibrationResult(null);
+    try {
+      const response = await fetch('/api/sensors/tsl2591/calibrate-dark', { method: 'POST' });
+      const result = await response.json();
+      if (response.ok) {
+        // The device saved it; keep the form in step so a later Save doesn't undo it.
+        applyStored([
+          [['skyCalibration', 'darkVisibleOffset'], result.darkVisibleOffset],
+          [['skyCalibration', 'darkSampleCount'], result.sampleCount],
+          [['skyCalibration', 'darkCalibratedAt'], result.darkCalibratedAt],
+        ]);
+        setCalibrationResult({ type: 'success', text: 'Dark offset saved' });
+      } else {
+        setCalibrationResult({ type: 'error', text: result.error || 'Calibration failed' });
+      }
+    } catch {
+      setCalibrationResult({ type: 'error', text: 'Could not reach the device' });
+    } finally {
+      setCalibrating(false);
+    }
+  };
+
+  const calibratedAt =
+    calibration.darkCalibratedAt >= CLOCK_VALID ? new Date(calibration.darkCalibratedAt * 1000).toLocaleString() : null;
   const [testingRain, setTestingRain] = useState(false);
   const [rainResult, setRainResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const rain = config.rain ?? defaultRainConfig;
@@ -98,6 +132,84 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upd
             />
           </Field>
         </div>
+      </SettingsCard>
+
+      <SettingsCard id="sky" title="Sky quality" hint="How the light sensor's readings become SQM.">
+        <div class="form-grid">
+          <Field label="Averaging window" error={error('skyAveraging.windowSeconds')} hint="SQM is the average over this window. Longer is steadier but slower to follow changes. 10-300 s, default 90.">
+            <NumberInput
+              dataField="skyAveraging.windowSeconds"
+              integer
+              min={10}
+              max={300}
+              unit="s"
+              value={averaging.windowSeconds}
+              onChange={(v) => update(['skyAveraging', 'windowSeconds'], v)}
+            />
+          </Field>
+        </div>
+        <Toggle
+          label="Apply SQM offset"
+          hint="Added to every SQM reading, e.g. to match a reference meter such as an SQM-L."
+          checked={calibration.enabled}
+          onChange={(v) => update(['skyCalibration', 'enabled'], v)}
+        />
+        {calibration.enabled && (
+          <div class="form-grid indent">
+            <Field label="SQM offset" error={error('skyCalibration.sqmOffset')} hint="-5 to +5">
+              <NumberInput
+                dataField="skyCalibration.sqmOffset"
+                min={-5}
+                max={5}
+                step={0.01}
+                unit="mag/arcsec²"
+                value={calibration.sqmOffset}
+                onChange={(v) => update(['skyCalibration', 'sqmOffset'], v)}
+              />
+            </Field>
+          </div>
+        )}
+        <Group title="Dark calibration">
+          <div class="reading-row">
+            <span class="reading-label">Dark offset</span>
+            <span class="reading-value">
+              {calibration.darkVisibleOffset > 0
+                ? `${calibration.darkVisibleOffset.toFixed(2)} counts${calibratedAt ? ` · ${calibratedAt}` : ''}`
+                : 'Not calibrated'}
+            </span>
+          </div>
+          {light && (
+            <div class="reading-row">
+              <span class="reading-label">Averaging window</span>
+              <span class="reading-value">
+                {light.windowSamples ? `${Math.min(light.sampleCount, light.windowSamples)} of ${light.windowSamples} samples` : `${light.sampleCount} samples`}
+                {light.nightMode === false ? ' · seeing light' : ''}
+              </span>
+            </div>
+          )}
+          <p class="note note-muted">
+            Cover the sensor completely (cap or foil), wait for the averaging window to fill, then calibrate. Repeat after changing the lens, baffle or enclosure.
+          </p>
+          <div class="btn-row">
+            <ActionButton onClick={() => void calibrateDark()} busy={calibrating} busyLabel="Calibrating..." disabled={hw.skyLight.detected === false}>
+              Calibrate dark
+            </ActionButton>
+            {calibration.darkVisibleOffset > 0 && (
+              <ActionButton
+                onClick={() =>
+                  updateMany([
+                    [['skyCalibration', 'darkVisibleOffset'], 0],
+                    [['skyCalibration', 'darkSampleCount'], 0],
+                    [['skyCalibration', 'darkCalibratedAt'], 0],
+                  ])
+                }
+              >
+                Clear
+              </ActionButton>
+            )}
+          </div>
+          <ResultNote result={calibrationResult} />
+        </Group>
       </SettingsCard>
 
       <SettingsCard

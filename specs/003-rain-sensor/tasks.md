@@ -41,6 +41,6 @@ description: "As-built task list (backfill) for Rain Sensor (Hydreon RG-15)"
 ## Phase 7: Convergence
 
 - [X] T011 CRITICAL: Move the RG-15 response parsing and the rain latch (a safety input) into lib/ with native tests (latch hold/clear timing, garbled lines) per Constitution III (contradicts)
-- [ ] T012 Update docs/hardware/rg15.md: rainSensor is only present when the sensor is enabled (the `enabled` field no longer distinguishes off) per FR-006 / FR-009 (contradicts)
-- [ ] T013 Report each reading under one name — drop the aliases rain_intensity/rInt, total_accumulation/totalAcc, local_event_accumulation/event_accumulation, hydreon_event_accumulation/eventAcc in src/WebServer.cpp (appendRG15Diagnostics) and web/src/components/Dashboard.tsx per FR-008 (unrequested)
-- [ ] T014 Document every field the device sends (accumulation_since_last_read, rain_clear_delay_ms, timing and daily-reset fields) in docs/hardware/rg15.md per FR-008 / SC-003 (partial)
+- [X] T012 Update docs/hardware/rg15.md: rainSensor is only present when the sensor is enabled (the `enabled` field no longer distinguishes off) per FR-006 / FR-009 (contradicts)
+- [X] T013 Report each reading under one name — drop the aliases rain_intensity/rInt, total_accumulation/totalAcc, local_event_accumulation/event_accumulation, hydreon_event_accumulation/eventAcc in src/WebServer.cpp (appendRG15Diagnostics) and web/src/components/Dashboard.tsx per FR-008 (unrequested)
+- [X] T014 Document every field the device sends (accumulation_since_last_read, rain_clear_delay_ms, timing and daily-reset fields) in docs/hardware/rg15.md per FR-008 / SC-003 (partial)

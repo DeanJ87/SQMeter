@@ -33,7 +33,7 @@ description: "As-built task list (backfill) for Dashboard, Demo and Screenshots"
 
 ## Phase 6: Convergence
 
-- [ ] T007 Add a dashboard guide to the docs (cards, visibility rules, Arrange, Sun & Moon, the bell) and embed the generated screenshots — docs/assets/screenshots/*.png are produced on every deploy but no page uses them — per FR-004 / SC-001 (missing)
-- [ ] T008 Fix the mock /ws/status uptime (mockStatus.uptime + Date.now()/1000 shows ~20,700 days in the demo and screenshots) in web/src/mocks/handlers.ts per FR-005 / SC-002 (contradicts)
-- [ ] T009 Push mock /ws/status every 2 s like the device (mock uses 5 s) in web/src/mocks/handlers.ts per FR-005 (contradicts)
-- [ ] T010 Extend web/tests/screenshots.spec.ts to the Alpaca page, each Settings tab and the alerts flyout per FR-004 / SC-001 (partial)
+- [X] T007 Add a dashboard guide to the docs (cards, visibility rules, Arrange, Sun & Moon, the bell) and embed the generated screenshots — docs/assets/screenshots/*.png are produced on every deploy but no page uses them — per FR-004 / SC-001 (missing)
+- [X] T008 Fix the mock /ws/status uptime (mockStatus.uptime + Date.now()/1000 shows ~20,700 days in the demo and screenshots) in web/src/mocks/handlers.ts per FR-005 / SC-002 (contradicts)
+- [X] T009 Push mock /ws/status every 2 s like the device (mock uses 5 s) in web/src/mocks/handlers.ts per FR-005 (contradicts)
+- [X] T010 Extend web/tests/screenshots.spec.ts to the Alpaca page, each Settings tab and the alerts flyout per FR-004 / SC-001 (partial)

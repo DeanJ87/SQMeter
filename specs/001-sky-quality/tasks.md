@@ -48,9 +48,9 @@ marked done. `/speckit-converge` appends any remaining gaps as a Convergence pha
 ## Phase 8: Convergence
 
 - [X] T014 CRITICAL: Move the lux→SQM, NELM and Bortle conversion from src/calculations/SkyQuality.cpp into lib/ and add native tests covering every Bortle boundary and NELM below 15 per Constitution III (contradicts)
-- [ ] T015 Seed the dashboard SQM trend with real readings only — remove the synthetic sine history in web/src/components/Dashboard.tsx per FR-009 (contradicts)
-- [ ] T016 Add dark calibration, SQM offset and averaging-window controls to web/src/components/settings/SensorsTab.tsx per FR-010 / US3-AC3 (missing)
+- [X] T015 Seed the dashboard SQM trend with real readings only — remove the synthetic sine history in web/src/components/Dashboard.tsx per FR-009 (contradicts)
+- [X] T016 Add dark calibration, SQM offset and averaging-window controls to web/src/components/settings/SensorsTab.tsx per FR-010 / US3-AC3 (missing)
 - [X] T017 Make docs/reference/sky-quality.md use the firmware's SQM constant (12.6, not 12.59) per FR-001 / FR-012 (contradicts)
 - [X] T018 Align the Bortle class 1 boundary between docs/reference/sky-quality.md ("> 21.99") and src/calculations/SkyQuality.cpp (">= 21.99") per FR-007 (contradicts)
 - [X] T019 Describe NELM in docs/reference/sky-quality.md as the Unihedron formula with NELM = 0 below SQM 15, not "based on atmospheric conditions" per FR-006 / FR-012 (partial)
-- [ ] T020 Reject or warn on dark calibration before the averaging window has filled in src/WebServer.cpp (handleTSL2591DarkCalibration) per US3-AC1 (partial)
+- [X] T020 Reject or warn on dark calibration before the averaging window has filled in src/WebServer.cpp (handleTSL2591DarkCalibration) per US3-AC1 (partial)

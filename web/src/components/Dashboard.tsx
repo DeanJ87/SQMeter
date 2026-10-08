@@ -33,20 +33,17 @@ const bortleTone = (bortle?: number): string => {
   return 'tone-red';
 };
 
-const conditionTone = (cover?: number): string => {
-  if (typeof cover !== 'number') return 'pill-dim';
-  if (cover < 15) return 'pill-green';
-  if (cover < 40) return 'pill-cyan';
-  if (cover < 70) return 'pill-amber';
-  return 'pill-red';
-};
+// The device classifies the sky (with the thresholds in Settings); show its verdict.
+const CONDITION_TONE: Record<string, string> = { clear: 'pill-green', cloudy: 'pill-amber', overcast: 'pill-red' };
+const conditionTone = (condition?: string): string => (condition && CONDITION_TONE[condition]) || 'pill-dim';
 
-const conditionLabel = (cover?: number): string => {
-  if (typeof cover !== 'number') return 'Unknown';
-  if (cover < 15) return 'Clear';
-  if (cover < 40) return 'Mostly Clear';
-  if (cover < 70) return 'Partly Cloudy';
-  return 'Overcast';
+// Highlight a wind reading against its safety limit: red at or above, amber
+// within 80% of it; plain when that limit is off.
+const windTone = (value: number | undefined, enabled: boolean | undefined, limit: number | undefined, base = '') => {
+  if (typeof value !== 'number' || !enabled || typeof limit !== 'number' || limit <= 0) return base;
+  if (value >= limit) return 'tone-red';
+  if (value >= limit * 0.8) return 'tone-amber';
+  return base;
 };
 
 const rssiTone = (rssi?: number) => {
@@ -149,12 +146,8 @@ const Dashboard: FunctionalComponent = () => {
   useEffect(() => {
     const sqm = sensors?.sky?.sqm;
     if (typeof sqm !== 'number' || !Number.isFinite(sqm)) return;
-    setSqmHistory((history) => {
-      if (history.length === 0) {
-        return Array.from({ length: 24 }, (_, index) => sqm + Math.sin(index / 3) * 0.06);
-      }
-      return [...history.slice(-23), sqm];
-    });
+    // Real readings only: the trend draws once there are two.
+    setSqmHistory((history) => [...history.slice(-23), sqm]);
   }, [sensors?.sky?.sqm]);
 
   // The device reports rain in mm; show it in the units the RG-15 is set to.
@@ -240,24 +233,27 @@ const Dashboard: FunctionalComponent = () => {
               tone="violet"
               actions={
                 <>
-                  <Pill tone={conditionTone(cloudCover)}>{conditionLabel(cloudCover)}</Pill>
+                  <Pill tone={conditionTone(sensors.clouds.condition)}>{sensors.clouds.description ?? 'Unknown'}</Pill>
                 </>
               }
             >
               <div class="metric-grid">
                 <MetricTile label="Cloud Cover" value={formatNumber(cloudCover, 0)} unit="%" tone="tone-violet" />
-                <MetricTile label="Temp Delta" value={formatNumber(sensors.clouds.temperatureDelta, 1)} unit="C" />
-                <MetricTile label="Corrected" value={formatNumber(sensors.clouds.correctedDelta, 1)} unit="C" />
+                <MetricTile label="Temp Delta" value={formatNumber(sensors.clouds.temperatureDelta, 1)} unit="°C" />
+                <MetricTile label="Corrected" value={formatNumber(sensors.clouds.correctedDelta, 1)} unit="°C" />
               </div>
+              {sensors.clouds.humiditySource === 'assumed' && (
+                <Note>Humidity assumed {formatNumber(sensors.clouds.humidity, 0)}% - no humidity sensor reading.</Note>
+              )}
             </Card>
     ) },
     sensors.environment.status === 'ok' && { id: 'environment', title: 'Environment', node: (
 <Card title="Environment" icon="therm" tone="amber">
               <div class="tile-grid two">
-                <MetricTile label="Temperature" value={formatNumber(sensors.environment.temperature, 1)} unit="C" tone="tone-amber" />
+                <MetricTile label="Temperature" value={formatNumber(sensors.environment.temperature, 1)} unit="°C" tone="tone-amber" />
                 <MetricTile label="Humidity" value={formatNumber(sensors.environment.humidity, 1)} unit="%" tone={(sensors.environment.humidity ?? 0) > 80 ? 'tone-amber' : 'tone-cyan'} />
                 <MetricTile label="Pressure" value={formatNumber(sensors.environment.pressure, 1)} unit="hPa" />
-                <MetricTile label="Dew Point" value={formatNumber(sensors.environment.dewpoint, 1)} unit="C" tone="tone-violet" />
+                <MetricTile label="Dew Point" value={formatNumber(sensors.environment.dewpoint, 1)} unit="°C" tone="tone-violet" />
               </div>
             </Card>
     ) },
@@ -323,11 +319,11 @@ const Dashboard: FunctionalComponent = () => {
 <Card title="IR Temperature" icon="therm" tone="violet">
               <ReadingRow
                 label="Sky temperature"
-                value={`${formatNumber(sensors.infrared.skyTemperature, 1)} C`}
+                value={`${formatNumber(sensors.infrared.skyTemperature, 1)} °C`}
               />
               <ReadingRow
                 label="Ambient"
-                value={`${formatNumber(sensors.infrared.ambientTemperature, 1)} C`}
+                value={`${formatNumber(sensors.infrared.ambientTemperature, 1)} °C`}
               />
             </Card>
     ) },
@@ -343,8 +339,8 @@ const Dashboard: FunctionalComponent = () => {
               }
             >
               <div class="metric-grid">
-                <MetricTile label="Speed" value={formatNumber(sensors.wind.speed, 1)} unit={`m/s · ${formatNumber((sensors.wind.speed ?? 0) * 3.6, 0)} km/h`} tone="tone-cyan" />
-                <MetricTile label="Gust" value={formatNumber(sensors.wind.gust, 1)} unit={`m/s · ${formatNumber((sensors.wind.gust ?? 0) * 3.6, 0)} km/h`} tone={(sensors.wind.gust ?? 0) >= 10 ? 'tone-amber' : ''} />
+                <MetricTile label="Speed" value={formatNumber(sensors.wind.speed, 1)} unit={`m/s · ${formatNumber((sensors.wind.speed ?? 0) * 3.6, 0)} km/h`} tone={windTone(sensors.wind.speed, config?.alpaca?.windSpeedUnsafeEnabled, config?.alpaca?.windSpeedUnsafeMs, 'tone-cyan')} />
+                <MetricTile label="Gust" value={formatNumber(sensors.wind.gust, 1)} unit={`m/s · ${formatNumber((sensors.wind.gust ?? 0) * 3.6, 0)} km/h`} tone={windTone(sensors.wind.gust, config?.alpaca?.windGustUnsafeEnabled, config?.alpaca?.windGustUnsafeMs)} />
                 <MetricTile
                   label="Direction"
                   value={sensors.wind.direction !== undefined ? compassPoint(sensors.wind.direction) : '--'}

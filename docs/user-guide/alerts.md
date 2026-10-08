@@ -2,7 +2,7 @@
 
 SQMeter can send push notifications itself - over Pushover, ntfy, a webhook, or MQTT - so you hear about rain or a safety change even when N.I.N.A. and the observatory PC aren't running.
 
-Configure everything in **Settings → Alerts**, then **Save** and use **Send test** next to each channel.
+Configure everything in **Settings → Alerts**: turn on **Send alerts** (the master switch for every channel), pick your channels, **Save**, then use **Send test** next to each channel. With **Send alerts** off nothing is sent to any channel, though Bluetooth phone alarms still ring (see [Bluetooth](ble.md)).
 
 ---
 
@@ -55,6 +55,7 @@ Alerts raised at the same moment - rain starting usually makes the observatory u
 |---|---|
 | `{reasons}`, `{reasons_inline}`, `{reason_count}` | Unsafe only: each failing rule with value and limit (one per line / on one line), and how many |
 | `{sensor}` | Sensor events: which sensor |
+| `{event}` | The event name, as in webhook payloads: `unsafe`, `rain_started`, ... |
 | `{device}`, `{time}`, `{date}`, `{level}` | Device name, local time and date, alert level |
 | `{sqm}`, `{cloud}`, `{sky_temp}`, `{temp}`, `{humidity}`, `{dewpoint}`, `{dew_margin}`, `{pressure}`, `{rain_rate}`, `{wind}`, `{gust}`, `{sun_alt}` | Current readings (`--` if that sensor isn't reporting) |
 | `{sqm_min}`, `{cloud_max}`, `{humidity_max}` | Your safety limits |
@@ -79,9 +80,9 @@ Nothing is sent in the first minute after boot, so a restart doesn't announce th
 **Safety alerts only when it's dark** (on by default) does the same for safe/unsafe: at dawn the brightening sky fails the SQM rule, and without this you'd be woken by "Observatory UNSAFE: SQM 17.24 < 17.25" every clear morning. While it's light, changes aren't announced; at nightfall the verdict is compared with the last safe/unsafe alert, so you hear "unsafe" if it's dark but cloudy and nothing if nothing changed. Rain and sensor alerts are separate events and still come at any time. N.I.N.A. still sees the real verdict all day.
 
 
-Sky alerts are limited to darkness by default: **after sunset**, **nautical dark** (sun 12° below the horizon, the default) or **astronomical dark** (18°). Darkness comes from the sun's position, so the device needs to know where it is - a GPS fix if there is one, otherwise the coordinates under **Settings → Time & Location → Location** (paste "latitude, longitude" from any maps app). If the sky is already clear when it gets dark, you get one "Dark and clear" alert. Without a clock or a location, sky alerts aren't held back.
+Sky alerts are limited to darkness by default: **after sunset**, **nautical dark** (sun 12° below the horizon, the default) or **astronomical dark** (18°). Darkness comes from the sun's position, so the device needs to know where it is - a GPS fix if there is one, otherwise the coordinates under **Settings → Time & Location → Location** (paste "latitude, longitude" from any maps app). If the sky is already clear when it gets dark, you get one "Dark and clear" alert (titled "Skies clear" when sky alerts aren't limited to darkness). Without a clock or a location, sky alerts aren't held back.
 
-Below the setting, the tab shows where the sun is now and when the chosen darkness starts and ends tonight, worked out in the browser from the same location.
+Below the setting, the tab shows the sun's altitude as the device calculates it - the same number it decides by - and when the chosen darkness starts and ends tonight, predicted in the browser from the same location and shown in the browser's time zone.
 
 The browser's own location can't be used on the device's plain-HTTP pages - browsers only share it with HTTPS sites - so the "Use my location" button only appears where it works.
 
@@ -124,7 +125,7 @@ Add `username`/`password` if the device's password protection is on. N.I.N.A. an
 
 ### Pushover
 
-1. Create an application at [pushover.net](https://pushover.net/apps/build) and copy its **API token**
+1. Create an application at [pushover.net](https://pushover.net/apps/build) and copy its API token - it goes in **App token**
 2. Copy your **user key** from the Pushover dashboard
 3. Enable **Pushover**, paste both, optionally pick a default sound, **Save**, **Send test**
 
@@ -140,9 +141,9 @@ POSTs a JSON body to any `http://` or `https://` URL - e.g. a Home Assistant web
 {"device":"SQM-ESP32","event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.4 mm/h).","level":"wake","timestamp":1759500000}
 ```
 
-`event` is one of `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `lens_fault`, `dew_risk`, `clear_sky`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
+`event` is one of `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `lens_fault`, `dew_risk`, `clear_sky`, `clouded_over`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
 
-HTTPS webhooks are verified against a built-in set of common root CAs (Let's Encrypt, DigiCert, Sectigo/USERTrust, Google Trust Services, Amazon). For a self-signed server on your own network, either use `http://` or tick **Skip TLS certificate checks** - only do that on a network you trust.
+HTTPS webhooks are verified against a built-in set of common root CAs (Let's Encrypt, DigiCert, Sectigo/USERTrust, Google Trust Services, Amazon). For a self-signed server on your own network, either use `http://` or turn on **Skip certificate checks** - only do that on a network you trust.
 
 ### MQTT
 

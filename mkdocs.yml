@@ -71,6 +71,7 @@ nav:
     - Hardware Setup: getting-started/hardware.md
     - First Boot: getting-started/first-setup.md
   - User Guide:
+    - Dashboard: user-guide/dashboard.md
     - Configuration: user-guide/configuration.md
     - Security: user-guide/security.md
     - MQTT Integration: user-guide/mqtt.md

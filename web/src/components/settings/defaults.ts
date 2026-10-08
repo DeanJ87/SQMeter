@@ -118,4 +118,16 @@ export const defaultMqttPublish: MQTTPublishGroups = {
   diagnostics: false,
 };
 
+export const defaultSkyAveraging: NonNullable<Config['skyAveraging']> = { windowSeconds: 90 };
+
+export const defaultSkyCalibration: NonNullable<Config['skyCalibration']> = {
+  enabled: false,
+  sqmOffset: 0,
+  darkVisibleOffset: 0,
+  darkFullOffset: 0,
+  darkIrOffset: 0,
+  darkSampleCount: 0,
+  darkCalibratedAt: 0,
+};
+
 export const defaultHomeAssistant = { enabled: false, discoveryPrefix: 'homeassistant' };

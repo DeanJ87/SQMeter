@@ -34,18 +34,25 @@ const soundOptions = (current: string, defaultLabel: string) => [
 
 const CHANNEL_LABEL: Record<AlertChannelName, string> = { pushover: 'Pushover', ntfy: 'ntfy', webhook: 'Webhook', mqtt: 'MQTT' };
 
-const describeDarkness = (latitude: number, longitude: number, darkAltitude: number) => {
+// Dark-or-not comes from the device's own sun position (what the alerts
+// use); the start/end times are a prediction made here, shown in this
+// browser's time zone.
+const describeDarkness = (latitude: number, longitude: number, darkAltitude: number, deviceSunAltitude?: number) => {
   const now = new Date();
-  const sun = sunPosition(now, latitude, longitude).altitude;
-  const { darkNow, start, end } = darkness(latitude, longitude, darkAltitude, now);
-  const sunNow = `Sun at ${sun.toFixed(1)}° now`;
-  if (darkNow) return `${sunNow} - dark until ${formatClock(end)}.`;
-  if (!start) return `${sunNow} - it doesn't get that dark in the next day and a half.`;
-  return `${sunNow} - dark in ${formatDuration(start.valueOf() - now.valueOf())}, ${formatClock(start)} to ${formatClock(end)}.`;
+  const sun = deviceSunAltitude ?? sunPosition(now, latitude, longitude).altitude;
+  const darkNow = sun <= darkAltitude;
+  const predicted = darkness(latitude, longitude, darkAltitude, now);
+  const sunNow = `Sun at ${sun.toFixed(1)}° now${deviceSunAltitude === undefined ? '' : ' (device)'}`;
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const inZone = zone ? ` (${zone} time)` : '';
+  if (darkNow) return `${sunNow} - dark${predicted.end ? ` until ${formatClock(predicted.end)}${inZone}` : ''}.`;
+  const start = predicted.darkNow ? null : predicted.start;
+  if (!start) return `${sunNow} - not dark yet.`;
+  return `${sunNow} - dark in ${formatDuration(start.valueOf() - now.valueOf())}, ${formatClock(start)} to ${formatClock(predicted.end)}${inZone}.`;
 };
 
-// The firmware's built-in wording, written as templates; shown as the
-// placeholder until you write your own.
+// The firmware's built-in wording (lib/AlertLogic), written as templates;
+// shown as the placeholder until you write your own.
 const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = {
   unsafe: { title: 'Observatory UNSAFE', message: '{reasons}' },
   safe: { title: 'Observatory safe', message: 'All enabled safety rules pass.' },
@@ -53,12 +60,17 @@ const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = 
   rain_stopped: { title: 'Rain cleared', message: 'No rain for the configured rain clear delay.' },
   sensor_fault: { title: '{sensor} sensor fault', message: '{sensor} is offline or reporting errors.' },
   sensor_recovered: { title: '{sensor} sensor recovered', message: '{sensor} is reporting normally again.' },
-  dew_risk: { title: 'Dew risk', message: 'Temperature {temp} C is within {dew_margin} C of the dew point ({dewpoint} C).' },
+  dew_risk: { title: 'Dew risk', message: 'Temperature {temp} °C is within {dew_margin} °C of the dew point ({dewpoint} °C).' },
   clear_sky: { title: 'Dark and clear', message: 'Cloud cover is down to {cloud}% (clear below {clear_below}%).' },
   clouded_over: { title: 'Clouded over', message: 'Cloud cover is up to {cloud}% (cloudy above {cloudy_above}%).' },
 };
 
+// "Dark and clear" only when sky alerts wait for darkness, as on the device.
+const defaultText = (key: AlertEventKey, skyNightOnly: boolean) =>
+  key === 'clear_sky' && !skyNightOnly ? { ...DEFAULT_TEXT.clear_sky, title: 'Skies clear' } : DEFAULT_TEXT[key];
+
 const VAR_HELP: Record<string, string> = {
+  event: 'Event name, e.g. unsafe or rain_started',
   reasons: 'Every failing rule with its value and limit, one per line',
   reasons_inline: 'The same, on one line',
   reason_count: 'How many rules are failing',
@@ -86,7 +98,7 @@ const VAR_HELP: Record<string, string> = {
   gust: 'Gust m/s',
   sun_alt: 'Sun altitude °',
 };
-const COMMON_VARS = ['device', 'time', 'date', 'level', 'sqm', 'sqm_min', 'cloud', 'cloud_max', 'clear_below', 'cloudy_above', 'sky_temp', 'temp', 'humidity', 'humidity_max', 'dewpoint', 'dew_margin', 'pressure', 'rain_rate', 'wind', 'gust', 'sun_alt'];
+const COMMON_VARS = ['event', 'device', 'time', 'date', 'level', 'sqm', 'sqm_min', 'cloud', 'cloud_max', 'clear_below', 'cloudy_above', 'sky_temp', 'temp', 'humidity', 'humidity_max', 'dewpoint', 'dew_margin', 'pressure', 'rain_rate', 'wind', 'gust', 'sun_alt'];
 const EVENT_VARS: Partial<Record<AlertEventKey, string[]>> = {
   unsafe: ['reasons', 'reasons_inline', 'reason_count'],
   sensor_fault: ['sensor'],
@@ -244,7 +256,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             class="input"
             aria-label="Alert title"
             value={event.title ?? ''}
-            placeholder={DEFAULT_TEXT[key].title}
+            placeholder={defaultText(key, alerts.skyNightOnly).title}
             maxLength={80}
             onFocus={track('title')}
             onKeyUp={track('title')}
@@ -257,7 +269,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             class="input"
             aria-label="Alert message"
             value={event.message ?? ''}
-            placeholder={DEFAULT_TEXT[key].message}
+            placeholder={defaultText(key, alerts.skyNightOnly).message}
             maxLength={240}
             onFocus={track('message')}
             onKeyUp={track('message')}
@@ -362,7 +374,9 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
       : config.location?.set
         ? config.location
         : null;
-  const darknessNote = location ? describeDarkness(location.latitude, location.longitude, alerts.nightSunAltitudeDeg) : null;
+  const darknessNote = location
+    ? describeDarkness(location.latitude, location.longitude, alerts.nightSunAltitudeDeg, status?.sky?.sunAltitudeDeg)
+    : null;
   const channelCount = [alerts.pushover.enabled, alerts.ntfy.enabled, alerts.webhook.enabled, alerts.mqtt.enabled].filter(Boolean).length;
 
   return (
