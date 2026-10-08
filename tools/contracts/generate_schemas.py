@@ -24,6 +24,7 @@ DOCUMENTS = {
     # optional fields can hold, but don't make anything required.
     "status_partial": "status",
     "safety": "safety",
+    "settings_effective": "settings-effective",
     "config": "config",
     "alerts_recent": "alerts-recent",
     "safety_history": "safety-history",

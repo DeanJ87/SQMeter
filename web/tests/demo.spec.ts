@@ -86,11 +86,12 @@ test("settings change the emulated device (US2, SC-003)", async ({ page }) => {
   expect(sky.locationSource).toBe("gps"); // the GPS fix wins over settings
 });
 
-test("nothing leaves the browser (US3, SC-004)", async ({ page }) => {
+test("nothing leaves the browser (US3, SC-004)", async ({ page, baseURL }) => {
   const outside: string[] = [];
+  const own = new URL(baseURL ?? "http://localhost:4173/").origin;
   page.on("request", (request) => {
     const url = new URL(request.url());
-    if (url.protocol.startsWith("http") && url.origin !== "http://localhost:4173") outside.push(request.url());
+    if (url.protocol.startsWith("http") && url.origin !== own) outside.push(request.url());
   });
   await ready(page);
   const post = (path: string, body?: string) =>
