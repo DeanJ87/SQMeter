@@ -50,3 +50,6 @@ Thumbs.db
 
 # Alpaca simulator binary (tools/alpaca-sim/build.sh)
 /alpaca-sim
+
+# Claude Code per-user settings (the shared Spec Kit skills in .claude/skills are committed)
+.claude/settings.local.json

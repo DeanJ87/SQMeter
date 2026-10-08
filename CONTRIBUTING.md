@@ -22,7 +22,23 @@ Include the firmware version (shown in the web UI System page), which sensors yo
 3. Test on real hardware if possible
 4. Open a PR with a description of what and why
 
-Keep PRs focused — one feature or fix per PR.
+Keep PRs focused — one feature or fix per PR, targeting `main`.
+
+---
+
+## Spec-Driven Development
+
+New features are built with [Spec Kit](https://github.com/github/spec-kit). The project's rules are in [`.specify/memory/constitution.md`](.specify/memory/constitution.md); every spec, plan and convergence check is measured against them. With Claude Code (or another supported agent) in the repo:
+
+```text
+/speckit-specify <what and why>
+/speckit-plan <technical direction>
+/speckit-tasks
+/speckit-implement
+/speckit-converge        # repeat implement -> converge until it reports converged
+```
+
+`/speckit-clarify`, `/speckit-analyze` and `/speckit-checklist` are optional quality gates. Specs live in `specs/<NNN-feature>/`. Bug fixes and small changes don't need a spec.
 
 ---
 
@@ -52,9 +68,9 @@ pio run --target upload && pio device monitor
 ## Code Style — Web UI (TypeScript / Preact)
 
 - TypeScript strict mode — no `any`
-- Define API response shapes with Zod schemas in `web/src/types/`
-- Components in `web/src/`
-- No external UI component libraries — Tailwind classes only
+- API and config types live in `web/src/types/`; config is validated with Zod schemas in `web/src/validation/`
+- Components in `web/src/components/`
+- No external UI component libraries or CSS frameworks — reuse the shared components (`web/src/components/ui.tsx`, `web/src/components/settings/controls.tsx`) and the existing classes in `web/src/index.css`
 
 **Dev server:**
 ```bash
