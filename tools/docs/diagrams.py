@@ -21,6 +21,7 @@ import argparse
 import hashlib
 import os
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -101,13 +102,30 @@ def _definition_span(text: str, symbol: str) -> str:
     raise SourceError(f"no definition of {symbol}")
 
 
+def _directory_files(path: Path, root: Path) -> list[Path]:
+    """Files under `path`, sorted. In a git checkout only tracked files count,
+    so local build output never changes a fingerprint; elsewhere (tests)
+    every file except hidden ones below `path`."""
+    try:
+        listed = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z", "--", path.relative_to(root).as_posix()],
+            capture_output=True,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        listed = None
+    if listed is not None and (root / ".git").exists():
+        return sorted(root / name for name in listed.decode().split("\0") if name)
+    return sorted(p for p in path.rglob("*") if p.is_file() and not any(part.startswith(".") for part in p.relative_to(path).parts))
+
+
 def source_content(ref: str, root: Path = ROOT) -> str:
     path_part, _, symbol = ref.partition("#")
     path = root / path_part
     if not path.exists():
         raise SourceError(f"{path_part} doesn't exist")
     if path.is_dir():
-        files = sorted(p for p in path.rglob("*") if p.is_file() and not any(part.startswith(".") for part in p.relative_to(root).parts))
+        files = _directory_files(path, root)
         if not files:
             raise SourceError(f"{path_part} has no files")
         return "".join(f"{p.relative_to(root).as_posix()}\n{p.read_text(encoding='utf-8', errors='replace')}\n" for p in files)

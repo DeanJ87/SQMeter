@@ -100,6 +100,30 @@ Documentation lives in `docs/` and is built with [MkDocs Material](https://squid
 
 Preview locally:
 ```bash
-pip install mkdocs-material
+pip install -r docs/requirements.txt
+(cd web && npm run docs:vendor)   # the docs serve their own copy of mermaid for diagrams
 mkdocs serve
 ```
+
+### Diagrams
+
+Diagrams are [Mermaid](https://mermaid.js.org/) in the Markdown, in the shape described in [`specs/024-docs-diagrams/contracts/diagram-block.md`](specs/024-docs-diagrams/contracts/diagram-block.md). Each one has:
+- a comment naming the code it reflects;
+- a fingerprint of that code;
+- `accTitle`/`accDescr`, a caption, and a "Diagram in words" block.
+
+**A change to behaviour shown in a diagram updates the diagram in the same pull request.**
+1. Update the diagram, its caption and its words.
+2. Record that it matches the code again:
+   ```bash
+   python3 tools/docs/diagrams.py --confirm DIA-NN
+   ```
+
+CI checks every diagram:
+- **Completeness** is checked by `python3 tools/docs/diagrams.py`.
+- **Parse and render** are checked by `cd web && npm run docs:diagrams`.
+- **Self-hosting:** the built site must serve its own mermaid, never from a CDN.
+
+When the code a diagram cites changes, the check flags the diagram as stale. For the safety-verdict diagrams (rules, safe delay, rain latch), that fails the build until the diagram is confirmed.
+
+Cite the narrowest source you can, so unrelated edits don't flag the diagram: a header, or one function with `path#Function`.

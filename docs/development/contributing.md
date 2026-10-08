@@ -11,6 +11,8 @@ See [CONTRIBUTING.md](https://github.com/DeanJ87/SQMeter/blob/main/CONTRIBUTING.
 pio run
 ```
 
+**Docs diagrams:** a change to behaviour shown in a diagram updates the diagram in the same pull request. Then confirm it with `python3 tools/docs/diagrams.py --confirm DIA-NN`. CI flags diagrams whose cited code changed, and fails for the safety-verdict diagrams. See *Diagrams* in CONTRIBUTING.md.
+
 **Unit tests (logic in `lib/`, run on your computer):**
 ```bash
 pio test -e native

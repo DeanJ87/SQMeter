@@ -83,11 +83,12 @@ Where the code and the existing docs or spec disagree, the diagrams follow the *
    - **restarts about 15 s later** (`scheduleRestart(15000)`, plus `connectedFromHotspotFor(15000)` in `main.cpp`).
 
    What changed since PR #30 is that the device joins *before* rebooting and the portal opens by itself (`CaptiveDns`, probe URLs). DIA-07 shows the restart.
-2. **OTA rollback is limited to image verification.** The firmware never calls `esp_ota_mark_app_valid_cancel_rollback`, and the Arduino core's bootloader rollback isn't enabled, so a new image that *boots but crashes* is **not** rolled back automatically. What does hold:
-   - `Update.end()` verifies the image before switching the boot partition, so a corrupt or partial download never becomes the boot image.
-   - The filesystem is written first and the firmware last, so a failure before the switch leaves the device on its old firmware.
+2. **OTA rollback only covers images that never start.**
+   - The Arduino SDK builds with `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`, but `initArduino()` calls `esp_ota_mark_app_valid_cancel_rollback()` before `setup()`, because `verifyRollbackLater()` is the default `false`. A new firmware that starts and crashes later is therefore kept.
+   - The bootloader returns to the previous slot only if the new image is invalid, or fails before the firmware starts.
+   - `Update.end()` verifies the image before switching the boot slot, and the filesystem is written first and the firmware last. A failed or partial download is therefore never booted.
 
-   DIA-08 shows exactly this. `docs/user-guide/ota.md`'s "If the new firmware fails to boot, the bootloader stays on the old slot" overstates it, and is corrected next to the diagram.
+   DIA-08 shows exactly this. `docs/user-guide/ota.md` claimed "if the new firmware fails to boot, the bootloader stays on the old slot" and "you always have a working rollback". It also said a power cut can "corrupt the active partition", although the inactive one is written. All three are corrected next to the diagram.
 3. **Alerts while off.** The alert engine always runs, so its state tracks reality. When alerts are switched off ("not imaging"), nothing goes out:
    - The push channels additionally need the master switch (`alerts.enabled`).
    - A **Wake**-level alert still rings paired Bluetooth phones when the master switch is off, but only while alerts are switched on (`alertsArmed`).

@@ -107,6 +107,18 @@ class FingerprintTest(unittest.TestCase):
             (root / "lib/logic.cpp").write_text(LOGIC.replace("return false;", "return a < 0;"), encoding="utf-8")
             self.assertNotEqual(before, diagrams.fingerprint(["lib/logic.cpp#evaluate"], root))
 
+    def test_directories_in_git_count_only_tracked_files(self):
+        import subprocess
+
+        with TempRepo({"lib/a/x.cpp": "x"}) as root:
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "lib/a/x.cpp"], check=True)
+            before = diagrams.fingerprint(["lib/a/"], root)
+            (root / "lib/a/build.o").write_text("untracked build output", encoding="utf-8")
+            self.assertEqual(before, diagrams.fingerprint(["lib/a/"], root))
+            (root / "lib/a/x.cpp").write_text("changed", encoding="utf-8")
+            self.assertNotEqual(before, diagrams.fingerprint(["lib/a/"], root))
+
     def test_directories_and_missing_paths(self):
         with TempRepo({"lib/a/x.cpp": "x", "lib/a/y.h": "y"}) as root:
             self.assertEqual(16, len(diagrams.fingerprint(["lib/a/"], root)))
