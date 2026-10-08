@@ -46,6 +46,59 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels.
 
 Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 
+<!-- diagram: DIA-09
+sources: src/WebServer.cpp#WebServer::publishMqttReadings src/WebServer.cpp#WebServer::publishMqttSafety src/WebServer.cpp#WebServer::publishArmedState src/WebServer.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
+blocking: false
+fingerprint: unconfirmed
+-->
+<figure class="diagram" markdown>
+
+```mermaid
+flowchart LR
+    accTitle: MQTT topic map
+    accDescr: SQMeter publishes state, safe, safety, availability, alerts, alerts/armed and diagnostics under its base topic, plus Home Assistant discovery under the discovery prefix, and listens on alerts/armed/set.
+    D["SQMeter"]
+    subgraph broker["Your broker, under the base topic, default sqmeter"]
+        direction TB
+        STATE["state<br/>retained, every publish interval and on reconnect"]
+        SAFE["safe: 1 or 0<br/>retained, on change and every minute"]
+        SAFETY["safety: verdict and reasons<br/>retained, with safe"]
+        AVAIL["availability: online or offline<br/>retained, last will"]
+        ALERTS["alerts<br/>not retained, one message per alert"]
+        ARMED["alerts/armed: 1 or 0<br/>retained, on change and reconnect"]
+        SET["alerts/armed/set<br/>commands: 1/0, on/off, true/false"]
+        DIAG["diagnostics<br/>not retained, every interval, off by default"]
+    end
+    DISC["homeassistant/.../config<br/>retained, when discovery is on"]
+    D --> STATE
+    D --> SAFE
+    D --> SAFETY
+    D --> AVAIL
+    D --> ALERTS
+    D --> ARMED
+    D --> DIAG
+    D --> DISC
+    SET --> D
+```
+
+<figcaption>MQTT topic map: what SQMeter publishes (arrows out) and the one topic it listens to (arrow in).</figcaption>
+</figure>
+
+??? info "Diagram in words"
+
+    Under the base topic (default `sqmeter`), SQMeter publishes:
+
+    - `state` - the readings document, retained, every publish interval and on reconnect;
+    - `safe` (`1`/`0`) and `safety` (the verdict with its reasons), retained, on every change and refreshed every minute;
+    - `availability` - `online`, or `offline` as the last will, retained;
+    - `alerts` - one message per alert, not retained (with the MQTT alert channel on);
+    - `alerts/armed` - `1`/`0`, retained, on change and on reconnect;
+    - `diagnostics` - not retained, every publish interval, only when switched on.
+
+    It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to switch alerts on or off.
+
+    With Home Assistant discovery on, it also publishes retained `config` topics under the discovery prefix (default `homeassistant`), and clears them when discovery is switched off or moved.
+
 ### Choosing what's published
 
 **Settings → Network → MQTT → Publish** switches each part on or off:

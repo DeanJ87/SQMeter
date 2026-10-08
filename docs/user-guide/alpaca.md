@@ -23,6 +23,48 @@ Alpaca support is disabled by default. With it off, every Alpaca endpoint still 
 
 ## Connecting from N.I.N.A.
 
+<!-- diagram: DIA-10
+sources: lib/AlpacaLogic/src/AlpacaDiscovery.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp src/WebServer.cpp#WebServer::setupAlpacaRoutes
+blocking: false
+fingerprint: unconfirmed
+-->
+<figure class="diagram" markdown>
+
+```mermaid
+sequenceDiagram
+    accTitle: N.I.N.A. and SQMeter over Alpaca
+    accDescr: N.I.N.A. broadcasts a discovery request on UDP port 32227 and SQMeter answers with its port. N.I.N.A. then lists the devices through the management API, connects, and polls IsSafe and the weather properties. Its Setup button opens SQMeter's safety settings.
+    participant N as N.I.N.A.
+    participant S as SQMeter
+    N->>S: UDP broadcast "alpacadiscovery1" to port 32227
+    S-->>N: AlpacaPort 80
+    N->>S: GET /management/apiversions and /management/v1/configureddevices
+    S-->>N: SafetyMonitor 0 and ObservingConditions 0
+    N->>S: PUT connected = true
+    loop While connected
+        N->>S: GET safetymonitor/0/issafe
+        S-->>N: The reported verdict
+        N->>S: GET observingconditions/0/cloudcover, skyquality, temperature, ...
+        S-->>N: Each value, or an error if its sensor isn't reporting
+    end
+    N->>S: Setup button: GET /setup/v1/safetymonitor/0/setup
+    S-->>N: Redirect to Settings, Safety
+    N->>S: PUT connected = false
+```
+
+<figcaption>N.I.N.A. and SQMeter over Alpaca: discovery, connecting, polling and the Setup button.</figcaption>
+</figure>
+
+??? info "Diagram in words"
+
+    1. N.I.N.A. broadcasts `alpacadiscovery1` on UDP port 32227. SQMeter answers `{"AlpacaPort": 80}` - only when **Serve Alpaca devices** was on when it started, since the listener starts at boot.
+    2. N.I.N.A. asks the management API (`/management/apiversions`, `/management/v1/configureddevices`) and gets **SafetyMonitor 0** and **ObservingConditions 0**.
+    3. Connecting sends `PUT .../connected` with `Connected=true`.
+    4. While connected, N.I.N.A. polls `safetymonitor/0/issafe` (the reported verdict, after the safe delay) and the ObservingConditions properties; a property whose sensor isn't reporting returns an error instead of a value.
+    5. The Setup button opens `/setup/v1/<device>/0/setup`, which redirects to **Settings → Safety** in the web UI.
+    6. Disconnecting sends `Connected=false`.
+    7. With Alpaca switched off, every endpoint still answers but reports not connected, and `IsSafe` returns false with a NotConnected error.
+
 ### SafetyMonitor
 
 1. Equipment → **Safety Monitor** → select **ASCOM Alpaca**
