@@ -2,6 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { useRef } from 'preact/hooks';
 import { t } from '../../i18n';
 import { LANGUAGES } from '../../i18n/languages';
+import { deviceText } from '../../i18n/deviceMessage';
 import { languageProblem } from '../../i18n/loader';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Note } from '../ui';
@@ -28,7 +29,10 @@ const problemText = (kind: ReturnType<typeof languageProblem>['kind']) => {
 const LanguageCard: FunctionalComponent<{ language: string; onChange: (code: string) => void }> = ({ language, onChange }) => {
   const { status, busy, message, retry, upload } = useLanguage();
   const fileInput = useRef<HTMLInputElement>(null);
-  const problem = problemText(languageProblem().kind);
+  const { kind, detail } = languageProblem();
+  const problem = problemText(kind);
+  // The device's own reason, e.g. a download a restart interrupted.
+  const reason = kind === 'missing' && detail ? deviceText(detail) : null;
   const savedOther = status && status.language !== 'en';
 
   return (
@@ -45,6 +49,12 @@ const LanguageCard: FunctionalComponent<{ language: string; onChange: (code: str
       {problem && (
         <Note tone="warn" action={savedOther ? { label: t('language.retry'), onClick: () => void retry() } : undefined}>
           {problem}
+          {reason && (
+            <>
+              {' '}
+              <span data-language-reason>{reason}</span>
+            </>
+          )}
         </Note>
       )}
       {message && <Note tone={message.tone === 'ok' ? 'ok' : 'bad'}>{message.text}</Note>}
