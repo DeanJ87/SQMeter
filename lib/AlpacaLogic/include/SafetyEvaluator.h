@@ -117,14 +117,16 @@ namespace SQM
         class SafeDelayFilter
         {
         public:
-            bool update(bool rawSafe, uint32_t nowSeconds, uint32_t delaySeconds);
+            // nowMs is the device's millisecond clock (millis()); elapsed time
+            // is unsigned subtraction, so the ~49.7-day wrap is harmless.
+            bool update(bool rawSafe, uint32_t nowMs, uint32_t delaySeconds);
             // Seconds left before a currently-safe raw verdict is reported
             // safe; 0 when already reported safe or currently unsafe.
             uint32_t secondsUntilSafe() const { return remaining; }
 
         private:
             bool rawSafeRunning = false;
-            uint32_t safeSince = 0;
+            uint32_t safeSinceMs = 0;
             uint32_t remaining = 0;
         };
 

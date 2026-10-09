@@ -80,6 +80,12 @@ and MQTT.
 - A faulted light or IR sensor must not produce a misleading threshold reason (e.g. 100% cloud).
 - Disabled rules never contribute.
 - Power cut: history is lost (RTC memory), and that's acceptable.
+- Rain rules with the rain sensor switched off are not in effect and are listed as such
+  (*superseded in part by spec 020, D-15*); wind limits without an anemometer stay fail-safe
+  unsafe (D-16).
+- "Stale data" means the light or IR sensor's last *successful* read is older than the stale
+  limit - a sensor that keeps reporting OK without fresh readings is stale, not just a stalled
+  read loop. A sensor that stopped answering is a sensor fault.
 
 ## Requirements *(mandatory)*
 
@@ -90,7 +96,8 @@ and MQTT.
   cover, SQM minimum, humidity maximum, dew-point margin and humidity-sensor fault.
 - **FR-002**: Rain and wind rules MUST be evaluated regardless of other data freshness; threshold
   rules MUST only use fresh data from healthy sensors.
-- **FR-003**: Every rule MUST have its own enable switch, with defaults as documented.
+- **FR-003**: Every rule MUST have its own enable switch, with defaults as documented. Rules whose
+  sensor is switched off follow spec 020 (rain rules not in effect; wind limits fail-safe).
 - **FR-004**: Each unsafe reason MUST include the measured value and the limit.
 - **FR-005**: A safe delay (0–3600 s) MUST hold back "safe", run from boot, and report seconds
   remaining; unsafe MUST be immediate.

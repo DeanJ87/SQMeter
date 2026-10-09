@@ -115,5 +115,45 @@ namespace SQM
                 latch.eventAccumulation = 0.0f;
             }
         }
+
+        namespace
+        {
+            constexpr int MINUTES_PER_DAY = 24 * 60;
+
+            bool isLeapYear(int year)
+            {
+                return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+            }
+
+            int32_t daysBeforeYear(int year)
+            {
+                int32_t days = 0;
+                for (int y = 1970; y < year; y++)
+                {
+                    days += isLeapYear(y) ? 366 : 365;
+                }
+                return days;
+            }
+        } // namespace
+
+        int32_t resetDay(const LocalTime &now, uint8_t resetHour, uint8_t resetMinute)
+        {
+            const int32_t day = daysBeforeYear(now.year) + now.yearDay;
+            const int minuteOfDay = now.hour * 60 + now.minute;
+            const int resetMinuteOfDay = (resetHour * 60 + resetMinute) % MINUTES_PER_DAY;
+            // Before HH:MM the time still belongs to yesterday's reset day.
+            return minuteOfDay >= resetMinuteOfDay ? day : day - 1;
+        }
+
+        ResetDecision dailyReset(const LocalTime &now, uint8_t resetHour, uint8_t resetMinute, int32_t lastResetDay)
+        {
+            const int32_t day = resetDay(now, resetHour, resetMinute);
+            if (lastResetDay == NO_RESET_DAY)
+            {
+                return ResetDecision::Adopt;
+            }
+            // Strictly later only: a clock that steps backwards never resets twice.
+            return day > lastResetDay ? ResetDecision::Reset : ResetDecision::Wait;
+        }
     } // namespace Rain
 } // namespace SQM

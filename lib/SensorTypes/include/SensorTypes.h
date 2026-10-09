@@ -247,7 +247,7 @@ namespace SQM
         uint32_t lastRainDetectedMs;
         uint32_t lastTotalResetMs;
         uint32_t lastRebootCommandMs;
-        int lastDailyResetYearDay;
+        int32_t lastDailyResetDay; // Rain::resetDay of the last daily reset, Rain::NO_RESET_DAY if none
         uint32_t lastSuccessfulReadMs;
         uint32_t timeouts;
         uint32_t parseErrors;
@@ -297,7 +297,7 @@ namespace SQM
               lastRainDetectedMs(0),
               lastTotalResetMs(0),
               lastRebootCommandMs(0),
-              lastDailyResetYearDay(-1),
+              lastDailyResetDay(-1),
               lastSuccessfulReadMs(0),
               timeouts(0),
               parseErrors(0),

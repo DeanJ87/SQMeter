@@ -80,11 +80,16 @@ timeout; plug it in and see a successful response.
   accumulation since last read, event accumulation, total accumulation, lens-fault and
   emitter-saturation flags, online/stale state and age.
 - **FR-002**: The device MUST keep a latched `raining` state that stays true for
-  `rainClearDelayMs` (default 900000 ms) after the last non-zero intensity.
+  `rainClearDelayMs` (default 900000 ms) after the last reading with non-zero intensity or
+  non-zero accumulation (either means rain was seen).
 - **FR-003**: The device MUST support resolution (high/low/DIP switch) and units
-  (metric/imperial/DIP switch) settings and report readings in the configured units.
+  (metric/imperial/DIP switch) settings. *Superseded in part by 013*: the API, MQTT and Alpaca
+  always report mm and mm/h (a sensor set to inches is converted); the web UI shows the
+  configured units.
 - **FR-004**: The device MUST optionally reset the total accumulation once a day at a
-  configured local time, and on demand.
+  configured local time, and on demand. The daily reset fires on the first check at or after
+  that time, once per day, and survives restarts and clock changes (a restart or DST jump over
+  the reset minute neither skips nor repeats it).
 - **FR-005**: The device MUST expose UART diagnostics (pins, port, last command/response,
   timeouts, parse errors, successful reads) and offer test, reset-total and reboot actions,
   each requiring the password when protection is on.
