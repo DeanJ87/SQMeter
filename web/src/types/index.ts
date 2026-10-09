@@ -202,6 +202,9 @@ export interface SystemStatus {
     fsSize: number;
   };
   time: {
+    /** Unix seconds; 0 until the device's clock is set. Missing from firmware before this field existed. */
+    epoch?: number;
+    /** Local time with its offset, for display. */
     iso: string;
     timezone: string;
   };

@@ -321,11 +321,57 @@ namespace SQM
             facts.gpsFix = snapshot.gpsInitialized && snapshot.gps.hasFix;
         }
 
+        namespace
+        {
+            // Age of the sky data the verdict rests on: the older of the two
+            // required sensors' last successful reads (TSL2591, MLX90614), not the
+            // time the read loop last ran - a sensor that keeps reporting OK
+            // without a fresh read is stale (specs/006 US1/AC4). A sensor that is
+            // faulted is reported as a fault instead, so only answering sensors
+            // count; with neither answering, the youngest successful read does.
+            struct RequiredDataAge
+            {
+                bool everRead = false;
+                uint32_t ageMs = 0;
+            };
+
+            RequiredDataAge requiredDataAge(const SensorSnapshot &snapshot, uint32_t now)
+            {
+                struct Source
+                {
+                    SensorStatus status;
+                    uint32_t lastUpdate;
+                };
+                const Source sources[] = {{snapshot.tsl.status, snapshot.tslLastUpdate}, {snapshot.mlx.status, snapshot.mlxLastUpdate}};
+                RequiredDataAge result;
+                bool anyAnswering = false;
+                uint32_t oldestAnswering = 0;
+                uint32_t youngestRead = UINT32_MAX;
+                for (const Source &source : sources)
+                {
+                    if (source.lastUpdate == 0)
+                        continue;
+                    result.everRead = true;
+                    const uint32_t age = ageMs(now, source.lastUpdate);
+                    youngestRead = std::min(youngestRead, age);
+                    if (source.status == SensorStatus::OK)
+                    {
+                        anyAnswering = true;
+                        oldestAnswering = std::max(oldestAnswering, age);
+                    }
+                }
+                if (result.everRead)
+                    result.ageMs = anyAnswering ? oldestAnswering : youngestRead;
+                return result;
+            }
+        } // namespace
+
         Alpaca::SafetyInputs safetyInputs(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)
         {
             Alpaca::SafetyInputs in;
-            in.hasEverHadGoodData = snapshot.dataTimestamp != 0;
-            in.secondsSinceLastGoodData = ageMs(now, snapshot.dataTimestamp) / 1000;
+            const RequiredDataAge data = requiredDataAge(snapshot, now);
+            in.hasEverHadGoodData = data.everRead;
+            in.secondsSinceLastGoodData = data.ageMs / 1000;
             in.skyLightFault = snapshot.tsl.status != SensorStatus::OK;
             in.irSkyFault = snapshot.mlx.status != SensorStatus::OK;
             in.requiredSensorFault = snapshot.tsl.status != SensorStatus::OK || snapshot.mlx.status != SensorStatus::OK;
@@ -385,22 +431,26 @@ namespace SQM
                 return state;
             };
 
+            // A sensor that isn't there - not detected at boot, or switched on
+            // but never answered since - is NotImplemented over Alpaca; one
+            // that answered and then failed or went stale is a driver error
+            // (spec 007 FR-004).
             Alpaca::ObservingConditionsSnapshot snap;
-            snap.skyLight = sourceState(true, snapshot.tsl.status, snapshot.tslLastUpdate);
-            snap.irSky = sourceState(true, snapshot.mlx.status, snapshot.mlxLastUpdate);
-            snap.environment = sourceState(true, snapshot.bme.status, snapshot.bmeLastUpdate);
+            snap.skyLight = sourceState(snapshot.tslInitialized, snapshot.tsl.status, snapshot.tslLastUpdate);
+            snap.irSky = sourceState(snapshot.mlxInitialized, snapshot.mlx.status, snapshot.mlxLastUpdate);
+            snap.environment = sourceState(snapshot.bmeInitialized, snapshot.bme.status, snapshot.bmeLastUpdate);
 
             // The RG-15 polls on its own interval and tracks its own staleness.
-            snap.rain.present = cfg.rain.enabled;
+            snap.rain.present = cfg.rain.enabled && snapshot.rg15.timestamp != 0;
             snap.rain.ageSeconds = ageMs(now, snapshot.rg15.timestamp) / 1000.0;
             snap.rain.valid = cfg.rain.enabled && snapshot.rg15.online && !snapshot.rg15.stale &&
                               snapshot.rg15.status == SensorStatus::OK && snapshot.rg15.timestamp != 0;
 
             const bool fresh = windFresh(snapshot.wind, now);
-            snap.wind.present = cfg.wind.enabled;
+            snap.wind.present = cfg.wind.enabled && snapshot.wind.timestamp != 0;
             snap.wind.valid = cfg.wind.enabled && fresh;
             snap.wind.ageSeconds = ageMs(now, snapshot.wind.timestamp) / 1000.0;
-            snap.windVane.present = cfg.wind.enabled && cfg.wind.directionEnabled;
+            snap.windVane.present = snap.wind.present && cfg.wind.directionEnabled;
             // Calm is valid (direction reported as 0); only a vane fault isn't.
             snap.windVane.valid = snap.windVane.present && fresh && !snapshot.wind.vaneFault;
             snap.windVane.ageSeconds = snap.wind.ageSeconds;
@@ -426,7 +476,7 @@ namespace SQM
         bool updateSafety(
             SafetyStatus &status, Alpaca::SafeDelayFilter &filter, const Alpaca::SafetyResult &result, const Config &cfg, uint32_t now)
         {
-            const bool reportedSafe = filter.update(result.isSafe, now / 1000, cfg.alpaca.safeDelaySeconds);
+            const bool reportedSafe = filter.update(result.isSafe, now, cfg.alpaca.safeDelaySeconds);
             const bool changed = reportedSafe != status.isSafe || status.evaluatedAtMs == 0;
             if (changed)
                 status.changedAtMs = now;

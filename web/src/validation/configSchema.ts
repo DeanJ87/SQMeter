@@ -15,8 +15,8 @@ export const wifiConfigSchema = z.object({
     .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/, t('validation.configSchema.useLettersNumbersAndHyphens')),
   mdns: z.boolean().optional(),
   autoReconnect: z.boolean(),
-  reconnectDelayMs: z.number().int().positive(),
-  maxReconnectDelayMs: z.number().int().positive(),
+  reconnectDelayMs: z.number().int().positive().max(86400000, t('validation.configSchema.reconnectDelayCanBeAtMost24')),
+  maxReconnectDelayMs: z.number().int().positive().max(86400000, t('validation.configSchema.reconnectDelayCanBeAtMost24')),
 });
 
 const MQTT_TOPIC = /^[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*$/;

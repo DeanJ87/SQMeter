@@ -5,7 +5,7 @@ SQMeter converts TSL2591 light readings into three astronomical metrics. The con
 <!-- diagram: DIA-05
 sources: src/sensors/TSL2591Sensor.cpp#TSL2591Sensor::updateRollingReading lib/SkyLogic/src/ lib/DeviceCore/src/DeviceCore.cpp#derive lib/DeviceCore/src/DeviceCore.cpp#buildReadings src/sensors/BME280Sensor.cpp#BME280Sensor::calculateDewpoint
 blocking: false
-fingerprint: 747195800fa18223
+fingerprint: a6c2c579eca07de1
 -->
 <figure class="diagram" markdown>
 
@@ -13,11 +13,8 @@ fingerprint: 747195800fa18223
 flowchart TB
     accTitle: From sensor readings to the readings document
     accDescr: Light counts become lux, then SQM, NELM and Bortle. The IR sky minus ambient temperature, corrected for humidity, becomes cloud cover. Temperature and humidity give the dew point. Everything goes into one readings document that the dashboard, REST, WebSocket, MQTT, Alpaca and the safety rules all use.
-    TSL["TSL2591 light counts<br/>auto-ranged gain and integration"] --> NIGHT{"Night mode?<br/>maximum gain and integration"}
-    NIGHT -->|no| LUXNOW["Lux from the latest sample"]
-    NIGHT -->|yes| LUXAVG["Visible counts averaged over the averaging window,<br/>minus the dark offset, to lux,<br/>plus the SQM calibration offset if set"]
-    LUXNOW --> SQM["SQM = 12.6 - 2.5 log10 lux"]
-    LUXAVG --> SQM
+    TSL["TSL2591 light counts<br/>auto-ranged gain and integration"] --> LUXAVG["Visible counts averaged over the averaging window<br/>(restarted on each gain change),<br/>minus the dark offset, to lux,<br/>plus the SQM calibration offset if set"]
+    LUXAVG --> SQM["SQM = 12.6 - 2.5 log10 lux"]
     SQM --> NELM["NELM"]
     SQM --> BORTLE["Bortle class"]
     MLX["MLX90614<br/>sky and its own temperature"] --> DELTA["delta = sky - ambient"]
@@ -38,8 +35,8 @@ flowchart TB
 ??? info "Diagram in words"
 
     1. **Light**: the TSL2591 auto-ranges its gain and integration time.
-        - In **night mode** (maximum gain and integration), visible counts are averaged over the averaging window, the dark offset is subtracted, the result is converted to lux, and the SQM calibration offset is applied if one is set.
-        - Otherwise lux comes from the latest sample.
+        - Visible counts are averaged over the averaging window, the dark offset is subtracted, the result is converted to lux, and the SQM calibration offset is applied if one is set. This is the same in every mode; the average restarts whenever the gain or integration time changes, so it never mixes ranges.
+        - Night mode (maximum gain and integration) is reported separately; it changes sensitivity, not the calculation.
     2. **Sky quality**: SQM = 12.6 - 2.5 × log₁₀(lux). NELM and the Bortle class are worked out from the SQM.
     3. **Cloud**: the MLX90614's sky temperature minus its own (ambient) temperature, corrected for humidity: corrected = delta - (k / 100) × humidity. The BME280's humidity is used, or 53 % when it isn't working. The corrected delta, against the **Clear below** and **Overcast above** limits, gives the cloud cover % and condition.
     4. **Dew point**: from the BME280's temperature and humidity (Magnus formula).
@@ -57,7 +54,7 @@ SQM = 12.6 − 2.5 × log₁₀(lux)
 
 Light below 0.0001 lux is treated as 0.0001 lux (SQM 22.6), the darkest the formula reports.
 
-Firmware averages raw TSL2591 counts before this conversion. The night SQM path uses MAX gain and 600 ms integration, applies a rolling average, subtracts the saved dark visible offset, then applies the optional SQM calibration offset.
+Firmware averages raw TSL2591 counts before this conversion, in every measurement mode: it applies a rolling average (restarted on each gain or integration change), subtracts the saved dark visible offset, then applies the optional SQM calibration offset. `sky.sqm` is the calibrated value and `sky.rawSqm` the uncalibrated one, so `sqm − rawSqm` equals the offset whenever calibration is on. Night mode (MAX gain, 600 ms integration) is when the reading is most sensitive.
 
 To calibrate in **Settings → Sensors → Sky quality**: cover the sensor completely (lens cap or foil), wait until **Averaging window** shows the window full, then press **Calibrate dark**. The device refuses while the sensor still sees light or the window holds readings from before it was covered. **Averaging window** (10-300 s, default 90) and **Apply SQM offset** (±5 mag/arcsec², e.g. to match a reference SQM-L) are in the same card.
 

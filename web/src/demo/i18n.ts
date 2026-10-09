@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { isLanguageCode } from '../i18n/languages';
 import { demoDevice } from './device';
 
 // The demo's language files (specs/023-i18n FR-018): the same flow as a
@@ -10,6 +11,13 @@ const LOCALES = import.meta.glob('../i18n/locales/*.json', { import: 'default' }
 const VERSION = '0.2.0-beta.3';
 
 const language = (): string => demoDevice.rawConfig().language ?? 'en';
+
+// ?lang=ar opens the demo in that language (the per-language checks and
+// screenshots). This module loads after the device starts and before the UI
+// loads its language.
+const linked = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('lang');
+if (linked && isLanguageCode(linked) && linked !== language())
+  demoDevice.applyConfig(JSON.stringify({ ...demoDevice.rawConfig(), language: linked }));
 
 export const i18nDocument = () => {
   const code = language();

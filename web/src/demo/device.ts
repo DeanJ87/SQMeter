@@ -13,7 +13,6 @@ import {
   type Ramp,
   type SensorId,
 } from './conditions';
-import { isLanguageCode } from '../i18n/languages';
 import { formatIsoWithOffset, localClock } from './posixTz';
 import { DEFAULT_ELEVATION, LOCATION_PRESETS, presetAt, resolveTimePreset, type TimePresetId, type TimeResult } from './presets';
 import { shortcut, type ShortcutId, type ShortcutOptions, type ShortcutResult } from './shortcuts';
@@ -48,6 +47,8 @@ interface Core {
   armedDocument(): string;
   setArmed(on: boolean, source: string): void;
   testAlert(params: string): string;
+  realTestAlert(): void;
+  deliveryRequests(id: number, credentials: string): string;
   calibrateDark(): string;
   alpaca(method: string, path: string, params: string): string;
   saveState(): string;
@@ -123,9 +124,6 @@ class DemoDevice {
     // ?scenario=rain etc. - for links from the docs and for screenshots.
     const requested = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('scenario');
     if (requested) this.applyLink(requested);
-    // ?lang=ar - the language setting, for the per-language checks and screenshots.
-    const lang = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('lang');
-    if (lang && isLanguageCode(lang)) this.core.applyConfig(JSON.stringify({ ...this.config(), language: lang }));
     this.step();
     this.timer = setInterval(() => this.step(), 1000);
   }
@@ -206,6 +204,8 @@ class DemoDevice {
   effective = () => this.core.effective();
   safetyHistory = () => this.core.safetyHistory();
   recentAlerts = () => this.core.recentAlerts();
+  /** What a real SQMeter would send for alert `id` (specs/018). */
+  deliveryRequests = (id: number, credentials: string) => this.core.deliveryRequests(id, credentials);
   armedDocument = () => this.core.armedDocument();
   getConfig = () => this.core.getConfig(true);
   isArmed = () => this.core.isArmed();
@@ -244,6 +244,12 @@ class DemoDevice {
     const reply = JSON.parse(this.core.testAlert(JSON.stringify(params)));
     this.persist();
     return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
+  /** The Demo panel's "Send a test" for real notifications. */
+  realTestAlert() {
+    this.core.realTestAlert();
+    this.persist();
   }
 
   calibrateDark(): Reply {

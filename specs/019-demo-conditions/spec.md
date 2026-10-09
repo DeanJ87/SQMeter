@@ -6,7 +6,7 @@
 
 **Revised**: 2026-10-08: the primary controls are now the raw sensor readings, not outcome labels.
 
-**Status**: Implemented (PR #81) - converged
+**Status**: Implemented (PR #92; spec PR #81) - converged
 
 **Input**: User description:
 - First version: "The demo's Demo panel should let you set conditions directly instead of only canned scenarios: set the device date/time (with presets …), set location presets …, rain on/off and rain rate, sky brightness/Bortle, cloud state (clear, clouding over, clearing, overcast …), wind, sensor faults …"

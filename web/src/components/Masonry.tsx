@@ -14,6 +14,8 @@ export interface MasonryItem {
 //
 // In `editing` mode each item gets a bar to drag it (mouse or touch) or move
 // it one place earlier/later; `onMove(id, toIndex)` reports the new place.
+const MAX_COLUMNS = 4;
+
 const Masonry: FunctionalComponent<{
   items: MasonryItem[];
   minColumnWidth?: number;
@@ -68,7 +70,8 @@ const Masonry: FunctionalComponent<{
     };
   }, [items.map((item) => item.id).join(','), editing]);
 
-  const columns = Math.max(1, Math.floor((width + gap) / (minColumnWidth + gap)));
+  // 1 to 4 columns by width (spec 010 FR-002).
+  const columns = Math.min(MAX_COLUMNS, Math.max(1, Math.floor((width + gap) / (minColumnWidth + gap))));
   const columnWidth = columns > 0 ? (width - gap * (columns - 1)) / columns : width;
   const columnHeights = new Array(columns).fill(0);
   const positions: Record<string, { x: number; y: number }> = {};

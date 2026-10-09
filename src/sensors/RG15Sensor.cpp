@@ -2,6 +2,7 @@
 #include "Logger.h"
 #include "RainLogic.h"
 #include <ArduinoJson.h>
+#include <Preferences.h>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -940,8 +941,21 @@ namespace SQM
             return;
         }
 
-        if (localTime.tm_hour != dailyResetHour || localTime.tm_min != dailyResetMinute ||
-            localTime.tm_yday == diagnostics.lastDailyResetYearDay)
+        Rain::LocalTime local;
+        local.year = localTime.tm_year + 1900;
+        local.yearDay = localTime.tm_yday;
+        local.hour = localTime.tm_hour;
+        local.minute = localTime.tm_min;
+        const int32_t day = Rain::resetDay(local, dailyResetHour, dailyResetMinute);
+        const Rain::ResetDecision decision = Rain::dailyReset(local, dailyResetHour, dailyResetMinute, loadLastResetDay());
+        if (decision == Rain::ResetDecision::Wait)
+        {
+            return;
+        }
+        // Recorded before sending: a failed send isn't retried every poll -
+        // the RG-15's own total keeps counting until the next day's reset.
+        saveLastResetDay(day);
+        if (decision == Rain::ResetDecision::Adopt)
         {
             return;
         }
@@ -950,13 +964,58 @@ namespace SQM
         {
             Logger::info(TAG, "daily total reset: TX \"O\"");
         }
-
-        diagnostics.lastDailyResetYearDay = localTime.tm_yday;
         if (sendCommand('O'))
         {
             diagnostics.lastTotalResetMs = now;
             reading.totalAcc = 0.0f;
         }
+    }
+
+    // The last reset day survives restarts (NVS), so a restart over the reset
+    // time neither skips the day's reset nor repeats it.
+    namespace
+    {
+        constexpr const char *RAIN_NVS_NAMESPACE = "rg15";
+        constexpr const char *RESET_DAY_KEY = "resetDay";
+    } // namespace
+
+    int32_t RG15Sensor::loadLastResetDay()
+    {
+        if (diagnostics.lastDailyResetDay != Rain::NO_RESET_DAY)
+        {
+            return diagnostics.lastDailyResetDay;
+        }
+        Preferences prefs;
+        if (prefs.begin(RAIN_NVS_NAMESPACE, true))
+        {
+            diagnostics.lastDailyResetDay = prefs.getInt(RESET_DAY_KEY, Rain::NO_RESET_DAY);
+            prefs.end();
+        }
+        return diagnostics.lastDailyResetDay;
+    }
+
+    void RG15Sensor::forgetLastResetDay()
+    {
+        diagnostics.lastDailyResetDay = Rain::NO_RESET_DAY;
+        Preferences prefs;
+        if (prefs.begin(RAIN_NVS_NAMESPACE, false))
+        {
+            prefs.remove(RESET_DAY_KEY);
+            prefs.end();
+        }
+    }
+
+    void RG15Sensor::saveLastResetDay(int32_t day)
+    {
+        diagnostics.lastDailyResetDay = day;
+        Preferences prefs;
+        if (!prefs.begin(RAIN_NVS_NAMESPACE, false))
+        {
+            Logger::warn(TAG, "Couldn't save the rain reset day");
+            return;
+        }
+        prefs.putInt(RESET_DAY_KEY, day);
+        prefs.end();
     }
 
     RG15Reading RG15Sensor::copyReading() const
@@ -1137,6 +1196,13 @@ namespace SQM
         uint8_t newDailyResetMinute)
     {
         stop();
+
+        // A schedule that's switched on or moved starts fresh: the current
+        // day is adopted, so the change doesn't wipe today's total at once.
+        if ((newDailyResetEnabled && !dailyResetEnabled) || newDailyResetHour != dailyResetHour || newDailyResetMinute != dailyResetMinute)
+        {
+            forgetLastResetDay();
+        }
 
         rxPin = newRxPin;
         txPin = newTxPin;

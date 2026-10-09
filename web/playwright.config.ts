@@ -1,5 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// The demo preview server's port. Override with PW_PORT to run alongside
+// another server (e.g. several worktrees at once); everything below follows.
+const PORT = process.env.PW_PORT ?? '4173';
+const BASE_URL = `http://localhost:${PORT}/`;
+
+/** Browser state with the demo tour already dismissed, so the first-visit
+ * offer (specs/018) doesn't sit over the page in other tests. Tour tests
+ * start from a clean state instead. Built from the base URL, so it holds on
+ * any port. */
+export const tourDismissed = (baseURL: string) => ({
+  cookies: [],
+  origins: [{ origin: new URL(baseURL).origin, localStorage: [{ name: 'sqm.demo.tour.v1', value: 'dismissed' }] }],
+});
+
 export default defineConfig({
   testDir: './tests',
   // The docs check needs the built mkdocs site: playwright.docs.config.ts.
@@ -10,7 +24,8 @@ export default defineConfig({
   reporter: 'list',
 
   use: {
-    baseURL: 'http://localhost:4173/',
+    baseURL: BASE_URL,
+    storageState: tourDismissed(BASE_URL),
     // Give MSW time to intercept before assertions
     actionTimeout: 10_000,
     screenshot: 'only-on-failure',
@@ -32,8 +47,8 @@ export default defineConfig({
 
   // Start the demo preview server before running tests
   webServer: {
-    command: 'npm run preview:demo',
-    url: 'http://localhost:4173/',
+    command: `npx vite preview --config vite.demo.config.ts --port ${PORT} --strictPort`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },

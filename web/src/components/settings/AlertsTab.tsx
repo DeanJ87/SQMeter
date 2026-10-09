@@ -3,10 +3,11 @@ import { useRef, useState } from 'preact/hooks';
 import type { AlertChannelName, AlertEventKey, AlertRecord, AlertSendMode } from '../../types';
 import { mergeAlertsConfig } from './defaults';
 import { showToast } from '../toast';
-import { darkness, formatClock, formatDuration, sunPosition } from '../../lib/astro';
 import { deviceTime } from '../../lib/deviceTime';
+import { describeDarkness } from './darkness';
 import type { SettingsTabProps } from './context';
 import { useAlertSchedule } from '../../hooks/useAlertSchedule';
+import { COMMON_VARS, EVENT_VARS } from './alertVariables';
 import {
   PAUSE_HINT,
   SEND_MODE_OPTIONS,
@@ -92,35 +93,6 @@ const CHANNEL_LABEL: Record<AlertChannelName, string> = {
   mqtt: 'MQTT',
 };
 
-// Dark-or-not comes from the device's own sun position (what the alerts
-// use); the start/end times are a prediction made here, shown in this
-// browser's time zone.
-const describeDarkness = (latitude: number, longitude: number, darkAltitude: number, deviceSunAltitude?: number, deviceNow?: Date) => {
-  const now = deviceNow ?? new Date();
-  const sun = deviceSunAltitude ?? sunPosition(now, latitude, longitude).altitude;
-  const darkNow = sun <= darkAltitude;
-  const predicted = darkness(latitude, longitude, darkAltitude, now);
-  const sunNow = t('settings.alerts.sunAtFixedNowValue', {
-    fixed: sun.toFixed(1),
-    value: deviceSunAltitude === undefined ? '' : ' (device)',
-  });
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const inZone = zone ? t('settings.alerts.thisBrowserSTimeZone', { zone }) : t('settings.alerts.thisBrowserSTime');
-  if (darkNow)
-    return predicted.end
-      ? t('settings.alerts.darkUntil', { sunNow, clock: formatClock(predicted.end), inZone })
-      : t('settings.alerts.darkNow', { sunNow });
-  const start = predicted.darkNow ? null : predicted.start;
-  if (!start) return t('settings.alerts.notDarkYet', { sunNow });
-  return t('settings.alerts.sunnowDarkInDurationClock', {
-    sunNow,
-    duration: formatDuration(start.valueOf() - now.valueOf()),
-    clock: formatClock(start),
-    clock2: formatClock(predicted.end),
-    inZone,
-  });
-};
-
 // The firmware's built-in wording (lib/AlertLogic), written as templates;
 // shown as the placeholder until you write your own.
 const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = {
@@ -180,39 +152,6 @@ const VAR_HELP: Record<string, string> = {
 // For the imaging-app events {device} is the Alpaca device, not the device name.
 const CLIENT_VAR_HELP: Record<string, string> = { device: t('settings.alerts.safetyMonitorOrWeatherDevice') };
 const CLIENT_EVENTS: AlertEventKey[] = ['client_lost', 'client_back', 'client_disconnected'];
-const COMMON_VARS = [
-  'event',
-  'device',
-  'time',
-  'date',
-  'level',
-  'sqm',
-  'sqm_min',
-  'cloud',
-  'cloud_max',
-  'clear_below',
-  'cloudy_above',
-  'sky_temp',
-  'temp',
-  'humidity',
-  'humidity_max',
-  'dewpoint',
-  'dew_margin',
-  'pressure',
-  'rain_rate',
-  'wind',
-  'gust',
-  'sun_alt',
-];
-const EVENT_VARS: Partial<Record<AlertEventKey, string[]>> = {
-  unsafe: ['reasons', 'reasons_inline', 'reason_count'],
-  sensor_fault: ['sensor'],
-  sensor_recovered: ['sensor'],
-  dew_risk: ['dew_margin_min'],
-  client_lost: ['silent_for', 'last_checked', 'client_id'],
-  client_back: ['last_checked', 'client_id'],
-  client_disconnected: ['client_id'],
-};
 
 // On this tab the "Alerts are off" link (D-04) is shown once, by the Send
 // alerts switch, not on every row - and channels can be set up and tested
@@ -511,9 +450,12 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
       : config.location?.set
         ? config.location
         : null;
-  const darknessNote = location
-    ? describeDarkness(location.latitude, location.longitude, alerts.nightSunAltitudeDeg, status?.sky?.sunAltitudeDeg, deviceTime(status))
-    : null;
+  const darknessNote = describeDarkness({
+    sky: status?.sky,
+    location,
+    formLimitDeg: alerts.nightSunAltitudeDeg,
+    deviceNow: deviceTime(status),
+  });
   // Counts only channels that can deliver (FR-007).
   const channelEntries = (['pushover', 'ntfy', 'webhook', 'mqtt'] as const).map((channel) => dep(`alerts.${channel}.enabled`));
   const channelsOn = channelEntries.filter((e) => e.state !== 'off').length;

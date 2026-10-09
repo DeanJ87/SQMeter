@@ -32,8 +32,9 @@ address or knowing the web UI's layout.
    hotspot with a captive portal.
 2. **Given** a phone joins, **When** the OS opens the sign-in page, **Then** it lands on WiFi
    setup (network list with signal and lock, password, Connect), not the dashboard.
-3. **Given** valid credentials, **When** Connect is pressed, **Then** the device joins, the hotspot
-   closes and the page says where to find the device next.
+3. **Given** valid credentials, **When** Connect is pressed, **Then** the device joins, the page says
+   where to find the device next, and about 15 s later the device restarts onto the new network (the
+   hotspot closes). *(Corrected: the device does restart; see diagram DIA-07.)*
 
 ---
 
@@ -78,7 +79,8 @@ from Settings.
   HTTP service), and users MUST be able to turn mDNS off in settings.
 - **FR-004**: The device MUST reconnect automatically with back-off when enabled.
 - **FR-005**: Every API endpoint MUST be used by the UI or documented for integrators; unused
-  endpoints MUST be removed.
+  endpoints MUST be removed. The inventory is `tools/api/routes.json`; CI fails on a route that isn't
+  in it or isn't in `docs/api/rest.md`.
 - **FR-006**: The first-boot guide and examples MUST use the actual hotspot name, default hostname
   and UI labels.
 
@@ -97,4 +99,5 @@ from Settings.
 
 ## Assumptions
 
-- Default hostname is `sqm-esp32` (as configured), unless the maintainer chooses to change it.
+- Default hostname is `sqmeter` (`Config::createDefault`, used throughout the docs). *(Corrected from
+  `sqm-esp32`.)*

@@ -15,11 +15,17 @@ The demo is a simulated SQMeter in your browser. It runs **the firmware's own co
 |---|---|
 | SQM, NELM, Bortle, cloud cover, dew point | The raw sensor values: light, sky and air temperature, humidity, pressure, rain, wind, GPS |
 | The safety verdict, its reasons and the safe delay | The weather, and sensor faults you trigger |
-| Alerts: which events fire, their level, wording and stacking | Delivery - nothing is sent to Pushover, ntfy, a webhook or MQTT |
+| Alerts: which events fire, their level, wording and stacking - and the exact requests a device sends | Delivery - nothing is sent, unless you turn on [real notifications](#real-notifications) |
 | Settings: defaults, validation and error messages | WiFi, restarts, firmware updates and uploads |
-| The Alpaca API N.I.N.A. talks to | The network - the demo never connects to anything |
+| The Alpaca API N.I.N.A. talks to | The network - the demo connects to nothing unless you opt in |
 
 Because the dashboard, the Alpaca page and the Alpaca API all come from one emulated device, they always agree.
+
+---
+
+## The tour
+
+On your first visit the demo offers a short tour (about two minutes): live readings, the safety verdict, making it unsafe and watching the verdict, the bell and Alpaca agree, changing a rule, and the Demo panel. Steps that ask you to do something wait for the device to react - or press **Do it for me**. **Skip tour** or Esc ends it; **Take the tour** in the Demo panel starts it again. It works with the keyboard alone, on phones, and without animation.
 
 ---
 
@@ -60,21 +66,39 @@ Changes last until you close the tab - a refresh keeps them. **Reset demo** in t
 
 ---
 
+## Real notifications
+
+Want to feel an alert arrive? In the Demo panel, **Real notifications** → **Send real notifications from this demo**, confirm, and set up any of:
+
+- **ntfy** - a topic on ntfy.sh (and an access token if it's protected). Topics are public: anyone who knows the topic can read it.
+- **Pushover** - your user key and an app token.
+- **MQTT** - a broker that accepts **MQTT over secure WebSockets** (`wss://...`), and a base topic; alerts go to `<base>/alerts`.
+
+Then **Send a test**, or make it rain. The message is built by the device's own code - the same title, wording, priority and tags a real SQMeter sends - and the result shows under the bell and in the panel ("Delivered", or the service's own error).
+
+- Messages go **from your browser** straight to the service; never through a server of ours.
+- Your keys stay **in this tab only**: not in the saved demo, URLs or logs, and gone when you reload, close the tab or press Reset demo.
+- At most **one message per service every 30 s, 10 per visit**, so a running scenario can't flood anyone's phone.
+- **Wake** alerts are sent as **Urgent** - Pushover's emergency level needs acknowledging.
+- **Webhooks and self-hosted ntfy servers** need a real SQMeter: the page may only reach ntfy.sh, Pushover and secure MQTT brokers.
+
+---
+
 ## Nothing leaves your browser
 
-The demo only talks to itself: there is no server behind it, and the page's security policy stops it contacting anything else. Keys or addresses you type into the alert or MQTT settings go nowhere. An automated test exercises every action and checks that no request leaves the page.
+Unless you turn on real notifications, the demo only talks to itself: there is no server behind it, and the page's security policy lets it reach only ntfy.sh, Pushover and secure WebSocket brokers - which it does only for real notifications you turned on, in that tab. Keys or addresses you type into the device's alert or MQTT settings go nowhere. An automated test exercises every action and checks that no request leaves the page.
 
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/demo/simulator.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: 5f5cb699481051aa
+fingerprint: 3e936098ada214b2
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: How the demo works
-    accDescr: Everything runs in your browser. The sky simulator invents raw sensor readings and feeds the device core, the firmware's own logic compiled to WebAssembly, once a second. A service worker answers the web UI's requests from that core, and device addresses opened directly are answered the same way. The page's security policy blocks every other host.
+    accDescr: Everything runs in your browser. The sky simulator invents raw sensor readings and feeds the device core, the firmware's own logic compiled to WebAssembly, once a second. A service worker answers the web UI's requests from that core, and device addresses opened directly are answered the same way. Only if you turn on real notifications does the browser send the core's alert requests to ntfy.sh, Pushover or your secure WebSocket broker; the page's security policy blocks every other host.
     subgraph browser["Your browser"]
         direction TB
         SIM["Sky simulator<br/>raw sensor readings, scenarios"] -->|every second| CORE["Device core<br/>lib/ compiled to WebAssembly"]
@@ -82,8 +106,10 @@ flowchart TB
         UI["SQMeter web UI and Demo panel"] -->|"/api, /ws, Alpaca requests"| SW["Service worker<br/>answers like the device"]
         SW --> CORE
         DIRECT["A device address opened directly,<br/>e.g. /management/v1/description"] --> CORE
+        CORE -->|"alert requests, built by the device's code"| REAL["Real notifications<br/>off unless you turn them on;<br/>keys in this tab only"]
     end
-    browser -.-x|blocked by the page's security policy| OUTSIDE["Any other host:<br/>brokers, push services, GitHub"]
+    REAL -.->|opt-in, rate-limited| SERVICES["ntfy.sh, Pushover,<br/>your wss:// MQTT broker"]
+    browser -.-x|blocked by the page's security policy| OUTSIDE["Any other host:<br/>webhooks, GitHub"]
 ```
 
 <figcaption>How the demo works: the firmware's own logic, fed by a simulated sky, entirely inside your browser.</figcaption>
@@ -95,7 +121,8 @@ flowchart TB
     - The **sky simulator** invents the raw sensor readings (and the scenarios you pick) and feeds them, once a second, to the **device core**: the firmware's own `lib/` code compiled to WebAssembly.
     - The core keeps the settings and state in the tab's **session storage**.
     - The **web UI** and Demo panel make the same requests as on a real device; a **service worker** answers them from the core. Device addresses opened directly (such as `/management/v1/description`) are answered by the core too.
-    - The page's security policy blocks every other host, so nothing reaches a broker, a push service or GitHub.
+    - **Real notifications** are off by default. Turned on, the browser sends the core's alert requests - the ones a real SQMeter would send - to ntfy.sh, Pushover or your secure WebSocket MQTT broker, at most one per service every 30 s.
+    - The page's security policy blocks every other host, so nothing reaches a webhook or GitHub.
 
 ---
 

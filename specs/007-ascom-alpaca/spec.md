@@ -95,6 +95,9 @@ clients will see.
   Alpaca specification.
 - **FR-004**: ObservingConditions MUST serve each property from its own sensor with the documented
   units; unavailable hardware returns NotImplemented, a faulted/stale sensor returns a driver error.
+  "Unavailable" includes a sensor that wasn't detected at boot, or is switched on but hasn't
+  answered since boot; "faulted/stale" means it answered at least once and then stopped. The value,
+  `timesincelastupdate` and `sensordescription` agree for every property.
 - **FR-005**: Setup URLs (`/setup`, `/setup/v1/<type>/0/setup`) MUST open the Alpaca settings.
 - **FR-006**: CI MUST run ConformU against the simulator on every change to the Alpaca code and
   fail on any error, issue or configuration alert.
@@ -105,6 +108,9 @@ clients will see.
 
 - **Alpaca device**: type, number, name, unique ID, connected state, interface version.
 - **Management description**: server name, manufacturer, version, location.
+- **Client activity** (*added by spec 021*): the last request per Alpaca device from an imaging
+  app, ignoring the web UI's own requests (`source=ui`); feeds the imaging-app alerts and
+  "Only while an imaging app is connected".
 
 ## Success Criteria *(mandatory)*
 

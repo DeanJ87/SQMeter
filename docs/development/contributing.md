@@ -46,6 +46,8 @@ tools/demo-core/build.sh
 cd web && npm run build:demo && npx playwright test tests/demo.spec.ts
 ```
 
+The browser tests serve the demo on port 4173. To run a second copy alongside (another checkout or worktree), pick another port: `PW_PORT=4196 npx playwright test`.
+
 CI fails with "The demo's device core is out of date" if you forget. Response formats are checked against `specs/016-demo-device-emulation/contracts/schemas/` - by the demo's tests, and on a device with:
 
 ```bash

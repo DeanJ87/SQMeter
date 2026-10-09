@@ -721,7 +721,10 @@ namespace SQM
 
                 if (success)
                 {
-                    response_json = "{\"success\":true}";
+                    // `retried`: the boot switch only took on the second try
+                    // (see the upload handler), so the success rate of the
+                    // first attempt can be measured (spec 012 SC-001).
+                    response_json = activatedOnRetry ? "{\"success\":true,\"retried\":true}" : "{\"success\":true}";
                 }
                 else
                 {
@@ -1537,6 +1540,11 @@ namespace SQM
 
     void WebServer::handleWiFiScan(AsyncWebServerRequest *request)
     {
+        // Starting a radio scan is an action, like joining a network
+        // (/api/wifi/connect): both need the password when protection is on.
+        if (!requireAuth(request))
+            return;
+
         int n = WiFi.scanComplete();
 
         if (n == WIFI_SCAN_RUNNING)
@@ -2184,8 +2192,12 @@ namespace SQM
             partitions["fsSize"] = fs_partition->size;
         }
 
-        // Current time info (ISO format)
+        // Current time: `epoch` in Unix seconds like every other timestamp
+        // (0 until the clock is set, spec 013 FR-003); `iso` is the local time
+        // with its offset, for display.
         JsonObject timeObj = doc.createNestedObject("time");
+        const time_t epochNow = time(nullptr);
+        timeObj["epoch"] = epochNow >= Core::CLOCK_VALID_EPOCH ? static_cast<uint32_t>(epochNow) : 0U;
         if (timeManager)
         {
             timeObj["iso"] = timeManager->getCurrentTimeISO();

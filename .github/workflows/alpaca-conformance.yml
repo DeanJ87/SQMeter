@@ -3,11 +3,23 @@ name: Alpaca conformance (ConformU)
 # Runs ASCOM ConformU against tools/alpaca-sim, which serves the firmware's
 # Alpaca API (Alpaca::Router in lib/AlpacaLogic) with fixed sensor readings.
 # Any error, issue or configuration alert fails the job.
+#
+# It also runs when code the device's Alpaca behaviour depends on changes
+# (the readings snapshot, settings dependencies, client watch, the web
+# server's Alpaca backend), so those changes get a conformance run too. The
+# simulator itself compiles only lib/AlpacaLogic; the device paths are covered
+# by the on-device ConformU checks listed in each pull request.
 
 on:
   pull_request:
     paths:
       - 'lib/AlpacaLogic/**'
+      - 'lib/DeviceCore/**'
+      - 'lib/SettingsDeps/**'
+      - 'lib/AlertLogic/**'
+      - 'lib/ConfigModel/**'
+      - 'src/WebServer.cpp'
+      - 'include/WebServer.h'
       - 'tools/alpaca-sim/**'
       - 'platformio.ini'
       - '.github/workflows/alpaca-conformance.yml'
@@ -15,6 +27,12 @@ on:
     branches: [ main ]
     paths:
       - 'lib/AlpacaLogic/**'
+      - 'lib/DeviceCore/**'
+      - 'lib/SettingsDeps/**'
+      - 'lib/AlertLogic/**'
+      - 'lib/ConfigModel/**'
+      - 'src/WebServer.cpp'
+      - 'include/WebServer.h'
       - 'tools/alpaca-sim/**'
       - 'platformio.ini'
       - '.github/workflows/alpaca-conformance.yml'

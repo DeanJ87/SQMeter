@@ -51,7 +51,7 @@ const capturePage = async (page: import('@playwright/test').Page, name: string) 
 
 // The demo uses hash routing so GitHub Pages hard-refreshes never 404.
 // All goto() calls use "./" or "./#/route" — resolved against the Playwright
-// baseURL (http://localhost:4173/) so they reach the demo server.
+// baseURL (http://localhost:4173/ unless PW_PORT says otherwise) so they reach the demo server.
 
 test.beforeEach(async ({ page }) => {
   // Give MSW service worker time to activate before each test
@@ -120,4 +120,22 @@ test('alerts flyout', async ({ page }) => {
   await expect(flyout).toBeVisible();
   await waitForLayout(page);
   await page.screenshot({ path: save('alerts-flyout') });
+});
+
+test('wifi setup', async ({ page }) => {
+  await page.goto('./?scenario=night&panel=hidden#/wifi');
+  await waitForDemoApp(page);
+  await expect(page.getByRole('heading', { name: 'WiFi setup' })).toBeVisible();
+  await capturePage(page, 'wifi-setup');
+});
+
+test('demo panel', async ({ page }) => {
+  await page.goto('./?scenario=night');
+  await waitForDemoApp(page);
+  await waitForLayout(page);
+  const skip = page.getByRole('button', { name: /^Skip/ });
+  if (await skip.isVisible().catch(() => false)) await skip.click(); // the tour offer
+  await page.getByRole('button', { name: /Demo/ }).last().click();
+  await expect(page.getByRole('region', { name: 'Demo controls' })).toBeVisible();
+  await page.screenshot({ path: save('demo-panel') });
 });

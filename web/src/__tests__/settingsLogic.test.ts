@@ -90,6 +90,16 @@ describe('restartReasons', () => {
     expect(restartReasons(base, next)).toEqual(['I2C', 'Alpaca discovery', 'Bluetooth']);
     expect(listReasons(['I2C', 'Alpaca discovery', 'Bluetooth'])).toBe('I2C, Alpaca discovery and Bluetooth');
   });
+
+  // The WiFi manager reads all its settings at boot (spec 011 FR-003).
+  it.each([
+    ['mdns', false],
+    ['autoReconnect', false],
+    ['reconnectDelayMs', 2000],
+    ['maxReconnectDelayMs', 600000],
+  ] as const)('needs a restart for wifi.%s', (key, value) => {
+    expect(restartReasons(base, { ...base, wifi: { ...base.wifi, [key]: value } })).toEqual(['WiFi']);
+  });
 });
 
 describe('parseCoordinates', () => {

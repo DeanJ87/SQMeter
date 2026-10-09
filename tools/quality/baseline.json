@@ -8,7 +8,6 @@
       "lib/ConfigModel/src/ConfigModel.cpp": 4,
       "lib/DeviceCore/src/DeviceCore.cpp": 1,
       "lib/Readings/src/Readings.cpp": 2,
-      "src/AlertDispatcher.cpp": 1,
       "src/OtaUpdater.cpp": 1,
       "src/TimeManager.cpp": 1,
       "src/WebServer.cpp": 8,

@@ -16,7 +16,7 @@ import {
   StatusBadge,
   Toggle,
 } from './controls';
-import { t } from '../../i18n';
+import { currentLanguage, t } from '../../i18n';
 import { deviceError } from '../../i18n/deviceMessage';
 import { formatNumber } from '../../i18n/format';
 
@@ -78,7 +78,11 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
     }
   };
 
-  const calibratedAt = calibration.darkCalibratedAt >= CLOCK_VALID ? new Date(calibration.darkCalibratedAt * 1000).toLocaleString() : null;
+  // Labelled: shown in this browser's time zone, not the device's (spec 005 FR-007).
+  const calibratedAt =
+    calibration.darkCalibratedAt >= CLOCK_VALID
+      ? new Date(calibration.darkCalibratedAt * 1000).toLocaleString(currentLanguage()) + t('settings.alerts.thisBrowserSTime')
+      : null;
   const [testingRain, setTestingRain] = useState(false);
   const [rainResult, setRainResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const rain = config.rain ?? defaultRainConfig;
@@ -272,7 +276,11 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
         badge={hw.irSky.detected === false ? <StatusBadge tone="bad" label={t('settings.sensors.mlx90614NotDetected')} /> : undefined}
       >
         <div class="form-grid">
-          <Field label={t('settings.sensors.clearBelow')} hint={t('settings.sensors.default130')}>
+          <Field
+            label={t('settings.sensors.clearBelow')}
+            hint={t('settings.sensors.default130')}
+            error={error('cloudDetection.clearSkyThreshold')}
+          >
             <NumberInput
               min={-30}
               max={0}
@@ -285,7 +293,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
           <Field
             label={t('settings.sensors.overcastAbove')}
             hint={t('settings.sensors.default30')}
-            error={error('cloudDetection.clearSkyThreshold')}
+            error={error('cloudDetection.cloudyThreshold')}
           >
             <NumberInput
               min={-20}
@@ -296,7 +304,11 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
               onChange={(v) => update(['cloudDetection', 'cloudyThreshold'], v)}
             />
           </Field>
-          <Field label={t('settings.sensors.humidityCorrection')} hint={t('settings.sensors.aagCloudwatcherK1Default0')}>
+          <Field
+            label={t('settings.sensors.humidityCorrection')}
+            hint={t('settings.sensors.aagCloudwatcherK1Default0')}
+            error={error('cloudDetection.humidityCorrection')}
+          >
             <NumberInput
               min={0}
               max={2}
