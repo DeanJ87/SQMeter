@@ -1,4 +1,5 @@
 import type { AlertEventKey, Config } from '../types';
+import { t } from '../i18n';
 
 // Whether each setting that needs another setting (or hardware, or the
 // network) is in effect - the device's rules from lib/SettingsDeps, mirrored
@@ -46,52 +47,52 @@ export interface EffectiveReport {
 // Same codes, texts and fix targets as lib/SettingsDeps/catalogue.json (a
 // test compares them).
 export const REASONS: Record<string, { text: string; fix: string }> = {
-  'alerts-off': { text: 'Alerts are off', fix: 'alerts#alerts' },
-  'mqtt-off': { text: 'MQTT is off', fix: 'network#mqtt' },
-  'mqtt-disconnected': { text: 'Broker not connected', fix: 'network#mqtt' },
-  'wifi-disconnected': { text: 'Not connected to WiFi', fix: 'network#wifi' },
-  'rain-off': { text: 'Rain sensor is off', fix: 'sensors#rain' },
-  'wind-off': { text: 'Anemometer is off', fix: 'sensors#wind' },
-  'gps-off': { text: 'GPS is off', fix: 'time#time-sources' },
-  'gps-restart': { text: 'GPS starts after a restart', fix: 'restart' },
-  'gps-no-fix': { text: 'No GPS fix - using the location in Settings', fix: 'time#location' },
-  'light-missing': { text: 'TSL2591 not detected', fix: 'sensors#sky-sensors' },
-  'infrared-missing': { text: 'MLX90614 not detected', fix: 'sensors#sky-sensors' },
-  'environment-missing': { text: 'BME280 not detected', fix: 'sensors#sky-sensors' },
-  'location-unknown': { text: 'Needs your location', fix: 'time#location' },
-  'alpaca-off': { text: 'Alpaca is off', fix: 'safety#alpaca' },
-  'ble-build': { text: 'Needs the Bluetooth firmware build', fix: 'device#ble' },
-  'ble-off': { text: 'Bluetooth is off', fix: 'device#ble' },
-  'ble-restart': { text: 'Bluetooth starts after a restart', fix: 'restart' },
-  'no-passkey': { text: 'No pairing passkey set', fix: 'device#ble' },
-  'no-phones': { text: 'No phone paired', fix: 'device#ble' },
-  'clock-unset': { text: "The device doesn't know the time yet", fix: 'time#time-sources' },
-  'ota-no-password': { text: 'Set an upload password', fix: 'device#security' },
+  'alerts-off': { text: t('settingsDeps.alertsAreOff'), fix: 'alerts#alerts' },
+  'mqtt-off': { text: t('settingsDeps.mqttIsOff'), fix: 'network#mqtt' },
+  'mqtt-disconnected': { text: t('settingsDeps.brokerNotConnected'), fix: 'network#mqtt' },
+  'wifi-disconnected': { text: t('settingsDeps.notConnectedToWifi'), fix: 'network#wifi' },
+  'rain-off': { text: t('settingsDeps.rainSensorIsOff'), fix: 'sensors#rain' },
+  'wind-off': { text: t('settingsDeps.anemometerIsOff'), fix: 'sensors#wind' },
+  'gps-off': { text: t('settingsDeps.gpsIsOff'), fix: 'time#time-sources' },
+  'gps-restart': { text: t('settingsDeps.gpsStartsAfterARestart'), fix: 'restart' },
+  'gps-no-fix': { text: t('settingsDeps.noGpsFixUsingThe'), fix: 'time#location' },
+  'light-missing': { text: t('settingsDeps.tsl2591NotDetected'), fix: 'sensors#sky-sensors' },
+  'infrared-missing': { text: t('settingsDeps.mlx90614NotDetected'), fix: 'sensors#sky-sensors' },
+  'environment-missing': { text: t('settingsDeps.bme280NotDetected'), fix: 'sensors#sky-sensors' },
+  'location-unknown': { text: t('settingsDeps.needsYourLocation'), fix: 'time#location' },
+  'alpaca-off': { text: t('settingsDeps.alpacaIsOff'), fix: 'safety#alpaca' },
+  'ble-build': { text: t('settingsDeps.needsTheBluetoothFirmwareBuild'), fix: 'device#ble' },
+  'ble-off': { text: t('settingsDeps.bluetoothIsOff'), fix: 'device#ble' },
+  'ble-restart': { text: t('settingsDeps.bluetoothStartsAfterARestart'), fix: 'restart' },
+  'no-passkey': { text: t('settingsDeps.noPairingPasskeySet'), fix: 'device#ble' },
+  'no-phones': { text: t('settingsDeps.noPhonePaired'), fix: 'device#ble' },
+  'clock-unset': { text: t('settingsDeps.theDeviceDoesnTKnow'), fix: 'time#time-sources' },
+  'ota-no-password': { text: t('settingsDeps.setAnUploadPassword'), fix: 'device#security' },
 };
 
 // Label for the one-click fix of each reason.
 export const FIX_LABEL: Record<string, string> = {
-  'alerts-off': 'Turn on alerts',
-  'mqtt-off': 'Turn on MQTT',
-  'mqtt-disconnected': 'MQTT settings',
-  'wifi-disconnected': 'WiFi settings',
-  'rain-off': 'Turn on',
-  'wind-off': 'Turn on',
-  'gps-off': 'Turn on GPS',
-  'gps-restart': 'Restart',
-  'gps-no-fix': 'Location',
-  'light-missing': 'Sky sensors',
-  'infrared-missing': 'Sky sensors',
-  'environment-missing': 'Sky sensors',
-  'location-unknown': 'Set location',
-  'alpaca-off': 'Turn on Alpaca',
-  'ble-build': 'Bluetooth',
-  'ble-off': 'Turn on Bluetooth',
-  'ble-restart': 'Restart',
-  'no-passkey': 'Set a passkey',
-  'no-phones': 'Pair a phone',
-  'clock-unset': 'Time sources',
-  'ota-no-password': 'Set password',
+  'alerts-off': t('settingsDeps.turnOnAlerts'),
+  'mqtt-off': t('settingsDeps.turnOnMqtt'),
+  'mqtt-disconnected': t('settingsDeps.mqttSettings'),
+  'wifi-disconnected': t('settingsDeps.wifiSettings'),
+  'rain-off': t('settingsDeps.turnOn'),
+  'wind-off': t('settingsDeps.turnOn'),
+  'gps-off': t('settingsDeps.turnOnGps'),
+  'gps-restart': t('settingsDeps.restart'),
+  'gps-no-fix': t('settingsDeps.location'),
+  'light-missing': t('settingsDeps.skySensors'),
+  'infrared-missing': t('settingsDeps.skySensors'),
+  'environment-missing': t('settingsDeps.skySensors'),
+  'location-unknown': t('settingsDeps.setLocation'),
+  'alpaca-off': t('settingsDeps.turnOnAlpaca'),
+  'ble-build': t('settingsDeps.bluetooth'),
+  'ble-off': t('settingsDeps.turnOnBluetooth'),
+  'ble-restart': t('settingsDeps.restart'),
+  'no-passkey': t('settingsDeps.setAPasskey'),
+  'no-phones': t('settingsDeps.pairAPhone'),
+  'clock-unset': t('settingsDeps.timeSources'),
+  'ota-no-password': t('settingsDeps.setPassword'),
 };
 
 // One link of a dependency chain: met, or the catalogue ID and reason that
@@ -421,7 +422,7 @@ export interface DepNoteContent {
   target: DepEntry; // what its fix action goes to
 }
 
-export const noteFor = (entry: DepEntry, prefix = 'Inactive'): DepNoteContent | null => {
+export const noteFor = (entry: DepEntry, prefix = t('settingsDeps.inactive')): DepNoteContent | null => {
   if (entry.state === 'inactive' && entry.reason) {
     return { id: entry.id, reason: entry.reason, text: `${prefix} - ${entry.text}`, tone: entry.neutral ? 'info' : 'warn', target: entry };
   }

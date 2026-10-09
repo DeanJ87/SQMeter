@@ -1,6 +1,7 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
 import { announce } from '../lib/a11y';
+import { t } from '../i18n';
 
 export const COLORS = {
   cyan: '#55c7f2',
@@ -140,7 +141,7 @@ export const SensorReadingRow: FunctionalComponent<{ label: string; value: strin
 // reached - never every percent (spec 022).
 export const ProgressMeter: FunctionalComponent<{ value: number; label?: string; announceSteps?: boolean }> = ({
   value,
-  label = 'Progress',
+  label = t('ui.progress'),
   announceSteps,
 }) => {
   const percent = Math.round(Math.max(0, Math.min(100, value)));
@@ -183,7 +184,7 @@ export const Button: FunctionalComponent<{
     disabled={disabled || busy}
     onClick={onClick}
   >
-    {busy ? (busyLabel ?? 'Working...') : children}
+    {busy ? (busyLabel ?? t('common.working')) : children}
   </button>
 );
 
@@ -200,7 +201,7 @@ export const InfoTip: FunctionalComponent<{ text: ComponentChildren }> = ({ text
     <button
       type="button"
       class={`info-tip${open ? ' is-open' : ''}${dismissed ? ' is-dismissed' : ''}`}
-      aria-label="More information"
+      aria-label={t('ui.moreInformation')}
       aria-describedby={id}
       aria-expanded={open}
       onClick={(event) => {

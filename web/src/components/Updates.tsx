@@ -5,6 +5,8 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { compareVersions, isVersionStale } from '../utils/versionCompare';
 import type { GithubRelease, SystemStatus } from '../types';
 import { Button, Card, Note, ProgressMeter, ReadingRow } from './ui';
+import { t } from '../i18n';
+import { deviceError } from '../i18n/deviceMessage';
 
 type UpdateType = 'firmware' | 'filesystem';
 type ReleaseTrack = 'stable' | 'beta';
@@ -37,13 +39,13 @@ const GithubUpdates: FunctionalComponent = () => {
       const response = await fetch(`/api/updates/check?track=${selectedTrack}`);
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${response.status}`);
+        throw new Error(deviceError(body, `HTTP ${response.status}`));
       }
       const data: GithubRelease[] = await response.json();
       setReleases(data);
       setSelectedTag(data[0]?.tag ?? '');
     } catch (error) {
-      setCheckError(`Failed to check for updates: ${error}`);
+      setCheckError(t('updates.failedToCheckForUpdates', { error }));
       setReleases([]);
     } finally {
       setChecking(false);
@@ -59,14 +61,14 @@ const GithubUpdates: FunctionalComponent = () => {
     if (!applying || !statusMsg) return;
     if ('type' in statusMsg && statusMsg.type === 'ota_progress') {
       setApplyProgress(statusMsg.progress);
-      setApplyStatus(`Applying update... ${statusMsg.progress}%`);
+      setApplyStatus(t('updates.applyingUpdateProgress', { progress: statusMsg.progress }));
       if (statusMsg.progress >= 100) {
-        setApplyStatus('Update complete! Device is rebooting...');
+        setApplyStatus(t('updates.updateCompleteDeviceIsRebooting'));
         setApplying(false);
         setWaitingForReboot(true);
       }
     } else if ('error' in statusMsg) {
-      setApplyStatus(`Update failed: ${statusMsg.error}`);
+      setApplyStatus(t('updates.updateFailedError', { error: statusMsg.error }));
       setApplying(false);
     }
   }, [statusMsg, applying]);
@@ -79,7 +81,7 @@ const GithubUpdates: FunctionalComponent = () => {
         try {
           const response = await fetch('/api/status');
           if (response.ok) {
-            setApplyStatus('Update successful. Device is back online.');
+            setApplyStatus(t('updates.updateSuccessfulDeviceIsBack'));
             setWaitingForReboot(false);
             window.clearInterval(checkInterval);
           }
@@ -110,7 +112,7 @@ const GithubUpdates: FunctionalComponent = () => {
 
     setApplying(true);
     setApplyProgress(0);
-    setApplyStatus('Starting update...');
+    setApplyStatus(t('updates.startingUpdate'));
 
     // Demo mode: the firmware isn't real, so fake progress the same way the
     // manual upload flow does (MSW can't push simulated WebSocket progress
@@ -121,10 +123,10 @@ const GithubUpdates: FunctionalComponent = () => {
         p = Math.min(p + Math.random() * 12 + 6, 100);
         const rounded = Math.round(p);
         setApplyProgress(rounded);
-        setApplyStatus(`Applying update... ${rounded}%`);
+        setApplyStatus(t('updates.applyingUpdateRounded', { rounded }));
         if (p >= 100) {
           clearInterval(iv);
-          setApplyStatus('Update complete! Device is rebooting...');
+          setApplyStatus(t('updates.updateCompleteDeviceIsRebooting'));
           setApplying(false);
           setWaitingForReboot(true);
         }
@@ -145,13 +147,13 @@ const GithubUpdates: FunctionalComponent = () => {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || body.success !== true) {
-        setApplyStatus(`Failed to start update: ${body.error || `HTTP ${response.status}`}`);
+        setApplyStatus(t('updates.failedToStartUpdateValue', { value: deviceError(body, `HTTP ${response.status}`) }));
         setApplying(false);
         return;
       }
-      setApplyStatus('Update started, downloading on device...');
+      setApplyStatus(t('updates.updateStartedDownloadingOnDevice'));
     } catch (error) {
-      setApplyStatus(`Failed to start update: ${error}`);
+      setApplyStatus(t('updates.failedToStartUpdateError', { error }));
       setApplying(false);
     }
   };
@@ -159,13 +161,13 @@ const GithubUpdates: FunctionalComponent = () => {
   const statusTone = (text: string) => (/successful|complete/i.test(text) ? 'ok' : /fail/i.test(text) ? 'bad' : 'muted');
 
   return (
-    <Card title="Firmware" icon="upload" hint="Updates firmware and web UI together from GitHub releases. The device restarts when done.">
+    <Card title={t('updates.firmware')} icon="upload" hint={t('updates.updatesFirmwareAndWebUi')}>
       <div class="card-body">
-        <ReadingRow label="Installed" value={currentVersion ? `v${currentVersion}` : '--'} valueClass="tone-cyan" />
+        <ReadingRow label={t('updates.installed')} value={currentVersion ? `v${currentVersion}` : '--'} valueClass="tone-cyan" />
         <div class="form-grid">
           <div class="field">
             <label class="field-label" for="release-track">
-              Release track
+              {t('updates.releaseTrack')}
             </label>
             <select
               id="release-track"
@@ -174,14 +176,14 @@ const GithubUpdates: FunctionalComponent = () => {
               onChange={(e) => setTrack((e.target as HTMLSelectElement).value as ReleaseTrack)}
               disabled={checking || applying || waitingForReboot}
             >
-              <option value="stable">Stable</option>
-              <option value="beta">Beta</option>
+              <option value="stable">{t('updates.stable')}</option>
+              <option value="beta">{t('updates.beta')}</option>
             </select>
           </div>
           {releases.length > 0 && (
             <div class="field">
               <label class="field-label" for="release-select">
-                Release
+                {t('updates.release')}
               </label>
               <select
                 id="release-select"
@@ -192,7 +194,11 @@ const GithubUpdates: FunctionalComponent = () => {
               >
                 {releases.map((r) => (
                   <option key={r.tag} value={r.tag}>
-                    {r.name} ({r.tag}){relation(r.tag) === 0 ? ' - installed' : relation(r.tag) === -1 ? ' - older' : ''}
+                    {relation(r.tag) === 0
+                      ? t('updates.releaseInstalled', { name: r.name, tag: r.tag })
+                      : relation(r.tag) === -1
+                        ? t('updates.releaseOlder', { name: r.name, tag: r.tag })
+                        : t('updates.releaseOption', { name: r.name, tag: r.tag })}
                   </option>
                 ))}
               </select>
@@ -200,22 +206,25 @@ const GithubUpdates: FunctionalComponent = () => {
           )}
         </div>
 
-        {checking && <Note>Checking GitHub...</Note>}
+        {checking && <Note>{t('updates.checkingGithub')}</Note>}
         {checkError && <Note tone="bad">{checkError}</Note>}
-        {!checking && !checkError && releases.length === 0 && <Note>No {track} releases.</Note>}
+        {!checking && !checkError && releases.length === 0 && <Note>{t('updates.noTrackReleases', { track })}</Note>}
         {selectedRelease && !applyStatus && !downgrade && (
           <Note tone={stale ? 'warn' : 'muted'}>
-            {stale ? `A newer release (${selectedRelease.tag}) is available.` : installed ? 'This release is installed.' : 'Up to date.'}
+            {stale
+              ? t('updates.aNewerReleaseTagIs', { tag: selectedRelease.tag })
+              : installed
+                ? t('updates.thisReleaseIsInstalled')
+                : t('updates.upToDate')}
           </Note>
         )}
         {selectedRelease && !applyStatus && downgrade && (
           <Note tone="warn">
-            {selectedRelease.tag} is older than the installed v{currentVersion}. Older firmware may not read settings saved by a newer one;
-            if it can't, it starts with defaults and you set it up again from its WiFi hotspot.
-            {noOtaCheck && ' It also can’t check for updates itself, so you would update it by uploading the firmware here.'}
+            {t('updates.downgradeWarning', { tag: selectedRelease.tag, version: currentVersion })}
+            {noOtaCheck && t('updates.itAlsoCanTCheck')}
           </Note>
         )}
-        {applying && <ProgressMeter value={applyProgress} label="Update progress" announceSteps />}
+        {applying && <ProgressMeter value={applyProgress} label={t('updates.updateProgress')} announceSteps />}
         {applyStatus && <Note tone={statusTone(applyStatus)}>{applyStatus}</Note>}
 
         {releases.length > 0 && (
@@ -225,13 +234,16 @@ const GithubUpdates: FunctionalComponent = () => {
               onClick={applyUpdate}
               disabled={!selectedRelease || installed || waitingForReboot}
               busy={applying}
-              busyLabel="Updating..."
+              busyLabel={t('common.updating')}
             >
               {waitingForReboot
-                ? 'Waiting for restart...'
+                ? t('updates.waitingForRestart')
                 : installed
-                  ? 'Installed'
-                  : `${downgrade ? 'Downgrade' : 'Update'} to ${selectedRelease?.tag ?? '...'}`}
+                  ? t('updates.installed')
+                  : t('updates.actionToTag', {
+                      action: downgrade ? t('updates.downgrade') : t('updates.update'),
+                      tag: selectedRelease?.tag ?? '...',
+                    })}
             </Button>
           </div>
         )}
@@ -255,14 +267,14 @@ const Updates: FunctionalComponent = () => {
     let checkInterval: number | undefined;
 
     if (waitingForReboot) {
-      setStatus('Restarting...');
+      setStatus(t('common.restarting'));
 
       // Start checking if device is back online
       checkInterval = window.setInterval(async () => {
         try {
           const response = await fetch('/api/status');
           if (response.ok) {
-            setStatus('Update successful. Device is back online.');
+            setStatus(t('updates.updateSuccessfulDeviceIsBack'));
             setWaitingForReboot(false);
             setFile(null);
             window.clearInterval(checkInterval);
@@ -285,7 +297,7 @@ const Updates: FunctionalComponent = () => {
 
     setUploading(true);
     setUploadProgress(0);
-    setStatus('Uploading...');
+    setStatus(t('common.uploading'));
 
     const endpoint = updateType === 'firmware' ? '/api/update' : '/api/update/fs';
 
@@ -296,10 +308,10 @@ const Updates: FunctionalComponent = () => {
         p = Math.min(p + Math.random() * 12 + 6, 100);
         const rounded = Math.round(p);
         setUploadProgress(rounded);
-        setStatus(`Uploading... ${rounded}%`);
+        setStatus(t('updates.uploadingRounded', { rounded }));
         if (p >= 100) {
           clearInterval(iv);
-          setStatus('Upload complete! Device is rebooting...');
+          setStatus(t('updates.uploadCompleteDeviceIsRebooting'));
           setUploading(false);
           setWaitingForReboot(true);
         }
@@ -317,7 +329,7 @@ const Updates: FunctionalComponent = () => {
         if (e.lengthComputable) {
           const progress = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(progress);
-          setStatus(`Uploading... ${progress}%`);
+          setStatus(t('updates.uploadingProgress', { progress }));
         }
       });
 
@@ -326,16 +338,16 @@ const Updates: FunctionalComponent = () => {
           try {
             const response = JSON.parse(xhr.responseText);
             if (response.success === true) {
-              setStatus('Upload complete! Device is rebooting...');
+              setStatus(t('updates.uploadCompleteDeviceIsRebooting'));
               setUploading(false);
               setWaitingForReboot(true);
             } else {
-              const errorMsg = response.error || 'Unknown error';
-              setStatus(`Upload failed: ${errorMsg}`);
+              const errorMsg = deviceError(response, t('updates.unknownError'));
+              setStatus(t('updates.uploadFailedErrormsg', { errorMsg }));
               setUploading(false);
             }
           } catch (e) {
-            setStatus('Upload complete! Device is rebooting...');
+            setStatus(t('updates.uploadCompleteDeviceIsRebooting'));
             setUploading(false);
             setWaitingForReboot(true);
           }
@@ -343,22 +355,22 @@ const Updates: FunctionalComponent = () => {
           // Failures carry {"error": "..."} with a 4xx/5xx status.
           let errorMsg = `HTTP ${xhr.status}`;
           try {
-            errorMsg = JSON.parse(xhr.responseText).error || errorMsg;
+            errorMsg = deviceError(JSON.parse(xhr.responseText), errorMsg);
           } catch {
             // not JSON - keep the status code
           }
-          setStatus(`Upload failed: ${errorMsg}`);
+          setStatus(t('updates.uploadFailedErrormsg', { errorMsg }));
           setUploading(false);
         }
       });
 
       xhr.addEventListener('error', () => {
         if (uploadProgress === 100) {
-          setStatus('Upload complete! Device is rebooting...');
+          setStatus(t('updates.uploadCompleteDeviceIsRebooting'));
           setUploading(false);
           setWaitingForReboot(true);
         } else {
-          setStatus('Upload error occurred');
+          setStatus(t('updates.uploadErrorOccurred'));
           setUploading(false);
         }
       });
@@ -366,7 +378,7 @@ const Updates: FunctionalComponent = () => {
       xhr.open('POST', endpoint);
       xhr.send(formData);
     } catch (error) {
-      setStatus(`Failed to upload: ${error}`);
+      setStatus(t('updates.failedToUploadError', { error }));
       setUploading(false);
     }
   };
@@ -378,16 +390,12 @@ const Updates: FunctionalComponent = () => {
     <div class="panel-page compact-page page-enter">
       <GithubUpdates />
 
-      <Card
-        title="Manual upload"
-        icon="upload"
-        hint="Flash a .bin you built yourself. Don't power off or close this tab until the device restarts. For both, upload firmware first, then the web UI."
-      >
+      <Card title={t('updates.manualUpload')} icon="upload" hint={t('updates.flashABinYouBuilt')}>
         <div class="card-body">
           <div class="form-grid">
             <div class="field">
               <label class="field-label" for="upload-type">
-                Image
+                {t('updates.image')}
               </label>
               <select
                 id="upload-type"
@@ -396,13 +404,13 @@ const Updates: FunctionalComponent = () => {
                 onChange={(e) => setUpdateType((e.target as HTMLSelectElement).value as UpdateType)}
                 disabled={uploading || waitingForReboot}
               >
-                <option value="firmware">Firmware (firmware.bin)</option>
-                <option value="filesystem">Web UI (littlefs.bin)</option>
+                <option value="firmware">{t('updates.firmwareFirmwareBin')}</option>
+                <option value="filesystem">{t('updates.webUiLittlefsBin')}</option>
               </select>
             </div>
             <div class="field">
               <label class="field-label" for="upload-file">
-                File
+                {t('updates.file')}
               </label>
               <input
                 id="upload-file"
@@ -418,16 +426,12 @@ const Updates: FunctionalComponent = () => {
               />
             </div>
           </div>
-          {file && (
-            <Note>
-              {file.name}, {(file.size / 1024).toFixed(0)} KB
-            </Note>
-          )}
-          {uploading && <ProgressMeter value={uploadProgress} label="Upload progress" announceSteps />}
+          {file && <Note>{t('updates.nameFixedKb', { name: file.name, fixed: (file.size / 1024).toFixed(0) })}</Note>}
+          {uploading && <ProgressMeter value={uploadProgress} label={t('updates.uploadProgress')} announceSteps />}
           {status && <Note tone={statusTone}>{status}</Note>}
           <div class="btn-row">
-            <Button onClick={handleUpload} disabled={!file || waitingForReboot} busy={uploading} busyLabel="Uploading...">
-              {waitingForReboot ? 'Waiting for restart...' : `Upload ${fileName}`}
+            <Button onClick={handleUpload} disabled={!file || waitingForReboot} busy={uploading} busyLabel={t('common.uploading')}>
+              {waitingForReboot ? t('updates.waitingForRestart') : t('updates.uploadFilename', { fileName })}
             </Button>
           </div>
         </div>

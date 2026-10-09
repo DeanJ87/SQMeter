@@ -5,25 +5,14 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import type { SensorHealth, SystemStatus } from '../types';
 import { Button, Card, Note, Pill, ProgressMeter, ReadingRow } from './ui';
 import { showToast } from './toast';
-
-const formatUptime = (seconds: number): string => {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return days > 0 ? `${days}d ${hours}h ${minutes}m` : `${hours}h ${minutes}m`;
-};
+import { t } from '../i18n';
+import { formatAgeMs, formatUptime } from '../i18n/format';
+import { deviceError } from '../i18n/deviceMessage';
 
 const formatBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(2)} KB`;
   return `${(bytes / 1048576).toFixed(2)} MB`;
-};
-
-const formatAgeMs = (value: number | null | undefined): string => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '--';
-  if (value < 1000) return `${value} ms`;
-  if (value < 60000) return `${(value / 1000).toFixed(1)} s`;
-  return `${Math.floor(value / 60000)}m ${Math.floor((value % 60000) / 1000)}s`;
 };
 
 const formatShortAgeMs = (value: number | null | undefined): string => {
@@ -36,17 +25,17 @@ const sensorBadge = (status: SensorHealth): { text: string; tone: string } => {
     case 'ok':
       return { text: 'OK', tone: 'pill-green' };
     case 'missing':
-      return { text: 'Not detected', tone: 'pill-red' };
+      return { text: t('system.notDetected'), tone: 'pill-red' };
     case 'error':
-      return { text: 'Error', tone: 'pill-red' };
+      return { text: t('system.error'), tone: 'pill-red' };
     case 'stale':
-      return { text: 'Stale', tone: 'pill-amber' };
+      return { text: t('system.stale'), tone: 'pill-amber' };
     default:
-      return { text: 'Unknown', tone: 'pill-dim' };
+      return { text: t('system.unknown'), tone: 'pill-dim' };
   }
 };
 
-const IPV6_SCOPE_LABELS = { 'link-local': 'link-local', 'unique-local': 'local', global: 'global' } as const;
+const IPV6_SCOPE_KEYS = { 'link-local': 'system.ipv6LinkLocal', 'unique-local': 'system.ipv6Local', global: 'system.ipv6Global' } as const;
 
 const InfoRow: FunctionalComponent<{ label: string; value: string; tone?: string }> = ({ label, value, tone = '' }) => (
   <ReadingRow label={label} value={value} valueClass={tone} />
@@ -70,8 +59,8 @@ const System: FunctionalComponent = () => {
   if (!connected || !status) {
     return (
       <div class="empty-state">
-        <h2>Loading...</h2>
-        <p>Connecting to device...</p>
+        <h2>{t('common.loading')}</h2>
+        <p>{t('system.connectingToDevice')}</p>
       </div>
     );
   }
@@ -80,9 +69,9 @@ const System: FunctionalComponent = () => {
     setConfirmRestart(false);
     try {
       await fetch('/api/restart', { method: 'POST' });
-      showToast({ message: 'Restarting...' });
+      showToast({ message: t('common.restarting') });
     } catch {
-      showToast({ message: 'Could not reach the device', tone: 'bad' });
+      showToast({ message: t('system.couldNotReachTheDevice'), tone: 'bad' });
     }
   };
 
@@ -93,10 +82,10 @@ const System: FunctionalComponent = () => {
       const data = await response.json().catch(() => ({}));
       setRg15Action({
         loading: false,
-        message: response.ok ? successMessage : data.error || 'Failed',
+        message: response.ok ? successMessage : deviceError(data, t('system.failed')),
       });
     } catch {
-      setRg15Action({ loading: false, message: 'Could not reach the device' });
+      setRg15Action({ loading: false, message: t('system.couldNotReachTheDevice') });
     }
   };
 
@@ -109,34 +98,34 @@ const System: FunctionalComponent = () => {
   return (
     <div class="panel-page system-page page-enter">
       {status.firmware && (
-        <Card title="Firmware" icon="cpu" tone="cyan">
+        <Card title={t('system.firmware')} icon="cpu" tone="cyan">
           <div class="system-row-grid">
-            <InfoRow label="Name" value={status.firmware.name} />
-            <InfoRow label="Version" value={`v${status.firmware.version}`} tone="tone-cyan" />
-            <InfoRow label="Build" value={`${status.firmware.buildDate} ${status.firmware.buildTime}`} />
+            <InfoRow label={t('system.name')} value={status.firmware.name} />
+            <InfoRow label={t('system.version')} value={`v${status.firmware.version}`} tone="tone-cyan" />
+            <InfoRow label={t('system.build')} value={`${status.firmware.buildDate} ${status.firmware.buildTime}`} />
           </div>
         </Card>
       )}
 
-      <Card title="Runtime Status" icon="cpu" tone="violet">
+      <Card title={t('system.runtimeStatus')} icon="cpu" tone="violet">
         <div class="system-row-grid">
-          <InfoRow label="Uptime" value={formatUptime(status.uptime)} />
-          <InfoRow label="CPU Frequency" value={`${status.cpuFreqMHz} MHz`} />
+          <InfoRow label={t('system.uptime')} value={formatUptime(status.uptime)} />
+          <InfoRow label={t('system.cpuFrequency')} value={t('system.cpufreqmhzMhz', { cpuFreqMHz: status.cpuFreqMHz })} />
           <div class="system-metric">
-            <InfoRow label="Free Heap" value={`${formatBytes(status.freeHeap)} / ${formatBytes(status.heapSize)}`} />
-            <ProgressMeter value={100 - heapUsedPercent} label="Free heap" />
+            <InfoRow label={t('system.freeHeap')} value={`${formatBytes(status.freeHeap)} / ${formatBytes(status.heapSize)}`} />
+            <ProgressMeter value={100 - heapUsedPercent} label={t('system.freeHeap2')} />
           </div>
           <div class="system-metric">
-            <InfoRow label="Flash" value={`${formatBytes(status.sketchSize)} / ${formatBytes(status.flashSize)}`} />
-            <ProgressMeter value={flashUsedPercent} label="Flash used" />
+            <InfoRow label={t('system.flash')} value={`${formatBytes(status.sketchSize)} / ${formatBytes(status.flashSize)}`} />
+            <ProgressMeter value={flashUsedPercent} label={t('system.flashUsed')} />
           </div>
           <div class="system-metric">
-            <InfoRow label="Filesystem" value={`${formatBytes(status.fsUsed)} / ${formatBytes(status.fsTotal)}`} />
-            <ProgressMeter value={fsUsedPercent} label="Filesystem used" />
+            <InfoRow label={t('system.filesystem')} value={`${formatBytes(status.fsUsed)} / ${formatBytes(status.fsTotal)}`} />
+            <ProgressMeter value={fsUsedPercent} label={t('system.filesystemUsed')} />
           </div>
           <div>
             <div class="reading-row">
-              <span class="reading-label">Current Time</span>
+              <span class="reading-label">{t('system.currentTime')}</span>
               {status.ntp && status.ntp.activeSource > 0 && <Pill tone="pill-green">{status.ntp.activeSource === 1 ? 'NTP' : 'GPS'}</Pill>}
             </div>
             <strong class="system-time">{status.time.iso}</strong>
@@ -145,7 +134,7 @@ const System: FunctionalComponent = () => {
         </div>
       </Card>
 
-      <Card title="Sensors" icon="eye" tone="green">
+      <Card title={t('system.sensors')} icon="eye" tone="green">
         <div class="system-list">
           <SensorRow name="TSL2591 Light Sensor" status={status.sensors.light.status} />
           <SensorRow name="BME280 Environment" status={status.sensors.environment.status} />
@@ -157,18 +146,22 @@ const System: FunctionalComponent = () => {
       </Card>
 
       {rain && (
-        <Card title="RG-15 Diagnostics" icon="rain" tone="cyan">
+        <Card title={t('system.rg15Diagnostics')} icon="rain" tone="cyan">
           <div class="btn-row">
-            <Button small disabled={rg15Action.loading} onClick={() => runRg15Action('/api/sensors/rg15/reset-total', 'Total reset.')}>
-              Reset total
+            <Button
+              small
+              disabled={rg15Action.loading}
+              onClick={() => runRg15Action('/api/sensors/rg15/reset-total', t('system.totalReset'))}
+            >
+              {t('system.resetTotal')}
             </Button>
             <Button
               small
               variant="danger"
               disabled={rg15Action.loading}
-              onClick={() => runRg15Action('/api/sensors/rg15/reboot', 'RG-15 rebooting.')}
+              onClick={() => runRg15Action('/api/sensors/rg15/reboot', t('system.rg15Rebooting'))}
             >
-              Reboot RG-15
+              {t('system.rebootRg15')}
             </Button>
             {rg15Action.message && <Note>{rg15Action.message}</Note>}
           </div>
@@ -176,18 +169,18 @@ const System: FunctionalComponent = () => {
           {rainDiagnostics && (
             <>
               <div class="system-diagnostic-grid">
-                <InfoRow label="State" value={rainDiagnostics.state} tone={rain.status === 'ok' ? 'tone-green' : 'tone-red'} />
-                <InfoRow label="RX / TX" value={`${rainDiagnostics.rxPin} / ${rainDiagnostics.txPin}`} />
-                <InfoRow label="Baud rate" value={String(rainDiagnostics.baudRate)} />
-                <InfoRow label="Successful reads" value={String(rainDiagnostics.successfulReads)} />
-                <InfoRow label="Timeouts" value={String(rainDiagnostics.timeouts)} />
-                <InfoRow label="Parse errors" value={String(rainDiagnostics.parseErrors)} />
-                <InfoRow label="Last response age" value={formatAgeMs(rainDiagnostics.lastResponseAgeMs)} />
-                <InfoRow label="Last poll age" value={formatAgeMs(rainDiagnostics.lastPollAgeMs)} />
+                <InfoRow label={t('system.state')} value={rainDiagnostics.state} tone={rain.status === 'ok' ? 'tone-green' : 'tone-red'} />
+                <InfoRow label={t('system.rxTx')} value={`${rainDiagnostics.rxPin} / ${rainDiagnostics.txPin}`} />
+                <InfoRow label={t('system.baudRate')} value={String(rainDiagnostics.baudRate)} />
+                <InfoRow label={t('system.successfulReads')} value={String(rainDiagnostics.successfulReads)} />
+                <InfoRow label={t('system.timeouts')} value={String(rainDiagnostics.timeouts)} />
+                <InfoRow label={t('system.parseErrors')} value={String(rainDiagnostics.parseErrors)} />
+                <InfoRow label={t('system.lastResponseAge')} value={formatAgeMs(rainDiagnostics.lastResponseAgeMs)} />
+                <InfoRow label={t('system.lastPollAge')} value={formatAgeMs(rainDiagnostics.lastPollAgeMs)} />
               </div>
 
               <div class="system-log-row">
-                <span>Last command / response / error</span>
+                <span>{t('system.lastCommandResponseError')}</span>
                 <strong>{rainDiagnostics.lastCommand ?? '--'}</strong>
                 <em>{rainDiagnostics.lastResponse ?? '--'}</em>
                 <em>{rainDiagnostics.lastError ?? '--'}</em>
@@ -198,16 +191,16 @@ const System: FunctionalComponent = () => {
       )}
 
       {status.partitions && (
-        <Card title="Flash Partitions" icon="upload" tone="cyan">
+        <Card title={t('system.flashPartitions')} icon="upload" tone="cyan">
           <div class="system-row-grid">
-            <InfoRow label="Current Slot" value={status.partitions.runningSlot} />
-            <InfoRow label="Next Update Slot" value={status.partitions.nextSlot} />
-            <InfoRow label="OTA Slot Size" value={formatBytes(status.partitions.runningSize)} />
+            <InfoRow label={t('system.currentSlot')} value={status.partitions.runningSlot} />
+            <InfoRow label={t('system.nextUpdateSlot')} value={status.partitions.nextSlot} />
+            <InfoRow label={t('system.otaSlotSize')} value={formatBytes(status.partitions.runningSize)} />
             {status.partitions.nvs && (
               <>
-                <InfoRow label="NVS Used" value={String(status.partitions.nvs.usedEntries)} />
-                <InfoRow label="NVS Free" value={String(status.partitions.nvs.freeEntries)} />
-                <InfoRow label="Namespaces" value={String(status.partitions.nvs.namespaceCount)} />
+                <InfoRow label={t('system.nvsUsed')} value={String(status.partitions.nvs.usedEntries)} />
+                <InfoRow label={t('system.nvsFree')} value={String(status.partitions.nvs.freeEntries)} />
+                <InfoRow label={t('system.namespaces')} value={String(status.partitions.nvs.namespaceCount)} />
               </>
             )}
           </div>
@@ -215,37 +208,37 @@ const System: FunctionalComponent = () => {
       )}
 
       {status.ntp && (
-        <Card title="Network Time (NTP)" icon="gps" tone="green">
+        <Card title={t('system.networkTimeNtp')} icon="gps" tone="green">
           {status.ntp.enabled ? (
             <div class="system-list">
               <InfoRow
-                label="Status"
-                value={status.ntp.synced ? 'Synced' : status.ntp.status === 1 ? 'Syncing' : 'Not synced'}
+                label={t('system.status')}
+                value={status.ntp.synced ? t('system.synced') : status.ntp.status === 1 ? t('system.syncing') : t('system.notSynced')}
                 tone={status.ntp.synced ? 'tone-green' : 'tone-amber'}
               />
-              <InfoRow label="Server" value={status.ntp.server} />
-              <InfoRow label="Last Sync Age" value={formatShortAgeMs(status.ntp.lastSync)} />
-              <InfoRow label="Next Sync" value={formatShortAgeMs(status.ntp.nextSync)} />
-              <InfoRow label="Clock Drift" value={`${status.ntp.drift}s`} />
+              <InfoRow label={t('system.server')} value={status.ntp.server} />
+              <InfoRow label={t('system.lastSyncAge')} value={formatShortAgeMs(status.ntp.lastSync)} />
+              <InfoRow label={t('system.nextSync')} value={formatShortAgeMs(status.ntp.nextSync)} />
+              <InfoRow label={t('system.clockDrift')} value={`${status.ntp.drift}s`} />
             </div>
           ) : (
-            <p class="system-subtle">NTP is disabled.</p>
+            <p class="system-subtle">{t('system.ntpIsDisabled')}</p>
           )}
         </Card>
       )}
 
       {status.ntp && status.ntp.gpsEnabled && (
-        <Card title="GPS Time" icon="gps" tone="green">
+        <Card title={t('system.gpsTime')} icon="gps" tone="green">
           <div class="system-list">
             <InfoRow
-              label="Status"
-              value={status.ntp.gpsHasFix ? 'Lock acquired' : 'Searching'}
+              label={t('system.status')}
+              value={status.ntp.gpsHasFix ? t('system.lockAcquired') : t('system.searching')}
               tone={status.ntp.gpsHasFix ? 'tone-green' : 'tone-amber'}
             />
             {status.ntp.gpsHasFix && status.ntp.gpsTimeUTC && (
-              <InfoRow label="GPS Time (UTC)" value={status.ntp.gpsTimeUTC} tone="tone-cyan" />
+              <InfoRow label={t('system.gpsTimeUtc')} value={status.ntp.gpsTimeUTC} tone="tone-cyan" />
             )}
-            <InfoRow label="Satellites" value={String(status.ntp.gpsSatellites || 0)} />
+            <InfoRow label={t('system.satellites')} value={String(status.ntp.gpsSatellites || 0)} />
           </div>
         </Card>
       )}
@@ -255,15 +248,15 @@ const System: FunctionalComponent = () => {
           {status.mqtt.enabled ? (
             <div class="system-list">
               <InfoRow
-                label="Status"
-                value={status.mqtt.connected ? 'Connected' : 'Disconnected'}
+                label={t('system.status')}
+                value={status.mqtt.connected ? t('system.connected') : t('system.disconnected')}
                 tone={status.mqtt.connected ? 'tone-green' : 'tone-red'}
               />
-              <InfoRow label="Broker" value={`${status.mqtt.broker}:${status.mqtt.port}`} />
-              <InfoRow label="Topic" value={status.mqtt.topic} />
+              <InfoRow label={t('system.broker')} value={`${status.mqtt.broker}:${status.mqtt.port}`} />
+              <InfoRow label={t('system.topic')} value={status.mqtt.topic} />
             </div>
           ) : (
-            <p class="system-subtle">MQTT is disabled.</p>
+            <p class="system-subtle">{t('system.mqttIsDisabled')}</p>
           )}
         </Card>
       )}
@@ -271,38 +264,43 @@ const System: FunctionalComponent = () => {
       <Card title="WiFi" icon="wifi" tone="cyan">
         <div class="system-list">
           <InfoRow
-            label="Status"
-            value={status.wifi.connected ? 'Connected' : 'Disconnected'}
+            label={t('system.status')}
+            value={status.wifi.connected ? t('system.connected') : t('system.disconnected')}
             tone={status.wifi.connected ? 'tone-green' : 'tone-red'}
           />
           {status.wifi.connected && (
             <>
               <InfoRow label="SSID" value={status.wifi.ssid} />
-              <InfoRow label="IP Address" value={status.wifi.ip} tone="tone-cyan" />
+              <InfoRow label={t('system.ipAddress')} value={status.wifi.ip} tone="tone-cyan" />
               {status.wifi.ipv6?.addresses.map((entry) => (
-                <InfoRow key={entry.address} label={`IPv6 (${IPV6_SCOPE_LABELS[entry.scope]})`} value={entry.address} tone="tone-cyan" />
+                <InfoRow
+                  key={entry.address}
+                  label={t('system.ipv6Scope', { scope: t(IPV6_SCOPE_KEYS[entry.scope]) })}
+                  value={entry.address}
+                  tone="tone-cyan"
+                />
               ))}
-              <InfoRow label="Signal" value={`${status.wifi.rssi} dBm`} />
-              <InfoRow label="MAC Address" value={status.wifi.mac} />
+              <InfoRow label={t('system.signal')} value={`${status.wifi.rssi} dBm`} />
+              <InfoRow label={t('system.macAddress')} value={status.wifi.mac} />
             </>
           )}
         </div>
       </Card>
 
-      <Card title="Actions" icon="cpu" tone="red">
+      <Card title={t('system.actions')} icon="cpu" tone="red">
         <div class="btn-row">
           {confirmRestart ? (
             <>
               <Button variant="danger" onClick={handleRestart}>
-                Restart now
+                {t('system.restartNow')}
               </Button>
               <Button variant="ghost" onClick={() => setConfirmRestart(false)}>
-                Cancel
+                {t('system.cancel')}
               </Button>
             </>
           ) : (
             <Button variant="danger" onClick={() => setConfirmRestart(true)}>
-              Restart device
+              {t('system.restartDevice')}
             </Button>
           )}
         </div>

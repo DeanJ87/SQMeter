@@ -11,6 +11,7 @@
 #include "TimeManager.h"
 #include "MQTTClient.h"
 #include "OtaUpdater.h"
+#include "LanguagePack.h"
 #include "SafetyEvaluator.h"
 #include "ObservingConditionsMapper.h"
 #include "AlpacaProtocol.h"
@@ -36,6 +37,8 @@ namespace SQM
 
     class WebServer
     {
+        friend class LanguagePack;
+
     public:
         using GetConfigCallback = std::function<const Config &()>;
         using SaveConfigCallback = std::function<bool(const Config &)>;
@@ -109,6 +112,7 @@ namespace SQM
         std::string pendingWifiPassword;
 
         std::unique_ptr<OtaUpdater> otaUpdater;
+        std::unique_ptr<LanguagePack> languagePack;
 
         AsyncUDP alpacaDiscoveryUdp; // answers in the network task, not the main loop
         // IPv6 discovery (ff12::a1:2345) needs an IPv6 address first; retried from handle().

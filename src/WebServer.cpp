@@ -116,6 +116,8 @@ namespace SQM
             [this](int percent) { setOTAProgress(percent); },
             [this](const char *message) { setOTAError(message); },
             [] { WebServer::scheduleRestart(1000); });
+
+        languagePack = std::make_unique<LanguagePack>(*this);
     }
 
     WebServer::~WebServer()
@@ -175,6 +177,7 @@ namespace SQM
         setupGithubUpdates();
         setupAlpacaRoutes();
         setupAlertRoutes();
+        languagePack->registerRoutes(server);
         setupStaticRoutes(); // Must be last - has catch-all serveStatic
 
         HeapTrace::mark("web server routes");
@@ -273,6 +276,7 @@ namespace SQM
         wsSensors.cleanupClients();
         wsStatus.cleanupClients();
         pollWiFiConnect();
+        languagePack->loop();
 
         const uint32_t now = millis();
 
@@ -514,9 +518,12 @@ namespace SQM
                     return;
                 }
 
+                const std::string previousLanguage = currentConfig.language;
                 if (saveConfigCallback(*configOpt))
                 {
                     tslSensor.configureSkyMeasurement(configOpt->skyAveraging, configOpt->skyCalibration);
+                    if (previousLanguage != configOpt->language)
+                        languagePack->onLanguageChanged(configOpt->language);
                     request->send(200, "application/json", "{\"success\":true}");
                 }
                 else

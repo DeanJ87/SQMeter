@@ -4,19 +4,20 @@ import { Note } from '../ui';
 import { defaultLocationConfig } from './defaults';
 import type { SettingsTabProps } from './context';
 import { ActionButton, DepToggle, Field, Group, NumberInput, SelectInput, SettingsCard, StatusBadge, TextInput } from './controls';
+import { t } from '../../i18n';
 
 // Common time zones in POSIX TZ format
 export const TIMEZONE_OPTIONS = [
   { label: 'UTC', value: 'UTC0' },
-  { label: 'GMT (no daylight saving)', value: 'GMT0' },
-  { label: 'US/Pacific (PST)', value: 'PST8PDT,M3.2.0,M11.1.0' },
-  { label: 'US/Mountain (MST)', value: 'MST7MDT,M3.2.0,M11.1.0' },
-  { label: 'US/Central (CST)', value: 'CST6CDT,M3.2.0,M11.1.0' },
-  { label: 'US/Eastern (EST)', value: 'EST5EDT,M3.2.0,M11.1.0' },
-  { label: 'Europe/London (GMT)', value: 'GMT0BST,M3.5.0/1,M10.5.0' },
-  { label: 'Europe/Paris (CET)', value: 'CET-1CEST,M3.5.0,M10.5.0/3' },
-  { label: 'Australia/Sydney (AEST)', value: 'AEST-10AEDT,M10.1.0,M4.1.0/3' },
-  { label: 'Asia/Tokyo (JST)', value: 'JST-9' },
+  { label: t('settings.time.gmtNoDaylightSaving'), value: 'GMT0' },
+  { label: t('settings.time.usPacificPst'), value: 'PST8PDT,M3.2.0,M11.1.0' },
+  { label: t('settings.time.usMountainMst'), value: 'MST7MDT,M3.2.0,M11.1.0' },
+  { label: t('settings.time.usCentralCst'), value: 'CST6CDT,M3.2.0,M11.1.0' },
+  { label: t('settings.time.usEasternEst'), value: 'EST5EDT,M3.2.0,M11.1.0' },
+  { label: t('settings.time.europeLondonGmt'), value: 'GMT0BST,M3.5.0/1,M10.5.0' },
+  { label: t('settings.time.europeParisCet'), value: 'CET-1CEST,M3.5.0,M10.5.0/3' },
+  { label: t('settings.time.australiaSydneyAest'), value: 'AEST-10AEDT,M10.1.0,M4.1.0/3' },
+  { label: t('settings.time.asiaTokyoJst'), value: 'JST-9' },
 ];
 
 // "51.4779, -0.0015" (or space separated) -> [lat, lon]; null if it isn't that.
@@ -31,7 +32,7 @@ export const parseCoordinates = (text: string): [number, number] | null => {
 const NTP = 0;
 const GPS = 1;
 const SOURCE_LABEL: Record<number, string> = { [NTP]: 'NTP', [GPS]: 'GPS' };
-const LAST_SOURCE = 'At least one time source has to stay on.';
+const LAST_SOURCE = t('settings.time.atLeastOneTimeSource');
 
 const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw, status, deps, fix }) => {
   const location = { ...defaultLocationConfig, ...config.location };
@@ -49,7 +50,7 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
       return;
     }
     const parsed = parseCoordinates(text);
-    setCoordsError(parsed ? null : 'Enter latitude, longitude - e.g. 51.4779, -0.0015');
+    setCoordsError(parsed ? null : t('settings.time.enterLatitudeLongitudeEG'));
     if (parsed) {
       updateMany([
         [['location', 'set'], true],
@@ -68,7 +69,7 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
       },
       () => {
         setLocating(false);
-        setCoordsError("The browser didn't share a location.");
+        setCoordsError(t('settings.time.theBrowserDidnTShare'));
       },
       { timeout: 15000 },
     );
@@ -77,22 +78,22 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
   const bothSources = config.ntp.enabled && config.gps.enabled;
 
   // GPS starts at boot; waiting for a restart is shown under the switch (D-35).
-  const gpsBadge = config.gps.enabled && hw.gps.detected ? <StatusBadge tone="ok" label="Running" /> : undefined;
+  const gpsBadge = config.gps.enabled && hw.gps.detected ? <StatusBadge tone="ok" label={t('settings.time.running')} /> : undefined;
 
   return (
     <>
-      <SettingsCard title="Time zone">
+      <SettingsCard title={t('settings.time.timeZone')}>
         <div class="form-grid">
-          <Field label="Time zone">
+          <Field label={t('settings.time.timeZone')}>
             <SelectInput
               dataField="ntp.timezone"
               value={knownZone ? config.ntp.timezone : 'custom'}
-              options={[...TIMEZONE_OPTIONS, { value: 'custom', label: 'Custom...' }]}
+              options={[...TIMEZONE_OPTIONS, { value: 'custom', label: t('common.custom') }]}
               onChange={(v) => update(['ntp', 'timezone'], v === 'custom' ? '' : v)}
             />
           </Field>
           {!knownZone && (
-            <Field label="POSIX time zone" hint="e.g. PST8PDT,M3.2.0,M11.1.0" error={error('ntp.timezone')}>
+            <Field label={t('settings.time.posixTimeZone')} hint={t('settings.time.eGPst8pdtM32')} error={error('ntp.timezone')}>
               <TextInput dataField="ntp.timezone" value={config.ntp.timezone} onInput={(v) => update(['ntp', 'timezone'], v)} />
             </Field>
           )}
@@ -101,46 +102,48 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
 
       <SettingsCard
         id="location"
-        title="Location"
-        hint="Used to work out when it's dark. A GPS fix takes precedence."
-        badge={sky?.locationSource === 'gps' ? <StatusBadge tone="ok" label="Using GPS" /> : undefined}
+        title={t('settings.time.location')}
+        hint={t('settings.time.usedToWorkOutWhen')}
+        badge={sky?.locationSource === 'gps' ? <StatusBadge tone="ok" label={t('settings.time.usingGps')} /> : undefined}
       >
         <Field
           class="field-wide"
-          label="Coordinates"
+          label={t('settings.time.coordinates')}
           error={coordsError ?? error('location.latitude') ?? error('location.longitude')}
-          hint="Latitude, longitude in decimal degrees. Paste from any maps app."
+          hint={t('settings.time.latitudeLongitudeInDecimalDegrees')}
         >
           <div class="input-row">
             <TextInput dataField="location.latitude" value={coords} placeholder="51.4779, -0.0015" onInput={applyCoords} />
             {canUseBrowserLocation && (
-              <ActionButton onClick={useBrowserLocation} busy={locating} busyLabel="Locating...">
-                Use my location
+              <ActionButton onClick={useBrowserLocation} busy={locating} busyLabel={t('common.locating')}>
+                {t('settings.time.useMyLocation')}
               </ActionButton>
             )}
           </div>
         </Field>
         {sky?.nightKnown && sky.sunAltitudeDeg !== undefined && (
           <Note>
-            Sun at {sky.sunAltitudeDeg}° - {sky.isNight ? 'dark now' : 'not dark yet'}.
+            {sky.isNight
+              ? t('settings.time.sunAtDarkNow', { altitude: sky.sunAltitudeDeg })
+              : t('settings.time.sunAtNotDarkYet', { altitude: sky.sunAltitudeDeg })}
           </Note>
         )}
         <DepToggle
           entry={deps.get('location.showSunMoon')}
           onFix={fix}
-          label="Sun & Moon card on the dashboard"
+          label={t('settings.time.sunMoonCardOnThe')}
           checked={location.showSunMoon !== false}
           onChange={(v) => update(['location', 'showSunMoon'], v)}
-          hint="Twilight, darkness, moon phase and rise/set times, worked out in the browser."
+          hint={t('settings.time.twilightDarknessMoonPhaseAnd')}
         />
       </SettingsCard>
 
-      <SettingsCard id="time-sources" title="Time sources">
+      <SettingsCard id="time-sources" title={t('settings.time.timeSources')}>
         <Group title="NTP">
           <DepToggle
             entry={deps.get('ntp.enabled')}
             onFix={fix}
-            label="Internet time (NTP)"
+            label={t('settings.time.internetTimeNtp')}
             checked={config.ntp.enabled}
             onChange={(v) => update(['ntp', 'enabled'], v)}
             disabled={config.ntp.enabled && !config.gps.enabled}
@@ -148,7 +151,7 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
           />
           {config.ntp.enabled && (
             <div class="form-grid">
-              <Field label="Server" error={error('ntp.server1')}>
+              <Field label={t('settings.time.server')} error={error('ntp.server1')}>
                 <TextInput
                   dataField="ntp.server1"
                   value={config.ntp.server1}
@@ -156,7 +159,7 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
                   onInput={(v) => update(['ntp', 'server1'], v)}
                 />
               </Field>
-              <Field label="Fallback server">
+              <Field label={t('settings.time.fallbackServer')}>
                 <TextInput
                   dataField="ntp.server2"
                   value={config.ntp.server2}
@@ -164,7 +167,7 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
                   onInput={(v) => update(['ntp', 'server2'], v)}
                 />
               </Field>
-              <Field label="Sync every" error={error('ntp.syncIntervalMs')}>
+              <Field label={t('settings.time.syncEvery')} error={error('ntp.syncIntervalMs')}>
                 <NumberInput
                   dataField="ntp.syncIntervalMs"
                   integer
@@ -184,15 +187,15 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
             entry={deps.get('gps.enabled')}
             onFix={fix}
             dataField="gps.enabled"
-            label="GPS receiver"
+            label={t('settings.time.gpsReceiver')}
             checked={config.gps.enabled}
             onChange={(v) => update(['gps', 'enabled'], v)}
             disabled={config.gps.enabled && !config.ntp.enabled}
-            hint={config.gps.enabled && !config.ntp.enabled ? LAST_SOURCE : 'Time and location without internet.'}
+            hint={config.gps.enabled && !config.ntp.enabled ? LAST_SOURCE : t('settings.time.timeAndLocationWithoutInternet')}
           />
           {config.gps.enabled && (
             <div class="form-grid">
-              <Field label="RX pin" error={error('gps.rxPin')}>
+              <Field label={t('settings.time.rxPin')} error={error('gps.rxPin')}>
                 <NumberInput
                   dataField="gps.rxPin"
                   integer
@@ -202,7 +205,7 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
                   onChange={(v) => update(['gps', 'rxPin'], v)}
                 />
               </Field>
-              <Field label="TX pin" error={error('gps.txPin')}>
+              <Field label={t('settings.time.txPin')} error={error('gps.txPin')}>
                 <NumberInput
                   dataField="gps.txPin"
                   integer
@@ -212,7 +215,7 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
                   onChange={(v) => update(['gps', 'txPin'], v)}
                 />
               </Field>
-              <Field label="Baud rate" error={error('gps.baudRate')}>
+              <Field label={t('settings.time.baudRate')} error={error('gps.baudRate')}>
                 <SelectInput
                   dataField="gps.baudRate"
                   value={String(config.gps.baudRate)}
@@ -225,12 +228,12 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
         </Group>
 
         {bothSources && (
-          <Group title="Priority">
+          <Group title={t('settings.time.priority')}>
             <div class="form-grid">
               <Field
-                label="Use first"
+                label={t('settings.time.useFirst')}
                 error={error('primaryTimeSource')}
-                hint={`Falls back to ${SOURCE_LABEL[config.secondaryTimeSource]}.`}
+                hint={t('settings.time.fallsBackToValue', { value: SOURCE_LABEL[config.secondaryTimeSource] })}
               >
                 <SelectInput
                   dataField="primaryTimeSource"

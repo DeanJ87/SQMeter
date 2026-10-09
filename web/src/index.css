@@ -311,7 +311,7 @@ button {
   color: var(--muted);
   font: inherit;
   font-size: 0.8125rem;
-  text-align: left;
+  text-align: start;
   cursor: grab;
   touch-action: none;
 }
@@ -518,7 +518,7 @@ button {
 }
 
 .metric-tile.left {
-  text-align: left;
+  text-align: start;
 }
 
 .metric-value {
@@ -622,7 +622,7 @@ button {
   font-family: var(--font-mono);
   font-size: 0.9rem;
   font-weight: 650;
-  text-align: right;
+  text-align: end;
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
@@ -1114,6 +1114,9 @@ button {
   top: env(safe-area-inset-top, 0px);
   z-index: 7;
   display: flex;
+  /* Scroll inside, never widen the page (longer tab names in other languages). */
+  min-width: 0;
+  max-width: 100%;
   gap: 0.25rem;
   margin: 0 0 1rem;
   padding: 0.3rem;
@@ -1160,7 +1163,7 @@ button {
 .settings-tab-error {
   position: absolute;
   top: 0.35rem;
-  right: 0.35rem;
+  inset-inline-end: 0.35rem;
   width: 0.45rem;
   height: 0.45rem;
   border-radius: 50%;
@@ -1180,6 +1183,14 @@ button {
 @media (max-width: 760px) {
   .settings-tabs {
     position: static;
+  }
+}
+
+/* Longer button labels in other languages wrap on phones (specs/023-i18n). */
+@media (max-width: 480px) {
+  .btn {
+    max-width: 100%;
+    white-space: normal;
   }
 }
 
@@ -1286,7 +1297,7 @@ button {
   flex: 0 0 auto;
   width: 1rem;
   height: 1rem;
-  margin-left: 0.35rem;
+  margin-inline-start: 0.35rem;
   border: 1px solid var(--control-edge);
   border-radius: 50%;
   color: var(--dim);
@@ -1326,7 +1337,7 @@ button {
   color: var(--text);
   font: 400 0.76rem/1.4 var(--font-ui);
   letter-spacing: 0;
-  text-align: left;
+  text-align: start;
   text-transform: none;
   white-space: normal;
   /* Not just transparent: a hidden tip near the right edge would still widen
@@ -1367,7 +1378,7 @@ button {
 }
 
 .note-action {
-  margin-left: 0.45rem;
+  margin-inline-start: 0.45rem;
   padding: 0;
   border: 0;
   background: none;
@@ -1382,7 +1393,7 @@ button {
 
 .toaster {
   position: fixed;
-  right: max(1rem, env(safe-area-inset-right));
+  inset-inline-end: max(1rem, env(safe-area-inset-right));
   bottom: max(1rem, env(safe-area-inset-bottom));
   z-index: 30;
   display: flex;
@@ -1397,7 +1408,7 @@ button {
   gap: 0.75rem;
   padding: 0.65rem 0.75rem 0.65rem 0.9rem;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--green);
+  border-inline-start: 3px solid var(--green);
   border-radius: 0.55rem;
   background: var(--panel-2);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
@@ -1407,11 +1418,11 @@ button {
 }
 
 .toast-warn {
-  border-left-color: var(--amber);
+  border-inline-start-color: var(--amber);
 }
 
 .toast-bad {
-  border-left-color: var(--red);
+  border-inline-start-color: var(--red);
 }
 
 .toast > span {
@@ -1464,6 +1475,9 @@ button {
 
 .input {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
   min-height: 2.3rem;
   padding: 0.4rem 0.7rem;
   border: 1px solid var(--control-edge);
@@ -1537,7 +1551,7 @@ button {
 }
 
 .input-unit {
-  padding-right: 0.7rem;
+  padding-inline-end: 0.7rem;
   color: var(--dim);
   font-size: 0.76rem;
   white-space: nowrap;
@@ -1548,7 +1562,7 @@ input[type='file'].input {
 }
 
 input[type='file'].input::file-selector-button {
-  margin-right: 0.6rem;
+  margin-inline-end: 0.6rem;
   padding: 0.3rem 0.7rem;
   border: 1px solid rgba(85, 199, 242, 0.28);
   border-radius: 0.35rem;
@@ -1560,7 +1574,8 @@ input[type='file'].input::file-selector-button {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  /* min(): a long option or label in another language never widens the page. */
+  grid-template-columns: repeat(auto-fill, minmax(min(11rem, 100%), 1fr));
   gap: 0.85rem 1rem;
 }
 
@@ -1593,7 +1608,7 @@ input[type='file'].input::file-selector-button {
   content: '';
   position: absolute;
   top: 0.16rem;
-  left: 0.18rem;
+  inset-inline-start: 0.18rem;
   width: 0.82rem;
   height: 0.82rem;
   border-radius: 50%;
@@ -1621,7 +1636,7 @@ input[type='file'].input::file-selector-button {
 }
 
 .indent {
-  margin-left: 2.95rem;
+  margin-inline-start: 2.95rem;
 }
 
 .card-group {
@@ -1742,7 +1757,7 @@ input[type='file'].input::file-selector-button {
   .rule-row > .input-row,
   .rule-row > .input {
     width: auto;
-    margin-left: 2.95rem;
+    margin-inline-start: 2.95rem;
   }
 }
 
@@ -1872,7 +1887,7 @@ input[type='file'].input::file-selector-button {
 }
 
 .save-bar-state {
-  margin-right: auto;
+  margin-inline-end: auto;
   color: var(--dim);
   font-size: 0.8rem;
 }
@@ -1887,7 +1902,7 @@ input[type='file'].input::file-selector-button {
 
 @media (max-width: 560px) {
   .rule-row > .input-group {
-    margin-left: 2.95rem;
+    margin-inline-start: 2.95rem;
   }
 }
 
@@ -1903,7 +1918,7 @@ input[type='file'].input::file-selector-button {
 .alerts-bell-count {
   position: absolute;
   top: 0.45rem;
-  right: 0.3rem;
+  inset-inline-end: 0.3rem;
   min-width: 1rem;
   height: 1rem;
   padding: 0 0.25rem;
@@ -1916,7 +1931,7 @@ input[type='file'].input::file-selector-button {
 
 .alerts-flyout {
   position: fixed;
-  right: max(0.75rem, env(safe-area-inset-right));
+  inset-inline-end: max(0.75rem, env(safe-area-inset-right));
   z-index: 25;
   width: min(24rem, calc(100vw - 1.5rem));
   max-height: min(32rem, 70vh);
@@ -1936,7 +1951,7 @@ input[type='file'].input::file-selector-button {
 }
 
 .alerts-flyout-head h2 {
-  margin-right: auto;
+  margin-inline-end: auto;
 }
 
 .alerts-flyout-head h2 {
@@ -2073,7 +2088,7 @@ input[type='file'].input::file-selector-button {
   display: inline-block;
   width: 0.75rem;
   height: 0.5rem;
-  margin-right: 0.25rem;
+  margin-inline-end: 0.25rem;
   border-radius: 2px;
   vertical-align: middle;
 }
@@ -2202,7 +2217,7 @@ input[type='file'].input::file-selector-button {
   background: transparent;
   color: var(--text);
   font: inherit;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -2217,7 +2232,7 @@ input[type='file'].input::file-selector-button {
 
 .wifi-addresses {
   margin: 0.5rem 0 0.75rem;
-  padding-left: 1.2rem;
+  padding-inline-start: 1.2rem;
   font-size: 1.05rem;
 }
 
@@ -2245,7 +2260,7 @@ input[type='file'].input::file-selector-button {
 /* Demo controls (demo build only) */
 .demo-panel {
   position: fixed;
-  right: max(1rem, env(safe-area-inset-right));
+  inset-inline-end: max(1rem, env(safe-area-inset-right));
   bottom: max(1rem, env(safe-area-inset-bottom));
   z-index: 30;
   display: flex;
@@ -2480,7 +2495,7 @@ input[type='file'].input::file-selector-button {
 
 .demo-waits {
   margin: 0;
-  padding-left: 1.1rem;
+  padding-inline-start: 1.1rem;
   color: var(--amber);
   font-size: 0.76rem;
 }
@@ -2548,7 +2563,7 @@ html {
 .skip-link {
   position: absolute;
   top: 0.5rem;
-  left: 0.5rem;
+  inset-inline-start: 0.5rem;
   z-index: 100;
   padding: 0.5rem 0.9rem;
   border-radius: 0.45rem;
@@ -2582,4 +2597,42 @@ main:focus {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Right-to-left languages (specs/023-i18n FR-019). Layout mirrors through the
+   logical properties above; readings, units, coordinates, times and charts
+   stay left-to-right inside the page. */
+[dir='rtl'] .metric-value,
+[dir='rtl'] .metric-unit,
+[dir='rtl'] .sqm-unit,
+[dir='rtl'] .input-unit,
+[dir='rtl'] .reading-value,
+[dir='rtl'] .mono,
+[dir='rtl'] .ltr,
+[dir='rtl'] svg,
+[dir='rtl'] .chart-tip,
+[dir='rtl'] input[type='number'],
+[dir='rtl'] input[type='url'] {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Arrows that mean "earlier"/"later" point the other way. */
+[dir='rtl'] .dir-icon {
+  display: inline-block;
+  transform: scaleX(-1);
+}
+
+[dir='rtl'] .toggle input::before {
+  left: auto;
+  right: 0.18rem;
+}
+
+[dir='rtl'] .toggle input:checked::before {
+  transform: translateX(-0.94rem);
+}
+
+[dir='rtl'] .metric-value,
+[dir='rtl'] .reading-value {
+  text-align: inherit;
 }

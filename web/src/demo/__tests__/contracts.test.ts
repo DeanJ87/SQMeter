@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import Ajv from 'ajv';
 import { demoDevice } from '../device';
 import { statusDocument } from '../handlers';
+import { i18nDocument } from '../i18n';
 
 // Every document the demo answers must match the device's contract
 // (specs/016-demo-device-emulation/contracts/schemas, generated from a real
@@ -37,6 +38,7 @@ describe('demo documents match the device contract', () => {
   it('safety', () => check('safety', JSON.parse(demoDevice.safety())));
   it('settings in effect (specs/020-settings-dependencies)', () => check('settings-effective', JSON.parse(demoDevice.effective())));
   it('config', () => check('config', JSON.parse(demoDevice.getConfig())));
+  it('language (/api/i18n, specs/023-i18n)', () => check('i18n', i18nDocument()));
   it('recent alerts', () => check('alerts-recent', JSON.parse(demoDevice.recentAlerts())));
   it('alerts sending or paused (/api/alerts/armed)', () => check('alerts-armed', JSON.parse(demoDevice.armedDocument())));
   it('safety history', () => check('safety-history', JSON.parse(demoDevice.safetyHistory())));

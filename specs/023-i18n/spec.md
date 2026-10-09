@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: Draft
+**Status**: Implemented (see plan.md, tasks.md)
 
 **Input**: User description: "what I'm after is proper translations committed to the repo that I'll have AI translate every single label, text everything into various languages. and then when a person say wants SPANISH it would pull that translation file, into the littleFS storage of the device so it can display those values. It should be doable."
 
@@ -109,7 +109,7 @@ Someone whose observatory has no internet still wants Spanish. Visitors to the d
 - **Filesystem image update**: an OTA or uploaded filesystem image wipes stored files. The device keeps the chosen language in its settings, which are stored separately, and downloads the file again.
 - **Factory reset**: the device returns to English and deletes the file.
 - **Long translations**: German and other languages run 30-40% longer than English. Layouts must wrap rather than overflow or clip at phone width.
-- **Right-to-left**: no right-to-left language is in the initial set. The UI must not break if one is added later, but full right-to-left layout is out of scope.
+- **Right-to-left**: Arabic is in the initial set, so the UI MUST lay out right-to-left when it is active (FR-019). Readings, units, coordinates, times and charts stay left-to-right inside the right-to-left page.
 - **Values inside text**: numbers, sensor readings and units inside translated sentences come from placeholders, so the translation can reorder them but never alters them.
 
 ## Requirements *(mandatory)*
@@ -134,7 +134,7 @@ Someone whose observatory has no internet still wants Spanish. Visitors to the d
 **On the device**
 
 - **FR-007**: English MUST be built into the device's web UI and work with no language file present.
-- **FR-008**: Text the device generates and the UI shows (validation errors, safety reasons, sensor states, alert history entries) MUST carry a stable message ID and its parameters, so the UI can translate it. The existing English text fields MUST stay in API responses unchanged, for compatibility.
+- **FR-008**: Text the device generates and the UI shows (validation errors, safety reasons, sensor states, alert history entries) MUST be translatable through a stable message ID and its parameters. The existing English text fields MUST stay in API responses unchanged, for compatibility. *(As built, research D4: the ID is the `device.*` key of a template generated from the firmware source; the UI recognises the English text against the templates and recovers the parameters, so responses carry no extra fields and the firmware stays within its 12 KB budget.)*
 - **FR-009**: The language MUST be a device setting, shared by every browser that opens the device. Changing it requires authentication when authentication is on (constitution VI).
 - **FR-010**: Choosing a non-English language MUST download that language's file for the running firmware version, from the matching GitHub release. It uses the same secure download path and certificate handling as OTA updates (spec 012). The device MUST check the size and checksum against the manifest before using the file.
 - **FR-011**: The device MUST store at most one language file. Installing a language replaces the previous one only after the new one is verified. Choosing English deletes it.
@@ -144,6 +144,14 @@ Someone whose observatory has no internet still wants Spanish. Visitors to the d
 - **FR-015**: Machine-readable output MUST NOT change with the language. That covers JSON keys and enum values, MQTT topics and payloads, Home Assistant discovery, the readings schema, ASCOM Alpaca, and logs.
 - **FR-016**: Alerts sent by the device (ntfy, Pushover, webhook, MQTT alert text, Bluetooth) MUST stay in English, or use the user's custom alert wording when they have set it. Settings MUST say so next to the language choice.
 - **FR-017**: Numbers and dates in the UI MUST be formatted for the chosen language: decimal separator, date order, 24-hour or 12-hour clock. Units remain their own setting.
+
+**Right-to-left, context and quality**
+
+- **FR-019**: When a right-to-left language is active, the UI MUST set the page direction and language, lay out mirrored (navigation, labels, notes, toggles, directional icons), and keep numbers, units, coordinates, times and charts left-to-right. Every page MUST pass the automated accessibility checks (spec 022) and show no horizontal overflow at 320 px in that language.
+- **FR-020**: Every English message MUST have a short context note for translators: where it appears, what it means, and a length limit when the space is tight.
+- **FR-021**: Each language MUST have a committed glossary: the astronomy and observatory terms and their agreed translations, the terms that stay untranslated (SQM, NELM, Bortle, Alpaca, ASCOM, N.I.N.A., MQTT, units), and the register (formal or informal address) used throughout.
+- **FR-022**: Translations MUST be natural and accurate rather than literal. Each language MUST get a review pass after translation: terminology checked against the glossary, length checked against the context limits, and the safety-critical messages (safe, unsafe, rain detected, alerts paused) back-translated to English and compared. A short review note per language is committed. The translation tool (FR-005) MUST use the same context, glossary and review pass.
+- **FR-023**: No translated label or button may overflow or be clipped at 320 px or 1280 px in any supported language; an automated screenshot check covers every page per language.
 
 **Demo**
 
@@ -178,10 +186,12 @@ Someone whose observatory has no internet still wants Spanish. Visitors to the d
 - **SC-005**: Adding one new English string and running the translation tool leaves every language complete, and CI passes with no manual edits.
 - **SC-006**: MQTT, REST, Home Assistant and Alpaca output are byte-identical, apart from timestamps and readings, whatever language is chosen.
 - **SC-007**: The size budgets hold for every language file and for the firmware.
+- **SC-008**: In Arabic, every page lays out right-to-left, passes the automated accessibility checks and has no horizontal overflow at 320 px; in every language, no label or button overflows at 320 px or 1280 px.
+- **SC-009**: Every language has a committed glossary and review note, and every English key has a context note.
 
 ## Assumptions
 
-- **Initial languages**: Spanish (es), French (fr), German (de), Italian (it), Dutch (nl), Portuguese (pt), Polish (pl), Japanese (ja) and Simplified Chinese (zh-Hans). More can be added with one file and a tool run. All are left-to-right.
+- **Initial languages** (maintainer's choice, 2026-10-09): Bahasa Indonesia (id), Spanish (es), French (fr), Italian (it), German (de), Dutch (nl), Arabic (ar, right-to-left), Portuguese - Brazil (pt-BR), Polish (pl), Japanese (ja), Simplified Chinese (zh-Hans), Korean (ko) and Turkish (tr). English is built in. More can be added with one file, one glossary and a tool run.
 - **AI translation, human review by PR**: the maintainer runs the translation tool with their own AI service credentials. Native-speaker review is welcome through ordinary PRs, but there is no separate contributor workflow or translation platform.
 - **Device alerts stay English (FR-016)**: alerts are built and sent by the device with no browser involved. Translating them would mean parsing the language file on the device at send time, which costs heap during the TLS sends that already use the most memory. Custom alert wording (spec 006/009) already lets users write their alerts in any language, so English plus custom wording is the simpler, sufficient choice. A later spec can revisit it.
 - **One device-wide language**: matches how settings work today, and keeps the device to one stored file.

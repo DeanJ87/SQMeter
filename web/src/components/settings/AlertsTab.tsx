@@ -33,17 +33,18 @@ import {
   TextInput,
   Toggle,
 } from './controls';
+import { t } from '../../i18n';
+import { deviceError } from '../../i18n/deviceMessage';
 
 const LEVEL_OPTIONS = [
-  { value: '0', label: 'Off' },
-  { value: '1', label: 'Quiet' },
-  { value: '2', label: 'Normal' },
-  { value: '3', label: 'Urgent' },
-  { value: '4', label: 'Wake me' },
+  { value: '0', label: t('settings.alerts.off') },
+  { value: '1', label: t('settings.alerts.quiet') },
+  { value: '2', label: t('settings.alerts.normal') },
+  { value: '3', label: t('settings.alerts.urgent') },
+  { value: '4', label: t('settings.alerts.wakeMe') },
 ];
 
-const LEVEL_HINT =
-  'Quiet: no sound. Urgent: breaks through quiet hours. Wake me: repeats until acknowledged (Pushover emergency, ntfy max) and rings paired phones over Bluetooth.';
+const LEVEL_HINT = t('settings.alerts.quietNoSoundUrgentBreaks');
 
 // Pushover's built-in sounds; a custom one already saved stays selectable.
 const PUSHOVER_SOUNDS = [
@@ -74,9 +75,9 @@ const PUSHOVER_SOUNDS = [
 const LONG_SOUNDS = new Set(['alien', 'climb', 'persistent', 'echo', 'updown']);
 const soundLabel = (sound: string) =>
   sound === 'none'
-    ? 'Silent'
+    ? t('settings.alerts.silent')
     : sound === 'vibrate'
-      ? 'Vibrate only'
+      ? t('settings.alerts.vibrateOnly')
       : `${sound[0].toUpperCase()}${sound.slice(1)}${LONG_SOUNDS.has(sound) ? ' (long)' : ''}`;
 const soundOptions = (current: string, defaultLabel: string) => [
   { value: '', label: defaultLabel },
@@ -85,66 +86,71 @@ const soundOptions = (current: string, defaultLabel: string) => [
     .map((sound) => ({ value: sound, label: soundLabel(sound) })),
 ];
 
-const CHANNEL_LABEL: Record<AlertChannelName, string> = { pushover: 'Pushover', ntfy: 'ntfy', webhook: 'Webhook', mqtt: 'MQTT' };
+const CHANNEL_LABEL: Record<AlertChannelName, string> = {
+  pushover: 'Pushover',
+  ntfy: 'ntfy',
+  webhook: t('settings.alerts.webhook'),
+  mqtt: 'MQTT',
+};
 
 // The firmware's built-in wording (lib/AlertLogic), written as templates;
 // shown as the placeholder until you write your own.
 const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = {
-  unsafe: { title: 'Observatory UNSAFE', message: '{reasons}' },
-  safe: { title: 'Observatory safe', message: 'All enabled safety rules pass.' },
-  rain_started: { title: 'Rain detected', message: 'The rain sensor reports rain ({rain_rate} mm/h).' },
-  rain_stopped: { title: 'Rain cleared', message: 'No rain for the configured rain clear delay.' },
-  sensor_fault: { title: '{sensor} sensor fault', message: '{sensor} is offline or reporting errors.' },
-  sensor_recovered: { title: '{sensor} sensor recovered', message: '{sensor} is reporting normally again.' },
-  dew_risk: { title: 'Dew risk', message: 'Temperature {temp} °C is within {dew_margin} °C of the dew point ({dewpoint} °C).' },
-  clear_sky: { title: 'Dark and clear', message: 'Cloud cover is down to {cloud}% (clear below {clear_below}%).' },
-  clouded_over: { title: 'Clouded over', message: 'Cloud cover is up to {cloud}% (cloudy above {cloudy_above}%).' },
+  unsafe: { title: t('settings.alerts.observatoryUnsafe'), message: '{reasons}' },
+  safe: { title: t('settings.alerts.observatorySafe'), message: t('settings.alerts.allEnabledSafetyRulesPass') },
+  rain_started: { title: t('settings.alerts.rainDetected'), message: t('settings.alerts.theRainSensorReportsRain') },
+  rain_stopped: { title: t('settings.alerts.rainCleared'), message: t('settings.alerts.noRainForTheConfigured') },
+  sensor_fault: { title: t('settings.alerts.sensorFaultTitle'), message: t('settings.alerts.sensorFaultMessage') },
+  sensor_recovered: { title: t('settings.alerts.sensorRecoveredTitle'), message: t('settings.alerts.sensorRecoveredMessage') },
+  dew_risk: { title: t('settings.alerts.dewRisk'), message: t('settings.alerts.temperatureTempCIsWithin') },
+  clear_sky: { title: t('settings.alerts.darkAndClear'), message: t('settings.alerts.cloudCoverIsDownTo') },
+  clouded_over: { title: t('settings.alerts.cloudedOver'), message: t('settings.alerts.cloudCoverIsUpTo') },
   client_lost: {
-    title: 'Imaging app stopped checking',
-    message: 'No request to the {device} for {silent_for} - last checked {last_checked}.',
+    title: t('settings.alerts.imagingAppStoppedChecking'),
+    message: t('settings.alerts.noRequestToTheDevice'),
   },
-  client_back: { title: 'Imaging app is back', message: 'The {device} is being checked again.' },
-  client_disconnected: { title: 'Imaging app disconnected', message: 'The {device} was disconnected.' },
+  client_back: { title: t('settings.alerts.imagingAppIsBack'), message: t('settings.alerts.theDeviceIsBeingChecked') },
+  client_disconnected: { title: t('settings.alerts.imagingAppDisconnected'), message: t('settings.alerts.theDeviceWasDisconnected') },
 };
 
 // "Dark and clear" only when sky alerts wait for darkness, as on the device.
 const defaultText = (key: AlertEventKey, skyNightOnly: boolean) =>
-  key === 'clear_sky' && !skyNightOnly ? { ...DEFAULT_TEXT.clear_sky, title: 'Skies clear' } : DEFAULT_TEXT[key];
+  key === 'clear_sky' && !skyNightOnly ? { ...DEFAULT_TEXT.clear_sky, title: t('settings.alerts.skiesClear') } : DEFAULT_TEXT[key];
 
 const VAR_HELP: Record<string, string> = {
-  event: 'Event name, e.g. unsafe or rain_started',
-  reasons: 'Every failing rule with its value and limit, one per line',
-  reasons_inline: 'The same, on one line',
-  reason_count: 'How many rules are failing',
-  sensor: 'Which sensor',
-  dew_margin_min: 'Dew risk margin setting',
-  device: 'Device name',
-  time: 'Local time',
-  date: 'Local date',
-  level: 'Alert level',
-  sqm: 'Sky quality, mag/arcsec²',
-  sqm_min: 'SQM safety minimum',
-  cloud: 'Cloud cover %',
-  cloud_max: 'Cloud cover safety limit %',
-  clear_below: '"Clear" threshold %',
-  cloudy_above: '"Clouded over" threshold %',
-  sky_temp: 'Sky temperature °C',
-  temp: 'Temperature °C',
-  humidity: 'Humidity %',
-  humidity_max: 'Humidity safety limit %',
-  dewpoint: 'Dew point °C',
-  dew_margin: 'Temperature minus dew point °C',
-  pressure: 'Pressure hPa',
-  rain_rate: 'Rain rate mm/h',
-  wind: 'Wind m/s',
-  gust: 'Gust m/s',
-  sun_alt: 'Sun altitude °',
-  silent_for: 'The "silent for" time, e.g. 2 min',
-  last_checked: 'When the imaging app last checked: a time, or "N min ago"',
-  client_id: 'The Alpaca ClientID the imaging app sent, if any',
+  event: t('settings.alerts.varEvent'),
+  reasons: t('settings.alerts.everyFailingRuleWithIts'),
+  reasons_inline: t('settings.alerts.theSameOnOneLine'),
+  reason_count: t('settings.alerts.howManyRulesAreFailing'),
+  sensor: t('settings.alerts.whichSensor'),
+  dew_margin_min: t('settings.alerts.dewRiskMarginSetting'),
+  device: t('settings.alerts.deviceName'),
+  time: t('settings.alerts.localTime'),
+  date: t('settings.alerts.localDate'),
+  level: t('settings.alerts.varLevel'),
+  sqm: t('settings.alerts.skyQualityMagArcsec'),
+  sqm_min: t('settings.alerts.sqmSafetyMinimum'),
+  cloud: t('settings.alerts.cloudCover'),
+  cloud_max: t('settings.alerts.cloudCoverSafetyLimit'),
+  clear_below: t('settings.alerts.clearThreshold'),
+  cloudy_above: t('settings.alerts.cloudedOverThreshold'),
+  sky_temp: t('settings.alerts.skyTemperatureC'),
+  temp: t('settings.alerts.temperatureC'),
+  humidity: t('settings.alerts.humidity'),
+  humidity_max: t('settings.alerts.humiditySafetyLimit'),
+  dewpoint: t('settings.alerts.dewPointC'),
+  dew_margin: t('settings.alerts.temperatureMinusDewPointC'),
+  pressure: t('settings.alerts.pressureHpa'),
+  rain_rate: t('settings.alerts.rainRateMmH'),
+  wind: t('settings.alerts.windMS'),
+  gust: t('settings.alerts.gustMS'),
+  sun_alt: t('settings.alerts.sunAltitude'),
+  silent_for: t('settings.alerts.theSilentForTimeE'),
+  last_checked: t('settings.alerts.whenTheImagingAppLast'),
+  client_id: t('settings.alerts.theAlpacaClientidTheImaging'),
 };
 // For the imaging-app events {device} is the Alpaca device, not the device name.
-const CLIENT_VAR_HELP: Record<string, string> = { device: '"safety monitor" or "weather device"' };
+const CLIENT_VAR_HELP: Record<string, string> = { device: t('settings.alerts.safetyMonitorOrWeatherDevice') };
 const CLIENT_EVENTS: AlertEventKey[] = ['client_lost', 'client_back', 'client_disconnected'];
 
 // On this tab the "Alerts are off" link (D-04) is shown once, by the Send
@@ -182,13 +188,13 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
     matches: (record: AlertRecord) => boolean,
     pick: (record: AlertRecord) => string | null,
   ) => {
-    setTestResult({ target, type: 'pending', text: 'Sending...' });
+    setTestResult({ target, type: 'pending', text: t('common.sending') });
     try {
       const before = (await fetchRecent())[0]?.id ?? 0;
       const response = await fetch(`/api/alerts/test?${query}`, { method: 'POST' });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setTestResult({ target, type: 'error', text: body.error ?? 'Test failed' });
+        setTestResult({ target, type: 'error', text: deviceError(body, t('settings.alerts.testFailed')) });
         return;
       }
       const deadline = Date.now() + 30000;
@@ -202,9 +208,9 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           return;
         }
       }
-      setTestResult({ target, type: 'error', text: 'No result from the device after 30 s.' });
+      setTestResult({ target, type: 'error', text: t('settings.alerts.noResultFromTheDevice') });
     } catch {
-      setTestResult({ target, type: 'error', text: 'Could not reach the device' });
+      setTestResult({ target, type: 'error', text: t('settings.alerts.couldNotReachTheDevice') });
     }
   };
 
@@ -212,8 +218,8 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
   const channelResult = (channel: AlertChannelName) => (record: AlertRecord) => {
     const result = record.channels[channel];
     if (!result || result.status === 'pending') return null;
-    if (result.status === 'sent') return 'Delivered.';
-    return `!${result.status === 'skipped' ? 'Skipped' : 'Failed'}: ${result.detail}`;
+    if (result.status === 'sent') return t('settings.alerts.delivered');
+    return `!${result.status === 'skipped' ? t('settings.alerts.skipped') : t('settings.alerts.failed')}: ${result.detail}`;
   };
 
   const allChannelsResult = (record: AlertRecord) => {
@@ -234,17 +240,17 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
       `&title=${encodeURIComponent(event.title ?? '')}&message=${encodeURIComponent(event.message ?? '')}`;
     if (channelCount === 0) {
       // Only paired phones to ring; nothing to follow.
-      setTestResult({ target: key, type: 'pending', text: 'Sending...' });
+      setTestResult({ target: key, type: 'pending', text: t('common.sending') });
       fetch(`/api/alerts/test?${query}`, { method: 'POST' })
         .then(async (response) => {
           const body = await response.json().catch(() => ({}));
           setTestResult(
             response.ok
-              ? { target: key, type: 'success', text: 'Ringing paired phones.' }
-              : { target: key, type: 'error', text: body.error ?? 'Test failed' },
+              ? { target: key, type: 'success', text: t('settings.alerts.ringingPairedPhones') }
+              : { target: key, type: 'error', text: deviceError(body, t('settings.alerts.testFailed')) },
           );
         })
-        .catch(() => setTestResult({ target: key, type: 'error', text: 'Could not reach the device' }));
+        .catch(() => setTestResult({ target: key, type: 'error', text: t('settings.alerts.couldNotReachTheDevice') }));
       return;
     }
     return runTest(key, query, (r) => r.event === key && r.title.startsWith('Test'), allChannelsResult);
@@ -267,9 +273,9 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         <ActionButton
           onClick={() => sendTest(channel)}
           disabled={dirty || testResult?.type === 'pending'}
-          title={dirty ? 'Save first' : undefined}
+          title={dirty ? t('settings.alerts.saveFirst') : undefined}
         >
-          Send test
+          {t('settings.alerts.sendTest')}
         </ActionButton>
         {resultNote(channel)}
       </div>
@@ -281,7 +287,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
   // Paused or sending is live device state, not a saved setting.
   const { schedule: shownSchedule, busy: scheduleBusy, pauseOrResume: sendPauseOrResume } = useAlertSchedule(status?.alerts);
   const pauseOrResume = async (resume: boolean) => {
-    if (!(await sendPauseOrResume(resume))) showToast({ message: 'Could not reach the device', tone: 'bad' });
+    if (!(await sendPauseOrResume(resume))) showToast({ message: t('settings.alerts.couldNotReachTheDevice'), tone: 'bad' });
   };
   const sendMode: AlertSendMode = alerts.sendMode ?? (alerts.armWithAlpaca ? 'whileConnected' : 'any');
   const [editing, setEditing] = useState<AlertEventKey | null>(null);
@@ -311,10 +317,13 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
     };
     return (
       <div class="template-editor" data-template={key}>
-        <Field label="Title" error={(event.title ?? '').length > 80 ? 'Up to 80 characters' : undefined}>
+        <Field
+          label={t('settings.alerts.title')}
+          error={(event.title ?? '').length > 80 ? t('settings.alerts.upTo80Characters') : undefined}
+        >
           <input
             class="input"
-            aria-label="Alert title"
+            aria-label={t('settings.alerts.alertTitle')}
             value={event.title ?? ''}
             placeholder={defaultText(key, alerts.skyNightOnly).title}
             maxLength={80}
@@ -324,10 +333,13 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             onInput={(e) => set(['events', key, 'title'], (e.target as HTMLInputElement).value)}
           />
         </Field>
-        <Field label="Message" error={(event.message ?? '').length > 240 ? 'Up to 240 characters' : undefined}>
+        <Field
+          label={t('settings.alerts.message')}
+          error={(event.message ?? '').length > 240 ? t('settings.alerts.upTo240Characters') : undefined}
+        >
           <textarea
             class="input"
-            aria-label="Alert message"
+            aria-label={t('settings.alerts.alertMessage')}
             value={event.message ?? ''}
             placeholder={defaultText(key, alerts.skyNightOnly).message}
             maxLength={240}
@@ -337,7 +349,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             onInput={(e) => set(['events', key, 'message'], (e.target as HTMLTextAreaElement).value)}
           />
         </Field>
-        <div class="var-chips" aria-label="Insert a value">
+        <div class="var-chips" aria-label={t('settings.alerts.insertAValue')}>
           {[...(EVENT_VARS[key] ?? []), ...COMMON_VARS].map((name) => (
             <button
               key={name}
@@ -361,7 +373,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
                 ])
               }
             >
-              Use the default wording
+              {t('settings.alerts.useTheDefaultWording')}
             </ActionButton>
           </div>
         )}
@@ -397,7 +409,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
               <SelectInput
                 value={event.sound}
                 ariaLabel={`${label}: sound`}
-                options={soundOptions(event.sound, 'Default')}
+                options={soundOptions(event.sound, t('settings.alerts.default'))}
                 disabled={off}
                 onChange={(v) => set(['events', key, 'sound'], v)}
               />
@@ -407,12 +419,22 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           <ActionButton
             onClick={() => sendEventTest(key)}
             disabled={off || event.level === 0 || entry.state === 'inactive' || testResult?.type === 'pending'}
-            title={event.level === 0 ? 'Off' : entry.state === 'inactive' ? entry.text : `Send a sample "${label}" alert at this level`}
+            title={
+              event.level === 0
+                ? t('settings.alerts.off')
+                : entry.state === 'inactive'
+                  ? entry.text
+                  : t('settings.alerts.sendASampleLabelAlert', { label })
+            }
           >
-            Test
+            {t('settings.alerts.test')}
           </ActionButton>
-          <ActionButton onClick={() => setEditing(editing === key ? null : key)} disabled={off} title="Write your own title and message">
-            {event.title || event.message ? 'Text •' : 'Text'}
+          <ActionButton
+            onClick={() => setEditing(editing === key ? null : key)}
+            disabled={off}
+            title={t('settings.alerts.writeYourOwnTitleAnd')}
+          >
+            {event.title || event.message ? t('settings.alerts.text') : t('settings.alerts.text2')}
           </ActionButton>
         </div>
         {resultNote(key)}
@@ -444,27 +466,27 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
     <>
       <SettingsCard
         id="alerts"
-        title="Alerts"
-        hint="Push notifications sent by the device itself."
+        title={t('settings.alerts.alerts')}
+        hint={t('settings.alerts.pushNotificationsSentByThe')}
         badge={
           off ? undefined : (
             <StatusBadge
               tone={channelCount === 0 ? 'warn' : 'ok'}
-              label={channelCount === 0 ? 'No channels' : `${channelCount} channel${channelCount === 1 ? '' : 's'}`}
+              label={channelCount === 0 ? t('settings.alerts.noChannels') : t('settings.alerts.channelCount', { count: channelCount })}
             />
           )
         }
       >
-        <Toggle label="Send alerts" checked={alerts.enabled} onChange={(v) => set(['enabled'], v)} />
-        {!off && channelsOn === 0 && <Requires tone="warn">Turn on a channel below.</Requires>}
+        <Toggle label={t('settings.alerts.sendAlerts')} checked={alerts.enabled} onChange={(v) => set(['enabled'], v)} />
+        {!off && channelsOn === 0 && <Requires tone="warn">{t('settings.alerts.turnOnAChannelBelow')}</Requires>}
         {!off && channelsOn > 0 && channelCount === 0 && (
-          <Requires tone="warn">Alerts reach nowhere: no channel can deliver right now.</Requires>
+          <Requires tone="warn">{t('settings.alerts.alertsReachNowhereNoChannel')}</Requires>
         )}
         {!off && (
-          <Group title="When to send">
+          <Group title={t('settings.alerts.whenToSend')}>
             <SelectInput
               value={sendMode}
-              ariaLabel="When to send"
+              ariaLabel={t('settings.alerts.whenToSend')}
               options={SEND_MODE_OPTIONS.map(({ value, label }) => ({ value, label }))}
               onChange={(v) =>
                 updateMany([
@@ -485,7 +507,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
                 onClick={() => pauseOrResume(!(shownSchedule?.armed ?? true))}
                 disabled={shownSchedule === null || scheduleBusy}
               >
-                {shownSchedule?.armed === false ? 'Resume alerts' : 'Pause alerts'}
+                {shownSchedule?.armed === false ? t('settings.alerts.resumeAlerts') : t('settings.alerts.pauseAlerts')}
               </ActionButton>
               <InfoTip text={PAUSE_HINT} />
             </div>
@@ -496,108 +518,108 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         )}
       </SettingsCard>
 
-      <SettingsCard title="Notify me when" hint={LEVEL_HINT}>
+      <SettingsCard title={t('settings.alerts.notifyMeWhen')} hint={LEVEL_HINT}>
         <fieldset class="card-body" disabled={off}>
           <div class={`event-table${pushoverOn ? ' with-sound' : ''}`}>
             <div class="event-row event-table-head" aria-hidden="true">
               <span />
-              <span>Level</span>
-              {pushoverOn && <span>Pushover sound</span>}
+              <span>{t('settings.alerts.level')}</span>
+              {pushoverOn && <span>{t('settings.alerts.pushoverSound')}</span>}
               <span />
               <span />
             </div>
-            {eventRow('unsafe', 'It turns unsafe', { hint: 'Lists the reasons.' })}
-            {eventRow('safe', "It's safe again")}
-            {eventRow('rain_started', 'Rain starts')}
-            {eventRow('rain_stopped', 'Rain stops')}
-            {eventRow('sensor_fault', 'A sensor fails', { hint: 'Includes the RG-15 lens fault.' })}
-            {eventRow('sensor_recovered', 'A sensor recovers')}
-            {eventRow('dew_risk', 'Dew risk within', {
+            {eventRow('unsafe', t('settings.alerts.itTurnsUnsafe'), { hint: t('settings.alerts.listsTheReasons') })}
+            {eventRow('safe', t('settings.alerts.itSSafeAgain'))}
+            {eventRow('rain_started', t('settings.alerts.rainStarts'))}
+            {eventRow('rain_stopped', t('settings.alerts.rainStops'))}
+            {eventRow('sensor_fault', t('settings.alerts.aSensorFails'), { hint: t('settings.alerts.includesTheRg15Lens') })}
+            {eventRow('sensor_recovered', t('settings.alerts.aSensorRecovers'))}
+            {eventRow('dew_risk', t('settings.alerts.dewRiskWithin'), {
               threshold: (
                 <NumberInput
                   min={0}
                   max={10}
                   step={0.5}
                   unit="°C"
-                  ariaLabel="Dew risk margin"
+                  ariaLabel={t('settings.alerts.dewRiskMargin')}
                   value={alerts.dewRiskMarginC}
                   disabled={off}
                   onChange={(v) => set(['dewRiskMarginC'], v)}
                 />
               ),
-              hint: 'Temperature within this margin of the dew point.',
+              hint: t('settings.alerts.temperatureWithinThisMarginOf'),
             })}
-            {eventRow('clear_sky', 'Skies clear up below', {
+            {eventRow('clear_sky', t('settings.alerts.skiesClearUpBelow'), {
               threshold: (
                 <NumberInput
                   min={0}
                   max={100}
                   step={1}
                   unit="%"
-                  ariaLabel="Clear below"
+                  ariaLabel={t('settings.alerts.clearBelow')}
                   value={alerts.clearSkyCloudPercent}
                   disabled={off}
                   onChange={(v) => set(['clearSkyCloudPercent'], v)}
                 />
               ),
-              hint: 'Cloud cover.',
+              hint: t('settings.alerts.cloudCover2'),
             })}
-            {eventRow('clouded_over', 'Skies cloud over above', {
+            {eventRow('clouded_over', t('settings.alerts.skiesCloudOverAbove'), {
               threshold: (
                 <NumberInput
                   min={0}
                   max={100}
                   step={1}
                   unit="%"
-                  ariaLabel="Clouded over above"
+                  ariaLabel={t('settings.alerts.cloudedOverAbove')}
                   value={alerts.cloudedOverCloudPercent}
                   error={err('cloudedOverCloudPercent')}
                   disabled={off}
                   onChange={(v) => set(['cloudedOverCloudPercent'], v)}
                 />
               ),
-              hint: 'Cloud cover.',
+              hint: t('settings.alerts.cloudCover2'),
             })}
-            {eventRow('client_lost', 'The imaging app stops checking', {
-              hint: 'No request reached the safety monitor or weather device for the time below. A crash, a sleeping PC or a network drop.',
+            {eventRow('client_lost', t('settings.alerts.theImagingAppStopsChecking'), {
+              hint: t('settings.alerts.noRequestReachedTheSafety'),
             })}
-            {eventRow('client_back', 'The imaging app is back', {
-              hint: 'It started checking again after going quiet.',
+            {eventRow('client_back', t('settings.alerts.theImagingAppIsBack'), {
+              hint: t('settings.alerts.itStartedCheckingAgainAfter'),
             })}
-            {eventRow('client_disconnected', 'The imaging app disconnects', {
-              hint: 'It disconnected normally, for example at the end of a session.',
+            {eventRow('client_disconnected', t('settings.alerts.theImagingAppDisconnects'), {
+              hint: t('settings.alerts.itDisconnectedNormallyForExample'),
             })}
           </div>
           {err('cloudedOverCloudPercent') && <Note tone="bad">{err('cloudedOverCloudPercent')}</Note>}
-          {wakePhones.state === 'inactive' && <DepNote entry={wakePhones} onFix={fix} prefix="Phones won't ring" />}
+          {wakePhones.state === 'inactive' && <DepNote entry={wakePhones} onFix={fix} prefix={t('settings.alerts.phonesWontRing')} />}
           <div class="form-grid">
             <Field
-              label="Silent for - safety monitor"
+              label={t('settings.alerts.silentForSafetyMonitor')}
               error={err('clientSilentSafetySeconds')}
-              hint="How long without a request before you're told. Imaging apps usually check the safety monitor every few seconds."
+              hint={t('settings.alerts.howLongWithoutARequest')}
             >
               <NumberInput
                 min={0.5}
                 max={60}
                 step={0.5}
                 unit="min"
-                ariaLabel="Silent for - safety monitor"
+                ariaLabel={t('settings.alerts.silentForSafetyMonitor')}
                 value={secondsToMinutes(alerts.clientSilentSafetySeconds ?? 120)}
                 disabled={off}
                 onChange={(v) => set(['clientSilentSafetySeconds'], minutesToSeconds(v))}
               />
             </Field>
             <Field
-              label="Silent for - weather device"
+              label={t('settings.alerts.silentForWeatherDevice')}
               error={err('clientSilentWeatherSeconds')}
-              hint="Imaging apps check weather less often; keep this longer than their weather interval."
+              hint={t('settings.alerts.imagingAppsCheckWeatherLess')}
             >
               <NumberInput
                 min={0.5}
                 max={60}
                 step={0.5}
                 unit="min"
-                ariaLabel="Silent for - weather device"
+                ariaLabel={t('settings.alerts.silentForWeatherDevice')}
                 value={secondsToMinutes(alerts.clientSilentWeatherSeconds ?? 600)}
                 disabled={off}
                 onChange={(v) => set(['clientSilentWeatherSeconds'], minutesToSeconds(v))}
@@ -609,30 +631,30 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
               <DepToggle
                 entry={dep('alerts.skyNightOnly')}
                 onFix={fix}
-                label="Sky alerts only when it's dark"
+                label={t('settings.alerts.skyAlertsOnlyWhenIt')}
                 checked={alerts.skyNightOnly}
                 onChange={(v) => set(['skyNightOnly'], v)}
                 disabled={off}
-                hint="From the sun's position at your location. If it's already clear at nightfall, you get one 'Dark and clear' alert."
+                hint={t('settings.alerts.fromTheSunSPosition')}
               />
               <DepToggle
                 entry={dep('alerts.safetyNightOnly')}
                 onFix={fix}
-                label="Safety alerts only when it's dark"
+                label={t('settings.alerts.safetyAlertsOnlyWhenIt')}
                 checked={alerts.safetyNightOnly}
                 onChange={(v) => set(['safetyNightOnly'], v)}
                 disabled={off}
-                hint="So dawn brightening the sky past the SQM limit doesn't wake you. At nightfall you hear about it if safe/unsafe changed since the last alert. Rain and sensor alerts still come at any time."
+                hint={t('settings.alerts.soDawnBrighteningTheSky')}
               />
             </div>
             <SelectInput
               value={String(alerts.nightSunAltitudeDeg)}
-              ariaLabel="Dark means"
+              ariaLabel={t('settings.alerts.darkMeans')}
               disabled={off || (!alerts.skyNightOnly && !alerts.safetyNightOnly)}
               options={[
-                { value: '-0.833', label: 'After sunset' },
-                { value: '-12', label: 'Nautical dark (-12°)' },
-                { value: '-18', label: 'Astronomical dark (-18°)' },
+                { value: '-0.833', label: t('settings.alerts.afterSunset') },
+                { value: '-12', label: t('settings.alerts.nauticalDark12') },
+                { value: '-18', label: t('settings.alerts.astronomicalDark18') },
               ]}
               onChange={(v) => set(['nightSunAltitudeDeg'], parseFloat(v))}
             />
@@ -640,9 +662,9 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           {darknessNote && <Note>{darknessNote}</Note>}
           <div class="form-grid">
             <Field
-              label="Cooldown"
+              label={t('settings.alerts.cooldown')}
               error={err('cooldownSeconds')}
-              hint="Minimum gap between alerts of the same kind. A change held back is sent when it ends."
+              hint={t('settings.alerts.minimumGapBetweenAlertsOf')}
             >
               <NumberInput
                 integer
@@ -658,10 +680,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         </fieldset>
       </SettingsCard>
 
-      <SettingsCard
-        title="Channels"
-        hint="Tests use the saved settings and work while alerts are off. Sent alerts appear under the bell in the header."
-      >
+      <SettingsCard title={t('settings.alerts.channels')} hint={t('settings.alerts.testsUseTheSavedSettings')}>
         <Group>
           <DepToggle
             entry={dep('alerts.pushover.enabled')}
@@ -673,11 +692,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           {alerts.pushover.enabled && (
             <>
               <div class="form-grid">
-                <Field
-                  label="User key"
-                  error={err('pushover.userKey')}
-                  hint="Your user key, top of the Pushover dashboard - not the app token or your email."
-                >
+                <Field label={t('settings.alerts.userKey')} error={err('pushover.userKey')} hint={t('settings.alerts.yourUserKeyTopOf')}>
                   <TextInput
                     dataField="alerts.pushover.userKey"
                     type="password"
@@ -685,13 +700,17 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
                     onInput={(v) => set(['pushover', 'userKey'], v)}
                   />
                 </Field>
-                <Field label="App token" error={err('pushover.appToken')} hint="Create an application at pushover.net.">
+                <Field
+                  label={t('settings.alerts.appToken')}
+                  error={err('pushover.appToken')}
+                  hint={t('settings.alerts.createAnApplicationAtPushover')}
+                >
                   <TextInput type="password" value={alerts.pushover.appToken} onInput={(v) => set(['pushover', 'appToken'], v)} />
                 </Field>
-                <Field label="Default sound" hint="Used where an event's sound is Default.">
+                <Field label={t('settings.alerts.defaultSound')} hint={t('settings.alerts.usedWhereAnEventS')}>
                   <SelectInput
                     value={alerts.pushover.sound}
-                    options={soundOptions(alerts.pushover.sound, 'Pushover default')}
+                    options={soundOptions(alerts.pushover.sound, t('settings.alerts.pushoverDefault'))}
                     onChange={(v) => set(['pushover', 'sound'], v)}
                   />
                 </Field>
@@ -712,14 +731,19 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           {alerts.ntfy.enabled && (
             <>
               <div class="form-grid">
-                <Field label="Server" error={err('ntfy.server')}>
+                <Field label={t('settings.alerts.server')} error={err('ntfy.server')}>
                   <TextInput type="url" value={alerts.ntfy.server} onInput={(v) => set(['ntfy', 'server'], v)} />
                 </Field>
-                <Field label="Topic" error={err('ntfy.topic')} hint="ntfy.sh topics are public - use a long random name.">
+                <Field label={t('settings.alerts.topic')} error={err('ntfy.topic')} hint={t('settings.alerts.ntfyTopicsPublic')}>
                   <TextInput dataField="alerts.ntfy.topic" value={alerts.ntfy.topic} onInput={(v) => set(['ntfy', 'topic'], v)} />
                 </Field>
-                <Field label="Token">
-                  <TextInput type="password" value={alerts.ntfy.token} placeholder="Optional" onInput={(v) => set(['ntfy', 'token'], v)} />
+                <Field label={t('settings.alerts.token')}>
+                  <TextInput
+                    type="password"
+                    value={alerts.ntfy.token}
+                    placeholder={t('settings.alerts.optional')}
+                    onInput={(v) => set(['ntfy', 'token'], v)}
+                  />
                 </Field>
               </div>
               {testButton('ntfy')}
@@ -731,10 +755,10 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           <DepToggle
             entry={dep('alerts.webhook.enabled')}
             onFix={fix}
-            label="Webhook"
+            label={t('settings.alerts.webhook')}
             checked={alerts.webhook.enabled}
             onChange={(v) => set(['webhook', 'enabled'], v)}
-            hint="POSTs JSON: device, event, title, message, level, timestamp."
+            hint={t('settings.alerts.postsJsonDeviceEventTitle')}
           />
           {alerts.webhook.enabled && (
             <>
@@ -748,21 +772,21 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
                     onInput={(v) => set(['webhook', 'url'], v)}
                   />
                 </Field>
-                <Field label="Authorization header">
+                <Field label={t('settings.alerts.authorizationHeader')}>
                   <TextInput
                     type="password"
                     value={alerts.webhook.authHeader}
-                    placeholder="Optional"
+                    placeholder={t('settings.alerts.optional')}
                     onInput={(v) => set(['webhook', 'authHeader'], v)}
                   />
                 </Field>
               </div>
               {alerts.webhook.url.startsWith('https://') && (
                 <Toggle
-                  label="Skip certificate checks"
+                  label={t('settings.alerts.skipCertificateChecks')}
                   checked={alerts.webhook.insecureTls}
                   onChange={(v) => set(['webhook', 'insecureTls'], v)}
-                  hint="Only for a self-signed server on your own network."
+                  hint={t('settings.alerts.onlyForASelfSigned')}
                 />
               )}
               {testButton('webhook')}
@@ -777,7 +801,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             label="MQTT"
             checked={alerts.mqtt.enabled}
             onChange={(v) => set(['mqtt', 'enabled'], v)}
-            hint={`Publishes each alert to ${config.mqtt.topic}/alerts. The safe flag is set under Network → MQTT → Publish.`}
+            hint={t('settings.alerts.publishesEachAlertToTopic', { topic: config.mqtt.topic })}
           />
           {testButton('mqtt')}
         </Group>

@@ -4,6 +4,9 @@ import type { SystemStatus } from '../types';
 import { useWifiScan } from '../hooks/useWifiScan';
 import { Button, Card, Note } from './ui';
 import { Field, TextInput } from './settings/controls';
+import { t } from '../i18n';
+import { deviceError } from '../i18n/deviceMessage';
+import { tRich } from '../i18n/rich';
 
 // Where the "SQM-Setup" hotspot's captive portal lands: pick a network, enter
 // its password, connect. The device saves it and restarts onto that network.
@@ -43,11 +46,11 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setPhase({ kind: 'failed', ssid, text: data.error || 'The device refused the request' });
+        setPhase({ kind: 'failed', ssid, text: deviceError(data, t('wifiSetup.theDeviceRefusedTheRequest')) });
         return;
       }
     } catch {
-      setPhase({ kind: 'failed', ssid, text: 'Could not reach the device' });
+      setPhase({ kind: 'failed', ssid, text: t('wifiSetup.couldNotReachTheDevice') });
       return;
     }
 
@@ -73,23 +76,20 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
       // Not pending any more (or never seen pending after a few polls) and not
       // on the chosen network: the attempt failed.
       if (sawPending || poll >= 3) {
-        setPhase({ kind: 'failed', ssid, text: `Couldn't join ${ssid}. Check the password and that the network is in range.` });
+        setPhase({ kind: 'failed', ssid, text: t('wifiSetup.couldnTJoinSsidCheck', { ssid }) });
         return;
       }
     }
-    setPhase({ kind: 'failed', ssid, text: 'No answer from the device. If it joined the network, it will restart there.' });
+    setPhase({ kind: 'failed', ssid, text: t('wifiSetup.noAnswerFromTheDevice') });
   };
 
   if (phase.kind === 'connected') {
     const local = phase.mdns !== false && phase.hostname ? `http://${phase.hostname}.local` : null;
     return (
       <div class="panel-page compact-page page-enter">
-        <Card title="Connected" icon="wifi" tone="green">
+        <Card title={t('wifiSetup.connected')} icon="wifi" tone="green">
           <div class="card-body">
-            <p>
-              SQMeter joined <strong>{phase.ssid}</strong> and is restarting. Reconnect this phone or computer to{' '}
-              <strong>{phase.ssid}</strong>, then open:
-            </p>
+            <p>{tRich('wifiSetup.joinedReconnect', { ssid: <strong>{phase.ssid}</strong> })}</p>
             <ul class="wifi-addresses">
               {local && (
                 <li>
@@ -97,10 +97,10 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
                 </li>
               )}
               <li>
-                <a href={`http://${phase.ip}`}>http://{phase.ip}</a>
+                <a href={`http://${phase.ip}`}>{`http://${phase.ip}`}</a>
               </li>
             </ul>
-            <Note>The SQM-Setup hotspot turns off after the restart.</Note>
+            <Note>{t('wifiSetup.theSqmSetupHotspotTurns')}</Note>
           </div>
         </Card>
       </div>
@@ -111,22 +111,22 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
   return (
     <div class="panel-page compact-page page-enter">
       <div>
-        <h2 class="page-title">WiFi setup</h2>
-        <p class="muted">Choose the network SQMeter should join.</p>
+        <h2 class="page-title">{t('wifiSetup.wifiSetup')}</h2>
+        <p class="muted">{t('wifiSetup.chooseTheNetworkSqmeterShould')}</p>
       </div>
       <Card
-        title="Networks"
+        title={t('wifiSetup.networks')}
         icon="wifi"
         actions={
-          <Button small onClick={() => void scan()} busy={scanning} busyLabel="Scanning..." disabled={connecting}>
-            Scan again
+          <Button small onClick={() => void scan()} busy={scanning} busyLabel={t('common.scanning')} disabled={connecting}>
+            {t('wifiSetup.scanAgain')}
           </Button>
         }
       >
         <div class="card-body">
           {scanError && <Note tone="bad">{scanError}</Note>}
-          {!scanning && networks.length === 0 && !scanError && <Note>No networks found.</Note>}
-          <div class="wifi-list" role="radiogroup" aria-label="WiFi networks">
+          {!scanning && networks.length === 0 && !scanError && <Note>{t('wifiSetup.noNetworksFound')}</Note>}
+          <div class="wifi-list" role="radiogroup" aria-label={t('wifiSetup.wifiNetworks')}>
             {networks.map((n) => (
               <button
                 key={n.ssid}
@@ -152,19 +152,19 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
               onClick={() => setSelected(OTHER)}
               disabled={connecting}
             >
-              <span>Other network...</span>
+              <span>{t('wifiSetup.otherNetwork')}</span>
             </button>
           </div>
 
           {selected !== null && (
             <div class="form-grid">
               {selected === OTHER && (
-                <Field label="Network name">
+                <Field label={t('wifiSetup.networkName')}>
                   <TextInput dataField="setup.ssid" value={otherSsid} onInput={setOtherSsid} />
                 </Field>
               )}
               {needsPassword && (
-                <Field label="Password">
+                <Field label={t('wifiSetup.password')}>
                   <TextInput dataField="setup.password" type="password" value={password} onInput={setPassword} />
                 </Field>
               )}
@@ -173,8 +173,8 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
 
           {phase.kind === 'failed' && <Note tone="bad">{phase.text}</Note>}
           <div class="btn-row">
-            <Button variant="primary" onClick={() => void connect()} disabled={!ssid} busy={connecting} busyLabel="Connecting...">
-              Connect
+            <Button variant="primary" onClick={() => void connect()} disabled={!ssid} busy={connecting} busyLabel={t('common.connecting')}>
+              {t('wifiSetup.connect')}
             </Button>
           </div>
         </div>

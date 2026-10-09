@@ -297,6 +297,9 @@ namespace SQM
         WindConfig wind;
         LocationConfig location;
         std::string deviceName;
+        // "en" or a supported code (specs/023-i18n). A fixed array, not
+        // std::string: Config is copied in many places and this keeps each copy cheap.
+        char language[12] = "en";
         TimeSource primaryTimeSource;   // Primary time source
         TimeSource secondaryTimeSource; // Fallback time source
 

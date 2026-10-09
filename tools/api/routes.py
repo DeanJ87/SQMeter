@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every HTTP route the device serves is declared, with its auth, and documented.
 
-Reads the route registrations in src/WebServer.cpp (``server.on(...)`` and
+Reads the route registrations in src/WebServer.cpp and src/LanguagePack.cpp (``server.on(...)`` and
 ``new AsyncCallbackJsonWebHandler(...)``), works out whether each one calls
 ``requireAuth`` (directly, or in a handler it calls), and compares that with
 tools/api/routes.json. Fails when a route is missing from the registry, the
@@ -17,13 +17,18 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "src" / "WebServer.cpp"
+# Files that register routes: WebServer.cpp, and the modules it hands the server to.
+SOURCES = [ROOT / "src" / "WebServer.cpp", ROOT / "src" / "LanguagePack.cpp"]
 REGISTRY = ROOT / "tools" / "api" / "routes.json"
 REST_DOCS = ROOT / "docs" / "api" / "rest.md"
 
 REGISTRATION = re.compile(r"server\.on\(|new AsyncCallbackJsonWebHandler\(")
 STRING = re.compile(r'"((?:[^"\\]|\\.)*)"')
 CALL = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
+
+
+def read_sources():
+    return "\n".join(path.read_text() for path in SOURCES)
 
 
 def after_literal(text, i):
@@ -53,9 +58,9 @@ def matching_close(text, open_index, open_char="(", close_char=")"):
 
 
 def definitions(text):
-    """Bodies of WebServer member functions and local `auto name = [...]` lambdas."""
+    """Bodies of WebServer/LanguagePack member functions and local `auto name = [...]` lambdas."""
     bodies = {}
-    for m in re.finditer(r"WebServer::(\w+)\([^;{]*\)\s*(?:const\s*)?\{", text):
+    for m in re.finditer(r"(?:WebServer|LanguagePack)::(\w+)\([^;{]*\)\s*(?:const\s*)?\{", text):
         start = m.end() - 1
         bodies[m.group(1)] = text[start : matching_close(text, start, "{", "}") + 1]
     for m in re.finditer(r"auto\s+(\w+)\s*=\s*\[", text):
@@ -105,7 +110,7 @@ def key(route):
 
 
 def check(source_text=None, registry=None, docs=None):
-    source_text = SOURCE.read_text() if source_text is None else source_text
+    source_text = read_sources() if source_text is None else source_text
     registry = json.loads(REGISTRY.read_text()) if registry is None else registry
     docs = REST_DOCS.read_text() if docs is None else docs
     found = {key(r): r for r in discover(source_text)}
@@ -133,7 +138,7 @@ def check(source_text=None, registry=None, docs=None):
 
 def main(argv):
     if "--list" in argv:
-        print(json.dumps(discover(SOURCE.read_text()), indent=2))
+        print(json.dumps(discover(read_sources()), indent=2))
         return 0
     problems = check()
     for p in problems:
@@ -141,7 +146,7 @@ def main(argv):
     if problems:
         print(f"{len(problems)} problem(s). Every route the device serves is declared in tools/api/routes.json.")
         return 1
-    print(f"OK: {len(discover(SOURCE.read_text()))} routes declared, auth matches, /api/ routes documented")
+    print(f"OK: {len(discover(read_sources()))} routes declared, auth matches, /api/ routes documented")
     return 0
 
 

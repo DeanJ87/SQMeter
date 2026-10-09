@@ -19,7 +19,7 @@ fi
 SOURCES=(tools/demo-core/bridge.cpp
   lib/DeviceCore/src/*.cpp lib/ConfigModel/src/*.cpp lib/SkyLogic/src/*.cpp lib/RainLogic/src/*.cpp
   lib/AlertLogic/src/*.cpp lib/AlpacaLogic/src/*.cpp lib/Readings/src/*.cpp lib/SafetyHistoryLogic/src/*.cpp
-  lib/BleLogic/src/*.cpp lib/SettingsDeps/src/*.cpp lib/NetAddress/src/*.cpp)
+  lib/BleLogic/src/*.cpp lib/SettingsDeps/src/*.cpp lib/LanguageLogic/src/*.cpp lib/NetAddress/src/*.cpp)
 INCLUDES=()
 for d in lib/*/include; do INCLUDES+=("-I$d"); done
 

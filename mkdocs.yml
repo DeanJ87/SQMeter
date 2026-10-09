@@ -87,6 +87,7 @@ nav:
     - ASCOM Alpaca: user-guide/alpaca.md
     - Alerts: user-guide/alerts.md
     - Bluetooth (BLE): user-guide/ble.md
+    - Languages: user-guide/languages.md
   - Hardware:
     - Overview: hardware/overview.md
     - RG-15 Rain Sensor: hardware/rg15.md
@@ -107,6 +108,7 @@ nav:
     - Contributing: development/contributing.md
     - Coding Standards: development/coding-standards.md
     - Accessibility: development/accessibility.md
+    - Translations: development/translations.md
   - Reference:
     - Sky Quality Calculations: reference/sky-quality.md
     - Settings Dependencies: reference/settings-dependencies.md

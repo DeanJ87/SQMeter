@@ -1,22 +1,24 @@
 import { z } from 'zod';
-import { NTP_IPV6_TEXT, isIpv6Literal, parseHost, parseHttpUrl } from '../lib/netAddress';
+import { t } from '../i18n';
+import { alertsConfigSchema } from './alertsSchema';
+import { isIpv6Literal, ntpIpv6Text, parseHost } from '../lib/netAddress';
 
 // Valid ESP32 GPIO pins
 const validGPIOs = [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39];
 
 export const wifiConfigSchema = z.object({
-  ssid: z.string().min(1, 'WiFi SSID is required'),
+  ssid: z.string().min(1, t('validation.configSchema.wifiSsidIsRequired')),
   password: z.string(),
   hostname: z
     .string()
-    .min(1, 'Hostname is required')
-    .max(32, 'Hostname can be at most 32 characters')
-    .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/, 'Use letters, numbers and hyphens (not at either end)'),
+    .min(1, t('validation.configSchema.hostnameIsRequired'))
+    .max(32, t('validation.configSchema.hostnameCanBeAtMost'))
+    .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/, t('validation.configSchema.useLettersNumbersAndHyphens')),
   mdns: z.boolean().optional(),
   ipv6: z.boolean().optional(),
   autoReconnect: z.boolean(),
-  reconnectDelayMs: z.number().int().positive().max(86400000, 'Reconnect delay can be at most 24 hours'),
-  maxReconnectDelayMs: z.number().int().positive().max(86400000, 'Reconnect delay can be at most 24 hours'),
+  reconnectDelayMs: z.number().int().positive().max(86400000, t('validation.configSchema.reconnectDelayCanBeAtMost24')),
+  maxReconnectDelayMs: z.number().int().positive().max(86400000, t('validation.configSchema.reconnectDelayCanBeAtMost24')),
 });
 
 const MQTT_TOPIC = /^[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*$/;
@@ -25,15 +27,15 @@ export const mqttConfigSchema = z
   .object({
     enabled: z.boolean(),
     broker: z.string(),
-    port: z.number().int().min(1, 'Port must be at least 1').max(65535, 'Port must be at most 65535'),
+    port: z.number().int().min(1, t('validation.configSchema.portMustBeAtLeast')).max(65535, t('validation.configSchema.portMustBeAtMost')),
     topic: z.string(),
     username: z.string(),
     password: z.string(),
     publishIntervalMs: z
       .number()
       .int()
-      .min(1000, 'Publish interval must be at least 1 second')
-      .max(86400000, 'Publish interval can be at most 24 hours'),
+      .min(1000, t('validation.configSchema.publishIntervalMustBeAt'))
+      .max(86400000, t('validation.configSchema.publishIntervalCanBeAt')),
     publish: z
       .object({
         sky: z.boolean(),
@@ -50,7 +52,7 @@ export const mqttConfigSchema = z
   })
   // D-33 (a constraint): the device's own message.
   .refine((data) => !data.enabled || data.broker.trim().length > 0, {
-    message: 'MQTT broker and topic are required when MQTT is enabled',
+    message: t('validation.configSchema.mqttBrokerAndTopicAre'),
     path: ['broker'],
   })
   // Host forms, IPv6 included - the device's rules (lib/NetAddress, spec 015).
@@ -60,16 +62,16 @@ export const mqttConfigSchema = z
     if (host.error) ctx.addIssue({ code: 'custom', path: ['broker'], message: host.error });
   })
   .refine((data) => !data.enabled || data.topic.trim().length > 0, {
-    message: 'MQTT broker and topic are required when MQTT is enabled',
+    message: t('validation.configSchema.mqttBrokerAndTopicAre'),
     path: ['topic'],
   })
   // Same rule as the device: letters, digits, _ - and / between levels.
   .refine((data) => !data.enabled || MQTT_TOPIC.test(data.topic), {
-    message: 'Use letters, numbers, _ and -, with / between levels (not at either end)',
+    message: t('validation.configSchema.useLettersNumbersAndWith'),
     path: ['topic'],
   })
   .refine((data) => !data.homeAssistant?.enabled || MQTT_TOPIC.test(data.homeAssistant.discoveryPrefix), {
-    message: 'Use letters, numbers, _ and -, with / between levels (not at either end)',
+    message: t('validation.configSchema.useLettersNumbersAndWith'),
     path: ['homeAssistant', 'discoveryPrefix'],
   });
 
@@ -88,7 +90,7 @@ export const authConfigSchema = z
   })
   // D-34 (a constraint): the device's own rule and message.
   .refine((data) => !data.enabled || data.password.length > 0, {
-    message: 'HTTP auth password is required when auth is enabled',
+    message: t('validation.configSchema.httpAuthPasswordIsRequired'),
     path: ['password'],
   });
 
@@ -96,15 +98,15 @@ export const ntpConfigSchema = z.object({
   enabled: z.boolean(),
   server1: z
     .string()
-    .min(1, 'Primary NTP server is required')
-    .refine((v) => !isIpv6Literal(v), NTP_IPV6_TEXT),
-  server2: z.string().refine((v) => !isIpv6Literal(v), NTP_IPV6_TEXT),
-  timezone: z.string().min(1, 'Timezone is required'),
+    .min(1, t('validation.configSchema.primaryNtpServerIsRequired'))
+    .refine((v) => !isIpv6Literal(v), ntpIpv6Text()),
+  server2: z.string().refine((v) => !isIpv6Literal(v), ntpIpv6Text()),
+  timezone: z.string().min(1, t('validation.configSchema.timezoneIsRequired')),
   syncIntervalMs: z
     .number()
     .int()
-    .min(600000, 'Sync interval must be at least 10 minutes')
-    .max(86400000, 'Sync interval can be at most 24 hours'),
+    .min(600000, t('validation.configSchema.syncIntervalMustBeAt'))
+    .max(86400000, t('validation.configSchema.syncIntervalCanBeAt')),
 });
 
 export const gpsConfigSchema = z
@@ -114,45 +116,53 @@ export const gpsConfigSchema = z
       .number()
       .int()
       .refine((val) => validGPIOs.includes(val), {
-        message: `RX pin must be a valid GPIO: ${validGPIOs.join(', ')}`,
+        message: t('validation.configSchema.rxPinMustBeA', { join: validGPIOs.join(', ') }),
       }),
     txPin: z
       .number()
       .int()
       .refine((val) => validGPIOs.includes(val), {
-        message: `TX pin must be a valid GPIO: ${validGPIOs.join(', ')}`,
+        message: t('validation.configSchema.txPinMustBeA', { join: validGPIOs.join(', ') }),
       }),
     baudRate: z
       .number()
       .int()
       .refine((val) => [4800, 9600, 19200, 38400, 57600, 115200].includes(val), {
-        message: 'Baud rate must be one of: 4800, 9600, 19200, 38400, 57600, 115200',
+        message: t('validation.configSchema.baudRateMustBeOne'),
       }),
   })
   .refine((data) => !data.enabled || data.rxPin !== data.txPin, {
-    message: 'RX and TX pins must be different',
+    message: t('validation.configSchema.rxAndTxPinsMust'),
     path: ['rxPin'],
   });
 
 export const sensorConfigSchema = z
   .object({
-    readIntervalMs: z.number().int().min(100, 'Read interval must be at least 100ms').max(3600000, 'Read interval cannot exceed 1 hour'),
+    readIntervalMs: z
+      .number()
+      .int()
+      .min(100, t('validation.configSchema.readIntervalMustBeAt'))
+      .max(3600000, t('validation.configSchema.readIntervalCannotExceed1')),
     i2cSDA: z
       .number()
       .int()
       .refine((val) => validGPIOs.includes(val), {
-        message: `SDA pin must be a valid GPIO: ${validGPIOs.join(', ')}`,
+        message: t('validation.configSchema.sdaPinMustBeA', { join: validGPIOs.join(', ') }),
       }),
     i2cSCL: z
       .number()
       .int()
       .refine((val) => validGPIOs.includes(val), {
-        message: `SCL pin must be a valid GPIO: ${validGPIOs.join(', ')}`,
+        message: t('validation.configSchema.sclPinMustBeA', { join: validGPIOs.join(', ') }),
       }),
-    i2cFrequency: z.number().int().min(10000, 'I2C frequency must be at least 10kHz').max(400000, 'I2C frequency must be at most 400kHz'),
+    i2cFrequency: z
+      .number()
+      .int()
+      .min(10000, t('validation.configSchema.i2cFrequencyMustBeAt'))
+      .max(400000, t('validation.configSchema.i2cFrequencyMustBeAt2')),
   })
   .refine((data) => data.i2cSDA !== data.i2cSCL, {
-    message: 'SDA and SCL pins must be different',
+    message: t('validation.configSchema.sdaAndSclPinsMust'),
     path: ['i2cSDA'],
   });
 
@@ -160,16 +170,16 @@ export const skyAveragingConfigSchema = z.object({
   windowSeconds: z
     .number()
     .int()
-    .min(10, 'Sky averaging window must be at least 10 seconds')
-    .max(300, 'Sky averaging window cannot exceed 300 seconds'),
+    .min(10, t('validation.configSchema.skyAveragingWindowMustBe'))
+    .max(300, t('validation.configSchema.skyAveragingWindowCannotExceed')),
 });
 
 export const skyCalibrationConfigSchema = z.object({
   enabled: z.boolean(),
-  sqmOffset: z.number().min(-5, 'SQM offset is too low').max(5, 'SQM offset is too high'),
-  darkVisibleOffset: z.number().min(0, 'Dark visible offset cannot be negative'),
-  darkFullOffset: z.number().min(0, 'Dark full offset cannot be negative'),
-  darkIrOffset: z.number().min(0, 'Dark IR offset cannot be negative'),
+  sqmOffset: z.number().min(-5, t('validation.configSchema.sqmOffsetIsTooLow')).max(5, t('validation.configSchema.sqmOffsetIsTooHigh')),
+  darkVisibleOffset: z.number().min(0, t('validation.configSchema.darkVisibleOffsetCannotBe')),
+  darkFullOffset: z.number().min(0, t('validation.configSchema.darkFullOffsetCannotBe')),
+  darkIrOffset: z.number().min(0, t('validation.configSchema.darkIrOffsetCannotBe')),
   darkSampleCount: z.number().int().min(0),
   darkCalibratedAt: z.number().int().min(0),
 });
@@ -181,14 +191,18 @@ export const cloudDetectionConfigSchema = z
     humidityCorrection: z.number().min(0).max(2),
   })
   .refine((data) => data.clearSkyThreshold < data.cloudyThreshold, {
-    message: 'Clear sky threshold must be less than cloudy threshold',
+    message: t('validation.configSchema.clearSkyThresholdMustBe'),
     path: ['clearSkyThreshold'],
   });
 
 export const alpacaConfigSchema = z.object({
   enabled: z.boolean(),
   manualOverrideUnsafe: z.boolean(),
-  staleAfterSeconds: z.number().int().min(1, 'Must be at least 1 second').max(3600, 'Must be at most 1 hour'),
+  staleAfterSeconds: z
+    .number()
+    .int()
+    .min(1, t('validation.configSchema.mustBeAtLeast1'))
+    .max(3600, t('validation.configSchema.mustBeAtMost1')),
   cloudCoverEnabled: z.boolean(),
   cloudCoverUnsafePercent: z.number().min(0).max(100),
   sqmMinEnabled: z.boolean(),
@@ -199,11 +213,15 @@ export const alpacaConfigSchema = z.object({
   dewpointMarginMinC: z.number().min(0).max(20),
   rainUnsafeEnabled: z.boolean(),
   rainSensorRequired: z.boolean(),
-  safeDelaySeconds: z.number().int().min(0, 'Must be 0 or more').max(3600, 'Must be at most 1 hour'),
+  safeDelaySeconds: z
+    .number()
+    .int()
+    .min(0, t('validation.configSchema.mustBe0OrMore'))
+    .max(3600, t('validation.configSchema.mustBeAtMost1')),
   windSpeedUnsafeEnabled: z.boolean(),
-  windSpeedUnsafeMs: z.number().gt(0, 'Must be above 0').max(60, 'Must be at most 60 m/s'),
+  windSpeedUnsafeMs: z.number().gt(0, t('validation.configSchema.mustBeAbove0')).max(60, t('validation.configSchema.mustBeAtMost60')),
   windGustUnsafeEnabled: z.boolean(),
-  windGustUnsafeMs: z.number().gt(0, 'Must be above 0').max(80, 'Must be at most 80 m/s'),
+  windGustUnsafeMs: z.number().gt(0, t('validation.configSchema.mustBeAbove0')).max(80, t('validation.configSchema.mustBeAtMost80')),
 });
 
 export const windConfigSchema = z
@@ -212,15 +230,19 @@ export const windConfigSchema = z
     speedPin: z
       .number()
       .int()
-      .refine((pin) => validGPIOs.includes(pin), { message: 'Must be a valid GPIO' }),
+      .refine((pin) => validGPIOs.includes(pin), { message: t('validation.configSchema.mustBeAValidGpio') }),
     directionEnabled: z.boolean(),
-    directionPin: z.number().int().min(32, 'Vane needs an ADC1 pin (GPIO 32-39)').max(39, 'Vane needs an ADC1 pin (GPIO 32-39)'),
+    directionPin: z
+      .number()
+      .int()
+      .min(32, t('validation.configSchema.vaneNeedsAnAdc1Pin'))
+      .max(39, t('validation.configSchema.vaneNeedsAnAdc1Pin')),
     kmhPerHz: z.number().gt(0).max(20),
     directionOffsetDeg: z.number().min(-360).max(360),
     vanePullupOhms: z.number().min(1000).max(100000),
   })
   .refine((data) => !data.enabled || !data.directionEnabled || data.speedPin !== data.directionPin, {
-    message: 'Anemometer and vane need different pins',
+    message: t('validation.configSchema.anemometerAndVaneNeedDifferent'),
     path: ['directionPin'],
   });
 
@@ -231,19 +253,19 @@ export const rainSensorConfigSchema = z
       .number()
       .int()
       .refine((val) => validGPIOs.includes(val), {
-        message: `RX pin must be a valid GPIO: ${validGPIOs.join(', ')}`,
+        message: t('validation.configSchema.rxPinMustBeA', { join: validGPIOs.join(', ') }),
       }),
     txPin: z
       .number()
       .int()
       .refine((val) => validGPIOs.includes(val), {
-        message: `TX pin must be a valid GPIO: ${validGPIOs.join(', ')}`,
+        message: t('validation.configSchema.txPinMustBeA', { join: validGPIOs.join(', ') }),
       }),
     baudRate: z
       .number()
       .int()
       .refine((val) => [2400, 4800, 9600, 19200].includes(val), {
-        message: 'Baud rate must be one of: 2400, 4800, 9600, 19200',
+        message: t('validation.configSchema.baudRateMustBeOne2'),
       }),
     debugUart: z.boolean(),
     mode: z.literal('polling'),
@@ -252,94 +274,28 @@ export const rainSensorConfigSchema = z
     pollIntervalMs: z
       .number()
       .int()
-      .min(1000, 'Poll interval must be at least 1 second')
-      .max(3600000, 'Poll interval must be at most 1 hour'),
+      .min(1000, t('validation.configSchema.pollIntervalMustBeAt'))
+      .max(3600000, t('validation.configSchema.pollIntervalMustBeAt2')),
     rainClearDelayMs: z
       .number()
       .int()
-      .min(60000, 'Rain clear delay must be at least 1 minute')
-      .max(86400000, 'Rain clear delay must be at most 24 hours'),
+      .min(60000, t('validation.configSchema.rainClearDelayMustBe'))
+      .max(86400000, t('validation.configSchema.rainClearDelayMustBe2')),
     dailyResetEnabled: z.boolean(),
     dailyResetHour: z.number().int().min(0).max(23),
     dailyResetMinute: z.number().int().min(0).max(59),
   })
   .refine((data) => !data.enabled || data.rxPin !== data.txPin, {
-    message: 'RX and TX pins must be different',
+    message: t('validation.configSchema.rxAndTxPinsMust'),
     path: ['rxPin'],
   });
 
-export const alertsConfigSchema = z
-  .object({
-    enabled: z.boolean(),
-    events: z.record(
-      z.string(),
-      z.object({
-        level: z.number().int().min(0).max(4),
-        sound: z
-          .string()
-          .max(32)
-          .regex(/^[a-z0-9_-]*$/i, 'Not a Pushover sound name'),
-        title: z.string().max(80, 'Titles are up to 80 characters').optional(),
-        message: z.string().max(240, 'Messages are up to 240 characters').optional(),
-      }),
-    ),
-    dewRiskMarginC: z.number().min(0).max(10),
-    clearSkyCloudPercent: z.number().min(0).max(100),
-    cloudedOverCloudPercent: z.number().min(0).max(100),
-    skyNightOnly: z.boolean(),
-    safetyNightOnly: z.boolean().optional(),
-    sendMode: z.enum(['any', 'whileConnected']).optional(),
-    armWithAlpaca: z.boolean().optional(),
-    clientSilentSafetySeconds: z.number().int().min(30, 'At least 30 seconds').max(3600, 'At most 60 minutes').optional(),
-    clientSilentWeatherSeconds: z.number().int().min(30, 'At least 30 seconds').max(3600, 'At most 60 minutes').optional(),
-    nightSunAltitudeDeg: z.number().min(-20).max(0),
-    cooldownSeconds: z.number().int().min(0).max(86400, 'Must be at most 24 hours'),
-    pushover: z.object({
-      enabled: z.boolean(),
-      userKey: z.string(),
-      appToken: z.string(),
-      sound: z.string(),
-    }),
-    ntfy: z.object({ enabled: z.boolean(), server: z.string(), topic: z.string(), token: z.string() }),
-    webhook: z.object({ enabled: z.boolean(), url: z.string(), authHeader: z.string(), insecureTls: z.boolean() }),
-    mqtt: z.object({ enabled: z.boolean() }),
-  })
-  .superRefine((data, ctx) => {
-    if (data.cloudedOverCloudPercent <= data.clearSkyCloudPercent) {
-      ctx.addIssue({ code: 'custom', path: ['cloudedOverCloudPercent'], message: 'Must be above the clear threshold' });
-    }
-    // Pushover keys are exactly 30 letters/digits; "********" is the stored, masked value.
-    const pushoverKey = /^([A-Za-z0-9]{30}|\*{8})$/;
-    if (data.pushover.enabled && !pushoverKey.test(data.pushover.userKey.trim())) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['pushover', 'userKey'],
-        message: 'The user key is the 30-character key on your Pushover dashboard',
-      });
-    }
-    if (data.pushover.enabled && !pushoverKey.test(data.pushover.appToken.trim())) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['pushover', 'appToken'],
-        message: 'The app token is the 30-character API token of your Pushover application',
-      });
-    }
-    if (data.ntfy.enabled) {
-      const server = parseHttpUrl(data.ntfy.server);
-      if (server.error) ctx.addIssue({ code: 'custom', path: ['ntfy', 'server'], message: server.error });
-      if (!data.ntfy.topic) {
-        ctx.addIssue({ code: 'custom', path: ['ntfy', 'topic'], message: 'Topic is required' });
-      }
-    }
-    if (data.webhook.enabled) {
-      const url = parseHttpUrl(data.webhook.url);
-      if (url.error) ctx.addIssue({ code: 'custom', path: ['webhook', 'url'], message: url.error });
-    }
-  });
+export { alertsConfigSchema };
 
 export const configSchema = z
   .object({
-    deviceName: z.string().min(1, 'Device name is required'),
+    deviceName: z.string().min(1, t('validation.configSchema.deviceNameIsRequired')),
+    language: z.string().optional(),
     primaryTimeSource: z.number().int().min(0).max(1),
     secondaryTimeSource: z.number().int().min(0).max(1),
     wifi: wifiConfigSchema,
@@ -361,16 +317,19 @@ export const configSchema = z
         // 6 digits, or the masked stored value
         passkey: z
           .string()
-          .regex(/^(\d{6}|\*{8})?$/, 'Passkey must be 6 digits')
-          .refine((value) => value !== '000000', "Passkey can't be 000000"),
+          .regex(/^(\d{6}|\*{8})?$/, t('validation.configSchema.passkeyMustBe6Digits'))
+          .refine((value) => value !== '000000', t('validation.configSchema.passkeyCanTBe000000')),
       })
       .optional(),
     wind: windConfigSchema.optional(),
     location: z
       .object({
         set: z.boolean(),
-        latitude: z.number().min(-90, 'Latitude is -90 to 90').max(90, 'Latitude is -90 to 90'),
-        longitude: z.number().min(-180, 'Longitude is -180 to 180').max(180, 'Longitude is -180 to 180'),
+        latitude: z.number().min(-90, t('validation.configSchema.latitudeIs90To90')).max(90, t('validation.configSchema.latitudeIs90To90')),
+        longitude: z
+          .number()
+          .min(-180, t('validation.configSchema.longitudeIs180To180'))
+          .max(180, t('validation.configSchema.longitudeIs180To180')),
         showSunMoon: z.boolean().optional(),
       })
       .optional(),
@@ -379,7 +338,7 @@ export const configSchema = z
     if (!data.ntp.enabled && !data.gps.enabled) {
       ctx.addIssue({
         code: 'custom',
-        message: 'At least one time source must be enabled', // D-27
+        message: t('validation.configSchema.atLeastOneTimeSource'), // D-27
         path: ['ntp', 'enabled'],
       });
       return;
@@ -390,7 +349,7 @@ export const configSchema = z
     if (!sourceEnabled(data.primaryTimeSource)) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Primary time source is disabled',
+        message: t('validation.configSchema.primaryTimeSourceIsDisabled'),
         path: ['primaryTimeSource'],
       });
     }
@@ -398,7 +357,7 @@ export const configSchema = z
     if (data.ntp.enabled && data.gps.enabled && !sourceEnabled(data.secondaryTimeSource)) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Secondary time source is disabled',
+        message: t('validation.configSchema.secondaryTimeSourceIsDisabled'),
         path: ['secondaryTimeSource'],
       });
     }
@@ -406,7 +365,7 @@ export const configSchema = z
     if (data.ntp.enabled && data.gps.enabled && data.primaryTimeSource === data.secondaryTimeSource) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Time sources must be different when both NTP and GPS are enabled',
+        message: t('validation.configSchema.timeSourcesMustBeDifferent'),
         path: ['secondaryTimeSource'],
       });
     }
@@ -426,6 +385,6 @@ export const hasConfigValidationErrors = (errors: ValidationErrors): boolean => 
 
 export const getConfigValidationMessage = (errors: ValidationErrors): string => {
   const messages = Object.values(errors);
-  if (messages.length === 1) return `Please fix 1 validation error: ${messages[0]}`;
-  return `Please fix ${messages.length} validation errors`;
+  if (messages.length === 1) return t('validation.configSchema.pleaseFix1ValidationError', { value: messages[0] });
+  return t('validation.configSchema.pleaseFixLengthValidationErrors', { length: messages.length });
 };

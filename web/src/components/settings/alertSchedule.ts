@@ -1,27 +1,26 @@
 import type { AlertSchedule, AlertSendMode, AlpacaClientState } from '../../types';
 import { formatClock, formatDuration } from '../../lib/astro';
+import { t } from '../../i18n';
 
 // "When to send" (specs/021): the labels and the status sentence. The
 // wording is part of the spec - change it there first.
 
 export const SEND_MODE_OPTIONS: { value: AlertSendMode; label: string; help: string }[] = [
-  { value: 'any', label: 'Any time', help: 'Alerts go out whenever something happens, unless you pause them.' },
+  { value: 'any', label: t('settings.alertSchedule.anyTime'), help: t('settings.alertSchedule.alertsGoOutWheneverSomething') },
   {
     value: 'whileConnected',
-    label: 'Only while an imaging app is connected',
-    help:
-      'Alerts start when an imaging app (e.g. N.I.N.A.) connects the safety monitor or weather device, and stop when it disconnects. ' +
-      "If it stops responding without disconnecting, alerts keep coming - and you're told it went quiet.",
+    label: t('settings.alertSchedule.onlyWhileAnImagingApp'),
+    help: t('settings.alertSchedule.alertsStartWhenAnImaging') + t('settings.alertSchedule.ifItStopsRespondingWithout'),
   },
 ];
 
-export const PAUSE_HINT =
-  'Takes effect straight away. Home Assistant and scripts can do the same: MQTT <topic>/alerts/armed/set, or POST /api/alerts/disarm and /arm.';
+export const PAUSE_HINT = t('settings.alertSchedule.takesEffectStraightAwayHome');
 
 // "at 21:04", "5 min ago", or nothing when it happened before this boot.
 const when = (schedule: AlertSchedule) => {
-  if (schedule.since) return ` at ${formatClock(new Date(schedule.since))}`;
-  if (schedule.sinceAgeMs !== undefined && schedule.sinceAgeMs !== null) return ` ${formatDuration(schedule.sinceAgeMs)} ago`;
+  if (schedule.since) return t('settings.alertSchedule.sinceAt', { clock: formatClock(new Date(schedule.since)) });
+  if (schedule.sinceAgeMs !== undefined && schedule.sinceAgeMs !== null)
+    return t('settings.alertSchedule.sinceAgo', { duration: formatDuration(schedule.sinceAgeMs) });
   return '';
 };
 
@@ -30,27 +29,27 @@ export const describeSchedule = (schedule: AlertSchedule): string => {
   const at = when(schedule);
   const whileConnected = schedule.mode === 'whileConnected';
   if (schedule.armed) {
-    if (whileConnected && schedule.reason === 'client-connected') return `Sending alerts - an imaging app connected${at}.`;
-    return 'Sending alerts.';
+    if (whileConnected && schedule.reason === 'client-connected') return t('settings.alertSchedule.sendingAlertsAnImagingApp', { at });
+    return t('settings.alertSchedule.sendingAlerts');
   }
   const resume = whileConnected
-    ? ' Alerts resume when an imaging app connects, or when you resume them.'
-    : ' Alerts resume when you resume them.';
+    ? t('settings.alertSchedule.alertsResumeWhenAnImaging')
+    : t('settings.alertSchedule.alertsResumeWhenYouResume');
   switch (schedule.reason) {
     case 'client-disconnected':
-      return `Paused - the imaging app disconnected${at}. Alerts resume when it connects again.`;
+      return t('settings.alertSchedule.pausedTheImagingAppDisconnected', { at });
     case 'waiting-for-client':
-      return 'Waiting for an imaging app to connect - nothing is sent until then.';
+      return t('settings.alertSchedule.waitingForAnImagingApp');
     case 'user-ui':
-      return `Paused by you${at} (Pause button).${resume}`;
+      return t('settings.alertSchedule.pausedByYouAtPause', { at, resume });
     case 'user-rest':
-      return `Paused by a script${at} (REST).${resume}`;
+      return t('settings.alertSchedule.pausedByAScriptAt', { at, resume });
     case 'user-mqtt':
-      return `Paused from Home Assistant or MQTT${at}.${resume}`;
+      return t('settings.alertSchedule.pausedFromHomeAssistantOr', { at, resume });
     case 'migrated':
-      return `Paused (before the update).${resume}`;
+      return t('settings.alertSchedule.pausedBeforeTheUpdateResume', { resume });
     default:
-      return `Paused.${resume}`;
+      return t('settings.alertSchedule.paused', { resume });
   }
 };
 
@@ -59,15 +58,17 @@ export const describeSchedule = (schedule: AlertSchedule): string => {
 export const describeSilentClients = (clients: { safetymonitor: AlpacaClientState; observingconditions: AlpacaClientState }) => {
   const silent = (
     [
-      ['safety monitor', clients.safetymonitor],
-      ['weather device', clients.observingconditions],
+      [t('settings.alertSchedule.safetyMonitor'), clients.safetymonitor],
+      [t('settings.alertSchedule.weatherDevice'), clients.observingconditions],
     ] as const
   )
     .filter(([, state]) => state.silent)
     .map(([name, state]) =>
-      state.lastCheckedAgeMs === null ? name : `${name} last checked ${formatDuration(state.lastCheckedAgeMs)} ago`,
+      state.lastCheckedAgeMs === null
+        ? name
+        : t('settings.alertSchedule.lastCheckedAgo', { name, ago: formatDuration(state.lastCheckedAgeMs) }),
     );
-  return silent.length ? `The imaging app has gone quiet - ${silent.join(', ')}.` : null;
+  return silent.length ? t('settings.alertSchedule.theImagingAppHasGone', { join: silent.join(', ') }) : null;
 };
 
 // Settings are in seconds, shown in minutes.

@@ -1,5 +1,6 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
+import { t } from '../i18n';
 
 export interface ToastOptions {
   message: string;
@@ -59,7 +60,7 @@ export const Toaster: FunctionalComponent = () => {
               {toast.action.label}
             </button>
           )}
-          <button type="button" class="toast-close" aria-label="Dismiss" onClick={() => dismissToast(toast.id)}>
+          <button type="button" class="toast-close" aria-label={t('toast.dismiss')} onClick={() => dismissToast(toast.id)}>
             ×
           </button>
         </div>

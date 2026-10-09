@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { deriveHardware } from '../components/settings/hardware';
-import { tabForErrorPath, tabFromLocation } from '../components/settings/tabs';
+import { locationQuery, tabForErrorPath, tabFromLocation } from '../components/settings/tabs';
 import { toConfigPayload } from '../components/settings/payload';
 import { listReasons, restartReasons } from '../components/settings/restart';
 import { parseCoordinates } from '../components/settings/TimeTab';
@@ -29,6 +29,20 @@ describe('tabForErrorPath', () => {
     expect(tabForErrorPath('mqtt.broker')).toBe('network');
     expect(tabForErrorPath('primaryTimeSource')).toBe('time');
     expect(tabForErrorPath('deviceName')).toBe('device');
+  });
+});
+
+describe('locationQuery', () => {
+  it('prefers the query in the hash over the page query', () => {
+    expect(locationQuery({ search: '?lang=ar', hash: '#/settings?tab=alerts' })).toBe('?tab=alerts');
+    expect(locationQuery({ search: '?tab=network', hash: '' })).toBe('?tab=network');
+  });
+});
+
+describe('toConfigPayload', () => {
+  it('keeps the language setting (specs/023-i18n)', () => {
+    expect(toConfigPayload({ ...mockConfig, language: 'ar' }).language).toBe('ar');
+    expect(toConfigPayload({ ...mockConfig, language: undefined }).language).toBe('en');
   });
 });
 

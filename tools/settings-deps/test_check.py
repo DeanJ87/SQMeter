@@ -89,11 +89,12 @@ class WholeRepository(unittest.TestCase):
         self.assertTrue(any("D-98, which isn't in" in p for p in check.check(self.root)))
 
     def test_a_constraint_message_the_ui_doesnt_share_fails(self):
-        schema = os.path.join(self.root, "web/src/validation/configSchema.ts")
-        with open(schema) as f:
+        # The UI's message is its English in web/src/i18n/en.json (specs/023-i18n).
+        english = os.path.join(self.root, "web/src/i18n/en.json")
+        with open(english) as f:
             text = f.read()
-        with open(schema, "w") as f:
-            f.write(text.replace("HTTP auth password is required when auth is enabled", "Password needed"))
+        with open(english, "w") as f:
+            f.write(text.replace('"HTTP auth password is required when auth is enabled"', '"Password needed"'))
         self.assertTrue(any(p.startswith("D-34: message") for p in check.check(self.root)))
 
 

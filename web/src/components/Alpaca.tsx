@@ -6,6 +6,7 @@ import { describeClient } from '../lib/alpacaClients';
 import { useAlpacaClients, type AlpacaClients } from '../hooks/useAlpacaClients';
 import SafetyCard from './SafetyCard';
 import { Button, Card, Note, Pill, ReadingRow } from './ui';
+import { t } from '../i18n';
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -49,7 +50,7 @@ const CopyableUrl: FunctionalComponent<{ label: string; url: string; open?: bool
           <code>{url}</code>
         )}
         <Button variant="ghost" small onClick={copy}>
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? t('alpaca.copied') : t('alpaca.copy')}
         </Button>
       </span>
     </div>
@@ -64,11 +65,11 @@ const CLIENT_TONE = { ok: 'tone-green', warn: 'tone-amber', muted: '' } as const
 const ImagingAppState: FunctionalComponent<{ clients: AlpacaClients | null; enabled: boolean }> = ({ clients, enabled }) =>
   enabled && clients ? (
     <div class="card-group">
-      <h3 class="card-group-title">Imaging app</h3>
+      <h3 class="card-group-title">{t('alpaca.imagingApp')}</h3>
       {(
         [
-          ['Safety monitor', clients.safetymonitor],
-          ['Weather device', clients.observingconditions],
+          [t('alpaca.safetyMonitor'), clients.safetymonitor],
+          [t('alpaca.weatherDevice'), clients.observingconditions],
         ] as const
       ).map(([label, state]) => {
         const { text, tone } = describeClient(state);
@@ -136,26 +137,26 @@ const Alpaca: FunctionalComponent = () => {
       <Card
         title="ASCOM Alpaca"
         icon="star"
-        hint="N.I.N.A. and other Alpaca clients find this device by UDP discovery. If discovery can't reach it, add it manually with this host and port."
-        actions={<Pill tone={enabled ? 'pill-green' : 'pill-dim'}>{enabled ? 'Enabled' : 'Disabled'}</Pill>}
+        hint={t('alpaca.nINAAnd')}
+        actions={<Pill tone={enabled ? 'pill-green' : 'pill-dim'}>{enabled ? t('alpaca.enabled') : t('alpaca.disabled')}</Pill>}
       >
         <div class="card-body">
           {!enabled && (
-            <Note tone="warn" action={{ label: 'Turn on', onClick: () => route('/settings?tab=safety') }}>
-              Alpaca is off, so no devices are advertised.
+            <Note tone="warn" action={{ label: t('alpaca.turnOn'), onClick: () => route('/settings?tab=safety') }}>
+              {t('alpaca.alpacaIsOffSoNo')}
             </Note>
           )}
           <div>
-            <ReadingRow label="Host" value={host || '--'} />
-            <ReadingRow label="Port" value={port} />
-            <ReadingRow label="Discovery port (UDP)" value="32227" />
-            <CopyableUrl label="Description" url={`${origin}/management/v1/description`} open />
-            <CopyableUrl label="Devices" url={`${origin}/management/v1/configureddevices`} open />
+            <ReadingRow label={t('alpaca.host')} value={host || '--'} />
+            <ReadingRow label={t('alpaca.port')} value={port} />
+            <ReadingRow label={t('alpaca.discoveryPortUdp')} value="32227" />
+            <CopyableUrl label={t('alpaca.description')} url={`${origin}/management/v1/description`} open />
+            <CopyableUrl label={t('alpaca.devices')} url={`${origin}/management/v1/configureddevices`} open />
           </div>
           <ImagingAppState clients={clients} enabled={enabled} />
           <div>
             <Button variant="link" onClick={() => route('/settings?tab=safety')}>
-              Alpaca and safety settings →
+              {t('alpaca.alpacaAndSafetySettings')}
             </Button>
           </div>
         </div>
@@ -170,22 +171,22 @@ const Alpaca: FunctionalComponent = () => {
           <Card key={device.UniqueID} title={device.DeviceName} icon={device.DeviceType === 'SafetyMonitor' ? 'eye' : 'cloud'}>
             <div class="card-body">
               <div>
-                <ReadingRow label="Type" value={`${device.DeviceType} #${device.DeviceNumber}`} />
-                <ReadingRow label="Unique ID" value={device.UniqueID} />
+                <ReadingRow label={t('alpaca.type')} value={`${device.DeviceType} #${device.DeviceNumber}`} />
+                <ReadingRow label={t('alpaca.uniqueId')} value={device.UniqueID} />
                 <CopyableUrl
-                  label="Setup page"
+                  label={t('alpaca.setupPage')}
                   url={`${origin}/setup/v1/${device.DeviceType.toLowerCase()}/${device.DeviceNumber}/setup`}
                   open
                 />
-                <CopyableUrl label="API base" url={`${origin}${base}`} />
-                <CopyableUrl label="Device state" url={`${origin}${base}/devicestate`} open />
+                <CopyableUrl label={t('alpaca.apiBase')} url={`${origin}${base}`} />
+                <CopyableUrl label={t('alpaca.deviceState')} url={`${origin}${base}/devicestate`} open />
                 {device.DeviceType === 'SafetyMonitor' && <CopyableUrl label="IsSafe" url={`${origin}${base}/issafe`} open />}
               </div>
               <div class="card-group">
-                <h3 class="card-group-title">Live state</h3>
-                {state === undefined && <Note>Loading...</Note>}
-                {state === null && <Note tone="bad">Unavailable</Note>}
-                {state && state.length === 0 && <Note>No values yet</Note>}
+                <h3 class="card-group-title">{t('alpaca.liveState')}</h3>
+                {state === undefined && <Note>{t('common.loading')}</Note>}
+                {state === null && <Note tone="bad">{t('alpaca.unavailable')}</Note>}
+                {state && state.length === 0 && <Note>{t('alpaca.noValuesYet')}</Note>}
                 {state && (
                   <div>
                     {state.map((item) => (
@@ -204,7 +205,7 @@ const Alpaca: FunctionalComponent = () => {
         );
       })}
 
-      {lastUpdated && <Note>Updated {lastUpdated.toLocaleTimeString()}</Note>}
+      {lastUpdated && <Note>{t('alpaca.updatedLocaletimestring', { localeTimeString: lastUpdated.toLocaleTimeString() })}</Note>}
     </div>
   );
 };

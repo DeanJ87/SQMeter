@@ -1,3 +1,5 @@
+import { t, type MessageKey } from '../i18n';
+import { formatMinutes, formatTime } from '../i18n/format';
 // Low-precision sun and moon positions (after the formulas in Meeus /
 // SunCalc). Good to about a minute for sun times and a few minutes for the
 // moon - plenty for planning a night, and it costs the device nothing.
@@ -69,14 +71,14 @@ export const moonIllumination = (date: Date) => {
 
 export const moonPhaseName = (phase: number) => {
   const names = [
-    'New moon',
-    'Waxing crescent',
-    'First quarter',
-    'Waxing gibbous',
-    'Full moon',
-    'Waning gibbous',
-    'Last quarter',
-    'Waning crescent',
+    t('astro.newMoon'),
+    t('astro.waxingCrescent'),
+    t('astro.firstQuarter'),
+    t('astro.waxingGibbous'),
+    t('astro.fullMoon'),
+    t('astro.waningGibbous'),
+    t('astro.lastQuarter'),
+    t('astro.waningCrescent'),
   ];
   return names[Math.round(phase * 8) % 8];
 };
@@ -133,13 +135,17 @@ export const skyPhase = (sunAltitude: number): SkyPhase =>
           ? 'astronomical'
           : 'night';
 
-export const SKY_PHASE_LABEL: Record<SkyPhase, string> = {
-  day: 'Daylight',
-  civil: 'Civil twilight',
-  nautical: 'Nautical twilight',
-  astronomical: 'Astronomical twilight',
-  night: 'Dark',
+const SKY_PHASE_KEY: Record<SkyPhase, MessageKey> = {
+  day: 'astro.daylight',
+  civil: 'astro.civilTwilight',
+  nautical: 'astro.nauticalTwilight',
+  astronomical: 'astro.astronomicalTwilight',
+  night: 'astro.dark',
 };
+
+// A function, not a table built at import: the demo imports this module
+// before the language is loaded (specs/023-i18n research D2).
+export const skyPhaseLabel = (phase: SkyPhase) => t(SKY_PHASE_KEY[phase]);
 
 // When the sun next passes below / above `darkAltitude`. If it's dark now,
 // `start` is null and `end` is when it gets light; otherwise `start` is when
@@ -153,10 +159,8 @@ export const darkness = (lat: number, lon: number, darkAltitude: number, now: Da
   return { darkNow, start, end };
 };
 
-export const formatClock = (date: Date | null) => (date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--');
+export const formatClock = (date: Date | null) => (date ? formatTime(date) : '--');
 
 export const formatDuration = (ms: number) => {
-  const minutes = Math.max(0, Math.round(ms / 60000));
-  const hours = Math.floor(minutes / 60);
-  return hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+  return formatMinutes(ms / 60000);
 };

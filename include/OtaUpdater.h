@@ -8,6 +8,14 @@
 
 namespace SQM
 {
+    // HTTPS GET of a GitHub release asset (pinned CA, redirects followed),
+    // streamed to `onChunk`. The caller holds TlsLock. Shared with LanguagePack.
+    bool httpsDownload(
+        const std::string &url,
+        size_t sizeHint,
+        const std::function<bool(const uint8_t *, size_t)> &onChunk,
+        size_t &written,
+        std::string &error);
 
     class OtaUpdater
     {

@@ -1,12 +1,13 @@
+import { t } from '../../i18n';
 export type SettingsTabId = 'device' | 'network' | 'time' | 'sensors' | 'safety' | 'alerts';
 
 export const SETTINGS_TABS: { id: SettingsTabId; label: string }[] = [
-  { id: 'device', label: 'Device' },
-  { id: 'network', label: 'Network' },
-  { id: 'time', label: 'Time & Location' },
-  { id: 'sensors', label: 'Sensors' },
-  { id: 'safety', label: 'Safety' },
-  { id: 'alerts', label: 'Alerts' },
+  { id: 'device', label: t('settings.tabs.device') },
+  { id: 'network', label: t('settings.tabs.network') },
+  { id: 'time', label: t('settings.tabs.timeLocation') },
+  { id: 'sensors', label: t('settings.tabs.sensors') },
+  { id: 'safety', label: t('settings.tabs.safety') },
+  { id: 'alerts', label: t('settings.tabs.alerts') },
 ];
 
 // Older links (/settings?section=alpaca from the Alpaca setup redirect,
@@ -29,8 +30,10 @@ export const isSettingsTab = (value: string | null): value is SettingsTabId => S
 
 // The query string, also when it's inside a hash route (the demo uses
 // #/settings?tab=safety).
+// With hash routing the query is in the hash, and wins over the page's own
+// query (?scenario=, ?lang= in the demo).
 export const locationQuery = (location: Pick<Location, 'search' | 'hash'>) =>
-  location.search || (location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?')) : '');
+  location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?')) : location.search;
 
 export const tabFromLocation = (search: string): { tab: SettingsTabId; anchor?: string } => {
   const params = new URLSearchParams(search);

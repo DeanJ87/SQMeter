@@ -50,7 +50,6 @@
       "web/src/components/settings/hardware.ts": 1,
       "web/src/components/settings/restart.ts": 1,
       "web/src/components/settings/tabs.ts": 1,
-      "web/src/hooks/useWifiScan.ts": 1,
       "web/src/utils/versionCompare.ts": 1
     },
     "LIMIT-03": {

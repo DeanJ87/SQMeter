@@ -1,7 +1,9 @@
 import { render } from 'preact';
-import App from './App';
+import { loadLanguage } from './i18n/loader';
 import './index.css';
 
+// The app is imported after the language is installed, so labels built when
+// a module loads are translated too (specs/023-i18n research D2).
 async function init() {
   if (import.meta.env.VITE_DEMO_MODE === 'true') {
     try {
@@ -31,6 +33,9 @@ async function init() {
       return;
     }
   }
+
+  await loadLanguage();
+  const { default: App } = await import('./App');
 
   if (import.meta.env.VITE_DEMO_MODE === 'true') {
     const { default: DemoPanel } = await import('./demo/DemoPanel');
