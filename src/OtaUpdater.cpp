@@ -33,6 +33,35 @@ namespace SQM
         constexpr uint32_t HTTP_TIMEOUT_MS = 15000;
         constexpr size_t OTA_TASK_STACK_WORDS = 8192;
 
+        // ArduinoJson reader over a TLS stream that waits for data. The 3.x
+        // NetworkClient::readBytes() returns 0 as soon as the TLS client has
+        // nothing decrypted yet, which ArduinoJson takes as the end of the
+        // input; this waits up to HTTP_TIMEOUT_MS for each byte instead.
+        struct WaitingReader
+        {
+            Stream &in;
+
+            int read()
+            {
+                const uint32_t start = millis();
+                int c = in.read();
+                while (c < 0 && millis() - start < HTTP_TIMEOUT_MS)
+                {
+                    delay(2);
+                    c = in.read();
+                }
+                return c;
+            }
+
+            size_t readBytes(char *buffer, size_t length)
+            {
+                size_t count = 0;
+                for (int c; count < length && (c = read()) >= 0; count++)
+                    buffer[count] = static_cast<char>(c);
+                return count;
+            }
+        };
+
         // Progress of one download, scaled into [from, to] of the whole update.
         struct ProgressRange
         {
@@ -182,46 +211,17 @@ namespace SQM
             return {};
         }
 
-        WiFiClientSecure client;
-        client.setCACert(GITHUB_ROOT_CA_PEM);
-
-        HTTPClient http;
-        http.setTimeout(HTTP_TIMEOUT_MS);
-        if (!http.begin(client, RELEASES_URL))
+        // One retry for a dropped or stalled connection; an HTTP error or a
+        // list too large to read would only fail again.
+        Fetch result = fetchReleaseList(doc, filter, error);
+        if (result == Fetch::Retry)
         {
-            error = "Failed to initialize HTTPS client";
-            currentPhase = Phase::Error;
-            return {};
+            Logger::warn(TAG, "%s - trying once more", error.c_str());
+            error.clear();
+            result = fetchReleaseList(doc, filter, error);
         }
-        http.addHeader("User-Agent", "SQMeter-ESP32");
-        http.addHeader("Accept", "application/vnd.github+json");
-        // HTTP/1.0 means no chunked transfer encoding, so the JSON can be
-        // parsed straight off the TLS stream.
-        http.useHTTP10(true);
-
-        int httpCode = http.GET();
-        if (httpCode != HTTP_CODE_OK)
+        if (result != Fetch::Ok)
         {
-            error = "GitHub API request failed (HTTP " + std::to_string(httpCode) + ")";
-            Logger::error(TAG, "%s", error.c_str());
-            http.end();
-            currentPhase = Phase::Error;
-            return {};
-        }
-
-        // Stream-parse with a filter instead of http.getString(): the full
-        // releases body (tens of KB of release notes) used to be held twice,
-        // on top of the TLS session, dropping free heap to ~10 KB.
-        // ArduinoJson reads through Stream::timedRead(), whose timeout (1 s
-        // by default) is separate from the socket timeout above; a slow TLS
-        // read on weak WiFi would otherwise end the parse early.
-        static_cast<Stream &>(client).setTimeout(HTTP_TIMEOUT_MS);
-        DeserializationError err = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
-        http.end();
-        if (err)
-        {
-            error = err == DeserializationError::NoMemory ? std::string("Release list too large to read")
-                                                          : std::string("Couldn't read the GitHub releases list: ") + err.c_str();
             Logger::error(TAG, "%s", error.c_str());
             currentPhase = Phase::Error;
             return {};
@@ -231,6 +231,52 @@ namespace SQM
 
         currentPhase = Phase::Idle;
         return Releases::parse(doc, track, SQM_ENABLE_BLE != 0);
+    }
+
+    OtaUpdater::Fetch OtaUpdater::fetchReleaseList(JsonDocument &doc, const JsonDocument &filter, std::string &error)
+    {
+        WiFiClientSecure client;
+        client.setCACert(GITHUB_ROOT_CA_PEM);
+
+        HTTPClient http;
+        http.setTimeout(HTTP_TIMEOUT_MS);
+        if (!http.begin(client, RELEASES_URL))
+        {
+            error = "Failed to initialize HTTPS client";
+            return Fetch::Fail;
+        }
+        http.addHeader("User-Agent", "SQMeter-ESP32");
+        http.addHeader("Accept", "application/vnd.github+json");
+        // HTTP/1.0 means no chunked transfer encoding, so the JSON can be
+        // parsed straight off the TLS stream.
+        http.useHTTP10(true);
+
+        const int httpCode = http.GET();
+        if (httpCode != HTTP_CODE_OK)
+        {
+            error = "GitHub API request failed (HTTP " + std::to_string(httpCode) + ")";
+            http.end();
+            return httpCode < 0 ? Fetch::Retry : Fetch::Fail;
+        }
+
+        // Stream-parse with a filter instead of http.getString(): the full
+        // releases body (tens of KB of release notes) used to be held twice,
+        // on top of the TLS session, dropping free heap to ~10 KB.
+        WaitingReader reader{http.getStream()};
+        const DeserializationError err = deserializeJson(doc, reader, DeserializationOption::Filter(filter));
+        http.end();
+        if (err == DeserializationError::NoMemory)
+        {
+            error = "Release list too large to read";
+            return Fetch::Fail;
+        }
+        if (err)
+        {
+            const std::string reason = err.c_str();
+            error = "Couldn't read the GitHub releases list: " + reason;
+            return err == DeserializationError::IncompleteInput ? Fetch::Retry : Fetch::Fail;
+        }
+        return Fetch::Ok;
     }
 
     bool OtaUpdater::applyUpdate(const GithubRelease &release)

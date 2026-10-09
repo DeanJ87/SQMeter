@@ -302,6 +302,9 @@ curl "http://sqmeter.local/api/updates/check?track=stable"
 
 `track` is `stable` (default) or `beta`, mapped directly from GitHub's `prerelease` flag. A release without both a firmware file for this build (`sqmeter-l2-firmware-*.bin`, or `sqmeter-l2-ble-firmware-*.bin` on the Bluetooth build) and a `sqmeter-l2-littlefs-*.bin` file is omitted entirely - so releases for the old partition layout (v0.2) aren't listed.
 
+Errors: `502 {"error": "..."}` when GitHub can't be reached or its answer can't be read (a dropped
+connection is retried once first), `409` while another check is running.
+
 ---
 
 ### `POST /api/updates/apply`

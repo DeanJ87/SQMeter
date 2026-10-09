@@ -4,6 +4,7 @@
 #include <vector>
 #include <functional>
 #include <esp_partition.h>
+#include <ArduinoJson.h>
 
 #include "ReleaseLogic.h"
 
@@ -55,6 +56,13 @@ namespace SQM
     private:
         void runApply(GithubRelease release);
         bool downloadAndFlashFirmware(const std::string &url, size_t expectedSize, int progressFrom, int progressTo);
+        enum class Fetch
+        {
+            Ok,
+            Retry,
+            Fail
+        };
+        Fetch fetchReleaseList(JsonDocument &doc, const JsonDocument &filter, std::string &error);
         const esp_partition_t *filesystemPartitionFor(size_t expectedSize);
         bool downloadAndFlashFilesystem(const std::string &url, size_t expectedSize, int progressFrom, int progressTo);
 

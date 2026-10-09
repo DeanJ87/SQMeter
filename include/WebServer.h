@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Config.h"
+#include <atomic>
 #include "sensors/TSL2591Sensor.h"
 #include "sensors/BME280Sensor.h"
 #include "sensors/MLX90614Sensor.h"
@@ -253,6 +254,17 @@ namespace SQM
         void handleFirmwareUploadDone(AsyncWebServerRequest *request);
         void setupGithubUpdates();
         void handleUpdatesCheck(AsyncWebServerRequest *request);
+        // One update check at a time, in its own task (see handleUpdatesCheck).
+        struct UpdatesCheckJob
+        {
+            AsyncWebServerRequestPtr request;
+            OtaUpdater *ota;
+            std::string track;
+        };
+        static constexpr uint32_t UPDATES_CHECK_STACK_BYTES = 12288;
+        static inline std::atomic<bool> updatesCheckRunning{false};
+        static void runUpdatesCheck(void *arg);
+        static std::string releasesJson(const std::vector<GithubRelease> &releases);
         void handleUpdatesApply(AsyncWebServerRequest *request, JsonVariant &json);
         void setupAlpacaRoutes();
         void handleAlpacaRequest(AsyncWebServerRequest *request);

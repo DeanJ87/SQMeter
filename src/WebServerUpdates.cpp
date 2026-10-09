@@ -366,15 +366,41 @@ namespace SQM
         if (request->hasParam("track") && request->getParam("track")->value() == "beta")
             track = "beta";
 
-        std::string error;
-        std::vector<GithubRelease> releases = otaUpdater->checkForUpdate(track, error);
-        if (!error.empty())
+        // The check takes seconds over TLS (longer on weak WiFi), so it runs in
+        // its own task and answers the paused request when done: blocking the
+        // web server's task that long would trip its watchdog.
+        bool idle = false;
+        if (!updatesCheckRunning.compare_exchange_strong(idle, true))
         {
-            AsyncWebServerResponse *response = request->beginResponse(502, "application/json", createErrorJson(error.c_str()).c_str());
-            request->send(response);
+            request->send(409, "application/json", createErrorJson("Already checking for updates").c_str());
             return;
         }
+        auto *job = new UpdatesCheckJob{request->pause(), otaUpdater.get(), track};
+        if (xTaskCreate(runUpdatesCheck, "update_check", UPDATES_CHECK_STACK_BYTES, job, 1, nullptr) != pdPASS)
+        {
+            const AsyncWebServerRequestPtr paused = job->request;
+            delete job;
+            updatesCheckRunning = false;
+            if (std::shared_ptr<AsyncWebServerRequest> again = paused.lock())
+                again->send(503, "application/json", createErrorJson("Not enough free memory to check for updates").c_str());
+        }
+    }
 
+    void WebServer::runUpdatesCheck(void *arg)
+    {
+        std::unique_ptr<UpdatesCheckJob> job(static_cast<UpdatesCheckJob *>(arg));
+        std::string error;
+        const std::vector<GithubRelease> releases = job->ota->checkForUpdate(job->track, error);
+        const std::string body = error.empty() ? releasesJson(releases) : createErrorJson(error.c_str());
+        if (std::shared_ptr<AsyncWebServerRequest> request = job->request.lock())
+            request->send(error.empty() ? 200 : 502, "application/json", body.c_str());
+        job.reset();
+        updatesCheckRunning = false;
+        vTaskDelete(nullptr);
+    }
+
+    std::string WebServer::releasesJson(const std::vector<GithubRelease> &releases)
+    {
         DynamicJsonDocument doc(8192);
         JsonArray arr = doc.to<JsonArray>();
         for (const GithubRelease &r : releases)
@@ -391,7 +417,7 @@ namespace SQM
         }
         std::string json;
         serializeJson(doc, json);
-        request->send(200, "application/json", json.c_str());
+        return json;
     }
 
     void WebServer::handleUpdatesApply(AsyncWebServerRequest *request, JsonVariant &json)
