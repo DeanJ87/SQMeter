@@ -6,8 +6,6 @@
 
 **Status**: Implemented (PR #95; spec PR #84) - converged
 
-**Input**: User description: "'On while N.I.N.A. is connected' doesn't describe what it does - it's really 'off when the SafetyMonitor Alpaca client disconnects', and that's bad wording too. 'Alerts on now?' implies switching it on bypasses something - confusing even to a native English speaker. Add the inverse: notify me if N.I.N.A. (or any Alpaca client) disconnects or stops polling for a set time, so I know the imaging software has dropped its connection to the safety monitor."
-
 ## Context
 
 Today the Alerts settings (spec 008, FR-005) have a group titled **"When you're not imaging"** with
@@ -45,7 +43,7 @@ checking the safety monitor - last checked 2 min ago". When it starts checking a
 says it's back.
 
 **Why this priority**: This failure is silent and dangerous. Rain will still be detected, but
-nothing will close the roof. It is the user's explicit request, and no setting today covers it.
+nothing will close the roof, and no setting today covers it.
 
 **Independent Test**:
 1. Connect any Alpaca client (N.I.N.A., ConformU, or `curl` PUT `connected=true`), then poll

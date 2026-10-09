@@ -8,10 +8,6 @@
 
 **Status**: Implemented (PR #92; spec PR #81) - converged
 
-**Input**: User description:
-- First version: "The demo's Demo panel should let you set conditions directly instead of only canned scenarios: set the device date/time (with presets …), set location presets …, rain on/off and rain rate, sky brightness/Bortle, cloud state (clear, clouding over, clearing, overcast …), wind, sensor faults …"
-- Revision: "the demo params rely on predictions that we expect things haven't been adjusted and take time (which isn't obvious when adjusting) for example if i press cloud over but i have set the differential of clear to be -30c it wont ever reach clear. I think that's a big part of why we shouldn't have labels like this and instead allow setting differentials, or rather, set the ambient, set the sky temp, set the rain rate etc."
-
 **Related**:
 - [Spec 016: a demo that behaves like the device](../016-demo-device-emulation/spec.md): the emulated device, FR-006 (nothing outbound), FR-008 (session-only state) and FR-009 (scenarios).
 - Spec 018: the demo tour and opt-in notifications. Its tour steps drive these controls.

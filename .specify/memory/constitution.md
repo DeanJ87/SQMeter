@@ -144,6 +144,9 @@ Code is read far more often than it's written, by people and by AI agents workin
   `/speckit-implement`, repeating `/speckit-converge` until it reports converged. Specs live in
   `specs/<NNN-feature>/`. A feature's `spec.md` is a living contract while its PR is open, and
   a historical record once merged; later changes get a new spec.
+- The owner's prompts never go into the repository: no `**Input**: User description` line or
+  quoted request in specs, plans, tasks, commits or PRs. Write the spec in its own words.
+  The build's integrity checks enforce it for `specs/` and `.specify/`.
 
 ## Governance
 
@@ -159,4 +162,4 @@ Code is read far more often than it's written, by people and by AI agents workin
   Tracking section.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-08
+**Version**: 1.1.1 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-09

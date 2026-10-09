@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill updates: self-update from GitHub releases (stable/beta tracks), manual upload, command-line uploads, and the release pipeline that feeds them."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Update from the browser in one click (Priority: P1)
