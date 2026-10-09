@@ -1,8 +1,10 @@
 import { ComponentChildren, createContext, FunctionalComponent } from 'preact';
-import { useContext, useId } from 'preact/hooks';
+import { useContext, useId, useState } from 'preact/hooks';
 import { FIX_LABEL, blocksSwitchingOn, noteFor, type DepEntry } from '../../lib/settingsDeps';
 import { Button, Card, InfoTip, Note, Pill } from '../ui';
 import { t } from '../../i18n';
+import { decimalSeparator, formatInputNumber } from '../../i18n/format';
+import { parseNumber, type NumberProblem } from '../../i18n/parse';
 
 // Settings building blocks, all on the shared component classes so Settings
 // looks like the rest of the app. Explanations go in `hint` (a "?" tooltip),
@@ -169,9 +171,9 @@ export const Field: FunctionalComponent<{ label: string; hint?: ComponentChildre
 
 // ARIA for an input: its own label if given, else its Field's, plus the
 // error description and invalid state.
-const useFieldAria = (ariaLabel?: string, error?: string) => {
+const useFieldAria = (ariaLabel?: string, error?: string, ownErrorId?: string) => {
   const field = useContext(FieldContext);
-  const errorId = error ? field?.errorId : undefined;
+  const errorId = ownErrorId ?? (error ? field?.errorId : undefined);
   return {
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabel ? undefined : field?.labelId,
@@ -182,6 +184,17 @@ const useFieldAria = (ariaLabel?: string, error?: string) => {
 
 const inputClass = (error?: string) => `input${error ? ' is-invalid' : ''}`;
 
+// Messages for a number that couldn't be read, with an example in the
+// active language's style ("21,5" in German).
+const numberProblemText = (problem: NumberProblem, integer?: boolean) => {
+  if (problem === 'notInteger') return t('input.wholeNumber');
+  if (problem === 'ambiguous') return t('input.ambiguousNumber', { decimal: decimalSeparator(), example: formatInputNumber(1234.5) });
+  return t('input.notANumber', { example: integer ? '42' : formatInputNumber(21.5) });
+};
+
+// Numbers are typed as text so every language's decimal separator works the
+// same in every browser ("21,5" or "21.5" in German); a value that can't be
+// read is kept on screen with a message, never truncated (spec 023 FR-017).
 export const NumberInput: FunctionalComponent<{
   value: number;
   onChange: (value: number) => void;
@@ -194,32 +207,57 @@ export const NumberInput: FunctionalComponent<{
   integer?: boolean;
   ariaLabel?: string;
   unit?: string;
-}> = ({ value, onChange, min, max, step, disabled, error, dataField, integer, ariaLabel, unit }) => {
-  const aria = useFieldAria(ariaLabel, error);
+}> = ({ value, onChange, min, disabled, error, dataField, integer, ariaLabel, unit }) => {
+  const [draft, setDraft] = useState<string | null>(null);
+  const [problem, setProblem] = useState<NumberProblem | null>(null);
+  const problemId = useId();
+  const localError = problem ? numberProblemText(problem, integer) : undefined;
+  const shownError = localError ?? error;
+  const aria = useFieldAria(ariaLabel, shownError, localError ? problemId : undefined);
+  const commit = (raw: string) => {
+    const parsed = parseNumber(raw, { integer });
+    if (parsed.ok || parsed.problem === 'empty') {
+      setDraft(null);
+      setProblem(null);
+      onChange(parsed.ok ? parsed.value : Number.NaN);
+      return;
+    }
+    setDraft(raw);
+    setProblem(parsed.problem);
+  };
+  // iOS decimal keypads have no minus sign: offer the full keyboard where negatives are allowed.
+  const inputMode = min !== undefined && min >= 0 ? (integer ? 'numeric' : 'decimal') : 'text';
   const input = (
     <input
-      type="number"
+      type="text"
+      inputMode={inputMode}
+      autoComplete="off"
       data-field={dataField}
       {...aria}
-      class={inputClass(error)}
-      value={Number.isFinite(value) ? value : ''}
-      min={min}
-      max={max}
-      step={step}
+      class={inputClass(shownError)}
+      value={draft ?? formatInputNumber(value)}
       disabled={disabled}
-      onChange={(e) => {
-        const raw = (e.target as HTMLInputElement).value;
-        onChange(integer ? parseInt(raw, 10) : parseFloat(raw));
-      }}
+      onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
+      onChange={(e) => commit((e.target as HTMLInputElement).value)}
     />
   );
-  return unit ? (
-    <div class={`input-group${error ? ' is-invalid' : ''}${disabled ? ' is-disabled' : ''}`}>
+  const field = unit ? (
+    <div class={`input-group${shownError ? ' is-invalid' : ''}${disabled ? ' is-disabled' : ''}`}>
       {input}
       <span class="input-unit">{unit}</span>
     </div>
   ) : (
     input
+  );
+  return localError ? (
+    <>
+      {field}
+      <Note tone="bad" id={problemId}>
+        {localError}
+      </Note>
+    </>
+  ) : (
+    field
   );
 };
 
