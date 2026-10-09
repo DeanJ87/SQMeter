@@ -220,6 +220,46 @@ namespace SQM
         }
     }
 
+    void TimeManager::fillGpsStatus(TimeStatus &status) const
+    {
+        if (!gpsSensor)
+        {
+            status.gpsHasFix = false;
+            status.gpsTimeSinceUpdate = 0xFFFFFFFF;
+            status.gpsSatellites = 0;
+            status.gpsTimeUTC = "GPS disabled";
+            return;
+        }
+        GPSReading reading = gpsSensor->getReading();
+        status.gpsHasFix = reading.hasFix;
+        status.gpsTimeSinceUpdate = gpsSensor->getTimeSinceLastUpdate();
+        status.gpsSatellites = reading.satellites;
+        if (!gpsSensor->hasValidTime() || !gpsSensor->hasValidDate())
+        {
+            status.gpsTimeUTC = "No GPS time";
+            return;
+        }
+        struct tm gpsTime;
+        if (!gpsSensor->getDateTime(&gpsTime))
+        {
+            status.gpsTimeUTC = "Invalid";
+            return;
+        }
+        char buffer[32];
+        strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S UTC", &gpsTime);
+        status.gpsTimeUTC = std::string(buffer);
+    }
+
+    // Time until the next NTP sync is due (0 if not synced or overdue).
+    uint32_t TimeManager::nextSyncInMs() const
+    {
+        if (syncStatus != NTPSyncStatus::SYNCED)
+            return 0;
+        uint32_t syncInterval = ntpConfig.enabled ? ntpConfig.syncIntervalMs : 300000;
+        uint32_t timeSinceSync = millis() - lastSuccessfulSync;
+        return timeSinceSync < syncInterval ? syncInterval - timeSinceSync : 0; // 0: overdue for sync
+    }
+
     TimeStatus TimeManager::getStatus() const
     {
         TimeStatus status;
@@ -231,61 +271,9 @@ namespace SQM
         status.server = ntpConfig.server1;
         status.timezone = ntpConfig.timezone;
 
-        // GPS status
-        if (gpsSensor)
-        {
-            GPSReading reading = gpsSensor->getReading();
-            status.gpsHasFix = reading.hasFix;
-            status.gpsTimeSinceUpdate = gpsSensor->getTimeSinceLastUpdate();
-            status.gpsSatellites = reading.satellites;
+        fillGpsStatus(status);
 
-            // Get GPS UTC time if available
-            if (gpsSensor->hasValidTime() && gpsSensor->hasValidDate())
-            {
-                struct tm gpsTime;
-                if (gpsSensor->getDateTime(&gpsTime))
-                {
-                    char buffer[32];
-                    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S UTC", &gpsTime);
-                    status.gpsTimeUTC = std::string(buffer);
-                }
-                else
-                {
-                    status.gpsTimeUTC = "Invalid";
-                }
-            }
-            else
-            {
-                status.gpsTimeUTC = "No GPS time";
-            }
-        }
-        else
-        {
-            status.gpsHasFix = false;
-            status.gpsTimeSinceUpdate = 0xFFFFFFFF;
-            status.gpsSatellites = 0;
-            status.gpsTimeUTC = "GPS disabled";
-        }
-
-        const uint32_t now = millis();
-        if (syncStatus == NTPSyncStatus::SYNCED)
-        {
-            uint32_t syncInterval = ntpConfig.enabled ? ntpConfig.syncIntervalMs : 300000;
-            uint32_t timeSinceSync = now - lastSuccessfulSync;
-            if (timeSinceSync < syncInterval)
-            {
-                status.nextSyncMs = syncInterval - timeSinceSync;
-            }
-            else
-            {
-                status.nextSyncMs = 0; // Overdue for sync
-            }
-        }
-        else
-        {
-            status.nextSyncMs = 0;
-        }
-
+        status.nextSyncMs = nextSyncInMs();
         status.driftSeconds = 0;
 
         return status;

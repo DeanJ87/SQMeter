@@ -90,6 +90,8 @@ namespace SQM
         bool readLine(std::string &line);
         bool readAck(char expectedAck, std::string &ack);
         bool handleControlLine(const std::string &line);
+        void writeCommand(char cmd, const char *expectedAck);
+        bool waitForAck(const char *expectedAck, std::string &ack);
         bool handleRainLine(const std::string &line);
         bool parseLine(const std::string &line);
     };

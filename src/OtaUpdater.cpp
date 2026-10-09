@@ -31,23 +31,25 @@ namespace SQM
         constexpr uint32_t HTTP_TIMEOUT_MS = 15000;
         constexpr size_t OTA_TASK_STACK_WORDS = 8192;
 
-        // Streams an HTTPS GET body to `onChunk`, reporting progress scaled
-        // into [progressFrom, progressTo]. Shared by the firmware and
-        // filesystem downloads so both go through identical retry/EOF logic.
-        bool streamDownload(
-            const std::string &url,
-            size_t sizeHint,
-            int progressFrom,
-            int progressTo,
-            const std::function<bool(const uint8_t *, size_t)> &onChunk,
-            const OtaUpdater::ProgressCallback &progressCb,
-            size_t &written,
-            std::string &error)
+        // Progress of one download, scaled into [from, to] of the whole update.
+        struct ProgressRange
         {
-            WiFiClientSecure client;
-            client.setCACert(GITHUB_ROOT_CA_PEM);
+            int from = 0;
+            int to = 0;
+            const OtaUpdater::ProgressCallback *callback = nullptr; // nullptr: no reporting
+        };
 
-            HTTPClient http;
+        // A download: where from, roughly how big, and where the bytes go.
+        struct Download
+        {
+            const std::string &url;
+            size_t sizeHint;
+            const std::function<bool(const uint8_t *, size_t)> &onChunk;
+        };
+
+        bool openDownload(HTTPClient &http, WiFiClientSecure &client, const std::string &url, std::string &error)
+        {
+            client.setCACert(GITHUB_ROOT_CA_PEM);
             http.setTimeout(HTTP_TIMEOUT_MS);
             // GitHub release assets are served via a redirect to a CDN URL; follow it.
             http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
@@ -57,7 +59,6 @@ namespace SQM
                 return false;
             }
             http.addHeader("User-Agent", "SQMeter-ESP32");
-
             int httpCode = http.GET();
             if (httpCode != HTTP_CODE_OK)
             {
@@ -65,15 +66,28 @@ namespace SQM
                 http.end();
                 return false;
             }
+            return true;
+        }
 
-            int contentLength = http.getSize();
-            size_t expectedSize = contentLength > 0 ? static_cast<size_t>(contentLength) : sizeHint;
+        void reportProgress(const ProgressRange &progress, size_t written, size_t expectedSize, int &lastPercent)
+        {
+            if (expectedSize == 0 || progress.callback == nullptr || !*progress.callback)
+                return;
+            int percent = progress.from + static_cast<int>((written * static_cast<uint64_t>(progress.to - progress.from)) / expectedSize);
+            if (percent == lastPercent)
+                return;
+            lastPercent = percent;
+            (*progress.callback)(percent);
+        }
 
+        // Copies the body to `onChunk` until `expectedSize` bytes (or the end
+        // of the stream when the size is unknown). False if a chunk is refused.
+        bool copyBody(HTTPClient &http, const Download &download, size_t expectedSize, const ProgressRange &progress, size_t &written)
+        {
             WiFiClient *stream = http.getStreamPtr();
             uint8_t buf[1024];
             written = 0;
             int lastPercent = -1;
-
             while (http.connected() && (written < expectedSize || expectedSize == 0))
             {
                 size_t available = stream->available();
@@ -84,30 +98,34 @@ namespace SQM
                     delay(10);
                     continue;
                 }
-
-                size_t toRead = std::min(available, sizeof(buf));
-                size_t readBytes = stream->readBytes(buf, toRead);
+                size_t readBytes = stream->readBytes(buf, std::min(available, sizeof(buf)));
                 if (readBytes == 0)
                     break;
-
-                if (!onChunk(buf, readBytes))
-                {
-                    error = "Flash write failed";
-                    http.end();
+                if (!download.onChunk(buf, readBytes))
                     return false;
-                }
-
                 written += readBytes;
-                if (expectedSize > 0 && progressCb)
-                {
-                    int percent =
-                        progressFrom + static_cast<int>((written * static_cast<uint64_t>(progressTo - progressFrom)) / expectedSize);
-                    if (percent != lastPercent)
-                    {
-                        lastPercent = percent;
-                        progressCb(percent);
-                    }
-                }
+                reportProgress(progress, written, expectedSize, lastPercent);
+            }
+            return true;
+        }
+
+        // Streams an HTTPS GET body to `onChunk`, reporting progress scaled
+        // into the given range. Shared by the firmware and filesystem
+        // downloads so both go through identical retry/EOF logic.
+        bool streamDownload(const Download &download, const ProgressRange &progress, size_t &written, std::string &error)
+        {
+            WiFiClientSecure client;
+            HTTPClient http;
+            if (!openDownload(http, client, download.url, error))
+                return false;
+
+            int contentLength = http.getSize();
+            size_t expectedSize = contentLength > 0 ? static_cast<size_t>(contentLength) : download.sizeHint;
+            if (!copyBody(http, download, expectedSize, progress, written))
+            {
+                error = "Flash write failed";
+                http.end();
+                return false;
             }
             http.end();
 
@@ -116,7 +134,6 @@ namespace SQM
                 error = "Download incomplete (" + std::to_string(written) + " of " + std::to_string(expectedSize) + " bytes)";
                 return false;
             }
-
             return true;
         }
     } // namespace
@@ -128,7 +145,7 @@ namespace SQM
         size_t &written,
         std::string &error)
     {
-        return streamDownload(url, sizeHint, 0, 0, onChunk, nullptr, written, error);
+        return streamDownload(Download{url, sizeHint, onChunk}, ProgressRange{}, written, error);
     }
 
     OtaUpdater::OtaUpdater(ProgressCallback onProgress, ErrorCallback onError, RestartCallback onRestart)
@@ -263,15 +280,10 @@ namespace SQM
 
         size_t written = 0;
         std::string error;
+        const std::function<bool(const uint8_t *, size_t)> writeFirmware = [](const uint8_t *data, size_t len)
+        { return Update.write(const_cast<uint8_t *>(data), len) == len; };
         bool ok = streamDownload(
-            url,
-            expectedSize,
-            progressFrom,
-            progressTo,
-            [](const uint8_t *data, size_t len) { return Update.write(const_cast<uint8_t *>(data), len) == len; },
-            progressCb,
-            written,
-            error);
+            Download{url, expectedSize, writeFirmware}, ProgressRange{progressFrom, progressTo, &progressCb}, written, error);
 
         if (!ok)
         {
@@ -338,21 +350,15 @@ namespace SQM
         size_t writeOffset = 0;
         size_t written = 0;
         std::string error;
-        bool ok = streamDownload(
-            url,
-            expectedSize,
-            progressFrom,
-            progressTo,
-            [fsPartition, &writeOffset](const uint8_t *data, size_t len)
-            {
-                if (esp_partition_write(fsPartition, writeOffset, data, len) != ESP_OK)
-                    return false;
-                writeOffset += len;
-                return true;
-            },
-            progressCb,
-            written,
-            error);
+        const std::function<bool(const uint8_t *, size_t)> writeFs = [fsPartition, &writeOffset](const uint8_t *data, size_t len)
+        {
+            if (esp_partition_write(fsPartition, writeOffset, data, len) != ESP_OK)
+                return false;
+            writeOffset += len;
+            return true;
+        };
+        bool ok =
+            streamDownload(Download{url, expectedSize, writeFs}, ProgressRange{progressFrom, progressTo, &progressCb}, written, error);
 
         if (!ok)
         {

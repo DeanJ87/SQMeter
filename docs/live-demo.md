@@ -89,9 +89,9 @@ Then **Send a test**, or make it rain. The message is built by the device's own 
 Unless you turn on real notifications, the demo only talks to itself: there is no server behind it, and the page's security policy lets it reach only ntfy.sh, Pushover and secure WebSocket brokers - which it does only for real notifications you turned on, in that tab. Keys or addresses you type into the device's alert or MQTT settings go nowhere. An automated test exercises every action and checks that no request leaves the page.
 
 <!-- diagram: DIA-12
-sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/demo/simulator.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
+sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/demo/simulator.ts web/src/main.tsx tools/demo-core/bridge.cpp tools/demo-core/sensor_feed.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: fd5b16f3e0a46d7f
+fingerprint: d98f8b3d2f3377bb
 -->
 <figure class="diagram" markdown>
 
