@@ -143,3 +143,21 @@ for (const code of LANGS) {
     expect(problems, `${code}:\n  ${problems.join('\n  ')}`).toEqual([]);
   });
 }
+
+// The device flow in the demo (FR-018): choose a language in Settings and save;
+// the "downloaded" file comes from the demo site and the UI switches. It
+// survives a reload, and English switches back.
+test('i18n: choosing a language in Settings', async ({ page }) => {
+  test.setTimeout(60_000);
+  const es = messagesFor('es');
+  await page.goto('./#/settings?tab=device');
+  await page.locator('[data-field="language"]').selectOption('es');
+  await page.getByRole('button', { name: String(ENGLISH['settings.save']) }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es', { timeout: 20_000 });
+  await expect(page.getByRole('navigation').first()).toContainText(String(es['layout.settings']));
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  await page.locator('[data-field="language"]').selectOption('en');
+  await page.getByRole('button', { name: String(es['settings.save']) }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en', { timeout: 20_000 });
+});
