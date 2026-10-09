@@ -2,7 +2,7 @@
 
 **Feature Branch**: `spec/024-docs-diagrams`
 **Created**: 2026-10-08
-**Status**: Draft
+**Status**: Implemented (PR #90) - converged
 **Input**: User description: "there's also an open PR and issue about mermaid docs, we should spec this in, because they could be really helpful to have in the docs"
 
 ## Context

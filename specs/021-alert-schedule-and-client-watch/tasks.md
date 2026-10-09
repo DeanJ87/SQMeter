@@ -81,3 +81,16 @@ US1's disconnect alert must run before.
 - [x] T029 [US2] Edge case "the imaging app goes silent while alerts are paused by hand - the status line still shows the client as silent": the Alerts card shows a note when `status.alpaca.clients.*.silent` ("The imaging app has gone quiet - safety monitor last checked 4 min ago.") in `web/src/components/settings/AlertsTab.tsx`, with a test in `web/src/components/__tests__/AlertSchedule.test.tsx`
 - [x] T030 [US3] FR-021 "schemas are updated": add `specs/016-demo-device-emulation/contracts/schemas/alerts-armed.schema.json` for `GET /api/alerts/armed`, check it in `web/src/demo/__tests__/contracts.test.ts` and add the endpoint to `tools/contract-check.py`
 
+
+## On-device verification
+
+- [x] T031 On-device checks on the spare device (standard build, main ba66d72), 2026-10-09. All pass:
+  - OTA from v0.2.0-beta.3 moved "On while N.I.N.A. is connected" to "Only while an imaging app is connected", paused (`reason: migrated`).
+  - A silent client raised "Imaging app stopped checking" after 2 min, and "is back" on its return. "Back" is held by the shared cooldown; a follow-up fix is open.
+  - A clean disconnect paused alerts without "stopped checking".
+  - `POST /api/alerts/disarm` gave "Paused by a script".
+  - Settings and the pause survived a restart.
+  - ConformU SafetyMonitor: no errors.
+  - Heap and stack stayed healthy.
+
+  Left to the user: MQTT `alerts/armed` and the Home Assistant switch, which need the broker login.

@@ -28,7 +28,7 @@
 
 ## Phase 5: Convergence (US4)
 
-- [ ] T015 Run /speckit-converge against the standard; append findings (rule IDs + files) as tasks
+- [x] T015 Run /speckit-converge against the standard; append findings (rule IDs + files) as tasks
 
 ## Dependencies
 
