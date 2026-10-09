@@ -57,9 +57,27 @@ void test_file_checks()
     TEST_ASSERT_TRUE(std::string(Language::fileCheckMessage(Language::FileCheck::NoSpace)).size() > 0);
 }
 
+void test_boot_action()
+{
+    using Language::BootAction;
+    TEST_ASSERT_EQUAL(BootAction::Nothing, Language::bootAction("en", false, true));
+    TEST_ASSERT_EQUAL(BootAction::UseInstalled, Language::bootAction("es", true, false));
+    TEST_ASSERT_EQUAL(BootAction::UseInstalled, Language::bootAction("es", true, true));
+    TEST_ASSERT_EQUAL(BootAction::Restore, Language::bootAction("es", false, false));
+}
+
+// A download that never finished (it crashed the device, or the power went)
+// must not start again by itself, or a crash would repeat on every boot.
+void test_unfinished_download_is_not_retried_at_boot()
+{
+    TEST_ASSERT_EQUAL(Language::BootAction::WaitAfterCrash, Language::bootAction("es", false, true));
+}
+
 int main()
 {
     UNITY_BEGIN();
+    RUN_TEST(test_boot_action);
+    RUN_TEST(test_unfinished_download_is_not_retried_at_boot);
     RUN_TEST(test_supported_codes);
     RUN_TEST(test_asset_urls_follow_the_release);
     RUN_TEST(test_checksum_file);

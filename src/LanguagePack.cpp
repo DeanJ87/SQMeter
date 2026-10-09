@@ -27,7 +27,12 @@ namespace SQM
         constexpr const char *FILE_PATH = "/lang.json.gz";
         constexpr const char *TEMP_PATH = "/lang.tmp";
         constexpr const char *META_PATH = "/lang.meta"; // "<lang> <version> <size>"
-        constexpr size_t TASK_STACK_WORDS = 7168;
+        // Present while a download runs; left behind if it never finished.
+        constexpr const char *ATTEMPT_PATH = "/lang.try";
+        // Bytes (ESP-IDF FreeRTOS counts stack in bytes). The TLS handshake,
+        // the 1 KB read buffer and LittleFS writes overflowed 7168 on a real
+        // device; the OTA and alert tasks run the same download code on 8192.
+        constexpr size_t TASK_STACK_BYTES = 10240;
         constexpr size_t CHECKSUM_MAX = 128;
         constexpr uint32_t TLS_WAIT_MS = 15000;
 
@@ -77,6 +82,8 @@ namespace SQM
 
         bool readMeta(Meta &meta)
         {
+            if (!LittleFS.exists(META_PATH))
+                return false;
             File file = LittleFS.open(META_PATH, "r");
             if (!file)
                 return false;
@@ -144,6 +151,7 @@ namespace SQM
         LittleFS.remove(FILE_PATH);
         LittleFS.remove(META_PATH);
         LittleFS.remove(TEMP_PATH);
+        LittleFS.remove(ATTEMPT_PATH);
     }
 
     void LanguagePack::onLanguageChanged(const std::string &code)
@@ -171,16 +179,25 @@ namespace SQM
             return;
         restoreChecked = true;
         const std::string code = language();
-        if (code == Language::ENGLISH)
-            return;
-        if (installedMatches(code))
+        const bool unfinished = LittleFS.exists(ATTEMPT_PATH);
+        LittleFS.remove(ATTEMPT_PATH);
+        switch (Language::bootAction(code, installedMatches(code), unfinished))
         {
+        case Language::BootAction::Nothing:
+            return;
+        case Language::BootAction::UseInstalled:
             state = State::Installed;
             return;
+        case Language::BootAction::WaitAfterCrash:
+            return fail("The last language download didn't finish - choose the language again to retry");
+        case Language::BootAction::Restore:
+        {
+            std::string error;
+            if (!startDownload(code, State::Restoring, error))
+                fail(error);
+            return;
         }
-        std::string error;
-        if (!startDownload(code, State::Restoring, error))
-            fail(error);
+        }
     }
 
     bool LanguagePack::startDownload(const std::string &code, State whileRunning, std::string &error)
@@ -208,12 +225,17 @@ namespace SQM
             [](void *arg)
             {
                 auto *a = static_cast<Args *>(arg);
+                // Marks the attempt: if it never returns (a crash, power loss),
+                // the next boot won't start it again by itself.
+                File marker = LittleFS.open(ATTEMPT_PATH, "w");
+                marker.close();
                 a->self->runDownload(a->code);
+                LittleFS.remove(ATTEMPT_PATH);
                 delete a;
                 vTaskDelete(nullptr);
             },
             "lang_dl",
-            TASK_STACK_WORDS,
+            TASK_STACK_BYTES,
             args,
             1,
             nullptr,

@@ -228,6 +228,7 @@
   "device.language.theDownloadWasIncompleteTryAgain": "O download ficou incompleto: tente novamente",
   "device.language.theLanguageFileIsTooBig": "O arquivo de idioma é grande demais (no máximo 64 KB)",
   "device.language.theLanguageFileSChecksumIs": "O checksum do arquivo de idioma está ausente ou danificado",
+  "device.language.theLastLanguageDownloadDidnT": "O último download de idioma não terminou: escolha o idioma novamente para tentar de novo",
   "device.ota.busySendingAlertsTryAgainIn": "Ocupado enviando alertas: tente novamente em instantes",
   "device.ota.downloadFailedHttpHttpcode": "Falha no download (HTTP {httpCode})",
   "device.ota.downloadIncompleteWrittenOfExpectedsizeBytes": "Download incompleto ({written} de {expectedSize} bytes)",

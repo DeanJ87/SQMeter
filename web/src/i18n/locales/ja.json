@@ -225,6 +225,7 @@
   "device.language.theDownloadWasIncompleteTryAgain": "ダウンロードが完了しませんでした。もう一度お試しください",
   "device.language.theLanguageFileIsTooBig": "言語ファイルが大きすぎます（最大64 KB）",
   "device.language.theLanguageFileSChecksumIs": "言語ファイルのチェックサムがないか、破損しています",
+  "device.language.theLastLanguageDownloadDidnT": "前回の言語ファイルのダウンロードが完了しませんでした。もう一度言語を選択して再試行してください",
   "device.ota.busySendingAlertsTryAgainIn": "アラートを送信中です。しばらくしてからお試しください",
   "device.ota.downloadFailedHttpHttpcode": "ダウンロードに失敗しました（HTTP {httpCode}）",
   "device.ota.downloadIncompleteWrittenOfExpectedsizeBytes": "ダウンロードが不完全です（{written}/{expectedSize}バイト）",

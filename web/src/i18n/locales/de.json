@@ -228,6 +228,7 @@
   "device.language.theDownloadWasIncompleteTryAgain": "Der Download war unvollständig – versuchen Sie es erneut",
   "device.language.theLanguageFileIsTooBig": "Die Sprachdatei ist zu groß (höchstens 64 KB)",
   "device.language.theLanguageFileSChecksumIs": "Die Prüfsumme der Sprachdatei fehlt oder ist beschädigt",
+  "device.language.theLastLanguageDownloadDidnT": "Der letzte Sprach-Download wurde nicht abgeschlossen – wählen Sie die Sprache erneut, um es noch einmal zu versuchen",
   "device.ota.busySendingAlertsTryAgainIn": "Sende gerade Warnungen – versuchen Sie es gleich noch einmal",
   "device.ota.downloadFailedHttpHttpcode": "Download fehlgeschlagen (HTTP {httpCode})",
   "device.ota.downloadIncompleteWrittenOfExpectedsizeBytes": "Download unvollständig ({written} von {expectedSize} Bytes)",

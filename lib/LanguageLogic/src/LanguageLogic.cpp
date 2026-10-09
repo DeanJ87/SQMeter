@@ -89,5 +89,14 @@ namespace SQM
                 return "";
             }
         }
+
+        BootAction bootAction(const std::string &code, bool installedMatches, bool unfinishedAttempt)
+        {
+            if (code == ENGLISH)
+                return BootAction::Nothing;
+            if (installedMatches)
+                return BootAction::UseInstalled;
+            return unfinishedAttempt ? BootAction::WaitAfterCrash : BootAction::Restore;
+        }
     } // namespace Language
 } // namespace SQM
