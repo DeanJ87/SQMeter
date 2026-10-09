@@ -22,7 +22,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 ENGLISH = ROOT / "web/src/i18n/en.json"
 DOCS = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
-PATH = re.compile(r"\*\*((?:Settings|System|Alpaca|Updates|Dashboard)(?: → [^*]+)+)\*\*")
+# A step can't contain "→" itself, so the steps can't overlap (no catastrophic backtracking).
+PATH = re.compile(r"\*\*((?:Settings|System|Alpaca|Updates|Dashboard)(?: → [^*→]+)+)\*\*")
 
 
 COMPONENTS = ROOT / "web/src/components"
