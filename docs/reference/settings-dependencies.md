@@ -14,7 +14,7 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-01 | `alerts.mqtt.enabled` | MQTT on | Dependency | MQTT is off (mqtt-off) |
 | D-02 | `alerts.mqtt.enabled` | MQTT broker connected | Dependency, runtime | Broker not connected (mqtt-disconnected) |
 | D-03 | `alerts.pushover.enabled`, `alerts.ntfy.enabled`, `alerts.webhook.enabled` | WiFi connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
-| D-04 | `alerts.pushover.enabled`, `alerts.ntfy.enabled`, `alerts.webhook.enabled`, `alerts.mqtt.enabled`, `alerts.events.unsafe.level`, `alerts.events.safe.level`, `alerts.events.rain_started.level`, `alerts.events.rain_stopped.level`, `alerts.events.sensor_fault.level`, `alerts.events.sensor_recovered.level`, `alerts.events.dew_risk.level`, `alerts.events.clear_sky.level`, `alerts.events.clouded_over.level`, `alerts.skyNightOnly`, `alerts.safetyNightOnly`, `alerts.nightSunAltitudeDeg`, `alerts.armWithAlpaca` | Alerts on (Send alerts). Events at Wake me, arming and the night-only options also count while paired phones can ring; channels are push only | Dependency | Alerts are off (alerts-off) |
+| D-04 | `alerts.pushover.enabled`, `alerts.ntfy.enabled`, `alerts.webhook.enabled`, `alerts.mqtt.enabled`, `alerts.events.unsafe.level`, `alerts.events.safe.level`, `alerts.events.rain_started.level`, `alerts.events.rain_stopped.level`, `alerts.events.sensor_fault.level`, `alerts.events.sensor_recovered.level`, `alerts.events.dew_risk.level`, `alerts.events.clear_sky.level`, `alerts.events.clouded_over.level`, `alerts.events.client_lost.level`, `alerts.events.client_back.level`, `alerts.events.client_disconnected.level`, `alerts.skyNightOnly`, `alerts.safetyNightOnly`, `alerts.nightSunAltitudeDeg`, `alerts.sendMode` | Alerts on (Send alerts). Events at Wake me, arming and the night-only options also count while paired phones can ring; channels are push only | Dependency | Alerts are off (alerts-off) |
 | D-05 | `alerts.events.rain_started.level`, `alerts.events.rain_stopped.level` | Rain sensor on | Dependency | Rain sensor is off (rain-off) |
 | D-06 | `alerts.events.dew_risk.level` | BME280 detected | Dependency, runtime | BME280 not detected (environment-missing) |
 | D-07 | `alerts.events.clear_sky.level`, `alerts.events.clouded_over.level` | MLX90614 detected | Dependency, runtime | MLX90614 not detected (infrared-missing) |
@@ -22,7 +22,7 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-09 | `alerts.skyNightOnly` | Location set or GPS fix | Dependency | Needs your location (location-unknown) |
 | D-10 | `alerts.safetyNightOnly` | Location set or GPS fix | Dependency | Needs your location (location-unknown) |
 | D-11 | `alerts.nightSunAltitudeDeg` | Either night-only option on (off otherwise) | Dependency | - |
-| D-12 | `alerts.armWithAlpaca` | Alpaca on | Dependency | Alpaca is off (alpaca-off) |
+| D-12 | `alerts.sendMode` | Alpaca on - "Only while an imaging app is connected" (spec 021); while Alpaca is off, alerts go out any time | Dependency | Alpaca is off (alpaca-off) |
 | D-13 | `mqtt.homeAssistant.enabled`, `mqtt.homeAssistant.alertsSwitch` | MQTT on; the Alerts switch also needs alerts on (or paired phones that can ring) | Dependency | MQTT is off (mqtt-off); Alerts are off (alerts-off) |
 | D-14 | `mqtt.publish.gps`, `mqtt.publish.rain`, `mqtt.publish.wind` | MQTT on and GPS / rain sensor / anemometer on | Dependency | MQTT is off (mqtt-off); GPS is off (gps-off); Rain sensor is off (rain-off); Anemometer is off (wind-off) |
 | D-15 | `alpaca.rainUnsafeEnabled`, `alpaca.rainSensorRequired` | Rain sensor on | Dependency, inactive when unmet | Rain sensor is off (rain-off) |
@@ -46,4 +46,5 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-33 | `mqtt.broker`, `mqtt.topic` | MQTT on needs a broker and a topic | Constraint | - |
 | D-34 | `auth.password` | HTTP auth on needs a password | Constraint | - |
 | D-35 | `gps.enabled`, `ble.enabled`, `ble.phoneAlarm`, `alerts.wakePhones`, `mqtt.publish.gps` | A restart since GPS or Bluetooth was switched on (both start at boot) | Dependency | GPS starts after a restart (gps-restart); Bluetooth starts after a restart (ble-restart) |
+| D-37 | `alerts.events.client_lost.level`, `alerts.events.client_back.level`, `alerts.events.client_disconnected.level` | Alpaca on - imaging apps connect over Alpaca (spec 021) | Dependency | Alpaca is off (alpaca-off) |
 | D-36 | `wifi.mdns` | WiFi connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |

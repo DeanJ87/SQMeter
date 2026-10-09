@@ -196,15 +196,34 @@ namespace SQM
         EventSetting dewRisk;
         EventSetting clearSky;
         EventSetting cloudedOver;
+        // The imaging app (any Alpaca client) stops checking a device, comes
+        // back, or disconnects normally. Persisted under their own NVS key.
+        EventSetting clientLost;
+        EventSetting clientBack;
+        EventSetting clientDisconnected;
 
         float dewRiskMarginC;          // temperature within this of the dew point
         float clearSkyCloudPercent;    // clear below this
         float cloudedOverCloudPercent; // clouded over above this
         bool skyNightOnly;             // sky alerts only while the sun is below nightSunAltitudeDeg
         bool safetyNightOnly;          // safe/unsafe alerts only then too
-        bool armWithAlpaca;            // switch alerts on/off as N.I.N.A. connects/disconnects
-        float nightSunAltitudeDeg;     // -0.833 sunset, -12 nautical, -18 astronomical
-        uint32_t cooldownSeconds;      // min time between notifications of the same kind
+        // When alerts are sent: any time (unless paused), or only while an
+        // imaging app has an Alpaca device connected.
+        enum class SendMode : uint8_t
+        {
+            Any = 0,
+            WhileConnected = 1,
+        };
+        SendMode sendMode;
+        bool armWithAlpaca; // legacy form of sendMode, still written for older firmware
+        // How long a device may go without a request before "the imaging app
+        // stops checking" (seconds, 30-3600).
+        uint32_t clientSilentSafetySeconds;
+        uint32_t clientSilentWeatherSeconds;
+        static constexpr uint32_t MIN_CLIENT_SILENT_SECONDS = 30;
+        static constexpr uint32_t MAX_CLIENT_SILENT_SECONDS = 3600;
+        float nightSunAltitudeDeg; // -0.833 sunset, -12 nautical, -18 astronomical
+        uint32_t cooldownSeconds;  // min time between notifications of the same kind
 
         // Channels
         bool pushoverEnabled;
@@ -291,7 +310,17 @@ namespace SQM
         static Config createDefault();
 
         std::string toJson(bool redactSecrets = false, bool includeAlerts = true) const;
-        std::string alertsToJson(bool redactSecrets = false) const;
+        // The alerts settings as stored: Main under the "alerts" NVS key, Client
+        // (the imaging-app events and silence times) under their own key so
+        // each stays under the NVS string limit; All is what the API shows.
+        enum class AlertsPart : uint8_t
+        {
+            All,
+            Main,
+            Client,
+        };
+        static constexpr size_t MAX_ALERTS_JSON_BYTES = 3900;
+        std::string alertsToJson(bool redactSecrets = false, AlertsPart part = AlertsPart::All) const;
         bool validate(std::string *error = nullptr) const;
         // `error` (if given) gets the reason a config is rejected - the same
         // message the web UI shows.

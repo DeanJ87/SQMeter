@@ -26,7 +26,7 @@
   --sqm-line-soft: #142130;
   --sqm-text: #e7edf3;
   --sqm-muted: #8b9baa;
-  --sqm-dim: #566675;
+  --sqm-dim: #768798; /* same as the device UI: 4.7:1 or better on every panel (WCAG 1.4.3) */
   --sqm-cyan: #55c7f2;
   --sqm-violet: #a78bfa;
   --sqm-green: #5ee0a0;
@@ -321,6 +321,18 @@
 .md-typeset .grid.cards .twemoji,
 .md-typeset .grid.cards svg {
   color: var(--sqm-cyan);
+}
+
+/* Accessibility (spec 022): links in running text are underlined, not just
+   coloured (WCAG 1.4.1); navigation and buttons keep their own look. */
+.md-typeset a:not(.md-button):not(.headerlink) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.md-typeset a:not(.md-button):not(.headerlink):hover {
+  text-decoration-thickness: 2px;
 }
 
 /* Diagrams (spec 024). Colours come from Material's --md-mermaid-* variables,

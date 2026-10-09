@@ -81,36 +81,29 @@ namespace SQM
 
         const char *alertTypeName(AlertType type)
         {
-            switch (type)
-            {
-            case AlertType::Unsafe:
-                return "unsafe";
-            case AlertType::Safe:
-                return "safe";
-            case AlertType::RainStarted:
-                return "rain_started";
-            case AlertType::RainStopped:
-                return "rain_stopped";
-            case AlertType::SensorFault:
-                return "sensor_fault";
-            case AlertType::SensorRecovered:
-                return "sensor_recovered";
-            case AlertType::LensFault:
-                return "lens_fault";
-            case AlertType::DewRisk:
-                return "dew_risk";
-            case AlertType::ClearSky:
-                return "clear_sky";
-            case AlertType::CloudedOver:
-                return "clouded_over";
-            case AlertType::Acknowledged:
-                return "acknowledged";
-            case AlertType::AlertsOn:
-                return "alerts_on";
-            case AlertType::Test:
-                return "test";
-            }
-            return "unknown";
+            // In AlertType order; the names are the event keys in webhook and
+            // MQTT payloads and the alert settings.
+            static constexpr const char *NAMES[] = {
+                "unsafe",
+                "safe",
+                "rain_started",
+                "rain_stopped",
+                "sensor_fault",
+                "sensor_recovered",
+                "lens_fault",
+                "dew_risk",
+                "clear_sky",
+                "clouded_over",
+                "acknowledged",
+                "alerts_on",
+                "test",
+                "client_lost",
+                "client_back",
+                "client_disconnected",
+            };
+            static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == ALERT_TYPE_COUNT, "a name for every AlertType");
+            const size_t index = static_cast<size_t>(type);
+            return index < ALERT_TYPE_COUNT ? NAMES[index] : "unknown";
         }
 
         std::string joinReasons(const std::vector<std::string> &reasons)
@@ -374,7 +367,60 @@ namespace SQM
                 }
             }
 
+            updateClients(in, rules, alerts);
             return alerts;
+        }
+
+        void AlertEngine::updateClients(const AlertInputs &in, const AlertRules &rules, std::vector<Alert> &alerts)
+        {
+            const uint32_t now = in.nowSeconds;
+            const uint32_t cooldown = rules.cooldownSeconds;
+            for (size_t i = 0; i < CLIENT_DEVICE_COUNT; ++i)
+            {
+                const ClientInputs &client = in.clients[i];
+                const std::string device = client.device;
+                auto withVars = [&client, &device](Alert alert)
+                {
+                    // {device} is the Alpaca device here; it overrides the
+                    // device name, as an event's own values do.
+                    alert.vars = {
+                        {"device", device},
+                        {"silent_for", client.silentFor},
+                        {"last_checked", client.lastChecked},
+                        {"client_id", client.clientId}};
+                    return alert;
+                };
+
+                if (client.disconnectedNow)
+                {
+                    // A normal end of session: no "stopped checking", and no
+                    // "is back" for the request that disconnected.
+                    clients[i].initialized = true;
+                    clients[i].notified = false;
+                    clients[i].pending = false;
+                    disconnectPending[i] = rules.onClientDisconnected;
+                }
+                else if (sync(clients[i], client.silent, now, cooldown, client.watching && (rules.onClientLost || rules.onClientBack)))
+                {
+                    if (client.silent && rules.onClientLost)
+                        alerts.push_back(withVars(make(
+                            AlertType::ClientLost,
+                            "Imaging app stopped checking",
+                            "No request to the " + device + " for " + client.silentFor + " - last checked " + client.lastChecked + ".")));
+                    else if (!client.silent && rules.onClientBack)
+                        alerts.push_back(
+                            withVars(make(AlertType::ClientBack, "Imaging app is back", "The " + device + " is being checked again.")));
+                }
+
+                if (disconnectPending[i] && (!disconnectSent || now - disconnectSentAt >= cooldown))
+                {
+                    disconnectPending[i] = false;
+                    disconnectSent = true;
+                    disconnectSentAt = now;
+                    alerts.push_back(
+                        withVars(make(AlertType::ClientDisconnected, "Imaging app disconnected", "The " + device + " was disconnected.")));
+                }
+            }
         }
 
         const char *waitKindName(WaitKind kind)
@@ -425,6 +471,8 @@ namespace SQM
                 add(std::string("sensor:") + (sensorNames[i] != nullptr ? sensorNames[i] : ""), sensors[i], rules.sensorSettleSeconds);
             add("dew", dew, 0);
             add("sky", sky, rules.skySettleSeconds);
+            add("client:safetymonitor", clients[0], 0);
+            add("client:observingconditions", clients[1], 0);
             return out;
         }
 

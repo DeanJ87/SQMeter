@@ -1,4 +1,5 @@
-import { ComponentChildren, FunctionalComponent } from 'preact';
+import { ComponentChildren, createContext, FunctionalComponent } from 'preact';
+import { useContext, useId } from 'preact/hooks';
 import { FIX_LABEL, blocksSwitchingOn, noteFor, type DepEntry } from '../../lib/settingsDeps';
 import { Button, Card, InfoTip, Note, Pill } from '../ui';
 
@@ -65,6 +66,7 @@ export const Toggle: FunctionalComponent<{
       <label class={`toggle${locked ? ' is-disabled' : ''}`}>
         <input
           type="checkbox"
+          role="switch"
           data-field={dataField}
           aria-label={label}
           checked={checked}
@@ -128,22 +130,51 @@ export const DepToggle: FunctionalComponent<
   );
 };
 
+// A Field names the inputs inside it and ties its error to them (WCAG 1.3.1,
+// 3.3.1): the inputs below read this context, so call sites don't wire ids.
+interface FieldInfo {
+  labelId: string;
+  errorId?: string;
+}
+const FieldContext = createContext<FieldInfo | null>(null);
+
 export const Field: FunctionalComponent<{ label: string; hint?: ComponentChildren; error?: string; class?: string }> = ({
   label,
   hint,
   error,
   children,
   class: className,
-}) => (
-  <div class={`field${className ? ` ${className}` : ''}`}>
-    <label class="field-label">
-      {label}
-      {hint && <InfoTip text={hint} />}
-    </label>
-    {children}
-    {error && <Note tone="bad">{error}</Note>}
-  </div>
-);
+}) => {
+  const id = useId();
+  const info: FieldInfo = { labelId: `${id}-label`, errorId: error ? `${id}-error` : undefined };
+  return (
+    <div class={`field${className ? ` ${className}` : ''}`}>
+      <label class="field-label">
+        <span id={info.labelId}>{label}</span>
+        {hint && <InfoTip text={hint} />}
+      </label>
+      <FieldContext.Provider value={info}>{children}</FieldContext.Provider>
+      {error && (
+        <Note tone="bad" id={info.errorId}>
+          {error}
+        </Note>
+      )}
+    </div>
+  );
+};
+
+// ARIA for an input: its own label if given, else its Field's, plus the
+// error description and invalid state.
+const useFieldAria = (ariaLabel?: string, error?: string) => {
+  const field = useContext(FieldContext);
+  const errorId = error ? field?.errorId : undefined;
+  return {
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabel ? undefined : field?.labelId,
+    'aria-describedby': errorId,
+    'aria-invalid': error ? true : undefined,
+  };
+};
 
 const inputClass = (error?: string) => `input${error ? ' is-invalid' : ''}`;
 
@@ -160,11 +191,12 @@ export const NumberInput: FunctionalComponent<{
   ariaLabel?: string;
   unit?: string;
 }> = ({ value, onChange, min, max, step, disabled, error, dataField, integer, ariaLabel, unit }) => {
+  const aria = useFieldAria(ariaLabel, error);
   const input = (
     <input
       type="number"
       data-field={dataField}
-      aria-label={ariaLabel}
+      {...aria}
       class={inputClass(error)}
       value={Number.isFinite(value) ? value : ''}
       min={min}
@@ -195,8 +227,10 @@ export const TextInput: FunctionalComponent<{
   disabled?: boolean;
   error?: string;
   dataField?: string;
-}> = ({ value, onInput, type = 'text', placeholder, disabled, error, dataField }) => (
+  ariaLabel?: string;
+}> = ({ value, onInput, type = 'text', placeholder, disabled, error, dataField, ariaLabel }) => (
   <input
+    {...useFieldAria(ariaLabel, error)}
     type={type}
     data-field={dataField}
     name={dataField}
@@ -220,8 +254,8 @@ export const SelectInput: FunctionalComponent<{
   ariaLabel?: string;
 }> = ({ value, onChange, options, disabled, error, dataField, id, ariaLabel }) => (
   <select
+    {...useFieldAria(ariaLabel, error)}
     id={id}
-    aria-label={ariaLabel}
     data-field={dataField}
     class={inputClass(error)}
     value={value}

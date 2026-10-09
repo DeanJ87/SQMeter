@@ -38,7 +38,7 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/wifi/connect` | POST | Change WiFi network |
 | `/api/mqtt/test` | POST | Test MQTT broker connection |
 | `/api/alerts/test` | POST | Send a test alert |
-| `/api/alerts/arm`, `/api/alerts/disarm` | POST | Switch alerts on/off |
+| `/api/alerts/arm`, `/api/alerts/disarm` | POST | Resume / pause alerts |
 | `/api/alerts/clear` | POST | Clear the recent-alerts list |
 | `/api/ble/ack`, `/api/ble/forget-bonds` | POST | Acknowledge the phone alarm / unpair phones |
 | `/api/sensors/tsl2591/calibrate-dark` | POST | Store the light sensor dark offset |
@@ -52,7 +52,7 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/status` | GET | System status |
 | `/api/config` | GET | Read config (passwords, keys and tokens masked) |
 | `/api/safe`, `/api/safety`, `/api/safety/history` | GET | Safety verdict, reasons and history |
-| `/api/alerts/recent`, `/api/alerts/armed` | GET | Recent alerts, alerts on/off |
+| `/api/alerts/recent`, `/api/alerts/armed` | GET | Recent alerts, sending or paused and why |
 | `/api/wifi/scan` | GET | Scan WiFi networks |
 | `/api/v1/...`, `/management/...` | GET / PUT | ASCOM Alpaca (the Alpaca spec has no auth) |
 | `/ws/sensors` | WS | Live sensor stream |

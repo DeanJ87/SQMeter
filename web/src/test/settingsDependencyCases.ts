@@ -134,9 +134,9 @@ export const CASES: Case[] = [
   {
     id: 'D-12',
     tab: 'alerts',
-    config: { alpaca: { ...mockConfig.alpaca, enabled: false }, alerts: { ...alerts, armWithAlpaca: true } },
+    config: { alpaca: { ...mockConfig.alpaca, enabled: false }, alerts: { ...alerts, sendMode: 'whileConnected' } },
     note: 'Inactive - Alpaca is off',
-    control: 'On while N.I.N.A. is connected',
+    control: 'When to send',
     control_state: 'unlocked',
     fixLabel: 'Turn on Alpaca',
     fixTab: 'Safety',
@@ -278,11 +278,21 @@ export const CASES: Case[] = [
   },
   // Can't be switched on while what it needs is off or missing (FR-005).
   {
-    id: 'D-12',
+    id: 'D-37',
     tab: 'alerts',
-    config: { alpaca: { ...mockConfig.alpaca, enabled: false }, alerts: { ...alerts, armWithAlpaca: false } },
+    config: { alpaca: { ...mockConfig.alpaca, enabled: false }, alerts: { ...alerts, events: level('client_lost', 3) } },
+    note: 'Inactive - Alpaca is off',
+    control: 'The imaging app stops checking: level',
+    control_state: 'unlocked',
+    fixLabel: 'Turn on Alpaca',
+    fixTab: 'Safety',
+  },
+  {
+    id: 'D-37',
+    tab: 'alerts',
+    config: { alpaca: { ...mockConfig.alpaca, enabled: false }, alerts: { ...alerts, events: level('client_disconnected', 0) } },
     note: 'Alpaca is off.',
-    control: 'On while N.I.N.A. is connected',
+    control: 'The imaging app disconnects: level',
     control_state: 'locked',
   },
   {

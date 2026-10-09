@@ -24,7 +24,7 @@ SQMeter measures light pollution in real time using an ESP32. It gives you SQM m
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/sensors/ include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h include/OtaUpdater.h include/TimeManager.h
 blocking: false
-fingerprint: 11b54319eb766302
+fingerprint: 85bdfbdf63a4a14b
 -->
 ```mermaid
 flowchart LR
@@ -54,7 +54,7 @@ flowchart LR
 
 - **Sensors** into the ESP32: TSL2591 sky brightness, MLX90614 IR sky temperature and BME280 temperature, humidity and pressure on I²C; optional GPS and RG-15 rain gauge on serial (UART); optional anemometer (pulses) and wind vane (analogue).
 - **The ESP32** works out the readings, cloud cover, the safety verdict and alerts, with settings in NVS and the web UI in LittleFS.
-- **Outputs**: browsers (dashboard, REST, WebSocket); an MQTT broker (readings, safety, alerts, Home Assistant discovery, alerts on/off); ASCOM Alpaca clients such as N.I.N.A.; push alerts (ntfy, Pushover, webhook, MQTT); a phone over Bluetooth on the BLE build.
+- **Outputs**: browsers (dashboard, REST, WebSocket); an MQTT broker (readings, safety, alerts, Home Assistant discovery, alerts pause/resume); ASCOM Alpaca clients such as N.I.N.A.; push alerts (ntfy, Pushover, webhook, MQTT); a phone over Bluetooth on the BLE build.
 - **From the internet**: NTP time and GitHub releases for updates.
 
 </details>
@@ -68,7 +68,7 @@ flowchart LR
 - RG-15 rain sensor and anemometer / wind vane support (optional)
 - Native ASCOM Alpaca SafetyMonitor + ObservingConditions (N.I.N.A.-compatible, no bridge), tested with ConformU on every PR
 - Safety rules for rain, wind, cloud, SQM, humidity and dew point, with the reasons shown and a safe delay
-- Alerts via Pushover, ntfy, webhook, MQTT or a paired phone over Bluetooth — per-event levels and sounds, your own wording, only when it's dark, and an on/off switch for Home Assistant or N.I.N.A.
+- Alerts via Pushover, ntfy, webhook, MQTT or a paired phone over Bluetooth — per-event levels and sounds, your own wording, only when it's dark, sent any time or only while an imaging app is connected, a pause switch for Home Assistant, and an alert when the imaging app goes quiet.
 - Real-time dashboard with reorderable cards and a Sun & Moon night chart
 - REST API and MQTT publishing (including a 1/0 safe flag for logging)
 - OTA firmware updates from the browser, or self-updated directly from GitHub Releases

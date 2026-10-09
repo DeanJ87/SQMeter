@@ -7,23 +7,23 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceCore.cpp#runAlerts src/WebServer.cpp#WebServer::processAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 752be5df0e990b05
+fingerprint: cc4f213593aeb1af
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: Why an alert does or doesn't arrive
-    accDescr: Each second the device compares every condition with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on, sent to every enabled channel, with each channel's result recorded.
-    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky"]) --> SILENT{"Ignored?"}
-    SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>first minute after boot, the event's rule off,<br/>or the sensor switched off"]
+    accDescr: Each second the device compares every condition with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on, sent to every enabled channel unless alerts are paused, with each channel's result recorded.
+    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky,<br/>the imaging app"]) --> SILENT{"Ignored?"}
+    SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>first minute after boot, the event's rule off,<br/>the sensor switched off, or no imaging app since boot"]
     SILENT -->|no| HELD{"Held back?"}
     HELD -->|yes| LATER["<b>Sent later if it still differs</b><br/>safety or sky changes while it's light,<br/>safety still settling,<br/>a fault not yet 30 s old,<br/>a sky change not yet 2 min old,<br/>within the 5 min cooldown"]
     HELD -->|no| LEVEL{"Event level Off?"}
     LEVEL -->|yes| DROPPED["Not sent"]
     LEVEL -->|no| WORDING["Default or your own wording;<br/>events raised together become one notification"]
-    WORDING --> ON{"Alerts on?"}
-    ON -->|"no: switched off, not imaging"| NOTHING["Nothing sent, no phone rings"]
+    WORDING --> ON{"Sending alerts?"}
+    ON -->|"no: paused, or waiting for an imaging app"| NOTHING["Nothing sent, no phone rings"]
     ON -->|yes| MASTER{"Send alerts on?"}
     ON -->|"yes, level Wake me"| BLE["Paired phones ring over Bluetooth"]
     MASTER -->|no| NOPUSH["No channel is used"]
@@ -45,8 +45,8 @@ flowchart TB
 
 ??? info "Diagram in words"
 
-    1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, each sensor, dew risk, the sky) with what you were last told, every second.
-    2. **Tracked silently, never announced**: changes in the first minute after boot, changes while that event's rule is switched off, and anything from a sensor that is switched off.
+    1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, each sensor, dew risk, the sky, whether the imaging app is still checking) with what you were last told, every second.
+    2. **Tracked silently, never announced**: changes in the first minute after boot (imaging-app events excepted), changes while that event's rule is switched off, anything from a sensor that is switched off, and imaging-app events for a device no app has used since boot.
     3. **Held back for now, sent later if still true**:
         - safe/unsafe while it's light (with "Safety alerts only when it's dark"), or while the verdict is still settling (no data yet, or waiting out the safe delay);
         - sky changes while it's light (with sky alerts limited to darkness): at nightfall a clear sky is announced once;
@@ -55,8 +55,8 @@ flowchart TB
         - within the 5-minute cooldown since that condition's last alert.
     4. **Not sent**: an event whose level is Off.
     5. The alert gets its default or custom wording; events raised in the same second become one notification.
-    6. **Alerts switched off** (not imaging): nothing is sent and no phone rings.
-    7. With alerts on:
+    6. **Alerts paused** (by you, Home Assistant or a script, or because the imaging app disconnected in "Only while an imaging app is connected"): nothing is sent and no phone rings.
+    7. While sending:
         - a **Wake me** alert rings paired phones over Bluetooth, even with **Send alerts** off;
         - with **Send alerts** on, it goes to every enabled channel: MQTT at once; Pushover, ntfy and the webhook in the background.
         - a channel that is switched on but not in effect (MQTT alerts with MQTT off, internet channels without WiFi) is **skipped** with the reason, and nothing is attempted.
@@ -76,6 +76,8 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | A sensor fails / recovers | A sensor (TSL2591, MLX90614, BME280, RG-15) goes offline or stale, or recovers. Also the RG-15 lens-fault flag | Wake me / Quiet |
 | Dew risk | Temperature comes within the configured margin of the dew point | Off |
 | Skies clear up / cloud over | Cloud cover drops below the "clear" percentage (default 20%) / rises above the "clouded over" percentage (default 70%). Between the two nothing changes, and a change has to hold for 2 minutes | Off |
+| The imaging app stops checking / is back | No request reached the safety monitor or weather device for its **Silent for** time / it started checking again. See [The imaging app](#the-imaging-app) | Urgent / Quiet |
+| The imaging app disconnects | An imaging app disconnected normally, e.g. at the end of a session | Off |
 
 | Level | Pushover | ntfy | Bluetooth phone alarm |
 |---|---|---|---|
@@ -119,6 +121,7 @@ Alerts raised at the same moment - rain starting usually makes the observatory u
 | `{sqm}`, `{cloud}`, `{sky_temp}`, `{temp}`, `{humidity}`, `{dewpoint}`, `{dew_margin}`, `{pressure}`, `{rain_rate}`, `{wind}`, `{gust}`, `{sun_alt}` | Current readings (`--` if that sensor isn't reporting) |
 | `{sqm_min}`, `{cloud_max}`, `{humidity_max}` | Your safety limits |
 | `{clear_below}`, `{cloudy_above}`, `{dew_margin_min}` | Your alert thresholds |
+| `{silent_for}`, `{last_checked}`, `{client_id}` | Imaging-app events: the **Silent for** time ("2 min"), when the app last checked ("21:04", or "3 min ago" without a clock) and the Alpaca ClientID it sent. For these events `{device}` is "safety monitor" or "weather device" |
 
 Titles are up to 80 characters and messages up to 240. An unknown `{name}` is left as typed, so a typo shows up in the test.
 
@@ -145,15 +148,44 @@ Below the setting, the tab shows the sun's altitude as the device calculates it 
 
 The browser's own location can't be used on the device's plain-HTTP pages - browsers only share it with HTTPS sites - so the "Use my location" button only appears where it works.
 
-## Turning alerts off when you're not imaging
+## When to send
 
-With the scope packed away you don't want weather flapping to wake you. **Alerts on now** (Settings → Alerts, or the bell in the header) switches every alert off - nothing is sent and phones don't ring - while the device keeps watching, so switching back on doesn't replay stale changes. It takes effect immediately, survives restarts, and switching on sends one quiet **Alerts on** with the current verdict ("Observatory UNSAFE: • Cloud 62% >= 35%") so you know where things stand.
+With the scope packed away you don't want weather flapping to wake you. **Settings → Alerts → When to send** has two choices:
 
-Ways to automate it:
+| When to send | What happens |
+|---|---|
+| **Any time** (default) | Alerts go out whenever something happens, unless you pause them. |
+| **Only while an imaging app is connected** | Alerts start when an imaging app (e.g. N.I.N.A.) connects the safety monitor or weather device, and stop when it disconnects. If it stops responding without disconnecting, alerts keep coming - and you're told it went quiet. |
 
-**N.I.N.A.** - turn on **On while N.I.N.A. is connected**: alerts switch on when N.I.N.A. connects the SafetyMonitor or ObservingConditions and off when it disconnects. Or call the API from a sequence (e.g. an *External Script* instruction): `curl -X POST http://sqmeter.local/api/alerts/arm` at the start, `.../api/alerts/disarm` at the end.
+Under it, a status line says what's happening and why, for example:
 
-**Home Assistant (MQTT)** - with [MQTT discovery](mqtt.md#home-assistant) on, an *Alerts* switch appears automatically. Without it, the device publishes `<base>/alerts/armed` (retained `1`/`0`) and listens on `<base>/alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`):
+- "Sending alerts."
+- "Paused - the imaging app disconnected at 05:42. Alerts resume when it connects again."
+- "Paused by you at 21:04 (Pause button)."
+- "Paused from Home Assistant or MQTT at 21:04."
+- "Waiting for an imaging app to connect - nothing is sent until then."
+
+**Pause alerts** / **Resume alerts** (there, or in the bell's flyout) take effect straight away, in either mode. A pause lasts until you resume; with **Only while an imaging app is connected** the next connect also resumes. While paused nothing is sent and phones don't ring, but the device keeps watching, so resuming doesn't replay stale changes. The state survives restarts. Resuming sends one quiet **Alerts resumed** with the current verdict ("Observatory UNSAFE: • Cloud 62% >= 35%") so you know where things stand.
+
+A crash isn't the end of a session: an imaging app that goes silent doesn't pause alerts - that's exactly when weather alerts matter most. Only a clean disconnect does.
+
+### The imaging app
+
+The device notices when an imaging app - anything that talks to its Alpaca devices - stops checking:
+
+- **The imaging app stops checking**: a device had a client (connected, or polling since the device restarted) and no request has reached it for its **Silent for** time - the PC slept, the app crashed or the network dropped. Sent once per loss, at Urgent by default.
+- **The imaging app is back**: the first request after that. Quiet by default.
+- **The imaging app disconnects**: a normal disconnect, e.g. at the end of a session. Off by default; no "stops checking" follows it.
+
+**Silent for** is set per device: **safety monitor** (default 2 min - imaging apps check it every few seconds) and **weather device** (default 10 min - keep it longer than your app's weather interval). 30 seconds to 60 minutes.
+
+Nothing is sent about a device no app has used since the device restarted. Requests from the device's own web page (the Alpaca page's live state) don't count. Alpaca requests don't name the application, so alerts name the device, not the app. The Alpaca page shows each device's state ("Connected, last checked 3 s ago"). These events need Alpaca switched on, and are sent at any hour (the "only when it's dark" limits don't apply).
+
+### Automating pause and resume
+
+**N.I.N.A.** - choose **Only while an imaging app is connected**, or call the API from a sequence (e.g. an *External Script* instruction): `curl -X POST http://sqmeter.local/api/alerts/arm` to resume at the start, `.../api/alerts/disarm` to pause at the end.
+
+**Home Assistant (MQTT)** - with [MQTT discovery](mqtt.md#home-assistant) on, an *Alerts* switch appears automatically (on = sending, off = paused). Without it, the device publishes `<base>/alerts/armed` (retained `1` sending / `0` paused) and listens on `<base>/alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`):
 
 ```yaml
 mqtt:
@@ -178,7 +210,7 @@ rest_command:
     method: post
 ```
 
-Add `username`/`password` if the device's password protection is on. N.I.N.A. and Alpaca keep getting the real safety verdict either way.
+Add `username`/`password` if the device's password protection is on. N.I.N.A. and Alpaca keep getting the real safety verdict either way. `GET /api/alerts/armed` says whether alerts are being sent, the mode, and why ([REST API](../api/rest.md#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm)).
 
 ## Channels
 

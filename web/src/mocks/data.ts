@@ -103,6 +103,14 @@ export function generateSensorData(): SensorData {
 }
 
 export const mockStatus: SystemStatus = {
+  alerts: { armed: true, armWithAlpaca: false, mode: 'any', reason: 'none', since: null, sinceAgeMs: null },
+  alpaca: {
+    enabled: true,
+    clients: {
+      safetymonitor: { connected: true, watching: true, silent: false, lastCheckedAgeMs: 2100, clientId: 4021 },
+      observingconditions: { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null },
+    },
+  },
   sky: { locationSource: 'gps', nightKnown: true, isNight: true, sunAltitudeDeg: -24.3 },
   firmware: {
     name: 'SQMeter',
@@ -337,13 +345,19 @@ export const mockConfig: Config = {
       dew_risk: { level: 1, sound: '' },
       clear_sky: { level: 2, sound: 'magic' },
       clouded_over: { level: 4, sound: '' },
+      client_lost: { level: 3, sound: '' },
+      client_back: { level: 1, sound: '' },
+      client_disconnected: { level: 0, sound: '' },
     },
     dewRiskMarginC: 2,
     clearSkyCloudPercent: 20,
     cloudedOverCloudPercent: 70,
     skyNightOnly: true,
     safetyNightOnly: true,
+    sendMode: 'any',
     armWithAlpaca: false,
+    clientSilentSafetySeconds: 120,
+    clientSilentWeatherSeconds: 600,
     nightSunAltitudeDeg: -12,
     cooldownSeconds: 300,
     pushover: { enabled: true, userKey: '********', appToken: '********', sound: '' },

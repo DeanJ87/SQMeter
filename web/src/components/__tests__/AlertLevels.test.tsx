@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
 import Settings from '../Settings';
 import { server } from '../../test/mswServer';
 
@@ -62,7 +62,7 @@ describe('Alert levels', () => {
 
     fireEvent.change(await screen.findByLabelText('Skies cloud over above: sound'), { target: { value: 'siren' } });
     const row = document.querySelector('[data-event="clouded_over"]')!;
-    fireEvent.click(row.querySelector('button')!);
+    fireEvent.click(within(row as HTMLElement).getByRole('button', { name: 'Test' }));
 
     expect(await screen.findByText('Pushover sent', {}, { timeout: 4000 })).toBeInTheDocument();
     expect(query).toBe('?channel=all&event=clouded_over&level=4&sound=siren&title=&message=');

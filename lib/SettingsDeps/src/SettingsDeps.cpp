@@ -107,7 +107,10 @@ namespace SQM
                       &a.sensorRecovered,
                       &a.dewRisk,
                       &a.clearSky,
-                      &a.cloudedOver})
+                      &a.cloudedOver,
+                      &a.clientLost,
+                      &a.clientBack,
+                      &a.clientDisconnected})
                     if (e->level == level)
                         return true;
                 return false;
@@ -147,6 +150,15 @@ namespace SQM
                 c.add("alerts.events.dew_risk.level", "D-06", a.dewRisk.level != 0, {event(a.dewRisk), bmeFound});
                 c.add("alerts.events.clear_sky.level", "D-07", a.clearSky.level != 0, {event(a.clearSky), mlxFound});
                 c.add("alerts.events.clouded_over.level", "D-07", a.cloudedOver.level != 0, {event(a.cloudedOver), mlxFound});
+                // Imaging apps connect over Alpaca (spec 021).
+                const Link alpacaOn{"D-37", "alpaca-off", c.cfg.alpaca.enabled};
+                c.add("alerts.events.client_lost.level", "D-37", a.clientLost.level != 0, {event(a.clientLost), alpacaOn});
+                c.add("alerts.events.client_back.level", "D-37", a.clientBack.level != 0, {event(a.clientBack), alpacaOn});
+                c.add(
+                    "alerts.events.client_disconnected.level",
+                    "D-37",
+                    a.clientDisconnected.level != 0,
+                    {event(a.clientDisconnected), alpacaOn});
             }
 
             void addAlertOptions(const Context &c)
@@ -170,7 +182,11 @@ namespace SQM
                 c.add("alerts.skyNightOnly", "D-09", a.skyNightOnly, {alerting, {"D-09", "location-unknown", c.locationKnown}});
                 c.add("alerts.safetyNightOnly", "D-10", a.safetyNightOnly, {alerting, {"D-10", "location-unknown", c.locationKnown}});
                 c.add("alerts.nightSunAltitudeDeg", "D-11", a.skyNightOnly || a.safetyNightOnly, {alerting});
-                c.add("alerts.armWithAlpaca", "D-12", a.armWithAlpaca, {alerting, {"D-12", "alpaca-off", c.cfg.alpaca.enabled}});
+                c.add(
+                    "alerts.sendMode",
+                    "D-12",
+                    a.sendMode == AlertsConfig::SendMode::WhileConnected,
+                    {alerting, {"D-12", "alpaca-off", c.cfg.alpaca.enabled}});
             }
 
             void addMqtt(const Context &c)

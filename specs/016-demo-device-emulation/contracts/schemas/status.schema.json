@@ -3,6 +3,149 @@
   "title": "status",
   "type": "object",
   "properties": {
+    "alerts": {
+      "type": "object",
+      "properties": {
+        "armed": {
+          "type": "boolean"
+        },
+        "armWithAlpaca": {
+          "type": "boolean"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "any",
+            "whileConnected"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "none",
+            "user-ui",
+            "user-rest",
+            "user-mqtt",
+            "client-connected",
+            "client-disconnected",
+            "waiting-for-client",
+            "migrated"
+          ]
+        },
+        "since": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "sinceAgeMs": {
+          "type": [
+            "null",
+            "number"
+          ]
+        }
+      },
+      "required": [
+        "armWithAlpaca",
+        "armed",
+        "mode",
+        "reason",
+        "since",
+        "sinceAgeMs"
+      ],
+      "additionalProperties": false
+    },
+    "alpaca": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "clients": {
+          "type": "object",
+          "properties": {
+            "safetymonitor": {
+              "type": "object",
+              "properties": {
+                "connected": {
+                  "type": "boolean"
+                },
+                "watching": {
+                  "type": "boolean"
+                },
+                "silent": {
+                  "type": "boolean"
+                },
+                "lastCheckedAgeMs": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "clientId": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                }
+              },
+              "required": [
+                "clientId",
+                "connected",
+                "lastCheckedAgeMs",
+                "silent",
+                "watching"
+              ],
+              "additionalProperties": false
+            },
+            "observingconditions": {
+              "type": "object",
+              "properties": {
+                "connected": {
+                  "type": "boolean"
+                },
+                "watching": {
+                  "type": "boolean"
+                },
+                "silent": {
+                  "type": "boolean"
+                },
+                "lastCheckedAgeMs": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "clientId": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                }
+              },
+              "required": [
+                "clientId",
+                "connected",
+                "lastCheckedAgeMs",
+                "silent",
+                "watching"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "observingconditions",
+            "safetymonitor"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "clients",
+        "enabled"
+      ],
+      "additionalProperties": false
+    },
     "ble": {
       "type": "object",
       "properties": {
@@ -674,6 +817,8 @@
     }
   },
   "required": [
+    "alerts",
+    "alpaca",
     "ble",
     "bootCount",
     "cpuFreqMHz",

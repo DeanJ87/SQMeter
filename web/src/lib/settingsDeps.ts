@@ -108,6 +108,9 @@ const EVENT_KEYS: AlertEventKey[] = [
   'dew_risk',
   'clear_sky',
   'clouded_over',
+  'client_lost',
+  'client_back',
+  'client_disconnected',
 ];
 
 // Three-valued logic for links whose facts may be unknown (null).
@@ -183,12 +186,17 @@ const addAlertEvents = (c: Context) => {
   const rainOn: Link = ['D-05', 'rain-off', on(c.config, 'rain.enabled')];
   const bmeFound: Link = ['D-06', 'environment-missing', c.fact('environmentDetected')];
   const mlxFound: Link = ['D-07', 'infrared-missing', c.fact('infraredDetected')];
+  // Imaging apps connect over Alpaca (spec 021).
+  const alpacaOn: Link = ['D-37', 'alpaca-off', on(c.config, 'alpaca.enabled')];
   const eventLinks: Partial<Record<AlertEventKey, [string, Link[]]>> = {
     rain_started: ['D-05', [rainOn]],
     rain_stopped: ['D-05', [rainOn]],
     dew_risk: ['D-06', [bmeFound]],
     clear_sky: ['D-07', [mlxFound]],
     clouded_over: ['D-07', [mlxFound]],
+    client_lost: ['D-37', [alpacaOn]],
+    client_back: ['D-37', [alpacaOn]],
+    client_disconnected: ['D-37', [alpacaOn]],
   };
   for (const key of EVENT_KEYS) {
     const [id, links] = eventLinks[key] ?? ['D-04', []];
@@ -222,7 +230,7 @@ const addAlertOptions = (c: Context) => {
   c.add('alerts.skyNightOnly', 'D-09', skyNightOnly, [alerting, ['D-09', 'location-unknown', c.locationKnown]]);
   c.add('alerts.safetyNightOnly', 'D-10', safetyNightOnly, [alerting, ['D-10', 'location-unknown', c.locationKnown]]);
   c.add('alerts.nightSunAltitudeDeg', 'D-11', skyNightOnly || safetyNightOnly, [alerting]);
-  c.add('alerts.armWithAlpaca', 'D-12', on(c.config, 'alerts.armWithAlpaca'), [
+  c.add('alerts.sendMode', 'D-12', read<string>(c.config, 'alerts.sendMode', 'any') === 'whileConnected', [
     alerting,
     ['D-12', 'alpaca-off', on(c.config, 'alpaca.enabled')],
   ]);

@@ -12,6 +12,9 @@ const json = (body: string, status = 200) => new HttpResponse(body, { status, he
 const reply = (r: Reply) =>
   new HttpResponse(r.body, { status: r.status, headers: { 'Content-Type': r.contentType ?? 'application/json' } });
 
+// Who paused or resumed alerts: the web UI adds ?source=ui, scripts don't.
+const armSource = (request: Request) => (new URL(request.url).searchParams.get('source') === 'ui' ? 'ui' : 'rest');
+
 const queryParams = (request: Request) => Object.fromEntries(new URL(request.url).searchParams.entries());
 
 // Alpaca parameters: query string for GET, form body for PUT.
@@ -85,12 +88,12 @@ export const demoHandlers = [
   // Alerts
   http.get('/api/alerts/recent', () => json(demoDevice.recentAlerts())),
   http.get('/api/alerts/armed', () => json(demoDevice.armedDocument())),
-  http.post('/api/alerts/arm', () => {
-    demoDevice.setArmed(true);
+  http.post('/api/alerts/arm', ({ request }) => {
+    demoDevice.setArmed(true, armSource(request));
     return HttpResponse.json({ success: true, armed: true }, { status: 202 });
   }),
-  http.post('/api/alerts/disarm', () => {
-    demoDevice.setArmed(false);
+  http.post('/api/alerts/disarm', ({ request }) => {
+    demoDevice.setArmed(false, armSource(request));
     return HttpResponse.json({ success: true, armed: false }, { status: 202 });
   }),
   http.post('/api/alerts/clear', () => {

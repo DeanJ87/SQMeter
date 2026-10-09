@@ -62,7 +62,7 @@ const RESET_LABELS: Record<number, string> = {
 export const describeHistoryEntry = (entry: HistoryEntry) => {
   if (entry.kind === 'boot') return `Device ${RESET_LABELS[entry.resetReason ?? 0] ?? `restarted (reason ${entry.resetReason})`}`;
   if (entry.kind === 'alert') return `Alert sent: ${entry.safe ? 'safe' : 'unsafe'}`;
-  if (entry.kind === 'armed') return entry.safe ? 'Alerts switched on' : 'Alerts switched off';
+  if (entry.kind === 'armed') return entry.safe ? 'Alerts resumed' : 'Alerts paused';
   if (entry.safe) return 'Safe';
   if (entry.held) return 'Unsafe - waiting out the safe delay';
   const reasons = REASON_LABELS.filter(([bit]) => (entry.reasonFlags ?? 0) & bit).map(([, label]) => label);

@@ -38,6 +38,7 @@ describe('demo documents match the device contract', () => {
   it('settings in effect (specs/020-settings-dependencies)', () => check('settings-effective', JSON.parse(demoDevice.effective())));
   it('config', () => check('config', JSON.parse(demoDevice.getConfig())));
   it('recent alerts', () => check('alerts-recent', JSON.parse(demoDevice.recentAlerts())));
+  it('alerts sending or paused (/api/alerts/armed)', () => check('alerts-armed', JSON.parse(demoDevice.armedDocument())));
   it('safety history', () => check('safety-history', JSON.parse(demoDevice.safetyHistory())));
   it('Alpaca management and device state', () => {
     check('alpaca-description', alpaca('/management/v1/description'));

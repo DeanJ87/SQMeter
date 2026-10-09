@@ -40,8 +40,8 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels.
 | `<base>/safe` | Yes | `1` safe, `0` unsafe | On every change, refreshed every minute |
 | `<base>/safety` | Yes | The safety object - same as [`GET /api/safety`](../api/rest.md#get-apisafety) | With `<base>/safe` |
 | `<base>/alerts` | No | One message per alert (with **Settings → Alerts → MQTT** on): `{"event","events"?,"title","message","level","device","timestamp"}` | Each alert |
-| `<base>/alerts/armed` | Yes | `1` alerts on, `0` off | On change and reconnect |
-| `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` switch alerts on or off | Command |
+| `<base>/alerts/armed` | Yes | `1` sending alerts, `0` paused | On change and reconnect |
+| `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` resume or pause alerts | Command |
 | `<base>/diagnostics` | No | Light-sensor sample counts and RG-15 serial counters - same as `/api/status` → `diagnostics` | Every publish interval, when enabled |
 
 Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
@@ -49,7 +49,7 @@ Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 <!-- diagram: DIA-09
 sources: src/WebServer.cpp#WebServer::publishMqttReadings src/WebServer.cpp#WebServer::publishMqttSafety src/WebServer.cpp#WebServer::publishArmedState src/WebServer.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: 86276387fdbcc0d3
+fingerprint: 01db723ec09e41b7
 -->
 <figure class="diagram" markdown>
 
@@ -63,7 +63,7 @@ flowchart LR
     D --> SAFETY["safety: verdict and reasons<br/>retained, with safe"]
     D --> AVAIL["availability: online or offline<br/>retained, last will"]
     D --> ALERTS["alerts<br/>not retained, one message per alert"]
-    D --> ARMED["alerts/armed: 1 or 0<br/>retained, on change and reconnect"]
+    D --> ARMED["alerts/armed: 1 sending, 0 paused<br/>retained, on change and reconnect"]
     D --> DIAG["diagnostics<br/>not retained, every interval, off by default"]
     D --> DISC["homeassistant/.../config<br/>retained, when discovery is on;<br/>the Alerts switch only while alerts can go out"]
 ```
@@ -79,10 +79,10 @@ flowchart LR
     - `safe` (`1`/`0`) and `safety` (the verdict with its reasons), retained, on every change and refreshed every minute;
     - `availability` - `online`, or `offline` as the last will, retained;
     - `alerts` - one message per alert, not retained (with the MQTT alert channel on);
-    - `alerts/armed` - `1`/`0`, retained, on change and on reconnect;
+    - `alerts/armed` - `1` sending / `0` paused, retained, on change and on reconnect;
     - `diagnostics` - not retained, every publish interval, only when switched on.
 
-    It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to switch alerts on or off.
+    It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to resume or pause alerts.
 
     With Home Assistant discovery on, it also publishes retained `config` topics under the discovery prefix (default `homeassistant`), and clears them when discovery is switched off or moved. The Alerts switch is only announced while alerts can go out (Send alerts on, or paired phones that can ring), and is removed otherwise.
 
@@ -137,7 +137,7 @@ Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**.
 
 - **Sensors**: sky quality, limiting magnitude, Bortle class, illuminance, temperature, humidity, pressure, dew point, sky temperature, cloud cover, rain intensity, wind speed, gust and direction - for the groups you publish
 - **Binary sensors**: *Raining* (moisture) and *Observatory* (safety: on = unsafe)
-- **Switch**: *Alerts* - turn alerts off while you're not imaging
+- **Switch**: *Alerts* - on while sending, off while paused (see [When to send](alerts.md#when-to-send))
 
 Each entity is unavailable while the device is offline or its sensor isn't `ok`. Switching a group off removes its entities. The discovery prefix defaults to `homeassistant`.
 

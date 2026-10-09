@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string>
 
+#include "DeviceCore.h"
 #include "SettingsDeps.h"
 
 using namespace SQM;
@@ -18,7 +19,7 @@ using namespace SQM;
 // are shared with web/src/lib/__tests__/settingsDeps.test.ts, so the device
 // and the web UI's preview give the same answers. Catalogue IDs covered here:
 // D-01 D-02 D-03 D-04 D-05 D-06 D-07 D-08 D-09 D-10 D-11 D-12 D-13 D-14 D-15
-// D-16 D-17 D-18 D-19 D-23 D-24 D-25 D-26 D-28 D-29 D-30 D-31 D-32 D-35 D-36.
+// D-16 D-17 D-18 D-19 D-23 D-24 D-25 D-26 D-28 D-29 D-30 D-31 D-32 D-35 D-36 D-37.
 
 namespace
 {
@@ -239,7 +240,7 @@ void test_dependents_survive_dependency_round_trip()
 {
     const Deps::Facts f = healthy();
     Config cfg = Config::createDefault();
-    cfg = saveAndRestart(cfg, R"({"alerts":{"enabled":true,"mqtt":{"enabled":true},"armWithAlpaca":true,
+    cfg = saveAndRestart(cfg, R"({"alerts":{"enabled":true,"mqtt":{"enabled":true},"sendMode":"whileConnected",
         "events":{"rain_started":{"level":4},"rain_stopped":{"level":2}}},
         "mqtt":{"enabled":true,"broker":"192.168.1.10","topic":"sqmeter","homeAssistant":{"enabled":true},"publish":{"rain":true,"wind":true}},
         "rain":{"enabled":true,"dailyResetEnabled":true},"wind":{"enabled":true,"directionEnabled":true},"alpaca":{"enabled":true,
@@ -247,7 +248,7 @@ void test_dependents_survive_dependency_round_trip()
     const std::string before = cfg.toJson(false);
     const char *dependents[] = {
         "alerts.mqtt.enabled",
-        "alerts.armWithAlpaca",
+        "alerts.sendMode",
         "alerts.events.rain_started.level",
         "mqtt.homeAssistant.alertsSwitch",
         "mqtt.publish.rain",
@@ -271,7 +272,7 @@ void test_dependents_survive_dependency_round_trip()
         {R"({"mqtt":{"enabled":false}})", R"({"mqtt":{"enabled":true}})", "alerts.mqtt.enabled", "inactive:mqtt-off"},
         {R"({"rain":{"enabled":false}})", R"({"rain":{"enabled":true}})", "alerts.events.rain_started.level", "inactive:rain-off"},
         {R"({"wind":{"enabled":false}})", R"({"wind":{"enabled":true}})", "alpaca.windSpeedUnsafeEnabled", "inactive:wind-off"},
-        {R"({"alpaca":{"enabled":false}})", R"({"alpaca":{"enabled":true}})", "alerts.armWithAlpaca", "inactive:alpaca-off"},
+        {R"({"alpaca":{"enabled":false}})", R"({"alpaca":{"enabled":true}})", "alerts.sendMode", "inactive:alpaca-off"},
         {R"({"alerts":{"enabled":false}})", R"({"alerts":{"enabled":true}})", "mqtt.homeAssistant.alertsSwitch", "inactive:alerts-off"},
     };
     for (const auto &trip : trips)
@@ -285,9 +286,23 @@ void test_dependents_survive_dependency_round_trip()
     }
 }
 
+// D-12: the schedule only acts on "only while an imaging app is connected"
+// while Alpaca is on; the saved mode is kept either way.
+void test_send_mode_needs_alpaca()
+{
+    Config cfg = Config::createDefault();
+    cfg.alerts.sendMode = AlertsConfig::SendMode::WhileConnected;
+    cfg.alpaca.enabled = false;
+    TEST_ASSERT_EQUAL(static_cast<int>(Alerts::SendMode::Any), static_cast<int>(Core::effectiveSendMode(cfg)));
+    TEST_ASSERT_EQUAL(static_cast<int>(Alerts::SendMode::WhileConnected), static_cast<int>(Core::sendMode(cfg)));
+    cfg.alpaca.enabled = true;
+    TEST_ASSERT_EQUAL(static_cast<int>(Alerts::SendMode::WhileConnected), static_cast<int>(Core::effectiveSendMode(cfg)));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_send_mode_needs_alpaca);
     RUN_TEST(test_fixture_cases);
     RUN_TEST(test_reasons_and_settings_match_catalogue);
     RUN_TEST(test_default_config_fixture_is_current);
