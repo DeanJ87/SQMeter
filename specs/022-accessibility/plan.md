@@ -23,7 +23,7 @@ Bring the device web UI, the demo and the docs site to WCAG 2.2 AA. The work hap
    - a skip link.
 3. **Keep it fixed.** CI runs both checks. A11Y-xx rules extend the coding standard. Docs gain an accessibility statement and a manual checklist.
 
-The device UI may grow by at most 4 KB gzipped. No runtime dependency is added.
+The device UI may grow by at most 4 KB gzipped (the per-feature limit is now 10 KB, coding standard SIZE-01). No runtime dependency is added.
 
 ## Technical Context
 
@@ -61,7 +61,7 @@ The device UI may grow by at most 4 KB gzipped. No runtime dependency is added.
 | I. Fail-safe verdict | Display only | The verdict is unchanged. A change in it is now also announced (FR-009). |
 | II. Alpaca conformance | No | — |
 | III. Testable pure logic | Yes | New helpers (`announce`, `useDialogFocus`, tab keyboard logic, sparkline summary, contrast pairs) have Vitest tests. Pages are covered by the axe Playwright checks against the MSW/WASM demo. |
-| IV. Resource budgets | Yes | The +4 KB gzipped budget is measured and reported in the PR. No firmware change. |
+| IV. Resource budgets | Yes | The +4 KB gzipped budget (now 10 KB, SIZE-01) is measured and reported in the PR (+2.09 KB). No firmware change. |
 | V. Quiet, consistent UI | Yes | All fixes go into the shared building blocks; no new button or card styles. Visual changes are limited to brighter dim text, visible focus rings and stronger control edges. |
 | VI. Security | No | — |
 | VII. Docs move with behaviour | Yes | Adds an accessibility statement and a manual checklist. The A11Y rules are in the development docs, and `mkdocs --strict` passes. |

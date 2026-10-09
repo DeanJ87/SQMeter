@@ -187,7 +187,7 @@ Anyone can find out how accessible SQMeter is, what is known not to work, and ho
 
 **Budget**
 
-- **FR-015**: The accessibility fixes MUST NOT add a runtime dependency to the device UI. They MUST add no more than **4 KB gzipped** in total to the device UI's JavaScript and CSS, measured against the build before the work begins. The audit and CI tooling are development-only and MUST NOT ship in the device's filesystem image. The device filesystem is 512 KB, shared with the rest of the UI.
+- **FR-015**: The accessibility fixes MUST NOT add a runtime dependency to the device UI. They MUST add no more than **4 KB gzipped** (now 10 KB per feature under coding standard SIZE-01; this work measured +2.09 KB) in total to the device UI's JavaScript and CSS, measured against the build before the work begins. The audit and CI tooling are development-only and MUST NOT ship in the device's filesystem image. The device filesystem is 512 KB, shared with the rest of the UI.
 
 **Statement and standards**
 

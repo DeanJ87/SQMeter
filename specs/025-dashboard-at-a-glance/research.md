@@ -58,4 +58,4 @@
 
 ## D12 Budget (SC-007)
 
-**Decision**: measure the device UI bundle (`npm run build`, gzip of the JS) before and after; the limit is +4 KB gzip. The inventory JSON is not bundled (only ids and keys are used in code).
+**Decision**: measure the device UI bundle (`npm run build`, gzip of the JS) before and after; the limit was +4 KB gzip (now +10 KB per feature, coding standard SIZE-01). The inventory JSON is not bundled (only ids and keys are used in code).
