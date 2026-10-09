@@ -1,9 +1,6 @@
 {
   "about": "Existing coding-standard findings per rule per file (spec 017). New findings fail CI; burn these down and run `python3 tools/quality/check.py --update-baseline`.",
   "counts": {
-    "I18N-02": {
-      "web/src/i18n/en.json": 1
-    },
     "LIMIT-01": {
       "src/OtaUpdater.cpp": 1,
       "src/TimeManager.cpp": 1,

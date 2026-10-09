@@ -112,7 +112,7 @@ namespace SQM
                         result,
                         UnsafeDewpoint,
                         "Dew margin %.1f C < %.1f C (temp %.1f C, dew point %.1f C)",
-                        margin,
+                        in.temperatureC - in.dewpointC,
                         t.dewpointMarginMinC,
                         in.temperatureC,
                         in.dewpointC);
