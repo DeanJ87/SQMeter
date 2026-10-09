@@ -6,8 +6,6 @@
 
 **Status**: Draft
 
-**Input**: User description: "the homepage is definitely missing some information given the new things added, ipv6, imaging status etc like if you have rules for you need nina connected, you can't see that at a glance if it is or not, if it's stale etc. This needs a spec first, to ensure we don't regress."
-
 ## Context
 
 The dashboard (spec 010) was designed before specs 015 and 020–021 added device state that decides
@@ -182,7 +180,7 @@ they record in the dashboard inventory whether and when it is shown - or deliber
 with a reason. Every inventory item has an automated test that puts the demo device into the
 qualifying state and checks the dashboard shows it.
 
-**Why this priority**: The user's explicit ask: "to ensure we don't regress". The gaps above
+**Why this priority**: Without enforcement the gaps come back. The gaps above
 happened because nothing tied new device state to the dashboard.
 
 **Independent Test**: Add a dummy field to the status schema without an inventory entry; the check

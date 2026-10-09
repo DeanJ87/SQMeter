@@ -6,8 +6,6 @@
 
 **Status**: Implemented (amended 2026-10-09 - FR-006 scope, see research R6)
 
-**Input**: User description: "IPv6 support (dual-stack). SQMeter should work on IPv6 networks, not only IPv4: get IPv6 addresses (link-local and SLAAC global) on WiFi, serve the web UI, REST API, WebSockets and ASCOM Alpaca over IPv6, answer mDNS for <hostname>.local with AAAA records so names resolve without IPv4-only fallbacks or 5-second lookup stalls, connect outbound over IPv6 where the network offers it (MQTT broker, Pushover/ntfy/webhook alerts, GitHub update checks, NTP), and support Alpaca discovery over IPv6 (ff12::00a1:2345, port 32227). It must stay fully working on IPv4-only networks, be configurable (on by default if reliable, with an off switch like mDNS), show the device's IPv6 addresses, and never advertise an IPv6 address for a service that doesn't listen on IPv6."
-
 ## Clarifications
 
 ### Session 2026-10-08

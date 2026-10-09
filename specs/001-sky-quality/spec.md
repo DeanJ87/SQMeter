@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill the existing sky quality measurement (SQM, NELM, Bortle, averaging and calibration) so convergence finds inconsistencies between code, documentation and UI."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - See how dark the sky is (Priority: P1)

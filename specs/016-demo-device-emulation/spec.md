@@ -6,8 +6,6 @@
 
 **Status**: Implemented (PR #79)
 
-**Input**: User description: "Demo that mirrors the real device. The live demo must behave like a real SQMeter: every page and link works under the demo's sub-path (today the Alpaca page's links go to GitHub 404s, and its live IsSafe says true while the Safety Monitor card says Unsafe because the mocks are independent canned responses). The demo should be a stateful emulated device: changing settings changes behaviour. State lives only in the browser - never a backend. Anything that would reach the internet on a real device is simulated in the browser and never makes real outbound requests, so the public demo can't be used to send traffic anywhere or be abused. The demo must be kept in sync with the device's API contracts, ideally checked automatically. Long term the docs and demo should move to their own domain."
-
 ## Clarifications
 
 ### Session 2026-10-08

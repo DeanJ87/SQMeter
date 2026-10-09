@@ -6,8 +6,6 @@
 
 **Status**: Implemented (see plan.md, tasks.md)
 
-**Input**: User description: "what I'm after is proper translations committed to the repo that I'll have AI translate every single label, text everything into various languages. and then when a person say wants SPANISH it would pull that translation file, into the littleFS storage of the device so it can display those values. It should be doable."
-
 ## Overview
 
 SQMeter speaks English only. This feature translates **every piece of text a person reads in the SQMeter web UI** into a set of languages and keeps those translations in the repository.
