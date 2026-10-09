@@ -41,6 +41,7 @@ const Masonry: FunctionalComponent<{
   }, []);
 
   // Re-measure whenever any item's content changes height.
+  const itemIds = items.map((item) => item.id).join(',');
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -68,7 +69,7 @@ const Masonry: FunctionalComponent<{
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [items.map((item) => item.id).join(','), editing]);
+  }, [itemIds, editing]);
 
   // 1 to 4 columns by width (spec 010 FR-002).
   const columns = Math.min(MAX_COLUMNS, Math.max(1, Math.floor((width + gap) / (minColumnWidth + gap))));

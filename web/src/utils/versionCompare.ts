@@ -11,34 +11,43 @@ const parse = (v: string): Version | null => {
   return { core: match[1].split('.').map(Number), pre: match[2] ? match[2].split('.') : [] };
 };
 
+// Numeric identifiers compare as numbers, and sort before alphanumeric ones.
+const compareIdentifier = (p: string, q: string): number => {
+  const pn = /^\d+$/.test(p);
+  const qn = /^\d+$/.test(q);
+  if (pn && qn) return Math.sign(Number(p) - Number(q));
+  if (pn !== qn) return pn ? -1 : 1;
+  if (p !== q) return p < q ? -1 : 1;
+  return 0;
+};
+
+const compareCore = (x: number[], y: number[]): number => {
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] ?? 0) - (y[i] ?? 0);
+    if (d !== 0) return Math.sign(d);
+  }
+  return 0;
+};
+
+// A prerelease sorts before its release; a shorter prerelease before a longer one it prefixes.
+const comparePre = (x: string[], y: string[]): number => {
+  if (!x.length || !y.length) return x.length === y.length ? 0 : x.length ? -1 : 1;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    if (x[i] === undefined) return -1;
+    if (y[i] === undefined) return 1;
+    const d = compareIdentifier(x[i], y[i]);
+    if (d !== 0) return d;
+  }
+  return 0;
+};
+
 // Semantic-version precedence: a prerelease sorts before its release
 // (0.2.0-beta.2 < 0.2.0), numeric identifiers compare as numbers.
 export const compareVersions = (a: string, b: string): number | null => {
   const x = parse(a);
   const y = parse(b);
   if (!x || !y) return null;
-
-  for (let i = 0; i < Math.max(x.core.length, y.core.length); i++) {
-    const d = (x.core[i] ?? 0) - (y.core[i] ?? 0);
-    if (d !== 0) return Math.sign(d);
-  }
-  if (!x.pre.length || !y.pre.length) return x.pre.length === y.pre.length ? 0 : x.pre.length ? -1 : 1;
-  for (let i = 0; i < Math.max(x.pre.length, y.pre.length); i++) {
-    const p = x.pre[i];
-    const q = y.pre[i];
-    if (p === undefined) return -1;
-    if (q === undefined) return 1;
-    const pn = /^\d+$/.test(p);
-    const qn = /^\d+$/.test(q);
-    if (pn && qn) {
-      if (Number(p) !== Number(q)) return Math.sign(Number(p) - Number(q));
-    } else if (pn !== qn) {
-      return pn ? -1 : 1;
-    } else if (p !== q) {
-      return p < q ? -1 : 1;
-    }
-  }
-  return 0;
+  return compareCore(x.core, y.core) || comparePre(x.pre, y.pre);
 };
 
 /**

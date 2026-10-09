@@ -4,6 +4,7 @@ import { route } from 'preact-router';
 import type { SafetyStatus } from '../types';
 import { Button, Card, Note, Pill } from './ui';
 import { t } from '../i18n';
+import { request } from '../lib/api';
 import { formatDateTime, formatTime } from '../i18n/format';
 import { deviceText } from '../i18n/deviceMessage';
 import { formatDuration } from '../lib/astro';
@@ -88,7 +89,7 @@ const historyTime = (entry: HistoryEntry, currentBoot: number) => {
 const SafetyHistoryList: FunctionalComponent = () => {
   const [data, setData] = useState<{ boot: number; entries: HistoryEntry[] } | null | 'error'>(null);
   useEffect(() => {
-    fetch('/api/safety/history')
+    request('/api/safety/history')
       .then((response) => (response.ok ? response.json() : Promise.reject()))
       .then(setData)
       .catch(() => setData('error'));
