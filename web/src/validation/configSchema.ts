@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseHost, parseHttpUrl } from '../lib/netAddress';
 
 // Valid ESP32 GPIO pins
 const validGPIOs = [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39];
@@ -12,6 +13,7 @@ export const wifiConfigSchema = z.object({
     .max(32, 'Hostname can be at most 32 characters')
     .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/, 'Use letters, numbers and hyphens (not at either end)'),
   mdns: z.boolean().optional(),
+  ipv6: z.boolean().optional(),
   autoReconnect: z.boolean(),
   reconnectDelayMs: z.number().int().positive(),
   maxReconnectDelayMs: z.number().int().positive(),
@@ -50,6 +52,12 @@ export const mqttConfigSchema = z
   .refine((data) => !data.enabled || data.broker.trim().length > 0, {
     message: 'MQTT broker and topic are required when MQTT is enabled',
     path: ['broker'],
+  })
+  // Host forms, IPv6 included - the device's rules (lib/NetAddress, spec 015).
+  .superRefine((data, ctx) => {
+    if (data.broker === '') return;
+    const host = parseHost(data.broker);
+    if (host.error) ctx.addIssue({ code: 'custom', path: ['broker'], message: host.error });
   })
   .refine((data) => !data.enabled || data.topic.trim().length > 0, {
     message: 'MQTT broker and topic are required when MQTT is enabled',
@@ -323,8 +331,9 @@ export const alertsConfigSchema = z
         ctx.addIssue({ code: 'custom', path: ['ntfy', 'topic'], message: 'Topic is required' });
       }
     }
-    if (data.webhook.enabled && !httpUrl.safeParse(data.webhook.url).success) {
-      ctx.addIssue({ code: 'custom', path: ['webhook', 'url'], message: 'Webhook URL must start with http:// or https://' });
+    if (data.webhook.enabled) {
+      const url = parseHttpUrl(data.webhook.url);
+      if (url.error) ctx.addIssue({ code: 'custom', path: ['webhook', 'url'], message: url.error });
     }
   });
 

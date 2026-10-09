@@ -30,6 +30,18 @@ async function alpacaParams(request: Request): Promise<[string, string][]> {
 
 // GET /api/status: the device core's decisions (sky, sensors, diagnostics,
 // uptime) with the hardware sections a real ESP32 would report.
+// A dual-stack home network: link-local plus a SLAAC global address
+// (documentation prefix 2001:db8::/32, spec 015).
+const demoIpv6 = (running: boolean) => ({
+  enabled: running,
+  addresses: running
+    ? [
+        { address: 'fe80::a3b2:c3ff:fed4:e5f6', scope: 'link-local' as const },
+        { address: '2001:db8:4a2c:1:a3b2:c3ff:fed4:e5f6', scope: 'global' as const },
+      ]
+    : [],
+});
+
 export function statusDocument() {
   const parts = demoDevice.statusParts();
   const cfg = demoDevice.rawConfig();
@@ -43,6 +55,7 @@ export function statusDocument() {
       ssid: joinedSsid ?? (cfg.wifi?.ssid || mockStatus.wifi.ssid),
       hostname: cfg.wifi?.hostname,
       mdns: cfg.wifi?.mdns ?? true,
+      ipv6: demoIpv6(demoDevice.ipv6Running),
       apMode: false,
       connectPending: false,
     },

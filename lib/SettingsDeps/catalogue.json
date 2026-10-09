@@ -60,6 +60,6 @@
     { "id": "D-34", "class": "constraint", "kind": "feature", "settings": ["auth.password"], "dependsOn": "HTTP auth on needs a password", "reasons": [], "messages": ["HTTP auth password is required when auth is enabled"] },
     { "id": "D-35", "class": "dependency", "kind": "setting", "settings": ["gps.enabled", "ble.enabled", "ble.phoneAlarm", "alerts.wakePhones", "mqtt.publish.gps"], "dependsOn": "A restart since GPS or Bluetooth was switched on (both start at boot)", "reasons": ["gps-restart", "ble-restart"] },
     { "id": "D-37", "class": "dependency", "kind": "setting", "settings": ["alerts.events.client_lost.level", "alerts.events.client_back.level", "alerts.events.client_disconnected.level"], "dependsOn": "Alpaca on - imaging apps connect over Alpaca (spec 021)", "reasons": ["alpaca-off"] },
-    { "id": "D-36", "class": "dependency", "kind": "setting", "runtime": true, "settings": ["wifi.mdns"], "dependsOn": "WiFi connected to a network (not the setup hotspot)", "reasons": ["wifi-disconnected"] }
+    { "id": "D-36", "class": "dependency", "kind": "setting", "runtime": true, "settings": ["wifi.mdns", "wifi.ipv6"], "dependsOn": "WiFi connected to a network (not the setup hotspot)", "reasons": ["wifi-disconnected"] }
   ]
 }

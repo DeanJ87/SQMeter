@@ -152,6 +152,14 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
           checked={config.wifi.mdns ?? true}
           onChange={(v) => update(['wifi', 'mdns'], v)}
         />
+        <DepToggle
+          entry={deps.get('wifi.ipv6')}
+          onFix={fix}
+          label="IPv6"
+          hint="Also reachable over IPv6 on networks that offer it, from your local network only. Applies after a restart."
+          checked={config.wifi.ipv6 ?? true}
+          onChange={(v) => update(['wifi', 'ipv6'], v)}
+        />
       </SettingsCard>
 
       <SettingsCard id="mqtt" title="MQTT" hint="Publishes readings to a broker, e.g. for Home Assistant." badge={mqttBadge}>
@@ -163,7 +171,7 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
                 <TextInput
                   dataField="mqttBroker"
                   value={config.mqtt.broker}
-                  placeholder="192.168.1.100"
+                  placeholder="192.168.1.100 or fd00::10"
                   onInput={(v) => update(['mqtt', 'broker'], v)}
                 />
               </Field>
