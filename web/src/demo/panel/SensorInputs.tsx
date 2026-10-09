@@ -5,6 +5,7 @@ import { Note } from '../../components/ui';
 import { differential, INPUTS, type SensorId } from '../conditions';
 import { demoDevice } from '../device';
 import { Check, DraftNumber, NumberField } from './NumberField';
+import { formatNumber } from '../../i18n/format';
 
 // What each simulated sensor reports, grouped by sensor (spec 019 US1).
 
@@ -45,7 +46,7 @@ const SkyGroup: FunctionalComponent = () => {
           id="demo-input-differential"
           label="Sky minus IR sensor"
           unit="°C"
-          valueText={differential(c).toFixed(1)}
+          valueText={formatNumber(differential(c), 1)}
           hint={clamped ? `The sky temperature is limited to the sensor's range, ${SKY.min} to ${SKY.max} °C.` : undefined}
           onCommit={(v) => setClamped(demoDevice.setDifferential(v))}
         />

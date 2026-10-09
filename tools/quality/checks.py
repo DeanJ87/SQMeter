@@ -68,6 +68,8 @@ HINTS = {
     "ERR-01": "don't swallow the error: handle it, return it or log what failed",
     "EXC-01": "a suppression names the rule and says why on the same line, e.g. `// NOLINT(rule): reason`",
     "LINT-01": "fix the linter finding, or suppress it with a reason (EXC-01)",
+    "I18N-05": "format with web/src/i18n/format.ts and read typed numbers with web/src/i18n/parse.ts "
+    "(SVG geometry: web/src/lib/svg.ts; option values: Number(value))",
     "I18N-01": "move the text to web/src/i18n/en.json and use t() (or `// i18n-ignore: <reason>`)",
     "I18N-02": "every language file needs exactly the English keys, placeholders and plural forms: "
     "run `node tools/i18n/check.mjs`, then `python3 tools/i18n/translate.py`",
@@ -171,6 +173,7 @@ ESLINT_RULES = {
     "@typescript-eslint/no-unused-vars": "SMELL-11",
     "no-unused-vars": "SMELL-11",
     "no-empty": "ERR-01",
+    "no-restricted-syntax": "I18N-05",
 }
 
 

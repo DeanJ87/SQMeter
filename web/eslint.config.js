@@ -62,6 +62,29 @@ export default tseslint.config(
     },
   },
   {
+    // I18N-05: numbers and dates follow the active language (spec 023 FR-017):
+    // format with src/i18n/format.ts, read typed numbers with src/i18n/parse.ts.
+    files: ['src/components/**/*.{ts,tsx}', 'src/demo/**/*.{ts,tsx}'],
+    ignores: ['**/__tests__/**', 'src/demo/core/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.property.name=/^(toFixed|toPrecision|toLocaleString|toLocaleTimeString|toLocaleDateString)$/]',
+          message: 'I18N-05: format numbers and dates with src/i18n/format.ts (language-aware, Latin digits); SVG geometry: lib/svg.ts',
+        },
+        {
+          selector: 'CallExpression[callee.name=/^(parseFloat|parseInt)$/]',
+          message: 'I18N-05: read typed numbers with parseNumber (src/i18n/parse.ts); option values: Number(value)',
+        },
+        {
+          selector: "CallExpression[callee.object.name='Number'][callee.property.name=/^(parseFloat|parseInt)$/]",
+          message: 'I18N-05: read typed numbers with parseNumber (src/i18n/parse.ts); option values: Number(value)',
+        },
+      ],
+    },
+  },
+  {
     files: ['src/main.tsx', 'src/demo/**', 'src/mocks/**', '**/__tests__/**', 'src/test/**', 'tests/**'],
     rules: { 'no-restricted-imports': 'off' },
   },

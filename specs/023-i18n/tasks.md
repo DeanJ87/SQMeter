@@ -19,6 +19,7 @@
 - [x] T012 [US1] Settings → Device → Language with status, retry and upload; reload once installed
 - [x] T013 [US1] Device message IDs: `device.*` keys, gen_device_catalog.py → `device.*` templates in en.json, UI `deviceText()`/`deviceError()` recognise device text (no response fields: flash budget, research D4)
 - [x] T014 [US1] FR-017 numbers and dates follow the language
+- [x] T031 [US1] FR-017 typed numbers read in the language (text inputs, parseNumber), every shown number and date through format.ts with Latin digits, grouping for counts, ESLint I18N-05, tests (research D14)
 
 ## Phase 4: US2 - English always works
 - [x] T015 [US2] Loader fallbacks: no file, bad file, per-key missing; a notice with the reason and retry/upload (+ tests)
