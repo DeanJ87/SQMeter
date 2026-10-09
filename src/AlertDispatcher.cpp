@@ -1,4 +1,5 @@
 #include "AlertDispatcher.h"
+#include "AlertDelivery.h"
 #include "AlertRootCA.h"
 #include "Logger.h"
 #include "MQTTClient.h"
@@ -13,49 +14,11 @@
 
 namespace SQM
 {
-    // Several events sent as one notification: list them all, lead first.
-    static void appendStackedEvents(JsonDocument &doc, const Alerts::Alert &alert)
-    {
-        if (alert.stacked.empty())
-            return;
-        JsonArray events = doc.createNestedArray("events");
-        events.add(Alerts::alertTypeName(alert.type));
-        for (Alerts::AlertType type : alert.stacked)
-            events.add(Alerts::alertTypeName(type));
-    }
-
     namespace
     {
         constexpr const char *TAG = "Alerts";
         constexpr int HTTP_TIMEOUT_MS = 10000;
         constexpr size_t MAX_ERROR_BODY_CHARS = 120;
-
-        std::string urlEncode(const std::string &value)
-        {
-            static const char *hex = "0123456789ABCDEF";
-            std::string out;
-            out.reserve(value.size() * 3);
-            for (unsigned char c : value)
-            {
-                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' ||
-                    c == '~')
-                {
-                    out += static_cast<char>(c);
-                }
-                else
-                {
-                    out += '%';
-                    out += hex[c >> 4];
-                    out += hex[c & 0x0F];
-                }
-            }
-            return out;
-        }
-
-        std::string fullTitle(const std::string &deviceName, const std::string &title)
-        {
-            return deviceName.empty() ? title : deviceName + ": " + title;
-        }
 
         int64_t epochNow()
         {
@@ -128,31 +91,6 @@ namespace SQM
             return ok;
         }
 
-        const char *ntfyTags(Alerts::AlertType type)
-        {
-            // In AlertType order (lib/AlertLogic/include/AlertEngine.h).
-            static constexpr const char *TAGS[] = {
-                "warning",                // Unsafe
-                "white_check_mark",       // Safe
-                "cloud_with_rain",        // RainStarted
-                "sun_behind_small_cloud", // RainStopped
-                "rotating_light",         // SensorFault
-                "wrench",                 // SensorRecovered
-                "rotating_light",         // LensFault
-                "droplet",                // DewRisk
-                "star",                   // ClearSky
-                "cloud",                  // CloudedOver
-                "ok_hand",                // Acknowledged
-                "telescope",              // AlertsOn
-                "test_tube",              // Test
-                "satellite",              // ClientLost
-                "link",                   // ClientBack
-                "electric_plug",          // ClientDisconnected
-            };
-            static_assert(sizeof(TAGS) / sizeof(TAGS[0]) == Alerts::ALERT_TYPE_COUNT, "a tag for every AlertType");
-            const size_t index = static_cast<size_t>(type);
-            return index < Alerts::ALERT_TYPE_COUNT ? TAGS[index] : "bell";
-        }
     } // namespace
 
     const char *alertChannelName(AlertChannel channel)
@@ -241,17 +179,7 @@ namespace SQM
         // MQTT: publish right here on the main loop task.
         if (wanted[0])
         {
-            DynamicJsonDocument doc(768);
-            doc["event"] = Alerts::alertTypeName(alert.type);
-            appendStackedEvents(doc, alert);
-            doc["title"] = alert.title;
-            doc["message"] = alert.message;
-            doc["level"] = Alerts::alertLevelName(alert.level);
-            doc["device"] = deviceName;
-            if (record.epochSeconds != 0)
-                doc["timestamp"] = record.epochSeconds;
-            std::string payload;
-            serializeJson(doc, payload);
+            const std::string payload = Delivery::alertJson(alert, deviceName, record.epochSeconds);
             const bool ok = mqtt != nullptr && mqtt->publishSubtopic("alerts", payload, false);
             record.status[0] = ok ? DeliveryStatus::Sent : DeliveryStatus::Failed;
             record.detail[0] = ok ? "Published" : "MQTT not connected";
@@ -376,42 +304,21 @@ namespace SQM
 
     bool AlertDispatcher::sendPushover(const Job &job, std::string &detail)
     {
-        const int priority = Alerts::pushoverPriority(job.alert.level);
-
-        std::string body = "token=" + urlEncode(job.cfg.pushoverAppToken) + "&user=" + urlEncode(job.cfg.pushoverUserKey) +
-                           "&title=" + urlEncode(fullTitle(job.deviceName, job.alert.title)) + "&message=" + urlEncode(job.alert.message) +
-                           "&priority=" + std::to_string(priority);
-        if (priority == 2)
-            body += "&retry=60&expire=3600"; // emergency: repeat every minute for up to an hour until acknowledged
-        const std::string &sound = job.alert.sound.empty() ? job.cfg.pushoverSound : job.alert.sound;
-        if (!sound.empty())
-            body += "&sound=" + urlEncode(sound);
-
-        return httpPost(
-            "https://api.pushover.net/1/messages.json", "application/x-www-form-urlencoded", body, {}, false, detail, PUSHOVER_ROOT_CA_PEM);
+        const Delivery::HttpRequest request = Delivery::pushoverRequest(
+            job.alert, {job.cfg.pushoverUserKey, job.cfg.pushoverAppToken, job.cfg.pushoverSound}, job.deviceName);
+        return httpPost(request.url, request.contentType.c_str(), request.body, request.headers, false, detail, PUSHOVER_ROOT_CA_PEM);
     }
 
     bool AlertDispatcher::sendNtfy(const Job &job, std::string &detail)
     {
-        std::string server = job.cfg.ntfyServer;
-        while (!server.empty() && server.back() == '/')
-            server.pop_back();
-
-        const char *priority = Alerts::ntfyPriority(job.alert.level);
-        std::vector<std::pair<std::string, std::string>> headers = {
-            {"Title", fullTitle(job.deviceName, job.alert.title)},
-            {"Priority", priority},
-            {"Tags", ntfyTags(job.alert.type)},
-        };
-        if (!job.cfg.ntfyToken.empty())
-            headers.push_back({"Authorization", "Bearer " + job.cfg.ntfyToken});
-
-        const bool ntfySh = server == "https://ntfy.sh";
+        const Delivery::HttpRequest request =
+            Delivery::ntfyRequest(job.alert, {job.cfg.ntfyServer, job.cfg.ntfyTopic, job.cfg.ntfyToken}, job.deviceName);
+        const bool ntfySh = request.url.rfind("https://ntfy.sh/", 0) == 0;
         return httpPost(
-            server + "/" + urlEncode(job.cfg.ntfyTopic),
-            "text/plain; charset=utf-8",
-            job.alert.message,
-            headers,
+            request.url,
+            request.contentType.c_str(),
+            request.body,
+            request.headers,
             false,
             detail,
             ntfySh ? NTFY_SH_ROOT_CA_PEM : ALERT_ROOT_CA_PEM);
@@ -419,18 +326,7 @@ namespace SQM
 
     bool AlertDispatcher::sendWebhook(const Job &job, std::string &detail)
     {
-        DynamicJsonDocument doc(768);
-        doc["device"] = job.deviceName;
-        doc["event"] = Alerts::alertTypeName(job.alert.type);
-        appendStackedEvents(doc, job.alert);
-        doc["title"] = job.alert.title;
-        doc["message"] = job.alert.message;
-        doc["level"] = Alerts::alertLevelName(job.alert.level);
-        const int64_t epoch = epochNow();
-        if (epoch != 0)
-            doc["timestamp"] = epoch;
-        std::string body;
-        serializeJson(doc, body);
+        const std::string body = Delivery::alertJson(job.alert, job.deviceName, epochNow());
 
         std::vector<std::pair<std::string, std::string>> headers;
         if (!job.cfg.webhookAuthHeader.empty())
