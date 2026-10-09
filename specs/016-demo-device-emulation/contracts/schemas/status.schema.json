@@ -789,6 +789,43 @@
         "ip": {
           "type": "string"
         },
+        "ipv6": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "addresses",
+            "enabled"
+          ],
+          "properties": {
+            "addresses": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "address",
+                  "scope"
+                ],
+                "properties": {
+                  "address": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "link-local",
+                      "unique-local",
+                      "global"
+                    ]
+                  }
+                }
+              }
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          }
+        },
         "mac": {
           "type": "string"
         },
@@ -808,6 +845,7 @@
         "connected",
         "hostname",
         "ip",
+        "ipv6",
         "mac",
         "mdns",
         "rssi",
