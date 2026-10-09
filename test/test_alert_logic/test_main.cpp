@@ -1,5 +1,8 @@
 #include <unity.h>
 #include <cstring>
+#include <fstream>
+#include <sstream>
+#include <ArduinoJson.h>
 #include "AlertEngine.h"
 
 using namespace SQM::Alerts;
@@ -558,6 +561,67 @@ void test_waits_does_not_change_what_is_sent(void)
     TEST_ASSERT_EQUAL(a.update(safeInputs(70), rules).size(), b.update(safeInputs(70), rules).size());
 }
 
+namespace
+{
+    // lib/AlertLogic/template-variables.json: the variables the web UI offers
+    // for each event (specs/008 FR-006).
+    std::vector<std::string> sharedEventVars(const char *event)
+    {
+        std::ifstream in("lib/AlertLogic/template-variables.json");
+        std::stringstream text;
+        text << in.rdbuf();
+        DynamicJsonDocument doc(4096);
+        TEST_ASSERT_FALSE(deserializeJson(doc, text.str()));
+        std::vector<std::string> names;
+        for (JsonVariantConst name : doc["events"][event].as<JsonArrayConst>())
+            names.push_back(name.as<std::string>());
+        return names;
+    }
+
+    void assertFillsSharedVars(const std::vector<Alert> &alerts, AlertType type)
+    {
+        const char *event = alertTypeName(type);
+        const Alert *alert = nullptr;
+        for (const Alert &a : alerts)
+            if (a.type == type)
+                alert = &a;
+        TEST_ASSERT_NOT_NULL_MESSAGE(alert, event);
+        for (const std::string &name : sharedEventVars(event))
+        {
+            bool filled = false;
+            for (const auto &v : alert->vars)
+                filled = filled || v.first == name;
+            TEST_ASSERT_TRUE_MESSAGE(filled, (std::string(event) + " does not fill {" + name + "}").c_str());
+        }
+    }
+} // namespace
+
+// Every per-event variable the UI offers is one the device fills.
+void test_events_fill_the_shared_variables(void)
+{
+    AlertRules rules = noGraceRules();
+    rules.onDewRisk = true;
+    rules.dewRiskMarginC = 2.0f;
+    rules.cooldownSeconds = 0;
+    AlertEngine engine;
+    engine.update(safeInputs(0), rules);
+
+    AlertInputs bad = safeInputs(10);
+    bad.isSafe = false;
+    bad.unsafeReasons = {"Cloud 62% >= 35%"};
+    bad.sensors[2].name = "BME280";
+    bad.sensors[2].healthy = false;
+    bad.lensFault = true;
+    bad.dewpointC = 8.5f;
+    const std::vector<Alert> alerts = engine.update(bad, rules);
+    assertFillsSharedVars(alerts, AlertType::Unsafe);
+    assertFillsSharedVars(alerts, AlertType::SensorFault);
+    assertFillsSharedVars(alerts, AlertType::LensFault);
+    assertFillsSharedVars(alerts, AlertType::DewRisk);
+
+    assertFillsSharedVars(engine.update(safeInputs(100), rules), AlertType::SensorRecovered);
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -588,5 +652,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_waits_startup_grace);
     RUN_TEST(test_waits_cooldown_and_settle);
     RUN_TEST(test_waits_does_not_change_what_is_sent);
+    RUN_TEST(test_events_fill_the_shared_variables);
     return UNITY_END();
 }

@@ -1,0 +1,40 @@
+{
+  "_comment": "The {variables} alert wording can use: 'common' for every event, 'events' for the extra ones an event adds. The device fills them (lib/DeviceCore alertVars, lib/AlertLogic AlertEngine); the web UI offers the same list (web/src/components/settings/alertVariables.ts). 'sharesWordingWith': events worded by another event's setting. Tests in test/test_device_core, test/test_alert_logic, test/test_alert_clients and web keep all three in step.",
+  "common": [
+    "device",
+    "event",
+    "level",
+    "time",
+    "date",
+    "sqm",
+    "sqm_min",
+    "cloud",
+    "cloud_max",
+    "clear_below",
+    "cloudy_above",
+    "sky_temp",
+    "temp",
+    "humidity",
+    "humidity_max",
+    "dewpoint",
+    "dew_margin",
+    "pressure",
+    "rain_rate",
+    "wind",
+    "gust",
+    "sun_alt"
+  ],
+  "events": {
+    "unsafe": ["reasons", "reasons_inline", "reason_count"],
+    "sensor_fault": ["sensor"],
+    "sensor_recovered": ["sensor"],
+    "lens_fault": ["sensor"],
+    "dew_risk": ["dew_margin_min"],
+    "client_lost": ["silent_for", "last_checked", "client_id"],
+    "client_back": ["last_checked", "client_id"],
+    "client_disconnected": ["client_id"]
+  },
+  "sharesWordingWith": {
+    "lens_fault": "sensor_fault"
+  }
+}

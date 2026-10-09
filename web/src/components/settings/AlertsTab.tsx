@@ -7,6 +7,7 @@ import { darkness, formatClock, formatDuration, sunPosition } from '../../lib/as
 import { deviceTime } from '../../lib/deviceTime';
 import type { SettingsTabProps } from './context';
 import { useAlertSchedule } from '../../hooks/useAlertSchedule';
+import { COMMON_VARS, EVENT_VARS } from './alertVariables';
 import {
   PAUSE_HINT,
   SEND_MODE_OPTIONS,
@@ -162,39 +163,6 @@ const VAR_HELP: Record<string, string> = {
 // For the imaging-app events {device} is the Alpaca device, not the device name.
 const CLIENT_VAR_HELP: Record<string, string> = { device: '"safety monitor" or "weather device"' };
 const CLIENT_EVENTS: AlertEventKey[] = ['client_lost', 'client_back', 'client_disconnected'];
-const COMMON_VARS = [
-  'event',
-  'device',
-  'time',
-  'date',
-  'level',
-  'sqm',
-  'sqm_min',
-  'cloud',
-  'cloud_max',
-  'clear_below',
-  'cloudy_above',
-  'sky_temp',
-  'temp',
-  'humidity',
-  'humidity_max',
-  'dewpoint',
-  'dew_margin',
-  'pressure',
-  'rain_rate',
-  'wind',
-  'gust',
-  'sun_alt',
-];
-const EVENT_VARS: Partial<Record<AlertEventKey, string[]>> = {
-  unsafe: ['reasons', 'reasons_inline', 'reason_count'],
-  sensor_fault: ['sensor'],
-  sensor_recovered: ['sensor'],
-  dew_risk: ['dew_margin_min'],
-  client_lost: ['silent_for', 'last_checked', 'client_id'],
-  client_back: ['last_checked', 'client_id'],
-  client_disconnected: ['client_id'],
-};
 
 // On this tab the "Alerts are off" link (D-04) is shown once, by the Send
 // alerts switch, not on every row - and channels can be set up and tested

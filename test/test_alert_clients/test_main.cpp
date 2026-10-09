@@ -2,7 +2,11 @@
 
 #include "AlertEngine.h"
 
+#include <ArduinoJson.h>
+
 #include <cstring>
+#include <fstream>
+#include <sstream>
 
 using namespace SQM::Alerts;
 
@@ -202,6 +206,42 @@ void test_client_default_wording_names_no_product(void)
     TEST_ASSERT_EQUAL_STRING("client_disconnected", alertTypeName(AlertType::ClientDisconnected));
 }
 
+namespace
+{
+    // lib/AlertLogic/template-variables.json (specs/008 FR-006).
+    void assertFillsSharedVars(const Alert *alert, AlertType type)
+    {
+        const char *event = alertTypeName(type);
+        TEST_ASSERT_NOT_NULL_MESSAGE(alert, event);
+        std::ifstream in("lib/AlertLogic/template-variables.json");
+        std::stringstream text;
+        text << in.rdbuf();
+        DynamicJsonDocument doc(4096);
+        TEST_ASSERT_FALSE(deserializeJson(doc, text.str()));
+        for (JsonVariantConst name : doc["events"][event].as<JsonArrayConst>())
+        {
+            bool filled = false;
+            for (const auto &v : alert->vars)
+                filled = filled || v.first == name.as<std::string>();
+            TEST_ASSERT_TRUE_MESSAGE(filled, (std::string(event) + " does not fill {" + name.as<std::string>() + "}").c_str());
+        }
+    }
+} // namespace
+
+// Every per-event variable the UI offers is one the device fills.
+void test_client_events_fill_the_shared_variables(void)
+{
+    AlertEngine engine;
+    const AlertRules rules = clientRules();
+    engine.update(clientInputs(0, true, false), rules);
+    std::vector<Alert> alerts = engine.update(clientInputs(130, true, true), rules);
+    assertFillsSharedVars(find(alerts, AlertType::ClientLost), AlertType::ClientLost);
+    alerts = engine.update(clientInputs(400, true, false), rules);
+    assertFillsSharedVars(find(alerts, AlertType::ClientBack), AlertType::ClientBack);
+    alerts = engine.update(clientInputs(410, false, false, true), rules);
+    assertFillsSharedVars(find(alerts, AlertType::ClientDisconnected), AlertType::ClientDisconnected);
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -213,5 +253,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_client_events_ignore_grace_and_darkness);
     RUN_TEST(test_client_events_off);
     RUN_TEST(test_client_default_wording_names_no_product);
+    RUN_TEST(test_client_events_fill_the_shared_variables);
     return UNITY_END();
 }

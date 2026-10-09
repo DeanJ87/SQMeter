@@ -4,6 +4,10 @@
 
 #include "DeviceCore.h"
 
+#include <fstream>
+#include <set>
+#include <sstream>
+
 using namespace SQM;
 
 namespace
@@ -333,6 +337,31 @@ void test_alert_wording_and_levels()
     TEST_ASSERT_EQUAL(0, quiet.outgoing.size());
 }
 
+// specs/008 FR-006: the device fills exactly the common variables the web UI
+// offers (lib/AlertLogic/template-variables.json).
+void test_alert_vars_match_the_shared_list()
+{
+    std::ifstream in("lib/AlertLogic/template-variables.json");
+    std::stringstream text;
+    text << in.rdbuf();
+    DynamicJsonDocument doc(4096);
+    TEST_ASSERT_FALSE(deserializeJson(doc, text.str()));
+    std::set<std::string> shared;
+    for (JsonVariantConst name : doc["common"].as<JsonArrayConst>())
+        shared.insert(name.as<std::string>());
+
+    const uint32_t now = 100000;
+    SensorSnapshot s = healthy(now);
+    const Config cfg = defaults();
+    Core::derive(s, cfg);
+    Alerts::Alert alert; // no event values of its own
+    std::set<std::string> filled;
+    for (const auto &v :
+         Core::alertVars(cfg, Core::observingConditions(s, cfg, now), Core::night(s, cfg, NIGHT_EPOCH), alert, "23:00", "2026-10-07"))
+        filled.insert(v.first);
+    TEST_ASSERT_TRUE_MESSAGE(filled == shared, "Core::alertVars and template-variables.json \"common\" differ");
+}
+
 void test_iso_utc_and_window()
 {
     TEST_ASSERT_EQUAL_STRING("2026-10-08T00:00:00Z", Core::isoUtc(NIGHT_EPOCH).c_str());
@@ -358,6 +387,7 @@ int main()
     RUN_TEST(test_rain_sensor_lens_fault_and_stale_are_unsafe);
     RUN_TEST(test_night_from_location_and_clock);
     RUN_TEST(test_alert_wording_and_levels);
+    RUN_TEST(test_alert_vars_match_the_shared_list);
     RUN_TEST(test_iso_utc_and_window);
     return UNITY_END();
 }
