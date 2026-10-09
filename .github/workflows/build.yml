@@ -20,8 +20,13 @@ on:
       - 'web/tsconfig.json'
       - 'web/vite.config.ts'
       - 'web/vitest.config.ts'
+      - 'web/index.html'
+      - 'web/public/**'
       - 'platformio.ini'
       - 'partitions.csv'
+      - 'partitions_ble.csv'
+      - 'scripts/**'
+      - 'tools/ui/**'
       - '.github/workflows/build.yml'
       - 'specs/**'
       - '.specify/**'
@@ -190,9 +195,16 @@ jobs:
       # (coding standard SIZE-01, SIZE-02).
       - name: Pack the web UI for LittleFS and check its size
         run: |
-          python3 tools/ui/test_ui_size.py
+          python3 -m unittest tools/ui/test_ui_size.py
           python3 tools/ui/pack_data.py --dist web/dist --out data
-          python3 tools/ui/size_check.py --data data
+          if [ -n "${BASE_REF}" ]; then
+            git fetch --depth=1 origin "${BASE_REF}"
+            python3 tools/ui/size_check.py --data data --base-ref FETCH_HEAD
+          else
+            python3 tools/ui/size_check.py --data data
+          fi
+        env:
+          BASE_REF: ${{ github.base_ref }}
 
       - name: Build firmware
         run: pio run

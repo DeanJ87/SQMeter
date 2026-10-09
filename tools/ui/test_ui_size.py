@@ -3,6 +3,7 @@
 import gzip
 import importlib.util
 import json
+import random
 import tempfile
 import unittest
 from pathlib import Path
@@ -88,12 +89,34 @@ class SizeTests(unittest.TestCase):
         failures, _ = size_check.evaluate(self.measured(200 * 1024, 4), {"big": 4 << 20, "small": 256 * 1024}, None)
         self.assertTrue(any("SIZE-02" in f for f in failures))
 
-    def test_growth_over_baseline(self):
+    def test_growth_over_target_branch(self):
         base = {"jsCssGzipBytes": 100 * 1024}
-        ok, _ = size_check.evaluate(self.measured(109 * 1024), {"p": 4 << 20}, base)
+        ok, _ = size_check.evaluate(self.measured(109 * 1024), {"p": 4 << 20}, {"jsCssGzipBytes": 109 * 1024}, base)
         self.assertEqual(ok, [])
-        bad, _ = size_check.evaluate(self.measured(111 * 1024), {"p": 4 << 20}, base)
-        self.assertTrue(any(f.startswith("SIZE-01") for f in bad))
+        bad, _ = size_check.evaluate(self.measured(111 * 1024), {"p": 4 << 20}, {"jsCssGzipBytes": 111 * 1024}, base)
+        self.assertTrue(any(f.startswith("SIZE-01") and "grew" in f for f in bad))
+
+    def test_without_target_branch_growth_is_against_the_record(self):
+        bad, _ = size_check.evaluate(self.measured(111 * 1024), {"p": 4 << 20}, {"jsCssGzipBytes": 100 * 1024})
+        self.assertTrue(any("grew" in f for f in bad))
+
+    def test_stale_record_fails(self):
+        # Two 6 KB features in a row must each be measured against the last record.
+        failures, _ = size_check.evaluate(self.measured(106 * 1024), {"p": 4 << 20}, {"jsCssGzipBytes": 100 * 1024})
+        self.assertTrue(any("--update-baseline" in f for f in failures))
+        ok, _ = size_check.evaluate(self.measured(101 * 1024), {"p": 4 << 20}, {"jsCssGzipBytes": 100 * 1024})
+        self.assertEqual(ok, [])
+
+    def test_new_reason_waives_growth_once(self):
+        base = {"jsCssGzipBytes": 100 * 1024}
+        record = {"jsCssGzipBytes": 115 * 1024, "overBudgetReason": "charts need a renderer"}
+        ok, rows = size_check.evaluate(self.measured(115 * 1024), {"p": 4 << 20}, record, base)
+        self.assertEqual(ok, [])
+        self.assertIn(("Over budget, recorded reason", "charts need a renderer"), rows)
+        # The next change inherits the reason from the target branch: no waiver.
+        base_after = dict(record)
+        bad, _ = size_check.evaluate(self.measured(126 * 1024), {"p": 4 << 20}, {**record, "jsCssGzipBytes": 126 * 1024}, base_after)
+        self.assertTrue(any("grew" in f for f in bad))
 
     def test_cli_end_to_end(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -108,6 +131,10 @@ class SizeTests(unittest.TestCase):
             self.assertEqual(size_check.main(argv + ["--update-baseline"]), 0)
             self.assertIn("jsCssGzipBytes", json.loads(baseline.read_text()))
             self.assertEqual(size_check.main(argv), 0)
+            self.assertEqual(size_check.main(argv + ["--base-ref", "no-such-ref-xyz"]), 0)
+            write(dist / "assets/App.js", random.Random(1).randbytes(50_000))  # incompressible: +49 KB
+            pack_data.pack(dist, data)
+            self.assertEqual(size_check.main(argv), 1)
 
 
 if __name__ == "__main__":
