@@ -1,5 +1,5 @@
 #include "OtaUpdater.h"
-#include "GithubRootCA.h"
+#include "AlertRootCA.h"
 #include "FirmwareImage.h"
 #include "FirmwareMarker.h"
 #include "Logger.h"

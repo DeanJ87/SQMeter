@@ -45,7 +45,7 @@ Thumbs.db
 *.swo
 *~
 
-# Root CA source certificates (already embedded in include/GithubRootCA.h)
+# Root CA source certificates (already embedded in include/AlertRootCA.h)
 /*.pem
 
 # Alpaca simulator binary (tools/alpaca-sim/build.sh)
