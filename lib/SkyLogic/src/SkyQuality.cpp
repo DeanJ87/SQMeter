@@ -1,5 +1,6 @@
 #include "calculations/SkyQuality.h"
 #include <algorithm>
+#include <cmath>
 
 namespace SQM
 {
@@ -75,27 +76,26 @@ namespace SQM
 
         if (sqm >= 21.99f)
             return 1.0f; // Excellent dark site
-        else if (sqm >= 21.89f)
+        if (sqm >= 21.89f)
             return 2.0f; // Typical dark site
-        else if (sqm >= 21.69f)
+        if (sqm >= 21.69f)
             return 3.0f; // Rural sky
-        else if (sqm >= 20.49f)
+        if (sqm >= 20.49f)
             return 4.0f; // Rural/suburban transition
-        else if (sqm >= 19.50f)
+        if (sqm >= 19.50f)
             return 5.0f; // Suburban sky
-        else if (sqm >= 18.94f)
+        if (sqm >= 18.94f)
             return 6.0f; // Bright suburban
-        else if (sqm >= 18.38f)
+        if (sqm >= 18.38f)
             return 7.0f; // Suburban/urban transition
-        else if (sqm >= 17.00f)
+        if (sqm >= 17.00f)
             return 8.0f; // City sky
-        else
-            return 9.0f; // Inner city
+        return 9.0f;     // Inner city
     }
 
     const char *SkyQuality::getBortleDescription(float bortle)
     {
-        int bortleClass = static_cast<int>(bortle + 0.5f); // Round to nearest
+        int bortleClass = static_cast<int>(std::lround(bortle)); // Round to nearest
 
         switch (bortleClass)
         {

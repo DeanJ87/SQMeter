@@ -18,7 +18,7 @@ namespace SQM
 
         bool AlarmTracker::raiseAlarm(uint32_t reasonFlags, uint32_t epoch, uint32_t nowMs)
         {
-            if (level == ALARM_ACTIVE)
+            if (level == AlarmActive)
             {
                 // Same alarm, fresher detail: no new sequence number, so an ack
                 // for it still counts.
@@ -26,7 +26,7 @@ namespace SQM
                 return false;
             }
             ++seq;
-            level = ALARM_ACTIVE;
+            level = AlarmActive;
             reasons = reasonFlags;
             epochSeconds = epoch;
             lastSentMs = nowMs;
@@ -35,10 +35,10 @@ namespace SQM
 
         bool AlarmTracker::raiseInfo(uint32_t reasonFlags, uint32_t epoch, uint32_t nowMs)
         {
-            if (level == ALARM_ACTIVE)
+            if (level == AlarmActive)
                 return false;
             ++seq;
-            level = ALARM_INFO;
+            level = AlarmInfo;
             reasons = reasonFlags;
             epochSeconds = epoch;
             lastSentMs = nowMs;
@@ -47,9 +47,9 @@ namespace SQM
 
         bool AlarmTracker::acknowledge(uint32_t ackSeq, uint32_t nowMs)
         {
-            if (level != ALARM_ACTIVE || ackSeq != seq)
+            if (level != AlarmActive || ackSeq != seq)
                 return false;
-            level = ALARM_NONE;
+            level = AlarmNone;
             ackedSeq = ackSeq;
             lastSentMs = nowMs;
             return true;
@@ -57,7 +57,7 @@ namespace SQM
 
         bool AlarmTracker::resendDue(uint32_t nowMs) const
         {
-            return level == ALARM_ACTIVE && nowMs - lastSentMs >= RESEND_INTERVAL_MS;
+            return level == AlarmActive && nowMs - lastSentMs >= RESEND_INTERVAL_MS;
         }
 
         std::string AlarmTracker::encode() const

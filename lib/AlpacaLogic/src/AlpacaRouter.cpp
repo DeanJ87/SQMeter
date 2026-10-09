@@ -3,6 +3,7 @@
 #include "AlpacaProtocol.h"
 
 #include <ArduinoJson.h>
+#include <optional>
 
 namespace SQM
 {
@@ -101,6 +102,272 @@ namespace SQM
                 const Request &request;
                 uint32_t &serverTransactionId;
             };
+
+            struct DevicePath
+            {
+                std::string method;
+                bool isSafetyMonitor = false;
+            };
+
+            // /api/v1/<type>/<number>/<method>, for device 0 of the two types.
+            bool parseDevicePath(const std::string &path, DevicePath &out)
+            {
+                const size_t typeStart = 8; // strlen("/api/v1/")
+                const size_t numberSlash = path.find('/', typeStart);
+                const size_t methodSlash = numberSlash == std::string::npos ? std::string::npos : path.find('/', numberSlash + 1);
+                if (methodSlash == std::string::npos || path.find('/', methodSlash + 1) != std::string::npos)
+                    return false;
+                const std::string type = path.substr(typeStart, numberSlash - typeStart);
+                const std::string number = path.substr(numberSlash + 1, methodSlash - numberSlash - 1);
+                out.method = path.substr(methodSlash + 1);
+                out.isSafetyMonitor = type == "safetymonitor";
+                return number == "0" && (out.isSafetyMonitor || type == "observingconditions") && !out.method.empty();
+            }
+
+            // The device's own web UI (the Alpaca page's live state) tags its
+            // requests source=ui: it isn't an imaging app watching the device.
+            void recordActivity(const Request &request, DeviceActivity &activity)
+            {
+                const std::string *source = findParam(request, "source");
+                if (source != nullptr && *source == "ui")
+                    return;
+                ++activity.requests;
+                if (const std::string *clientId = findParam(request, "ClientID"))
+                {
+                    activity.hasClientId = true;
+                    activity.clientId = parseClientTransactionId(*clientId);
+                }
+            }
+
+            void setConnected(DeviceActivity &activity, bool value)
+            {
+                if (activity.connected && !value)
+                    ++activity.disconnects;
+                activity.connected = value;
+            }
+
+            // One device request: what was asked, of which device, and the
+            // router state it can change.
+            struct DeviceCall
+            {
+                const Request &request;
+                Backend &backend;
+                const ServerIdentity &identity;
+                uint32_t &serverTransactionId;
+                DeviceActivity &activity;
+                std::string method;
+                bool get;
+                bool put;
+                bool isSafetyMonitor;
+                bool enabled;
+
+                Envelope reply(size_t capacity = 384) const { return Envelope(request, serverTransactionId, capacity); }
+                bool is(const char *name) const { return method == name; }
+            };
+
+            // --- Common ASCOM device API ---
+
+            std::optional<Response> commonGet(DeviceCall &call)
+            {
+                const bool safety = call.isSafetyMonitor;
+                Envelope reply = call.reply();
+                if (call.is("connected"))
+                    reply.setValue(call.enabled && call.activity.connected);
+                // Platform 7 asynchronous connect completes instantly, so
+                // Connecting is always false.
+                else if (call.is("connecting"))
+                    reply.setValue(false);
+                else if (call.is("name"))
+                    reply.setValue(safety ? SAFETY_NAME : CONDITIONS_NAME);
+                else if (call.is("description"))
+                    reply.setValue(safety ? SAFETY_DESCRIPTION : CONDITIONS_DESCRIPTION);
+                else if (call.is("driverinfo"))
+                    reply.setValue(DRIVER_INFO);
+                else if (call.is("driverversion"))
+                    reply.setValue(call.identity.version);
+                else if (call.is("interfaceversion"))
+                    reply.setValue(safety ? SAFETY_MONITOR_INTERFACE_VERSION : OBSERVING_CONDITIONS_INTERFACE_VERSION);
+                else if (call.is("supportedactions"))
+                    reply.valueArray();
+                else
+                    return std::nullopt;
+                return reply.finish();
+            }
+
+            std::optional<Response> commonPut(DeviceCall &call)
+            {
+                Envelope reply = call.reply();
+                if (call.is("connected"))
+                {
+                    const std::string *param = findParam(call.request, "Connected");
+                    bool value = false;
+                    if (param == nullptr || !parseAlpacaBool(*param, value))
+                        return badRequest("Missing or invalid Connected parameter (expected true or false)");
+                    if (value && !call.enabled)
+                        return reply.finish(ALPACA_ERR_NOT_CONNECTED, DISABLED_MESSAGE);
+                    setConnected(call.activity, value);
+                    return reply.finish();
+                }
+                if (call.is("connect"))
+                {
+                    if (!call.enabled)
+                        return reply.finish(ALPACA_ERR_NOT_CONNECTED, DISABLED_MESSAGE);
+                    setConnected(call.activity, true);
+                    return reply.finish();
+                }
+                if (call.is("disconnect"))
+                {
+                    setConnected(call.activity, false);
+                    return reply.finish();
+                }
+                // No custom actions or raw commands are supported.
+                if (call.is("action") || call.is("commandblind") || call.is("commandbool") || call.is("commandstring"))
+                    return reply.finish(ALPACA_ERR_NOT_IMPLEMENTED, "Custom actions and commands are not supported");
+                return std::nullopt;
+            }
+
+            std::optional<Response> commonMethod(DeviceCall &call)
+            {
+                if (call.get)
+                    return commonGet(call);
+                if (call.put)
+                    return commonPut(call);
+                return std::nullopt;
+            }
+
+            void addTimestamp(JsonArray &state, const std::string &timestamp)
+            {
+                if (timestamp.empty())
+                    return;
+                JsonObject item = state.createNestedObject();
+                item["Name"] = "TimeStamp";
+                item["Value"] = timestamp;
+            }
+
+            // --- SafetyMonitor ---
+
+            Response safetyMonitorMethod(DeviceCall &call)
+            {
+                if (!call.get)
+                    return badRequest(BAD_REQUEST);
+                Envelope reply = call.reply();
+                if (call.is("issafe"))
+                {
+                    if (!call.enabled)
+                    {
+                        reply.setValue(false);
+                        return reply.finish(ALPACA_ERR_NOT_CONNECTED, DISABLED_MESSAGE);
+                    }
+                    reply.setValue(call.backend.isSafe());
+                    return reply.finish();
+                }
+                if (call.is("devicestate"))
+                {
+                    JsonArray state = reply.valueArray();
+                    JsonObject item = state.createNestedObject();
+                    item["Name"] = "IsSafe";
+                    item["Value"] = call.enabled && call.backend.isSafe();
+                    addTimestamp(state, call.backend.timestampUtc());
+                    return reply.finish();
+                }
+                return badRequest(BAD_REQUEST);
+            }
+
+            // --- ObservingConditions ---
+
+            Response averagePeriodPut(DeviceCall &call)
+            {
+                const std::string *param = findParam(call.request, "AveragePeriod");
+                double hours = 0.0;
+                if (param == nullptr || !parseAlpacaDouble(*param, hours))
+                    return badRequest("Missing or invalid AveragePeriod parameter");
+                const PropertyResult result = validateAveragePeriod(hours);
+                return call.reply().finish(result.ok ? 0 : result.errorNumber, result.errorMessage);
+            }
+
+            Response sensorInfo(DeviceCall &call)
+            {
+                const std::string *param = findParam(call.request, "SensorName");
+                if (param == nullptr)
+                    return badRequest("Missing SensorName parameter");
+                Envelope reply = call.reply();
+                if (call.is("sensordescription"))
+                {
+                    const StringResult result = getSensorDescription(*param, call.backend.observingConditions());
+                    reply.setValue(result.value);
+                    return reply.finish(result.ok ? 0 : result.errorNumber, result.errorMessage);
+                }
+                const PropertyResult result = getTimeSinceLastUpdate(*param, call.backend.observingConditions());
+                reply.setValue(result.ok ? result.value : 0.0);
+                return reply.finish(result.ok ? 0 : result.errorNumber, result.errorMessage);
+            }
+
+            Response observingDeviceState(DeviceCall &call)
+            {
+                Envelope stateReply = call.reply(1536);
+                JsonArray state = stateReply.valueArray();
+                if (call.enabled)
+                {
+                    // DeviceState lists only properties that currently have a value.
+                    const ObservingConditionsSnapshot snapshot = call.backend.observingConditions();
+                    for (const ObservingPropertyName &property : OBSERVING_PROPERTIES)
+                    {
+                        const PropertyResult result = getObservingConditionsProperty(property.route, snapshot);
+                        if (!result.ok)
+                            continue;
+                        JsonObject item = state.createNestedObject();
+                        item["Name"] = property.stateName;
+                        item["Value"] = result.value;
+                    }
+                }
+                addTimestamp(state, call.backend.timestampUtc());
+                return stateReply.finish();
+            }
+
+            Response observingProperty(DeviceCall &call)
+            {
+                for (const ObservingPropertyName &property : OBSERVING_PROPERTIES)
+                {
+                    if (!call.is(property.route))
+                        continue;
+                    Envelope reply = call.reply();
+                    if (!call.enabled)
+                    {
+                        reply.setValue(0);
+                        return reply.finish(ALPACA_ERR_NOT_CONNECTED, DISABLED_MESSAGE);
+                    }
+                    const PropertyResult result = getObservingConditionsProperty(property.route, call.backend.observingConditions());
+                    reply.setValue(result.ok ? result.value : 0.0);
+                    return reply.finish(result.ok ? 0 : result.errorNumber, result.errorMessage);
+                }
+                return badRequest(BAD_REQUEST);
+            }
+
+            Response observingMethod(DeviceCall &call)
+            {
+                if (call.put)
+                {
+                    if (call.is("averageperiod"))
+                        return averagePeriodPut(call);
+                    // Readings refresh every sensor cycle already; nothing to force.
+                    if (call.is("refresh"))
+                        return call.reply().finish();
+                    return badRequest(BAD_REQUEST);
+                }
+                if (!call.get)
+                    return badRequest(BAD_REQUEST);
+                if (call.is("averageperiod"))
+                {
+                    Envelope reply = call.reply();
+                    reply.setValue(0.0);
+                    return reply.finish();
+                }
+                if (call.is("sensordescription") || call.is("timesincelastupdate"))
+                    return sensorInfo(call);
+                if (call.is("devicestate"))
+                    return observingDeviceState(call);
+                return observingProperty(call);
+            }
         } // namespace
 
         Router::Router(Backend &backend, ServerIdentity identity)
@@ -172,221 +439,25 @@ namespace SQM
 
         Response Router::device(const Request &request)
         {
-            // /api/v1/<type>/<number>/<method>
-            const std::string &path = request.path;
-            const size_t typeStart = 8; // strlen("/api/v1/")
-            const size_t numberSlash = path.find('/', typeStart);
-            const size_t methodSlash = numberSlash == std::string::npos ? std::string::npos : path.find('/', numberSlash + 1);
-            if (methodSlash == std::string::npos || path.find('/', methodSlash + 1) != std::string::npos)
+            DevicePath path;
+            if (!parseDevicePath(request.path, path))
                 return badRequest(BAD_REQUEST);
-            const std::string type = path.substr(typeStart, numberSlash - typeStart);
-            const std::string number = path.substr(numberSlash + 1, methodSlash - numberSlash - 1);
-            const std::string method = path.substr(methodSlash + 1);
-            const bool isSafetyMonitor = type == "safetymonitor";
-            if (number != "0" || (!isSafetyMonitor && type != "observingconditions") || method.empty())
-                return badRequest(BAD_REQUEST);
-
-            const bool get = request.get;
-            const bool put = request.put;
-            const size_t deviceIndex = isSafetyMonitor ? SAFETY_MONITOR : OBSERVING_CONDITIONS;
-            const bool enabled = backend.alpacaEnabled(); // dep: D-20
-            DeviceActivity &activity = devices[deviceIndex];
-            // The device's own web UI (the Alpaca page's live state) tags its
-            // requests source=ui: it isn't an imaging app watching the device.
-            const std::string *source = findParam(request, "source");
-            if (source == nullptr || *source != "ui")
-            {
-                ++activity.requests;
-                if (const std::string *clientId = findParam(request, "ClientID"))
-                {
-                    activity.hasClientId = true;
-                    activity.clientId = parseClientTransactionId(*clientId);
-                }
-            }
-            auto setConnected = [&activity](bool value)
-            {
-                if (activity.connected && !value)
-                    ++activity.disconnects;
-                activity.connected = value;
-            };
-            Envelope reply(request, serverTransactionId);
-
-            // --- Common ASCOM device API ---
-            if (method == "connected" && get)
-            {
-                reply.setValue(enabled && activity.connected);
-                return reply.finish();
-            }
-            if (method == "connected" && put)
-            {
-                const std::string *param = findParam(request, "Connected");
-                bool value = false;
-                if (param == nullptr || !parseAlpacaBool(*param, value))
-                    return badRequest("Missing or invalid Connected parameter (expected true or false)");
-                if (value && !enabled)
-                    return reply.finish(ALPACA_ERR_NOT_CONNECTED, DISABLED_MESSAGE);
-                setConnected(value);
-                return reply.finish();
-            }
-            // Platform 7 asynchronous connect: connecting completes instantly,
-            // so Connecting is always false.
-            if (method == "connect" && put)
-            {
-                if (!enabled)
-                    return reply.finish(ALPACA_ERR_NOT_CONNECTED, DISABLED_MESSAGE);
-                setConnected(true);
-                return reply.finish();
-            }
-            if (method == "disconnect" && put)
-            {
-                setConnected(false);
-                return reply.finish();
-            }
-            if (method == "connecting" && get)
-            {
-                reply.setValue(false);
-                return reply.finish();
-            }
-            if (method == "name" && get)
-            {
-                reply.setValue(isSafetyMonitor ? SAFETY_NAME : CONDITIONS_NAME);
-                return reply.finish();
-            }
-            if (method == "description" && get)
-            {
-                reply.setValue(isSafetyMonitor ? SAFETY_DESCRIPTION : CONDITIONS_DESCRIPTION);
-                return reply.finish();
-            }
-            if (method == "driverinfo" && get)
-            {
-                reply.setValue(DRIVER_INFO);
-                return reply.finish();
-            }
-            if (method == "driverversion" && get)
-            {
-                reply.setValue(identity.version);
-                return reply.finish();
-            }
-            if (method == "interfaceversion" && get)
-            {
-                reply.setValue(isSafetyMonitor ? SAFETY_MONITOR_INTERFACE_VERSION : OBSERVING_CONDITIONS_INTERFACE_VERSION);
-                return reply.finish();
-            }
-            if (method == "supportedactions" && get)
-            {
-                reply.valueArray();
-                return reply.finish();
-            }
-            // No custom actions or raw commands are supported.
-            if (put && (method == "action" || method == "commandblind" || method == "commandbool" || method == "commandstring"))
-                return reply.finish(ALPACA_ERR_NOT_IMPLEMENTED, "Custom actions and commands are not supported");
-
-            const std::string timestamp = backend.timestampUtc();
-            auto addTimestamp = [&timestamp](JsonArray &state)
-            {
-                if (timestamp.empty())
-                    return;
-                JsonObject item = state.createNestedObject();
-                item["Name"] = "TimeStamp";
-                item["Value"] = timestamp;
-            };
-
-            // --- SafetyMonitor ---
-            if (isSafetyMonitor)
-            {
-                if (method == "issafe" && get)
-                {
-                    if (!enabled)
-                    {
-                        reply.setValue(false);
-                        return reply.finish(ALPACA_ERR_NOT_CONNECTED, DISABLED_MESSAGE);
-                    }
-                    reply.setValue(backend.isSafe());
-                    return reply.finish();
-                }
-                if (method == "devicestate" && get)
-                {
-                    JsonArray state = reply.valueArray();
-                    JsonObject item = state.createNestedObject();
-                    item["Name"] = "IsSafe";
-                    item["Value"] = enabled && backend.isSafe();
-                    addTimestamp(state);
-                    return reply.finish();
-                }
-                return badRequest(BAD_REQUEST);
-            }
-
-            // --- ObservingConditions ---
-            if (method == "averageperiod" && get)
-            {
-                reply.setValue(0.0);
-                return reply.finish();
-            }
-            if (method == "averageperiod" && put)
-            {
-                const std::string *param = findParam(request, "AveragePeriod");
-                double hours = 0.0;
-                if (param == nullptr || !parseAlpacaDouble(*param, hours))
-                    return badRequest("Missing or invalid AveragePeriod parameter");
-                const PropertyResult result = validateAveragePeriod(hours);
-                return reply.finish(result.ok ? 0 : result.errorNumber, result.errorMessage);
-            }
-            // Readings refresh every sensor cycle already; nothing to force.
-            if (method == "refresh" && put)
-                return reply.finish();
-            if ((method == "sensordescription" || method == "timesincelastupdate") && get)
-            {
-                const std::string *param = findParam(request, "SensorName");
-                if (param == nullptr)
-                    return badRequest("Missing SensorName parameter");
-                if (method == "sensordescription")
-                {
-                    const StringResult result = getSensorDescription(*param, backend.observingConditions());
-                    reply.setValue(result.value);
-                    return reply.finish(result.ok ? 0 : result.errorNumber, result.errorMessage);
-                }
-                const PropertyResult result = getTimeSinceLastUpdate(*param, backend.observingConditions());
-                reply.setValue(result.ok ? result.value : 0.0);
-                return reply.finish(result.ok ? 0 : result.errorNumber, result.errorMessage);
-            }
-            if (method == "devicestate" && get)
-            {
-                Envelope stateReply(request, serverTransactionId, 1536);
-                JsonArray state = stateReply.valueArray();
-                if (enabled)
-                {
-                    // DeviceState lists only properties that currently have a value.
-                    const ObservingConditionsSnapshot snapshot = backend.observingConditions();
-                    for (const ObservingPropertyName &property : OBSERVING_PROPERTIES)
-                    {
-                        const PropertyResult result = getObservingConditionsProperty(property.route, snapshot);
-                        if (!result.ok)
-                            continue;
-                        JsonObject item = state.createNestedObject();
-                        item["Name"] = property.stateName;
-                        item["Value"] = result.value;
-                    }
-                }
-                addTimestamp(state);
-                return stateReply.finish();
-            }
-            if (get)
-            {
-                for (const ObservingPropertyName &property : OBSERVING_PROPERTIES)
-                {
-                    if (method != property.route)
-                        continue;
-                    if (!enabled)
-                    {
-                        reply.setValue(0);
-                        return reply.finish(ALPACA_ERR_NOT_CONNECTED, DISABLED_MESSAGE);
-                    }
-                    const PropertyResult result = getObservingConditionsProperty(property.route, backend.observingConditions());
-                    reply.setValue(result.ok ? result.value : 0.0);
-                    return reply.finish(result.ok ? 0 : result.errorNumber, result.errorMessage);
-                }
-            }
-            return badRequest(BAD_REQUEST);
+            const size_t deviceIndex = path.isSafetyMonitor ? SAFETY_MONITOR : OBSERVING_CONDITIONS;
+            DeviceCall call{
+                request,
+                backend,
+                identity,
+                serverTransactionId,
+                devices[deviceIndex],
+                path.method,
+                request.get,
+                request.put,
+                path.isSafetyMonitor,
+                backend.alpacaEnabled()}; // dep: D-20
+            recordActivity(request, call.activity);
+            if (std::optional<Response> common = commonMethod(call))
+                return *common;
+            return call.isSafetyMonitor ? safetyMonitorMethod(call) : observingMethod(call);
         }
 
     } // namespace Alpaca
