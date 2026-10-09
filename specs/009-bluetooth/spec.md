@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill the optional Bluetooth build: advertising, GATT readings and the paired phone alarm."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Wake me on my phone (Priority: P1)

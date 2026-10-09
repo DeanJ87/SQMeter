@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill the native Alpaca SafetyMonitor and ObservingConditions devices: discovery, management API, device API, setup pages, the Alpaca web page and conformance."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - N.I.N.A. finds and uses the device (Priority: P1)
