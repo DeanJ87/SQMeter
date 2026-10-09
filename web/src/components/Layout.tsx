@@ -3,6 +3,7 @@ import { route, useRouter } from 'preact-router';
 import { Toaster } from './toast';
 import AlertsBell from './AlertsBell';
 import { LIVE_REGION_ID } from '../lib/a11y';
+import { t } from '../i18n';
 
 interface LayoutProps {
   path?: string;
@@ -10,11 +11,11 @@ interface LayoutProps {
 }
 
 const navItems: { path: string; label: string; short?: string; icon: string }[] = [
-  { path: '/', label: 'Dashboard', short: 'Home', icon: 'chart' },
+  { path: '/', label: t('layout.dashboard'), short: t('layout.home'), icon: 'chart' },
   { path: '/alpaca', label: 'Alpaca', icon: 'scope' },
-  { path: '/system', label: 'System', icon: 'cpu' },
-  { path: '/settings', label: 'Settings', icon: 'gear' },
-  { path: '/updates', label: 'Updates', icon: 'upload' },
+  { path: '/system', label: t('layout.system'), icon: 'cpu' },
+  { path: '/settings', label: t('layout.settings'), icon: 'gear' },
+  { path: '/updates', label: t('layout.updates'), icon: 'upload' },
 ];
 
 const TinyIcon: FunctionalComponent<{ name: string }> = ({ name }) => {
@@ -77,7 +78,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
           document.getElementById('main')?.focus();
         }}
       >
-        Skip to main content
+        {t('layout.skipToMainContent')}
       </a>
       <header class="app-header">
         <div class="app-header-inner">
@@ -87,11 +88,11 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
             </div>
             <div>
               <h1>SQMeter</h1>
-              <p>Dark Sky Monitor</p>
+              <p>{t('layout.darkSkyMonitor')}</p>
             </div>
           </div>
 
-          <nav class="top-nav" aria-label="Primary">
+          <nav class="top-nav" aria-label={t('layout.primary')}>
             {navItems.map((item) => (
               <button
                 key={item.path}

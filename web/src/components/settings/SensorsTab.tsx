@@ -16,13 +16,17 @@ import {
   StatusBadge,
   Toggle,
 } from './controls';
+import { t } from '../../i18n';
 
 const ANEMOMETER_PRESETS = [
-  { value: '2.4', label: 'Misol / Argent / SparkFun' },
-  { value: '3.621', label: 'Davis 6410' },
+  { value: '2.4', label: t('settings.sensors.misolArgentSparkfun') },
+  { value: '3.621', label: t('settings.sensors.davis6410') },
 ];
 
-const detectionBadge = (sensor: SensorAvailability, labels = { ok: 'Detected', bad: 'Not detected' }) => {
+const detectionBadge = (
+  sensor: SensorAvailability,
+  labels = { ok: t('settings.sensors.detected'), bad: t('settings.sensors.notDetected') },
+) => {
   if (!sensor.enabled) return undefined;
   if (sensor.detected === null) return undefined;
   return <StatusBadge tone={sensor.detected ? 'ok' : 'bad'} label={sensor.detected ? labels.ok : labels.bad} />;
@@ -61,12 +65,12 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
           [['skyCalibration', 'darkSampleCount'], result.sampleCount],
           [['skyCalibration', 'darkCalibratedAt'], result.darkCalibratedAt],
         ]);
-        setCalibrationResult({ type: 'success', text: 'Dark offset saved' });
+        setCalibrationResult({ type: 'success', text: t('settings.sensors.darkOffsetSaved') });
       } else {
-        setCalibrationResult({ type: 'error', text: result.error || 'Calibration failed' });
+        setCalibrationResult({ type: 'error', text: result.error || t('settings.sensors.calibrationFailed') });
       }
     } catch {
-      setCalibrationResult({ type: 'error', text: 'Could not reach the device' });
+      setCalibrationResult({ type: 'error', text: t('settings.sensors.couldNotReachTheDevice') });
     } finally {
       setCalibrating(false);
     }
@@ -86,11 +90,16 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
       const result = await response.json();
       setRainResult(
         response.ok
-          ? { type: 'success', text: result.rawResponse ? `Replied: ${result.rawResponse}` : 'Replied' }
-          : { type: 'error', text: result.error || result.hint || 'No reply' },
+          ? {
+              type: 'success',
+              text: result.rawResponse
+                ? t('settings.sensors.repliedWith', { response: result.rawResponse })
+                : t('settings.sensors.replied'),
+            }
+          : { type: 'error', text: result.error || result.hint || t('settings.sensors.noReply') },
       );
     } catch {
-      setRainResult({ type: 'error', text: 'Could not reach the device' });
+      setRainResult({ type: 'error', text: t('settings.sensors.couldNotReachTheDevice') });
     } finally {
       setTestingRain(false);
     }
@@ -109,26 +118,26 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
     sensor.detected === null ? undefined : sensor.detected ? (
       <StatusBadge tone="ok" label="OK" />
     ) : (
-      <StatusBadge tone="bad" label="Not detected" />
+      <StatusBadge tone="bad" label={t('settings.sensors.notDetected')} />
     );
 
   return (
     <>
-      <SettingsCard id="sky-sensors" title="Sky sensors" hint="Detected at boot. Restart after fixing wiring.">
+      <SettingsCard id="sky-sensors" title={t('settings.sensors.skySensors')} hint={t('settings.sensors.detectedAtBootRestartAfter')}>
         <div>
           {[
-            ['TSL2591 light', hw.skyLight],
-            ['MLX90614 IR', hw.irSky],
-            ['BME280 environment', hw.environment],
+            [t('settings.sensors.tsl2591Light'), hw.skyLight],
+            [t('settings.sensors.mlx90614Ir'), hw.irSky],
+            [t('settings.sensors.bme280Environment'), hw.environment],
           ].map(([label, sensor]) => (
             <div class="reading-row" key={label as string}>
               <span class="reading-label">{label as string}</span>
-              {detected(sensor as SensorAvailability) ?? <span class="note">Checking...</span>}
+              {detected(sensor as SensorAvailability) ?? <span class="note">{t('common.checking')}</span>}
             </div>
           ))}
         </div>
         <div class="form-grid">
-          <Field label="Read every" error={error('sensorInterval')}>
+          <Field label={t('settings.sensors.readEvery')} error={error('sensorInterval')}>
             <NumberInput
               dataField="sensorInterval"
               integer
@@ -140,21 +149,21 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
               onChange={(v) => update(['sensor', 'readIntervalMs'], Math.max(100, v || 5000))}
             />
           </Field>
-          <Field label="I2C SDA" error={error('i2cSDA') ?? error('i2cPins')}>
+          <Field label={t('settings.sensors.i2cSda')} error={error('i2cSDA') ?? error('i2cPins')}>
             <NumberInput dataField="i2cSDA" integer value={config.sensor.i2cSDA} onChange={(v) => update(['sensor', 'i2cSDA'], v || 21)} />
           </Field>
-          <Field label="I2C SCL" error={error('i2cSCL')}>
+          <Field label={t('settings.sensors.i2cScl')} error={error('i2cSCL')}>
             <NumberInput dataField="i2cSCL" integer value={config.sensor.i2cSCL} onChange={(v) => update(['sensor', 'i2cSCL'], v || 22)} />
           </Field>
-          <Field label="I2C speed" error={error('i2cFrequency')} hint="Lower it for long cables.">
+          <Field label={t('settings.sensors.i2cSpeed')} error={error('i2cFrequency')} hint={t('settings.sensors.lowerItForLongCables')}>
             <SelectInput
               dataField="i2cFrequency"
               value={String(config.sensor.i2cFrequency)}
               options={[
-                { value: '10000', label: '10 kHz' },
-                { value: '50000', label: '50 kHz' },
-                { value: '100000', label: '100 kHz' },
-                { value: '400000', label: '400 kHz' },
+                { value: '10000', label: t('settings.sensors.10Khz') },
+                { value: '50000', label: t('settings.sensors.50Khz') },
+                { value: '100000', label: t('settings.sensors.100Khz') },
+                { value: '400000', label: t('settings.sensors.400Khz') },
               ]}
               onChange={(v) => update(['sensor', 'i2cFrequency'], parseInt(v, 10))}
             />
@@ -162,12 +171,12 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
         </div>
       </SettingsCard>
 
-      <SettingsCard id="sky" title="Sky quality" hint="How the light sensor's readings become SQM.">
+      <SettingsCard id="sky" title={t('settings.sensors.skyQuality')} hint={t('settings.sensors.howTheLightSensorS')}>
         <div class="form-grid">
           <Field
-            label="Averaging window"
+            label={t('settings.sensors.averagingWindow')}
             error={error('skyAveraging.windowSeconds')}
-            hint="SQM is the average over this window. Longer is steadier but slower to follow changes. 10-300 s, default 90."
+            hint={t('settings.sensors.sqmIsTheAverageOver')}
           >
             <NumberInput
               dataField="skyAveraging.windowSeconds"
@@ -183,14 +192,14 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
         <DepToggle
           entry={deps.get('skyCalibration.enabled')}
           onFix={fix}
-          label="Apply SQM offset"
-          hint="Added to every SQM reading, e.g. to match a reference meter such as an SQM-L."
+          label={t('settings.sensors.applySqmOffset')}
+          hint={t('settings.sensors.addedToEverySqmReading')}
           checked={calibration.enabled}
           onChange={(v) => update(['skyCalibration', 'enabled'], v)}
         />
         {calibration.enabled && (
           <div class="form-grid indent">
-            <Field label="SQM offset" error={error('skyCalibration.sqmOffset')} hint="-5 to +5">
+            <Field label={t('settings.sensors.sqmOffset')} error={error('skyCalibration.sqmOffset')} hint={t('settings.sensors.5To5')}>
               <NumberInput
                 dataField="skyCalibration.sqmOffset"
                 min={-5}
@@ -203,38 +212,35 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
             </Field>
           </div>
         )}
-        <Group title="Dark calibration">
+        <Group title={t('settings.sensors.darkCalibration')}>
           <div class="reading-row">
-            <span class="reading-label">Dark offset</span>
+            <span class="reading-label">{t('settings.sensors.darkOffset')}</span>
             <span class="reading-value">
               {calibration.darkVisibleOffset > 0
                 ? `${calibration.darkVisibleOffset.toFixed(2)} counts${calibratedAt ? ` · ${calibratedAt}` : ''}`
-                : 'Not calibrated'}
+                : t('settings.sensors.notCalibrated')}
             </span>
           </div>
           {light && (
             <div class="reading-row">
-              <span class="reading-label">Averaging window</span>
+              <span class="reading-label">{t('settings.sensors.averagingWindow')}</span>
               <span class="reading-value">
                 {light.windowSamples
                   ? `${Math.min(light.sampleCount, light.windowSamples)} of ${light.windowSamples} samples`
                   : `${light.sampleCount} samples`}
-                {light.nightMode === false ? ' · seeing light' : ''}
+                {light.nightMode === false ? t('settings.sensors.seeingLight') : ''}
               </span>
             </div>
           )}
-          <p class="note note-muted">
-            Cover the sensor completely (cap or foil), wait for the averaging window to fill, then calibrate. Repeat after changing the
-            lens, baffle or enclosure.
-          </p>
+          <p class="note note-muted">{t('settings.sensors.coverTheSensorCompletelyCap')}</p>
           <div class="btn-row">
             <ActionButton
               onClick={() => void calibrateDark()}
               busy={calibrating}
-              busyLabel="Calibrating..."
+              busyLabel={t('common.calibrating')}
               disabled={hw.skyLight.detected === false}
             >
-              Calibrate dark
+              {t('settings.sensors.calibrateDark')}
             </ActionButton>
             {calibration.darkVisibleOffset > 0 && (
               <ActionButton
@@ -246,7 +252,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
                   ])
                 }
               >
-                Clear
+                {t('settings.sensors.clear')}
               </ActionButton>
             )}
           </div>
@@ -255,12 +261,12 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
       </SettingsCard>
 
       <SettingsCard
-        title="Cloud detection"
-        hint="How the IR sky-minus-ambient temperature maps to cloud cover. Colder sky = clearer."
-        badge={hw.irSky.detected === false ? <StatusBadge tone="bad" label="MLX90614 not detected" /> : undefined}
+        title={t('settings.sensors.cloudDetection')}
+        hint={t('settings.sensors.howTheIrSkyMinus')}
+        badge={hw.irSky.detected === false ? <StatusBadge tone="bad" label={t('settings.sensors.mlx90614NotDetected')} /> : undefined}
       >
         <div class="form-grid">
-          <Field label="Clear below" hint="Default -13.0">
+          <Field label={t('settings.sensors.clearBelow')} hint={t('settings.sensors.default130')}>
             <NumberInput
               min={-30}
               max={0}
@@ -270,7 +276,11 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
               onChange={(v) => update(['cloudDetection', 'clearSkyThreshold'], v)}
             />
           </Field>
-          <Field label="Overcast above" hint="Default -3.0" error={error('cloudDetection.clearSkyThreshold')}>
+          <Field
+            label={t('settings.sensors.overcastAbove')}
+            hint={t('settings.sensors.default30')}
+            error={error('cloudDetection.clearSkyThreshold')}
+          >
             <NumberInput
               min={-20}
               max={10}
@@ -280,7 +290,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
               onChange={(v) => update(['cloudDetection', 'cloudyThreshold'], v)}
             />
           </Field>
-          <Field label="Humidity correction" hint="AAG CloudWatcher k1, default 0.75. Without the BME280 a fixed 53% humidity is assumed.">
+          <Field label={t('settings.sensors.humidityCorrection')} hint={t('settings.sensors.aagCloudwatcherK1Default0')}>
             <NumberInput
               min={0}
               max={2}
@@ -294,20 +304,18 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
 
       <SettingsCard
         id="rain"
-        title="Rain sensor"
-        hint="Hydreon RG-15, on a serial port."
-        badge={detectionBadge(hw.rain, { ok: 'Responding', bad: 'Not responding' })}
+        title={t('settings.sensors.rainSensor')}
+        hint={t('settings.sensors.hydreonRg15OnA')}
+        badge={detectionBadge(hw.rain, { ok: t('settings.sensors.responding'), bad: t('settings.sensors.notResponding') })}
       >
-        <Toggle label="RG-15 rain sensor" checked={rain.enabled} onChange={(v) => update(['rain', 'enabled'], v)} />
+        <Toggle label={t('settings.sensors.rg15RainSensor')} checked={rain.enabled} onChange={(v) => update(['rain', 'enabled'], v)} />
         {rain.enabled && hw.rain.detected === false && (
-          <Requires tone="warn">
-            No reply. Check OUT → GPIO {rain.rxPin}, IN → GPIO {rain.txPin}, ground and baud rate.
-          </Requires>
+          <Requires tone="warn">{t('settings.sensors.noReplyCheckOutGpio', { rxPin: rain.rxPin, txPin: rain.txPin })}</Requires>
         )}
         {rain.enabled && (
           <>
             <div class="form-grid">
-              <Field label="RX pin" error={error('rain.rxPin')} hint="From the RG-15's serial OUT.">
+              <Field label={t('settings.sensors.rxPin')} error={error('rain.rxPin')} hint={t('settings.sensors.fromTheRg15S')}>
                 <NumberInput
                   dataField="rain.rxPin"
                   integer
@@ -317,7 +325,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
                   onChange={(v) => update(['rain', 'rxPin'], v)}
                 />
               </Field>
-              <Field label="TX pin" error={error('rain.txPin')} hint="To the RG-15's serial IN.">
+              <Field label={t('settings.sensors.txPin')} error={error('rain.txPin')} hint={t('settings.sensors.toTheRg15S')}>
                 <NumberInput
                   dataField="rain.txPin"
                   integer
@@ -327,7 +335,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
                   onChange={(v) => update(['rain', 'txPin'], v)}
                 />
               </Field>
-              <Field label="Baud rate" error={error('rain.baudRate')}>
+              <Field label={t('settings.sensors.baudRate')} error={error('rain.baudRate')}>
                 <SelectInput
                   dataField="rain.baudRate"
                   value={String(rain.baudRate)}
@@ -335,7 +343,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
                   onChange={(v) => update(['rain', 'baudRate'], parseInt(v, 10))}
                 />
               </Field>
-              <Field label="Poll every" error={error('rain.pollIntervalMs')}>
+              <Field label={t('settings.sensors.pollEvery')} error={error('rain.pollIntervalMs')}>
                 <NumberInput
                   dataField="rain.pollIntervalMs"
                   integer
@@ -347,9 +355,9 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
                 />
               </Field>
               <Field
-                label="Rain clear delay"
+                label={t('settings.sensors.rainClearDelay')}
                 error={error('rain.rainClearDelayMs')}
-                hint="Still counts as raining this long after the last drop."
+                hint={t('settings.sensors.stillCountsAsRainingThis')}
               >
                 <NumberInput
                   dataField="rain.rainClearDelayMs"
@@ -361,24 +369,24 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
                   onChange={(v) => update(['rain', 'rainClearDelayMs'], Math.max(1, v || 15) * 60000)}
                 />
               </Field>
-              <Field label="Resolution">
+              <Field label={t('settings.sensors.resolution')}>
                 <SelectInput
                   value={rain.resolution ?? 'switch'}
                   options={[
-                    { value: 'high', label: 'High (0.01 mm)' },
-                    { value: 'low', label: 'Low (0.2 mm)' },
-                    { value: 'switch', label: 'DIP switch' },
+                    { value: 'high', label: t('settings.sensors.high001Mm') },
+                    { value: 'low', label: t('settings.sensors.low02Mm') },
+                    { value: 'switch', label: t('settings.sensors.dipSwitch') },
                   ]}
                   onChange={(v) => update(['rain', 'resolution'], v)}
                 />
               </Field>
-              <Field label="Units">
+              <Field label={t('settings.sensors.units')}>
                 <SelectInput
                   value={rain.units ?? 'metric'}
                   options={[
                     { value: 'metric', label: 'mm' },
                     { value: 'imperial', label: 'inches' },
-                    { value: 'switch', label: 'DIP switch' },
+                    { value: 'switch', label: t('settings.sensors.dipSwitch') },
                   ]}
                   onChange={(v) => update(['rain', 'units'], v)}
                 />
@@ -387,13 +395,13 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
             <DepToggle
               entry={deps.get('rain.dailyResetEnabled')}
               onFix={fix}
-              label="Reset the daily total"
+              label={t('settings.sensors.resetTheDailyTotal')}
               checked={rain.dailyResetEnabled ?? false}
               onChange={(v) => update(['rain', 'dailyResetEnabled'], v)}
             />
             {rain.dailyResetEnabled && (
               <div class="form-grid indent">
-                <Field label="At" error={error('rain.dailyResetHour') ?? error('rain.dailyResetMinute')}>
+                <Field label={t('settings.sensors.at')} error={error('rain.dailyResetHour') ?? error('rain.dailyResetMinute')}>
                   <input
                     data-field="rain.dailyResetHour"
                     type="time"
@@ -405,20 +413,20 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
               </div>
             )}
             <Toggle
-              label="Log serial traffic"
+              label={t('settings.sensors.logSerialTraffic')}
               checked={rain.debugUart}
               onChange={(v) => update(['rain', 'debugUart'], v)}
-              hint="Troubleshooting only."
+              hint={t('settings.sensors.troubleshootingOnly')}
             />
             <div class="btn-row">
               <ActionButton
                 onClick={testRain}
                 busy={testingRain}
-                busyLabel="Testing..."
+                busyLabel={t('common.testing')}
                 disabled={hw.rain.savedEnabled === false || dirty}
-                title={dirty ? 'Save first' : undefined}
+                title={dirty ? t('settings.sensors.saveFirst') : undefined}
               >
-                Test communication
+                {t('settings.sensors.testCommunication')}
               </ActionButton>
               <ResultNote result={rainResult} />
             </div>
@@ -428,27 +436,27 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
 
       <SettingsCard
         id="wind"
-        title="Wind"
-        hint="Reed-switch cup anemometer, optional wind vane."
-        badge={detectionBadge(hw.wind, { ok: 'Running', bad: 'Not reporting' })}
+        title={t('settings.sensors.wind')}
+        hint={t('settings.sensors.reedSwitchCupAnemometerOptional')}
+        badge={detectionBadge(hw.wind, { ok: t('settings.sensors.running'), bad: t('settings.sensors.notReporting') })}
       >
-        <Toggle label="Anemometer" checked={wind.enabled} onChange={(v) => update(['wind', 'enabled'], v)} />
+        <Toggle label={t('settings.sensors.anemometer')} checked={wind.enabled} onChange={(v) => update(['wind', 'enabled'], v)} />
         {wind.enabled && (
           <>
             <div class="form-grid">
-              <Field label="Pin" error={error('wind.speedPin')} hint="Switch to GND; internal pull-up.">
+              <Field label={t('settings.sensors.pin')} error={error('wind.speedPin')} hint={t('settings.sensors.switchToGndInternalPull')}>
                 <NumberInput dataField="wind.speedPin" integer value={wind.speedPin} onChange={(v) => update(['wind', 'speedPin'], v)} />
               </Field>
-              <Field label="Model">
+              <Field label={t('settings.sensors.model')}>
                 <SelectInput
                   value={windPreset}
-                  options={[...ANEMOMETER_PRESETS, { value: 'custom', label: 'Other' }]}
+                  options={[...ANEMOMETER_PRESETS, { value: 'custom', label: t('settings.sensors.other') }]}
                   onChange={(v) => v !== 'custom' && update(['wind', 'kmhPerHz'], parseFloat(v))}
                 />
               </Field>
-              <Field label="Speed per pulse" error={error('wind.kmhPerHz')} hint="km/h for one closure per second.">
+              <Field label={t('settings.sensors.speedPerPulse')} error={error('wind.kmhPerHz')} hint={t('settings.sensors.kmhPerClosure')}>
                 <NumberInput
-                  ariaLabel="km/h per Hz"
+                  ariaLabel={t('settings.sensors.kmHPerHz')}
                   step={0.001}
                   min={0.001}
                   max={20}
@@ -459,19 +467,23 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
               </Field>
             </div>
             <Group
-              title="Wind vane"
-              aside={wind.directionEnabled && hw.windVane.detected === false ? <StatusBadge tone="bad" label="Vane fault" /> : undefined}
+              title={t('settings.sensors.windVane')}
+              aside={
+                wind.directionEnabled && hw.windVane.detected === false ? (
+                  <StatusBadge tone="bad" label={t('settings.sensors.vaneFault')} />
+                ) : undefined
+              }
             >
               <DepToggle
                 entry={deps.get('wind.directionEnabled')}
                 onFix={fix}
-                label="Wind vane"
+                label={t('settings.sensors.windVane')}
                 checked={wind.directionEnabled}
                 onChange={(v) => update(['wind', 'directionEnabled'], v)}
               />
               {wind.directionEnabled && (
                 <div class="form-grid">
-                  <Field label="Pin" error={error('wind.directionPin')} hint="GPIO 32-39 only: ADC2 can't be read while WiFi is on.">
+                  <Field label={t('settings.sensors.pin')} error={error('wind.directionPin')} hint={t('settings.sensors.gpio3239OnlyAdc2')}>
                     <NumberInput
                       dataField="wind.directionPin"
                       integer
@@ -481,10 +493,18 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
                       onChange={(v) => update(['wind', 'directionPin'], v)}
                     />
                   </Field>
-                  <Field label="Pull-up" error={error('wind.vanePullupOhms')} hint="Resistor from the vane pin to 3.3 V.">
+                  <Field
+                    label={t('settings.sensors.pullUp')}
+                    error={error('wind.vanePullupOhms')}
+                    hint={t('settings.sensors.resistorFromTheVanePin')}
+                  >
                     <NumberInput step={100} unit="Ω" value={wind.vanePullupOhms} onChange={(v) => update(['wind', 'vanePullupOhms'], v)} />
                   </Field>
-                  <Field label="North offset" error={error('wind.directionOffsetDeg')} hint="If the vane isn't mounted pointing north.">
+                  <Field
+                    label={t('settings.sensors.northOffset')}
+                    error={error('wind.directionOffsetDeg')}
+                    hint={t('settings.sensors.ifTheVaneIsnT')}
+                  >
                     <NumberInput
                       step={1}
                       unit="°"

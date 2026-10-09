@@ -1,5 +1,6 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { t } from '../i18n';
 
 export interface MasonryItem {
   id: string;
@@ -118,7 +119,7 @@ const Masonry: FunctionalComponent<{
               <button
                 type="button"
                 class="arrange-handle"
-                aria-label={`Drag ${item.title}`}
+                aria-label={t('masonry.dragTitle', { title: item.title })}
                 onPointerDown={(e) => startDrag(item.id, e)}
                 onPointerMove={(e) => drag(item.id, e)}
                 onPointerUp={() => setDragging(null)}
@@ -129,7 +130,7 @@ const Masonry: FunctionalComponent<{
               <button
                 type="button"
                 class="btn btn-ghost btn-sm"
-                aria-label={`Move ${item.title} earlier`}
+                aria-label={t('masonry.moveTitleEarlier', { title: item.title })}
                 disabled={index === 0}
                 onClick={() => onMove?.(item.id, index - 1)}
               >
@@ -138,7 +139,7 @@ const Masonry: FunctionalComponent<{
               <button
                 type="button"
                 class="btn btn-ghost btn-sm"
-                aria-label={`Move ${item.title} later`}
+                aria-label={t('masonry.moveTitleLater', { title: item.title })}
                 disabled={index === items.length - 1}
                 onClick={() => onMove?.(item.id, index + 1)}
               >

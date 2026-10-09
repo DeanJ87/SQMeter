@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { formatClock, moonIllumination, moonPosition, SKY_PHASE_LABEL, SkyPhase, skyPhase, sunPosition } from '../lib/astro';
+import { t } from '../i18n';
 
 // Noon-to-noon altitude chart for the coming (or current) night: twilight as
 // background bands, the moon's altitude as a curve, a "now" line, and a
@@ -117,10 +118,16 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
   });
   const clock = (t: number) => formatClock(new Date(t));
   const description = [
-    `Night chart, ${clock(start.valueOf())} to ${clock(end.valueOf())}.`,
-    darkBands.length ? `Dark from ${clock(darkBands[0].from)} to ${clock(darkBands[darkBands.length - 1].to)}.` : 'No full darkness.',
-    moonUp.length ? `Moon up ${moonUp.map((up) => `${clock(up.from)} to ${clock(up.to)}`).join(' and ')}.` : 'Moon below the horizon.',
-    `Moon ${Math.round(lit * 100)}% lit.`,
+    t('nightChart.nightChartClockToClock2', { clock: clock(start.valueOf()), clock2: clock(end.valueOf()) }),
+    darkBands.length
+      ? t('nightChart.darkFromClockToClock2', { clock: clock(darkBands[0].from), clock2: clock(darkBands[darkBands.length - 1].to) })
+      : t('nightChart.noFullDarkness'),
+    moonUp.length
+      ? t('nightChart.moonUpJoin', {
+          join: moonUp.map((up) => t('nightChart.range', { from: clock(up.from), to: clock(up.to) })).join(t('nightChart.and')),
+        })
+      : t('nightChart.moonBelowTheHorizon'),
+    t('nightChart.moonRoundLit', { round: Math.round(lit * 100) }),
   ].join(' ');
 
   return (
@@ -186,26 +193,26 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
       {hover && (
         <div class="chart-tip" style={{ left: `${Math.min(Math.max(x(hover.date.valueOf()), 70), width - 70)}px` }}>
           <strong>{formatClock(hover.date)}</strong>
+          <span>{t('nightChart.sunFixedValue', { fixed: hover.sun.toFixed(1), value: SKY_PHASE_LABEL[skyPhase(hover.sun)] })}</span>
           <span>
-            Sun {hover.sun.toFixed(1)}° · {SKY_PHASE_LABEL[skyPhase(hover.sun)]}
-          </span>
-          <span>
-            Moon {hover.moon > 0 ? `${hover.moon.toFixed(0)}°` : 'below horizon'} · {(hover.lit * 100).toFixed(0)}% lit
+            {hover.moon > 0
+              ? t('nightChart.hoverMoonUp', { altitude: hover.moon.toFixed(0), lit: (hover.lit * 100).toFixed(0) })
+              : t('nightChart.hoverMoonDown', { lit: (hover.lit * 100).toFixed(0) })}
           </span>
         </div>
       )}
       <div class="chart-legend">
         <span>
-          <i class="swatch band-day" /> Day
+          <i class="swatch band-day" /> {t('nightChart.day')}
         </span>
         <span>
-          <i class="swatch band-civil" /> Twilight
+          <i class="swatch band-civil" /> {t('nightChart.twilight')}
         </span>
         <span>
-          <i class="swatch band-night" /> Dark
+          <i class="swatch band-night" /> {t('nightChart.dark')}
         </span>
         <span>
-          <i class="swatch swatch-moon" /> Moon altitude
+          <i class="swatch swatch-moon" /> {t('nightChart.moonAltitude')}
         </span>
       </div>
     </div>

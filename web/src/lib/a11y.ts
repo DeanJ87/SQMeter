@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks';
 import type { RefObject } from 'preact';
+import { t } from '../i18n';
 
 // Accessibility helpers shared by the UI (spec 022). Small on purpose: the
 // device serves the UI from limited flash, so no focus-trap or dialog library.
@@ -54,6 +55,7 @@ export const useAnnounceChange = <T>(value: T | undefined, message: (value: T) =
 // to the trigger on close if it was inside.
 
 const FOCUSABLE =
+  // i18n-ignore: a CSS selector, not text
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export const useDialogFocus = (open: boolean, container: RefObject<HTMLElement>, trigger: RefObject<HTMLElement>) => {
@@ -98,13 +100,21 @@ export const scrollBehavior = (): ScrollBehavior => (prefersReducedMotion() ? 'a
 // A sparkline's meaning in words: direction and range over the window shown.
 export const summariseSeries = (label: string, values: number[], format: (value: number) => string = (v) => String(v)) => {
   const finite = values.filter((v) => Number.isFinite(v));
-  if (finite.length < 2) return `${label} trend: no data yet`;
+  if (finite.length < 2) return t('a11y.trendNoData', { label });
   const first = finite[0];
   const lastValue = finite[finite.length - 1];
   const min = Math.min(...finite);
   const max = Math.max(...finite);
   const span = max - min;
   const change = lastValue - first;
-  const direction = span === 0 || Math.abs(change) < span * 0.2 ? 'steady' : change > 0 ? 'rising' : 'falling';
-  return `${label} trend: ${direction}, ${format(first)} to ${format(lastValue)} (range ${format(min)} to ${format(max)}) over the last ${finite.length} readings`;
+  const direction = span === 0 || Math.abs(change) < span * 0.2 ? t('a11y.steady') : change > 0 ? t('a11y.rising') : t('a11y.falling');
+  return t('a11y.trend', {
+    label,
+    direction,
+    from: format(first),
+    to: format(lastValue),
+    min: format(min),
+    max: format(max),
+    count: finite.length,
+  });
 };

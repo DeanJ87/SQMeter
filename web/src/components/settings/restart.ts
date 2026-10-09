@@ -1,4 +1,5 @@
 import type { Config } from '../../types';
+import { t } from '../../i18n';
 
 const changed = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b);
 
@@ -11,7 +12,7 @@ export const restartReasons = (before: Config, after: Config): string[] => {
   ) {
     reasons.push('WiFi');
   }
-  if (after.ota.enabled && changed(before.ota, after.ota)) reasons.push('command-line uploads');
+  if (after.ota.enabled && changed(before.ota, after.ota)) reasons.push(t('settings.restart.commandLineUploads'));
   if (changed(before.gps, after.gps)) reasons.push('GPS');
   if (
     changed(
@@ -21,12 +22,12 @@ export const restartReasons = (before: Config, after: Config): string[] => {
   ) {
     reasons.push('I2C');
   }
-  if ((before.alpaca?.enabled ?? false) !== (after.alpaca?.enabled ?? false)) reasons.push('Alpaca discovery');
+  if ((before.alpaca?.enabled ?? false) !== (after.alpaca?.enabled ?? false)) reasons.push(t('settings.restart.alpacaDiscovery'));
   if (
     changed([before.ble?.enabled, before.ble?.passkey], [after.ble?.enabled, after.ble?.passkey]) ||
     (after.ble?.enabled && before.deviceName !== after.deviceName)
   ) {
-    reasons.push('Bluetooth');
+    reasons.push(t('settings.restart.bluetooth'));
   }
   return reasons;
 };

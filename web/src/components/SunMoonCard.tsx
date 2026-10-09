@@ -15,6 +15,7 @@ import {
 } from '../lib/astro';
 import NightChart from './NightChart';
 import { Card, Pill } from './ui';
+import { t } from '../i18n';
 
 const PHASE_TONE = {
   day: 'pill-amber',
@@ -68,10 +69,14 @@ const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; de
   const dark = darkness(latitude, longitude, -18, now);
 
   const darkLabel = dark.darkNow
-    ? `Dark now, until ${formatClock(dark.end)}`
+    ? t('sunMoonCard.darkNowUntilClock', { clock: formatClock(dark.end) })
     : dark.start
-      ? `Dark ${formatClock(dark.start)} - ${formatClock(dark.end)}${dark.end ? ` · ${formatDuration(dark.end.valueOf() - dark.start.valueOf())}` : ''}`
-      : 'No astronomical dark tonight';
+      ? t('sunMoonCard.darkClockClock2Value', {
+          clock: formatClock(dark.start),
+          clock2: formatClock(dark.end),
+          value: dark.end ? ` · ${formatDuration(dark.end.valueOf() - dark.start.valueOf())}` : '',
+        })
+      : t('sunMoonCard.noAstronomicalDarkTonight');
   const moonTimes = [
     moonrise && { time: moonrise, text: `rises ${formatClock(moonrise)}` },
     moonset && { time: moonset, text: `sets ${formatClock(moonset)}` },
@@ -82,20 +87,32 @@ const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; de
     .join(', ');
 
   return (
-    <Card title="Sun & Moon" icon="moon" tone="violet" actions={<Pill tone={PHASE_TONE[phase]}>{SKY_PHASE_LABEL[phase]}</Pill>}>
+    <Card
+      title={t('sunMoonCard.sunMoon')}
+      icon="moon"
+      tone="violet"
+      actions={<Pill tone={PHASE_TONE[phase]}>{SKY_PHASE_LABEL[phase]}</Pill>}
+    >
       <div class="sun-moon">
         <MoonDisc phase={illumination.phase} southern={latitude < 0} />
         <div class="sun-moon-summary">
           <strong>
-            {moonPhaseName(illumination.phase)} · {(illumination.fraction * 100).toFixed(0)}% lit
+            {t('sunMoonCard.moonphasenameFixedLit', {
+              moonPhaseName: moonPhaseName(illumination.phase),
+              fixed: (illumination.fraction * 100).toFixed(0),
+            })}
           </strong>
           <span>{darkLabel}</span>
-          {moonTimes && <span>Moon {moonTimes}</span>}
+          {moonTimes && <span>{t('sunMoonCard.moonMoontimes', { moonTimes })}</span>}
         </div>
       </div>
       <NightChart latitude={latitude} longitude={longitude} now={now} />
       {/* Worked out in the browser for the device's location; times are this browser's clock. */}
-      <p class="note note-muted">Times in this browser's time zone{browserZone ? ` (${browserZone})` : ''}, not the location's</p>
+      <p class="note note-muted">
+        {t('sunMoonCard.timesInThisBrowserS')}
+        {browserZone ? ` (${browserZone})` : ''}
+        {t('sunMoonCard.notTheLocationS')}
+      </p>
     </Card>
   );
 };

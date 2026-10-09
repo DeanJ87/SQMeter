@@ -18,6 +18,7 @@ import {
   TextInput,
   Toggle,
 } from './controls';
+import { t } from '../../i18n';
 
 type Result = { type: 'success' | 'error'; text: string } | null;
 
@@ -26,17 +27,17 @@ const PUBLISH_GROUPS: {
   label: string;
   hint?: string;
 }[] = [
-  { key: 'sky', label: 'Sky quality and light' },
-  { key: 'environment', label: 'Temperature, humidity, pressure' },
-  { key: 'clouds', label: 'IR and cloud cover' },
+  { key: 'sky', label: t('settings.network.skyQualityAndLight') },
+  { key: 'environment', label: t('settings.network.temperatureHumidityPressure') },
+  { key: 'clouds', label: t('settings.network.irAndCloudCover') },
   { key: 'gps', label: 'GPS' },
-  { key: 'rain', label: 'Rain' },
-  { key: 'wind', label: 'Wind' },
-  { key: 'safety', label: 'Safe / unsafe', hint: 'Retained <base>/safe (1/0) and <base>/safety (reasons), on every change.' },
+  { key: 'rain', label: t('settings.network.rain') },
+  { key: 'wind', label: t('settings.network.wind') },
+  { key: 'safety', label: t('settings.network.safeUnsafe'), hint: t('settings.network.retainedBaseSafe10') },
   {
     key: 'diagnostics',
-    label: 'Diagnostics',
-    hint: 'Light-sensor sample counts and RG-15 serial counters to <base>/diagnostics. For troubleshooting.',
+    label: t('settings.network.diagnostics'),
+    hint: t('settings.network.lightSensorSampleCountsAnd'),
   },
 ];
 
@@ -67,7 +68,7 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
   const networkOptions = [
     ...(ssid && !networks.some((n) => n.ssid === ssid) ? [{ value: ssid, label: ssid }] : []),
     ...networks.map((n) => ({ value: n.ssid, label: `${n.ssid}  ${n.rssi} dBm${n.encryption === 'secured' ? ' 🔒' : ''}` })),
-    { value: 'OTHER', label: 'Other...' },
+    { value: 'OTHER', label: t('common.other') },
   ];
 
   const testMqtt = async () => {
@@ -88,11 +89,11 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
       const result = await response.json();
       setMqttResult(
         result.success
-          ? { type: 'success', text: result.message || 'Connected' }
-          : { type: 'error', text: result.error || 'Connection failed' },
+          ? { type: 'success', text: result.message || t('settings.network.connected') }
+          : { type: 'error', text: result.error || t('settings.network.connectionFailed') },
       );
     } catch {
-      setMqttResult({ type: 'error', text: 'Could not reach the device' });
+      setMqttResult({ type: 'error', text: t('settings.network.couldNotReachTheDevice') });
     } finally {
       setTestingMqtt(false);
     }
@@ -103,14 +104,17 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
   const homeAssistant = { ...defaultHomeAssistant, ...config.mqtt.homeAssistant };
 
   const mqttBadge = !config.mqtt.enabled ? undefined : hw.mqtt.connected === null ? undefined : (
-    <StatusBadge tone={hw.mqtt.connected ? 'ok' : 'bad'} label={hw.mqtt.connected ? 'Connected' : 'Not connected'} />
+    <StatusBadge
+      tone={hw.mqtt.connected ? 'ok' : 'bad'}
+      label={hw.mqtt.connected ? t('settings.network.connected') : t('settings.network.notConnected')}
+    />
   );
 
   return (
     <>
       <SettingsCard id="wifi" title="WiFi">
         <div class="form-grid">
-          <Field label="Network" error={error('wifi.ssid')}>
+          <Field label={t('settings.network.network')} error={error('wifi.ssid')}>
             <div class="input-row">
               <SelectInput
                 dataField="wifi.ssid"
@@ -118,15 +122,22 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
                 options={networkOptions}
                 onChange={(v) => selectNetwork(v === 'OTHER' ? '' : v)}
               />
-              <ActionButton onClick={scan} busy={scanning} busyLabel="Scanning...">
-                Scan
+              <ActionButton onClick={scan} busy={scanning} busyLabel={t('common.scanning')}>
+                {t('settings.network.scan')}
               </ActionButton>
             </div>
-            {ssid === '' && <TextInput dataField="wifi.ssid" value={ssid} placeholder="Network name" onInput={(v) => selectNetwork(v)} />}
+            {ssid === '' && (
+              <TextInput
+                dataField="wifi.ssid"
+                value={ssid}
+                placeholder={t('settings.network.networkName')}
+                onInput={(v) => selectNetwork(v)}
+              />
+            )}
             <ResultNote result={scanError ? { type: 'error', text: scanError } : null} />
           </Field>
           {showPassword && (
-            <Field label="Password">
+            <Field label={t('settings.network.password')}>
               <TextInput
                 dataField="wifi.password"
                 type="password"
@@ -135,31 +146,35 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
               />
             </Field>
           )}
-          <Field label="Hostname" error={error('wifi.hostname')}>
+          <Field label={t('settings.network.hostname')} error={error('wifi.hostname')}>
             <TextInput dataField="wifi.hostname" value={config.wifi.hostname} onInput={(v) => update(['wifi', 'hostname'], v)} />
           </Field>
         </div>
         <Toggle
-          label="Reconnect automatically"
+          label={t('settings.network.reconnectAutomatically')}
           checked={config.wifi.autoReconnect}
           onChange={(v) => update(['wifi', 'autoReconnect'], v)}
         />
         <DepToggle
           entry={deps.get('wifi.mdns')}
           onFix={fix}
-          label="Advertise on the network (mDNS)"
-          hint={`Reachable at http://${config.wifi.hostname || 'sqmeter'}.local. Turn off on networks that don't allow multicast.`}
+          label={t('settings.network.advertiseOnTheNetworkMdns')}
+          hint={t('settings.network.reachableAtHttpValueLocal', { value: config.wifi.hostname || 'sqmeter' })}
           checked={config.wifi.mdns ?? true}
           onChange={(v) => update(['wifi', 'mdns'], v)}
         />
       </SettingsCard>
 
-      <SettingsCard id="mqtt" title="MQTT" hint="Publishes readings to a broker, e.g. for Home Assistant." badge={mqttBadge}>
-        <Toggle label="Publish to a broker" checked={config.mqtt.enabled} onChange={(v) => update(['mqtt', 'enabled'], v)} />
+      <SettingsCard id="mqtt" title="MQTT" hint={t('settings.network.publishesReadingsToABroker')} badge={mqttBadge}>
+        <Toggle
+          label={t('settings.network.publishToABroker')}
+          checked={config.mqtt.enabled}
+          onChange={(v) => update(['mqtt', 'enabled'], v)}
+        />
         {config.mqtt.enabled && (
           <>
             <div class="form-grid">
-              <Field label="Broker" error={error('mqttBroker')}>
+              <Field label={t('settings.network.broker')} error={error('mqttBroker')}>
                 <TextInput
                   dataField="mqttBroker"
                   value={config.mqtt.broker}
@@ -167,7 +182,7 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
                   onInput={(v) => update(['mqtt', 'broker'], v)}
                 />
               </Field>
-              <Field label="Port" error={error('mqttPort')}>
+              <Field label={t('settings.network.port')} error={error('mqttPort')}>
                 <NumberInput
                   dataField="mqttPort"
                   integer
@@ -177,21 +192,25 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
                   onChange={(v) => update(['mqtt', 'port'], Math.max(1, Math.min(65535, v || 1883)))}
                 />
               </Field>
-              <Field label="Username">
-                <TextInput value={config.mqtt.username} placeholder="Optional" onInput={(v) => update(['mqtt', 'username'], v)} />
+              <Field label={t('settings.network.username')}>
+                <TextInput
+                  value={config.mqtt.username}
+                  placeholder={t('settings.network.optional')}
+                  onInput={(v) => update(['mqtt', 'username'], v)}
+                />
               </Field>
-              <Field label="Password">
+              <Field label={t('settings.network.password')}>
                 <TextInput
                   type="password"
                   value={config.mqtt.password}
-                  placeholder="Optional"
+                  placeholder={t('settings.network.optional')}
                   onInput={(v) => update(['mqtt', 'password'], v)}
                 />
               </Field>
               <Field
-                label="Base topic"
+                label={t('settings.network.baseTopic')}
                 error={error('mqttTopic')}
-                hint={`Readings go to ${base}/state; also ${base}/availability, /safe, /safety, /alerts and /alerts/armed.`}
+                hint={t('settings.network.readingsGoToBaseState', { base, base2: base })}
               >
                 <TextInput
                   dataField="mqttTopic"
@@ -200,7 +219,7 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
                   onInput={(v) => update(['mqtt', 'topic'], v)}
                 />
               </Field>
-              <Field label="Publish every" error={error('mqttInterval')}>
+              <Field label={t('settings.network.publishEvery')} error={error('mqttInterval')}>
                 <NumberInput
                   dataField="mqttInterval"
                   integer
@@ -216,21 +235,21 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
               <ActionButton
                 onClick={testMqtt}
                 busy={testingMqtt}
-                busyLabel="Testing..."
+                busyLabel={t('common.testing')}
                 disabled={!config.mqtt.broker || !config.mqtt.port}
               >
-                Test connection
+                {t('settings.network.testConnection')}
               </ActionButton>
               <ResultNote result={mqttResult} />
             </div>
 
-            <Group title="Publish">
+            <Group title={t('settings.network.publish')}>
               {PUBLISH_GROUPS.map((item) => (
                 <DepToggle
                   key={item.key}
                   entry={deps.get(`mqtt.publish.${item.key}`)}
                   onFix={fix}
-                  prefix="Nothing to publish"
+                  prefix={t('settings.network.nothingToPublish')}
                   label={item.label}
                   checked={publish[item.key]}
                   onChange={(v) => update(['mqtt', 'publish', item.key], v)}
@@ -243,22 +262,22 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
               <DepToggle
                 entry={deps.get('mqtt.homeAssistant.enabled')}
                 onFix={fix}
-                label="MQTT discovery"
+                label={t('settings.network.mqttDiscovery')}
                 checked={homeAssistant.enabled}
                 onChange={(v) => update(['mqtt', 'homeAssistant', 'enabled'], v)}
-                hint="Announces the readings, the safe flag and an alerts on/off switch, so they appear in Home Assistant without YAML."
+                hint={t('settings.network.announcesTheReadingsTheSafe')}
               />
               {homeAssistant.enabled && deps.get('mqtt.homeAssistant.alertsSwitch').state === 'inactive' && (
                 <div class="indent">
-                  <DepNote entry={deps.get('mqtt.homeAssistant.alertsSwitch')} onFix={fix} prefix="No alerts switch" />
+                  <DepNote entry={deps.get('mqtt.homeAssistant.alertsSwitch')} onFix={fix} prefix={t('settings.network.noAlertsSwitch')} />
                 </div>
               )}
               {homeAssistant.enabled && (
                 <div class="form-grid indent">
                   <Field
-                    label="Discovery prefix"
+                    label={t('settings.network.discoveryPrefix')}
                     error={error('mqtt.homeAssistant.discoveryPrefix')}
-                    hint="Home Assistant's default is homeassistant."
+                    hint={t('settings.network.homeAssistantSDefaultIs')}
                   >
                     <TextInput
                       value={homeAssistant.discoveryPrefix}

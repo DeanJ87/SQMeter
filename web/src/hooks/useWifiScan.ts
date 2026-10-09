@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { WiFiNetwork } from '../types';
+import { t } from '../i18n';
 
 const POLL_MS = 1000;
 const MAX_POLLS = 15;
@@ -26,7 +27,7 @@ export const useWifiScan = () => {
       for (let i = 0; i < MAX_POLLS && !cancelled.current; i++) {
         const response = await fetch('/api/wifi/scan');
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Scan failed');
+        if (!response.ok) throw new Error(data.error || t('wifiScan.scanFailed'));
         if (!data.scanning) {
           const seen = new Map<string, WiFiNetwork>();
           for (const n of (data.networks || []) as WiFiNetwork[]) {
@@ -39,9 +40,9 @@ export const useWifiScan = () => {
         }
         await new Promise((resolve) => setTimeout(resolve, POLL_MS));
       }
-      if (!cancelled.current) setError('Scan timed out');
+      if (!cancelled.current) setError(t('wifiScan.scanTimedOut'));
     } catch (e) {
-      if (!cancelled.current) setError(e instanceof Error ? e.message : 'Scan failed');
+      if (!cancelled.current) setError(e instanceof Error ? e.message : t('wifiScan.scanFailed'));
     } finally {
       if (!cancelled.current) setScanning(false);
     }

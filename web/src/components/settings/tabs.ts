@@ -1,12 +1,13 @@
+import { t } from '../../i18n';
 export type SettingsTabId = 'device' | 'network' | 'time' | 'sensors' | 'safety' | 'alerts';
 
 export const SETTINGS_TABS: { id: SettingsTabId; label: string }[] = [
-  { id: 'device', label: 'Device' },
-  { id: 'network', label: 'Network' },
-  { id: 'time', label: 'Time & Location' },
-  { id: 'sensors', label: 'Sensors' },
-  { id: 'safety', label: 'Safety' },
-  { id: 'alerts', label: 'Alerts' },
+  { id: 'device', label: t('settings.tabs.device') },
+  { id: 'network', label: t('settings.tabs.network') },
+  { id: 'time', label: t('settings.tabs.timeLocation') },
+  { id: 'sensors', label: t('settings.tabs.sensors') },
+  { id: 'safety', label: t('settings.tabs.safety') },
+  { id: 'alerts', label: t('settings.tabs.alerts') },
 ];
 
 // Older links (/settings?section=alpaca from the Alpaca setup redirect,
