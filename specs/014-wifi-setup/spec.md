@@ -81,6 +81,15 @@ from Settings.
   in it or isn't in `docs/api/rest.md`.
 - **FR-006**: The first-boot guide and examples MUST use the actual hotspot name, default hostname
   and UI labels.
+- **FR-007** *(added 2026-10-09)*: With saved WiFi, the device MUST keep trying its network and open
+  the hotspot only if it hasn't joined within 45 s of boot (`CaptivePortal::FALLBACK_AFTER_MS`). A
+  later outage only reconnects; it never opens the hotspot. *Why: the old 10 s fallback opened the
+  hotspot on slow or weak-signal boots, which then restarted the device once it joined.*
+- **FR-008** *(added 2026-10-09)*: Only requests that arrive over the hotspot, for another site's name,
+  MAY be redirected to the setup screen (including the phone "is there internet?" probes). Requests
+  over the home network MUST NOT be redirected, even while the hotspot is open; an unknown file
+  (e.g. `/lang.json`) gets a plain 404, an unknown page the app. *Why: with the hotspot open,
+  `/lang.json` fetched over the home network sent the browser to `http://192.168.4.1/wifi`.*
 
 ### Key Entities
 
