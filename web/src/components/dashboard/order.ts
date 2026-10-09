@@ -1,4 +1,4 @@
-export const DEFAULT_ORDER = ['safety', 'sky', 'sunmoon', 'cloud', 'environment', 'gps', 'light', 'device', 'ir', 'wind', 'rain'];
+export const DEFAULT_ORDER = ['status', 'safety', 'sky', 'sunmoon', 'cloud', 'environment', 'gps', 'light', 'device', 'ir', 'wind', 'rain'];
 const ORDER_KEY = 'sqm.dashboard.order';
 
 // Card order is a per-browser preference.

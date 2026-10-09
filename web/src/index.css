@@ -270,139 +270,95 @@ button {
   gap: 0.5rem;
 }
 
-/* At a glance (specs/025): one calm line when all is well, then each problem. */
-.glance {
-  display: grid;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.glance-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem 0.75rem;
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.glance-demo {
-  padding: 0.05rem 0.5rem;
-  border: 1px solid var(--line-soft);
-  border-radius: 999px;
-  color: var(--cyan);
-  font-size: 0.8rem;
-}
-
-.glance-list {
-  display: grid;
-  gap: 0.4rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.glance-item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem 0.75rem;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid var(--line-soft);
-  border-inline-start: 3px solid var(--amber);
-  border-radius: 0.6rem;
-  background: var(--panel-2);
-  color: var(--text);
-}
-
-.glance-problem {
-  border-inline-start-color: var(--red);
-}
-
-.glance-mark {
-  display: inline-grid;
-  place-items: center;
-  width: 1.3rem;
-  height: 1.3rem;
-  border-radius: 50%;
-  background: var(--amber);
-  color: #0b1118;
-  font-weight: 700;
-  font-size: 0.8rem;
-}
-
-.glance-problem .glance-mark {
-  background: var(--red);
-}
-
-.glance-body {
-  display: grid;
-  flex: 1 1 14rem;
-  gap: 0.15rem;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.glance-detail {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.glance-fix {
-  color: var(--cyan);
-  font-size: 0.85rem;
-}
-
-.glance-more {
-  display: none;
-  justify-self: start;
-  padding: 0.3rem 0;
-  border: 0;
-  background: none;
-  color: var(--cyan);
-}
-
-/* On a phone the first three problems show; the rest behind "Show all" (FR-020). */
-@media (max-width: 640px) {
-  .glance-list.is-limited .glance-item:nth-child(n + 4) {
-    display: none;
-  }
-
-  .glance-more {
-    display: block;
-  }
-}
-
 .dashboard.is-disconnected .masonry {
   opacity: 0.55;
   filter: grayscale(0.6);
 }
 
-.device-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.25rem 1rem;
-  margin-top: 0.6rem;
-  color: var(--muted);
+/* Status card (specs/026): tiles, then one row per problem; the row is the link. */
+.status-tile {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 0.35rem;
+}
+
+.status-tile .metric-sub {
+  margin-top: 0;
+}
+
+.status-tile-fix {
+  color: var(--cyan);
   font-size: 0.82rem;
 }
 
-.device-addresses {
-  display: grid;
-  gap: 0.1rem;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  color: var(--text);
+.status-rows {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.rules-off {
-  margin: 0.4rem 0;
-  padding-inline-start: 1.1rem;
-  color: var(--amber);
-  font-size: 0.85rem;
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.status-row:last-child {
+  border-bottom: 0;
+}
+
+.status-row-main {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.58rem 0;
+  color: var(--text);
+  text-decoration: none;
+}
+
+a.status-row-main:hover .status-row-label,
+a.status-row-main:focus-visible .status-row-label {
+  color: var(--cyan);
+}
+
+.status-row-label {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.client-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem 0.6rem;
+}
+
+/* Device & Network (specs/026 DS-05): one value per row, truncated. */
+.device-rows {
+  margin-top: 0.6rem;
+}
+
+.address-value {
+  overflow: hidden;
+  max-width: 65%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-firmware {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem 0.6rem;
 }
 
 .masonry {
@@ -767,18 +723,6 @@ button {
   font-style: normal;
   font-size: 0.68rem;
   font-weight: 500;
-}
-
-.firmware-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--line-soft);
-  color: var(--muted);
-  font-size: 0.86rem;
 }
 
 .pill {
@@ -1234,10 +1178,6 @@ button {
   }
 
   .hero-card .metric-grid.compact {
-    grid-template-columns: 1fr;
-  }
-
-  .tile-grid.two {
     grid-template-columns: 1fr;
   }
 }
@@ -2006,16 +1946,13 @@ input[type='file'].input::file-selector-button {
   gap: 1rem;
 }
 
-/* Language switch progress, in the sticky header on every page. */
-.language-progress {
+/* Language change in progress (specs/026 FR-004), inside the Language card. */
+.language-steps {
   display: grid;
   gap: 0.5rem;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 0.5rem 1rem 0.75rem;
 }
 
-.language-progress .note {
+.language-steps .note {
   margin: 0;
 }
 
@@ -2446,6 +2383,15 @@ input[type='file'].input::file-selector-button {
   font: 600 0.82rem var(--font-ui);
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.demo-clock-moved {
+  margin-inline-start: 0.5rem;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  color: var(--amber);
+  font-size: 0.72rem;
 }
 
 .demo-panel-body {

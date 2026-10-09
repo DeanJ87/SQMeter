@@ -40,17 +40,6 @@ async function init() {
   if (import.meta.env.VITE_DEMO_MODE === 'true') {
     const { default: DemoPanel } = await import('./demo/DemoPanel');
     const { default: Tour } = await import('./demo/tour/Tour');
-    const { demoDevice } = await import('./demo/device');
-    const { setDemoInfo } = await import('./lib/demoInfo');
-    // The dashboard's Demo marker (specs/025 FR-022): a moved clock is labelled.
-    setDemoInfo(() => ({
-      clockShifted: Math.abs(demoDevice.now.valueOf() - Date.now()) > 60_000,
-      openPanel: (event) => {
-        event.preventDefault();
-        const toggle = document.querySelector<HTMLButtonElement>('.demo-panel-toggle');
-        if (toggle?.getAttribute('aria-expanded') !== 'true') toggle?.click();
-      },
-    }));
     // ?panel=hidden leaves the Demo button out (screenshots for the docs).
     const showPanel = new URLSearchParams(window.location.search).get('panel') !== 'hidden';
     render(

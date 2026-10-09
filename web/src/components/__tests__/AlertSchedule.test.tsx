@@ -135,7 +135,7 @@ describe('Alert schedule status line', () => {
     await openAlerts();
     fireEvent.change(screen.getByRole('combobox', { name: 'When to send' }), { target: { value: 'whileConnected' } });
     // The mode, and the two imaging-app events that are on by default.
-    expect((await screen.findAllByText('Inactive - Alpaca is off')).length).toBe(3);
+    expect((await screen.findAllByText('Inactive: Alpaca is off')).length).toBe(3);
     const lost = document.querySelector('[data-event="client_lost"]') as HTMLElement;
     expect(within(lost).getByText('The imaging app stops checking')).toBeInTheDocument();
     expect(screen.getByText('Alpaca is off.')).toBeInTheDocument(); // "disconnects" is off and can't be raised

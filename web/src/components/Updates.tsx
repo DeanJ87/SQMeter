@@ -6,7 +6,7 @@ import { useReleaseApply, useReleases, type ReleaseTrack, type StatusMessage } f
 import { useImageUpload, type UpdateType } from '../hooks/useImageUpload';
 import { compareVersions, isVersionStale } from '../utils/versionCompare';
 import type { GithubRelease } from '../types';
-import { Button, Card, Note, ProgressMeter, ReadingRow } from './ui';
+import { Button, Card, InfoTip, Note, ProgressMeter, ReadingRow } from './ui';
 import { t } from '../i18n';
 import { formatCount } from '../i18n/format';
 
@@ -62,8 +62,8 @@ const ReleaseVerdict: FunctionalComponent<{
     const noOtaCheck = (compareVersions(release.tag, '0.2.0-beta.3') ?? 0) < 0;
     return (
       <Note tone="warn">
-        {t('updates.downgradeWarning', { tag: release.tag, version: currentVersion })}
-        {noOtaCheck && t('updates.itAlsoCanTCheck')}
+        {t('updates.downgradeWarning', { version: currentVersion })}{' '}
+        <InfoTip text={noOtaCheck ? t('updates.downgradeHintNoOta') : t('updates.downgradeHint')} />
       </Note>
     );
   }

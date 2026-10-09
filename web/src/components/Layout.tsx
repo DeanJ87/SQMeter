@@ -4,10 +4,6 @@ import { Toaster } from './toast';
 import AlertsBell from './AlertsBell';
 import { LIVE_REGION_ID } from '../lib/a11y';
 import { t } from '../i18n';
-import { deviceText } from '../i18n/deviceMessage';
-import { languageProblem } from '../i18n/loader';
-import LanguageProgressBanner from './LanguageProgress';
-import { Note } from './ui';
 
 interface LayoutProps {
   path?: string;
@@ -68,19 +64,6 @@ const TinyIcon: FunctionalComponent<{ name: string }> = ({ name }) => {
   );
 };
 
-// Shown on every page while the chosen language can't load (FR-013).
-const LanguageNotice: FunctionalComponent = () => {
-  const { kind, detail } = languageProblem();
-  if (kind === 'none' || kind === 'otherVersion') return null;
-  // The device's reason (e.g. a download that didn't finish before a restart).
-  const unavailable = detail ? t('layout.languageUnavailableReason', { reason: deviceText(detail) }) : t('layout.languageUnavailable');
-  return (
-    <Note tone="warn" action={{ label: t('layout.languageSettings'), onClick: () => route('/settings?tab=device&section=language') }}>
-      {kind === 'downloading' ? t('language.problemDownloading') : unavailable}
-    </Note>
-  );
-};
-
 const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
   const [router] = useRouter();
 
@@ -132,12 +115,9 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
             <AlertsBell />
           </nav>
         </div>
-        {/* In the sticky header so it stays in view wherever the page is scrolled (e.g. at Save). */}
-        <LanguageProgressBanner />
       </header>
 
       <main class="app-main" id="main" tabIndex={-1}>
-        <LanguageNotice />
         {children}
       </main>
       <Toaster />

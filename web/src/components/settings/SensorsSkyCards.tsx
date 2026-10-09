@@ -5,6 +5,7 @@ import type { SensorAvailability } from './hardware';
 import { useDarkCalibration } from '../../hooks/useSensorActions';
 import { ActionButton, DepToggle, Field, Group, NumberInput, ResultNote, SelectInput, SettingsCard, StatusBadge } from './controls';
 import { t } from '../../i18n';
+import { SENSOR_MODEL, sensorName } from '../../lib/sensorNames';
 import { formatDateTime, formatNumber } from '../../i18n/format';
 
 const CLOCK_VALID = 1704067200; // calibration times below this are uptime, not dates
@@ -18,14 +19,18 @@ const detected = (sensor: SensorAvailability) => {
 export const SkySensorsCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw }) => (
   <SettingsCard id="sky-sensors" title={t('settings.sensors.skySensors')} hint={t('settings.sensors.detectedAtBootRestartAfter')}>
     <div>
-      {[
-        [t('settings.sensors.tsl2591Light'), hw.skyLight],
-        [t('settings.sensors.mlx90614Ir'), hw.irSky],
-        [t('settings.sensors.bme280Environment'), hw.environment],
-      ].map(([label, sensor]) => (
-        <div class="reading-row" key={label as string}>
-          <span class="reading-label">{label as string}</span>
-          {detected(sensor as SensorAvailability) ?? <span class="note">{t('common.checking')}</span>}
+      {(
+        [
+          ['light', hw.skyLight],
+          ['infrared', hw.irSky],
+          ['environment', hw.environment],
+        ] as const
+      ).map(([sensor, availability]) => (
+        <div class="reading-row" key={sensor}>
+          <span class="reading-label">
+            {sensorName(sensor)} <span class="system-subtle mono">{SENSOR_MODEL[sensor]}</span>
+          </span>
+          {detected(availability) ?? <span class="note">{t('common.checking')}</span>}
         </div>
       ))}
     </div>

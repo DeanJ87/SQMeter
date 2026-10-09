@@ -64,7 +64,7 @@ describe('Updates - GitHub check for updates', () => {
     });
     render(<Updates />);
     await waitFor(() => expect(screen.getByRole('option', { name: /v0\.1\.4.*older/ })).toBeInTheDocument());
-    expect(screen.getByText(/older than the installed/)).toBeInTheDocument();
+    expect(screen.getByText(/Older than v0\.2\.0-beta\.3/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Downgrade to v0\.1\.4/ })).toBeEnabled();
   });
 

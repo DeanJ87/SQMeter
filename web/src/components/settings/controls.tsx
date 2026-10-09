@@ -96,7 +96,7 @@ export const Toggle: FunctionalComponent<{
 };
 
 // Why a dependent setting isn't in effect, with its one-click fix
-// (specs/020-settings-dependencies). Inactive: a warning ("Inactive - MQTT
+// (specs/020-settings-dependencies). Inactive: a warning ("Inactive: MQTT
 // is off"), or a muted note for harmless defaults. Off but blocked: what has
 // to change before it can be switched on.
 export const DepNote: FunctionalComponent<{ entry: DepEntry; onFix: (entry: DepEntry) => void; prefix?: string }> = ({

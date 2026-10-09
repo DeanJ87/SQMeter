@@ -195,7 +195,7 @@ jobs:
       # (coding standard SIZE-01, SIZE-02).
       - name: Pack the web UI for LittleFS and check its size
         run: |
-          python3 -m unittest tools/ui/test_ui_size.py
+          python3 -m unittest tools/ui/test_ui_size.py tools/ui/test_copy_label.py
           python3 tools/ui/pack_data.py --dist web/dist --out data
           if [ -n "${BASE_REF}" ]; then
             git fetch --depth=1 origin "${BASE_REF}"

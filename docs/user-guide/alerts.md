@@ -169,7 +169,7 @@ Under it, a status line says what's happening and why, for example:
 
 A crash isn't the end of a session: an imaging app that goes silent doesn't pause alerts - that's exactly when weather alerts matter most. Only a clean disconnect does.
 
-**Only while an imaging app is connected** needs Alpaca: with **Settings → Safety → Alpaca** off no imaging app can connect, so the choice is kept but shown *Inactive - Alpaca is off*, and alerts go out any time until Alpaca is back on ([settings dependencies](../reference/settings-dependencies.md), D-12).
+**Only while an imaging app is connected** needs Alpaca: with **Settings → Safety → Alpaca** off no imaging app can connect, so the choice is kept but shown *Inactive: Alpaca is off*, and alerts go out any time until Alpaca is back on ([settings dependencies](../reference/settings-dependencies.md), D-12).
 
 ### The imaging app
 

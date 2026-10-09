@@ -218,8 +218,44 @@ The dashboard shows the device state that decides whether it is safe to observe 
 
 | ID | Rule | Check |
 |---|---|---|
-| DASH-01 | A change that adds device state a user would act on (a status, readings, safety or alerts field, or a settings dependency) updates the inventory: shown, with its visibility rule and a test in `web/tests/dashboard.spec.ts` that drives the demo into the state, or not shown with a reason. State that can block observing or silence alerts goes in the at-a-glance area. | converge |
+| DASH-01 | A change that adds device state a user would act on (a status, readings, safety or alerts field, or a settings dependency) updates the inventory: shown, with its visibility rule and a test in `web/tests/dashboard.spec.ts` that drives the demo into the state, or not shown with a reason. State that can block observing or silence alerts goes in the Status card (spec 026): a tile for Safety, Alerts, Data or the imaging app, otherwise one row. | converge |
 | DASH-02 | Every contract-schema field and dependency id is mapped; every shown entry has a test and a translated label; no mapping is stale. | auto (`tools/dashboard/check.py`) |
+
+---
+
+## UI design system (DS)
+
+The web UI is built from a small set of parts in `web/src/components/ui.tsx`, and new screens use them the way the existing ones do (spec 026). A UI change cites the DS rules it relies on, and a spec that adds or changes UI includes a mockup screenshot reviewed before it is built.
+
+**Layout and parts**
+
+| ID | Rule | Check |
+|---|---|---|
+| DS-01 | Dashboard information lives in cards built with `Card` (title, icon, optional "?" `hint`, optional `actions` pill). Nothing sits between the header and the card grid but the Arrange toolbar, and nothing is added to the header but its navigation and the alerts bell: no banners, strips or bars. | auto (`web/tests/layout-overlap.spec.ts`) |
+| DS-02 | State is a `Pill` (green ok, amber attention, red problem, dim unknown). A card's overall state, if any, is one pill in its `actions`. | converge |
+| DS-03 | Short values are `MetricTile`s in a `tile-grid`/`metric-grid`; label-value pairs are `ReadingRow`s. A new component needs a reason in the pull request; compose these first. | converge |
+| DS-04 | Explanations, definitions and caveats go behind `InfoTip` ("?"): on a card title (`hint`), a field label or a row label. Text on the page is a one-line `Note` that reports a current state or an error, in the card it belongs to. | converge |
+| DS-05 | Long values (IPv6, MAC, URLs, topics) are one value per row, monospace, left-to-right, truncated with the full value in `title`; never run together. | converge |
+| DS-06 | A task's progress (update, upload, language download) shows in the card that started it: a status row with a pill, a `ProgressMeter`, then a `Note` with the outcome and at most one action (e.g. Retry). Not in the header, not on other pages. | converge |
+| DS-07 | Confirmations ("Saved") are toasts; a lasting problem is a `Note` in its card and, if it affects observing, a row in the Status card. | converge |
+| DS-08 | A problem is listed once, in the Status card; other cards show their own state but don't repeat global problems. | converge |
+| DS-09 | On a phone (≤ 599 px) cards stack in one column, tiles stay two per row, and nothing overlaps or hides a control (spec 022). | auto (`web/tests/layout-overlap.spec.ts`) |
+| DS-10 | Spacing, colour and type come from the tokens in `web/src/index.css`; a new colour, size or shadow adds a token. | converge |
+
+**Copy** (English is the source; translations follow it)
+
+| ID | Rule | Check |
+|---|---|---|
+| DS-20 | Labels and titles are sentence-case nouns, three words where possible ("Local name", not "This device's local network name"); at most 32 characters. | auto (`tools/ui/copy_check.py`) |
+| DS-21 | Pills and tile values are one or two words, at most 16 characters ("Safe", "Sending", "Live", "Connected"). | auto (`tools/ui/copy_check.py`) |
+| DS-22 | A note is one sentence of at most 90 characters: the state first, then the fix. | auto (`tools/ui/copy_check.py`) |
+| DS-23 | A "?" hint is at most two short sentences, 160 characters: what it is and why it matters. | auto (`tools/ui/copy_check.py`) |
+| DS-24 | No run-on status lines joined with " · ": one fact per tile or row. | auto (`tools/ui/copy_check.py`) |
+| DS-25 | No filler: "at a glance", "simply", "please note", "note that", "it is important", "in order to", "ensure", "seamless", "worked out in", "as soon as the device has it"; no parentheses that restate the label. Product names (N.I.N.A.) only as examples. | auto (`tools/ui/copy_check.py`) |
+| DS-26 | Whose time or place it is (this browser's time zone, the device's location) is said once, in a hint, not on every line. | converge |
+| DS-27 | One name for each thing in the UI, alerts, Home Assistant and the docs, from `tools/i18n/glossary/en.json`; part numbers are extra detail where hardware matters. | auto (`tools/ui/label_check.py`) |
+
+The type of each English string comes from its context note in `web/src/i18n/en.context.json` (`python3 tools/ui/copy_check.py --list`). A string that can't follow a rule is listed in `tools/ui/copy-exceptions.json` with its reason (EXC-01).
 
 ---
 

@@ -63,7 +63,7 @@ const setProgress = (value: LanguageProgress | null) => {
   progressListeners.forEach((listener) => listener(value));
 };
 
-/** The language switch in progress, for the banner on every page. */
+/** The language switch in progress, shown in Settings → Device → Language (spec 026 FR-004). */
 export const useLanguageProgress = () => {
   const [value, setValue] = useState<LanguageProgress | null>(progress);
   useEffect(() => {
@@ -140,7 +140,7 @@ export const useLanguage = () => {
   const refresh = useCallback(async () => setStatus(await fetchLanguageStatus()), []);
   useEffect(() => void refresh(), [refresh]);
 
-  // Progress and the outcome show in the language banner on every page.
+  // Progress and the outcome show in the Language card.
   const retry = async () => {
     setBusy(true);
     setMessage(null);

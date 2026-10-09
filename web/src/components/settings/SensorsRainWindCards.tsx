@@ -122,7 +122,7 @@ export const RainCard: FunctionalComponent<SettingsTabProps> = (props) => {
       hint={t('settings.sensors.hydreonRg15OnA')}
       badge={detectionBadge(hw.rain, { ok: t('settings.sensors.responding'), bad: t('settings.sensors.notResponding') })}
     >
-      <Toggle label={t('settings.sensors.rg15RainSensor')} checked={rain.enabled} onChange={(v) => update(['rain', 'enabled'], v)} />
+      <Toggle label={t('sensor.rain')} checked={rain.enabled} onChange={(v) => update(['rain', 'enabled'], v)} />
       {rain.enabled && hw.rain.detected === false && (
         <Requires tone="warn">{t('settings.sensors.noReplyCheckOutGpio', { rxPin: rain.rxPin, txPin: rain.txPin })}</Requires>
       )}

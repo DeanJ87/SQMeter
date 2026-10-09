@@ -7,7 +7,7 @@ The device's web interface is available in 14 languages: English, Bahasa Indones
 Open **Settings → Device → Language**, pick the language and **Save**.
 
 - The language is a device setting, so it applies to everyone who opens the device.
-- English is built in. Another language is a small file (about 22 KB) that the device downloads from the GitHub release matching its firmware and keeps in its storage. A banner at the top of the page shows what the device is doing (downloading, restarting, installed) and reloads the page in the new language once the file is there, usually within a few seconds. If the download fails it says why, with **Retry**: a release published before languages existed has no language files, so then upload one by hand (below) or update the firmware.
+- English is built in. Another language is a small file (about 22 KB) that the device downloads from the GitHub release matching its firmware and keeps in its storage. The Language card shows what the device is doing (**Downloading** with a progress bar, **Restarting**, **Installed**) and reloads the page in the new language once the file is there, usually within a few seconds. If the download fails, the card says why on one line, with **Retry**: a release published before languages existed has no language files, so then upload one by hand (below) or update the firmware. Until the file is there, the dashboard's Status card lists **Language: Not loaded**.
 - Switching back to English deletes the file.
 - After a firmware update the device downloads the file for the new version by itself.
 

@@ -1,0 +1,123 @@
+{
+  "about": "The English names of things the UI, alerts, Home Assistant and the docs share (specs/026 DS-27). One name per thing: `keys` are the en.json strings that must say it (case aside: card titles are shown in capitals); `avoid` are other names for it that must not appear in UI text or the docs; `ha` is the Home Assistant entity name (lib/Readings) that must match. Checked by tools/ui/label_check.py. Device-sent text (device.*) keeps part numbers: it is also machine-read (Alpaca, MQTT reasons).",
+  "names": [
+    {
+      "name": "Light sensor",
+      "keys": [
+        "sensor.light",
+        "dashboard.lightSensor"
+      ],
+      "avoid": [
+        "TSL2591 Light Sensor",
+        "Light sensor (TSL2591)"
+      ]
+    },
+    {
+      "name": "IR sky sensor",
+      "keys": [
+        "sensor.infrared"
+      ],
+      "avoid": [
+        "MLX90614 IR Temperature",
+        "IR temperature sensor"
+      ]
+    },
+    {
+      "name": "Environment sensor",
+      "keys": [
+        "sensor.environment"
+      ],
+      "avoid": [
+        "Environment sensor (BME280)",
+        "BME280 Environment"
+      ]
+    },
+    {
+      "name": "Rain sensor",
+      "keys": [
+        "sensor.rain",
+        "settings.sensors.rainSensor",
+        "dashboard.rainSensor"
+      ],
+      "avoid": [
+        "RG-15 Rain Sensor"
+      ]
+    },
+    {
+      "name": "Anemometer",
+      "keys": [
+        "sensor.wind",
+        "settings.sensors.anemometer"
+      ],
+      "avoid": [
+        "Wind sensor"
+      ]
+    },
+    {
+      "name": "GPS",
+      "keys": [
+        "sensor.gps"
+      ],
+      "avoid": [
+        "GPS Module"
+      ]
+    },
+    {
+      "name": "Safety monitor",
+      "keys": [
+        "alpaca.safetyMonitor",
+        "safetyCard.safetyMonitor"
+      ],
+      "avoid": []
+    },
+    {
+      "name": "Weather device",
+      "keys": [
+        "alpaca.weatherDevice"
+      ],
+      "avoid": []
+    },
+    {
+      "name": "Imaging app",
+      "keys": [
+        "status.imagingApp"
+      ],
+      "avoid": [
+        "imaging software",
+        "Alpaca client app"
+      ]
+    },
+    {
+      "name": "Sky quality",
+      "keys": [
+        "dashboard.skyQuality"
+      ],
+      "avoid": [],
+      "ha": "Sky quality"
+    },
+    {
+      "name": "Illuminance",
+      "keys": [
+        "dashboard.illuminance"
+      ],
+      "avoid": [],
+      "ha": "Illuminance"
+    },
+    {
+      "name": "Cloud cover",
+      "keys": [
+        "dashboard.cloudCover"
+      ],
+      "avoid": [],
+      "ha": "Cloud cover"
+    },
+    {
+      "name": "Alerts",
+      "keys": [
+        "status.alerts"
+      ],
+      "avoid": [],
+      "ha": "Alerts"
+    }
+  ]
+}

@@ -19,7 +19,7 @@ describe('SunMoonCard', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-03-03T23:00:00Z')); // full moon
     render(<SunMoonCard latitude={51.4779} longitude={-0.0015} />);
-    expect(screen.getByText(/Full moon · 100% lit/)).toBeInTheDocument();
+    expect(screen.getByText(/Full moon, 100% lit/)).toBeInTheDocument();
     expect(screen.getByText(/^Dark now, until/)).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /^Night chart, .* Moon \d+% lit\.$/ })).toBeInTheDocument();
   });
@@ -33,7 +33,7 @@ describe('SunMoonCard', () => {
     // Middle of the plot is around local midnight.
     fireEvent.pointerMove(chart, { clientX: 26 + (320 - 32) / 2 });
     expect(screen.getByText(/^Sun -\d/)).toBeInTheDocument();
-    expect(screen.getByText(/^Moon \d+° · \d+% lit/)).toBeInTheDocument();
+    expect(screen.getByText(/^Moon \d+°, \d+% lit/)).toBeInTheDocument();
   });
 
   it('windows the chart on the night ahead, or the one in progress before noon', () => {

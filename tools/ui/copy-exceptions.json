@@ -1,0 +1,3 @@
+{
+  "settings.alertSchedule.onlyWhileAnImagingApp": "EXC-01: the option's name is fixed by spec 021 FR-017 and quoted elsewhere (the Status card's send-mode hint, alert docs); shortening it would break that link."
+}

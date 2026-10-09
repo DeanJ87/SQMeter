@@ -41,7 +41,7 @@ describe('Safety alerts at night', () => {
     );
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);
-    const toggle = (await screen.findByLabelText("Safety alerts only when it's dark")) as HTMLInputElement;
+    const toggle = (await screen.findByLabelText('Safety alerts only after dark')) as HTMLInputElement;
     expect(toggle.checked).toBe(true);
     fireEvent.click(toggle);
     fireEvent.click(screen.getByRole('button', { name: /save/i }));

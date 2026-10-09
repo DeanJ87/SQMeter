@@ -1,15 +1,17 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// One test per item of web/src/dashboard/inventory.json (specs/025 FR-003):
-// drive the demo device into the state, check the item shows, then that it
-// hides when its rule says so. tools/dashboard/check.py fails if a shown entry
-// has no `inventory: <id>` here.
+// One test per item of web/src/dashboard/inventory.json (specs/025 FR-003,
+// 026 FR-010): drive the demo device into the state, check the item shows,
+// then that it hides when its rule says so. tools/dashboard/check.py fails if
+// a shown entry has no `inventory: <id>` here.
 
 type Patch = Record<string, unknown>;
 
+const statusCard = (page: Page) => page.locator('[data-inventory="status-card"]');
+
 const open = async (page: Page, query = '') => {
   await page.goto(`./${query}#/`);
-  await expect(page.locator('.glance')).toBeVisible({ timeout: 15_000 });
+  await expect(statusCard(page)).toBeVisible({ timeout: 15_000 });
 };
 
 // Change the demo device's settings the way the Settings page does, then
@@ -29,11 +31,12 @@ const setConfig = async (page: Page, changes: Patch) => {
     await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
   }, changes);
   await page.reload();
-  await expect(page.locator('.glance')).toBeVisible({ timeout: 15_000 });
+  await expect(statusCard(page)).toBeVisible({ timeout: 15_000 });
 };
 
 const item = (page: Page, id: string) => page.locator(`[data-inventory="${id}"]`);
-const line = (page: Page) => page.locator('.glance-line');
+const tile = (page: Page, id: string) => statusCard(page).locator(`.status-tile[data-inventory="${id}"]`);
+const pill = (page: Page) => statusCard(page).locator('.card-actions .pill');
 const card = (page: Page, title: string) =>
   page.locator('.masonry-item').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
 
@@ -49,30 +52,20 @@ const imagingApp = async (page: Page, button: string) => {
 
 test.describe.configure({ retries: 0 });
 
-test('healthy: one line - Live, Safe, Sending alerts', async ({ page }) => {
-  // inventory: freshness  inventory: safety-verdict  inventory: alerts-state
+test('healthy: a Status card like the others - Data, Safety, Alerts tiles, All good', async ({ page }) => {
+  // inventory: status-card  inventory: freshness  inventory: safety-verdict  inventory: alerts-state
   await open(page);
-  await expect(line(page)).toContainText('Live');
-  await expect(line(page)).toContainText('Safe');
-  await expect(line(page)).toContainText('Sending alerts');
-  await expect(page.locator('.glance-problem')).toHaveCount(0);
-});
-
-test('healthy line: one line at 1280 px, at most two at 320 px (SC-004)', async ({ page }) => {
-  // Rows the text and the demo marker wrap onto: distinct line boxes.
-  const lines = () =>
-    line(page).evaluate((el) => {
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      const tops = [...range.getClientRects()].map((rect) => Math.round(rect.top));
-      return tops.filter((top, i) => tops.every((other, j) => j >= i || Math.abs(other - top) > 4)).length;
-    });
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await open(page);
-  await expect(line(page)).toContainText('Sending alerts');
-  expect(await lines()).toBe(1);
-  await page.setViewportSize({ width: 320, height: 700 });
-  expect(await lines()).toBeLessThanOrEqual(2);
+  await expect(statusCard(page).getByRole('heading', { name: 'Status', exact: true })).toBeVisible();
+  // The demo starts with one alert setting not in effect; make every setting work.
+  await expect(pill(page)).toHaveText('1 to check');
+  await setConfig(page, { 'alerts.events.*.level': 2 });
+  await expect(pill(page)).toHaveText('All good');
+  await expect(tile(page, 'freshness')).toContainText('Live');
+  await expect(tile(page, 'safety-verdict')).toContainText('Safe');
+  await expect(tile(page, 'alerts-state')).toContainText('Sending');
+  await expect(statusCard(page).locator('.status-row')).toHaveCount(0);
+  // It is the first card, and nothing sits between the header and the cards (026 FR-014).
+  await expect(page.locator('.masonry-item').first()).toContainText('Status');
 });
 
 test('unsafe verdict and a held rain countdown', async ({ page }) => {
@@ -80,46 +73,45 @@ test('unsafe verdict and a held rain countdown', async ({ page }) => {
   await open(page);
   await expect(item(page, 'rain-hold')).toHaveCount(0);
   await open(page, '?scenario=rain');
-  await expect(page.locator('.glance-problem').filter({ hasText: 'Unsafe' })).toBeVisible({ timeout: 15_000 });
+  await expect(tile(page, 'safety-verdict')).toContainText('Unsafe', { timeout: 15_000 });
+  await expect(pill(page)).toHaveText(/to check/);
   await openPanel(page);
   await page.locator('.demo-panel').getByRole('button', { name: 'Rain stops', exact: true }).click();
-  await expect(item(page, 'rain-hold')).toContainText(/Rain held - clears in/, { timeout: 15_000 });
+  await expect(item(page, 'rain-hold')).toContainText(/Rain held, clears in/, { timeout: 15_000 });
 });
 
-test('paused alerts show with Resume, then go', async ({ page }) => {
+test('paused alerts show on the Alerts tile with Resume, then go', async ({ page }) => {
   // inventory: alerts-state
   await open(page);
   await page.evaluate(() => fetch('/api/alerts/disarm?source=ui', { method: 'POST' }));
-  const paused = page.locator('.glance-item').filter({ hasText: 'Paused by you' });
-  await expect(paused).toBeVisible({ timeout: 10_000 });
-  await paused.getByRole('button', { name: 'Resume' }).click();
-  await expect(paused).toHaveCount(0, { timeout: 10_000 });
-  await expect(line(page)).toContainText('Sending alerts');
+  await expect(tile(page, 'alerts-state')).toContainText('Paused', { timeout: 10_000 });
+  await expect(tile(page, 'alerts-state')).toContainText('Paused by you');
+  await tile(page, 'alerts-state').getByRole('button', { name: 'Resume' }).click();
+  await expect(tile(page, 'alerts-state')).toContainText('Sending', { timeout: 10_000 });
 });
 
 test('send mode not in effect while Alpaca is off', async ({ page }) => {
   // inventory: alerts-mode-not-in-effect
   await open(page);
   await setConfig(page, { 'alerts.sendMode': 'whileConnected', 'alpaca.enabled': false });
-  await expect(item(page, 'alerts-mode-not-in-effect')).toContainText('Alpaca is off');
+  await expect(item(page, 'alerts-mode-not-in-effect')).toContainText('Send mode');
+  await expect(item(page, 'alerts-mode-not-in-effect')).toContainText('Not in effect');
   await setConfig(page, { 'alpaca.enabled': true });
   await expect(item(page, 'alerts-mode-not-in-effect')).toHaveCount(0);
 });
 
-test('imaging app: waiting, watching, then stopped checking', async ({ page }) => {
+test('imaging app: waiting, connected, then gone quiet', async ({ page }) => {
   // inventory: imaging-app
   test.setTimeout(120_000);
   await open(page);
   await expect(item(page, 'imaging-app')).toHaveCount(0);
   await setConfig(page, { 'alerts.sendMode': 'whileConnected', 'alerts.clientSilentSafetySeconds': 30 });
-  await expect(item(page, 'alerts-state')).toContainText('Waiting for an imaging app');
+  await expect(tile(page, 'alerts-state')).toContainText('Waiting');
   await expect(item(page, 'imaging-app')).toHaveCount(2);
   await imagingApp(page, 'Connect');
-  await expect(line(page)).toContainText('Imaging app (safety monitor): Connected', { timeout: 15_000 });
+  await expect(item(page, 'imaging-app').filter({ hasText: 'Safety monitor' })).toContainText('Connected', { timeout: 15_000 });
   await imagingApp(page, 'Go silent');
-  await expect(page.locator('.glance-problem').filter({ hasText: 'Imaging app (safety monitor)' })).toContainText('Gone quiet', {
-    timeout: 60_000,
-  });
+  await expect(item(page, 'imaging-app').filter({ hasText: 'Safety monitor' })).toContainText('Gone quiet', { timeout: 60_000 });
 });
 
 test('no alert channel can send', async ({ page }) => {
@@ -127,24 +119,39 @@ test('no alert channel can send', async ({ page }) => {
   await open(page);
   await expect(item(page, 'no-channel')).toHaveCount(0);
   await setConfig(page, { 'alerts.ntfy.enabled': false, 'alerts.mqtt.enabled': true, 'mqtt.enabled': false });
-  await expect(item(page, 'no-channel')).toContainText('No alert channel can send');
+  await expect(item(page, 'no-channel')).toContainText('Alert channels');
+  await expect(item(page, 'no-channel')).toContainText("Can't send");
 });
 
-test('a failed sensor keeps its card and is a problem', async ({ page }) => {
+test('a failed sensor keeps its card and is one row: name and pill', async ({ page }) => {
   // inventory: sensor-faults  inventory: cloud-card
   await open(page);
   await expect(card(page, 'Cloud Conditions')).not.toContainText('Error');
   await open(page, '?scenario=fail-ir');
-  await expect(page.locator('.glance-problem').filter({ hasText: 'IR sky sensor (MLX90614)' })).toBeVisible({ timeout: 15_000 });
+  const row = statusCard(page).locator('.status-row[data-inventory="sensor-faults"]');
+  await expect(row).toContainText('IR sky sensor', { timeout: 15_000 });
+  await expect(row.locator('.pill')).toHaveText(/Error|Not responding|Stale/);
+  await expect(row.getByRole('link')).toHaveAttribute('href', /tab=sensors/);
   await expect(card(page, 'Cloud Conditions')).toContainText("Cloud cover and the cloud safety rule can't be measured.");
 });
 
-test('settings not in effect are summarised', async ({ page }) => {
+test('settings not in effect are one row', async ({ page }) => {
   // inventory: settings-not-in-effect
   await open(page);
-  await expect(item(page, 'settings-not-in-effect')).toContainText('1 setting not in effect');
+  await expect(item(page, 'settings-not-in-effect')).toContainText('1 inactive');
   await setConfig(page, { 'alerts.events.*.level': 2 });
   await expect(item(page, 'settings-not-in-effect')).toHaveCount(0);
+});
+
+test('a language that could not load is one row', async ({ page }) => {
+  // inventory: language
+  test.setTimeout(60_000);
+  await open(page);
+  await expect(item(page, 'language')).toHaveCount(0);
+  await page.addInitScript(() => sessionStorage.setItem('sqm.demo.languageFail', '1'));
+  await setConfig(page, { language: 'de' });
+  await page.reload();
+  await expect(item(page, 'language')).toContainText('Not loaded', { timeout: 15_000 });
 });
 
 test('no location: darkness unknown', async ({ page }) => {
@@ -152,7 +159,8 @@ test('no location: darkness unknown', async ({ page }) => {
   await open(page);
   await expect(item(page, 'clock-location')).toHaveCount(0);
   await setConfig(page, { 'location.set': false, 'gps.enabled': false });
-  await expect(item(page, 'clock-location')).toContainText('No location', { timeout: 10_000 });
+  await expect(item(page, 'clock-location')).toContainText('Location', { timeout: 10_000 });
+  await expect(item(page, 'clock-location')).toContainText('Unknown');
 });
 
 test('safety rules not in effect and not shared with N.I.N.A.', async ({ page }) => {
@@ -174,12 +182,11 @@ test('update available from this session’s check', async ({ page }) => {
   await expect(item(page, 'update-available')).toContainText('Update available: v9.9.9');
 });
 
-test('demo marker, and the moved demo clock', async ({ page }) => {
-  // inventory: demo-marker
+test('the demo says its clock moved on the Demo button, not the dashboard', async ({ page }) => {
   await open(page);
-  await expect(item(page, 'demo-marker')).toHaveText('Demo');
+  await expect(page.locator('.demo-clock-moved')).toHaveCount(0);
   await open(page, '?scenario=night');
-  await expect(item(page, 'demo-marker')).toContainText('device clock moved');
+  await expect(page.locator('.demo-panel-toggle')).toContainText('Clock moved');
 });
 
 test('the readings cards', async ({ page }) => {
@@ -201,10 +208,16 @@ test('GPS card only when GPS is on', async ({ page }) => {
   await expect(card(page, 'GPS Location')).toBeVisible({ timeout: 10_000 });
 });
 
-test('Device & Network: IPv6, local name and MQTT', async ({ page }) => {
+test('Device & Network: one address per row, local name and MQTT', async ({ page }) => {
   // inventory: ipv6  inventory: mdns  inventory: mqtt-state
   await open(page);
+  const device = card(page, 'Device & Network');
+  await expect(device.locator('.reading-row').filter({ hasText: 'IPv4' })).toBeVisible();
   await expect(item(page, 'ipv6')).toBeVisible();
+  // Each IPv6 address is its own row (026 DS-05).
+  const addresses = item(page, 'ipv6').locator('.reading-row');
+  expect(await addresses.count()).toBeGreaterThan(0);
+  for (const row of await addresses.all()) await expect(row.locator('.reading-value')).toHaveCount(1);
   await expect(item(page, 'mdns')).toContainText('.local');
   await expect(item(page, 'mqtt-state')).toContainText('Connected');
   await setConfig(page, { 'wifi.ipv6': false, 'wifi.mdns': false, 'mqtt.enabled': false });

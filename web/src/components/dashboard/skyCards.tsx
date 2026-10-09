@@ -2,7 +2,7 @@ import { FunctionalComponent } from 'preact';
 import type { SensorData } from '../../types';
 import { Card, Icon, MetricTile, Note, Pill, ReadingRow, SensorReadingRow } from '../ui';
 import { t } from '../../i18n';
-import { formatNumber } from '../../i18n/format';
+import { formatIlluminance, formatNumber } from '../../i18n/format';
 import { deviceText } from '../../i18n/deviceMessage';
 import { MiniSpark, StatusDot } from './MiniSpark';
 import { bortleTone, conditionTone } from './tones';
@@ -48,7 +48,7 @@ export const SkyHero: FunctionalComponent<Readings & { live: boolean; isStale: b
       <div class="metric-grid compact">
         <MetricTile label={t('dashboard.bortle')} value={formatNumber(sensors.sky.bortle, 0)} tone={skyTone} />
         <MetricTile label="NELM" value={formatNumber(sensors.sky.nelm, 1)} unit="mag" tone="tone-cyan" />
-        <MetricTile label={t('dashboard.illuminance')} value={formatNumber(sensors.light.lux, 5)} unit="lux" />
+        <MetricTile label={t('dashboard.illuminance')} value={formatIlluminance(sensors.light.lux)} unit="lux" />
       </div>
     </section>
   );
@@ -86,7 +86,7 @@ export const CloudCard: FunctionalComponent<Readings> = ({ sensors }) => (
 
 export const LightCard: FunctionalComponent<Readings> = ({ sensors }) => (
   <Card title={t('dashboard.lightSensor')} icon="eye" tone="cyan">
-    <SensorReadingRow label={t('dashboard.illuminance')} value={formatNumber(sensors.light.lux, 5)} unit="lux" />
+    <SensorReadingRow label={t('dashboard.illuminance')} value={formatIlluminance(sensors.light.lux)} unit="lux" />
     <SensorReadingRow label={t('dashboard.visible')} value={String(sensors.light.visible)} unit={t('dashboard.rawUnit')} />
     <SensorReadingRow label={t('dashboard.infrared')} value={String(sensors.light.infrared)} unit={t('dashboard.rawUnit')} />
     <SensorReadingRow label={t('dashboard.fullSpectrum')} value={String(sensors.light.full)} unit={t('dashboard.rawUnit')} />

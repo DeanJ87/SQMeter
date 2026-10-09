@@ -8,7 +8,7 @@ import { useAnnounceChange } from '../lib/a11y';
 import { getJson } from '../lib/api';
 import Masonry, { MasonryItem, mergeOrder, moveInOrder } from './Masonry';
 import { t } from '../i18n';
-import AtAGlance from '../dashboard/AtAGlance';
+import StatusCard from '../dashboard/StatusCard';
 import { glanceItems } from '../dashboard/glance';
 import { useEffectiveReport } from '../dashboard/useGlanceData';
 import { useAlertSchedule } from '../hooks/useAlertSchedule';
@@ -25,7 +25,7 @@ const verdictText = (safe: boolean | undefined, reasons: string[] | undefined) =
     : t('dashboard.observatoryUnsafeValue', { value: reasons?.length ? `: ${reasons.join(', ')}` : '' });
 
 // Nothing received yet; once data has arrived, a lost connection keeps the
-// last values on screen, greyed, with the at-a-glance line saying so (US2-4).
+// last values on screen, greyed, with the Status card saying so (US2-4).
 const Waiting: FunctionalComponent<{ connected: boolean }> = ({ connected }) => (
   <div class="empty-state">
     <StatusDot ok={false} />
@@ -86,7 +86,8 @@ const Dashboard: FunctionalComponent = () => {
 
   if (!sensors) return <Waiting connected={connected} />;
 
-  const visible = dashboardCards({ sensors, status, config, quiet, connected, sqmHistory });
+  const statusCard: MasonryItem = { id: 'status', title: t('status.title'), node: <StatusCard items={items} onAction={onAction} /> };
+  const visible = [statusCard, ...dashboardCards({ sensors, status, config, quiet, connected, sqmHistory })];
   const fullOrder = mergeOrder(savedOrder, DEFAULT_ORDER);
   const ordered = fullOrder.map((id) => visible.find((card) => card.id === id)).filter((card): card is MasonryItem => Boolean(card));
 
@@ -107,7 +108,6 @@ const Dashboard: FunctionalComponent = () => {
 
   return (
     <div class={`dashboard page-enter${connected ? '' : ' is-disconnected'}`}>
-      <AtAGlance items={items} onAction={onAction} />
       <Toolbar arranging={arranging} setArranging={setArranging} reset={reset} />
       <Masonry items={ordered} editing={arranging} onMove={move} />
     </div>

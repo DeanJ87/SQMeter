@@ -3,12 +3,12 @@ import { useState } from 'preact/hooks';
 import type { AlertEventKey, SystemStatus } from '../../types';
 import type { DepEntry } from '../../lib/settingsDeps';
 import { deviceTime } from '../../lib/deviceTime';
-import { describeDarkness } from './darkness';
+import { describeDarkness, type DarknessView } from './darkness';
 import { minutesToSeconds, secondsToMinutes } from './alertSchedule';
 import { LEVEL_HINT, type AlertsView } from './alertsShared';
 import { AlertEventRow } from './AlertEventRow';
 import { DepNote, DepToggle, Field, NumberInput, SelectInput, SettingsCard } from './controls';
-import { Note } from '../ui';
+import { InfoTip, Note, ReadingRow } from '../ui';
 import { t } from '../../i18n';
 
 // A GPS fix wins over the location in Settings (saved or not).
@@ -176,6 +176,20 @@ const NightOnlyRow: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
   );
 };
 
+// The sun now and the dark period, one row each (spec 026 A10).
+const DarknessRows: FunctionalComponent<{ view: DarknessView }> = ({ view }) => (
+  <div class="darkness-rows">
+    {view.sun && <ReadingRow label={t('settings.alerts.sunNow')} value={view.sun} />}
+    <div class="reading-row">
+      <span class="reading-label">
+        {t('settings.alerts.darkness')} <InfoTip text={view.hint} />
+      </span>
+      <strong class="reading-value">{view.dark}</strong>
+    </div>
+    {view.unsaved && <Note tone="warn">{t('settings.alerts.saveToApplyLimit')}</Note>}
+  </div>
+);
+
 // "Notify me when": one row per event, then the timing rules.
 export const AlertsEventsCard: FunctionalComponent<{ view: AlertsView; status: SystemStatus | null; wakePhones: DepEntry }> = ({
   view,
@@ -183,7 +197,7 @@ export const AlertsEventsCard: FunctionalComponent<{ view: AlertsView; status: S
   wakePhones,
 }) => {
   const { alerts, off, set, err, fix, pushoverOn } = view;
-  const darknessNote = describeDarkness({
+  const darkness = describeDarkness({
     sky: status?.sky,
     location: darknessLocation(view, status),
     formLimitDeg: alerts.nightSunAltitudeDeg,
@@ -206,7 +220,7 @@ export const AlertsEventsCard: FunctionalComponent<{ view: AlertsView; status: S
         {wakePhones.state === 'inactive' && <DepNote entry={wakePhones} onFix={fix} prefix={t('settings.alerts.phonesWontRing')} />}
         <SilentForFields view={view} />
         <NightOnlyRow view={view} />
-        {darknessNote && <Note>{darknessNote}</Note>}
+        {darkness && <DarknessRows view={darkness} />}
         <div class="form-grid">
           <Field label={t('settings.alerts.cooldown')} error={err('cooldownSeconds')} hint={t('settings.alerts.minimumGapBetweenAlertsOf')}>
             <NumberInput
