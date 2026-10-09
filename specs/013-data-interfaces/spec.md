@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill MQTT, the REST API and the WebSocket streams. There are inconsistencies around MQTT topics and their naming, unused or superfluous values emitted, things that should be emitted but aren't, things that are emitted but shouldn't be, no control over what is emitted (there should be), and the API is probably inconsistent too."
-
 ## Clarifications
 
 ### Session 2026-10-08

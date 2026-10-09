@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill the tabbed, dependency-aware Settings, config persistence/validation/migration, restart handling, and password protection."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Find and change a setting easily (Priority: P1)

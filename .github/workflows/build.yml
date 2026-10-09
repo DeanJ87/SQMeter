@@ -22,6 +22,8 @@ on:
       - 'platformio.ini'
       - 'partitions.csv'
       - '.github/workflows/build.yml'
+      - 'specs/**'
+      - '.specify/**'
   push:
     tags: [ 'v*' ]
 
@@ -110,6 +112,14 @@ jobs:
 
       - name: Integrity checks
         run: |
+          # The owner's prompts stay out of the repository (constitution, Development Workflow)
+          # (the constitution states the rule, so it names the pattern)
+          if grep -rn --exclude=constitution.md "User description" specs/ .specify/ 2>/dev/null; then
+            echo "ERROR: a spec quotes the owner's prompt (**Input**: User description) - describe the feature in the spec's own words"
+            exit 1
+          fi
+          echo "No prompts in specs check passed"
+
           # No active TCPServer code references (firmware source and UI code only)
           if grep -rn "TCPServer\|WiFiServer.*2020" src/ include/ web/src/ 2>/dev/null; then
             echo "ERROR: TCPServer / port 2020 server reference found in firmware or UI code"

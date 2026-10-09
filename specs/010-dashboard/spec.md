@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill the dashboard (cards, layout, arranging, the alerts bell) and the public demo and documentation screenshots generated from it."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Everything at a glance (Priority: P1)
