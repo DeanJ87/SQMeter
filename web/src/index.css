@@ -2006,6 +2006,19 @@ input[type='file'].input::file-selector-button {
   gap: 1rem;
 }
 
+/* Language switch progress, in the sticky header on every page. */
+.language-progress {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem 0.75rem;
+}
+
+.language-progress .note {
+  margin: 0;
+}
+
 .save-bar {
   position: sticky;
   bottom: max(0.75rem, env(safe-area-inset-bottom));

@@ -209,7 +209,10 @@ void startWifi()
     wifiManager = std::make_unique<WiFiManager>(config.wifi);
     wifiManager->begin();
 
-    // Wait for WiFi connection or start AP mode
+    // Give the saved network a moment so most boots start fully connected. If
+    // it isn't joined yet, start anyway: WiFiManager keeps trying, and opens
+    // the setup hotspot only if it still hasn't joined after
+    // CaptivePortal::FALLBACK_AFTER_MS (spec 014).
     int attempts = 0;
     while (!wifiManager->isConnected() && !wifiManager->isInAPMode() && attempts < 20)
     {
@@ -217,10 +220,7 @@ void startWifi()
         attempts++;
     }
     if (!wifiManager->isConnected() && !wifiManager->isInAPMode())
-    {
-        Logger::warn("Main", "WiFi connection failed, starting captive portal");
-        wifiManager->startCaptivePortal();
-    }
+        Logger::warn("Main", "WiFi not joined yet; still trying");
     wifiManager->startMdns();
     HeapTrace::mark("wifi");
 }

@@ -40,13 +40,90 @@ export const readLanguageFile = async (file: File) => {
   }
 };
 
-/** After the language setting is saved: reload into it once the device has the file. */
-export const applyLanguage = async (code: string) => {
-  if (code !== 'en') await waitForLanguage(code);
-  // English, installed, or failed: reload either way - the loader falls back
-  // to English and the Language card says why.
-  window.location.reload();
+// --- Switching language: progress the UI shows while the device fetches the file.
+
+export type LanguageProgress =
+  | { phase: 'downloading'; code: string }
+  | { phase: 'restarting'; code: string } // the device isn't answering (restarting)
+  | { phase: 'installed'; code: string }
+  | { phase: 'failed'; code: string; error?: string; firmwareVersion?: string }
+  | { phase: 'slow'; code: string }; // still going after the wait: carry on without reloading
+
+let progress: LanguageProgress | null = null;
+const progressListeners = new Set<(value: LanguageProgress | null) => void>();
+const setProgress = (value: LanguageProgress | null) => {
+  progress = value;
+  progressListeners.forEach((listener) => listener(value));
 };
+
+/** The language switch in progress, for the banner on every page. */
+export const useLanguageProgress = () => {
+  const [value, setValue] = useState<LanguageProgress | null>(progress);
+  useEffect(() => {
+    progressListeners.add(setValue);
+    return () => void progressListeners.delete(setValue);
+  }, []);
+  return value;
+};
+
+const UNREACHABLE_AFTER = 2; // failed polls in a row before "restarting"
+const RELOAD_DELAY_MS = 800;
+
+// One poll's verdict: the next phase, or null to keep waiting.
+const phaseFor = (code: string, status: DeviceLanguage | null, misses: number): LanguageProgress | null => {
+  if (!status) return misses >= UNREACHABLE_AFTER ? { phase: 'restarting', code } : null;
+  const pending = status.state === 'downloading' || status.state === 'restoring' || (status.state === 'idle' && !status.error);
+  if (status.language !== code || pending) return { phase: 'downloading', code };
+  if (status.state === 'installed' || status.pack?.lang === code) return { phase: 'installed', code };
+  return { phase: 'failed', code, error: status.error, firmwareVersion: status.firmwareVersion };
+};
+
+/** Follows the device until the file is installed (then reloads into it), it fails, or the wait runs out. */
+const followInstall = async (code: string, deadline: number) => {
+  setProgress({ phase: 'downloading', code });
+  let misses = 0;
+  while (Date.now() <= deadline) {
+    const status = await fetchLanguageStatus();
+    misses = status ? 0 : misses + 1;
+    const next = phaseFor(code, status, misses);
+    if (next) setProgress(next);
+    if (next?.phase === 'failed') return;
+    if (next?.phase === 'installed') {
+      // Same address the page came from: a restart never moves the browser elsewhere.
+      setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+  }
+  setProgress({ phase: 'slow', code });
+};
+
+/** After the language setting is saved: show progress, then reload into the language once the device has it. */
+export const applyLanguage = async (code: string) => {
+  if (code === 'en') {
+    window.location.reload(); // English is built in
+    return;
+  }
+  await followInstall(code, Date.now() + WAIT_MS);
+};
+
+/** Asks the device to download the language again, and follows it. */
+export const retryLanguage = async (code: string) => {
+  setProgress({ phase: 'downloading', code });
+  try {
+    const response = await fetch('/api/i18n/install', { method: 'POST' });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      setProgress({ phase: 'failed', code, error: body?.error });
+      return;
+    }
+  } catch {
+    setProgress({ phase: 'restarting', code });
+  }
+  await followInstall(code, Date.now() + WAIT_MS);
+};
+
+export const dismissLanguageProgress = () => setProgress(null);
 
 export const useLanguage = () => {
   const [status, setStatus] = useState<DeviceLanguage | null>(null);
@@ -56,23 +133,13 @@ export const useLanguage = () => {
   const refresh = useCallback(async () => setStatus(await fetchLanguageStatus()), []);
   useEffect(() => void refresh(), [refresh]);
 
-  const finish = async (code: string) => {
-    const result = await waitForLanguage(code);
-    setStatus(result);
-    if (result?.state === 'installed') window.location.reload();
-    else setMessage({ tone: 'bad', text: result?.error ? deviceError(result, '') : t('language.downloadFailed') });
-  };
-
+  // Progress and the outcome show in the language banner on every page.
   const retry = async () => {
     setBusy(true);
     setMessage(null);
     try {
-      const response = await fetch('/api/i18n/install', { method: 'POST' });
-      if (!response.ok)
-        setMessage({ tone: 'bad', text: deviceError(await response.json().catch(() => null), t('language.downloadFailed')) });
-      else await finish(status?.language ?? '');
-    } catch {
-      setMessage({ tone: 'bad', text: t('language.couldNotReachDevice') });
+      await retryLanguage(status?.language ?? '');
+      await refresh();
     } finally {
       setBusy(false);
     }

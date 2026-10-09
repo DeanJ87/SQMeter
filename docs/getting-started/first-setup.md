@@ -5,7 +5,7 @@ SQMeter ships with no WiFi credentials. On first power-on it starts in **hotspot
 <!-- diagram: DIA-07
 sources: src/WiFiManager.cpp#WiFiManager::begin src/WiFiManager.cpp#WiFiManager::startCaptivePortal src/WiFiManager.cpp#WiFiManager::updateCredentials lib/CaptiveDns/ src/WebServerApi.cpp#WebServer::pollWiFiConnect src/WebServer.cpp#WebServer::setupStaticRoutes src/main.cpp#loop
 blocking: false
-fingerprint: 426fcc39ab3113bc
+fingerprint: fb56b42c1b6b30b5
 -->
 <figure class="diagram" markdown>
 
@@ -16,7 +16,7 @@ sequenceDiagram
     participant P as Phone or laptop
     participant D as SQMeter
     participant R as Your WiFi
-    Note over D: No saved network, or it isn't reachable within about 10 s
+    Note over D: No saved network, or it isn't joined within 45 s of power-on
     D->>D: Open the SQM-Setup hotspot, 192.168.4.1
     P->>D: Join SQM-Setup
     P->>D: Look up any name
@@ -43,7 +43,7 @@ sequenceDiagram
 
 ??? info "Diagram in words"
 
-    1. With no saved network, or when the saved one can't be reached within about 10 seconds, the device opens the open **SQM-Setup** hotspot at 192.168.4.1 (and keeps retrying the saved network in the background).
+    1. With no saved network, or when the saved one hasn't been joined within 45 seconds of power-on, the device opens the open **SQM-Setup** hotspot at 192.168.4.1 (and keeps retrying the saved network in the background).
     2. Your phone or laptop joins SQM-Setup. The device answers every name lookup with its own address, and redirects the system's sign-in checks (such as `/hotspot-detect.html`) to `/wifi`, so the sign-in window opens the WiFi setup screen.
     3. You choose a network and enter its password. The device joins it while keeping the hotspot up.
     4. **Joined within 10 seconds**: the device saves the network, the screen shows `sqmeter.local` and the IP, and about 15 seconds later the device restarts on your network and the hotspot goes. Rejoin your own network and open that address.
@@ -124,7 +124,7 @@ Open the web UI. You should see live sensor readings on the Dashboard within a f
 
 ## If the WiFi is Down at Startup
 
-If the saved network can't be reached within about 10 seconds of power-on (for example the router is slower to start after a power cut), SQMeter opens the **SQM-Setup** hotspot so you can change the network — and keeps retrying the saved one in the background. As soon as it reconnects, it restarts onto your network.
+If the saved network can't be joined within 45 seconds of power-on (for example the router is slower to start after a power cut), SQMeter also opens the **SQM-Setup** hotspot so you can change the network, and keeps retrying the saved one in the background. As soon as it reconnects, it restarts onto your network. A shorter outage at boot, or any outage later on, only reconnects: the hotspot stays closed.
 
 ---
 
