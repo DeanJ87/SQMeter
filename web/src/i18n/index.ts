@@ -40,11 +40,26 @@ const pick = (value: string | PluralForms | undefined, count: number | undefined
 const fill = (text: string, params?: Params) =>
   params ? text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match)) : text;
 
+// A run of Latin text: product names (N.I.N.A., MLX90614 IR), units and
+// numbers, including inner punctuation and a full stop that belongs to it.
+// Already-isolated segments (a translated param inside another message) match
+// first and are kept as they are.
+const LATIN_RUN = /⁨[^⁩]*⁩|[A-Za-z0-9](?:[A-Za-z0-9.,:/\-+_°%]|\s(?=[A-Za-z0-9]))*/g;
+const FSI = '⁨'; // first strong isolate
+const PDI = '⁩'; // pop directional isolate
+
+/**
+ * In a right-to-left language, isolates each Latin run so it keeps its own
+ * order: without this the bidi algorithm moves edge punctuation, so
+ * "N.I.N.A." reads ".N.I.N.A" in Arabic.
+ */
+export const isolateLatin = (text: string) => text.replace(LATIN_RUN, (run) => (run.startsWith(FSI) ? run : `${FSI}${run}${PDI}`));
+
 /** The message for `key` in the active language, with `{name}` placeholders filled. */
 export function t(key: MessageKey, params?: Params): string {
   const count = typeof params?.count === 'number' ? params.count : undefined;
-  const text = pick(active[key], count) ?? pick(english[key], count) ?? key;
-  return fill(text, params);
+  const text = fill(pick(active[key], count) ?? pick(english[key], count) ?? key, params);
+  return isRtl(language) ? isolateLatin(text) : text;
 }
 
 /** Like t() for a key that comes from data (device message IDs); null when unknown. */
