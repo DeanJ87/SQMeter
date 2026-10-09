@@ -121,3 +121,21 @@ test('alerts flyout', async ({ page }) => {
   await waitForLayout(page);
   await page.screenshot({ path: save('alerts-flyout') });
 });
+
+test('wifi setup', async ({ page }) => {
+  await page.goto('./?scenario=night&panel=hidden#/wifi');
+  await waitForDemoApp(page);
+  await expect(page.getByRole('heading', { name: 'WiFi setup' })).toBeVisible();
+  await capturePage(page, 'wifi-setup');
+});
+
+test('demo panel', async ({ page }) => {
+  await page.goto('./?scenario=night');
+  await waitForDemoApp(page);
+  await waitForLayout(page);
+  const skip = page.getByRole('button', { name: /^Skip/ });
+  if (await skip.isVisible().catch(() => false)) await skip.click(); // the tour offer
+  await page.getByRole('button', { name: /Demo/ }).last().click();
+  await expect(page.getByRole('region', { name: 'Demo controls' })).toBeVisible();
+  await page.screenshot({ path: save('demo-panel') });
+});

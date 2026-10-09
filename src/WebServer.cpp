@@ -714,7 +714,10 @@ namespace SQM
 
                 if (success)
                 {
-                    response_json = "{\"success\":true}";
+                    // `retried`: the boot switch only took on the second try
+                    // (see the upload handler), so the success rate of the
+                    // first attempt can be measured (spec 012 SC-001).
+                    response_json = activatedOnRetry ? "{\"success\":true,\"retried\":true}" : "{\"success\":true}";
                 }
                 else
                 {

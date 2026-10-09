@@ -33,6 +33,8 @@ On your first visit the demo offers a short tour (about two minutes): live readi
 
 Open the **✦ Demo** button (bottom right) for weather and fault scenarios:
 
+![The Demo panel: sensor readings, shortcuts, time and place](assets/screenshots/demo-panel.png)
+
 | Scenario | What you'll see |
 |---|---|
 | **Night sky** | The device's clock jumps to the darkest moment tonight, with a clear sky - Sun & Moon, darkness and the sky readings all follow |
