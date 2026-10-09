@@ -24,7 +24,7 @@ indicated every 30 s until it writes the sequence to Ack.
 
 1. **Given** a passkey and a paired phone, **When** a wake-me event fires, **Then** the alarm is
    indicated and repeats every 30 s until acknowledged, even if the condition clears.
-2. **Given** alerts are switched off (not imaging), **When** a wake-me event fires, **Then** the
+2. **Given** alerts are paused (spec 021), **When** a wake-me event fires, **Then** the
    phone is not rung; with only "Send alerts" off (push channels), phones still ring.
 3. **Given** the web UI, **When** the user acknowledges or unpairs all phones, **Then** it takes
    effect and is recorded.
@@ -46,6 +46,7 @@ characteristics.
 - Bluetooth slows WiFi (one radio): the UI warns.
 - Standard build: Bluetooth settings show "needs the Bluetooth build".
 - Turning Bluetooth on or changing the passkey needs a restart (prompted).
+- "Wake me" without Bluetooth on or a paired phone is reported inactive with a fix (spec 020).
 
 ## Requirements *(mandatory)*
 
@@ -56,7 +57,7 @@ characteristics.
 - **FR-002**: With a 6-digit passkey, the device MUST offer secured alarm/ack/heartbeat
   characteristics using LE Secure Connections with bonding.
 - **FR-003**: "Wake me" events MUST ring paired phones, repeating every 30 s until acknowledged;
-  switching alerts off MUST also stop new phone alarms.
+  pausing alerts (spec 021) MUST also stop new phone alarms.
 - **FR-004**: The web UI MUST allow turning Bluetooth on, setting/generating the passkey,
   acknowledging the alarm and unpairing all phones.
 - **FR-005**: The Bluetooth documentation MUST name settings as the UI does and describe when

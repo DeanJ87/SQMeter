@@ -5,6 +5,10 @@
 #include "DeviceCore.h"
 #include "ObservingConditionsMapper.h"
 
+#include <fstream>
+#include <set>
+#include <sstream>
+
 using namespace SQM;
 
 namespace
@@ -156,10 +160,99 @@ void test_rain_makes_unsafe_even_when_stale()
     s.rg15.isRaining = true;
     s.rg15.rInt = 2.0f;
     s.dataTimestamp = now - 600000; // everything else stale
+    s.tslLastUpdate = s.mlxLastUpdate = now - 600000;
     Core::derive(s, cfg);
     const auto result = Alpaca::evaluateSafety(Core::safetyInputs(s, cfg, now), Core::safetyThresholds(cfg));
     TEST_ASSERT_FALSE(result.isSafe);
     TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_RAIN);
+    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_STALE_DATA);
+}
+
+namespace
+{
+    // A rain sensor that is answering and dry.
+    void dryRain(SensorSnapshot &s, Config &cfg, uint32_t now)
+    {
+        cfg.rain.enabled = true;
+        s.rg15Initialized = true;
+        s.rg15.online = true;
+        s.rg15.stale = false;
+        s.rg15.status = SensorStatus::OK;
+        s.rg15.timestamp = now - 100;
+    }
+
+    Alpaca::SafetyResult verdict(SensorSnapshot &s, const Config &cfg, uint32_t now)
+    {
+        Core::derive(s, cfg);
+        return Alpaca::evaluateSafety(Core::safetyInputs(s, cfg, now), Core::safetyThresholds(cfg));
+    }
+} // namespace
+
+// specs/006 US1/AC4: "stale" means the sensors stopped giving fresh reads,
+// not that the read loop stopped - a sensor still reporting OK with an old
+// reading makes the verdict unsafe.
+void test_stale_when_a_required_sensor_stops_refreshing()
+{
+    const uint32_t now = 1000000;
+    SensorSnapshot s = healthy(now);
+    const Config cfg = defaults();
+    s.dataTimestamp = now - 100;    // the loop is running
+    s.tslLastUpdate = now - 600000; // but the TSL2591 hasn't read for 10 min
+    const auto result = verdict(s, cfg, now);
+    TEST_ASSERT_FALSE(result.isSafe);
+    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_STALE_DATA);
+
+    SensorSnapshot fresh = healthy(now);
+    TEST_ASSERT_TRUE(verdict(fresh, cfg, now).isSafe);
+}
+
+// A sensor that never answered is a fault, not "no data" or "stale".
+void test_missing_sensor_is_a_fault_not_stale()
+{
+    const uint32_t now = 1000000;
+    SensorSnapshot s = healthy(now);
+    const Config cfg = defaults();
+    s.mlxInitialized = false;
+    s.mlx.status = SensorStatus::NOT_INITIALIZED;
+    s.mlxLastUpdate = 0;
+    const auto result = verdict(s, cfg, now);
+    TEST_ASSERT_FALSE(result.isSafe);
+    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_SENSOR_FAULT);
+    TEST_ASSERT_FALSE(result.reasonFlags & Alpaca::UNSAFE_STALE_DATA);
+    TEST_ASSERT_FALSE(result.reasonFlags & Alpaca::UNSAFE_NO_DATA);
+
+    s.tslLastUpdate = 0;
+    s.tsl.status = SensorStatus::READ_ERROR;
+    TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UNSAFE_NO_DATA);
+}
+
+// specs/006: the rain sensor's health feeds the verdict - a dirty lens or a
+// sensor that stopped answering is unsafe when the rain sensor is required.
+void test_rain_sensor_lens_fault_and_stale_are_unsafe()
+{
+    const uint32_t now = 1000000;
+    Config cfg = defaults();
+    cfg.alpaca.rainUnsafeEnabled = true;
+    cfg.alpaca.rainSensorRequired = true;
+
+    SensorSnapshot s = healthy(now);
+    dryRain(s, cfg, now);
+    TEST_ASSERT_TRUE(verdict(s, cfg, now).isSafe);
+
+    s.rg15.lensBad = true;
+    auto result = verdict(s, cfg, now);
+    TEST_ASSERT_FALSE(result.isSafe);
+    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_RAIN_SENSOR_FAULT);
+
+    s.rg15.lensBad = false;
+    s.rg15.stale = true;
+    result = verdict(s, cfg, now);
+    TEST_ASSERT_FALSE(result.isSafe);
+    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_RAIN_SENSOR_FAULT);
+
+    s.rg15.stale = false;
+    s.rg15.online = false;
+    TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UNSAFE_RAIN_SENSOR_FAULT);
 }
 
 void test_night_from_location_and_clock()
@@ -245,6 +338,31 @@ void test_alert_wording_and_levels()
     TEST_ASSERT_EQUAL(0, quiet.outgoing.size());
 }
 
+// specs/008 FR-006: the device fills exactly the common variables the web UI
+// offers (lib/AlertLogic/template-variables.json).
+void test_alert_vars_match_the_shared_list()
+{
+    std::ifstream in("lib/AlertLogic/template-variables.json");
+    std::stringstream text;
+    text << in.rdbuf();
+    DynamicJsonDocument doc(4096);
+    TEST_ASSERT_FALSE(deserializeJson(doc, text.str()));
+    std::set<std::string> shared;
+    for (JsonVariantConst name : doc["common"].as<JsonArrayConst>())
+        shared.insert(name.as<std::string>());
+
+    const uint32_t now = 100000;
+    SensorSnapshot s = healthy(now);
+    const Config cfg = defaults();
+    Core::derive(s, cfg);
+    Alerts::Alert alert; // no event values of its own
+    std::set<std::string> filled;
+    for (const auto &v :
+         Core::alertVars(cfg, Core::observingConditions(s, cfg, now), Core::night(s, cfg, NIGHT_EPOCH), alert, "23:00", "2026-10-07"))
+        filled.insert(v.first);
+    TEST_ASSERT_TRUE_MESSAGE(filled == shared, "Core::alertVars and template-variables.json \"common\" differ");
+}
+
 void test_iso_utc_and_window()
 {
     TEST_ASSERT_EQUAL_STRING("2026-10-08T00:00:00Z", Core::isoUtc(NIGHT_EPOCH).c_str());
@@ -285,8 +403,12 @@ int main()
     RUN_TEST(test_safety_with_safe_delay);
     RUN_TEST(test_safety_lists_rules_not_in_effect);
     RUN_TEST(test_rain_makes_unsafe_even_when_stale);
+    RUN_TEST(test_stale_when_a_required_sensor_stops_refreshing);
+    RUN_TEST(test_missing_sensor_is_a_fault_not_stale);
+    RUN_TEST(test_rain_sensor_lens_fault_and_stale_are_unsafe);
     RUN_TEST(test_night_from_location_and_clock);
     RUN_TEST(test_alert_wording_and_levels);
+    RUN_TEST(test_alert_vars_match_the_shared_list);
     RUN_TEST(test_iso_utc_and_window);
     RUN_TEST(test_rainrate_not_implemented_when_rain_disabled);
     return UNITY_END();

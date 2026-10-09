@@ -143,7 +143,7 @@ namespace SQM
             return result;
         }
 
-        bool SafeDelayFilter::update(bool rawSafe, uint32_t nowSeconds, uint32_t delaySeconds)
+        bool SafeDelayFilter::update(bool rawSafe, uint32_t nowMs, uint32_t delaySeconds)
         {
             if (!rawSafe)
             {
@@ -154,9 +154,9 @@ namespace SQM
             if (!rawSafeRunning)
             {
                 rawSafeRunning = true;
-                safeSince = nowSeconds;
+                safeSinceMs = nowMs;
             }
-            const uint32_t elapsed = nowSeconds - safeSince;
+            const uint32_t elapsed = (nowMs - safeSinceMs) / 1000;
             remaining = elapsed >= delaySeconds ? 0 : delaySeconds - elapsed;
             return remaining == 0;
         }
