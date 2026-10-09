@@ -3,6 +3,7 @@
 #include <esp_task_wdt.h>
 #include <LittleFS.h>
 #include <ArduinoOTA.h>
+#include <esp_ota_ops.h>
 #include <ESPmDNS.h>
 #include "Logger.h"
 #include "SafetyHistory.h"
@@ -18,6 +19,7 @@
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
 #include "sensors/WindSensor.h"
+#include "FirmwareMarker.h"
 
 using namespace SQM;
 
@@ -112,6 +114,13 @@ bool saveConfigCallback(const Config &newConfig)
     }
 
     return saved;
+}
+
+// Spec 027 FR-021: tell the Arduino core not to mark a new firmware valid at
+// start-up; setup() does it once the device is up (see the end of setup()).
+extern "C" bool verifyRollbackLater()
+{
+    return true;
 }
 
 void setupWatchdog()
@@ -323,6 +332,10 @@ void setup()
     Logger::info("Main", "=== SQMeter Starting ===");
     Logger::info("Main", "ESP32 Chip: %s Rev %d", ESP.getChipModel(), ESP.getChipRevision());
     Logger::info("Main", "Flash: %d bytes", ESP.getFlashChipSize());
+    // Spec 027: the image's own marker and the partition layout it runs on.
+    Logger::info("Main", "Firmware %s partitions %s", SQM::FirmwareMarker::fields(), SQM::FirmwareMarker::layout().c_str());
+    if (SQM::FirmwareMarker::layout() != SQM::FirmwareImage::LAYOUT)
+        Logger::warn("Main", "Old partition layout: this device needs the one-time USB flash (sqmeter.dev)");
     HeapTrace::mark("boot");
 
     setupWatchdog();
@@ -334,6 +347,15 @@ void setup()
     startWifi();
     startArduinoOta();
     startServices();
+
+#ifdef SQM_TEST_BOOT_CRASH
+    // Rollback test build only (spec 027 device check): a firmware that dies
+    // while starting must fall back to the previous one.
+    abort();
+#endif
+    // Spec 027 FR-021: a new firmware is only kept once it has started
+    // properly; one that fails before this point rolls back on its next boot.
+    esp_ota_mark_app_valid_cancel_rollback();
 
     Logger::info("Main", "=== Setup complete ===");
     Logger::info("Main", "IP Address: %s", wifiManager->getIPAddress().c_str());

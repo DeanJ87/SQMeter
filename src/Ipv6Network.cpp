@@ -32,14 +32,45 @@ namespace SQM
             }
         } // namespace
 
-        void listenIpv6(AsyncWebServer &server, uint16_t port)
+        void listen(AsyncWebServer &server, uint16_t port)
         {
-            // SPIKE (027): on Arduino 3.x AsyncTCP 3.5 binds dual-stack, so the
-            // separate IPv6 listener (which needed AsyncWebServerRequest's
-            // now-private constructor) goes away; the local-network peer check
-            // has to move to a filter on the main server. Not ported in the spike.
-            (void)server;
-            (void)port;
+            // Lives as long as the web server (the device's lifetime).
+            static AsyncServer *listener = nullptr;
+            if (listener != nullptr)
+                return;
+            // One dual-stack socket (AsyncTCP binds IPADDR_TYPE_ANY): IPv4 and
+            // IPv6 clients both arrive here, before any request is read.
+            listener = new AsyncServer(port);
+            listener->setNoDelay(true);
+            listener->onClient(
+                [](void *arg, AsyncClient *client)
+                {
+                    if (client == nullptr)
+                        return;
+                    if (client->remoteIP().type() == IPv6)
+                    {
+                        const ip6_addr_t remote = client->getRemoteAddress6();
+                        Net::Ipv6 peer{};
+                        memcpy(peer.data(), remote.addr, peer.size());
+                        if (!Net::allowedPeer(peer, WiFiManager::ipv6Addresses()))
+                        {
+                            Logger::warn(TAG, "Refused a connection from %s (outside the local network)", Net::formatIpv6(peer).c_str());
+                            client->write(REFUSED, sizeof(REFUSED) - 1);
+                            client->close();
+                            return;
+                        }
+                    }
+                    // As AsyncWebServer does for its own listener.
+                    client->setRxTimeout(3);
+                    if (!AsyncWebServerRequest::create(static_cast<AsyncWebServer *>(arg), client))
+                    {
+                        client->abort();
+                        delete client;
+                    }
+                },
+                &server);
+            listener->begin();
+            Logger::info(TAG, "Web server listening on port %u (IPv4 and IPv6)", port);
         }
 
         bool joinAlpacaDiscoveryGroup()
@@ -60,9 +91,10 @@ namespace SQM
         {
             if (!packet.isIPv6())
                 return true;
+            ip_addr_t remote{};
+            packet.remoteIP().to_ip_addr_t(&remote);
             Net::Ipv6 peer{};
-            // SPIKE (027): IPAddress holds v6 on 3.x; raw byte access needs porting.
-            (void)packet;
+            memcpy(peer.data(), remote.u_addr.ip6.addr, peer.size());
             return Net::allowedPeer(peer, WiFiManager::ipv6Addresses());
         }
 

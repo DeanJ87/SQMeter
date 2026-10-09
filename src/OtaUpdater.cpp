@@ -1,5 +1,7 @@
 #include "OtaUpdater.h"
 #include "GithubRootCA.h"
+#include "FirmwareImage.h"
+#include "FirmwareMarker.h"
 #include "Logger.h"
 #include "TlsLock.h"
 #include "version.h"
@@ -280,8 +282,12 @@ namespace SQM
 
         size_t written = 0;
         std::string error;
-        const std::function<bool(const uint8_t *, size_t)> writeFirmware = [](const uint8_t *data, size_t len)
-        { return Update.write(const_cast<uint8_t *>(data), len) == len; };
+        FirmwareImage::Scanner scanner;
+        const std::function<bool(const uint8_t *, size_t)> writeFirmware = [&scanner](const uint8_t *data, size_t len)
+        {
+            scanner.feed(data, len);
+            return Update.write(const_cast<uint8_t *>(data), len) == len;
+        };
         bool ok = streamDownload(
             Download{url, expectedSize, writeFirmware}, ProgressRange{progressFrom, progressTo, &progressCb}, written, error);
 
@@ -291,6 +297,19 @@ namespace SQM
             if (errorCb)
                 errorCb(error.c_str());
             Update.abort();
+            return false;
+        }
+
+        // Spec 027 FR-020: refuse an image for another layout or build before
+        // Update.end() switches the boot partition.
+        const FirmwareImage::Verdict verdict = FirmwareImage::check(scanner, FirmwareMarker::layout(), FirmwareMarker::build());
+        if (verdict != FirmwareImage::Verdict::Ok)
+        {
+            const char *message = FirmwareImage::verdictMessage(verdict, FirmwareMarker::build());
+            Logger::error(TAG, "Firmware refused: %s", message);
+            Update.abort();
+            if (errorCb)
+                errorCb(message);
             return false;
         }
 
@@ -322,6 +341,19 @@ namespace SQM
             Logger::error(TAG, "Filesystem partition not found");
             if (errorCb)
                 errorCb("Filesystem partition not found");
+            return false;
+        }
+
+        // Spec 027 FR-020: the image must be this layout's (it fills the partition).
+        if (expectedSize > 0 && expectedSize != fsPartition->size)
+        {
+            Logger::error(
+                TAG,
+                "Filesystem image is %u bytes; this partition is %u",
+                static_cast<unsigned>(expectedSize),
+                static_cast<unsigned>(fsPartition->size));
+            if (errorCb)
+                errorCb("Web UI file is for a different device layout.");
             return false;
         }
 

@@ -20,6 +20,8 @@
 #include "sensors/RG15Sensor.h"
 #include "AlpacaDiscovery.h"
 #include "Ipv6Network.h"
+#include "FirmwareImage.h"
+#include "FirmwareMarker.h"
 #include "DualStackClient.h"
 #include "NetAddress.h"
 #include "WiFiManager.h"
@@ -45,6 +47,7 @@ namespace SQM
             const esp_partition_t *partition = nullptr;
             size_t bytesWritten = 0;
             bool error = false;
+            bool touched = false; // LittleFS unmounted and the partition erased
             String errorMessage = "";
 
             void fail(const char *message)
@@ -60,7 +63,15 @@ namespace SQM
         // image) succeeded.
         bool activatedOnRetry = false;
 
-        void fsUploadBegin(const String &filename)
+        // POST /api/update: the image's marker (spec 027 FR-020), and why it
+        // was refused (empty when it wasn't).
+        FirmwareImage::Scanner uploadScanner;
+        std::string uploadRefusal;
+
+        // Multipart framing around the image in an upload's body.
+        constexpr size_t FORM_OVERHEAD = 4096;
+
+        void fsUploadBegin(const String &filename, size_t requestBytes)
         {
             Logger::info("OTA", "Filesystem update started: %s", filename.c_str());
             fsUpload = FsUpload{};
@@ -73,6 +84,15 @@ namespace SQM
                 fsUpload.fail("Filesystem partition not found");
                 return;
             }
+            // An image for another layout (e.g. a 512 KB one from v0.2) would
+            // be cut off or leave a filesystem that doesn't mount: refuse it
+            // before anything is erased.
+            if (!FirmwareImage::fsImageFits(requestBytes, fsUpload.partition->size, FORM_OVERHEAD))
+            {
+                Logger::error("OTA", "Filesystem image is the wrong size for this device (%u bytes sent)", static_cast<unsigned>(requestBytes));
+                fsUpload.fail("Web UI file is for a different device layout. Use this release's littlefs file.");
+                return;
+            }
             Logger::info(
                 "OTA",
                 "Found filesystem partition at 0x%x, size %u bytes",
@@ -80,6 +100,7 @@ namespace SQM
                 static_cast<unsigned>(fsUpload.partition->size));
 
             // Unmount LittleFS before writing
+            fsUpload.touched = true;
             LittleFS.end();
 
             Logger::info("OTA", "Erasing filesystem partition...");
@@ -111,11 +132,11 @@ namespace SQM
             return true;
         }
 
-        void fsUploadChunk(const String &filename, size_t index, uint8_t *data, size_t len, bool final)
+        void fsUploadChunk(const String &filename, size_t requestBytes, size_t index, uint8_t *data, size_t len, bool final)
         {
             if (!index)
             {
-                fsUploadBegin(filename);
+                fsUploadBegin(filename, requestBytes);
                 if (fsUpload.error)
                     return;
             }
@@ -179,6 +200,15 @@ namespace SQM
 
         void firmwareUploadEnd()
         {
+            const FirmwareImage::Verdict verdict = FirmwareImage::check(uploadScanner, FirmwareMarker::layout(), FirmwareMarker::build());
+            if (verdict != FirmwareImage::Verdict::Ok)
+            {
+                // Before Update.end(): the boot partition is never switched.
+                uploadRefusal = FirmwareImage::verdictMessage(verdict, FirmwareMarker::build());
+                Logger::error("OTA", "Firmware refused: %s", uploadRefusal.c_str());
+                Update.abort();
+                return;
+            }
             if (Update.end(true))
             {
                 Logger::info("OTA", "Firmware update success, rebooting...");
@@ -200,6 +230,8 @@ namespace SQM
             {
                 Logger::info("OTA", "Firmware update started: %s", filename.c_str());
                 activatedOnRetry = false;
+                uploadScanner = FirmwareImage::Scanner();
+                uploadRefusal.clear();
                 if (Update.isRunning())
                 {
                     // An earlier upload was cut off; start clean.
@@ -212,6 +244,7 @@ namespace SQM
                     Update.printError(Serial);
                 }
             }
+            uploadScanner.feed(data, len);
             if (Update.write(data, len) != len)
             {
                 Logger::error("OTA", "Update.write failed: %d", Update.getError());
@@ -236,8 +269,8 @@ namespace SQM
             "/api/update/fs",
             HTTP_POST,
             [this](AsyncWebServerRequest *request) { handleFsUploadDone(request); },
-            [](AsyncWebServerRequest *, String filename, size_t index, uint8_t *data, size_t len, bool final)
-            { fsUploadChunk(filename, index, data, len, final); });
+            [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+            { fsUploadChunk(filename, request->contentLength(), index, data, len, final); });
 
         // Firmware OTA update (app partition). Registered after /api/update/fs:
         // this server also matches "/api/update" as a prefix of
@@ -255,11 +288,13 @@ namespace SQM
         if (!requireAuth(request))
             return;
         const bool fsFailed = fsUpload.error;
+        // A refused file (wrong size) never touched the filesystem: keep running.
+        const bool restart = !fsFailed || fsUpload.touched;
         const String responseJson =
             fsFailed ? String(createErrorJson(fsUpload.errorMessage.c_str()).c_str()) : String("{\"success\":true}");
         fsUpload = FsUpload{}; // reset for the next upload
-        sendClosing(request, fsFailed ? 500 : 200, responseJson);
-        if (!fsUpload.error)
+        sendClosing(request, fsFailed ? (restart ? 500 : 400) : 200, responseJson);
+        if (restart)
             WebServer::scheduleRestart(1000);
     }
 
@@ -267,6 +302,12 @@ namespace SQM
     {
         if (!requireAuth(request))
             return;
+        if (!uploadRefusal.empty())
+        {
+            sendClosing(request, 400, createErrorJson(uploadRefusal.c_str()).c_str());
+            uploadRefusal.clear();
+            return;
+        }
         const bool success = !Update.hasError() || activatedOnRetry;
         String responseJson;
         if (success)
