@@ -39,7 +39,7 @@ Open the **✦ Demo** button (bottom right) for weather and fault scenarios:
 | **Rain** ¹ | Raining on the dashboard, the verdict turns unsafe ("Rain detected"), an alert under the bell, and Alpaca IsSafe false - then it clears after the rain clear delay |
 | **Cloud over** / **Clear** | Cloud rolls in over about 40 seconds: cover rises past the alert and safety limits, the "Clouded over" alert, an unsafe verdict - and back |
 | **Dawn** | The device's clock jumps to the next dawn (sun 12° below the horizon and rising) - turn on 10× to watch the sky brighten, and try an SQM minimum in the safety rules |
-| **Sensor fails** ¹ | A sensor stops answering: its card goes, the verdict counts it, a "sensor fault" alert |
+| **Sensor fails** ¹ | A sensor stops answering: its card keeps just a fault pill, the Status card lists it, the verdict counts it, and a "Sensor fault" alert goes out |
 
 ¹ The rain scenarios need the rain sensor: they're unavailable while it's switched off in Settings → Sensors.
 

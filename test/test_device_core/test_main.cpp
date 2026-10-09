@@ -179,7 +179,7 @@ void test_safety_lists_rules_not_in_effect()
     DynamicJsonDocument doc(1536);
     Core::writeSafety(doc.to<JsonObject>(), status, cfg, 1000);
     TEST_ASSERT_EQUAL(1, doc["rulesNotInEffect"].size());
-    TEST_ASSERT_EQUAL_STRING("Unsafe while raining - rain sensor is off", doc["rulesNotInEffect"][0]);
+    TEST_ASSERT_EQUAL_STRING("Unsafe while raining", doc["rulesNotInEffect"][0]);
 
     cfg.rain.enabled = true;
     Core::writeSafety(doc.to<JsonObject>(), status, cfg, 1000);

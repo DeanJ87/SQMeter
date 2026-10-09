@@ -16,32 +16,25 @@ const TONE: Record<Severity, string> = { ok: 'pill-green', note: 'pill-amber', p
 const TILE_ORDER = ['safety-verdict', 'alerts-state', 'freshness', 'imaging-app'];
 const TILES = new Set(TILE_ORDER);
 
-const Fix: FunctionalComponent<{ item: GlanceItem; onAction: (action: Action) => void }> = ({ item, onAction }) => {
+// A tile is its label, "?" and a pill (DS-08): the why is in "?", and only an
+// action (Resume) gets a button. `sub` only says which one, for repeated tiles.
+const Tile: FunctionalComponent<{ item: GlanceItem; onAction: (action: Action) => void }> = ({ item, onAction }) => {
   const fix = item.fix;
-  if (!fix) return null;
-  if ('href' in fix)
-    return (
-      <a class="status-tile-fix" href={fix.href}>
-        {fix.label}
-      </a>
-    );
   return (
-    <Button small onClick={() => onAction(fix.action)}>
-      {fix.label}
-    </Button>
+    <div class="metric-tile left status-tile" data-inventory={item.id} data-severity={item.severity}>
+      <div class="metric-label">
+        {item.label} {item.detail && <InfoTip text={item.detail} />}
+      </div>
+      <Pill tone={TONE[item.severity]}>{item.state}</Pill>
+      {item.sub && <div class="metric-sub">{item.sub}</div>}
+      {fix && 'action' in fix && (
+        <Button small onClick={() => onAction(fix.action)}>
+          {fix.label}
+        </Button>
+      )}
+    </div>
   );
 };
-
-const Tile: FunctionalComponent<{ item: GlanceItem; onAction: (action: Action) => void }> = ({ item, onAction }) => (
-  <div class="metric-tile left status-tile" data-inventory={item.id} data-severity={item.severity}>
-    <div class="metric-label">
-      {item.label} {item.detail && <InfoTip text={item.detail} />}
-    </div>
-    <Pill tone={TONE[item.severity]}>{item.state}</Pill>
-    {item.sub && <div class="metric-sub">{item.sub}</div>}
-    <Fix item={item} onAction={onAction} />
-  </div>
-);
 
 const RowBody: FunctionalComponent<{ item: GlanceItem }> = ({ item }) => (
   <>

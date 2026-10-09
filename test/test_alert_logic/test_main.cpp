@@ -169,7 +169,7 @@ void test_sensor_fault_and_recovery(void)
     faulty.sensors[2].healthy = false;
     std::vector<Alert> alerts = engine.update(faulty, rules);
     TEST_ASSERT_TRUE(hasType(alerts, AlertType::SensorFault));
-    TEST_ASSERT_EQUAL_STRING("BME280 sensor fault", alerts[0].title.c_str());
+    TEST_ASSERT_EQUAL_STRING("Sensor fault: BME280", alerts[0].title.c_str());
 
     TEST_ASSERT_TRUE(hasType(engine.update(safeInputs(100), rules), AlertType::SensorRecovered));
 }

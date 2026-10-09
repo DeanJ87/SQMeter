@@ -310,9 +310,9 @@ namespace SQM
             if (cfg.rain.enabled)
                 return rules;
             if (cfg.alpaca.rainUnsafeEnabled)
-                rules.push_back("Unsafe while raining - rain sensor is off");
+                rules.push_back("Unsafe while raining");
             if (cfg.alpaca.rainSensorRequired)
-                rules.push_back("Unsafe if the rain sensor fails - rain sensor is off");
+                rules.push_back("Unsafe if the rain sensor fails");
             return rules;
         }
 

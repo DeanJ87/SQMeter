@@ -466,6 +466,11 @@ a.status-row-main:focus-visible .status-row-label {
   margin-bottom: 0.85rem;
 }
 
+/* A card that is only its title and pill (a sensor in a fault state). */
+.card-topline:last-child {
+  margin-bottom: 0;
+}
+
 .card-topline .card-title {
   margin-bottom: 0;
 }

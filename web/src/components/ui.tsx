@@ -102,17 +102,20 @@ export const Card: FunctionalComponent<{
   </section>
 );
 
-export const MetricTile: FunctionalComponent<{ label: string; value: string; unit?: string; tone?: string; align?: 'left' | 'center' }> = ({
-  label,
-  value,
-  unit,
-  tone = '',
-  align = 'center',
-}) => (
+// `alt` is the same value in another unit, on its own line (DS-03: no wrapping "m/s (12 km/h)").
+export const MetricTile: FunctionalComponent<{
+  label: string;
+  value: string;
+  unit?: string;
+  alt?: string;
+  tone?: string;
+  align?: 'left' | 'center';
+}> = ({ label, value, unit, alt, tone = '', align = 'center' }) => (
   <div class={`metric-tile ${align === 'left' ? 'left' : ''}`}>
     <div class="metric-label">{label}</div>
     <div class={`metric-value ${tone}`}>{value}</div>
     {unit && <div class="metric-unit">{unit}</div>}
+    {alt && <div class="metric-unit">{alt}</div>}
   </div>
 );
 

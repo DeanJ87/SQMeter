@@ -30,7 +30,7 @@ test('the dashboard is silent while readings update, and announces a verdict cha
 
   await page.getByRole('button', { name: /Demo/ }).click();
   await page.getByRole('button', { name: 'Rain', exact: true }).click();
-  await expect(page.getByText('Rain detected').first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.reason-list').getByText('Rain detected')).toBeVisible({ timeout: 15_000 });
   await page.waitForTimeout(6000);
 
   const verdicts = (await heard(page)).filter((text) => text.startsWith('Observatory'));

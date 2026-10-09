@@ -34,6 +34,7 @@ describe('SafetyCard', () => {
 
   it('warns when Alpaca is disabled', () => {
     render(<SafetyCard safety={{ ...base, alpacaEnabled: false }} />);
-    expect(screen.getByText(/Alpaca off/)).toBeInTheDocument();
+    expect(screen.getByText('Imaging apps')).toBeInTheDocument();
+    expect(screen.getByText('Not shared')).toBeInTheDocument();
   });
 });

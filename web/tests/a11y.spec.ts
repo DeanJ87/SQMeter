@@ -40,7 +40,7 @@ const enter: Record<A11yState, (page: Page, entry: InventoryEntry) => Promise<vo
   default: async (page, entry) => ready(page, `./${entry.route}`),
   unsafe: async (page, entry) => {
     await ready(page, `./?scenario=rain${entry.route}`);
-    await expect(page.getByText('Rain detected').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.reason-list').getByText('Rain detected')).toBeVisible({ timeout: 15_000 });
   },
   dialog: async (page, entry) => {
     await ready(page, `./${entry.route}`);

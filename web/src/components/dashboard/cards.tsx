@@ -4,7 +4,7 @@ import SafetyCard from '../SafetyCard';
 import SunMoonCard from '../SunMoonCard';
 import DeviceCard from '../../dashboard/DeviceCard';
 import FaultCard from '../../dashboard/FaultCard';
-import { expectedSensors, sensorEffect, type Sensor } from '../../dashboard/glance';
+import { expectedSensors, type Sensor } from '../../dashboard/glance';
 import { deviceTime } from '../../lib/deviceTime';
 import { t } from '../../i18n';
 import { CloudCard, IrCard, LightCard, SkyHero, SkyUnavailableCard } from './skyCards';
@@ -36,7 +36,7 @@ type Fault = ReturnType<typeof faultOf>;
 
 const faultCard = (fault: Fault, sensor: Sensor, title: string, icon: string) => {
   const f = fault(sensor);
-  return f && <FaultCard title={title} icon={icon} health={f.health} ageMs={f.ageMs} effect={sensorEffect(sensor)} />;
+  return f && <FaultCard title={title} icon={icon} health={f.health} />;
 };
 
 // A GPS fix wins over the location typed into Settings.
@@ -87,8 +87,8 @@ const infraredCards = ({ sensors }: CardContext, fault: Fault): Entry[] => {
     },
     shown && {
       id: 'ir',
-      title: t('dashboard.irTemperature'),
-      node: faultCard(fault, 'infrared', t('dashboard.irTemperature'), 'therm') || <IrCard sensors={sensors} />,
+      title: t('dashboard.irSkySensor'),
+      node: faultCard(fault, 'infrared', t('dashboard.irSkySensor'), 'therm') || <IrCard sensors={sensors} />,
     },
   ];
 };

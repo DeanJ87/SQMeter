@@ -60,6 +60,6 @@ test('rain rules without the rain sensor are listed as not in effect (D-15)', as
   await post(page, '/api/config', { rain: { enabled: false }, alpaca: { rainUnsafeEnabled: true } });
   await page.waitForTimeout(1500);
   const safety = JSON.parse((await api(page, '/api/safety')).body);
-  expect(safety.rulesNotInEffect).toContain('Unsafe while raining - rain sensor is off');
+  expect(safety.rulesNotInEffect).toContain('Unsafe while raining');
   expect(await entry(page, 'alpaca.rainUnsafeEnabled')).toMatchObject({ state: 'inactive', unmet: 'inactive', reason: 'rain-off' });
 });
