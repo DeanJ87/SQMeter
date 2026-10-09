@@ -755,6 +755,9 @@
     "time": {
       "type": "object",
       "properties": {
+        "epoch": {
+          "type": "integer"
+        },
         "iso": {
           "type": "string"
         },
@@ -763,6 +766,7 @@
         }
       },
       "required": [
+        "epoch",
         "iso",
         "timezone"
       ],

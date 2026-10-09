@@ -148,6 +148,7 @@ jobs:
         run: |
           python3 tools/api/test_routes.py
           python3 tools/api/routes.py
+          python3 tools/test_contract_check.py
 
       # The demo runs this firmware code in the browser (web/src/demo/core);
       # a change to lib/ must ship with a rebuilt core.
