@@ -421,7 +421,7 @@
   "language.problemOtherVersion": "Dil dosyası başka bir üretici yazılımı sürümü için hazırlanmış: eksik olanlar İngilizce gösterilir.",
   "language.progressDownloading": "{language} indiriliyor... Cihaz dosyayı alır almaz sayfa değişecek.",
   "language.progressFailed": "{language} kurulamadı: {reason}",
-  "language.progressFailedHelp": "Yeniden deneyin ya da dil ayarlarını açıp {version} ürün yazılımı için hazırlanmış bir dil dosyası yükleyin.",
+  "language.progressFailedHelp": "Bu üretici yazılımı sürümü ({version}) için yayımlanmış bir dil dosyası olmayabilir. Daha sonra yeniden deneyin, üretici yazılımını güncelleyin ya da dil ayarlarından {version} için hazırlanmış bir dil dosyası yükleyin.",
   "language.progressInstalled": "{language} kuruldu; sayfa yeniden yükleniyor...",
   "language.progressRestarting": "Cihaz yanıt vermiyor; yeniden başlıyor olabilir. Bu adreste bekleniyor...",
   "language.progressSlow": "{language} hâlâ indiriliyor. Sayfa bir sonraki yeniden yüklemeden sonra kullanacak.",

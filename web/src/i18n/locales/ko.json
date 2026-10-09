@@ -416,7 +416,7 @@
   "language.problemOtherVersion": "이 언어 파일은 다른 펌웨어 버전용입니다. 빠진 문구는 영어로 표시됩니다.",
   "language.progressDownloading": "{language} 다운로드 중... 장치가 파일을 받으면 바로 페이지가 바뀝니다.",
   "language.progressFailed": "{language}을(를) 설치하지 못했습니다: {reason}",
-  "language.progressFailedHelp": "다시 시도하거나, 언어 설정을 열어 펌웨어 {version}용 언어 파일을 업로드하세요.",
+  "language.progressFailedHelp": "이 펌웨어 버전({version})용 언어 파일이 게시되지 않았을 수 있습니다. 나중에 다시 시도하거나, 펌웨어를 업데이트하거나, 언어 설정에서 {version}용 언어 파일을 업로드하세요.",
   "language.progressInstalled": "{language}이(가) 설치되었습니다. 다시 불러오는 중...",
   "language.progressRestarting": "장치가 응답하지 않습니다. 다시 시작하는 중일 수 있습니다. 이 주소에서 기다리는 중...",
   "language.progressSlow": "{language}을(를) 아직 다운로드하고 있습니다. 다음에 페이지를 다시 불러오면 적용됩니다.",

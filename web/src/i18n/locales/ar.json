@@ -439,7 +439,7 @@
   "language.problemOtherVersion": "أُعدّ ملف اللغة لإصدار آخر من البرنامج الثابت: ما ينقصه يظهر بالإنجليزية.",
   "language.progressDownloading": "جارٍ تنزيل {language}... ستنتقل الصفحة إليها فور حصول الجهاز عليها.",
   "language.progressFailed": "تعذّر تثبيت {language}: {reason}",
-  "language.progressFailedHelp": "أعد المحاولة، أو افتح إعدادات اللغة لرفع ملف لغة مُعدّ للبرنامج الثابت {version}.",
+  "language.progressFailedHelp": "قد لا يوجد ملف لغة منشور لإصدار البرنامج الثابت هذا ({version}). أعد المحاولة لاحقًا، أو حدّث البرنامج الثابت، أو ارفع ملف لغة مُعدًّا للإصدار {version} من إعدادات اللغة.",
   "language.progressInstalled": "تم تثبيت {language}، جارٍ إعادة التحميل...",
   "language.progressRestarting": "الجهاز لا يستجيب، ربما يُعاد تشغيله. ننتظره على هذا العنوان...",
   "language.progressSlow": "لا يزال تنزيل {language} جاريًا. ستستخدمها الصفحة بعد إعادة التحميل التالية.",

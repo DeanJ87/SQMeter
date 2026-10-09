@@ -21,17 +21,21 @@ if (linked && isLanguageCode(linked) && linked !== language())
 
 // A new language "downloads" for a moment, as on a device. Setting
 // sessionStorage `sqm.demo.languageFail` makes the download fail the way a
-// device does when no language file is published for its firmware (tests).
+// device does when no language file is published for its firmware, and
+// `interrupted` the way it reports a download a restart cut short (tests).
 const DOWNLOAD_MS = 1500;
-const FAILURE = "Couldn't download the language file for this firmware version";
+const FAILURES: Record<string, string> = {
+  '1': "Couldn't download the language file for this firmware version",
+  interrupted: "The last language download didn't finish - choose the language again to retry",
+};
 // The language the demo opened in counts as already installed.
 let chosen: { code: string; at: number } | null = null;
 
-const downloadFails = () => {
+const downloadFailure = () => {
   try {
-    return sessionStorage.getItem('sqm.demo.languageFail') === '1';
+    return FAILURES[sessionStorage.getItem('sqm.demo.languageFail') ?? ''];
   } catch {
-    return false;
+    return undefined;
   }
 };
 
@@ -42,7 +46,8 @@ export const i18nDocument = () => {
   const base = { language: code, firmwareVersion: VERSION };
   if (code === 'en') return { ...base, state: 'idle', pack: null };
   if (Date.now() - chosen.at < DOWNLOAD_MS) return { ...base, state: 'downloading', pack: null };
-  if (downloadFails()) return { ...base, state: 'failed', pack: null, error: FAILURE };
+  const failure = downloadFailure();
+  if (failure) return { ...base, state: 'failed', pack: null, error: failure };
   return { ...base, state: 'installed', pack: { lang: code, version: VERSION, size: 0 } };
 };
 

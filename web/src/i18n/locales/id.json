@@ -416,7 +416,7 @@
   "language.problemOtherVersion": "File bahasa dibuat untuk versi firmware lain: teks yang tidak ada ditampilkan dalam bahasa Inggris.",
   "language.progressDownloading": "Mengunduh {language}... Halaman akan beralih begitu perangkat memilikinya.",
   "language.progressFailed": "{language} tidak dapat dipasang: {reason}",
-  "language.progressFailedHelp": "Coba lagi, atau buka pengaturan Bahasa untuk mengunggah file bahasa yang dibuat untuk firmware {version}.",
+  "language.progressFailedHelp": "Mungkin belum ada file bahasa yang diterbitkan untuk versi firmware ini ({version}). Coba lagi nanti, perbarui firmware, atau unggah file bahasa yang dibuat untuk {version} di pengaturan Bahasa.",
   "language.progressInstalled": "{language} sudah terpasang - memuat ulang...",
   "language.progressRestarting": "Perangkat tidak menjawab - mungkin sedang memulai ulang. Menunggu di alamat ini...",
   "language.progressSlow": "{language} masih diunduh. Halaman akan memakainya setelah dimuat ulang berikutnya.",

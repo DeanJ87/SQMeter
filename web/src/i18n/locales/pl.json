@@ -431,7 +431,7 @@
   "language.problemOtherVersion": "Plik językowy powstał dla innej wersji oprogramowania: brakujące teksty są wyświetlane po angielsku.",
   "language.progressDownloading": "Pobieranie: {language}... Strona przełączy się, gdy tylko urządzenie będzie miało plik.",
   "language.progressFailed": "Nie udało się zainstalować języka {language}: {reason}",
-  "language.progressFailedHelp": "Spróbuj ponownie albo otwórz ustawienia języka, aby wgrać plik językowy przygotowany dla oprogramowania {version}.",
+  "language.progressFailedHelp": "Dla tej wersji oprogramowania ({version}) może nie być opublikowanego pliku językowego. Spróbuj ponownie później, zaktualizuj oprogramowanie albo wgraj w ustawieniach języka plik językowy przygotowany dla wersji {version}.",
   "language.progressInstalled": "Zainstalowano: {language} – przeładowywanie...",
   "language.progressRestarting": "Urządzenie nie odpowiada – być może się uruchamia ponownie. Czekam na nie pod tym adresem...",
   "language.progressSlow": "Pobieranie ({language}) wciąż trwa. Strona użyje go po następnym przeładowaniu.",

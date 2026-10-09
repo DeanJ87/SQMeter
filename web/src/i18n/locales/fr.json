@@ -421,7 +421,7 @@
   "language.problemOtherVersion": "Le fichier de langue a été créé pour une autre version du micrologiciel : ce qui lui manque s'affiche en anglais.",
   "language.progressDownloading": "Téléchargement de {language}... La page basculera dès que l'appareil l'aura.",
   "language.progressFailed": "Impossible d'installer {language} : {reason}",
-  "language.progressFailedHelp": "Réessayez, ou ouvrez les paramètres de langue pour envoyer un fichier de langue prévu pour le firmware {version}.",
+  "language.progressFailedHelp": "Aucun fichier de langue n'est peut-être publié pour cette version du micrologiciel ({version}). Réessayez plus tard, mettez à jour le micrologiciel, ou envoyez un fichier de langue prévu pour {version} dans les paramètres de langue.",
   "language.progressInstalled": "{language} est installé ; rechargement...",
   "language.progressRestarting": "L'appareil ne répond pas ; il redémarre peut-être. Attente à cette adresse...",
   "language.progressSlow": "{language} est toujours en cours de téléchargement. La page l'utilisera au prochain rechargement.",

@@ -421,7 +421,7 @@
   "language.problemOtherVersion": "Il file della lingua è di un'altra versione del firmware: ciò che manca viene mostrato in inglese.",
   "language.progressDownloading": "Download di {language} in corso... La pagina passerà alla lingua appena il dispositivo la avrà.",
   "language.progressFailed": "Impossibile installare {language}: {reason}",
-  "language.progressFailedHelp": "Riprova, oppure apri le impostazioni della lingua per caricare un file della lingua creato per il firmware {version}.",
+  "language.progressFailedHelp": "Per questa versione del firmware ({version}) potrebbe non essere pubblicato alcun file della lingua. Riprova più tardi, aggiorna il firmware oppure carica un file della lingua creato per {version} nelle impostazioni della lingua.",
   "language.progressInstalled": "{language} è installato: ricaricamento...",
   "language.progressRestarting": "Il dispositivo non risponde: forse si sta riavviando. In attesa a questo indirizzo...",
   "language.progressSlow": "{language} è ancora in download. La pagina la userà al prossimo ricaricamento.",

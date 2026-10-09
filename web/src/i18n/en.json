@@ -421,7 +421,7 @@
   "language.problemOtherVersion": "The language file was made for another firmware version: anything it lacks is shown in English.",
   "language.progressDownloading": "Downloading {language}... The page switches to it as soon as the device has it.",
   "language.progressFailed": "{language} couldn't be installed: {reason}",
-  "language.progressFailedHelp": "Try again, or open the Language settings to upload a language file made for firmware {version}.",
+  "language.progressFailedHelp": "This firmware version ({version}) may have no language file published. Try again later, update the firmware, or upload a language file made for {version} in the Language settings.",
   "language.progressInstalled": "{language} is installed - reloading...",
   "language.progressRestarting": "The device isn't answering - it may be restarting. Waiting for it at this address...",
   "language.progressSlow": "{language} is still downloading. The page will use it after the next reload.",

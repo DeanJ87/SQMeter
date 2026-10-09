@@ -421,7 +421,7 @@
   "language.problemOtherVersion": "Het taalbestand is gemaakt voor een andere firmwareversie: wat erin ontbreekt, staat in het Engels.",
   "language.progressDownloading": "{language} wordt gedownload... De pagina schakelt over zodra het apparaat het bestand heeft.",
   "language.progressFailed": "{language} kon niet worden geïnstalleerd: {reason}",
-  "language.progressFailedHelp": "Probeer het opnieuw, of open de taalinstellingen om een taalbestand voor firmware {version} te uploaden.",
+  "language.progressFailedHelp": "Voor deze firmwareversie ({version}) is mogelijk geen taalbestand gepubliceerd. Probeer het later opnieuw, werk de firmware bij, of upload in de taalinstellingen een taalbestand voor {version}.",
   "language.progressInstalled": "{language} is geïnstalleerd - pagina wordt herladen...",
   "language.progressRestarting": "Het apparaat reageert niet - mogelijk start het opnieuw op. Wachten op dit adres...",
   "language.progressSlow": "{language} wordt nog gedownload. De pagina gebruikt het na de volgende keer herladen.",

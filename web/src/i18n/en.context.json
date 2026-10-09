@@ -404,7 +404,7 @@
   "language.problemOtherVersion": "Settings -> Device -> Language: text the UI builds for a status or description.",
   "language.progressDownloading": "Banner at the top of every page after the language setting is saved, while the device downloads the language file. {language} is the language's own name (e.g. Español). Shown in the old language (usually English).",
   "language.progressFailed": "Same banner: the download failed. {reason} is the device's reason (already translated), e.g. 'Couldn't download the language file for this firmware version'.",
-  "language.progressFailedHelp": "Under the failure message: what to do. 'Language settings' is the button next to it. {version} is the firmware version, e.g. 0.2.0-beta.4.",
+  "language.progressFailedHelp": "Under the failure message: why it most likely failed (the GitHub release for this firmware has no language files) and what to do. 'Language settings' is the button next to it, where a file can be uploaded. {version} is the firmware version, e.g. 0.2.0-beta.4.",
   "language.progressInstalled": "Same banner: the download finished; the page reloads into {language} within a second.",
   "language.progressRestarting": "Same banner: the device stopped answering during the language download (probably restarting); the page keeps waiting at the same address.",
   "language.progressSlow": "Same banner: the download is still running after a minute; the page stops waiting.",

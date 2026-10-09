@@ -416,7 +416,7 @@
   "language.problemOtherVersion": "该语言文件是为其他固件版本制作的：缺少的内容将以英文显示。",
   "language.progressDownloading": "正在下载{language}... 设备一获取到文件，页面就会切换。",
   "language.progressFailed": "无法安装{language}：{reason}",
-  "language.progressFailedHelp": "请重试，或打开语言设置，上传为固件 {version} 制作的语言文件。",
+  "language.progressFailedHelp": "此固件版本（{version}）可能还没有发布语言文件。请稍后重试、更新固件，或在语言设置中上传为 {version} 制作的语言文件。",
   "language.progressInstalled": "{language}已安装，正在重新加载...",
   "language.progressRestarting": "设备没有响应，可能正在重启。正在此地址等待...",
   "language.progressSlow": "{language}仍在下载中。页面将在下次重新加载后使用它。",

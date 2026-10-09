@@ -8,7 +8,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 const EN = JSON.parse(readFileSync(resolve(import.meta.dirname, '../src/i18n/en.json'), 'utf8')) as Record<string, string>;
 const fill = (key: string, values: Record<string, string>) =>
-  Object.entries(values).reduce((text, [name, value]) => text.replace(`{${name}}`, value), EN[key]);
+  Object.entries(values).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, value), EN[key]);
 
 const choose = async (page: Page, code: string) => {
   await page.goto('./#/settings?tab=device');
@@ -50,4 +50,18 @@ test('language: a failed download says why and what to do, with Retry', async ({
   await expect(page.locator('main')).toContainText(
     fill('layout.languageUnavailableReason', { reason: "Couldn't download the language file for this firmware version" }),
   );
+});
+
+test('language: a download a restart cut short is explained on the dashboard and in Settings', async ({ page }) => {
+  test.setTimeout(60_000);
+  const reason = EN['device.language.theLastLanguageDownloadDidnT'];
+  await page.addInitScript(() => sessionStorage.setItem('sqm.demo.languageFail', 'interrupted'));
+  await choose(page, 'fr');
+  await expect(page.locator('.language-progress')).toHaveAttribute('data-phase', 'failed', { timeout: 20_000 });
+  // As after the device's next boot: the page loads with the language unavailable.
+  await page.goto('./#/');
+  await page.reload();
+  await expect(page.locator('main')).toContainText(fill('layout.languageUnavailableReason', { reason }));
+  await page.goto('./#/settings?tab=device&section=language');
+  await expect(page.locator('[data-language-reason]')).toHaveText(reason);
 });

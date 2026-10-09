@@ -416,7 +416,7 @@
   "language.problemOtherVersion": "この言語ファイルは別のファームウェアバージョン用です。足りない部分は英語で表示されます。",
   "language.progressDownloading": "{language}をダウンロード中です... デバイスが取得し次第、ページが切り替わります。",
   "language.progressFailed": "{language}をインストールできませんでした: {reason}",
-  "language.progressFailedHelp": "再試行するか、言語設定を開いてファームウェア {version} 用の言語ファイルをアップロードしてください。",
+  "language.progressFailedHelp": "このファームウェア バージョン ({version}) 用の言語ファイルは公開されていない可能性があります。後で再試行するか、ファームウェアを更新するか、言語設定で {version} 用の言語ファイルをアップロードしてください。",
   "language.progressInstalled": "{language}をインストールしました。再読み込みしています...",
   "language.progressRestarting": "デバイスが応答しません。再起動中の可能性があります。このアドレスで待機しています...",
   "language.progressSlow": "{language}はまだダウンロード中です。次回の再読み込み後に使われます。",

@@ -421,7 +421,7 @@
   "language.problemOtherVersion": "Die Sprachdatei stammt von einer anderen Firmware-Version: Was ihr fehlt, erscheint auf Englisch.",
   "language.progressDownloading": "{language} wird heruntergeladen ... Die Seite wechselt, sobald das Gerät die Datei hat.",
   "language.progressFailed": "{language} konnte nicht installiert werden: {reason}",
-  "language.progressFailedHelp": "Versuchen Sie es erneut, oder laden Sie in den Spracheinstellungen eine Sprachdatei für die Firmware {version} hoch.",
+  "language.progressFailedHelp": "Für diese Firmware-Version ({version}) ist möglicherweise keine Sprachdatei veröffentlicht. Versuchen Sie es später erneut, aktualisieren Sie die Firmware oder laden Sie in den Spracheinstellungen eine Sprachdatei für {version} hoch.",
   "language.progressInstalled": "{language} ist installiert – Seite wird neu geladen ...",
   "language.progressRestarting": "Das Gerät antwortet nicht – vielleicht startet es neu. Es wird unter dieser Adresse gewartet ...",
   "language.progressSlow": "{language} wird noch heruntergeladen. Die Seite verwendet sie nach dem nächsten Neuladen.",
