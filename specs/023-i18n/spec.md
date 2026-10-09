@@ -162,7 +162,7 @@ Someone whose observatory has no internet still wants Spanish. Visitors to the d
 | Item | Budget |
 |---|---|
 | One language file, as stored on the device | ≤ 64 KB (compressed if the device serves it compressed) |
-| Translation runtime added to the device web UI | ≤ 4 KB gzipped |
+| Translation runtime added to the device web UI | ≤ 4 KB gzipped (measured 2.2 KB; the per-feature limit is now 10 KB, coding standard SIZE-01) |
 | Firmware flash for downloading, verifying and serving the file | ≤ 12 KB |
 | Free file-system space needed to install a language | file size + 4 KB, checked before download |
 

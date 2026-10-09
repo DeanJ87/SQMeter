@@ -42,12 +42,12 @@ describe('Sky quality settings', () => {
     window.history.replaceState(null, '', '/settings?tab=sensors');
     render(<Settings />);
 
-    const window_ = (await waitFor(() => {
+    const windowInput = (await waitFor(() => {
       const el = document.querySelector('[data-field="skyAveraging.windowSeconds"]');
       if (!el) throw new Error('not rendered');
       return el;
     })) as HTMLInputElement;
-    fireEvent.change(window_, { target: { value: '120' } });
+    fireEvent.change(windowInput, { target: { value: '120' } });
     fireEvent.click(screen.getByLabelText('Apply SQM offset'));
     const offset = document.querySelector('[data-field="skyCalibration.sqmOffset"]') as HTMLInputElement;
     fireEvent.change(offset, { target: { value: '0.25' } });

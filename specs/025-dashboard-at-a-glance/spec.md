@@ -351,7 +351,7 @@ panel.
   dashboard within 5 seconds of the device reporting it.
 - **SC-006**: axe reports no violations on the dashboard in any inventory state (spec 022 checks),
   and no layout-overlap test fails at 320/390 px.
-- **SC-007**: The device UI bundle grows by no more than 4 KB gzipped for this feature.
+- **SC-007**: The device UI bundle grows by no more than 10 KB gzipped for this feature (coding standard SIZE-01; raised from 4 KB on 2026-10-09).
 
 ## Assumptions
 

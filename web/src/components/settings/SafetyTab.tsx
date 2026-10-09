@@ -8,6 +8,7 @@ import { defaultAlpacaConfig, defaultRainConfig } from './defaults';
 import { Button } from '../ui';
 import { DepToggle, Field, Group, NumberInput, SettingsCard, StatusBadge, Toggle } from './controls';
 import { t } from '../../i18n';
+import { getJson } from '../../lib/api';
 
 type NumericKey = {
   [K in keyof AlpacaConfig]: AlpacaConfig[K] extends number ? K : never;
@@ -23,8 +24,7 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
 
   useEffect(() => {
     const load = () =>
-      fetch('/api/safety')
-        .then((response) => (response.ok ? response.json() : null))
+      getJson<SafetyStatus>('/api/safety')
         .then(setSafety)
         .catch(() => setSafety(null));
     load();

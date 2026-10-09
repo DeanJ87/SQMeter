@@ -1,20 +1,18 @@
-import type { SensorData, SystemStatus, Config, GithubRelease, AlpacaConfiguredDevice, AlertRecord, WiFiNetwork } from '../types';
+import type { SensorData, SystemStatus, GithubRelease, AlpacaConfiguredDevice, AlertRecord, WiFiNetwork } from '../types';
+
+export { mockConfig } from './config';
 
 const jitter = (base: number, range: number) => base + (Math.random() - 0.5) * range;
 
-export function generateSensorData(): SensorData {
-  const sqm = jitter(21.45, 0.08);
-  const lux = Math.pow(10, (12.6 - sqm) / 2.5);
+const round = (value: number, digits: number) => parseFloat(value.toFixed(digits));
 
+const lightReadings = (sqm: number): Pick<SensorData, 'light' | 'sky'> => {
+  const lux = Math.pow(10, (12.6 - sqm) / 2.5);
   return {
-    timestamp: Math.floor(Date.now() / 1000),
-    timeValid: true,
-    dataAgeMs: 400,
-    dataStale: false,
     light: {
       status: 'ok',
       ageMs: 400,
-      lux: parseFloat(lux.toFixed(6)),
+      lux: round(lux, 6),
       visible: Math.round(jitter(312, 10)),
       infrared: Math.round(jitter(48, 4)),
       full: Math.round(jitter(360, 12)),
@@ -26,79 +24,98 @@ export function generateSensorData(): SensorData {
     },
     sky: {
       status: 'ok',
-      sqm: parseFloat(sqm.toFixed(2)),
-      rawSqm: parseFloat((sqm - 0.07).toFixed(2)),
-      nelm: parseFloat(jitter(6.18, 0.05).toFixed(1)),
+      sqm: round(sqm, 2),
+      rawSqm: round(sqm - 0.07, 2),
+      nelm: round(jitter(6.18, 0.05), 1),
       bortle: 2,
       description: 'Typical truly dark site',
       calibrated: false,
       averagingWindowSeconds: 90,
     },
-    environment: {
-      status: 'ok',
-      ageMs: 3100,
-      temperature: parseFloat(jitter(12.4, 0.2).toFixed(1)),
-      humidity: parseFloat(jitter(64.8, 0.5).toFixed(1)),
-      pressure: parseFloat(jitter(1013.25, 0.3).toFixed(1)),
-      dewpoint: parseFloat(jitter(6.1, 0.2).toFixed(1)),
-    },
-    infrared: {
-      status: 'ok',
-      ageMs: 3100,
-      skyTemperature: parseFloat(jitter(-24.8, 0.4).toFixed(1)),
-      ambientTemperature: parseFloat(jitter(12.4, 0.1).toFixed(1)),
-    },
-    clouds: {
-      status: 'ok',
-      coverPercent: Math.round(jitter(3.0, 1.0)),
-      condition: 'clear',
-      description: 'Clear',
-      temperatureDelta: parseFloat(jitter(-37.2, 0.5).toFixed(1)),
-      correctedDelta: parseFloat(jitter(-32.8, 0.4).toFixed(1)),
-      humidity: 64.8,
-      humiditySource: 'measured',
-    },
-    gps: {
-      status: 'ok',
-      ageMs: Math.round(jitter(800, 100)),
-      fix: true,
-      satellites: 9,
-      latitude: 51.5074,
-      longitude: -0.1278,
-      altitude: 42.0,
-      hdop: 1.1,
-    },
-    wind: {
-      status: 'ok',
-      ageMs: 900,
-      speed: parseFloat(jitter(3.2, 0.4).toFixed(1)),
-      gust: parseFloat(jitter(6.8, 0.3).toFixed(1)),
-      direction: Math.round(jitter(247, 8)),
-      vaneFault: false,
-    },
-    rain: {
-      status: 'ok',
-      ageMs: 40,
-      raining: true,
-      rainingNow: true,
-      intensity: 2.4,
-      eventAccumulation: 0.4,
-      sensorEventAccumulation: 0.4,
-      totalAccumulation: 12.6,
-      lensFault: false,
-      emitterSaturated: false,
-    },
-    // Demo data shows rain, so the SafetyMonitor reports unsafe.
-    safety: {
-      safe: false,
-      rawSafe: false,
-      alpacaEnabled: true,
-      reasonFlags: 1 << 9,
-      reasons: ['Rain detected'],
-      secondsUntilSafe: 0,
-      evaluatedAgeMs: 400,
-      changedAgeMs: 1260000,
-    },
+  };
+};
+
+const climateReadings = (): Pick<SensorData, 'environment' | 'infrared' | 'clouds'> => ({
+  environment: {
+    status: 'ok',
+    ageMs: 3100,
+    temperature: round(jitter(12.4, 0.2), 1),
+    humidity: round(jitter(64.8, 0.5), 1),
+    pressure: round(jitter(1013.25, 0.3), 1),
+    dewpoint: round(jitter(6.1, 0.2), 1),
+  },
+  infrared: {
+    status: 'ok',
+    ageMs: 3100,
+    skyTemperature: round(jitter(-24.8, 0.4), 1),
+    ambientTemperature: round(jitter(12.4, 0.1), 1),
+  },
+  clouds: {
+    status: 'ok',
+    coverPercent: Math.round(jitter(3.0, 1.0)),
+    condition: 'clear',
+    description: 'Clear',
+    temperatureDelta: round(jitter(-37.2, 0.5), 1),
+    correctedDelta: round(jitter(-32.8, 0.4), 1),
+    humidity: 64.8,
+    humiditySource: 'measured',
+  },
+});
+
+const fieldReadings = (): Pick<SensorData, 'gps' | 'wind' | 'rain' | 'safety'> => ({
+  gps: {
+    status: 'ok',
+    ageMs: Math.round(jitter(800, 100)),
+    fix: true,
+    satellites: 9,
+    latitude: 51.5074,
+    longitude: -0.1278,
+    altitude: 42.0,
+    hdop: 1.1,
+  },
+  wind: {
+    status: 'ok',
+    ageMs: 900,
+    speed: round(jitter(3.2, 0.4), 1),
+    gust: round(jitter(6.8, 0.3), 1),
+    direction: Math.round(jitter(247, 8)),
+    vaneFault: false,
+  },
+  rain: {
+    status: 'ok',
+    ageMs: 40,
+    raining: true,
+    rainingNow: true,
+    intensity: 2.4,
+    eventAccumulation: 0.4,
+    sensorEventAccumulation: 0.4,
+    totalAccumulation: 12.6,
+    lensFault: false,
+    emitterSaturated: false,
+  },
+  // Demo data shows rain, so the SafetyMonitor reports unsafe.
+  safety: {
+    safe: false,
+    rawSafe: false,
+    alpacaEnabled: true,
+    reasonFlags: 1 << 9,
+    reasons: ['Rain detected'],
+    secondsUntilSafe: 0,
+    evaluatedAgeMs: 400,
+    changedAgeMs: 1260000,
+  },
+});
+
+export function generateSensorData(): SensorData {
+  const sqm = jitter(21.45, 0.08);
+  return {
+    timestamp: Math.floor(Date.now() / 1000),
+    timeValid: true,
+    dataAgeMs: 400,
+    dataStale: false,
+    ...lightReadings(sqm),
+    ...climateReadings(),
+    ...fieldReadings(),
   };
 }
 
@@ -253,152 +270,6 @@ export const mockStatus: SystemStatus = {
       powerOnDays: 13,
       emitterTotal: 19,
     },
-  },
-};
-
-export const mockConfig: Config = {
-  deviceName: 'SQMeter Demo',
-  primaryTimeSource: 0,
-  secondaryTimeSource: 1,
-  wifi: {
-    ssid: 'DarkSkyLab',
-    password: '',
-    hostname: 'sqmeter',
-    mdns: true,
-    ipv6: true,
-    autoReconnect: true,
-    reconnectDelayMs: 1000,
-    maxReconnectDelayMs: 300000,
-  },
-  ntp: {
-    enabled: true,
-    server1: 'pool.ntp.org',
-    server2: 'time.cloudflare.com',
-    timezone: 'GMT0',
-    syncIntervalMs: 3600000,
-  },
-  gps: {
-    enabled: true,
-    rxPin: 16,
-    txPin: 17,
-    baudRate: 9600,
-  },
-  mqtt: {
-    enabled: true,
-    broker: 'mqtt.example.com',
-    port: 1883,
-    username: '',
-    password: '',
-    topic: 'sqmeter/data',
-    publishIntervalMs: 60000,
-  },
-  ota: {
-    enabled: false,
-    password: '',
-  },
-  auth: {
-    enabled: false,
-    username: 'admin',
-    password: '',
-  },
-  sensor: {
-    readIntervalMs: 5000,
-    i2cSDA: 21,
-    i2cSCL: 22,
-    i2cFrequency: 100000,
-  },
-  skyAveraging: { windowSeconds: 90 },
-  skyCalibration: {
-    enabled: false,
-    sqmOffset: 0,
-    darkVisibleOffset: 0,
-    darkFullOffset: 0,
-    darkIrOffset: 0,
-    darkSampleCount: 0,
-    darkCalibratedAt: 0,
-  },
-  cloudDetection: {
-    clearSkyThreshold: -13.0,
-    cloudyThreshold: -3.0,
-    humidityCorrection: 0.75,
-  },
-  alpaca: {
-    enabled: true,
-    manualOverrideUnsafe: false,
-    staleAfterSeconds: 30,
-    cloudCoverEnabled: true,
-    cloudCoverUnsafePercent: 90,
-    sqmMinEnabled: false,
-    sqmMinSafe: 0,
-    humidityMaxEnabled: false,
-    humidityMaxSafe: 100,
-    dewpointMarginEnabled: false,
-    dewpointMarginMinC: 0,
-    rainUnsafeEnabled: true,
-    rainSensorRequired: true,
-    safeDelaySeconds: 0,
-    windSpeedUnsafeEnabled: true,
-    windSpeedUnsafeMs: 10,
-    windGustUnsafeEnabled: true,
-    windGustUnsafeMs: 15,
-  },
-  alerts: {
-    enabled: true,
-    events: {
-      unsafe: { level: 3, sound: '' },
-      safe: { level: 2, sound: '' },
-      rain_started: { level: 4, sound: 'siren' },
-      rain_stopped: { level: 2, sound: '' },
-      sensor_fault: { level: 4, sound: 'persistent' },
-      sensor_recovered: { level: 1, sound: '' },
-      dew_risk: { level: 1, sound: '' },
-      clear_sky: { level: 2, sound: 'magic' },
-      clouded_over: { level: 4, sound: '' },
-      client_lost: { level: 3, sound: '' },
-      client_back: { level: 1, sound: '' },
-      client_disconnected: { level: 0, sound: '' },
-    },
-    dewRiskMarginC: 2,
-    clearSkyCloudPercent: 20,
-    cloudedOverCloudPercent: 70,
-    skyNightOnly: true,
-    safetyNightOnly: true,
-    sendMode: 'any',
-    armWithAlpaca: false,
-    clientSilentSafetySeconds: 120,
-    clientSilentWeatherSeconds: 600,
-    nightSunAltitudeDeg: -12,
-    cooldownSeconds: 300,
-    pushover: { enabled: true, userKey: '********', appToken: '********', sound: '' },
-    ntfy: { enabled: false, server: 'https://ntfy.sh', topic: '', token: '' },
-    webhook: { enabled: false, url: '', authHeader: '', insecureTls: false },
-    mqtt: { enabled: false },
-  },
-  location: { set: false, latitude: 0, longitude: 0, showSunMoon: true },
-  ble: { enabled: false, passkey: '' },
-  wind: {
-    enabled: true,
-    speedPin: 27,
-    directionEnabled: true,
-    directionPin: 35,
-    kmhPerHz: 2.4,
-    directionOffsetDeg: 0,
-    vanePullupOhms: 10000,
-  },
-  rain: {
-    enabled: true,
-    rxPin: 18,
-    txPin: 19,
-    baudRate: 9600,
-    debugUart: false,
-    mode: 'polling',
-    resolution: 'high',
-    units: 'metric',
-    pollIntervalMs: 5000,
-    rainClearDelayMs: 900000,
-    dailyResetEnabled: true,
-    dailyResetHour: 0,
-    dailyResetMinute: 0,
   },
 };
 

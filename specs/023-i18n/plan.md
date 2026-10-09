@@ -26,7 +26,7 @@ All web UI text moves into `web/src/i18n/en.json` (keyed messages, with a contex
 | I Fail-safe safety verdict | Untouched: translation is display only; safety JSON keeps its English `reasons` and adds `reasonMessages`. |
 | II ASCOM Alpaca | Alpaca output is never translated (FR-015); ConformU runs in CI. |
 | III Testable pure logic | Message matching, manifest parsing and language validation live in `lib/Messages` and `lib/LanguageLogic` with native tests. |
-| IV Embedded budgets | File ≤ 64 KB gzip; runtime ≤ 4 KB gzip; firmware delta measured; free-space check before download; download in its own task under TlsLock. |
+| IV Embedded budgets | File ≤ 64 KB gzip; runtime ≤ 4 KB gzip (measured 2.2 KB; per-feature limit now 10 KB, SIZE-01); firmware delta measured; free-space check before download; download in its own task under TlsLock. |
 | V Quiet, consistent UI | One language setting in Settings → Device; errors explain and offer retry or upload. |
 | VI Trusted-LAN security | Install, upload and the language change sit behind the existing auth guard. Only GitHub release URLs are fetched, with the pinned CA. |
 | VII Docs move with behaviour | `docs/user-guide/languages.md`; translator guide `docs/development/translations.md`. |

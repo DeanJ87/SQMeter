@@ -34,20 +34,22 @@ import {
 import { t } from '../i18n';
 import { deviceError } from '../i18n/deviceMessage';
 import { applyLanguage } from '../hooks/useLanguage';
+import { fetchConfig, fetchStatus, restartDevice, saveConfig } from '../lib/settingsApi';
 
 const STATUS_REFRESH_MS = 10000;
 
 // Sets value at path, copying every object along the way so state is never
 // mutated in place.
+type Node = Record<string, unknown>;
 const setPath = (target: Config, path: ConfigPath, value: unknown): Config => {
-  const root: any = { ...target };
+  const root: Node = { ...target };
   let current = root;
   for (let i = 0; i < path.length - 1; i++) {
-    current[path[i]] = { ...current[path[i]] };
-    current = current[path[i]];
+    current[path[i]] = { ...(current[path[i]] as Node) };
+    current = current[path[i]] as Node;
   }
   current[path[path.length - 1]] = value;
-  return root;
+  return root as unknown as Config;
 };
 
 // Saving would switch these off in practice (FR-006); harmless defaults aren't news.
@@ -79,8 +81,7 @@ const Settings: FunctionalComponent = () => {
 
   const loadStatus = () => {
     void fetchEffectiveReport().then((report) => report && setEffective(report));
-    return fetch('/api/status')
-      .then((response) => (response.ok ? response.json() : null))
+    return fetchStatus()
       .then((data) => data && setStatus(data))
       .catch(() => undefined);
   };
@@ -88,8 +89,7 @@ const Settings: FunctionalComponent = () => {
   useEffect(() => {
     (async () => {
       try {
-        const response = await fetch('/api/config');
-        const data = await response.json();
+        const data = await fetchConfig();
         const normalized = toConfigPayload(data);
         setConfig(normalized);
         setSaved(normalized);
@@ -106,12 +106,13 @@ const Settings: FunctionalComponent = () => {
   }, []);
 
   // Scroll to a requested section once its tab has rendered.
+  const loaded = config !== null;
   useEffect(() => {
-    if (!config || !pendingAnchor.current) return;
+    if (!loaded || !pendingAnchor.current) return;
     const anchor = pendingAnchor.current;
     pendingAnchor.current = undefined;
     setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ block: 'start' }), 0);
-  }, [config === null, tab]);
+  }, [loaded, tab]);
 
   const goTo = (next: SettingsTabId, anchor?: string) => {
     pendingAnchor.current = anchor;
@@ -172,7 +173,7 @@ const Settings: FunctionalComponent = () => {
 
   const restart = async () => {
     try {
-      await fetch('/api/restart', { method: 'POST' });
+      await restartDevice();
       showToast({ message: t('common.restarting') });
     } catch {
       showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' });
@@ -192,13 +193,8 @@ const Settings: FunctionalComponent = () => {
 
     setSaving(true);
     try {
-      const response = await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const body = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : null;
-      if (response.ok && body?.success !== false) {
+      const { ok, body } = await saveConfig(payload);
+      if (ok && body?.success !== false) {
         const reasons = restartReasons(saved, payload);
         showToast(
           reasons.length > 0
