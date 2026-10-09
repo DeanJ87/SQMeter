@@ -62,13 +62,23 @@ readings need the password; secrets are never shown back.
 
 - **FR-001**: Settings MUST be organised in the six tabs; old section links MUST map to tabs.
 - **FR-002**: Dependent options MUST be blocked with a reason and fix link when their dependency is
-  missing.
+  missing. *(Superseded by 020: a dependent setting is kept but reported inactive, with the reason
+  and a fix link; it can't be newly switched on while its dependency is off. Catalogue:
+  `lib/SettingsDeps/catalogue.json`.)*
 - **FR-003**: The save bar MUST appear only with unsaved changes; restart-requiring changes MUST be
   announced by toast with a Restart action, and only those.
-- **FR-004**: Browser and device validation MUST enforce identical ranges.
-- **FR-005**: Config MUST persist in NVS within its limits and migrate from older formats.
-- **FR-006**: Password protection MUST cover every state-changing or action endpoint; secrets MUST
-  be masked and preserved.
+- **FR-004**: Browser and device validation MUST enforce identical ranges, checked against one shared
+  fixture (`test/fixtures/config-ranges.json`).
+- **FR-005**: Config MUST persist in NVS within its limits and migrate from older formats; settings
+  saved by each release are kept as fixtures (`test/fixtures/config-releases/`) and loaded in a test.
+- **FR-006**: Password protection MUST cover every state-changing or action endpoint (including a
+  WiFi scan, which starts a radio scan); secrets MUST be masked and preserved. Every route MUST be
+  declared with its auth in `tools/api/routes.json`, checked in CI. ASCOM Alpaca routes are open by
+  the Alpaca design.
+- **FR-008**: The device MUST serve several clients at once (at least two browsers, an imaging app
+  and MQTT) and, past its connection limit, refuse new connections cleanly: no restart, and
+  existing clients keep working. The limit and behaviour MUST be documented. *(Measured and tuned
+  in the device-check fixes; see spec 013 FR-012.)*
 - **FR-007**: The configuration and security documentation MUST match the device.
 
 ### Key Entities

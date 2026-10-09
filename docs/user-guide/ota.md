@@ -17,7 +17,12 @@ The **Updates** page can check GitHub Releases directly and update the device it
 3. Pick a specific release from the dropdown (defaults to the newest on the selected track) - a badge shows whether it's newer than the running firmware
 4. Click **Update to `<tag>`**
 
-The device downloads `sqmeter-firmware-<tag>.bin` and `sqmeter-littlefs-<tag>.bin` directly from `api.github.com` over HTTPS and flashes both before rebooting - firmware and web UI are always updated together as a matched pair, so they never drift out of sync with each other. A release only appears in the list if both assets exist for it. On the Bluetooth build the device fetches `sqmeter-ble-firmware-<tag>.bin` instead, so it stays on the Bluetooth build.
+In the list, the release you're running is marked **installed** and older ones **older**:
+
+- The installed release can't be installed again: its button reads **Installed**.
+- Choosing an older release turns the button into a red **Downgrade to `<tag>`**, with a warning. Older firmware may not read settings saved by a newer one; if it can't, it starts with defaults and you set it up again from its WiFi hotspot. Releases before v0.2.0-beta.3 also can't check for updates themselves (their release list was too small), so from one of those you update by [uploading](#via-web-ui-manual-upload) the firmware.
+
+The device downloads `sqmeter-firmware-<tag>.bin` and `sqmeter-littlefs-<tag>.bin` directly from `api.github.com` over HTTPS and flashes both before rebooting - firmware and web UI are updated together as a matched pair. The web UI is written first; the device only switches to the new firmware once that's written and checked, so a failure keeps the old firmware running. A failure after the web UI is written can leave the new web UI with the old firmware until you retry. A release only appears in the list if both assets exist for it. On the Bluetooth build the device fetches `sqmeter-ble-firmware-<tag>.bin` instead, so it stays on the Bluetooth build.
 
 Progress and errors are pushed to the page over the status WebSocket; if the connection to GitHub fails partway through (no internet, DNS, etc.), the device aborts cleanly and keeps running exactly what it was running before - see [How self-update failure handling works](#how-self-update-failure-handling-works) below.
 
@@ -33,6 +38,8 @@ Progress and errors are pushed to the page over the status WebSocket; if the con
 3. Under **Manual upload**, choose **Firmware** as the image and select the `.bin` file
 4. Click **Upload**
 5. The device reboots automatically into the new firmware
+
+If switching the device to the new firmware fails once after a complete upload ("Could not activate partition"), it checks the image again and retries the switch before answering; the API reply then includes `"retried": true`.
 
 !!! warning "Don't interrupt"
     Keep the browser open during upload. A power cut mid-flash leaves the slot being written incomplete; it's never booted, so the device keeps starting the firmware it was running.

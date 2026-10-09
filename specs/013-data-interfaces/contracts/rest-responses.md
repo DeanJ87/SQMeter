@@ -1,5 +1,7 @@
 # Contract: REST responses
 
+> **Source of truth:** the generated JSON Schemas in `specs/016-demo-device-emulation/contracts/schemas/` (checked against the demo in CI and against a device with `tools/contract-check.py`). This page records intent; fields added since (specs 019-021: e.g. `alerts` send mode and pause reason, `alpaca.clients`, `time.epoch`, `/api/settings/effective`, safety `rulesNotInEffect`) are in the schemas and `docs/api/rest.md`.
+
 - Success: 2xx. Actions return `{"success": true, ...data}` (200 done, 202 accepted/queued).
 - Failure: 4xx (bad request 400, auth 401, conflict 409, not found 404) or 5xx (device failure 500,
   sensor didn't answer 502) with `{"error": "message"}`. Never 200 with a failure flag.
