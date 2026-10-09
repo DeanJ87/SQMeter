@@ -400,18 +400,13 @@ public:
         if ((mask & enabledChannels()) == 0)
             return response(400, errorJson("That channel isn't enabled - enable it and save settings first"));
 
+        const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
+        const Core::NightState night = Core::night(snapshot, cfg, epoch);
         const Alerts::Alert test = Core::buildTestAlert(
             sample,
-            level,
-            sound,
-            title,
-            message,
-            safety,
-            cfg,
-            Core::observingConditions(snapshot, cfg, nowMs),
-            Core::night(snapshot, cfg, epoch),
-            clockTime,
-            clockDate);
+            Core::TestWording{level, sound, title, message},
+            Core::AlertSources{cfg, obs, night, safety},
+            Core::LocalClock{clockTime, clockDate});
         record(test, mask);
         return response(202, "{\"success\":true,\"message\":\"Test notification queued\",\"demo\":true}");
     }
@@ -420,18 +415,10 @@ public:
     // alert recorded whatever the device's own channel switches say.
     void realTestAlert()
     {
+        const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
+        const Core::NightState night = Core::night(snapshot, cfg, epoch);
         const Alerts::Alert test = Core::buildTestAlert(
-            nullptr,
-            2,
-            "",
-            "",
-            "",
-            safety,
-            cfg,
-            Core::observingConditions(snapshot, cfg, nowMs),
-            Core::night(snapshot, cfg, epoch),
-            clockTime,
-            clockDate);
+            nullptr, Core::TestWording{2, "", "", ""}, Core::AlertSources{cfg, obs, night, safety}, Core::LocalClock{clockTime, clockDate});
         record(test, 0x0F);
     }
 
@@ -702,7 +689,8 @@ private:
         }
         const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
         const Core::NightState night = Core::night(snapshot, cfg, epoch);
-        Alerts::AlertInputs in = Core::alertInputs(safety, snapshot, obs, cfg, night, nowMs);
+        const Core::AlertSources sources{cfg, obs, night, safety};
+        Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, nowMs);
         in.nowSeconds = uptimeSeconds();
 
         // The imaging app: is each Alpaca device still being checked?
@@ -713,7 +701,7 @@ private:
         clientWatch.update(activity, silenceMs, cfg.alpaca.enabled, nowMs);
         Core::addClientInputs(in, clientWatch, cfg, nowMs, clockTime);
 
-        Core::AlertStep step = Core::runAlerts(engine, in, Core::alertRules(cfg), cfg, obs, night, safety, clockTime, clockDate);
+        Core::AlertStep step = Core::runAlerts(engine, in, Core::alertRules(cfg), sources, Core::LocalClock{clockTime, clockDate});
         if (!step.outgoing.empty() && schedule.state().sending && cfg.alerts.enabled)
         {
             record(Alerts::stackAlerts(step.outgoing), 0x0F);

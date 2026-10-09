@@ -339,21 +339,13 @@ void test_alert_wording_and_levels()
     status.isSafe = true;
     status.rawSafe = true;
     // Baseline pass, then unsafe after the engine's 60 s start-up grace.
-    Core::runAlerts(
-        engine, Core::alertInputs(status, s, obs, cfg, night, now), Core::alertRules(cfg), cfg, obs, night, status, "23:00", "2026-10-07");
+    const Core::AlertSources sources{cfg, obs, night, status};
+    Core::runAlerts(engine, Core::alertInputs(sources, s, now), Core::alertRules(cfg), sources, Core::LocalClock{"23:00", "2026-10-07"});
     status.isSafe = false;
     status.rawSafe = false;
     status.reasons = {"Cloud 96% >= 90%"};
     const Core::AlertStep step = Core::runAlerts(
-        engine,
-        Core::alertInputs(status, s, obs, cfg, night, now + 70000),
-        Core::alertRules(cfg),
-        cfg,
-        obs,
-        night,
-        status,
-        "23:01",
-        "2026-10-07");
+        engine, Core::alertInputs(sources, s, now + 70000), Core::alertRules(cfg), sources, Core::LocalClock{"23:01", "2026-10-07"});
     TEST_ASSERT_EQUAL(1, step.outgoing.size());
     const Alerts::Alert &alert = step.outgoing[0];
     TEST_ASSERT_EQUAL(static_cast<int>(Alerts::AlertLevel::Urgent), static_cast<int>(alert.level));
@@ -366,15 +358,7 @@ void test_alert_wording_and_levels()
     status.isSafe = status.rawSafe = true;
     status.reasons.clear();
     const Core::AlertStep quiet = Core::runAlerts(
-        engine,
-        Core::alertInputs(status, s, obs, cfg, night, now + 600000),
-        Core::alertRules(cfg),
-        cfg,
-        obs,
-        night,
-        status,
-        "23:11",
-        "2026-10-07");
+        engine, Core::alertInputs(sources, s, now + 600000), Core::alertRules(cfg), sources, Core::LocalClock{"23:11", "2026-10-07"});
     TEST_ASSERT_EQUAL(0, quiet.outgoing.size());
 }
 
@@ -397,8 +381,10 @@ void test_alert_vars_match_the_shared_list()
     Core::derive(s, cfg);
     Alerts::Alert alert; // no event values of its own
     std::set<std::string> filled;
-    for (const auto &v :
-         Core::alertVars(cfg, Core::observingConditions(s, cfg, now), Core::night(s, cfg, NIGHT_EPOCH), alert, "23:00", "2026-10-07"))
+    const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(s, cfg, now);
+    const Core::NightState night = Core::night(s, cfg, NIGHT_EPOCH);
+    const SafetyStatus status{};
+    for (const auto &v : Core::alertVars(Core::AlertSources{cfg, obs, night, status}, alert, Core::LocalClock{"23:00", "2026-10-07"}))
         filled.insert(v.first);
     TEST_ASSERT_TRUE_MESSAGE(filled == shared, "Core::alertVars and template-variables.json \"common\" differ");
 }

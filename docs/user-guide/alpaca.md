@@ -26,7 +26,7 @@ Alpaca support is disabled by default. With it off, every Alpaca endpoint still 
 <!-- diagram: DIA-10
 sources: lib/AlpacaLogic/src/AlpacaDiscovery.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp src/WebServer.cpp#WebServer::setupAlpacaRoutes
 blocking: false
-fingerprint: 75800b7f5834ceaf
+fingerprint: d8cc1708bc78cd84
 -->
 <figure class="diagram" markdown>
 
@@ -121,9 +121,9 @@ Rain and wind rules (2-4) are checked even when the other sensors' data is stale
 Each threshold has its own enable/disable toggle - a disabled threshold never contributes to the verdict.
 
 <!-- diagram: DIA-02
-sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#evaluateSafety lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceCore.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
+sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceCore.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: true
-fingerprint: 3a0f120dd3ef8431
+fingerprint: fe4c16555320635b
 -->
 <figure class="diagram" markdown>
 

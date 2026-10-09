@@ -1,5 +1,6 @@
 #include "ObservingConditionsMapper.h"
 #include <algorithm>
+#include <optional>
 #include <cctype>
 
 namespace SQM
@@ -76,6 +77,40 @@ namespace SQM
             }
         } // namespace
 
+        namespace
+        {
+            // The reading behind each implemented property (lowercase name).
+            std::optional<double> propertyValue(const std::string &name, const ObservingConditionsSnapshot &s)
+            {
+                if (name == "cloudcover")
+                    return s.cloudCoverPercent;
+                if (name == "dewpoint")
+                    return s.dewpointC;
+                if (name == "humidity")
+                    return s.humidityPercent;
+                if (name == "pressure")
+                    return s.pressureHPa;
+                if (name == "rainrate")
+                    return s.rainRateMmPerHour;
+                if (name == "skybrightness")
+                    return s.skyBrightnessLux;
+                if (name == "skyquality")
+                    return s.skyQualityMagArcsec2;
+                if (name == "skytemperature")
+                    return s.skyTemperatureC;
+                if (name == "temperature")
+                    return s.temperatureC;
+                if (name == "winddirection")
+                    // Alpaca: direction is 0 when there is no wind.
+                    return s.windSpeedMs > 0.0f ? s.windDirectionDeg : 0.0;
+                if (name == "windgust")
+                    return s.windGustMs;
+                if (name == "windspeed")
+                    return s.windSpeedMs;
+                return std::nullopt;
+            }
+        } // namespace
+
         PropertyResult getObservingConditionsProperty(const std::string &propertyName, const ObservingConditionsSnapshot &snapshot)
         {
             const std::string name = toLower(propertyName);
@@ -93,33 +128,8 @@ namespace SQM
             if (!source.valid)
                 return noData();
 
-            if (name == "cloudcover")
-                return value(snapshot.cloudCoverPercent);
-            if (name == "dewpoint")
-                return value(snapshot.dewpointC);
-            if (name == "humidity")
-                return value(snapshot.humidityPercent);
-            if (name == "pressure")
-                return value(snapshot.pressureHPa);
-            if (name == "rainrate")
-                return value(snapshot.rainRateMmPerHour);
-            if (name == "skybrightness")
-                return value(snapshot.skyBrightnessLux);
-            if (name == "skyquality")
-                return value(snapshot.skyQualityMagArcsec2);
-            if (name == "skytemperature")
-                return value(snapshot.skyTemperatureC);
-            if (name == "temperature")
-                return value(snapshot.temperatureC);
-            if (name == "winddirection")
-                // Alpaca: direction is 0 when there is no wind.
-                return value(snapshot.windSpeedMs > 0.0f ? snapshot.windDirectionDeg : 0.0);
-            if (name == "windgust")
-                return value(snapshot.windGustMs);
-            if (name == "windspeed")
-                return value(snapshot.windSpeedMs);
-
-            return notImplemented();
+            const std::optional<double> reading = propertyValue(name, snapshot);
+            return reading ? value(*reading) : notImplemented();
         }
 
         StringResult getSensorDescription(const std::string &sensorName, const ObservingConditionsSnapshot &snapshot)

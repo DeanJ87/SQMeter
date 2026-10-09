@@ -4,9 +4,11 @@
 namespace SQM
 {
 
-    CloudMetrics CloudDetection::calculate(
-        float skyTemp, float ambientTemp, float relativeHumidity, float clearSkyThreshold, float cloudyThreshold, float humidityCorrection)
+    CloudMetrics CloudDetection::calculate(float skyTemp, float ambientTemp, float relativeHumidity, const CloudThresholds &thresholds)
     {
+        const float clearSkyThreshold = thresholds.clearSky;
+        const float cloudyThreshold = thresholds.cloudy;
+        const float humidityCorrection = thresholds.humidityCorrection;
         CloudMetrics metrics;
 
         // Calculate raw temperature delta (sky is typically colder than ambient)

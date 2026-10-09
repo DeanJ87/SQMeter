@@ -5,9 +5,9 @@ SQMeter can send push notifications itself - over Pushover, ntfy, a webhook, or 
 Configure everything in **Settings → Alerts**: turn on **Send alerts** (the master switch for every channel), pick your channels, **Save**, then use **Send test** next to each channel. With **Send alerts** off nothing is sent to any channel, though Bluetooth phone alarms still ring (see [Bluetooth](ble.md)).
 
 <!-- diagram: DIA-06
-sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceCore.cpp#runAlerts src/WebServer.cpp#WebServer::processAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
+sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServer.cpp#WebServer::processAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 5ab5ce6176493c84
+fingerprint: c57bc3cf90a6ecc0
 -->
 <figure class="diagram" markdown>
 

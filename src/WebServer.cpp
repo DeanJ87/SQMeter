@@ -301,20 +301,13 @@ namespace SQM
         {
             const Config &cfg = getConfigCallback();
             const Core::SampleAlert *sample = pendingTest.sample;
-            std::string localTime, localDate;
-            localClock(localTime, localDate);
-            const Alerts::Alert test = Core::buildTestAlert(
-                sample,
-                pendingTest.level,
-                pendingTest.sound,
-                pendingTest.title,
-                pendingTest.message,
-                getSafetyStatus(),
-                cfg,
-                buildAlpacaObservingConditionsSnapshot(),
-                computeNight(getSensorSnapshot(), cfg),
-                localTime,
-                localDate);
+            Core::LocalClock clock;
+            localClock(clock.time, clock.date);
+            const SafetyStatus safety = getSafetyStatus();
+            const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
+            const Core::NightState night = computeNight(getSensorSnapshot(), cfg);
+            const Core::TestWording wording{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
+            const Alerts::Alert test = Core::buildTestAlert(sample, wording, Core::AlertSources{cfg, obs, night, safety}, clock);
             if (sample != nullptr && test.level == Alerts::AlertLevel::Wake)
             {
                 const time_t wallClock = time(nullptr);
@@ -1027,9 +1020,10 @@ namespace SQM
                 alertEngine.seedSafety(!toldSafe);
         }
         const Core::NightState night = computeNight(snapshot, cfg);
-        Alerts::AlertInputs in = Core::alertInputs(status, snapshot, obs, cfg, night, millis());
-        std::string localTime, localDate;
-        localClock(localTime, localDate);
+        const Core::AlertSources sources{cfg, obs, night, status};
+        Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, millis());
+        Core::LocalClock clock;
+        localClock(clock.time, clock.date);
 
         // The imaging app: is each Alpaca device still being checked?
         {
@@ -1038,7 +1032,7 @@ namespace SQM
             uint32_t silenceMs[Alpaca::DEVICE_COUNT];
             Core::clientSilenceMs(cfg, silenceMs);
             clientWatch.update(activity, silenceMs, cfg.alpaca.enabled, millis());
-            Core::addClientInputs(in, clientWatch, cfg, millis(), localTime);
+            Core::addClientInputs(in, clientWatch, cfg, millis(), clock.time);
         }
         const Alerts::AlertRules rules = Core::alertRules(cfg);
 
@@ -1082,7 +1076,7 @@ namespace SQM
         // Push channels need the master switch, paired phones only Bluetooth.
         const time_t wallClock = time(nullptr);
         const uint32_t epoch = wallClock >= 1704067200 ? static_cast<uint32_t>(wallClock) : 0;
-        Core::AlertStep step = Core::runAlerts(alertEngine, in, rules, cfg, obs, night, status, localTime, localDate);
+        Core::AlertStep step = Core::runAlerts(alertEngine, in, rules, sources, clock);
         std::vector<Alerts::Alert> &outgoing = step.outgoing;
         const uint32_t alarmFlags = step.alarmFlags;
         // Paused: state is still tracked above, nothing goes out.
