@@ -355,6 +355,7 @@ button {
 }
 
 .glance-more {
+  display: none;
   justify-self: start;
   padding: 0.3rem 0;
   border: 0;
@@ -366,6 +367,10 @@ button {
 @media (max-width: 640px) {
   .glance-list.is-limited .glance-item:nth-child(n + 4) {
     display: none;
+  }
+
+  .glance-more {
+    display: block;
   }
 }
 
@@ -382,6 +387,7 @@ button {
   gap: 0.25rem 1rem;
   margin-top: 0.6rem;
   color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .device-addresses {

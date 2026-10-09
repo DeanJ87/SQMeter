@@ -304,7 +304,9 @@
       },
       "priority": 8,
       "location": "glance",
-      "test": "phone-alarm"
+      "test": "phone-alarm",
+      "testIn": "unit",
+      "demoCannot": "The phone alarm needs the Bluetooth build; the demo is the standard build."
     },
     {
       "id": "update-available",

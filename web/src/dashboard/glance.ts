@@ -204,7 +204,7 @@ const sensorItems = (input: GlanceInput): GlanceItem[] =>
   expectedSensors(input.status, input.config).flatMap((sensor) => {
     const health = sensorHealth(sensor, input);
     if (!health || health.health === 'ok') return [];
-    const age = health.ageMs !== undefined ? ` ${t('glance.lastReading', { ago: formatAgo(health.ageMs) })}` : '';
+    const age = health.ageMs ? ` ${t('glance.lastReading', { ago: formatAgo(health.ageMs) })}` : '';
     return [
       {
         id: 'sensor-faults',

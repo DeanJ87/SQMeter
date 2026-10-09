@@ -25,6 +25,7 @@ class Repository(unittest.TestCase):
         for rel in FILES:
             (self.root / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(check.ROOT / rel, self.root / rel)
+        shutil.copytree(check.ROOT / check.UNIT_TESTS, self.root / check.UNIT_TESTS)
 
     def tearDown(self):
         shutil.rmtree(self.root)
@@ -58,6 +59,14 @@ class Repository(unittest.TestCase):
     def test_a_shown_entry_needs_its_label(self):
         self.edit_json(check.INVENTORY, lambda d: d["shown"][0].update(label="glance.nope"))
         self.assertTrue(any("label glance.nope isn't in" in p for p in check.check(self.root)))
+
+    def test_a_unit_tested_entry_needs_its_reason(self):
+        def drop_reason(d):
+            for entry in d["shown"]:
+                entry.pop("demoCannot", None)
+
+        self.edit_json(check.INVENTORY, drop_reason)
+        self.assertTrue(any("say why in `demoCannot`" in p for p in check.check(self.root)))
 
     def test_globs_cover_subtrees(self):
         self.assertTrue(check.matches("status.diagnostics.**", "status.diagnostics.rain.state"))

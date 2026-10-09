@@ -20,7 +20,7 @@ const FaultCard: FunctionalComponent<{ title: string; icon: string; health: Sens
     <Card title={title} icon={icon} tone="muted" actions={<Pill tone="pill-red">{healthWords(health)}</Pill>}>
       <Note tone="bad">
         {effect}
-        {ageMs !== undefined && ` ${t('glance.lastReading', { ago: formatAgo(ageMs) })}`}
+        {ageMs ? ` ${t('glance.lastReading', { ago: formatAgo(ageMs) })}` : ''}
       </Note>
     </Card>
   </div>

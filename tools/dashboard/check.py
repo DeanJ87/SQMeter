@@ -25,6 +25,8 @@ SCHEMA_NAMES = ["status", "readings", "safety", "alerts-armed"]
 CATALOGUE = "lib/SettingsDeps/catalogue.json"
 INVENTORY = "web/src/dashboard/inventory.json"
 TESTS = "web/tests/dashboard.spec.ts"
+# A state the demo can't produce is tested on the component instead, with the reason recorded.
+UNIT_TESTS = "web/src/dashboard/__tests__"
 ENGLISH = "web/src/i18n/en.json"
 
 
@@ -89,14 +91,18 @@ def check_coverage(state: set, inventory: dict) -> list:
     return problems
 
 
-def check_entries(inventory: dict, tests: str, english: dict) -> list:
+def check_entries(inventory: dict, tests: str, english: dict, unit_tests: str = "") -> list:
     problems, seen = [], set()
     for entry in inventory["shown"]:
         if entry["id"] in seen:
             problems.append(f"shown entry {entry['id']} is listed twice")
         seen.add(entry["id"])
-        if f"inventory: {entry['test']}" not in tests:
-            problems.append(f"shown entry {entry['id']} has no test: add `inventory: {entry['test']}` to a test in {TESTS} (FR-003)")
+        unit = entry.get("testIn") == "unit"
+        if unit and not entry.get("demoCannot"):
+            problems.append(f"shown entry {entry['id']} is tested outside the demo: say why in `demoCannot`")
+        if f"inventory: {entry['test']}" not in (unit_tests if unit else tests):
+            where = UNIT_TESTS if unit else TESTS
+            problems.append(f"shown entry {entry['id']} has no test: add `inventory: {entry['test']}` to a test in {where} (FR-003)")
         if entry["label"] not in english:
             problems.append(f"shown entry {entry['id']}: label {entry['label']} isn't in {ENGLISH}")
         if entry["visibility"]["rule"] == "when" and not entry["visibility"].get("when"):
@@ -109,7 +115,9 @@ def check(root: Path = ROOT) -> list:
     inventory = read_json(root, INVENTORY)
     tests_path = root / TESTS
     tests = tests_path.read_text(encoding="utf-8") if tests_path.exists() else ""
-    return check_coverage(device_state(root), inventory) + check_entries(inventory, tests, read_json(root, ENGLISH))
+    unit_dir = root / UNIT_TESTS
+    unit = "\n".join(p.read_text(encoding="utf-8") for p in sorted(unit_dir.glob("*.test.ts*"))) if unit_dir.exists() else ""
+    return check_coverage(device_state(root), inventory) + check_entries(inventory, tests, read_json(root, ENGLISH), unit)
 
 
 def main() -> int:
