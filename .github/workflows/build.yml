@@ -11,6 +11,7 @@ on:
       - 'test/**'
       - 'tools/settings-deps/**'
       - 'tools/api/**'
+      - 'tools/dashboard/**'
       - 'docs/api/rest.md'
       - 'docs/reference/settings-dependencies.md'
       - 'web/src/**'
@@ -163,6 +164,13 @@ jobs:
           python3 tools/i18n/gen_device_catalog.py --check
           python3 tools/i18n/context.py --check
           python3 tools/i18n/build_packs.py --version 0.0.0-ci --out "$RUNNER_TEMP/i18n"
+
+      # Every device field and settings dependency is on the dashboard
+      # inventory, shown with a test or not shown with a reason (specs/025).
+      - name: Dashboard inventory
+        run: |
+          python3 -m unittest discover -s tools/dashboard -p 'test_*.py'
+          python3 tools/dashboard/check.py
 
       # Every HTTP route is declared with its auth and documented
       # (specs 011 FR-006, 014 FR-005).

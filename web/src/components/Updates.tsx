@@ -7,6 +7,7 @@ import type { GithubRelease, SystemStatus } from '../types';
 import { Button, Card, Note, ProgressMeter, ReadingRow } from './ui';
 import { t } from '../i18n';
 import { deviceError } from '../i18n/deviceMessage';
+import { saveUpdateCheck } from '../lib/lastUpdateCheck';
 import { formatCount } from '../i18n/format';
 
 type UpdateType = 'firmware' | 'filesystem';
@@ -45,6 +46,7 @@ const GithubUpdates: FunctionalComponent = () => {
       const data: GithubRelease[] = await response.json();
       setReleases(data);
       setSelectedTag(data[0]?.tag ?? '');
+      saveUpdateCheck(data[0]?.tag ?? null);
     } catch (error) {
       setCheckError(t('updates.failedToCheckForUpdates', { error }));
       setReleases([]);

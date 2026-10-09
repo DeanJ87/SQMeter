@@ -197,6 +197,11 @@
         },
         "totalAccumulation": {
           "type": "number"
+        },
+        "clearInSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Seconds until the rain hold releases; present only while rain has stopped but the clear delay holds it (spec 025)."
         }
       },
       "required": [

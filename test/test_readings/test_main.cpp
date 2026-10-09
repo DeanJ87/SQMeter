@@ -129,6 +129,29 @@ void test_optional_hardware_only_when_present(void)
     TEST_ASSERT_FALSE(doc["wind"].containsKey("direction"));
 }
 
+// Rain stopped but the clear delay still holds it: how long is left (spec 025 FR-012).
+void test_rain_hold_remaining(void)
+{
+    Snapshot s = healthy();
+    s.rain.present = true;
+    s.rain.status = Status::Ok;
+    s.rain.raining = true;
+    s.rain.rainingNow = false;
+    s.rain.clearInMs = 125500;
+    DynamicJsonDocument doc = render(s);
+    TEST_ASSERT_EQUAL_INT(126, doc["rain"]["clearInSeconds"].as<int>());
+
+    s.rain.rainingNow = true; // still raining: no countdown
+    doc = render(s);
+    TEST_ASSERT_FALSE(doc["rain"].containsKey("clearInSeconds"));
+
+    s.rain.raining = false; // released
+    s.rain.rainingNow = false;
+    s.rain.clearInMs = 0;
+    doc = render(s);
+    TEST_ASSERT_FALSE(doc["rain"].containsKey("clearInSeconds"));
+}
+
 void test_groups_filter_mqtt_payload(void)
 {
     Groups groups;
@@ -262,6 +285,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_healthy_document_has_rounded_values);
     RUN_TEST(test_faulted_sensor_sends_status_not_zeros);
     RUN_TEST(test_optional_hardware_only_when_present);
+    RUN_TEST(test_rain_hold_remaining);
     RUN_TEST(test_groups_filter_mqtt_payload);
     RUN_TEST(test_full_state_message_is_under_1_5_kb);
     RUN_TEST(test_timestamp_is_zero_without_clock);

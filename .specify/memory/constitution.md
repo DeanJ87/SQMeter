@@ -134,7 +134,9 @@ Code is read far more often than it's written, by people and by AI agents workin
   - the `build` workflow: typecheck, web tests with coverage, native tests, both firmware
     builds, the LittleFS image and the integrity checks;
   - ConformU against the Alpaca simulator;
-  - the quality check (`tools/quality/check.py`, Principle VIII);
+  - the quality check (`tools/quality/check.py`, Principle VIII), including the dashboard
+    inventory (DASH-01/02: new user-relevant device state is shown on the dashboard or
+    recorded as not shown, spec 025);
   - the docs build.
 - Firmware behaviour changes SHOULD be verified on a real device before release (OTA to the
   test device, with the owner's permission when it's in use), and the PR says what was checked.

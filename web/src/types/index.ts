@@ -71,6 +71,7 @@ export interface RainReading extends Group {
   totalAccumulation?: number;
   lensFault?: boolean;
   emitterSaturated?: boolean;
+  clearInSeconds?: number; // while the clear delay holds rain that has stopped (spec 025)
 }
 
 export interface WindReading extends Group {
@@ -400,6 +401,7 @@ export interface SafetyStatus {
   secondsUntilSafe: number;
   evaluatedAgeMs: number;
   changedAgeMs: number;
+  rulesNotInEffect?: string[]; // safety rules on but not evaluated, e.g. rain sensor off (spec 020)
 }
 
 // 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me

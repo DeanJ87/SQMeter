@@ -6,6 +6,7 @@ import { Button, Card, Note, Pill } from './ui';
 import { t } from '../i18n';
 import { formatDateTime, formatTime } from '../i18n/format';
 import { deviceText } from '../i18n/deviceMessage';
+import { formatDuration } from '../lib/astro';
 
 const verdict = (safety: SafetyStatus) => {
   if (safety.safe) return { text: t('safetyCard.safe'), tone: 'pill-green' };
@@ -106,7 +107,34 @@ const SafetyHistoryList: FunctionalComponent = () => {
   );
 };
 
-const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null; showRulesLink?: boolean }> = ({ safety, showRulesLink = true }) => {
+// Rain that has stopped but still holds the verdict, and when it lets go (specs/025 FR-012).
+const RainHold: FunctionalComponent<{ seconds?: number }> = ({ seconds }) =>
+  seconds ? (
+    <div data-inventory="rain-hold">
+      <Note tone="warn">{t('glance.rainHeld', { duration: formatDuration(seconds * 1000) })}</Note>
+    </div>
+  ) : null;
+
+// Rules switched on whose sensor is off, so they can't make it unsafe (spec 020, 025 FR-012).
+const RulesNotInEffect: FunctionalComponent<{ rules?: string[] }> = ({ rules }) =>
+  rules?.length ? (
+    <ul class="rules-off" data-inventory="rules-not-in-effect" aria-label={t('glance.rulesNotInEffect')}>
+      {rules.map((rule) => (
+        <li key={rule}>
+          {t('glance.ruleNotInEffect', { rule: deviceText(rule) })}{' '}
+          <a class="glance-fix" href="#/settings?tab=sensors">
+            {t('glance.openSettings')}
+          </a>
+        </li>
+      ))}
+    </ul>
+  ) : null;
+
+const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null; showRulesLink?: boolean; rainClearInSeconds?: number }> = ({
+  safety,
+  showRulesLink = true,
+  rainClearInSeconds,
+}) => {
   const [showHistory, setShowHistory] = useState(false);
   if (!safety) return null;
   const state = verdict(safety);
@@ -130,9 +158,11 @@ const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null; showRulesL
         ) : (
           <Note tone="warn">{t('safetyCard.waitingOutTheSafeDelay')}</Note>
         )}
+        <RainHold seconds={rainClearInSeconds} />
+        <RulesNotInEffect rules={safety.rulesNotInEffect} />
         <Note action={showRulesLink ? { label: t('safetyCard.rules'), onClick: () => route('/settings?tab=safety') } : undefined}>
           {t(safety.safe ? 'safetyCard.safeFor' : 'safetyCard.unsafeFor', { duration: formatSince(safety.changedAgeMs) })}
-          {!safety.alpacaEnabled && t('safetyCard.notSharedWithNI')}
+          {!safety.alpacaEnabled && <span data-inventory="safety-not-shared">{t('safetyCard.notSharedWithNI')}</span>}
         </Note>
         <div class="btn-row">
           <Button variant="link" onClick={() => setShowHistory(!showHistory)}>
