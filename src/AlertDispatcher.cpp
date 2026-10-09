@@ -251,6 +251,7 @@ namespace SQM
         records.push_back(record);
         if (records.size() > MAX_RECORDS)
             records.erase(records.begin());
+        ++revision;
         xSemaphoreGive(mutex);
         return record.id;
     }
@@ -383,6 +384,7 @@ namespace SQM
                 const size_t index = static_cast<size_t>(channel);
                 record.status[index] = status;
                 record.detail[index] = detail;
+                ++revision;
                 break;
             }
         }
@@ -395,6 +397,7 @@ namespace SQM
         {
             records.clear();
             records.shrink_to_fit();
+            ++revision;
             xSemaphoreGive(mutex);
         }
     }

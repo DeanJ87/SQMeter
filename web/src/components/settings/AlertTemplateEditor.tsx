@@ -1,9 +1,10 @@
 import { FunctionalComponent } from 'preact';
+import { useState } from 'preact/hooks';
 import type { AlertEventKey } from '../../types';
 import { COMMON_VARS, EVENT_VARS } from './alertVariables';
 import { defaultText, varHelp, type AlertsView } from './alertsShared';
-import { ActionButton, Field, ResultNote } from './controls';
-import { Note } from '../ui';
+import { Field, ResultNote } from './controls';
+import { Button, Note } from '../ui';
 import { t } from '../../i18n';
 
 // The result of a test alert, under the button that sent it.
@@ -29,6 +30,41 @@ const insertVar = (view: AlertsView, key: AlertEventKey, name: string) => {
   }
 };
 
+// Characters as people count them (an emoji or a CJK character is one), the
+// same way the device counts them.
+const charCount = (text: string) => Array.from(text).length;
+
+// Back to the default wording: a quiet link, then a confirm step in place,
+// so it can't be mistaken for Save (the viewer has no confirm() dialog).
+const ResetWording: FunctionalComponent<{ onReset: () => void }> = ({ onReset }) => {
+  const [asking, setAsking] = useState(false);
+  if (!asking) {
+    return (
+      <Button variant="link" small onClick={() => setAsking(true)}>
+        {t('settings.alerts.resetWording')}
+      </Button>
+    );
+  }
+  return (
+    <div class="inline-confirm" role="group" aria-label={t('settings.alerts.resetWordingConfirm')}>
+      <span>{t('settings.alerts.resetWordingConfirm')}</span>
+      <Button
+        variant="danger"
+        small
+        onClick={() => {
+          setAsking(false);
+          onReset();
+        }}
+      >
+        {t('settings.alerts.resetWording')}
+      </Button>
+      <Button variant="ghost" small onClick={() => setAsking(false)}>
+        {t('settings.alerts.cancel')}
+      </Button>
+    </div>
+  );
+};
+
 // Your own title and message for one event, with {variable} chips.
 export const AlertTemplateEditor: FunctionalComponent<{ view: AlertsView; eventKey: AlertEventKey }> = ({ view, eventKey: key }) => {
   const { alerts, set, updateMany } = view;
@@ -41,7 +77,7 @@ export const AlertTemplateEditor: FunctionalComponent<{ view: AlertsView; eventK
   };
   return (
     <div class="template-editor" data-template={key}>
-      <Field label={t('settings.alerts.title')} error={title.length > 80 ? t('settings.alerts.upTo80Characters') : undefined}>
+      <Field label={t('settings.alerts.title')} error={charCount(title) > 80 ? t('settings.alerts.upTo80Characters') : undefined}>
         <input
           class="input"
           aria-label={t('settings.alerts.alertTitle')}
@@ -54,7 +90,7 @@ export const AlertTemplateEditor: FunctionalComponent<{ view: AlertsView; eventK
           onInput={(e) => set(['events', key, 'title'], (e.target as HTMLInputElement).value)}
         />
       </Field>
-      <Field label={t('settings.alerts.message')} error={message.length > 240 ? t('settings.alerts.upTo240Characters') : undefined}>
+      <Field label={t('settings.alerts.message')} error={charCount(message) > 240 ? t('settings.alerts.upTo240Characters') : undefined}>
         <textarea
           class="input"
           aria-label={t('settings.alerts.alertMessage')}
@@ -82,18 +118,14 @@ export const AlertTemplateEditor: FunctionalComponent<{ view: AlertsView; eventK
         ))}
       </div>
       {(event.title || event.message) && (
-        <div class="btn-row">
-          <ActionButton
-            onClick={() =>
-              updateMany([
-                [['alerts', 'events', key, 'title'], ''],
-                [['alerts', 'events', key, 'message'], ''],
-              ])
-            }
-          >
-            {t('settings.alerts.useTheDefaultWording')}
-          </ActionButton>
-        </div>
+        <ResetWording
+          onReset={() =>
+            updateMany([
+              [['alerts', 'events', key, 'title'], ''],
+              [['alerts', 'events', key, 'message'], ''],
+            ])
+          }
+        />
       )}
     </div>
   );

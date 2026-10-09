@@ -217,6 +217,31 @@ void test_full_client_templates_fit_and_add_nothing_to_main()
     TEST_ASSERT_EQUAL_STRING(mainBefore.c_str(), mainAfter.c_str());
 }
 
+// The limits count characters, like the web UI: 80 Japanese characters are
+// 240 bytes but still fit; 81 don't.
+void test_alert_wording_limits_count_characters_not_bytes()
+{
+    const char *rain = "\xE9\x9B\xA8"; // 雨, 3 bytes in UTF-8
+    const char *meem = "\xD9\x85";     // م, 2 bytes in UTF-8
+    std::string title;
+    for (size_t i = 0; i < AlertsConfig::MAX_TEMPLATE_TITLE; ++i)
+        title += rain;
+    Config cfg = Config::createDefault();
+    cfg.alerts.rainStarted.title = title;
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(cfg.validate(&error), error.c_str());
+    TEST_ASSERT_TRUE(AlertsConfig::templateFits(title, ""));
+    cfg.alerts.rainStarted.title += rain;
+    TEST_ASSERT_FALSE(cfg.validate(&error));
+    TEST_ASSERT_FALSE(AlertsConfig::templateFits(cfg.alerts.rainStarted.title, ""));
+    std::string message;
+    for (size_t i = 0; i < AlertsConfig::MAX_TEMPLATE_MESSAGE; ++i)
+        message += meem;
+    cfg.alerts.rainStarted.title = "x";
+    cfg.alerts.rainStarted.message = message;
+    TEST_ASSERT_TRUE_MESSAGE(cfg.validate(&error), error.c_str());
+}
+
 void test_ipv6_setting_defaults_on_and_round_trips()
 {
     const Config base = Config::createDefault();
@@ -277,6 +302,7 @@ int main()
     RUN_TEST(test_client_silence_boundaries);
     RUN_TEST(test_stored_parts_round_trip);
     RUN_TEST(test_full_client_templates_fit_and_add_nothing_to_main);
+    RUN_TEST(test_alert_wording_limits_count_characters_not_bytes);
     RUN_TEST(test_ipv6_setting_defaults_on_and_round_trips);
     RUN_TEST(test_ipv6_broker_and_webhook_forms);
     return UNITY_END();

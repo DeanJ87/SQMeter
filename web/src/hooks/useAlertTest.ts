@@ -3,19 +3,13 @@ import type { AlertChannelName, AlertEventKey, AlertEventSetting, AlertRecord } 
 import { bodyOf, post, request } from '../lib/api';
 import { t } from '../i18n';
 import { deviceError } from '../i18n/deviceMessage';
+import { channelLabel, deliveryDetail, deliveryStatusLabel } from '../lib/alertDelivery';
 
 // Test alerts from Settings > Alerts: one channel, or one event on every
 // channel. The device sends in the background, so the result is followed in
 // /api/alerts/recent until every channel reports sent / failed / skipped.
 
 export type AlertTestResult = { target: string; type: 'success' | 'error' | 'pending'; text: string };
-
-const CHANNEL_LABEL: Record<AlertChannelName, string> = {
-  pushover: 'Pushover',
-  ntfy: 'ntfy',
-  webhook: t('settings.alerts.webhook'),
-  mqtt: 'MQTT',
-};
 
 const fetchRecent = async (): Promise<AlertRecord[]> => {
   const response = await request('/api/alerts/recent');
@@ -29,15 +23,19 @@ const channelResult = (channel: AlertChannelName) => (record: AlertRecord) => {
   const result = record.channels[channel];
   if (!result || result.status === 'pending') return null;
   if (result.status === 'sent') return t('settings.alerts.delivered');
-  return `!${result.status === 'skipped' ? t('settings.alerts.skipped') : t('settings.alerts.failed')}: ${result.detail}`;
+  return `!${deliveryStatusLabel(result.status)}: ${deliveryDetail(result.detail)}`;
 };
+
+// One "channel: result" per channel, comma-separated (DS-24: no " · " run-on).
+const channelSummary = (channel: string, r: { status: string; detail: string }) =>
+  r.status === 'sent'
+    ? `${channelLabel(channel)}: ${deliveryStatusLabel(r.status)}`
+    : `${channelLabel(channel)}: ${deliveryStatusLabel(r.status)} (${deliveryDetail(r.detail)})`;
 
 const allChannelsResult = (record: AlertRecord) => {
   const entries = Object.entries(record.channels) as [AlertChannelName, { status: string; detail: string }][];
   if (entries.some(([, r]) => r.status === 'pending')) return null;
-  const summary = entries
-    .map(([channel, r]) => `${CHANNEL_LABEL[channel]} ${r.status}${r.status === 'sent' ? '' : `: ${r.detail}`}`)
-    .join(' · ');
+  const summary = entries.map(([channel, r]) => channelSummary(channel, r)).join(', ');
   return entries.every(([, r]) => r.status === 'sent') ? summary : `!${summary}`;
 };
 

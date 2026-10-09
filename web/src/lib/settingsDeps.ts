@@ -1,5 +1,6 @@
 import type { AlertEventKey, Config } from '../types';
 import { t } from '../i18n';
+import { deviceText } from '../i18n/deviceMessage';
 
 // Whether each setting that needs another setting (or hardware, or the
 // network) is in effect - the device's rules from lib/SettingsDeps, mirrored
@@ -374,6 +375,14 @@ export const viewOf = (entries: DepEntry[] | null): EffectiveView => {
   };
 };
 
+// The device reports its reasons in English; show the UI's own wording for
+// the same reason (the device's text, translated, for a reason this UI
+// doesn't know).
+const inLanguage = (entry: DepEntry): DepEntry => {
+  const known = entry.reason ? REASONS[entry.reason] : undefined;
+  return entry.text === undefined ? entry : { ...entry, text: known?.text ?? deviceText(entry.text) };
+};
+
 /**
  * What Settings shows: the device's report while the form matches what the
  * device runs, else a preview of the draft with the device's facts (FR-006).
@@ -386,7 +395,7 @@ export const effectiveEntries = (draft: Config, report: EffectiveReport | null, 
   // which also says what would block switching it on.
   return local.map((e) => {
     const reported = device.get(e.setting);
-    return e.state !== 'off' && reported && reported.state !== 'off' ? reported : e;
+    return e.state !== 'off' && reported && reported.state !== 'off' ? inLanguage(reported) : e;
   });
 };
 

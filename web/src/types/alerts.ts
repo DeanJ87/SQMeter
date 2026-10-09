@@ -61,6 +61,7 @@ export interface AlertSchedule {
   reason?: AlertScheduleReason;
   since?: string | null; // ISO 8601 UTC, null without a clock
   sinceAgeMs?: number | null; // null: before this boot
+  recentRevision?: number; // /api/status only: changes whenever /api/alerts/recent would
 }
 
 // One Alpaca device as the imaging app sees it (/api/status "alpaca").

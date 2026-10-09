@@ -42,6 +42,10 @@ SOURCES = {
     "lib/SkyLogic/src/CloudDetection.cpp": ("sky", {}),
     "lib/SettingsDeps/src/SettingsDeps.cpp": ("safety", {"push_back": [0]}),
     "lib/SkyLogic/src/SkyQuality.cpp": ("sky", {}),
+    # Test alerts ("Test: {title}", "This is how a ... alert arrives.") and
+    # what each channel's delivery reports in the recent alerts.
+    "lib/DeviceCore/src/DeviceAlerts.cpp": ("alert", {}),
+    "src/AlertDispatcher.cpp": ("alert", {}),
 }
 # `<target>["error"] = <expr>;` and `error = <expr>;` assignments are device text too.
 ASSIGN = {
@@ -53,12 +57,19 @@ ASSIGN = {
     "src/WebServerStatus.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "src/WebServerUpdates.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "src/OtaUpdater.cpp": re.compile(r"(?<![\w.>])error\s*=\s*(?!=)"),
-    "tools/demo-core/bridge.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
+    "tools/demo-core/bridge.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*|\bDEMO_DETAIL\s*=\s*'),
     "src/LanguagePack.cpp": re.compile(r"(?<![\w.>])error\s*=\s*(?=\")"),
     "lib/LanguageLogic/src/LanguageLogic.cpp": re.compile(r"(?<![\w.>])(?:error\s*=|return)\s*(?=\")"),
     # The cloud condition and Bortle descriptions (/api/sensors).
     "lib/SkyLogic/src/CloudDetection.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/SkyLogic/src/SkyQuality.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
+    "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r"\btest\.(?:title|message)\s*=\s*"),
+    "src/AlertDispatcher.cpp": re.compile(r"(?<![\w.>])(?:detail|record\.detail\[[^\]]+\])\s*=\s*(?!=)"),
+}
+# Text in tables of literals, per file; each group is one device text. The
+# test-alert table holds every event's title and its "Rain starts" label.
+TABLES = {
+    "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r'\{"\w+",\s*Alerts::AlertType::\w+,\s*"([^"]+)",\s*"([^"]+)"'),
 }
 PRINTF = re.compile(r"%(?:[-+ 0#]*\d*(?:\.\d+)?)(?:l|ll|h|z)?[dfisuxXgc]|%%")
 
@@ -173,7 +184,9 @@ def has_words(template_text: str | None) -> bool:
         return False
     literal_text = re.sub(r"\{\w+\}", "", template_text)
     words = bool(re.search(r"[A-Za-z]{2,}", literal_text))
-    return words and (" " in literal_text.strip() or bool(re.fullmatch(r"[A-Z][a-z]+", literal_text)))
+    # A capitalised word with a value after it ("Test: {title}") is prose too.
+    labelled = bool(re.fullmatch(r"[A-Z][a-z]+: \{\w+\}", template_text))
+    return words and (" " in literal_text.strip() or bool(re.fullmatch(r"[A-Z][a-z]+", literal_text)) or labelled)
 
 
 def from_call(args: list[str], spec, calls: dict) -> list[str]:
@@ -209,6 +222,8 @@ def collect() -> list[tuple[str, str, str]]:
     for rel, (area, calls) in SOURCES.items():
         src = strip_comments((ROOT / rel).read_text(encoding="utf-8"))
         texts = from_calls(src, calls) + (from_assignments(src, ASSIGN[rel]) if rel in ASSIGN else [])
+        if rel in TABLES:
+            texts += [text for m in TABLES[rel].finditer(src) for text in m.groups()]
         for t in texts:
             if has_words(t) and t not in seen:
                 seen.add(t)

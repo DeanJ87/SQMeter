@@ -7,6 +7,8 @@ import { Button, Note } from './ui';
 import { useAnnounceChange, useDialogFocus } from '../lib/a11y';
 import { t } from '../i18n';
 import { deviceText } from '../i18n/deviceMessage';
+import { formatAgo } from '../i18n/format';
+import { channelLabel, deliveryDetail, deliveryStatusLabel } from '../lib/alertDelivery';
 
 const SEEN_KEY = 'sqm.alerts.lastSeenId';
 
@@ -26,12 +28,7 @@ const writeSeen = (id: number) => {
   }
 };
 
-export const formatAlertAge = (seconds: number) => {
-  if (seconds < 60) return `${seconds}s ago`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-};
+export const formatAlertAge = (seconds: number) => formatAgo(seconds * 1000);
 
 export const AlertList: FunctionalComponent<{ alerts: AlertRecord[] }> = ({ alerts }) => (
   <ul class="event-list" aria-label={t('alertsBell.recentAlerts')}>
@@ -44,9 +41,8 @@ export const AlertList: FunctionalComponent<{ alerts: AlertRecord[] }> = ({ aler
         <p>{deviceText(record.message)}</p>
         <div class="event-channels">
           {Object.entries(record.channels).map(([channel, result]) => (
-            <span key={channel} class={`event-${result?.status ?? 'pending'}`} title={result?.detail}>
-              {channel}: {result?.status}
-              {result?.status === 'failed' && result.detail ? ` - ${result.detail}` : ''}
+            <span key={channel} class={`event-${result?.status ?? 'pending'}`} title={deliveryDetail(result?.detail)}>
+              {channelLabel(channel)}: {deliveryStatusLabel(result?.status)}
             </span>
           ))}
         </div>
@@ -127,7 +123,7 @@ const AlertsBell: FunctionalComponent = () => {
   useDialogFocus(open, flyout, bell);
   // A new alert is announced once (spec 022 FR-009).
   const newestRecord = data?.alerts[0];
-  useAnnounceChange(newestRecord?.id, () => (newestRecord ? t('alertsBell.newAlertTitle', { title: newestRecord.title }) : null));
+  useAnnounceChange(newestRecord?.id, () => (newestRecord ? t('alertsBell.newAlertTitle', { title: deviceText(newestRecord.title) }) : null));
 
   // Escape or a click outside closes the flyout.
   useEffect(() => {
