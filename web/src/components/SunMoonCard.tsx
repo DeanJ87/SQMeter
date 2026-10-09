@@ -109,9 +109,7 @@ const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; de
       <NightChart latitude={latitude} longitude={longitude} now={now} />
       {/* Worked out in the browser for the device's location; times are this browser's clock. */}
       <p class="note note-muted">
-        {t('sunMoonCard.timesInThisBrowserS')}
-        {browserZone ? ` (${browserZone})` : ''}
-        {t('sunMoonCard.notTheLocationS')}
+        {browserZone ? t('sunMoonCard.timesInZone', { zone: browserZone }) : t('sunMoonCard.timesInBrowserZone')}
       </p>
     </Card>
   );

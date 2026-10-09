@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { route, useRouter } from 'preact-router';
 import { t } from '../i18n';
+import { tRich } from '../i18n/rich';
 
 const NotFound: FunctionalComponent = () => {
   const [router] = useRouter();
@@ -17,7 +18,7 @@ const NotFound: FunctionalComponent = () => {
         <div class="not-found-code">404</div>
         <h2 class="not-found-title">{t('notFound.pageNotFound')}</h2>
         <p>
-          {t('notFound.theDashboardDoesNotHave')} <span>{currentPath}</span>.
+          {tRich('notFound.noRoute', { path: <span>{currentPath}</span> })}
         </p>
 
         <div class="not-found-actions">

@@ -150,7 +150,12 @@ def strip_comments(src: str) -> str:
 
 
 def has_words(template_text: str | None) -> bool:
-    return bool(template_text) and bool(re.search(r"[A-Za-z]{2,}", re.sub(r"\{\w+\}", "", template_text)))
+    """Prose a person reads: letters and a space (not a file name or identifier)."""
+    if not template_text:
+        return False
+    literal_text = re.sub(r"\{\w+\}", "", template_text)
+    words = bool(re.search(r"[A-Za-z]{2,}", literal_text))
+    return words and (" " in literal_text.strip() or bool(re.fullmatch(r"[A-Z][a-z]+", literal_text)))
 
 
 def from_call(args: list[str], spec, calls: dict) -> list[str]:

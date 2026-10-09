@@ -6,6 +6,7 @@ import { Button, Card, Note } from './ui';
 import { Field, TextInput } from './settings/controls';
 import { t } from '../i18n';
 import { deviceError } from '../i18n/deviceMessage';
+import { tRich } from '../i18n/rich';
 
 // Where the "SQM-Setup" hotspot's captive portal lands: pick a network, enter
 // its password, connect. The device saves it and restarts onto that network.
@@ -89,9 +90,7 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
         <Card title={t('wifiSetup.connected')} icon="wifi" tone="green">
           <div class="card-body">
             <p>
-              {t('wifiSetup.sqmeterJoined')} <strong>{phase.ssid}</strong> {t('wifiSetup.andIsRestartingReconnectThis')}{' '}
-              <strong>{phase.ssid}</strong>
-              {t('wifiSetup.thenOpen')}
+              {tRich('wifiSetup.joinedReconnect', { ssid: <strong>{phase.ssid}</strong> })}
             </p>
             <ul class="wifi-addresses">
               {local && (

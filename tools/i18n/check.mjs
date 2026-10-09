@@ -14,6 +14,14 @@ const I18N = path.join(ROOT, 'web/src/i18n');
 const LOCALES = path.join(I18N, 'locales');
 const GLOSSARY = path.join(ROOT, 'tools/i18n/glossary');
 const rel = (p) => path.relative(ROOT, p);
+// Names, protocols and units that stay as they are in every language.
+const SHARED_KEEP = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(GLOSSARY, '_keep.json'), 'utf8')).keep;
+  } catch {
+    return [];
+  }
+})();
 
 // The supported languages: web/src/i18n/languages.ts is the source.
 export const languageCodes = () =>
@@ -72,7 +80,7 @@ export function checkLanguage(code, en, messages, file) {
 /** Review flags (FR-022): not failures, a worklist for the review pass. */
 export function reviewLanguage(code, en, messages, context, glossary) {
   const flags = [];
-  const keep = glossary?.keep ?? [];
+  const keep = Array.isArray(glossary?.keep) ? glossary.keep : SHARED_KEEP;
   for (const [key, english] of Object.entries(en)) {
     const value = messages[key];
     if (value === undefined) continue;
