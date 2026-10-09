@@ -1,6 +1,8 @@
 """Tests for the device UI packer and size budgets (SIZE-01, SIZE-02)."""
 
+import contextlib
 import gzip
+import io
 import importlib.util
 import json
 import random
@@ -119,7 +121,8 @@ class SizeTests(unittest.TestCase):
         self.assertTrue(any("grew" in f for f in bad))
 
     def test_cli_end_to_end(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        quiet = contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO())
+        with tempfile.TemporaryDirectory() as tmp, quiet[0], quiet[1]:
             dist, data = Path(tmp, "dist"), Path(tmp, "data")
             write(dist / "index.html", b"<html></html>")
             write(dist / "assets/App.js", b"x" * 5000)
