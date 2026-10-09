@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: Draft
+**Status**: Implemented (converged 2026-10-09)
 
 **Input**: User description: "Since the demo runs in the browser, let visitors opt in to real notifications from the demo - fill in their own Pushover / ntfy / MQTT details and receive the demo's alerts - and add walkthrough prompts like a product demo site, guiding them through the device (turn GPS off, set a location, trigger rain, see the alert)."
 
@@ -13,6 +13,15 @@
 ### Session 2026-10-08
 
 - Q: Can a browser page send to the notification services directly? → A: Checked 2026-10-08: Pushover (`api.pushover.net`) and ntfy (`ntfy.sh`) both allow requests from any web page. MQTT only works with brokers that offer MQTT over secure WebSockets; webhooks only when the target allows browser requests.
+
+### Session 2026-10-09 (plan)
+
+- Q: How can the security policy allow services "only while real sending is on" (FR-011) on GitHub Pages? → A: It can't
+  directly: the policy is a fixed `<meta>` tag and can only be tightened at runtime. It names exactly ntfy.sh and
+  api.pushover.net (plus secure WebSockets, already allowed), and the demo's code sends nothing unless the visitor turned
+  real sending on in that tab (research R1).
+- Q: Webhooks and self-hosted ntfy servers (FR-006)? → A: Shown as unavailable in the demo before the visitor tries:
+  allowing any HTTPS host would widen the public page's policy far more than the feature is worth (research R1).
 
 ## User Scenarios & Testing *(mandatory)*
 

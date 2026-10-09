@@ -108,6 +108,8 @@ namespace SQM
         static void taskEntry(void *arg);
         void run();
         void deliver(const Job &job);
+        uint32_t store(AlertRecord &record); // the record's new id, 0 if it couldn't be stored
+        void queueHttp(Job *job);
         void ensureTask();
         void setStatus(uint32_t recordId, AlertChannel channel, DeliveryStatus status, const std::string &detail);
 

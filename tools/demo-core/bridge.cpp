@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "AlertEngine.h"
+#include "AlertDelivery.h"
 #include "AlpacaRouter.h"
 #include "Config.h"
 #include "DeviceCore.h"
@@ -50,6 +51,7 @@ namespace
         int64_t epochSeconds = 0;
         Alerts::Alert alert;
         bool channel[4] = {false, false, false, false};
+        uint8_t requested = 0x0F;                                      // channels asked for: all, or the one a per-channel test named
         const char *skipped[4] = {nullptr, nullptr, nullptr, nullptr}; // switched on but inactive: why
     };
 } // namespace
@@ -414,6 +416,64 @@ public:
         return response(202, "{\"success\":true,\"message\":\"Test notification queued\",\"demo\":true}");
     }
 
+    // Demo panel "Send a test" for real notifications (specs/018): a test
+    // alert recorded whatever the device's own channel switches say.
+    void realTestAlert()
+    {
+        const Alerts::Alert test = Core::buildTestAlert(
+            nullptr,
+            2,
+            "",
+            "",
+            "",
+            safety,
+            cfg,
+            Core::observingConditions(snapshot, cfg, nowMs),
+            Core::night(snapshot, cfg, epoch),
+            clockTime,
+            clockDate);
+        record(test, 0x0F);
+    }
+
+    // The requests a real SQMeter would send for alert `id`, for the
+    // channels the visitor set up (specs/018 contracts/delivery-requests.md).
+    // Wake is sent as Urgent: Pushover's emergency level needs acknowledging.
+    std::string deliveryRequests(uint32_t id, const std::string &credentialsJson) const
+    {
+        const Record *found = nullptr;
+        for (const Record &r : records)
+            if (r.id == id)
+                found = &r;
+        DynamicJsonDocument out(4096);
+        out.to<JsonObject>();
+        StaticJsonDocument<1024> creds;
+        if (found == nullptr || deserializeJson(creds, credentialsJson))
+            return serialize(out);
+
+        Alerts::Alert alert = found->alert;
+        if (alert.level == Alerts::AlertLevel::Wake)
+            alert.level = Alerts::AlertLevel::Urgent;
+        const std::string &device = cfg.deviceName;
+        auto wanted = [&](uint8_t bit, const char *name) { return (found->requested & bit) != 0 && creds.containsKey(name); };
+
+        if (wanted(0x01, "mqtt"))
+        {
+            JsonObject mqtt = out.createNestedObject("mqtt");
+            mqtt["topic"] = std::string(creds["mqtt"]["topic"] | "sqmeter") + "/alerts";
+            mqtt["payload"] = Delivery::alertJson(alert, device, found->epochSeconds);
+        }
+        if (wanted(0x02, "pushover"))
+            writeRequest(
+                out.createNestedObject("pushover"),
+                Delivery::pushoverRequest(
+                    alert, {creds["pushover"]["userKey"] | "", creds["pushover"]["appToken"] | "", cfg.alerts.pushoverSound}, device));
+        if (wanted(0x04, "ntfy"))
+            writeRequest(
+                out.createNestedObject("ntfy"),
+                Delivery::ntfyRequest(alert, {"https://ntfy.sh", creds["ntfy"]["topic"] | "", creds["ntfy"]["token"] | ""}, device));
+        return serialize(out);
+    }
+
     // POST /api/sensors/tsl2591/calibrate-dark - the device's checks.
     std::string calibrateDark()
     {
@@ -556,6 +616,20 @@ private:
 
     uint32_t uptimeSeconds() const { return (nowMs - bootMs) / 1000; }
 
+    static void writeRequest(JsonObject target, const Delivery::HttpRequest &request)
+    {
+        target["url"] = request.url;
+        target["contentType"] = request.contentType;
+        JsonArray headers = target.createNestedArray("headers");
+        for (const auto &h : request.headers)
+        {
+            JsonArray pair = headers.createNestedArray();
+            pair.add(h.first);
+            pair.add(h.second);
+        }
+        target["body"] = request.body;
+    }
+
     // The demo's network is simulated: WiFi is up, and the broker is
     // "connected" whenever MQTT is on.
     Deps::Facts facts() const
@@ -581,6 +655,7 @@ private:
         r.uptimeSeconds = uptimeSeconds();
         r.epochSeconds = epoch >= Core::CLOCK_VALID_EPOCH ? epoch : 0;
         r.alert = alert;
+        r.requested = mask;
         const uint8_t send = mask & enabledChannels();
         // Switched on but inactive (e.g. MQTT alerts with MQTT off): skipped
         // with the reason, like the device. Alerts being off doesn't block.
@@ -919,6 +994,8 @@ EMSCRIPTEN_BINDINGS(sqmeter_core)
         .function("armedDocument", &EmulatedDevice::armedDocument)
         .function("setArmed", &EmulatedDevice::setArmed)
         .function("testAlert", &EmulatedDevice::testAlert)
+        .function("realTestAlert", &EmulatedDevice::realTestAlert)
+        .function("deliveryRequests", &EmulatedDevice::deliveryRequests)
         .function("calibrateDark", &EmulatedDevice::calibrateDark)
         .function("alpaca", &EmulatedDevice::alpaca)
         .function("saveState", &EmulatedDevice::saveState)
