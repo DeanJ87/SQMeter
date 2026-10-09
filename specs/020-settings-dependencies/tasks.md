@@ -73,7 +73,7 @@ description: "Tasks for spec 020: settings dependencies"
 - [X] T033 [P] Docs: docs/api/rest.md (`/api/settings/effective`, `rulesNotInEffect`, skipped channels), docs/user-guide/configuration.md, docs/user-guide/alerts.md, generated docs/reference/settings-dependencies.md, mkdocs.yml nav
 - [X] T034 Rebuild the demo core (tools/demo-core/build.sh) and SOURCE_HASH
 - [X] T035 Verify: `pio test -e native`, both firmware builds (flash +10.1 KB / +10.2 KB), web typecheck + Vitest, demo build + Playwright, mkdocs --strict, checker
-- [ ] T036 On-device checks on the spare device (listed in quickstart.md and the PR): contract-check, MQTT skipped delivery, Home Assistant switch removal, heap/stack after opening Settings
+- [x] T036 On-device checks on the spare device (listed in quickstart.md and the PR): contract-check, MQTT skipped delivery, Home Assistant switch removal, heap/stack after opening Settings. Run on the spare (standard build, main ba66d72) on 2026-10-09: contract-check passes on 12 endpoints including `/api/settings/effective`; MQTT alerts with MQTT off are `skipped "MQTT is off"`; D-12 is inactive with Alpaca off and alerts still go out; heap about 170 KB free and loop stack 2.7 KB free while Settings is polled. All pass, except the Home Assistant switch removal, which needs the user's broker login and is left to the user.
 
 ## Dependencies
 

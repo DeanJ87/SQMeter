@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: Draft
+**Status**: Implemented (PR #97) - converged
 
 **Input**: User description: "You can enable MQTT as an alert channel without MQTT being enabled - we need to flush stuff like this out using SDD. Audit every setting that depends on another setting or on hardware (alert channel MQTT needs MQTT; rain alerts need the rain sensor; wind rules need the anemometer; BLE alerts need the Bluetooth build; darkness needs a location or GPS; GPS time needs GPS; Home Assistant discovery needs MQTT; publish groups for switched-off sensors; Alpaca safety rules referencing switched-off sensors; ...). One consistent behaviour everywhere - the device, the web UI and the demo (which runs the device's own code). The device must never claim a channel or rule is active when what it depends on is off. Turning a dependency off must not silently lose the dependent's configuration. Tests for every dependency, and a check so new settings must declare their dependencies."
 
