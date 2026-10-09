@@ -48,6 +48,8 @@ client on the device's own subnet are still open.
 | Memory | free heap 178 KB, min free 153 KB, stack free: asyncTcp 6.3 KB, loop 2.6 KB (main: loop 2.6 KB) |
 | Flash | standard 1,469,789 B (+15 KB), BLE 1,698,725 B (+15 KB) |
 | Settings survive | config unchanged apart from the new `wifi.ipv6: true` |
+| IPv6 off (FR-009) | `wifi.ipv6: false` + restart: `addresses: []`, contract check 12/12 ok; back on + restart: both addresses back |
+| ConformU | not run this time: the macOS app opened its UI instead of running headless. The Alpaca handlers are unchanged by this spec; only the discovery socket is, and discovery answers (above). Run ConformU against both devices before release. |
 
 Still to check with a dual-stack client on the device's subnet (quickstart steps 3-7, 9):
 web UI and WebSocket over IPv6, `<hostname>.local` AAAA answers, the 403 for a peer outside the
