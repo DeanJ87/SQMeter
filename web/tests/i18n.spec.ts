@@ -25,6 +25,32 @@ const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const PAGES = INVENTORY.filter((entry) => entry.id !== 'wifi'); // the captive portal has no navigation
 
 const messagesFor = (code: string): Record<string, unknown> => JSON.parse(readFileSync(resolve(LOCALES, `${code}.json`), 'utf8'));
+const ENGLISH: Record<string, unknown> = JSON.parse(readFileSync(resolve(import.meta.dirname, '../src/i18n/en.json'), 'utf8'));
+
+// English messages that read differently in this language (two or more words,
+// no placeholders): seeing one on the page means something wasn't translated (SC-001).
+const englishLeftovers = (messages: Record<string, unknown>) =>
+  Object.entries(ENGLISH)
+    .filter(([key, en]) => typeof en === 'string' && !/\{/.test(en) && /\S+\s+\S+/.test(en) && messages[key] !== en)
+    .map(([, en]) => (en as string).trim());
+
+// Visible text in the device UI (not the demo's own panel and tour, which stay English).
+const visibleTexts = (page: Page) =>
+  page.evaluate(() => {
+    const out = new Set<string>();
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const el = node.parentElement;
+      if (
+        !el ||
+        el.closest('.demo-panel, .demo-panel-toggle, .tour-card, .tour-offer, .tour-outline, [aria-label="Imaging app"], script, style')
+      )
+        continue;
+      const text = (node.textContent ?? '').trim();
+      if (text && el.getClientRects().length) out.add(text);
+    }
+    return [...out];
+  });
 
 const open = async (page: Page, code: string, route: string) => {
   // A full load per page: a hash change alone keeps the settings tab that was open.
@@ -75,6 +101,7 @@ for (const code of LANGS) {
   test(`i18n: ${code}`, async ({ browser }, testInfo) => {
     test.setTimeout(30_000 + PAGES.length * VIEWPORTS.length * 6_000);
     const messages = messagesFor(code);
+    const leftovers = new Set(englishLeftovers(messages));
     const rtl = code === 'ar';
     const problems: string[] = [];
     for (const viewport of VIEWPORTS) {
@@ -95,6 +122,8 @@ for (const code of LANGS) {
           problems.push(`${where}: navigation not in ${code}: ${nav.replace(/\s+/g, ' ')}`);
         const wider = await overflow(page);
         if (wider > 1) problems.push(`${where}: page is ${wider}px wider than the viewport: ${(await culprits(page)).join(', ')}`);
+        const english = (await visibleTexts(page)).filter((text) => leftovers.has(text));
+        if (english.length) problems.push(`${where}: English text: ${english.slice(0, 5).join(' | ')}`);
         await page.screenshot({ path: testInfo.outputPath(`${code}-${viewport.name}-${entry.id}.png`), fullPage: true });
         if (!rtl) continue;
         const flipped = await ltrIslands(page);

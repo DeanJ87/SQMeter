@@ -134,7 +134,7 @@ Someone whose observatory has no internet still wants Spanish. Visitors to the d
 **On the device**
 
 - **FR-007**: English MUST be built into the device's web UI and work with no language file present.
-- **FR-008**: Text the device generates and the UI shows (validation errors, safety reasons, sensor states, alert history entries) MUST carry a stable message ID and its parameters, so the UI can translate it. The existing English text fields MUST stay in API responses unchanged, for compatibility.
+- **FR-008**: Text the device generates and the UI shows (validation errors, safety reasons, sensor states, alert history entries) MUST be translatable through a stable message ID and its parameters. The existing English text fields MUST stay in API responses unchanged, for compatibility. *(As built, research D4: the ID is the `device.*` key of a template generated from the firmware source; the UI recognises the English text against the templates and recovers the parameters, so responses carry no extra fields and the firmware stays within its 12 KB budget.)*
 - **FR-009**: The language MUST be a device setting, shared by every browser that opens the device. Changing it requires authentication when authentication is on (constitution VI).
 - **FR-010**: Choosing a non-English language MUST download that language's file for the running firmware version, from the matching GitHub release. It uses the same secure download path and certificate handling as OTA updates (spec 012). The device MUST check the size and checksum against the manifest before using the file.
 - **FR-011**: The device MUST store at most one language file. Installing a language replaces the previous one only after the new one is verified. Choosing English deletes it.

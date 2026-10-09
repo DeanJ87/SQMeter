@@ -12,7 +12,11 @@ All web UI text moves into `web/src/i18n/en.json` (keyed messages, with a contex
 - **Dependencies**: none new at runtime. Plurals use `Intl.PluralRules`; numbers and dates use `Intl.NumberFormat`/`DateTimeFormat`. Device hashing uses mbedTLS SHA-256 (in the core). The translation tool calls the Anthropic Messages API with `ANTHROPIC_API_KEY`.
 - **Storage**: the device language in the config (NVS); the file at `/lang.json.gz` in LittleFS (gzip, served with `Content-Encoding: gzip`).
 - **Testing**: Unity native tests (`lib/Messages`, `lib/LanguageLogic`, ConfigModel), Vitest (runtime, loader, formatting), Playwright (every page per language at 320 px and 1280 px; Arabic right-to-left with axe), Python tests for the tools.
-- **Budgets**: see the spec's Size Budgets; measured in T028.
+- **Budgets**: see the spec's Size Budgets; measured in T028 (2026-10-09, against main e9f4b09):
+  - Language files: 22.2 KB (id) to 25.2 KB (ar) gzip, limit 64 KB.
+  - i18n runtime (index, format, loader, deviceMessage, languages; esbuild, minified, gzip -9): 2,242 bytes, limit 4 KB.
+  - Firmware: esp32dev 1,483,677 bytes vs main 1,471,757 (+11,920); esp32dev-ble 1,712,309 vs 1,700,685 (+11,624); limit +12 KB (12,288).
+  - `tools/i18n/record.json`: 61 KB (one English baseline plus per-language differences).
 - **Constraints**: nothing outbound from the demo (spec 016); machine-readable output unchanged (FR-015); one TLS session at a time (TlsLock); never concurrent with OTA.
 
 ## Constitution Check
