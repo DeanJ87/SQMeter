@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: Implemented (PR #89) - converged; baseline burn-down (T018-T022) open
+**Status**: Implemented (PR #89) - converged; burn-down T019-T022 done (#108, #112, #113, #116); T018 open for its last file, tools/demo-core/bridge.cpp (the one baseline entry)
 
 > The audience is contributors, so the spec names the project's languages and areas
 > (firmware C++, web TypeScript, Python tools) - they are the subject, not an

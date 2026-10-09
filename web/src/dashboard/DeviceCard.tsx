@@ -7,7 +7,7 @@ import { formatUptime } from '../i18n/format';
 import { t, type MessageKey } from '../i18n';
 import { appHref } from '../lib/appHref';
 
-// Device & Network (specs/010, 025 FR-015, FR-018, 026 FR-005): Wi-Fi and
+// Device & Network (specs/010, 025 FR-015, FR-018, 026 FR-005): WiFi and
 // uptime as tiles; every address, the .local name, MQTT and the firmware as
 // one row each, with "Update available" from the Updates page's last check.
 

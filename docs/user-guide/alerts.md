@@ -169,7 +169,7 @@ Under it, a status line says what's happening and why, for example:
 
 A crash isn't the end of a session: an imaging app that goes silent doesn't pause alerts - that's exactly when weather alerts matter most. Only a clean disconnect does.
 
-**Only while an imaging app is connected** needs Alpaca: with **Settings → Safety → Alpaca** off no imaging app can connect, so the choice is kept but shown *Inactive: Alpaca is off*, and alerts go out any time until Alpaca is back on ([settings dependencies](../reference/settings-dependencies.md), D-12).
+**Only while an imaging app is connected** needs Alpaca: with **Settings → Safety → ASCOM Alpaca** off no imaging app can connect, so the choice is kept but shown *Inactive: Alpaca is off*, and alerts go out any time until Alpaca is back on ([settings dependencies](../reference/settings-dependencies.md), D-12).
 
 ### The imaging app
 
@@ -252,7 +252,7 @@ The safe/unsafe flag (`<base>/safe`, `<base>/safety`) is published whenever MQTT
 
 **Clear** in the flyout empties the list on the device.
 
-While alerts are on, a bell in the header shows how many alerts arrived since you last looked, and opens the last 20 alerts since boot with each channel's delivery status (`sent`, `failed` with the reason, or `skipped` - e.g. no WiFi, MQTT switched off, or an OTA update in progress). A channel that can't deliver shows as **Inactive** with the reason under its switch, isn't counted in the channels badge, and has no **Send test** until it can. **Send test** waits for that status and shows the actual result. The list is also available from `GET /api/alerts/recent`.
+A bell in the header shows how many alerts arrived since you last looked, and opens the last 20 alerts since boot with each channel's result: **Sent**, **Failed** or **Skipped** (e.g. no WiFi, MQTT off, or an OTA update in progress), with the reason on hover. New alerts appear as soon as the device records them; the page doesn't need reloading. A channel that can't deliver shows as **Inactive** with the reason under its switch, isn't counted in the channels badge, and has no **Send test** until it can. **Send test** waits for that status and shows the actual result. The list is also available from `GET /api/alerts/recent`.
 
 ## Pushover keys
 
