@@ -24,9 +24,26 @@ namespace SQM
         bool isValid() const { return lux >= 0.0f && sqm >= 0.0f && nelm >= 0.0f; }
     };
 
+    // The averaged light reading before and after the SQM offset. `lux` is the
+    // calibrated illuminance everything downstream uses (SQM, NELM, Bortle,
+    // Alpaca SkyBrightness), so calibratedSqm - rawSqm == offset whenever
+    // calibration is on - in every measurement mode, not only at night.
+    struct CalibratedLight
+    {
+        float rawSqm;
+        float calibratedSqm;
+        float lux;
+    };
+
     class SkyQuality
     {
     public:
+        /**
+         * Apply the SQM offset (when calibration is enabled) to an averaged,
+         * dark-corrected illuminance.
+         */
+        static CalibratedLight calibrate(float rawLux, bool calibrationEnabled, float sqmOffset);
+
         /**
          * Calculate sky quality metrics from lux measurement
          *

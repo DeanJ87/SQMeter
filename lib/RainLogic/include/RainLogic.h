@@ -45,5 +45,34 @@ namespace SQM
         // Release the latch once the clear delay has passed with no rain
         // (called between readings too, e.g. while the sensor is silent).
         void expire(Latch &latch, uint32_t now, uint32_t clearDelayMs);
+
+        // The daily total reset (spec 003 FR-004). Each "reset day" starts at
+        // the configured local HH:MM, so the reset fires on the first check at
+        // or after that time - a restart, stall or DST jump over the exact
+        // minute can't skip it - and only once per day.
+        struct LocalTime
+        {
+            int year = 1970; // e.g. 2026
+            int yearDay = 0; // 0-365, as tm_yday
+            int hour = 0;
+            int minute = 0;
+        };
+
+        constexpr int32_t NO_RESET_DAY = -1;
+
+        // Days since 1970-01-01 of the reset day `now` falls in.
+        int32_t resetDay(const LocalTime &now, uint8_t resetHour, uint8_t resetMinute);
+
+        enum class ResetDecision : uint8_t
+        {
+            Wait,  // already done for this reset day (or the clock went backwards)
+            Reset, // send the reset now, then record the returned day
+            Adopt, // nothing recorded yet: record this day without resetting
+        };
+
+        // `lastResetDay` is the day last reset (or adopted), NO_RESET_DAY if
+        // none is recorded - then the current day is adopted rather than
+        // resetting, so a first boot or an upgrade never wipes today's total.
+        ResetDecision dailyReset(const LocalTime &now, uint8_t resetHour, uint8_t resetMinute, int32_t lastResetDay);
     } // namespace Rain
 } // namespace SQM

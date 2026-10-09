@@ -3,8 +3,8 @@ import { useRef, useState } from 'preact/hooks';
 import type { AlertChannelName, AlertEventKey, AlertRecord, AlertSendMode } from '../../types';
 import { mergeAlertsConfig } from './defaults';
 import { showToast } from '../toast';
-import { darkness, formatClock, formatDuration, sunPosition } from '../../lib/astro';
 import { deviceTime } from '../../lib/deviceTime';
+import { describeDarkness } from './darkness';
 import type { SettingsTabProps } from './context';
 import { useAlertSchedule } from '../../hooks/useAlertSchedule';
 import {
@@ -85,23 +85,6 @@ const soundOptions = (current: string, defaultLabel: string) => [
 ];
 
 const CHANNEL_LABEL: Record<AlertChannelName, string> = { pushover: 'Pushover', ntfy: 'ntfy', webhook: 'Webhook', mqtt: 'MQTT' };
-
-// Dark-or-not comes from the device's own sun position (what the alerts
-// use); the start/end times are a prediction made here, shown in this
-// browser's time zone.
-const describeDarkness = (latitude: number, longitude: number, darkAltitude: number, deviceSunAltitude?: number, deviceNow?: Date) => {
-  const now = deviceNow ?? new Date();
-  const sun = deviceSunAltitude ?? sunPosition(now, latitude, longitude).altitude;
-  const darkNow = sun <= darkAltitude;
-  const predicted = darkness(latitude, longitude, darkAltitude, now);
-  const sunNow = `Sun at ${sun.toFixed(1)}° now${deviceSunAltitude === undefined ? '' : ' (device)'}`;
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const inZone = zone ? ` (this browser's time, ${zone})` : " (this browser's time)";
-  if (darkNow) return `${sunNow} - dark${predicted.end ? ` until ${formatClock(predicted.end)}${inZone}` : ''}.`;
-  const start = predicted.darkNow ? null : predicted.start;
-  if (!start) return `${sunNow} - not dark yet.`;
-  return `${sunNow} - dark in ${formatDuration(start.valueOf() - now.valueOf())}, ${formatClock(start)} to ${formatClock(predicted.end)}${inZone}.`;
-};
 
 // The firmware's built-in wording (lib/AlertLogic), written as templates;
 // shown as the placeholder until you write your own.
@@ -477,9 +460,12 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
       : config.location?.set
         ? config.location
         : null;
-  const darknessNote = location
-    ? describeDarkness(location.latitude, location.longitude, alerts.nightSunAltitudeDeg, status?.sky?.sunAltitudeDeg, deviceTime(status))
-    : null;
+  const darknessNote = describeDarkness({
+    sky: status?.sky,
+    location,
+    formLimitDeg: alerts.nightSunAltitudeDeg,
+    deviceNow: deviceTime(status),
+  });
   // Counts only channels that can deliver (FR-007).
   const channelEntries = (['pushover', 'ntfy', 'webhook', 'mqtt'] as const).map((channel) => dep(`alerts.${channel}.enabled`));
   const channelsOn = channelEntries.filter((e) => e.state !== 'off').length;
