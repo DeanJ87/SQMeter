@@ -71,7 +71,7 @@ export function checkLanguage(code, en, messages, file) {
       continue;
     }
     for (const category of required) if (!value[category]?.trim()) add(`${code}: ${key} lacks the "${category}" plural form`);
-    const allowed = new Set([...required, 'zero']);
+    const allowed = new Set([...required, 'zero', 'other']);
     for (const category of Object.keys(value)) if (!allowed.has(category)) add(`${code}: ${key} has a plural form "${category}" ${code} doesn't use`);
     const want = placeholders(allText(english).replace(/\{count\}/g, ''));
     for (const [category, text] of Object.entries(value)) {
