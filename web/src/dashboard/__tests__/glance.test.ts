@@ -68,7 +68,7 @@ describe('glanceItems', () => {
     expect(glanceItems(input({ quiet: true }))[0].state).toBe('No updates');
     expect(glanceItems(input({ sensors: { ...healthySensors(), dataStale: true, dataAgeMs: 40_000 } }))[0]).toMatchObject({
       state: 'Stale',
-      sub: '40.0 s old',
+      detail: "The sensors haven't reported recently, so the verdict treats the data as stale.",
     });
   });
 
@@ -76,7 +76,9 @@ describe('glanceItems', () => {
     const sensors = healthySensors();
     sensors.safety = { ...sensors.safety!, safe: false, rawSafe: false, reasons: ['Rain detected'] };
     const items = glanceItems(input({ sensors }));
-    expect(items[1]).toMatchObject({ id: 'safety-verdict', severity: 'problem', state: 'Unsafe', sub: 'Rain detected' });
+    // Pill only on the tile (DS-08): the reasons are behind "?".
+    expect(items[1]).toMatchObject({ id: 'safety-verdict', severity: 'problem', state: 'Unsafe', detail: 'Rain detected' });
+    expect(items[1].sub).toBeUndefined();
   });
 
   it('shows paused alerts with a Resume action (FR-008)', () => {
@@ -85,7 +87,8 @@ describe('glanceItems', () => {
       (i) => i.id === 'alerts-state',
     );
     expect(item).toMatchObject({ severity: 'problem', state: 'Paused', fix: { action: 'resume' } });
-    expect(item?.sub).toMatch(/^Paused by you/);
+    expect(item?.sub).toBeUndefined();
+    expect(item?.detail).toMatch(/^Paused by you/);
   });
 
   it('says alerts are waiting for an imaging app (US1-3)', () => {
@@ -96,7 +99,7 @@ describe('glanceItems', () => {
     });
     const item = glanceItems(input({ schedule, config })).find((i) => i.id === 'alerts-state');
     expect(item).toMatchObject({ state: 'Waiting', detail: 'Nothing is sent until an imaging app connects.' });
-    expect(item?.sub).toMatch(/^Waiting for an imaging app/);
+    expect(item?.sub).toBeUndefined();
   });
 
   it('says alerts are off once', () => {

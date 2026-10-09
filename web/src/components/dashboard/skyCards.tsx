@@ -55,9 +55,12 @@ export const SkyHero: FunctionalComponent<Readings & { live: boolean; isStale: b
 };
 
 export const SkyUnavailableCard: FunctionalComponent = () => (
-  <Card title={t('dashboard.skyQuality')} icon="star" tone="muted">
-    <Note>{t('dashboard.theTsl2591LightSensorIsn')}</Note>
-  </Card>
+  <Card
+    title={t('dashboard.skyQuality')}
+    icon="star"
+    tone="muted"
+    actions={<Pill tone="pill-red">{t('settings.sensors.notResponding')}</Pill>}
+  />
 );
 
 export const CloudCard: FunctionalComponent<Readings> = ({ sensors }) => (
@@ -94,7 +97,7 @@ export const LightCard: FunctionalComponent<Readings> = ({ sensors }) => (
 );
 
 export const IrCard: FunctionalComponent<Readings> = ({ sensors }) => (
-  <Card title={t('dashboard.irTemperature')} icon="therm" tone="violet">
+  <Card title={t('dashboard.irSkySensor')} icon="therm" tone="violet">
     <ReadingRow label={t('dashboard.skyTemperature')} value={`${formatNumber(sensors.infrared.skyTemperature, 1)} °C`} />
     <ReadingRow label={t('dashboard.ambient')} value={`${formatNumber(sensors.infrared.ambientTemperature, 1)} °C`} />
   </Card>

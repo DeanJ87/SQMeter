@@ -3,7 +3,7 @@ import { REASONS, type DepEntry, type EffectiveReport } from '../lib/settingsDep
 import { describeSchedule } from '../components/settings/alertSchedule';
 import { sensorName, type SensorId } from '../lib/sensorNames';
 import { describeClient, type ClientView } from '../lib/alpacaClients';
-import { formatAgeMs, formatAgo } from '../i18n/format';
+import { formatAgo } from '../i18n/format';
 import { deviceText } from '../i18n/deviceMessage';
 import { languageProblem } from '../i18n/loader';
 import { t, type MessageKey } from '../i18n';
@@ -24,7 +24,7 @@ export interface GlanceItem {
   priority: number; // the spec's Edge Cases order
   label: string; // the tile label or row name, e.g. "IR sky sensor"
   state: string; // the pill, e.g. "Error"
-  sub?: string; // a tile's one line under the pill, e.g. "Checked 3 s ago"
+  sub?: string; // which one, for tiles that repeat (the imaging app per Alpaca device): never a problem restated (DS-08)
   detail?: string; // behind "?": the consequence or the list behind a summary
   fix?: GlanceFix;
 }
@@ -95,13 +95,7 @@ const freshness = ({ sensors, connected, quiet }: GlanceInput): GlanceItem => {
   const label = t('status.data');
   if (!connected) return item('freshness', 'problem', { label, state: t('status.offline'), detail: t('status.offlineHint') });
   if (quiet) return item('freshness', 'problem', { label, state: t('status.noUpdates'), detail: t('status.noUpdatesHint') });
-  if (sensors?.dataStale)
-    return item('freshness', 'problem', {
-      label,
-      state: t('system.stale'),
-      sub: t('status.ageOld', { age: formatAgeMs(sensors.dataAgeMs) }),
-      detail: t('status.staleHint'),
-    });
+  if (sensors?.dataStale) return item('freshness', 'problem', { label, state: t('system.stale'), detail: t('status.staleHint') });
   return item('freshness', 'ok', { label, state: t('dashboard.live') });
 };
 
@@ -110,24 +104,28 @@ const verdict = ({ sensors }: GlanceInput): GlanceItem | null => {
   if (!safety) return null;
   const label = t('status.safety');
   if (safety.safe) return item('safety-verdict', 'ok', { label, state: t('safetyCard.safe') });
-  const reasons = safety.reasons.map((reason) => deviceText(reason)).join(', ');
-  const waiting = safety.rawSafe && safety.secondsUntilSafe > 0;
-  const sub = waiting ? t('status.safeIn', { seconds: safety.secondsUntilSafe }) : reasons || undefined;
-  return item('safety-verdict', 'problem', { label, state: t('status.unsafe'), sub });
+  // Pill only (DS-08): the reasons are the Safety monitor card's; "?" repeats them for when it's hidden.
+  if (safety.rawSafe && safety.secondsUntilSafe > 0)
+    return item('safety-verdict', 'note', { label, state: t('status.safeIn', { seconds: safety.secondsUntilSafe }) });
+  const reasons = safety.reasons.map((reason) => deviceText(reason)).join(t('common.listSeparator'));
+  return item('safety-verdict', 'problem', { label, state: t('status.unsafe'), detail: reasons || undefined });
 };
 
 const alertsItem = ({ config, schedule }: GlanceInput): GlanceItem | null => {
   if (!config?.alerts) return null;
   const label = t('status.alerts');
-  if (!config.alerts.enabled)
-    return item('alerts-state', 'note', { label, state: t('status.off'), sub: t('status.nothingSent'), fix: settingsLink('alerts') });
+  if (!config.alerts.enabled) return item('alerts-state', 'note', { label, state: t('status.off'), detail: t('status.nothingSent') });
   if (!schedule) return null;
   if (schedule.armed) return item('alerts-state', 'ok', { label, state: t('status.sending') });
   const waiting = schedule.reason === 'waiting-for-client' || schedule.reason === 'client-disconnected';
-  const sub = describeSchedule(schedule);
   return waiting
-    ? item('alerts-state', 'problem', { label, state: t('status.waiting'), sub, detail: t('glance.alertsWaitingDetail') })
-    : item('alerts-state', 'problem', { label, state: t('status.paused'), sub, fix: { label: t('alertsBell.resume'), action: 'resume' } });
+    ? item('alerts-state', 'problem', { label, state: t('status.waiting'), detail: t('glance.alertsWaitingDetail') })
+    : item('alerts-state', 'problem', {
+        label,
+        state: t('status.paused'),
+        detail: describeSchedule(schedule),
+        fix: { label: t('alertsBell.resume'), action: 'resume' },
+      });
 };
 
 // The device reports its reason in English; Settings shows the translated text (spec 020).

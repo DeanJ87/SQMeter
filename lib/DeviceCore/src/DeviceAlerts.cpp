@@ -29,11 +29,11 @@ namespace SQM
             in.rainRateMmPerHour = obs.rainRateMmPerHour;
             in.lensFault = snapshot.rg15.lensBad;
 
-            in.sensors[0] = {"TSL2591 light", true, obs.skyLight.valid};
-            in.sensors[1] = {"MLX90614 IR", true, obs.irSky.valid};
-            in.sensors[2] = {"BME280 environment", true, obs.environment.valid};
-            in.sensors[3] = {"RG-15 rain", cfg.rain.enabled, obs.rain.valid};
-            in.sensors[4] = {"Wind", obs.wind.present, obs.wind.valid};
+            in.sensors[0] = {"Light sensor", true, obs.skyLight.valid};
+            in.sensors[1] = {"IR sky sensor", true, obs.irSky.valid};
+            in.sensors[2] = {"Environment sensor", true, obs.environment.valid};
+            in.sensors[3] = {"Rain sensor", cfg.rain.enabled, obs.rain.valid};
+            in.sensors[4] = {"Anemometer", obs.wind.present, obs.wind.valid};
 
             in.environmentValid = obs.environment.valid;
             in.temperatureC = obs.temperatureC;
@@ -364,7 +364,7 @@ namespace SQM
                     {"reason_count", std::to_string(reasons.size())}};
             }
             else if (sample->type == Alerts::AlertType::SensorFault || sample->type == Alerts::AlertType::SensorRecovered)
-                test.vars = {{"sensor", "TSL2591 light (example)"}};
+                test.vars = {{"sensor", "Light sensor (example)"}};
             else if (
                 sample->type == Alerts::AlertType::ClientLost || sample->type == Alerts::AlertType::ClientBack ||
                 sample->type == Alerts::AlertType::ClientDisconnected)

@@ -114,7 +114,7 @@ The safety verdict is re-evaluated every second from the current sensor readings
 9. **Sky brightness (SQM)** - below the configured minimum (disabled by default)
 10. **Humidity** - above the configured maximum (disabled by default)
 11. **Temperature-dewpoint margin** - below the configured minimum (disabled by default)
-12. **Humidity sensor fault** - the humidity or dew-point rule is enabled but the BME280 isn't reporting, so it can't be evaluated
+12. **Sensor fault: environment sensor** - the humidity or dew-point rule is enabled but the environment sensor (BME280) isn't reporting, so it can't be evaluated
 
 Rain and wind rules (2-4) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining or blowing a gale. Rules 8-12 only apply to fresh data.
 
@@ -123,7 +123,7 @@ Each threshold has its own enable/disable toggle - a disabled threshold never co
 <!-- diagram: DIA-02
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceCore.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: true
-fingerprint: e81344ef9d63f729
+fingerprint: 24c64556e2707937
 -->
 <figure class="diagram" markdown>
 
@@ -134,9 +134,9 @@ flowchart TB
     START(["Every second"]) --> ALWAYS
     ALWAYS["<b>Always checked</b>, even on stale data<br/>Force unsafe on: <i>Manual override forces unsafe</i><br/>Raining, or within the rain clear delay: <i>Rain detected</i><br/>Rain sensor offline, stale or lens fault: <i>Rain sensor offline...</i><br/>Wind limit set but anemometer off or silent: <i>Wind limit set but...</i><br/>Wind or gust at or over its limit: <i>Wind ... / Gust ...</i>"]
     ALWAYS --> FRESHNESS["<b>Data freshness</b><br/>No light or IR read since boot: <i>No successful sensor data yet</i><br/>Light or IR sensor's last successful read older than the stale limit, 30 s: <i>Sensor data is stale</i>"]
-    FRESHNESS --> HEALTH["<b>Sensor health</b><br/>TSL2591 or MLX90614 not OK: <i>Sensor fault: ...</i>"]
+    FRESHNESS --> HEALTH["<b>Sensor health</b><br/>Light sensor or IR sky sensor not OK: <i>Sensor fault: ...</i>"]
     HEALTH --> FRESH{"Fresh data?"}
-    FRESH -->|yes| THRESHOLDS["<b>Thresholds</b><br/>Cloud cover at or over the limit, unless the MLX90614 is faulted<br/>SQM below the minimum, unless the TSL2591 is faulted<br/>Humidity or dew rule on but no humidity reading: <i>Humidity sensor fault...</i><br/>otherwise humidity over its maximum, or air minus dew point below the margin"]
+    FRESH -->|yes| THRESHOLDS["<b>Thresholds</b><br/>Cloud cover at or over the limit, unless the IR sky sensor is faulted<br/>SQM below the minimum, unless the light sensor is faulted<br/>Humidity or dew rule on but no humidity reading: <i>Sensor fault: environment sensor</i><br/>otherwise humidity over its maximum, or air minus dew point below the margin"]
     FRESH -->|"no: skip, already unsafe"| ANY
     THRESHOLDS --> ANY{"Any reasons?"}
     ANY -->|none| RAWSAFE["Raw verdict: safe"]
@@ -162,11 +162,11 @@ flowchart TB
         - The rain sensor is enabled but offline, stale or reporting a lens fault: "Rain sensor offline, stale or reporting a lens fault".
         - A wind limit is set but the anemometer is disabled or not reporting: "Wind limit set but the anemometer is disabled or not reporting". Otherwise wind or gust at or over its limit: "Wind ..." / "Gust ...".
     2. **Data freshness**: no successful TSL2591 or MLX90614 read since boot gives "No successful sensor data yet". If either sensor is still answering but its last successful read is older than the stale limit (default 30 s), that gives "Sensor data is stale" - a sensor that keeps reporting OK without fresh readings counts as stale. A sensor that has stopped answering is reported under sensor health instead.
-    3. **Sensor health**: the TSL2591 or MLX90614 not OK gives "Sensor fault: ..." naming which.
+    3. **Sensor health**: the light sensor or IR sky sensor not OK gives "Sensor fault: ..." naming which ("Sensor fault: IR sky sensor").
     4. **Only with fresh data**, the threshold rules:
-        - cloud cover at or over its limit (skipped if the MLX90614 is faulted);
-        - SQM below its minimum (skipped if the TSL2591 is faulted);
-        - if the humidity or dew-point rule is on but there's no humidity reading, "Humidity sensor fault"; otherwise humidity above its maximum, or air temperature minus dew point below the margin.
+        - cloud cover at or over its limit (skipped if the IR sky sensor is faulted);
+        - SQM below its minimum (skipped if the light sensor is faulted);
+        - if the humidity or dew-point rule is on but there's no humidity reading, "Sensor fault: environment sensor"; otherwise humidity above its maximum, or air temperature minus dew point below the margin.
     5. No reasons: the raw verdict is safe. Any reason: unsafe, with all the reasons.
     6. The raw verdict passes through the [safe delay](#safe-delay), and the result is what the dashboard, `/api/safety`, `/api/safe`, MQTT `<base>/safe` and Alpaca `IsSafe` report.
     7. With Alpaca switched off, `IsSafe` returns false with a NotConnected error instead (see [Connecting from N.I.N.A.](#connecting-from-nina)).

@@ -54,7 +54,7 @@
     },
     {
       "id": "safety-not-shared",
-      "label": "safetyCard.notSharedWithNI",
+      "label": "safetyCard.notShared",
       "sources": [
         "readings.safety.alpacaEnabled",
         "safety.alpacaEnabled"

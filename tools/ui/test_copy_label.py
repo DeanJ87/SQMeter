@@ -72,10 +72,10 @@ class CopyTests(unittest.TestCase):
 
 
 class LabelTests(unittest.TestCase):
-    def run_check(self, english: dict, docs: dict, readings: str = "") -> list:
+    def run_check(self, english: dict, docs: dict, readings: str = "", context: dict | None = None) -> list:
         glossary = {
             "names": [
-                {"name": "Light sensor", "keys": ["sensor.light"], "avoid": ["TSL2591 Light Sensor"]},
+                {"name": "Light sensor", "keys": ["sensor.light"], "avoid": ["TSL2591 Light Sensor"], "parts": ["TSL2591"]},
                 {"name": "Alerts", "keys": [], "avoid": [], "ha": "Alerts"},
             ]
         }
@@ -84,6 +84,8 @@ class LabelTests(unittest.TestCase):
             write(root, label_check.GLOSSARY, glossary)
             write(root, label_check.ENGLISH, english)
             write(root, label_check.READINGS, readings)
+            if context is not None:
+                write(root, label_check.CONTEXT, context)
             for rel, text in docs.items():
                 write(root, rel, text)
             return [message for _, message in label_check.check(root)]
@@ -102,6 +104,22 @@ class LabelTests(unittest.TestCase):
             '"Alerts"',
         )
         self.assertEqual(problems, [])
+
+    def test_card_titles_and_device_reasons_use_the_name(self):
+        problems = self.run_check(
+            {
+                "sensor.light": "Light sensor",
+                "dashboard.t": "TSL2591 Readings",
+                "device.safety.f": "Sensor fault: TSL2591 light",
+                "device.alert.g": "TSL2591 Light Sensor recovered",
+                "device.api.x": "TSL2591 not detected",
+                "system.row": "TSL2591",
+            },
+            {},
+            '"Alerts"',
+            {"dashboard.t": "Dashboard: a card or section title; max 20 chars."},
+        )
+        self.assertEqual(sorted(p.split(" ")[0] for p in problems), ["dashboard.t", "device.alert.g", "device.alert.g", "device.safety.f"])
 
     def test_docs_and_home_assistant(self):
         problems = self.run_check({"sensor.light": "Light sensor"}, {"docs/guide.md": "the TSL2591 Light Sensor"})

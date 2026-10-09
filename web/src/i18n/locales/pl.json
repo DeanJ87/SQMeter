@@ -4,9 +4,9 @@
   "a11y.steady": "stabilnie",
   "a11y.trend": {
     "one": "Trend: {label} {direction}, z {from} do {to} (zakres {min}–{max}) w ostatnim odczycie",
+    "other": "Trend: {label} {direction}, z {from} do {to} (zakres {min}–{max}) w ostatnich {count} odczytach",
     "few": "Trend: {label} {direction}, z {from} do {to} (zakres {min}–{max}) w ostatnich {count} odczytach",
-    "many": "Trend: {label} {direction}, z {from} do {to} (zakres {min}–{max}) w ostatnich {count} odczytach",
-    "other": "Trend: {label} {direction}, z {from} do {to} (zakres {min}–{max}) w ostatnich {count} odczytach"
+    "many": "Trend: {label} {direction}, z {from} do {to} (zakres {min}–{max}) w ostatnich {count} odczytach"
   },
   "a11y.trendNoData": "Trend: {label} – brak danych",
   "alerts.delivery.sending": "Wysyłanie",
@@ -14,18 +14,18 @@
   "alertsBell.alerts": "Powiadomienia",
   "alertsBell.alertsArePausedNothingIs": "Powiadomienia są wstrzymane – nic nie zostanie wysłane, dopóki ich nie wznowisz.",
   "alertsBell.bellLabel": {
-    "zero": "Powiadomienia",
     "one": "Powiadomienia, {count} nowe",
+    "zero": "Powiadomienia",
+    "other": "Powiadomienia, {count} nowych",
     "few": "Powiadomienia, {count} nowe",
-    "many": "Powiadomienia, {count} nowych",
-    "other": "Powiadomienia, {count} nowych"
+    "many": "Powiadomienia, {count} nowych"
   },
   "alertsBell.bellLabelPaused": {
-    "zero": "Powiadomienia (wstrzymane)",
     "one": "Powiadomienia (wstrzymane), {count} nowe",
+    "zero": "Powiadomienia (wstrzymane)",
+    "other": "Powiadomienia (wstrzymane), {count} nowych",
     "few": "Powiadomienia (wstrzymane), {count} nowe",
-    "many": "Powiadomienia (wstrzymane), {count} nowych",
-    "other": "Powiadomienia (wstrzymane), {count} nowych"
+    "many": "Powiadomienia (wstrzymane), {count} nowych"
   },
   "alertsBell.clear": "Wyczyść",
   "alertsBell.newAlertTitle": "Nowe powiadomienie: {title}",
@@ -127,16 +127,16 @@
   "dashboard.infrared": "Podczerwień",
   "dashboard.intensity": "Natężenie",
   "dashboard.ipAddress": "Adres IP",
-  "dashboard.irTemperature": "Temperatura IR",
+  "dashboard.irSkySensor": "Czujnik IR nieba",
   "dashboard.lensFaultCleanOrInspect": "Usterka soczewki: wyczyść lub sprawdź soczewkę.",
   "dashboard.lightSensor": "Czujnik światła",
   "dashboard.live": "Na żywo",
   "dashboard.lockAcquired": "Pozycja ustalona",
-  "dashboard.mSNumberKmH": "m/s ({number} km/h)",
   "dashboard.magArcsec": "mag / arcsec²",
   "dashboard.no": "Nie",
   "dashboard.noFix": "Brak pozycji",
   "dashboard.notDetected": "Nie wykryto",
+  "dashboard.numberKmH": "{number} km/h",
   "dashboard.observatorySafe": "Obserwatorium bezpieczne",
   "dashboard.observatoryUnsafeValue": "Obserwatorium niebezpieczne{value}",
   "dashboard.offline": "Offline",
@@ -161,7 +161,6 @@
   "dashboard.tempDelta": "Różnica temp.",
   "dashboard.temperature": "Temperatura",
   "dashboard.theDashboardWillPopulateWhen": "Pulpit wypełni się po nadejściu kolejnego odczytu.",
-  "dashboard.theTsl2591LightSensorIsn": "Czujnik światła TSL2591 nie odpowiada – sprawdź okablowanie i uruchom ponownie.",
   "dashboard.unknown": "Nieznany",
   "dashboard.uptime": "Czas pracy",
   "dashboard.vaneFault": "usterka wiatrowskazu",
@@ -189,8 +188,6 @@
   "device.alert.mqttNotConnected": "Brak połączenia z MQTT",
   "device.alert.nameIsOfflineOrReportingErrors": "{name}: offline lub zgłasza błędy.",
   "device.alert.nameIsReportingNormallyAgain": "{name}: znów działa normalnie.",
-  "device.alert.nameSensorFault": "Usterka czujnika: {name}",
-  "device.alert.nameSensorRecovered": "Czujnik znów działa: {name}",
   "device.alert.noRainForTheConfiguredRain": "Brak deszczu przez ustawione opóźnienie po deszczu.",
   "device.alert.noRequestToTheDeviceFor": "Brak zapytań do: {device} od {silentFor} – ostatnie zapytanie: {lastChecked}.",
   "device.alert.observatorySafe": "Obserwatorium bezpieczne",
@@ -201,7 +198,9 @@
   "device.alert.rainStarts": "Zaczyna padać",
   "device.alert.rainStops": "Przestaje padać",
   "device.alert.sensorFault": "Usterka czujnika",
+  "device.alert.sensorFaultName": "Usterka czujnika: {name}",
   "device.alert.sensorRecovered": "Czujnik znów działa",
+  "device.alert.sensorRecoveredName": "Czujnik znów działa: {name}",
   "device.alert.skiesClearUp": "Niebo się przejaśnia",
   "device.alert.skiesCloudOver": "Niebo się chmurzy",
   "device.alert.temperatureTemperaturecCIsWithinMargin": "Temperatura {temperatureC} °C jest mniej niż {margin} °C od punktu rosy ({dewpointC} °C).",
@@ -212,8 +211,8 @@
   "device.alert.theImagingAppDisconnects": "Aplikacja do astrofotografii się rozłącza",
   "device.alert.theImagingAppIsBack": "Aplikacja do astrofotografii wraca",
   "device.alert.theImagingAppStopsChecking": "Aplikacja do astrofotografii przestaje odpytywać",
+  "device.alert.theRainSensorReportsALens": "Czujnik deszczu zgłasza usterkę soczewki. Wyczyść lub sprawdź soczewkę.",
   "device.alert.theRainSensorReportsRainRainratemmperhour": "Czujnik deszczu wykrywa opad ({rainRateMmPerHour} mm/h).",
-  "device.alert.theRg15ReportsALens": "RG-15 zgłasza usterkę soczewki – wyczyść lub sprawdź soczewkę.",
   "device.alert.thisIsHowALabelAlert": "Tak przychodzi powiadomienie „{label}”.",
   "device.api.badClientId": "Nieprawidłowy identyfikator klienta",
   "device.api.badCredentialsCheckUsernamePassword": "Nieprawidłowe dane logowania – sprawdź nazwę użytkownika i hasło",
@@ -277,18 +276,18 @@
   "device.safety.dewMarginValueCDewpointmarginmincC": "Margines rosy {value} C < {dewpointMarginMinC} C (temp. {temperatureC} C, punkt rosy {dewpointC} C)",
   "device.safety.gustWindgustmsMSWindgustunsafemsM": "Poryw {windGustMs} m/s >= {windGustUnsafeMs} m/s",
   "device.safety.humidityHumiditypercentHumiditymaxsafe": "Wilgotność {humidityPercent}% > {humidityMaxSafe}%",
-  "device.safety.humiditySensorFaultHumidityDewPoint": "Usterka czujnika wilgotności – nie można ocenić reguł wilgotności i punktu rosy",
   "device.safety.manualOverrideForcesUnsafe": "Ręczne wymuszenie ustawia stan niebezpieczny",
   "device.safety.noSuccessfulSensorDataYet": "Brak jeszcze prawidłowych danych z czujników",
   "device.safety.rainDetected": "Wykryto deszcz",
   "device.safety.rainSensorOfflineStaleOrReporting": "Czujnik deszczu offline, nieaktualny lub zgłasza usterkę soczewki",
   "device.safety.sensorDataIsStaleSecondssincelastgooddataS": "Dane z czujników są nieaktualne ({secondsSinceLastGoodData} s, limit {staleAfterSeconds} s)",
-  "device.safety.sensorFaultMlx90614Ir": "Usterka czujnika: MLX90614 IR",
-  "device.safety.sensorFaultTsl2591Light": "Usterka czujnika: TSL2591 światło",
-  "device.safety.sensorFaultTsl2591LightAndMlx90614": "Usterka czujnika: TSL2591 światło i MLX90614 IR",
+  "device.safety.sensorFaultEnvironmentSensor": "Usterka czujnika: czujnik otoczenia",
+  "device.safety.sensorFaultIrSkySensor": "Usterka czujnika: czujnik IR nieba",
+  "device.safety.sensorFaultLightSensor": "Usterka czujnika: czujnik światła",
+  "device.safety.sensorFaultLightSensorAndIr": "Usterka czujnika: czujnik światła i czujnik IR nieba",
   "device.safety.sqmSqmSqmminsafe": "SQM {sqm} < {sqmMinSafe}",
-  "device.safety.unsafeIfTheRainSensorFails": "Niebezpiecznie przy awarii czujnika deszczu: Czujnik deszczu jest wyłączony",
-  "device.safety.unsafeWhileRainingRainSensorIs": "Niebezpiecznie podczas deszczu: Czujnik deszczu jest wyłączony",
+  "device.safety.unsafeIfTheRainSensorFails": "Niebezpiecznie przy awarii czujnika deszczu",
+  "device.safety.unsafeWhileRaining": "Niebezpiecznie podczas deszczu",
   "device.safety.windLimitSetButTheAnemometer": "Ustawiono limit wiatru, ale wiatromierz jest wyłączony lub nie raportuje",
   "device.safety.windWindspeedmsMSWindspeedunsafemsM": "Wiatr {windSpeedMs} m/s >= {windSpeedUnsafeMs} m/s",
   "device.settings.alertsClearSkyThresholdMustBe": "Powiadomienia: próg czystego nieba musi wynosić od 0 do 100 procent",
@@ -477,7 +476,9 @@
   "safetyCard.deviceValue": "Urządzenie: {value}",
   "safetyCard.hideHistory": "Ukryj historię",
   "safetyCard.history": "Historia",
-  "safetyCard.notSharedWithNI": " · nie udostępniane N.I.N.A. (Alpaca wyłączona)",
+  "safetyCard.imagingApps": "Aplikacje do astrofotografii",
+  "safetyCard.notShared": "Nieudostępniany",
+  "safetyCard.notSharedHint": "Alpaca jest wyłączona, więc N.I.N.A. i inne aplikacje do astrofotografii nie widzą tej oceny.",
   "safetyCard.reason.anemometerFault": "usterka wiatromierza",
   "safetyCard.reason.cloud": "chmury",
   "safetyCard.reason.dewPoint": "punkt rosy",
@@ -551,9 +552,9 @@
   "settings.alerts.cancel": "Anuluj",
   "settings.alerts.channelCount": {
     "one": "{count} kanał",
+    "other": "{count} kanału",
     "few": "{count} kanały",
-    "many": "{count} kanałów",
-    "other": "{count} kanału"
+    "many": "{count} kanałów"
   },
   "settings.alerts.channels": "Kanały",
   "settings.alerts.clearBelow": "Pogodnie poniżej",
@@ -765,9 +766,9 @@
   "settings.device.allPhonesUnpaired": "Rozparowano wszystkie telefony.",
   "settings.device.bleClientsConnected": {
     "one": "{count} połączony",
+    "other": "{count} połączonych",
     "few": "{count} połączone",
-    "many": "{count} połączonych",
-    "other": "{count} połączonych"
+    "many": "{count} połączonych"
   },
   "settings.device.bluetooth": "Bluetooth",
   "settings.device.broadcastsSafetyAndRainState": "Rozgłasza stan bezpieczeństwa i deszczu oraz może obudzić sparowany telefon.",
@@ -791,9 +792,9 @@
   "settings.device.phoneAlarmOff": "Alarm w telefonie wyłączony",
   "settings.device.phonesPaired": {
     "one": "{count} sparowany telefon",
+    "other": "{count} sparowanego telefonu",
     "few": "{count} sparowane telefony",
-    "many": "{count} sparowanych telefonów",
-    "other": "{count} sparowanego telefonu"
+    "many": "{count} sparowanych telefonów"
   },
   "settings.device.requiredToChangeSettingsUpdate": "Wymagane do zmiany ustawień, aktualizacji i ponownego uruchomienia. Odczyty pozostają publiczne.",
   "settings.device.security": "Bezpieczeństwo",
@@ -808,9 +809,9 @@
   "settings.discard": "Odrzuć",
   "settings.errorsToFix": {
     "one": "{count} do poprawienia",
+    "other": "{count} do poprawienia",
     "few": "{count} do poprawienia",
-    "many": "{count} do poprawienia",
-    "other": "{count} do poprawienia"
+    "many": "{count} do poprawienia"
   },
   "settings.failedToLoadConfiguration": "Nie udało się wczytać konfiguracji",
   "settings.failedToSaveSettings": "Nie udało się zapisać ustawień",
@@ -969,9 +970,9 @@
   "settings.sensors.rxPin": "Pin RX",
   "settings.sensors.sampleCount": {
     "one": "{count} próbka",
+    "other": "{count} próbki",
     "few": "{count} próbki",
-    "many": "{count} próbek",
-    "other": "{count} próbki"
+    "many": "{count} próbek"
   },
   "settings.sensors.samplesOfWindow": "{count} z {total} próbek",
   "settings.sensors.saveFirst": "Najpierw zapisz",
@@ -1078,7 +1079,6 @@
   "settingsDeps.turnOnGps": "Włącz GPS",
   "settingsDeps.turnOnMqtt": "Włącz MQTT",
   "settingsDeps.wifiSettings": "Ustawienia Wi-Fi",
-  "status.ageOld": "Sprzed {age}",
   "status.alerts": "Powiadomienia",
   "status.allGood": "Wszystko OK",
   "status.cantSend": "Brak wysyłki",
@@ -1107,9 +1107,9 @@
   "status.notInEffect": "Nie działa",
   "status.notInEffectCount": {
     "one": "{count} nieaktywne",
+    "other": "{count} nieaktywnych",
     "few": "{count} nieaktywne",
-    "many": "{count} nieaktywnych",
-    "other": "{count} nieaktywnych"
+    "many": "{count} nieaktywnych"
   },
   "status.notLoaded": "Nie wczytano",
   "status.notSet": "Nieustawiony",
@@ -1130,9 +1130,9 @@
   "status.title": "Stan",
   "status.toCheck": {
     "one": "{count} do sprawdzenia",
+    "other": "{count} do sprawdzenia",
     "few": "{count} do sprawdzenia",
-    "many": "{count} do sprawdzenia",
-    "other": "{count} do sprawdzenia"
+    "many": "{count} do sprawdzenia"
   },
   "status.unsafe": "Niebezpiecznie",
   "status.waiting": "Oczekiwanie",
@@ -1201,7 +1201,7 @@
   "system.resetTotal": "Wyzeruj sumę",
   "system.restartDevice": "Uruchom urządzenie ponownie",
   "system.restartNow": "Uruchom ponownie teraz",
-  "system.rg15Diagnostics": "Diagnostyka RG-15",
+  "system.rg15Diagnostics": "Diagnostyka czujnika deszczu",
   "system.rg15Rebooting": "RG-15 uruchamia się ponownie.",
   "system.runtimeStatus": "Stan działania",
   "system.rxTx": "RX / TX",

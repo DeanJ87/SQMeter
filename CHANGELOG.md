@@ -4,6 +4,11 @@ All notable changes to SQMeter are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- **Sensor names in device text** use the same names as the UI: safety reasons read "Sensor fault: IR sky sensor" (was "MLX90614 IR"), "Sensor fault: light sensor", "Sensor fault: environment sensor" (was "Humidity sensor fault - humidity/dew point rules can't be evaluated"); sensor alerts are titled "Sensor fault: {name}" / "Sensor recovered: {name}"; `rulesNotInEffect` lists rule names only ("Unsafe while raining"). This is the text sent over MQTT, to Alpaca clients and in alerts: match `reasonFlags` and alert types in automations, not the text.
+- **Dashboard**: a Status card replaces the at-a-glance strip, and language download progress moves into the Language card (spec 026).
+
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
 

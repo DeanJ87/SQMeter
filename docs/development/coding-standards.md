@@ -238,7 +238,7 @@ The web UI is built from a small set of parts in `web/src/components/ui.tsx`, an
 | DS-05 | Long values (IPv6, MAC, URLs, topics) are one value per row, monospace, left-to-right, truncated with the full value in `title`; never run together. | converge |
 | DS-06 | A task's progress (update, upload, language download) shows in the card that started it: a status row with a pill, a `ProgressMeter`, then a `Note` with the outcome and at most one action (e.g. Retry). Not in the header, not on other pages. | converge |
 | DS-07 | Confirmations ("Saved") are toasts; a lasting problem is a `Note` in its card and, if it affects observing, a row in the Status card. | converge |
-| DS-08 | A problem is listed once, in the Status card; other cards show their own state but don't repeat global problems. | converge |
+| DS-08 | A problem is listed once, in the Status card; other cards show their own state but don't repeat global problems. A Status tile is its label, "?" and pill (plus a button for an action such as Resume): the why goes in "?". A sensor's fault card is its title and pill. | auto (`web/tests/dashboard.spec.ts`, "no run-on text") + converge |
 | DS-09 | On a phone (≤ 599 px) cards stack in one column, tiles stay two per row, and nothing overlaps or hides a control (spec 022). | auto (`web/tests/layout-overlap.spec.ts`) |
 | DS-10 | Spacing, colour and type come from the tokens in `web/src/index.css`; a new colour, size or shadow adds a token. | converge |
 
@@ -250,10 +250,10 @@ The web UI is built from a small set of parts in `web/src/components/ui.tsx`, an
 | DS-21 | Pills and tile values are one or two words, at most 16 characters ("Safe", "Sending", "Live", "Connected"). | auto (`tools/ui/copy_check.py`) |
 | DS-22 | A note is one sentence of at most 90 characters: the state first, then the fix. | auto (`tools/ui/copy_check.py`) |
 | DS-23 | A "?" hint is at most two short sentences, 160 characters: what it is and why it matters. | auto (`tools/ui/copy_check.py`) |
-| DS-24 | No run-on status lines joined with " · ": one fact per tile or row. | auto (`tools/ui/copy_check.py`) |
+| DS-24 | No run-on status lines joined with " · " or " - ": one fact per tile or row, the reason in "?". This includes text composed in code or sent by the device. | auto (`tools/ui/copy_check.py` for strings; `web/tests/dashboard.spec.ts` "no run-on text" for what every dashboard card renders) |
 | DS-25 | No filler: "at a glance", "simply", "please note", "note that", "it is important", "in order to", "ensure", "seamless", "worked out in", "as soon as the device has it"; no parentheses that restate the label. Product names (N.I.N.A.) only as examples. | auto (`tools/ui/copy_check.py`) |
 | DS-26 | Whose time or place it is (this browser's time zone, the device's location) is said once, in a hint, not on every line. | converge |
-| DS-27 | One name for each thing in the UI, alerts, Home Assistant and the docs, from `tools/i18n/glossary/en.json`; part numbers are extra detail where hardware matters. | auto (`tools/ui/label_check.py`) |
+| DS-27 | One name for each thing in the UI, alerts, Home Assistant and the docs, from `tools/i18n/glossary/en.json`, including card titles and the safety reasons and alert titles the firmware sends. Part numbers are extra detail where hardware matters (System page rows, hardware docs, Alpaca sensor descriptions), never the name. | auto (`tools/ui/label_check.py`) |
 
 The type of each English string comes from its context note in `web/src/i18n/en.context.json` (`python3 tools/ui/copy_check.py --list`). A string that can't follow a rule is listed in `tools/ui/copy-exceptions.json` with its reason (EXC-01).
 
