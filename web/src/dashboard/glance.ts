@@ -4,7 +4,7 @@ import { describeSchedule } from '../components/settings/alertSchedule';
 import { describeClient } from '../lib/alpacaClients';
 import { formatAgeMs, formatAgo } from '../i18n/format';
 import { deviceText } from '../i18n/deviceMessage';
-import { t } from '../i18n';
+import { t, type MessageKey } from '../i18n';
 
 // The at-a-glance area (specs/025): what the dashboard says before anything
 // is clicked. One function decides what shows and in which order; the
@@ -35,88 +35,78 @@ export interface GlanceInput {
 
 type Sensor = 'light' | 'infrared' | 'environment' | 'rain' | 'wind' | 'gps';
 
-const SENSOR_NAME: Record<Sensor, () => string> = {
-  light: () => t('glance.sensor.light'),
-  infrared: () => t('glance.sensor.infrared'),
-  environment: () => t('glance.sensor.environment'),
-  rain: () => t('glance.sensor.rain'),
-  wind: () => t('glance.sensor.wind'),
-  gps: () => t('glance.sensor.gps'),
+// Each sensor's name and what its failure costs.
+const SENSORS: Record<Sensor, [MessageKey, MessageKey]> = {
+  light: ['glance.sensor.light', 'glance.effect.light'],
+  infrared: ['glance.sensor.infrared', 'glance.effect.infrared'],
+  environment: ['glance.sensor.environment', 'glance.effect.environment'],
+  rain: ['settings.sensors.rainSensor', 'glance.effect.rain'],
+  wind: ['settings.sensors.anemometer', 'glance.effect.wind'],
+  gps: ['glance.sensor.gps', 'glance.effect.gps'],
 };
 
 export type { Sensor };
 
-const SENSOR_EFFECT: Record<Sensor, () => string> = {
-  light: () => t('glance.effect.light'),
-  infrared: () => t('glance.effect.infrared'),
-  environment: () => t('glance.effect.environment'),
-  rain: () => t('glance.effect.rain'),
-  wind: () => t('glance.effect.wind'),
-  gps: () => t('glance.effect.gps'),
+export const sensorEffect = (sensor: Sensor) => t(SENSORS[sensor][1]);
+
+// The spec's Edge Cases order, by item.
+const PRIORITY: Record<string, number> = {
+  freshness: 1,
+  'safety-verdict': 2,
+  'alerts-state': 3,
+  'alerts-mode-not-in-effect': 3,
+  'no-channel': 3,
+  'imaging-app': 4,
+  'sensor-faults': 5,
+  'settings-not-in-effect': 6,
+  'clock-location': 7,
+  'phone-alarm': 8,
 };
 
-export const sensorEffect = (sensor: Sensor) => SENSOR_EFFECT[sensor]();
+const item = (id: string, severity: Severity, text: string, detail?: string, fix?: GlanceFix): GlanceItem => ({
+  id,
+  severity,
+  priority: PRIORITY[id],
+  text,
+  detail,
+  fix,
+});
 
 export const healthWords = (health: SensorHealth) =>
-  health === 'missing' ? t('glance.health.missing') : health === 'stale' ? t('glance.health.stale') : t('glance.health.error');
+  health === 'missing' ? t('settings.sensors.notResponding') : health === 'stale' ? t('system.stale') : t('system.error');
 
 // Settings (spec 020) whose being inactive matters to alerts or safety (FR-011).
 const ALERT_CHANNEL_DEPS = new Set(['D-01', 'D-02', 'D-03', 'D-04']);
 const ALERT_SAFETY_DEPS = new Set(['D-05', 'D-06', 'D-07', 'D-08', 'D-09', 'D-10', 'D-11', 'D-20', 'D-31', 'D-35', 'D-37']);
 
 const freshness = ({ sensors, connected, quiet }: GlanceInput): GlanceItem => {
-  if (!connected)
-    return { id: 'freshness', severity: 'problem', priority: 1, text: t('glance.disconnected'), detail: t('glance.disconnectedDetail') };
-  if (quiet)
-    return {
-      id: 'freshness',
-      severity: 'problem',
-      priority: 1,
-      text: t('glance.updatesStopped'),
-      detail: t('glance.updatesStoppedDetail'),
-    };
+  if (!connected) return item('freshness', 'problem', t('glance.disconnected'), t('glance.disconnectedDetail'));
+  if (quiet) return item('freshness', 'problem', t('glance.updatesStopped'), t('glance.updatesStoppedDetail'));
   if (sensors?.dataStale)
-    return {
-      id: 'freshness',
-      severity: 'problem',
-      priority: 1,
-      text: t('glance.stale', { age: formatAgeMs(sensors.dataAgeMs) }),
-      detail: t('glance.staleDetail'),
-    };
-  return { id: 'freshness', severity: 'ok', priority: 1, text: t('glance.live') };
+    return item('freshness', 'problem', t('glance.stale', { age: formatAgeMs(sensors.dataAgeMs) }), t('glance.staleDetail'));
+  return item('freshness', 'ok', t('dashboard.live'));
 };
 
 const verdict = ({ sensors }: GlanceInput): GlanceItem | null => {
   const safety = sensors?.safety;
   if (!safety) return null;
-  if (safety.safe) return { id: 'safety-verdict', severity: 'ok', priority: 2, text: t('glance.safe') };
+  if (safety.safe) return item('safety-verdict', 'ok', t('safetyCard.safe'));
   const reasons = safety.reasons.map((reason) => deviceText(reason)).join(', ');
   const waiting = safety.rawSafe && safety.secondsUntilSafe > 0;
-  return {
-    id: 'safety-verdict',
-    severity: 'problem',
-    priority: 2,
-    text: waiting ? t('glance.safeIn', { seconds: safety.secondsUntilSafe }) : t('glance.unsafe'),
-    detail: reasons || undefined,
-  };
+  const text = waiting ? t('glance.safeIn', { seconds: safety.secondsUntilSafe }) : t('glance.unsafe');
+  return item('safety-verdict', 'problem', text, reasons || undefined);
 };
 
 const alertsItem = ({ config, schedule }: GlanceInput): GlanceItem | null => {
   if (!config?.alerts) return null;
-  if (!config.alerts.enabled)
-    return { id: 'alerts-state', severity: 'note', priority: 3, text: t('glance.alertsOff'), fix: settingsLink('alerts') };
+  if (!config.alerts.enabled) return item('alerts-state', 'note', t('glance.alertsOff'), undefined, settingsLink('alerts'));
   if (!schedule) return null;
   const text = describeSchedule(schedule);
-  if (schedule.armed) return { id: 'alerts-state', severity: 'ok', priority: 3, text };
+  if (schedule.armed) return item('alerts-state', 'ok', text);
   const waiting = schedule.reason === 'waiting-for-client' || schedule.reason === 'client-disconnected';
-  return {
-    id: 'alerts-state',
-    severity: 'problem',
-    priority: 3,
-    text,
-    detail: waiting ? t('glance.alertsWaitingDetail') : undefined,
-    fix: waiting ? { label: t('glance.openAlpaca'), href: '#/alpaca' } : { label: t('alertsBell.resume'), action: 'resume' },
-  };
+  return waiting
+    ? item('alerts-state', 'problem', text, t('glance.alertsWaitingDetail'), { label: t('glance.openAlpaca'), href: '#/alpaca' })
+    : item('alerts-state', 'problem', text, undefined, { label: t('alertsBell.resume'), action: 'resume' });
 };
 
 const settingsLink = (tab: string, anchor?: string) => ({
@@ -134,35 +124,22 @@ const sendModeItem = ({ config, effective, status }: GlanceInput): GlanceItem | 
   if (config?.alerts?.sendMode !== 'whileConnected') return null;
   const alpacaOff = status?.alpaca ? !status.alpaca.enabled : effective?.settings.some((e) => e.id === 'D-12' && e.state === 'inactive');
   if (!alpacaOff) return null;
-  return {
-    id: 'alerts-mode-not-in-effect',
-    severity: 'note',
-    priority: 3,
-    text: t('glance.sendModeNotInEffect'),
-    fix: settingsLink('safety', 'alpaca'),
-  };
+  return item('alerts-mode-not-in-effect', 'note', t('glance.sendModeNotInEffect'), undefined, settingsLink('safety', 'alpaca'));
 };
 
 const channelsItem = ({ config, effective }: GlanceInput): GlanceItem | null => {
   const alerts = config?.alerts;
   if (!alerts?.enabled) return null;
   const on = (['pushover', 'ntfy', 'webhook', 'mqtt'] as const).filter((channel) => alerts[channel]?.enabled);
-  if (!on.length) return { id: 'no-channel', severity: 'problem', priority: 3, text: t('glance.noChannelOn'), fix: settingsLink('alerts') };
+  if (!on.length) return item('no-channel', 'problem', t('glance.noChannelOn'), undefined, settingsLink('alerts'));
   const blocked = inactive(effective, ALERT_CHANNEL_DEPS);
   const working = on.filter((channel) => !blocked.some((entry) => entry.setting === `alerts.${channel}.enabled`));
   if (working.length || !blocked.length) return null;
-  return {
-    id: 'no-channel',
-    severity: 'problem',
-    priority: 3,
-    text: t('glance.noChannel'),
-    detail: reasonText(blocked[0]),
-    fix: settingsLink('alerts'),
-  };
+  return item('no-channel', 'problem', t('glance.noChannel'), reasonText(blocked[0]), settingsLink('alerts'));
 };
 
 const DEVICES = [
-  ['safetymonitor', () => t('glance.safetyMonitor')],
+  ['safetymonitor', () => t('settings.alertSchedule.safetyMonitor')],
   ['observingconditions', () => t('glance.weatherDevice')],
 ] as const;
 
@@ -174,13 +151,12 @@ const imagingAppItems = ({ config, status }: GlanceInput): GlanceItem[] => {
   return DEVICES.filter(([device]) => needed || seen(clients[device])).map(([device, name]) => {
     const state = clients[device];
     const { text } = describeClient(state);
-    return {
-      id: 'imaging-app',
-      severity: state.silent ? 'problem' : state.connected || state.watching ? 'ok' : 'note',
-      priority: 4,
-      text: t('glance.imagingApp', { device: name(), state: text }),
-      detail: state.silent ? t('glance.imagingAppSilentDetail') : undefined,
-    } satisfies GlanceItem;
+    return item(
+      'imaging-app',
+      state.silent ? 'problem' : state.connected || state.watching ? 'ok' : 'note',
+      t('glance.imagingApp', { device: name(), state: text }),
+      state.silent ? t('glance.imagingAppSilentDetail') : undefined,
+    );
   });
 };
 
@@ -208,62 +184,29 @@ const sensorItems = (input: GlanceInput): GlanceItem[] =>
     const health = sensorHealth(sensor, input);
     if (!health || health.health === 'ok') return [];
     const age = health.ageMs ? ` ${t('glance.lastReading', { ago: formatAgo(health.ageMs) })}` : '';
-    return [
-      {
-        id: 'sensor-faults',
-        severity: 'problem',
-        priority: 5,
-        text: t('glance.sensorFault', { sensor: SENSOR_NAME[sensor](), state: healthWords(health.health) }),
-        detail: SENSOR_EFFECT[sensor]() + age,
-        fix: settingsLink('sensors'),
-      } satisfies GlanceItem,
-    ];
+    const [name, effect] = SENSORS[sensor];
+    const text = t('glance.sensorFault', { sensor: t(name), state: healthWords(health.health) });
+    return [item('sensor-faults', 'problem', text, t(effect) + age, settingsLink('sensors'))];
   });
 
 const settingsItem = ({ effective }: GlanceInput): GlanceItem | null => {
   const entries = inactive(effective, ALERT_SAFETY_DEPS);
   if (!entries.length) return null;
-  return {
-    id: 'settings-not-in-effect',
-    severity: 'note',
-    priority: 6,
-    text: t('glance.settingsNotInEffect', { count: entries.length }),
-    detail: entries.map(reasonText).join(' · '),
-    fix: settingsLink('alerts'),
-  };
+  const text = t('glance.settingsNotInEffect', { count: entries.length });
+  return item('settings-not-in-effect', 'note', text, entries.map(reasonText).join(' · '), settingsLink('alerts'));
 };
 
 const clockItem = ({ sensors, status }: GlanceInput): GlanceItem | null => {
   if (sensors && !sensors.timeValid)
-    return {
-      id: 'clock-location',
-      severity: 'problem',
-      priority: 7,
-      text: t('glance.clockNotSet'),
-      detail: t('glance.clockNotSetDetail'),
-      fix: settingsLink('time'),
-    };
+    return item('clock-location', 'problem', t('glance.clockNotSet'), t('glance.clockNotSetDetail'), settingsLink('time'));
   if (status?.sky && (status.sky.locationSource === 'none' || !status.sky.nightKnown))
-    return {
-      id: 'clock-location',
-      severity: 'problem',
-      priority: 7,
-      text: t('glance.noLocation'),
-      detail: t('glance.noLocationDetail'),
-      fix: settingsLink('time'),
-    };
+    return item('clock-location', 'problem', t('glance.noLocation'), t('glance.noLocationDetail'), settingsLink('time'));
   return null;
 };
 
 const alarmItem = ({ status }: GlanceInput): GlanceItem | null =>
   status?.ble?.alarm?.active
-    ? {
-        id: 'phone-alarm',
-        severity: 'problem',
-        priority: 8,
-        text: t('glance.phoneAlarm'),
-        fix: { label: t('glance.acknowledge'), action: 'acknowledge' },
-      }
+    ? item('phone-alarm', 'problem', t('glance.phoneAlarm'), undefined, { label: t('glance.acknowledge'), action: 'acknowledge' })
     : null;
 
 /** Everything the area shows, most important first. */
@@ -279,7 +222,7 @@ export const glanceItems = (input: GlanceInput): GlanceItem[] => {
     settingsItem(input),
     clockItem(input),
     alarmItem(input),
-  ].filter((item): item is GlanceItem => Boolean(item));
+  ].filter((entry): entry is GlanceItem => Boolean(entry));
   const rank = { problem: 0, note: 1, ok: 2 } as const;
   return items.sort((a, b) => a.priority - b.priority || rank[a.severity] - rank[b.severity]);
 };
@@ -287,6 +230,6 @@ export const glanceItems = (input: GlanceInput): GlanceItem[] => {
 /** The calm line when nothing is wrong: "Live · Safe · Sending alerts". */
 export const healthyLine = (items: GlanceItem[]) =>
   items
-    .filter((item) => item.severity === 'ok')
-    .map((item) => item.text.replace(/[.。]$/, ''))
+    .filter((entry) => entry.severity === 'ok')
+    .map((entry) => entry.text.replace(/[.。]$/, ''))
     .join(' · ');

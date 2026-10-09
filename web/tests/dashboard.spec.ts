@@ -58,6 +58,23 @@ test('healthy: one line - Live, Safe, Sending alerts', async ({ page }) => {
   await expect(page.locator('.glance-problem')).toHaveCount(0);
 });
 
+test('healthy line: one line at 1280 px, at most two at 320 px (SC-004)', async ({ page }) => {
+  // Rows the text and the demo marker wrap onto: distinct line boxes.
+  const lines = () =>
+    line(page).evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const tops = [...range.getClientRects()].map((rect) => Math.round(rect.top));
+      return tops.filter((top, i) => tops.every((other, j) => j >= i || Math.abs(other - top) > 4)).length;
+    });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page);
+  await expect(line(page)).toContainText('Sending alerts');
+  expect(await lines()).toBe(1);
+  await page.setViewportSize({ width: 320, height: 700 });
+  expect(await lines()).toBeLessThanOrEqual(2);
+});
+
 test('unsafe verdict and a held rain countdown', async ({ page }) => {
   // inventory: safety-verdict  inventory: rain-hold
   await open(page);

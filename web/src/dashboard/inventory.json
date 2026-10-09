@@ -3,7 +3,7 @@
   "shown": [
     {
       "id": "freshness",
-      "label": "glance.live",
+      "label": "dashboard.live",
       "sources": [
         "readings.dataStale",
         "readings.dataAgeMs"
@@ -18,7 +18,7 @@
     },
     {
       "id": "safety-verdict",
-      "label": "glance.safe",
+      "label": "safetyCard.safe",
       "sources": [
         "readings.safety.safe",
         "readings.safety.rawSafe",
