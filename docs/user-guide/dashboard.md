@@ -36,7 +36,7 @@ Cards flow into columns like a pin board. **Arrange** lets you drag them into yo
 
 The bell in the header lists the recent alerts with each channel's delivery result, and counts new ones. From it you can:
 
-- **Pause** / **Resume** alerts - the same as **Pause alerts** in Settings (see [Alerts](alerts.md#when-to-sende-not-imaging)); the bell shows when alerts are off
+- **Pause** / **Resume** alerts - the same as **Pause alerts** in Settings (see [Alerts](alerts.md#when-to-send)); the bell is crossed out while alerts are paused
 - **Clear** the list
 - jump to the alert **Settings**
 

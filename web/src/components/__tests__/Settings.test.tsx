@@ -26,6 +26,16 @@ describe('Settings', () => {
     expect(scrollIntoView.mock.contexts[0]).toBe(container.querySelector('#alpaca'));
   });
 
+  it('shows the clear-vs-overcast error under Clear below, not Overcast above', async () => {
+    withConfig({ cloudDetection: { clearSkyThreshold: -2, cloudyThreshold: -5, humidityCorrection: 0.75 } });
+    window.history.replaceState(null, '', '/settings?tab=sensors');
+    render(<Settings />);
+    const [clear] = await screen.findAllByLabelText('Clear below', { selector: 'input' });
+    fireEvent.change(clear, { target: { value: '-1' } });
+    const message = await screen.findByText('Clear sky threshold must be less than cloudy threshold');
+    expect(message.closest('.field')?.querySelector('.field-label')?.textContent).toContain('Clear below');
+  });
+
   it('switches tabs and records the tab in the URL', async () => {
     render(<Settings />);
     fireEvent.click(await screen.findByRole('tab', { name: 'Alerts' }));

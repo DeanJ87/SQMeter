@@ -105,6 +105,48 @@ namespace SQM
             return false;
         }
 
+        bool inRange(float value, float min, float max)
+        {
+            return std::isfinite(value) && value >= min && value <= max;
+        }
+
+        // Settings stored as unsigned integers. ArduinoJson turns -1 or 1.5
+        // into the default instead of failing, so reject them up front, as
+        // the web UI does (test/fixtures/config-ranges.json).
+        bool checkWholeNumbers(const JsonDocument &doc, std::string *error)
+        {
+            static const char *const FIELDS[][2] = {
+                {"wifi", "reconnectDelayMs"},
+                {"wifi", "maxReconnectDelayMs"},
+                {"mqtt", "port"},
+                {"mqtt", "publishIntervalMs"},
+                {"ntp", "syncIntervalMs"},
+                {"sensor", "readIntervalMs"},
+                {"sensor", "i2cFrequency"},
+                {"skyAveraging", "windowSeconds"},
+                {"alpaca", "staleAfterSeconds"},
+                {"alpaca", "safeDelaySeconds"},
+                {"rain", "pollIntervalMs"},
+                {"rain", "rainClearDelayMs"},
+                {"rain", "dailyResetHour"},
+                {"rain", "dailyResetMinute"},
+                {"alerts", "cooldownSeconds"},
+                {"alerts", "clientSilentSafetySeconds"},
+                {"alerts", "clientSilentWeatherSeconds"},
+            };
+            for (const auto &field : FIELDS)
+            {
+                JsonVariantConst value = doc[field[0]][field[1]];
+                if (value.isNull())
+                    continue;
+                const bool port = std::strcmp(field[1], "port") == 0;
+                if (port ? value.is<uint16_t>() : value.is<uint32_t>())
+                    continue;
+                return setError(error, std::string(field[0]) + "." + field[1] + " must be a whole number in range");
+            }
+            return true;
+        }
+
         bool isTimeSourceEnabled(const Config &cfg, TimeSource source)
         {
             return source == TimeSource::NTP ? cfg.ntp.enabled : cfg.gps.enabled;
@@ -784,6 +826,14 @@ namespace SQM
             return setError(error, "Sky dark calibration offsets are invalid");
         }
 
+        // Same ranges as the web UI (test/fixtures/config-ranges.json).
+        if (!inRange(cloudDetection.clearSkyThreshold, -30.0F, 0.0F))
+            return setError(error, "Cloud detection: clear-sky threshold must be between -30 and 0 degrees C");
+        if (!inRange(cloudDetection.cloudyThreshold, -20.0F, 10.0F))
+            return setError(error, "Cloud detection: cloudy threshold must be between -20 and 10 degrees C");
+        if (!inRange(cloudDetection.humidityCorrection, 0.0F, 2.0F))
+            return setError(error, "Cloud detection: humidity correction must be between 0 and 2");
+
         if (cloudDetection.clearSkyThreshold >= cloudDetection.cloudyThreshold)
         {
             return setError(error, "Cloud detection: clear-sky threshold must be less than cloudy threshold");
@@ -922,6 +972,8 @@ namespace SQM
             setError(errorOut, std::string("Settings JSON couldn't be read: ") + error.c_str());
             return false;
         }
+        if (!checkWholeNumbers(doc, errorOut))
+            return false;
 
         if (doc.containsKey("deviceName"))
             cfg.deviceName = doc["deviceName"] | "SQM-ESP32";

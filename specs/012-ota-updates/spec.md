@@ -20,7 +20,8 @@ installs it; firmware and web UI update together.
 1. **Given** a track, **When** checked, **Then** releases on that track with both required assets
    are listed, and "newer" is decided by comparing semantic versions with the running firmware.
 2. **Given** an install, **When** it runs, **Then** firmware and web UI are flashed as a matched
-   pair over pinned-certificate HTTPS; any failure leaves the previous version running.
+   pair over pinned-certificate HTTPS; any failure leaves the previous firmware running (a failure
+   after the web UI is written can leave the new web UI until retried - see FR-002).
 3. **Given** the Bluetooth build, **When** updating, **Then** the Bluetooth firmware asset is used.
 
 ---
@@ -59,9 +60,16 @@ Every release reports its own version, and a local build is distinguishable from
 
 - **FR-001**: The device MUST list releases from GitHub for the stable or beta track, matching
   firmware and web UI assets for its build variant.
-- **FR-002**: Installing MUST flash both images over HTTPS with pinned roots, atomically.
+- **FR-002**: Installing MUST flash both images over HTTPS with pinned roots. The boot slot MUST only
+  change after the firmware is fully written and verified, so any failure leaves the previous
+  firmware booting. *(Corrected: not atomic. The web UI is written first, so a failure after it can
+  leave a newer web UI with the old firmware until the update is retried; the docs say so. The
+  bootloader only rolls back a firmware that is invalid or never starts - one that starts and later
+  crashes is kept (found by spec 024).)*
 - **FR-003**: Manual upload MUST accept firmware or web UI images and succeed on the first attempt
-  for a valid image over a normal link.
+  for a valid image over a normal link. If switching the boot slot fails once after a complete,
+  valid write, the device MUST verify and retry the switch itself, and report `retried` so the
+  first-attempt rate can be measured.
 - **FR-004**: Upload and update failures MUST return a non-2xx status with an error message.
 - **FR-005**: Each build MUST report a version that orders correctly against releases (tags inject
   their version; local builds carry a dev version ≥ the last release).

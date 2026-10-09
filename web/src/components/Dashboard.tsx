@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useQuiet } from '../hooks/useQuiet';
 import type { Config, SensorData, SystemStatus } from '../types';
 import { Button, Card, Icon, MetricTile, Note, Pill, ReadingRow, SensorReadingRow } from './ui';
 import SafetyCard from './SafetyCard';
@@ -135,7 +136,8 @@ const saveOrder = (order: string[]) => {
 const Dashboard: FunctionalComponent = () => {
   const [savedOrder, setSavedOrder] = useState<string[]>(loadOrder);
   const [arranging, setArranging] = useState(false);
-  const { data: sensors, connected } = useWebSocket<SensorData>('/ws/sensors');
+  const { data: sensors, connected, lastMessageAt } = useWebSocket<SensorData>('/ws/sensors');
+  const quiet = useQuiet(lastMessageAt);
   const { data: status } = useWebSocket<SystemStatus>('/ws/status');
   const [config, setConfig] = useState<Config | null>(null);
   const [sqmHistory, setSqmHistory] = useState<number[]>([]);
@@ -165,7 +167,8 @@ const Dashboard: FunctionalComponent = () => {
   const rainUnits = imperialRain ? { depth: 'in', intensity: 'in/hr' } : { depth: 'mm', intensity: 'mm/hr' };
   const rainValue = (mm: number | undefined) => (typeof mm === 'number' && imperialRain ? mm / 25.4 : mm);
   const rain = sensors?.rain;
-  const isStale = Boolean(sensors?.dataStale);
+  // Stale: the device says its data is old, or the stream has gone quiet.
+  const isStale = Boolean(sensors?.dataStale) || quiet;
   const live = connected && Boolean(sensors) && !isStale;
   const skyTone = bortleTone(sensors?.sky?.bortle);
   // Cards only show for sensors that are switched on and responding.

@@ -141,6 +141,39 @@ void test_groups_filter_mqtt_payload(void)
     TEST_ASSERT_FALSE(doc.containsKey("clouds"));
 }
 
+// The default MQTT <base>/state message, with every optional sensor fitted,
+// stays under 1.5 KB (spec 013 SC-004) - well inside the 3 KB MQTT buffer.
+void test_full_state_message_is_under_1_5_kb(void)
+{
+    Snapshot s = healthy();
+    s.gps.present = true;
+    s.gps.status = Status::Ok;
+    s.gps.fix = true;
+    s.gps.satellites = 12;
+    s.gps.latitude = -33.865143;
+    s.gps.longitude = 151.209900;
+    s.gps.altitude = 1234.5;
+    s.gps.hdop = 0.9;
+    s.rain.present = true;
+    s.rain.status = Status::Ok;
+    s.rain.raining = true;
+    s.rain.intensity = 12.34;
+    s.rain.eventAccumulation = 123.4;
+    s.rain.sensorEventAccumulation = 123.4;
+    s.rain.totalAccumulation = 12345.6;
+    s.wind.present = true;
+    s.wind.status = Status::Ok;
+    s.wind.speed = 12.3;
+    s.wind.gust = 23.4;
+    s.wind.direction = 359;
+    s.wind.directionValid = true;
+    std::string message;
+    serializeJson(render(s), message);
+    char detail[64];
+    snprintf(detail, sizeof(detail), "state message is %u bytes", static_cast<unsigned>(message.size()));
+    TEST_ASSERT_LESS_THAN_MESSAGE(1536, message.size(), detail);
+}
+
 void test_timestamp_is_zero_without_clock(void)
 {
     Snapshot s = healthy();
@@ -230,6 +263,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_faulted_sensor_sends_status_not_zeros);
     RUN_TEST(test_optional_hardware_only_when_present);
     RUN_TEST(test_groups_filter_mqtt_payload);
+    RUN_TEST(test_full_state_message_is_under_1_5_kb);
     RUN_TEST(test_timestamp_is_zero_without_clock);
     RUN_TEST(test_every_key_is_camel_case);
     RUN_TEST(test_discovery_messages);

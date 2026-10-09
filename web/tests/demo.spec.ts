@@ -163,3 +163,28 @@ test.describe('the imaging app (specs/021)', () => {
     await expect(page.getByText(/Paused - the imaging app disconnected/)).toBeVisible({ timeout: 10_000 });
   });
 });
+
+// The demo's readings look like a real observatory's (spec 010 FR-005 / SC-002).
+// At night: by day the sky is honestly bright (SQM near 0).
+test('demo readings are plausible', async ({ page }) => {
+  await ready(page, '?scenario=night');
+  await page.waitForTimeout(3000); // the sky average settles
+  const sensors = JSON.parse((await api(page, '/api/sensors')).body);
+  const status = JSON.parse((await api(page, '/api/status')).body);
+  const within = (value: number, min: number, max: number, what: string) => {
+    expect(value, what).toBeGreaterThanOrEqual(min);
+    expect(value, what).toBeLessThanOrEqual(max);
+  };
+  within(sensors.sky.sqm, 15, 22.5, 'SQM');
+  within(sensors.sky.bortle, 1, 9, 'Bortle');
+  within(sensors.environment.temperature, -40, 50, 'air temperature');
+  within(sensors.environment.humidity, 0, 100, 'humidity');
+  within(sensors.environment.pressure, 870, 1085, 'pressure');
+  within(sensors.environment.dewpoint, -60, sensors.environment.temperature, 'dew point');
+  within(sensors.infrared.skyTemperature, -60, sensors.infrared.ambientTemperature, 'sky temperature');
+  within(sensors.clouds.coverPercent, 0, 100, 'cloud cover');
+  within(sensors.wind.speed, 0, 60, 'wind speed');
+  within(sensors.wind.gust, sensors.wind.speed, 80, 'wind gust');
+  within(status.uptime, 0, 30 * 24 * 3600, 'uptime');
+  within(status.wifi.rssi, -100, -20, 'WiFi signal');
+});
