@@ -1,4 +1,5 @@
 import type { Config } from '../../types';
+import { currentLanguage, t } from '../../i18n';
 
 const changed = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b);
 
@@ -20,7 +21,7 @@ export const restartReasons = (before: Config, after: Config): string[] => {
   if (changed(wifi(before), wifi(after))) {
     reasons.push('WiFi');
   }
-  if (after.ota.enabled && changed(before.ota, after.ota)) reasons.push('command-line uploads');
+  if (after.ota.enabled && changed(before.ota, after.ota)) reasons.push(t('settings.restart.commandLineUploads'));
   if (changed(before.gps, after.gps)) reasons.push('GPS');
   if (
     changed(
@@ -31,15 +32,18 @@ export const restartReasons = (before: Config, after: Config): string[] => {
     reasons.push('I2C');
   }
   if ((before.wifi.ipv6 ?? true) !== (after.wifi.ipv6 ?? true)) reasons.push('IPv6');
-  if ((before.alpaca?.enabled ?? false) !== (after.alpaca?.enabled ?? false)) reasons.push('Alpaca discovery');
+  if ((before.alpaca?.enabled ?? false) !== (after.alpaca?.enabled ?? false)) reasons.push(t('settings.restart.alpacaDiscovery'));
   if (
     changed([before.ble?.enabled, before.ble?.passkey], [after.ble?.enabled, after.ble?.passkey]) ||
     (after.ble?.enabled && before.deviceName !== after.deviceName)
   ) {
-    reasons.push('Bluetooth');
+    reasons.push(t('settings.restart.bluetooth'));
   }
   return reasons;
 };
 
+// "a, b and c" in the UI's language (British English: no comma before "and").
 export const listReasons = (reasons: string[]) =>
-  reasons.length <= 1 ? reasons.join('') : `${reasons.slice(0, -1).join(', ')} and ${reasons[reasons.length - 1]}`;
+  typeof Intl.ListFormat === 'function'
+    ? new Intl.ListFormat(currentLanguage() === 'en' ? 'en-GB' : currentLanguage(), { type: 'conjunction' }).format(reasons)
+    : reasons.join(t('common.listSeparator'));

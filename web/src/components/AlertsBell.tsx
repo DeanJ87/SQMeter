@@ -4,6 +4,8 @@ import { route } from 'preact-router';
 import type { AlertRecord, AlertsRecent } from '../types';
 import { Button, Note } from './ui';
 import { useAnnounceChange, useDialogFocus } from '../lib/a11y';
+import { t } from '../i18n';
+import { deviceText } from '../i18n/deviceMessage';
 
 const POLL_MS = 20000;
 const SEEN_KEY = 'sqm.alerts.lastSeenId';
@@ -32,14 +34,14 @@ export const formatAlertAge = (seconds: number) => {
 };
 
 export const AlertList: FunctionalComponent<{ alerts: AlertRecord[] }> = ({ alerts }) => (
-  <ul class="event-list" aria-label="Recent alerts">
+  <ul class="event-list" aria-label={t('alertsBell.recentAlerts')}>
     {alerts.map((record) => (
       <li key={record.id}>
         <div class="event-head">
-          <strong>{record.title}</strong>
+          <strong>{deviceText(record.title)}</strong>
           <span>{formatAlertAge(record.ageSeconds)}</span>
         </div>
-        <p>{record.message}</p>
+        <p>{deviceText(record.message)}</p>
         <div class="event-channels">
           {Object.entries(record.channels).map(([channel, result]) => (
             <span key={channel} class={`event-${result?.status ?? 'pending'}`} title={result?.detail}>
@@ -68,7 +70,7 @@ const AlertsBell: FunctionalComponent = () => {
   useDialogFocus(open, flyout, bell);
   // A new alert is announced once (spec 022 FR-009).
   const newestRecord = data?.alerts[0];
-  useAnnounceChange(newestRecord?.id, () => (newestRecord ? `New alert: ${newestRecord.title}` : null));
+  useAnnounceChange(newestRecord?.id, () => (newestRecord ? t('alertsBell.newAlertTitle', { title: newestRecord.title }) : null));
 
   useEffect(() => {
     const load = () =>
@@ -125,7 +127,7 @@ const AlertsBell: FunctionalComponent = () => {
         ref={bell}
         type="button"
         class={`nav-button alerts-bell-button${armed ? '' : ' is-off'}`}
-        aria-label={`Alerts${armed ? '' : ' (paused)'}${unread ? `, ${unread} new` : ''}`}
+        aria-label={t(armed ? 'alertsBell.bellLabel' : 'alertsBell.bellLabelPaused', { count: unread })}
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={toggle}
@@ -154,15 +156,15 @@ const AlertsBell: FunctionalComponent = () => {
           <div class="alerts-flyout-head">
             <h2 id="alerts-flyout-title" tabIndex={-1} data-autofocus>
               {/* Shown as "Alerts"; read as "Recent alerts". */}
-              <span class="sr-only">Recent alerts</span>
-              <span aria-hidden="true">Alerts</span>
+              <span class="sr-only">{t('alertsBell.recentAlerts')}</span>
+              <span aria-hidden="true">{t('alertsBell.alerts')}</span>
             </h2>
-            <Button variant="link" onClick={switchAlerts} title={armed ? 'Nothing is sent until you resume them' : undefined}>
-              {armed ? 'Pause' : 'Resume'}
+            <Button variant="link" onClick={switchAlerts} title={armed ? t('alertsBell.nothingIsSentUntilYou') : undefined}>
+              {armed ? t('alertsBell.pause') : t('alertsBell.resume')}
             </Button>
             {data.alerts.length > 0 && (
               <Button variant="link" onClick={clear}>
-                Clear
+                {t('alertsBell.clear')}
               </Button>
             )}
             <Button
@@ -172,11 +174,11 @@ const AlertsBell: FunctionalComponent = () => {
                 route('/settings?tab=alerts');
               }}
             >
-              Settings
+              {t('alertsBell.settings')}
             </Button>
           </div>
-          {!armed && <Note tone="warn">Alerts are paused - nothing is sent until they're resumed.</Note>}
-          {data.alerts.length === 0 ? <Note>No alerts.</Note> : <AlertList alerts={data.alerts} />}
+          {!armed && <Note tone="warn">{t('alertsBell.alertsArePausedNothingIs')}</Note>}
+          {data.alerts.length === 0 ? <Note>{t('alertsBell.noAlerts')}</Note> : <AlertList alerts={data.alerts} />}
         </div>
       )}
     </div>

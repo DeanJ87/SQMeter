@@ -1,5 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { route, useRouter } from 'preact-router';
+import { t } from '../i18n';
+import { tRich } from '../i18n/rich';
 
 const NotFound: FunctionalComponent = () => {
   const [router] = useRouter();
@@ -10,21 +12,19 @@ const NotFound: FunctionalComponent = () => {
       <section class="not-found-card">
         <div class="not-found-kicker">
           <span aria-hidden="true">?</span>
-          <span>Signal Lost</span>
+          <span>{t('notFound.signalLost')}</span>
         </div>
 
         <div class="not-found-code">404</div>
-        <h2 class="not-found-title">Page not found</h2>
-        <p>
-          The dashboard does not have a route for <span>{currentPath}</span>.
-        </p>
+        <h2 class="not-found-title">{t('notFound.pageNotFound')}</h2>
+        <p>{tRich('notFound.noRoute', { path: <span>{currentPath}</span> })}</p>
 
         <div class="not-found-actions">
           <button type="button" onClick={() => route('/')}>
-            Return to Dashboard
+            {t('notFound.returnToDashboard')}
           </button>
           <button type="button" onClick={() => route('/system')}>
-            View System
+            {t('notFound.viewSystem')}
           </button>
         </div>
       </section>

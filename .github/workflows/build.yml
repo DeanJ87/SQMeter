@@ -142,6 +142,18 @@ jobs:
           python3 tools/settings-deps/test_check.py
           python3 tools/settings-deps/check.py
 
+      # Every language file is complete and the generated i18n files are
+      # current; the language files build within the device's size limit
+      # (specs/023-i18n).
+      - name: Translations
+        run: |
+          python3 -m unittest discover -s tools/i18n -p 'test_*.py'
+          node tools/i18n/check.mjs
+          node tools/i18n/literals.mjs
+          python3 tools/i18n/gen_device_catalog.py --check
+          python3 tools/i18n/context.py --check
+          python3 tools/i18n/build_packs.py --version 0.0.0-ci --out "$RUNNER_TEMP/i18n"
+
       # Every HTTP route is declared with its auth and documented
       # (specs 011 FR-006, 014 FR-005).
       - name: API routes registry
@@ -247,8 +259,17 @@ jobs:
       contents: write
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
+
+      # The language files the device downloads for this firmware version
+      # (specs/023-i18n): sqmeter-i18n-<code>.json.gz, its .sha256 and the manifest.
+      - name: Build language files
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          python3 tools/i18n/build_packs.py --version "${VERSION}" --out i18n
 
       - name: Rename binaries with version tag
         run: |
@@ -285,3 +306,4 @@ jobs:
             sqmeter-complete-flash-*.bin
             sqmeter-ble-firmware-*.bin
             sqmeter-ble-complete-flash-*.bin
+            i18n/sqmeter-i18n-*

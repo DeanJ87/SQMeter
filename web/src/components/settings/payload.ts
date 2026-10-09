@@ -67,6 +67,7 @@ export const toConfigPayload = (source: Config): Config => {
   const auth = source.auth ? { ...source.auth } : { ...defaultAuthConfig };
   const base: Config = {
     deviceName: source.deviceName,
+    language: source.language ?? 'en',
     primaryTimeSource: source.primaryTimeSource,
     secondaryTimeSource: source.secondaryTimeSource,
     wifi: { ...source.wifi },

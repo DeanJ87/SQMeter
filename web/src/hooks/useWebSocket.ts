@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'preact/hooks';
 import { announce } from '../lib/a11y';
+import { t } from '../i18n';
 
 const INITIAL_RECONNECT_DELAY_MS = 5000;
 const MAX_RECONNECT_DELAY_MS = 30000;
@@ -38,7 +39,7 @@ export const useWebSocket = <T>(url: string) => {
       console.log(`WebSocket connected: ${url}`);
       retryCountRef.current = 0;
       openRef.current = true;
-      if (lostRef.current) announce('Reconnected to the device');
+      if (lostRef.current) announce(t('webSocket.reconnectedToTheDevice'));
       lostRef.current = false;
       setConnected(true);
     };
@@ -74,7 +75,7 @@ export const useWebSocket = <T>(url: string) => {
       if (openRef.current) {
         openRef.current = false;
         lostRef.current = true;
-        announce('Connection to the device lost');
+        announce(t('webSocket.connectionToTheDeviceLost'));
       }
 
       const retryCount = retryCountRef.current++;

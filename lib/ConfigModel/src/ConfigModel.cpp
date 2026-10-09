@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "BleAlarm.h"
+#include "LanguageLogic.h"
 #include "NetAddress.h"
 #include <ArduinoJson.h>
 #include <array>
@@ -220,6 +221,7 @@ namespace SQM
         Config cfg;
 
         cfg.deviceName = "SQM-ESP32";
+        std::strncpy(cfg.language, Language::ENGLISH, sizeof(cfg.language) - 1);
 
         cfg.wifi.ssid = "";
         cfg.wifi.password = "";
@@ -534,6 +536,7 @@ namespace SQM
         DynamicJsonDocument doc(8192);
 
         doc["deviceName"] = deviceName;
+        doc["language"] = language;
         doc["primaryTimeSource"] = static_cast<int>(primaryTimeSource);
         doc["secondaryTimeSource"] = static_cast<int>(secondaryTimeSource);
 
@@ -680,6 +683,11 @@ namespace SQM
         if (deviceName.empty())
         {
             return setError(error, "Device name is required");
+        }
+
+        if (!Language::isSupported(std::string(language)))
+        {
+            return setError(error, "Language: not a supported language");
         }
 
         if (primaryTimeSource != TimeSource::NTP && primaryTimeSource != TimeSource::GPS)
@@ -1013,6 +1021,14 @@ namespace SQM
 
         if (doc.containsKey("deviceName"))
             cfg.deviceName = doc["deviceName"] | "SQM-ESP32";
+        if (doc.containsKey("language"))
+        {
+            const char *language = doc["language"] | "";
+            if (std::strlen(language) >= sizeof(cfg.language))
+                return setError(errorOut, "Language: not a supported language");
+            std::strncpy(cfg.language, language, sizeof(cfg.language) - 1);
+            cfg.language[sizeof(cfg.language) - 1] = '\0';
+        }
         if (doc.containsKey("primaryTimeSource"))
             cfg.primaryTimeSource = static_cast<TimeSource>(doc["primaryTimeSource"] | 0); // 0 = NTP
         if (doc.containsKey("secondaryTimeSource"))

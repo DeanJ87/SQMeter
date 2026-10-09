@@ -2,6 +2,7 @@ import { ComponentChildren, createContext, FunctionalComponent } from 'preact';
 import { useContext, useId } from 'preact/hooks';
 import { FIX_LABEL, blocksSwitchingOn, noteFor, type DepEntry } from '../../lib/settingsDeps';
 import { Button, Card, InfoTip, Note, Pill } from '../ui';
+import { t } from '../../i18n';
 
 // Settings building blocks, all on the shared component classes so Settings
 // looks like the rest of the app. Explanations go in `hint` (a "?" tooltip),
@@ -42,7 +43,10 @@ export const Requires: FunctionalComponent<{ tone?: 'info' | 'warn'; onFix?: () 
   fixLabel,
   children,
 }) => (
-  <Note tone={tone === 'warn' ? 'warn' : 'muted'} action={onFix ? { label: fixLabel ?? 'Set up', onClick: onFix } : undefined}>
+  <Note
+    tone={tone === 'warn' ? 'warn' : 'muted'}
+    action={onFix ? { label: fixLabel ?? t('settings.controls.setUp'), onClick: onFix } : undefined}
+  >
     {children}
   </Note>
 );

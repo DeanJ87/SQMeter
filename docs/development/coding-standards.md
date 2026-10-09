@@ -198,6 +198,19 @@ The web UI, the demo and the docs meet **WCAG 2.2 AA** (spec 022). These rules h
 
 ---
 
+## Translations (I18N)
+
+The web UI is translated (spec 023, [Translations](translations.md)). No baseline: every finding fails.
+
+| ID | Rule | Check |
+|---|---|---|
+| I18N-01 | No user-facing text in the web UI outside `t()`: JSX text, user-facing attributes (`label`, `title`, `hint`, `aria-label`, ...), sentences in string literals and words joined to a value in a template (`` `rises ${clock}` ``). Put the English in `web/src/i18n/en.json` with a context note; build sentences with placeholders and plurals, never by joining pieces. Units and product names are exempt. A deliberate exception: `// i18n-ignore: <reason>`. | auto (`tools/i18n/literals.mjs`) |
+| I18N-02 | Every language file has exactly the English keys, the same `{placeholders}`, the plural forms its language uses and English's edge spaces; every key has a context note; the device message templates and the notes are current. | auto (`tools/i18n/check.mjs`, `gen_device_catalog.py --check`, `context.py --check`) |
+| I18N-03 | Layout uses logical CSS properties (`margin-inline-start`, `inset-inline-end`, `text-align: start`), so right-to-left languages mirror; readings, units, coordinates and charts stay left-to-right (`.ltr`, `.metric-value`). Directional arrows get `.dir-icon`. | Playwright (`web/tests/i18n.spec.ts`), converge |
+| I18N-04 | No translated label is built when a module loads: call `t()` when rendering (or in a function), because the demo imports some modules before the language is loaded. | converge |
+
+---
+
 ## Exceptions (EXC)
 
 | ID | Rule | Check |

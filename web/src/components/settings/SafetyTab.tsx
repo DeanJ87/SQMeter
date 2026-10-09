@@ -7,6 +7,7 @@ import type { SettingsTabProps } from './context';
 import { defaultAlpacaConfig, defaultRainConfig } from './defaults';
 import { Button } from '../ui';
 import { DepToggle, Field, Group, NumberInput, SettingsCard, StatusBadge, Toggle } from './controls';
+import { t } from '../../i18n';
 
 type NumericKey = {
   [K in keyof AlpacaConfig]: AlpacaConfig[K] extends number ? K : never;
@@ -62,7 +63,7 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         <DepToggle
           entry={entry}
           onFix={fix}
-          prefix={entry.unmet === 'fail-safe' ? 'Reports unsafe' : 'Not in effect'}
+          prefix={entry.unmet === 'fail-safe' ? t('settings.safety.reportsUnsafe') : t('settings.safety.notInEffect')}
           label={label}
           checked={on}
           onChange={(v) => set(enabledKey, v)}
@@ -90,35 +91,31 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
 
   return (
     <>
-      <SettingsCard
-        id="alpaca"
-        title="ASCOM Alpaca"
-        hint="SafetyMonitor and ObservingConditions devices for N.I.N.A. and other Alpaca clients."
-      >
-        <Toggle label="Serve Alpaca devices" checked={alpaca.enabled} onChange={(v) => set('enabled', v)} />
+      <SettingsCard id="alpaca" title="ASCOM Alpaca" hint={t('settings.safety.safetymonitorAndObservingconditionsDevic')}>
+        <Toggle label={t('settings.safety.serveAlpacaDevices')} checked={alpaca.enabled} onChange={(v) => set('enabled', v)} />
         <div>
           <Button variant="link" onClick={() => route('/alpaca')}>
-            Device URLs and live values →
+            {t('settings.safety.deviceUrlsAndLiveValues')}
           </Button>
         </div>
       </SettingsCard>
 
       <SafetyCard safety={safety} showRulesLink={false} />
 
-      <SettingsCard
-        id="safety"
-        title="Safety rules"
-        hint="Any enabled rule that fails makes the verdict unsafe. The verdict drives the Dashboard, alerts and IsSafe in N.I.N.A."
-      >
-        <Group title="General">
+      <SettingsCard id="safety" title={t('settings.safety.safetyRules')} hint={t('settings.safety.anyEnabledRuleThatFails')}>
+        <Group title={t('settings.safety.general')}>
           <Toggle
-            label="Force unsafe"
+            label={t('settings.safety.forceUnsafe')}
             checked={alpaca.manualOverrideUnsafe}
             onChange={(v) => set('manualOverrideUnsafe', v)}
-            hint="Manual override, e.g. while working on the observatory."
+            hint={t('settings.safety.manualOverrideEGWhile')}
           />
           <div class="form-grid">
-            <Field label="Stale after" error={error('alpaca.staleAfterSeconds')} hint="Sensor data older than this is unsafe.">
+            <Field
+              label={t('settings.safety.staleAfter')}
+              error={error('alpaca.staleAfterSeconds')}
+              hint={t('settings.safety.sensorDataOlderThanThis')}
+            >
               <NumberInput
                 dataField="alpaca.staleAfterSeconds"
                 integer
@@ -130,9 +127,9 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
               />
             </Field>
             <Field
-              label="Safe delay"
+              label={t('settings.safety.safeDelay')}
               error={error('alpaca.safeDelaySeconds')}
-              hint="Must stay safe this long before reporting safe again. Unsafe is always immediate."
+              hint={t('settings.safety.mustStaySafeThisLong')}
             >
               <NumberInput
                 dataField="alpaca.safeDelaySeconds"
@@ -148,49 +145,53 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         </Group>
 
         <Group
-          title="Rain"
-          aside={hw.rain.enabled && hw.rain.detected === false ? <StatusBadge tone="bad" label="Not responding" /> : undefined}
+          title={t('settings.safety.rain')}
+          aside={
+            hw.rain.enabled && hw.rain.detected === false ? (
+              <StatusBadge tone="bad" label={t('settings.safety.notResponding')} />
+            ) : undefined
+          }
         >
           {rule({
             enabledKey: 'rainUnsafeEnabled',
-            label: 'Unsafe while raining',
-            hint: `Including ${clearDelay} min after the last drop. Checked even when other sensors are stale.`,
+            label: t('settings.safety.unsafeWhileRaining'),
+            hint: t('settings.safety.includingCleardelayMinAfterThe', { clearDelay }),
           })}
           {rule({
             enabledKey: 'rainSensorRequired',
-            label: 'Unsafe if the rain sensor fails',
-            hint: 'No reply, stale readings or a lens fault.',
+            label: t('settings.safety.unsafeIfTheRainSensor'),
+            hint: t('settings.safety.noReplyStaleReadingsOr'),
           })}
         </Group>
 
-        <Group title="Wind">
+        <Group title={t('settings.safety.wind')}>
           {rule({
             enabledKey: 'windSpeedUnsafeEnabled',
             valueKey: 'windSpeedUnsafeMs',
-            label: 'Max wind speed',
+            label: t('settings.safety.maxWindSpeed'),
             unit: `m/s · ${Math.round(alpaca.windSpeedUnsafeMs * 3.6)} km/h`,
             min: 0.1,
             max: 60,
             step: 0.5,
-            hint: '2-minute mean.',
+            hint: t('settings.safety.twoMinuteMean'),
           })}
           {rule({
             enabledKey: 'windGustUnsafeEnabled',
             valueKey: 'windGustUnsafeMs',
-            label: 'Max gust',
+            label: t('settings.safety.maxGust'),
             unit: `m/s · ${Math.round(alpaca.windGustUnsafeMs * 3.6)} km/h`,
             min: 0.1,
             max: 80,
             step: 0.5,
-            hint: 'Highest 3-second mean in 10 minutes.',
+            hint: t('settings.safety.highest3SecondMeanIn'),
           })}
         </Group>
 
-        <Group title="Sky">
+        <Group title={t('settings.safety.sky')}>
           {rule({
             enabledKey: 'cloudCoverEnabled',
             valueKey: 'cloudCoverUnsafePercent',
-            label: 'Max cloud cover',
+            label: t('settings.safety.maxCloudCover'),
             unit: '%',
             min: 0,
             max: 100,
@@ -199,20 +200,20 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
           {rule({
             enabledKey: 'sqmMinEnabled',
             valueKey: 'sqmMinSafe',
-            label: 'Min sky darkness',
+            label: t('settings.safety.minSkyDarkness'),
             unit: 'mag/arcsec²',
             min: 0,
             max: 30,
             step: 0.1,
-            hint: 'E.g. 18 to treat twilight and moonlight as unsafe.',
+            hint: t('settings.safety.eG18ToTreat'),
           })}
         </Group>
 
-        <Group title="Environment">
+        <Group title={t('settings.safety.environment')}>
           {rule({
             enabledKey: 'humidityMaxEnabled',
             valueKey: 'humidityMaxSafe',
-            label: 'Max humidity',
+            label: t('settings.safety.maxHumidity'),
             unit: '%',
             min: 0,
             max: 100,
@@ -221,12 +222,12 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
           {rule({
             enabledKey: 'dewpointMarginEnabled',
             valueKey: 'dewpointMarginMinC',
-            label: 'Min margin above dew point',
+            label: t('settings.safety.minMarginAboveDewPoint'),
             unit: '°C',
             min: 0,
             max: 20,
             step: 0.1,
-            hint: 'Dew forms on optics below this.',
+            hint: t('settings.safety.dewFormsOnOpticsBelow'),
           })}
         </Group>
       </SettingsCard>

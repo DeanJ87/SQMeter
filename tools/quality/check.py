@@ -35,6 +35,7 @@ from checks import (  # noqa: E402 - after the path is set up
     check_clang_format,
     check_clang_tidy,
     check_eslint,
+    check_i18n,
     check_file_lengths,
     check_lib_purity,
     check_lizard,
@@ -105,7 +106,7 @@ def collect(fast: bool, fix: bool) -> list[Finding]:
     if fix:
         apply_fixes(cpp)
     findings = check_clang_format(cpp, False) + check_prettier(False) + check_ruff_format(False)
-    findings += check_eslint(False) + check_ruff(False)
+    findings += check_eslint(False) + check_ruff(False) + check_i18n()
     if not fast:
         findings += check_clang_tidy(cpp)
     findings += check_lizard(cpp, py) + check_file_lengths(cpp, py) + check_lib_purity(cpp) + check_suppressions(cpp, py)

@@ -16,6 +16,9 @@ import {
   Toggle,
 } from './controls';
 import { defaultBleConfig } from './defaults';
+import { t } from '../../i18n';
+import { deviceError } from '../../i18n/deviceMessage';
+import LanguageCard from './LanguageCard';
 
 const randomPasskey = () => {
   const values = new Uint32Array(1);
@@ -39,33 +42,37 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
     try {
       const response = await fetch(url, { method: 'POST' });
       const body = await response.json().catch(() => ({}));
-      setActionResult(response.ok ? { type: 'success', text: success } : { type: 'error', text: body.error ?? 'Failed' });
+      setActionResult(
+        response.ok ? { type: 'success', text: success } : { type: 'error', text: deviceError(body, t('settings.device.failed')) },
+      );
     } catch {
-      setActionResult({ type: 'error', text: 'Could not reach the device' });
+      setActionResult({ type: 'error', text: t('settings.device.couldNotReachTheDevice') });
     }
   };
 
   return (
     <>
-      <SettingsCard title="Device">
-        <Field label="Name" error={error('deviceName')} hint="Shown in N.I.N.A., alerts and Bluetooth.">
+      <SettingsCard title={t('settings.device.device')}>
+        <Field label={t('settings.device.name')} error={error('deviceName')} hint={t('settings.device.shownInNIN')}>
           <TextInput dataField="deviceName" value={config.deviceName} onInput={(v) => update(['deviceName'], v)} />
         </Field>
       </SettingsCard>
 
-      <SettingsCard id="security" title="Security">
+      <LanguageCard language={config.language ?? 'en'} onChange={(code) => update(['language'], code)} />
+
+      <SettingsCard id="security" title={t('settings.device.security')}>
         <Toggle
-          label="Password-protect changes"
+          label={t('settings.device.passwordProtectChanges')}
           checked={auth.enabled}
           onChange={(v) => update(['auth', 'enabled'], v)}
-          hint="Required to change settings, update or restart. Readings stay public."
+          hint={t('settings.device.requiredToChangeSettingsUpdate')}
         />
         {auth.enabled && (
           <div class="form-grid indent">
-            <Field label="Username" error={error('auth.username')}>
+            <Field label={t('settings.device.username')} error={error('auth.username')}>
               <TextInput dataField="auth.username" value={auth.username} onInput={(v) => update(['auth', 'username'], v)} />
             </Field>
-            <Field label="Password" error={error('auth.password')} hint="Leave the mask to keep the current password.">
+            <Field label={t('settings.device.password')} error={error('auth.password')} hint={t('settings.device.leaveTheMaskToKeep')}>
               <TextInput dataField="auth.password" type="password" value={auth.password} onInput={(v) => update(['auth', 'password'], v)} />
             </Field>
           </div>
@@ -73,14 +80,14 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         <DepToggle
           entry={deps.get('ota.enabled')}
           onFix={fix}
-          label="Command-line uploads (ArduinoOTA)"
+          label={t('settings.device.commandLineUploadsArduinoota')}
           checked={config.ota.enabled}
           onChange={(v) => update(['ota', 'enabled'], v)}
-          hint="For pio run -t upload --upload-port <ip>. The Updates page doesn't need this."
+          hint={t('settings.device.forPioRunTUpload')}
         />
         {config.ota.enabled && (
           <div class="form-grid indent">
-            <Field label="Upload password" error={error('ota.password') ?? error('otaPassword')}>
+            <Field label={t('settings.device.uploadPassword')} error={error('ota.password') ?? error('otaPassword')}>
               <TextInput
                 dataField="ota.password"
                 type="password"
@@ -94,41 +101,41 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
 
       <SettingsCard
         id="ble"
-        title="Bluetooth"
-        hint="Broadcasts safety and rain state, and can wake a paired phone."
-        badge={ble?.active ? <StatusBadge tone="ok" label={`${ble.clients} connected`} /> : undefined}
+        title={t('settings.device.bluetooth')}
+        hint={t('settings.device.broadcastsSafetyAndRainState')}
+        badge={ble?.active ? <StatusBadge tone="ok" label={t('settings.device.bleClientsConnected', { count: ble.clients })} /> : undefined}
       >
-        {hw.bleAvailable === false && <Requires>Needs the Bluetooth firmware build, installed over USB.</Requires>}
+        {hw.bleAvailable === false && <Requires>{t('settings.device.needsTheBluetoothFirmwareBuild')}</Requires>}
         {hw.bleAvailable && (
           <>
             <DepToggle
               entry={deps.get('ble.enabled')}
               onFix={fix}
-              label="Turn on Bluetooth"
+              label={t('settings.device.turnOnBluetooth')}
               checked={bleConfig.enabled}
               onChange={(v) => update(['ble', 'enabled'], v)}
-              hint="WiFi and Bluetooth share one radio, so the web UI and Alpaca respond more slowly while it's on."
+              hint={t('settings.device.wifiAndBluetoothShareOne')}
             />
             {bleConfig.enabled && (
               <Group
-                title="Phone alarm"
+                title={t('settings.device.phoneAlarm')}
                 aside={
                   alarm?.serviceActive ? (
                     <StatusBadge
                       tone={alarm.active ? 'bad' : alarm.bondedPhones > 0 ? 'ok' : 'warn'}
                       label={
                         alarm.active
-                          ? `Alarm #${alarm.sequence} ringing`
-                          : `${alarm.bondedPhones} phone${alarm.bondedPhones === 1 ? '' : 's'} paired`
+                          ? t('settings.device.alarmSequenceRinging', { sequence: alarm.sequence })
+                          : t('settings.device.phonesPaired', { count: alarm.bondedPhones })
                       }
                     />
                   ) : undefined
                 }
               >
                 <Field
-                  label="Pairing passkey"
+                  label={t('settings.device.pairingPasskey')}
                   error={error('ble.passkey')}
-                  hint="6 digits, typed on the phone when pairing. Only paired phones get alarms. Empty turns the alarm off."
+                  hint={t('settings.device.6DigitsTypedOnThe')}
                 >
                   <div class="input-row">
                     <TextInput
@@ -137,27 +144,27 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
                       value={bleConfig.passkey}
                       onInput={(v) => update(['ble', 'passkey'], v)}
                     />
-                    <ActionButton onClick={() => update(['ble', 'passkey'], randomPasskey())}>Generate</ActionButton>
+                    <ActionButton onClick={() => update(['ble', 'passkey'], randomPasskey())}>{t('settings.device.generate')}</ActionButton>
                   </div>
-                  {newPasskey && <Requires>New passkey {newPasskey} - it's hidden once saved. Paired phones need re-pairing.</Requires>}
+                  {newPasskey && <Requires>{t('settings.device.newPasskeyNewpasskeyItS', { newPasskey })}</Requires>}
                 </Field>
 
                 {hasPasskey && deps.get('ble.phoneAlarm').state === 'inactive' && (
-                  <DepNote entry={deps.get('ble.phoneAlarm')} onFix={fix} prefix="Phone alarm off" />
+                  <DepNote entry={deps.get('ble.phoneAlarm')} onFix={fix} prefix={t('settings.device.phoneAlarmOff')} />
                 )}
                 {hasPasskey ? (
-                  <Note action={{ label: 'Choose events', onClick: () => goTo('alerts', 'alerts') }}>
-                    Events set to Wake me ring paired phones.
+                  <Note action={{ label: t('settings.device.chooseEvents'), onClick: () => goTo('alerts', 'alerts') }}>
+                    {t('settings.device.eventsSetToWakeMe')}
                   </Note>
                 ) : (
-                  <Requires>Set a passkey to turn on the phone alarm.</Requires>
+                  <Requires>{t('settings.device.setAPasskeyToTurn')}</Requires>
                 )}
 
                 {alarm?.serviceActive && (
                   <div class="btn-row">
                     {alarm.active && (
-                      <ActionButton onClick={() => act('/api/ble/ack', 'Alarm acknowledged.')}>
-                        Acknowledge alarm #{alarm.sequence}
+                      <ActionButton onClick={() => act('/api/ble/ack', t('settings.device.alarmAcknowledged'))}>
+                        {t('settings.device.acknowledgeAlarmSequence', { sequence: alarm.sequence })}
                       </ActionButton>
                     )}
                     {confirmUnpair ? (
@@ -166,16 +173,16 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
                           variant="danger"
                           onClick={() => {
                             setConfirmUnpair(false);
-                            act('/api/ble/forget-bonds', 'All phones unpaired.');
+                            act('/api/ble/forget-bonds', t('settings.device.allPhonesUnpaired'));
                           }}
                         >
-                          Unpair every phone
+                          {t('settings.device.unpairEveryPhone')}
                         </ActionButton>
-                        <ActionButton onClick={() => setConfirmUnpair(false)}>Cancel</ActionButton>
+                        <ActionButton onClick={() => setConfirmUnpair(false)}>{t('settings.device.cancel')}</ActionButton>
                       </>
                     ) : (
                       <ActionButton onClick={() => setConfirmUnpair(true)} disabled={alarm.bondedPhones === 0}>
-                        Unpair all phones
+                        {t('settings.device.unpairAllPhones')}
                       </ActionButton>
                     )}
                     <ResultNote result={actionResult} />

@@ -623,6 +623,9 @@
       ],
       "additionalProperties": false
     },
+    "language": {
+      "type": "string"
+    },
     "location": {
       "type": "object",
       "properties": {

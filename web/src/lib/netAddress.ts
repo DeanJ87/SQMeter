@@ -2,6 +2,8 @@
 // (specs/015-ipv6-dual-stack). Mirrors lib/NetAddress on the device; both run
 // test/fixtures/net-address/cases.json, so the browser and the device agree.
 
+import { t } from '../i18n';
+
 export type Ipv6 = number[]; // 16 bytes
 
 export type Ipv6Scope = 'unspecified' | 'loopback' | 'multicast' | 'link-local' | 'unique-local' | 'global';
@@ -103,15 +105,30 @@ export interface Host {
   port: number; // 0: none given
 }
 
+// Getters: translated when read, not when this module loads (specs/023-i18n).
 export const HOST_ERRORS = {
-  empty: 'Enter a host name or address',
-  badIpv6: 'Not a valid IPv6 address',
-  needsBrackets: 'Put IPv6 addresses in brackets to add a port, e.g. [fd00::10]:1883',
-  portInField: 'Put the port in the Port field',
-  hasZone: 'Leave out the %zone - the device has one network interface',
-  badPort: 'Port must be 1-65535',
-  spaces: "Host can't contain spaces",
-} as const;
+  get empty() {
+    return t('netAddress.enterAHostNameOrAddress');
+  },
+  get badIpv6() {
+    return t('netAddress.notAValidIpv6Address');
+  },
+  get needsBrackets() {
+    return t('netAddress.putIpv6AddressesInBrackets');
+  },
+  get portInField() {
+    return t('netAddress.putThePortInThePortField');
+  },
+  get hasZone() {
+    return t('netAddress.leaveOutTheZone');
+  },
+  get badPort() {
+    return t('netAddress.portMustBe165535');
+  },
+  get spaces() {
+    return t('netAddress.hostCanTContainSpaces');
+  },
+};
 
 export type HostResult = { host: Host; error?: undefined } | { host?: undefined; error: string };
 
@@ -160,9 +177,13 @@ export interface HttpUrl {
 }
 
 export const URL_ERRORS = {
-  scheme: 'URL must start with http:// or https://',
-  httpsIpv6: "https to an IPv6 address isn't supported yet - use a host name, or http",
-} as const;
+  get scheme() {
+    return t('netAddress.urlMustStartWithHttp');
+  },
+  get httpsIpv6() {
+    return t('netAddress.httpsToAnIpv6Address');
+  },
+};
 
 export type UrlResult = { url: HttpUrl; error?: undefined } | { url?: undefined; error: string };
 
@@ -195,5 +216,5 @@ export const parseHttpUrl = (text: string): UrlResult => {
 export const hostForUrl = (host: Host) => (host.ipv6 ? `[${host.name}]` : host.name);
 
 // NTP is IPv4-only on the device's platform (spec 015 research R6).
-export const NTP_IPV6_TEXT = "NTP over IPv6 isn't supported yet - use a host name or an IPv4 address";
+export const ntpIpv6Text = () => t('netAddress.ntpOverIpv6IsnTSupported');
 export const isIpv6Literal = (text: string) => parseHost(text).host?.ipv6 === true;

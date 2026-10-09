@@ -31,6 +31,9 @@ import {
   type DepEntry,
   type EffectiveReport,
 } from '../lib/settingsDeps';
+import { t } from '../i18n';
+import { deviceError } from '../i18n/deviceMessage';
+import { applyLanguage } from '../hooks/useLanguage';
 
 const STATUS_REFRESH_MS = 10000;
 
@@ -52,7 +55,9 @@ const SavePreview: FunctionalComponent<{ entries: DepEntry[] }> = ({ entries }) 
   entries.length === 0 ? null : (
     <Note tone="warn">
       <span data-preview="inactive">
-        Saving makes these inactive: {entries.map((e) => `${DEP_LABELS[e.setting] ?? e.setting} (${e.text})`).join(', ')}.
+        {t('settings.savingMakesTheseInactiveJoin', {
+          join: entries.map((e) => `${DEP_LABELS[e.setting] ?? e.setting} (${e.text})`).join(', '),
+        })}
       </span>
     </Note>
   );
@@ -168,9 +173,9 @@ const Settings: FunctionalComponent = () => {
   const restart = async () => {
     try {
       await fetch('/api/restart', { method: 'POST' });
-      showToast({ message: 'Restarting...' });
+      showToast({ message: t('common.restarting') });
     } catch {
-      showToast({ message: 'Could not reach the device', tone: 'bad' });
+      showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' });
     }
   };
 
@@ -198,22 +203,23 @@ const Settings: FunctionalComponent = () => {
         showToast(
           reasons.length > 0
             ? {
-                message: `Saved. Restart to apply ${listReasons(reasons)}.`,
+                message: t('settings.savedRestartToApplyListreasons', { listReasons: listReasons(reasons) }),
                 tone: 'warn',
                 durationMs: 0,
-                action: { label: 'Restart', onClick: restart },
+                action: { label: t('settings.restart'), onClick: restart },
               }
-            : { message: 'Saved.' },
+            : { message: t('settings.saved') },
         );
         setSaved(payload);
         setConfig(payload);
         setValidationErrors({});
         loadStatus();
+        if ((payload.language ?? 'en') !== (saved.language ?? 'en')) void applyLanguage(payload.language ?? 'en');
       } else {
-        showToast({ message: body?.error || 'Failed to save settings', tone: 'bad' });
+        showToast({ message: deviceError(body, t('settings.failedToSaveSettings')), tone: 'bad' });
       }
     } catch {
-      showToast({ message: 'Could not reach the device', tone: 'bad' });
+      showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' });
     } finally {
       setSaving(false);
     }
@@ -227,13 +233,13 @@ const Settings: FunctionalComponent = () => {
   if (loading) {
     return (
       <div class="empty-state">
-        <h2>Loading settings...</h2>
+        <h2>{t('settings.loadingSettings')}</h2>
       </div>
     );
   }
 
   if (!config) {
-    return <div class="empty-state tone-red">Failed to load configuration</div>;
+    return <div class="empty-state tone-red">{t('settings.failedToLoadConfiguration')}</div>;
   }
 
   const fix = (entry: DepEntry) => {
@@ -244,7 +250,7 @@ const Settings: FunctionalComponent = () => {
 
   const onTabKey = (event: KeyboardEvent) => {
     const index = SETTINGS_TABS.findIndex(({ id }) => id === tab);
-    const next = nextTabIndex(event.key, index, SETTINGS_TABS.length);
+    const next = nextTabIndex(event.key, index, SETTINGS_TABS.length, document.documentElement.dir === 'rtl');
     if (next === null) return;
     event.preventDefault();
     const nextId = SETTINGS_TABS[next].id;
@@ -269,7 +275,7 @@ const Settings: FunctionalComponent = () => {
   return (
     <div class="panel-page settings-page page-enter">
       {/* ARIA tabs: arrows, Home and End move between tabs (spec 022). */}
-      <div class="settings-tabs" role="tablist" aria-label="Settings sections" onKeyDown={onTabKey}>
+      <div class="settings-tabs" role="tablist" aria-label={t('settings.settingsSections')} onKeyDown={onTabKey}>
         {SETTINGS_TABS.map(({ id, label }) => (
           <button
             key={id}
@@ -284,14 +290,16 @@ const Settings: FunctionalComponent = () => {
             onClick={() => goTo(id)}
           >
             {label}
-            {errorsByTab[id] ? <span class="settings-tab-error" title={`${errorsByTab[id]} to fix`} aria-hidden="true" /> : null}
+            {errorsByTab[id] ? (
+              <span class="settings-tab-error" title={t('settings.errorsToFix', { count: errorsByTab[id] })} aria-hidden="true" />
+            ) : null}
           </button>
         ))}
         {/* The red dot in words, as each tab's description. */}
         {SETTINGS_TABS.map(({ id }) =>
           errorsByTab[id] ? (
             <span key={id} id={`settings-tab-${id}-errors`} hidden>
-              {errorsByTab[id]} to fix
+              {t('settings.errorsToFix', { count: errorsByTab[id] })}
             </span>
           ) : null,
         )}
@@ -309,12 +317,12 @@ const Settings: FunctionalComponent = () => {
       <SavePreview entries={previewInactive(config, saved, effective, dirty)} />
       {dirty && (
         <div class="save-bar">
-          <span class="save-bar-state">Unsaved changes</span>
+          <span class="save-bar-state">{t('settings.unsavedChanges')}</span>
           <Button variant="ghost" onClick={discard}>
-            Discard
+            {t('settings.discard')}
           </Button>
-          <Button variant="primary" onClick={save} busy={saving} busyLabel="Saving...">
-            Save
+          <Button variant="primary" onClick={save} busy={saving} busyLabel={t('common.saving')}>
+            {t('settings.save')}
           </Button>
         </div>
       )}

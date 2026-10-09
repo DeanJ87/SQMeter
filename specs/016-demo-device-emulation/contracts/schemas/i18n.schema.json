@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GET /api/i18n - the device's language (specs/023-i18n)",
+  "type": "object",
+  "properties": {
+    "language": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "downloading",
+        "installed",
+        "failed",
+        "restoring"
+      ]
+    },
+    "firmwareVersion": {
+      "type": "string"
+    },
+    "pack": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "lang": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "lang",
+        "version",
+        "size"
+      ],
+      "additionalProperties": false
+    },
+    "error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "language",
+    "state",
+    "firmwareVersion",
+    "pack"
+  ],
+  "additionalProperties": false
+}

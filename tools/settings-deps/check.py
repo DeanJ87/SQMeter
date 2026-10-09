@@ -53,6 +53,13 @@ def read(root, rel):
         return f.read()
 
 
+def with_english(root, text):
+    """The text with each t('key') call followed by its English (web/src/i18n/en.json): the
+    UI's messages are translated, so the shared message lives there (specs/023-i18n)."""
+    english = json.loads(read(root, "web/src/i18n/en.json"))
+    return text + "\n" + "\n".join(str(english.get(key, "")) for key in re.findall(r"\bt\('([\w.]+)'", text))
+
+
 def files(root, patterns):
     found = set()
     for pattern in patterns:
@@ -144,7 +151,7 @@ def load_sources(root):
         "web": read(root, WEB_IMPL),
         "native_tests": "\n".join(read(root, f) for f in files(root, ["test/**/*.cpp"])),
         "web_tests": "\n".join(read(root, f) for f in files(root, web_test_patterns)),
-        "constraints": {source: read(root, source) for source in CONSTRAINT_SOURCES},
+        "constraints": {source: with_english(root, read(root, source)) for source in CONSTRAINT_SOURCES},
     }
 
 

@@ -412,6 +412,37 @@ Whether alerts are on, and the last 20 alerts since boot, newest first:
 
 ---
 
+## Language
+
+The device-wide language (Settings → Device → Language, `language` in
+`/api/config`). English is built in; another language's file is downloaded
+from the GitHub release that matches the firmware and stored on the device,
+which serves it at `/lang.json`. See [Languages](../user-guide/languages.md).
+
+### `GET /api/i18n`
+
+```json
+{ "language": "es", "state": "installed", "firmwareVersion": "0.2.1",
+  "pack": { "lang": "es", "version": "0.2.1", "size": 22515 } }
+```
+
+`state` is `idle`, `downloading`, `installed`, `failed` or `restoring` (after a
+firmware update). `pack` is `null` when no file is stored; `error` says why the
+last download failed.
+
+### `POST /api/i18n/install`
+
+Downloads the configured language's file again: `202 {"started": true}`, or
+`409 {"error": "..."}` when the language is English, a firmware update or
+another download is running. Requires the password when protection is on.
+
+### `POST /api/i18n/upload?lang=<code>&version=<version>`
+
+Stores a language file uploaded by hand (multipart, a `sqmeter-i18n-<code>.json.gz`
+from the release page), for devices without internet. Answers with the
+`GET /api/i18n` document, or `400 {"error": "..."}` for a file that isn't
+gzip, is over 64 KB or doesn't fit. Requires the password when protection is on.
+
 ## Bluetooth phone alarm
 
 Bluetooth firmware build only. See [Bluetooth](../user-guide/ble.md).

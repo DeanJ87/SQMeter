@@ -121,6 +121,16 @@ namespace SQM
         }
     } // namespace
 
+    bool httpsDownload(
+        const std::string &url,
+        size_t sizeHint,
+        const std::function<bool(const uint8_t *, size_t)> &onChunk,
+        size_t &written,
+        std::string &error)
+    {
+        return streamDownload(url, sizeHint, 0, 0, onChunk, nullptr, written, error);
+    }
+
     OtaUpdater::OtaUpdater(ProgressCallback onProgress, ErrorCallback onError, RestartCallback onRestart)
         : progressCb(std::move(onProgress)),
           errorCb(std::move(onError)),
