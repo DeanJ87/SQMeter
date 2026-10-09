@@ -11,8 +11,16 @@ Import("env")  # noqa: F821 (SCons)
 
 project_dir = env["PROJECT_DIR"]  # noqa: F821
 env_name = env["PIOENV"]  # noqa: F821
-options = env.GetProjectOption("custom_sdkconfig", "")  # noqa: F821
-stamp = f"{env_name}:{hashlib.sha256(options.encode('utf-8')).hexdigest()}"
+# Everything that changes the generated framework: options, removed
+# components and the platform release.
+inputs = "\n".join(
+    [
+        env.GetProjectOption("custom_sdkconfig", ""),  # noqa: F821
+        env.GetProjectOption("custom_component_remove", ""),  # noqa: F821
+        env.GetProjectOption("platform", ""),  # noqa: F821
+    ]
+)
+stamp = f"{env_name}:{hashlib.sha256(inputs.encode('utf-8')).hexdigest()}"
 stamp_path = os.path.join(project_dir, ".pio", "sdkconfig-owner")
 
 previous = None
