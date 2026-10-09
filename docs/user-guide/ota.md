@@ -122,30 +122,31 @@ A new firmware is only kept once it has started properly: WiFi, the web server a
 <!-- diagram: DIA-08
 sources: src/OtaUpdater.cpp#OtaUpdater::runApply src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFirmware src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFilesystem lib/ReleaseLogic/ src/OtaUpdater.cpp#OtaUpdater::checkForUpdate
 blocking: false
-fingerprint: 69d4f8be12747f8c
+fingerprint: f12a398fa1d44506
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 sequenceDiagram
     accTitle: Updating from GitHub releases
-    accDescr: The browser asks the device for releases; the device fetches the list from GitHub itself. On Update, the device downloads and writes the web UI image first and the firmware last, switching the boot slot only after the firmware is verified, then restarts. Any failure before that leaves the old firmware booting.
+    accDescr: The browser asks the device for releases; the device fetches the list from GitHub itself. On Update, the device downloads and writes the web UI image first and the firmware last, switching the boot slot only after the firmware is verified and found to be for this layout and build, then restarts. Any failure before that leaves the old firmware booting, and new firmware that fails to start is rolled back.
     participant B as Browser
     participant D as SQMeter
     participant G as GitHub
     B->>D: Check for updates, stable or beta
     D->>G: List releases, over HTTPS with pinned root certificates
     G-->>D: Releases
-    D-->>B: Releases with both a firmware and a web UI image
+    D-->>B: Releases with this layout's firmware and web UI images
     B->>D: Update to the chosen release
     D->>G: Download the web UI image
     D->>D: Erase and rewrite the web UI partition
     D->>G: Download the firmware image
-    D->>D: Write the unused app slot, verify it
+    D->>D: Write the unused app slot, verify it<br/>and check its layout and build
     opt Every step succeeded
         D->>D: Point the bootloader at the new slot
         D-->>B: Progress 100 %
         D->>D: Restart into the new firmware
+        Note over D: Firmware that fails to start<br/>rolls back to the old slot
     end
     opt A download or write failed
         D-->>B: The error
@@ -159,8 +160,8 @@ sequenceDiagram
 
 ??? info "Diagram in words"
 
-    1. **Check**: the browser asks the device for releases on the stable or beta track. The device fetches the list from GitHub itself, over HTTPS checked against pinned root certificates, and returns only releases that have both a firmware image (the Bluetooth one on the BLE build) and a web UI image.
-    2. **Update**: the browser sends the chosen release. The device downloads the **web UI image first**, erasing and rewriting the web UI (LittleFS) partition as it goes, then the **firmware**, written to the app slot that isn't running and verified when complete.
+    1. **Check**: the browser asks the device for releases on the stable or beta track. The device fetches the list from GitHub itself, over HTTPS checked against pinned root certificates, and returns only releases that have both a firmware image for this layout (the Bluetooth one on the BLE build) and a web UI image.
+    2. **Update**: the browser sends the chosen release. The device downloads the **web UI image first**, erasing and rewriting the web UI (LittleFS) partition as it goes, then the **firmware**, written to the app slot that isn't running and verified when complete, including that it's for this layout and build.
     3. **Success**: only after the firmware is verified does the device point the bootloader at the new slot, report 100 % and restart into the new firmware.
     4. **Failure** (no internet, a failed download or write): the device reports the error and the boot slot is unchanged, so the old firmware keeps running. A failure during the web UI write can leave the web UI unusable until a later update succeeds; the REST API and update endpoints still work.
     5. **Manual upload**: the browser sends a firmware or web UI file to the device, which writes it the same way and restarts.
