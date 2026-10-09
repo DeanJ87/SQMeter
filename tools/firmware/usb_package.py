@@ -62,7 +62,7 @@ def readme(build: str, version: str, csv: Path) -> str:
     return (
         f"SQMeter {version} ({build} build) - one-time USB flash to the whole-chip layout.\n\n"
         "Settings (WiFi included) are kept: nothing is written to 0x9000-0xDFFF, where\n"
-        "they are stored. Do not tick \"Erase device\" in the browser flasher, and never run\n"
+        'they are stored. Do not tick "Erase device" in the browser flasher, and never run\n'
         "erase_flash.\n\n"
         "From this folder, with the device on USB:\n\n"
         f"  {esptool_command(csv)}\n\n"

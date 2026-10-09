@@ -262,7 +262,6 @@
   "device.ota.failedToEraseFilesystemPartition": "No se pudo borrar la partición del sistema de archivos",
   "device.ota.failedToInitializeDownload": "No se pudo iniciar la descarga",
   "device.ota.failedToInitializeHttpsClient": "No se pudo iniciar el cliente HTTPS",
-  "device.ota.filesystemImageTooLargeForPartition": "La imagen del sistema de archivos es demasiado grande para la partición",
   "device.ota.filesystemPartitionNotFound": "No se encontró la partición del sistema de archivos",
   "device.ota.firmwareUpdateFinalizationFailed": "No se pudo completar la actualización del firmware",
   "device.ota.flashWriteFailed": "Error al escribir en la memoria flash",

@@ -262,7 +262,6 @@
   "device.ota.failedToEraseFilesystemPartition": "Wissen van de bestandssysteempartitie mislukt",
   "device.ota.failedToInitializeDownload": "Download starten mislukt",
   "device.ota.failedToInitializeHttpsClient": "HTTPS-client starten mislukt",
-  "device.ota.filesystemImageTooLargeForPartition": "Bestandssysteemimage te groot voor de partitie",
   "device.ota.filesystemPartitionNotFound": "Bestandssysteempartitie niet gevonden",
   "device.ota.firmwareUpdateFinalizationFailed": "Firmware-update afronden mislukt",
   "device.ota.flashWriteFailed": "Schrijven naar flash mislukt",

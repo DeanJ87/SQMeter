@@ -89,7 +89,8 @@ namespace SQM
             // before anything is erased.
             if (!FirmwareImage::fsImageFits(requestBytes, fsUpload.partition->size, FORM_OVERHEAD))
             {
-                Logger::error("OTA", "Filesystem image is the wrong size for this device (%u bytes sent)", static_cast<unsigned>(requestBytes));
+                Logger::error(
+                    "OTA", "Filesystem image is the wrong size for this device (%u bytes sent)", static_cast<unsigned>(requestBytes));
                 fsUpload.fail("Web UI file is for a different device layout. Use this release's littlefs file.");
                 return;
             }
@@ -132,15 +133,23 @@ namespace SQM
             return true;
         }
 
-        void fsUploadChunk(const String &filename, size_t requestBytes, size_t index, uint8_t *data, size_t len, bool final)
+        struct UploadChunk
         {
-            if (!index)
+            size_t index;
+            uint8_t *data;
+            size_t len;
+            bool final;
+        };
+
+        void fsUploadChunk(const String &filename, size_t requestBytes, const UploadChunk &chunk)
+        {
+            if (!chunk.index)
             {
                 fsUploadBegin(filename, requestBytes);
                 if (fsUpload.error)
                     return;
             }
-            if (!fsUploadWrite(index, data, len) || !final)
+            if (!fsUploadWrite(chunk.index, chunk.data, chunk.len) || !chunk.final)
                 return;
             if (!fsUpload.error)
                 Logger::info("OTA", "Filesystem update success: %u bytes written", static_cast<unsigned>(fsUpload.bytesWritten));
@@ -270,7 +279,7 @@ namespace SQM
             HTTP_POST,
             [this](AsyncWebServerRequest *request) { handleFsUploadDone(request); },
             [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-            { fsUploadChunk(filename, request->contentLength(), index, data, len, final); });
+            { fsUploadChunk(filename, request->contentLength(), UploadChunk{index, data, len, final}); });
 
         // Firmware OTA update (app partition). Registered after /api/update/fs:
         // this server also matches "/api/update" as a prefix of

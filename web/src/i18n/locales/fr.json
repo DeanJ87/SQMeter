@@ -262,7 +262,6 @@
   "device.ota.failedToEraseFilesystemPartition": "Impossible d'effacer la partition du système de fichiers",
   "device.ota.failedToInitializeDownload": "Impossible de lancer le téléchargement",
   "device.ota.failedToInitializeHttpsClient": "Impossible d'initialiser le client HTTPS",
-  "device.ota.filesystemImageTooLargeForPartition": "Image du système de fichiers trop grande pour la partition",
   "device.ota.filesystemPartitionNotFound": "Partition du système de fichiers introuvable",
   "device.ota.firmwareUpdateFinalizationFailed": "Impossible de finaliser la mise à jour du micrologiciel",
   "device.ota.flashWriteFailed": "Échec de l'écriture en mémoire flash",

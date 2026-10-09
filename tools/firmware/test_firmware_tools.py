@@ -1,17 +1,26 @@
 """Tests for the firmware flash budget and the USB flash package (spec 027)."""
 
+import importlib.util
 import json
-import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import flash_budget  # noqa: E402
-import usb_package  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _load(name: str):
+    """Imports a sibling tool by path (the tools folder isn't a package)."""
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(f"{name}.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+flash_budget = _load("flash_budget")
+usb_package = _load("usb_package")
 SLOT = 0x1C0000
 
 

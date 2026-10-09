@@ -46,7 +46,7 @@ namespace SQM
         // Finds the marker in an image fed in chunks of any size.
         class Scanner
         {
-          public:
+        public:
             Scanner();
             void feed(const uint8_t *data, size_t len);
             bool found() const { return complete; }
@@ -54,7 +54,7 @@ namespace SQM
             // Empty when the marker had no (or an unknown) build.
             const std::string &build() const { return buildField; }
 
-          private:
+        private:
             void parseFields();
 
             std::array<uint8_t, MAGIC_SIZE> pattern{};
@@ -69,10 +69,10 @@ namespace SQM
         enum class Verdict
         {
             Ok,
-            NoMarker,         // a 2.x image, or not SQMeter firmware
-            NeedsUsbFlash,    // this device is still on the old layout
-            OtherLayout,      // built for a layout this device doesn't have
-            OtherBuild,       // standard image on a BLE device, or the reverse
+            NoMarker,      // a 2.x image, or not SQMeter firmware
+            NeedsUsbFlash, // this device is still on the old layout
+            OtherLayout,   // built for a layout this device doesn't have
+            OtherBuild,    // standard image on a BLE device, or the reverse
         };
 
         Verdict check(const Scanner &scanner, const std::string &deviceLayout, Build deviceBuild);

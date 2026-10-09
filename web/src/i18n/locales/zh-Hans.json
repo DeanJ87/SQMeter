@@ -259,7 +259,6 @@
   "device.ota.failedToEraseFilesystemPartition": "无法擦除文件系统分区",
   "device.ota.failedToInitializeDownload": "无法初始化下载",
   "device.ota.failedToInitializeHttpsClient": "无法初始化HTTPS客户端",
-  "device.ota.filesystemImageTooLargeForPartition": "文件系统镜像超出分区大小",
   "device.ota.filesystemPartitionNotFound": "未找到文件系统分区",
   "device.ota.firmwareUpdateFinalizationFailed": "固件更新无法完成",
   "device.ota.flashWriteFailed": "闪存写入失败",

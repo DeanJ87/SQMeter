@@ -262,7 +262,6 @@
   "device.ota.failedToEraseFilesystemPartition": "Dateisystem-Partition konnte nicht gelöscht werden",
   "device.ota.failedToInitializeDownload": "Download konnte nicht gestartet werden",
   "device.ota.failedToInitializeHttpsClient": "HTTPS-Client konnte nicht gestartet werden",
-  "device.ota.filesystemImageTooLargeForPartition": "Dateisystem-Image zu groß für die Partition",
   "device.ota.filesystemPartitionNotFound": "Dateisystem-Partition nicht gefunden",
   "device.ota.firmwareUpdateFinalizationFailed": "Firmware-Update konnte nicht abgeschlossen werden",
   "device.ota.flashWriteFailed": "Schreiben in den Flash fehlgeschlagen",

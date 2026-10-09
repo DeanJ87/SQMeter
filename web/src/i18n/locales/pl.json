@@ -268,7 +268,6 @@
   "device.ota.failedToEraseFilesystemPartition": "Nie udało się wyczyścić partycji systemu plików",
   "device.ota.failedToInitializeDownload": "Nie udało się rozpocząć pobierania",
   "device.ota.failedToInitializeHttpsClient": "Nie udało się uruchomić klienta HTTPS",
-  "device.ota.filesystemImageTooLargeForPartition": "Obraz systemu plików jest za duży dla partycji",
   "device.ota.filesystemPartitionNotFound": "Nie znaleziono partycji systemu plików",
   "device.ota.firmwareUpdateFinalizationFailed": "Nie udało się zakończyć aktualizacji oprogramowania",
   "device.ota.flashWriteFailed": "Zapis do pamięci flash nie powiódł się",

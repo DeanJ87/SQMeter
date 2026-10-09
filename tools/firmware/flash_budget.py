@@ -19,14 +19,24 @@ does for the web UI.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import size_map  # noqa: E402
+
+
+def _load(name: str):
+    """Imports a sibling tool by path (the tools folder isn't a package)."""
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(f"{name}.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+size_map = _load("size_map")
 
 WARN_LEVEL = 0.90
 FAIL_LEVEL = 0.95

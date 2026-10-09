@@ -252,7 +252,6 @@
     "device.ota.failedToEraseFilesystemPartition": "4bffd3242d",
     "device.ota.failedToInitializeDownload": "09e41b507c",
     "device.ota.failedToInitializeHttpsClient": "49e4307db4",
-    "device.ota.filesystemImageTooLargeForPartition": "a7718907dd",
     "device.ota.filesystemPartitionNotFound": "d1514af824",
     "device.ota.firmwareUpdateFinalizationFailed": "afb4ca0d19",
     "device.ota.flashWriteFailed": "6b4164a938",

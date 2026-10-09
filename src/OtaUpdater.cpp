@@ -332,7 +332,7 @@ namespace SQM
         return true;
     }
 
-    bool OtaUpdater::downloadAndFlashFilesystem(const std::string &url, size_t expectedSize, int progressFrom, int progressTo)
+    const esp_partition_t *OtaUpdater::filesystemPartitionFor(size_t expectedSize)
     {
         const esp_partition_t *fsPartition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, NULL);
 
@@ -341,7 +341,7 @@ namespace SQM
             Logger::error(TAG, "Filesystem partition not found");
             if (errorCb)
                 errorCb("Filesystem partition not found");
-            return false;
+            return nullptr;
         }
 
         // Spec 027 FR-020: the image must be this layout's (it fills the partition).
@@ -354,17 +354,16 @@ namespace SQM
                 static_cast<unsigned>(fsPartition->size));
             if (errorCb)
                 errorCb("Web UI file is for a different device layout.");
-            return false;
+            return nullptr;
         }
+        return fsPartition;
+    }
 
-        if (expectedSize > fsPartition->size)
-        {
-            Logger::error(
-                TAG, "Filesystem image too large (%u > %u)", static_cast<unsigned>(expectedSize), static_cast<unsigned>(fsPartition->size));
-            if (errorCb)
-                errorCb("Filesystem image too large for partition");
+    bool OtaUpdater::downloadAndFlashFilesystem(const std::string &url, size_t expectedSize, int progressFrom, int progressTo)
+    {
+        const esp_partition_t *fsPartition = filesystemPartitionFor(expectedSize);
+        if (!fsPartition)
             return false;
-        }
 
         LittleFS.end();
 

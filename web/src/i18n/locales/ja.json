@@ -259,7 +259,6 @@
   "device.ota.failedToEraseFilesystemPartition": "ファイルシステム領域を消去できませんでした",
   "device.ota.failedToInitializeDownload": "ダウンロードを初期化できませんでした",
   "device.ota.failedToInitializeHttpsClient": "HTTPSクライアントを初期化できませんでした",
-  "device.ota.filesystemImageTooLargeForPartition": "ファイルシステムイメージが領域に収まりません",
   "device.ota.filesystemPartitionNotFound": "ファイルシステム領域が見つかりません",
   "device.ota.firmwareUpdateFinalizationFailed": "ファームウェア更新を完了できませんでした",
   "device.ota.flashWriteFailed": "フラッシュへの書き込みに失敗しました",

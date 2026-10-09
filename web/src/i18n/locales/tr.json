@@ -262,7 +262,6 @@
   "device.ota.failedToEraseFilesystemPartition": "Dosya sistemi bölümü silinemedi",
   "device.ota.failedToInitializeDownload": "İndirme başlatılamadı",
   "device.ota.failedToInitializeHttpsClient": "HTTPS istemcisi başlatılamadı",
-  "device.ota.filesystemImageTooLargeForPartition": "Dosya sistemi görüntüsü bölüm için çok büyük",
   "device.ota.filesystemPartitionNotFound": "Dosya sistemi bölümü bulunamadı",
   "device.ota.firmwareUpdateFinalizationFailed": "Üretici yazılımı güncellemesi tamamlanamadı",
   "device.ota.flashWriteFailed": "Flaş belleğe yazma başarısız",

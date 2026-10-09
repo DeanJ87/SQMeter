@@ -147,10 +147,22 @@ const CheckNotes: FunctionalComponent<{ checking: boolean; checkError: string; e
 // The one-time move to the whole-chip partition layout (spec 027).
 const USB_FLASH_GUIDE = 'https://sqmeter.dev/getting-started/usb-flash/';
 
+const LayoutNote = ({ layout }: { layout?: string }) =>
+  layout === 'legacy' ? (
+    <Note tone="warn">
+      {t('updates.needsUsbFlash')}{' '}
+      <a href={USB_FLASH_GUIDE} target="_blank" rel="noopener noreferrer">
+        {t('updates.usbFlashGuide')}
+      </a>
+    </Note>
+  ) : null;
+
+const firmwareOf = (msg: StatusMessage | null | undefined) => (msg && 'firmware' in msg ? msg.firmware : undefined);
+
 const GithubUpdates: FunctionalComponent = () => {
   const { data: statusMsg } = useWebSocket<StatusMessage>('/ws/status');
-  const currentStatus = statusMsg && 'firmware' in statusMsg ? statusMsg : null;
-  const currentVersion = currentStatus?.firmware?.version;
+  const firmware = firmwareOf(statusMsg);
+  const currentVersion = firmware?.version;
 
   const [track, setTrack] = useState<ReleaseTrack>('stable');
   const { releases, checking, checkError, selectedTag, setSelectedTag } = useReleases(track);
@@ -168,14 +180,7 @@ const GithubUpdates: FunctionalComponent = () => {
     <Card title={t('updates.firmware')} icon="upload" hint={t('updates.updatesFirmwareAndWebUi')}>
       <div class="card-body">
         <ReadingRow label={t('updates.installed')} value={currentVersion ? `v${currentVersion}` : '--'} valueClass="tone-cyan" />
-        {currentStatus?.firmware?.layout === 'legacy' && (
-          <Note tone="warn">
-            {t('updates.needsUsbFlash')}{' '}
-            <a href={USB_FLASH_GUIDE} target="_blank" rel="noopener noreferrer">
-              {t('updates.usbFlashGuide')}
-            </a>
-          </Note>
-        )}
+        <LayoutNote layout={firmware?.layout} />
         <div class="form-grid">
           <TrackSelect track={track} onChange={setTrack} disabled={checking || busy} />
           {releases.length > 0 && (

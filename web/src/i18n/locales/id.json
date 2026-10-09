@@ -259,7 +259,6 @@
   "device.ota.failedToEraseFilesystemPartition": "Gagal menghapus partisi sistem file",
   "device.ota.failedToInitializeDownload": "Gagal memulai unduhan",
   "device.ota.failedToInitializeHttpsClient": "Gagal memulai klien HTTPS",
-  "device.ota.filesystemImageTooLargeForPartition": "Image sistem file terlalu besar untuk partisi",
   "device.ota.filesystemPartitionNotFound": "Partisi sistem file tidak ditemukan",
   "device.ota.firmwareUpdateFinalizationFailed": "Gagal menyelesaikan pembaruan firmware",
   "device.ota.flashWriteFailed": "Gagal menulis ke flash",

@@ -251,7 +251,6 @@
   "device.ota.failedToEraseFilesystemPartition": "Sent by the device and shown in the UI: an error shown while updating the firmware.",
   "device.ota.failedToInitializeDownload": "Sent by the device and shown in the UI: an error shown while updating the firmware.",
   "device.ota.failedToInitializeHttpsClient": "Sent by the device and shown in the UI: an error shown while updating the firmware.",
-  "device.ota.filesystemImageTooLargeForPartition": "Sent by the device and shown in the UI: an error shown while updating the firmware.",
   "device.ota.filesystemPartitionNotFound": "Sent by the device and shown in the UI: an error shown while updating the firmware.",
   "device.ota.firmwareUpdateFinalizationFailed": "Sent by the device and shown in the UI: an error shown while updating the firmware.",
   "device.ota.flashWriteFailed": "Sent by the device and shown in the UI: an error shown while updating the firmware.",

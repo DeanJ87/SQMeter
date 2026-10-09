@@ -262,7 +262,6 @@
   "device.ota.failedToEraseFilesystemPartition": "Failed to erase filesystem partition",
   "device.ota.failedToInitializeDownload": "Failed to initialize download",
   "device.ota.failedToInitializeHttpsClient": "Failed to initialize HTTPS client",
-  "device.ota.filesystemImageTooLargeForPartition": "Filesystem image too large for partition",
   "device.ota.filesystemPartitionNotFound": "Filesystem partition not found",
   "device.ota.firmwareUpdateFinalizationFailed": "Firmware update finalization failed",
   "device.ota.flashWriteFailed": "Flash write failed",

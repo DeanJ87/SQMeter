@@ -272,7 +272,6 @@
   "device.ota.failedToEraseFilesystemPartition": "تعذّر مسح قسم نظام الملفات",
   "device.ota.failedToInitializeDownload": "تعذّر بدء التنزيل",
   "device.ota.failedToInitializeHttpsClient": "تعذّر تهيئة عميل HTTPS",
-  "device.ota.filesystemImageTooLargeForPartition": "صورة نظام الملفات أكبر من القسم",
   "device.ota.filesystemPartitionNotFound": "قسم نظام الملفات غير موجود",
   "device.ota.firmwareUpdateFinalizationFailed": "تعذّر إتمام تحديث البرنامج الثابت",
   "device.ota.flashWriteFailed": "فشلت الكتابة إلى ذاكرة الفلاش",

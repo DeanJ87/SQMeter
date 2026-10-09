@@ -42,7 +42,10 @@ namespace SQM
             return out;
         }
 
-        Scanner::Scanner() : pattern(magic()) {}
+        Scanner::Scanner()
+            : pattern(magic())
+        {
+        }
 
         void Scanner::feed(const uint8_t *data, size_t len)
         {

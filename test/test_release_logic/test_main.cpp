@@ -106,8 +106,13 @@ void test_full_page_of_releases_fits()
     // real-length URLs and the release notes and uploader details the filter
     // drops.
     std::vector<std::string> kinds = {
-        "sqmeter-l2-firmware-", "sqmeter-l2-ble-firmware-", "sqmeter-l2-littlefs-", "sqmeter-l2-usb-standard-", "sqmeter-l2-usb-ble-",
-        "sqmeter-i18n-manifest-", "sqmeter-checksums-"};
+        "sqmeter-l2-firmware-",
+        "sqmeter-l2-ble-firmware-",
+        "sqmeter-l2-littlefs-",
+        "sqmeter-l2-usb-standard-",
+        "sqmeter-l2-usb-ble-",
+        "sqmeter-i18n-manifest-",
+        "sqmeter-checksums-"};
     for (const char *code : {"ar", "de", "es", "fr", "id", "it", "ja", "ko", "nl", "pl", "pt-BR", "tr", "zh-Hans"})
     {
         kinds.push_back(std::string("sqmeter-i18n-") + code + ".json.gz.");

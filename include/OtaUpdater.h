@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <esp_partition.h>
 
 #include "ReleaseLogic.h"
 
@@ -54,6 +55,7 @@ namespace SQM
     private:
         void runApply(GithubRelease release);
         bool downloadAndFlashFirmware(const std::string &url, size_t expectedSize, int progressFrom, int progressTo);
+        const esp_partition_t *filesystemPartitionFor(size_t expectedSize);
         bool downloadAndFlashFilesystem(const std::string &url, size_t expectedSize, int progressFrom, int progressTo);
 
         ProgressCallback progressCb;

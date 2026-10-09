@@ -259,7 +259,6 @@
   "device.ota.failedToEraseFilesystemPartition": "파일 시스템 파티션을 지우지 못했습니다",
   "device.ota.failedToInitializeDownload": "다운로드를 초기화하지 못했습니다",
   "device.ota.failedToInitializeHttpsClient": "HTTPS 클라이언트를 초기화하지 못했습니다",
-  "device.ota.filesystemImageTooLargeForPartition": "파일 시스템 이미지가 파티션보다 큽니다",
   "device.ota.filesystemPartitionNotFound": "파일 시스템 파티션을 찾을 수 없습니다",
   "device.ota.firmwareUpdateFinalizationFailed": "펌웨어 업데이트를 마무리하지 못했습니다",
   "device.ota.flashWriteFailed": "플래시 쓰기 실패",
