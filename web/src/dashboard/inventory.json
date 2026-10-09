@@ -1,5 +1,5 @@
 {
-  "about": "What the dashboard shows and why (spec 025; the Status card, spec 026). Every field of the status, readings, safety and alerts-armed schemas and every settings-dependency id is mapped here: shown (with a test in web/tests/dashboard.spec.ts) or not shown (with a reason). Checked by tools/dashboard/check.py (DASH-02).",
+  "about": "What the dashboard shows and why (spec 025; the Status card, spec 026). The Status card shows only what no other card shows: the imaging app and whether alerts go out, plus problems nothing else shows (DS-08). Every field of the status, readings, safety and alerts-armed schemas and every settings-dependency id is mapped here: shown (with a test in web/tests/dashboard.spec.ts) or not shown (with a reason). Checked by tools/dashboard/check.py (DASH-02).",
   "shown": [
     {
       "id": "status-card",
@@ -20,13 +20,14 @@
         "readings.dataStale",
         "readings.dataAgeMs"
       ],
-      "requiredBy": "025 FR-014, 010, 026 FR-002",
+      "requiredBy": "025 FR-014, 010, 026 FR-002 (amended: Status card shows only what no other card does)",
       "visibility": {
         "rule": "always"
       },
       "priority": 1,
-      "location": "card:status",
-      "test": "freshness"
+      "location": "card:sky",
+      "test": "freshness",
+      "note": "The Sky Quality pill (Live, Stale, No updates, Offline). A Status row only while the light sensor has failed and the data is not live."
     },
     {
       "id": "safety-verdict",
@@ -44,50 +45,13 @@
         "safety.secondsUntilSafe",
         "safety.changedAgeMs"
       ],
-      "requiredBy": "025 FR-005, 006, 026 FR-002",
+      "requiredBy": "025 FR-005, 006, 026 FR-002 (amended: Status card shows only what no other card does)",
       "visibility": {
         "rule": "always"
       },
       "priority": 2,
-      "location": "card:status",
+      "location": "card:safety",
       "test": "safety-verdict"
-    },
-    {
-      "id": "safety-not-shared",
-      "label": "safetyCard.notShared",
-      "sources": [
-        "readings.safety.alpacaEnabled",
-        "safety.alpacaEnabled"
-      ],
-      "requiredBy": "007",
-      "visibility": {
-        "rule": "when",
-        "when": "Alpaca is off"
-      },
-      "priority": 2,
-      "location": "card:safety",
-      "test": "safety-not-shared"
-    },
-    {
-      "id": "rules-not-in-effect",
-      "label": "status.notInEffect",
-      "sources": [
-        "readings.safety.rulesNotInEffect",
-        "safety.rulesNotInEffect",
-        "deps.D-15",
-        "deps.D-16",
-        "deps.D-17",
-        "deps.D-18",
-        "deps.D-19"
-      ],
-      "requiredBy": "025 FR-012, 020",
-      "visibility": {
-        "rule": "when",
-        "when": "a safety rule is on but its sensor is off"
-      },
-      "priority": 6,
-      "location": "card:safety",
-      "test": "rules-not-in-effect"
     },
     {
       "id": "rain-hold",
@@ -170,26 +134,28 @@
       "id": "imaging-app",
       "label": "status.imagingApp",
       "sources": [
-        "status.alpaca.clients.safetymonitor.connected",
-        "status.alpaca.clients.safetymonitor.watching",
-        "status.alpaca.clients.safetymonitor.silent",
-        "status.alpaca.clients.safetymonitor.lastCheckedAgeMs",
-        "status.alpaca.clients.observingconditions.connected",
-        "status.alpaca.clients.observingconditions.watching",
-        "status.alpaca.clients.observingconditions.silent",
-        "status.alpaca.clients.observingconditions.lastCheckedAgeMs",
+        "readings.safety.alpacaEnabled",
+        "safety.alpacaEnabled",
         "status.alpaca.clients",
+        "status.alpaca.clients.observingconditions",
+        "status.alpaca.clients.observingconditions.connected",
+        "status.alpaca.clients.observingconditions.lastCheckedAgeMs",
+        "status.alpaca.clients.observingconditions.silent",
+        "status.alpaca.clients.observingconditions.watching",
         "status.alpaca.clients.safetymonitor",
-        "status.alpaca.clients.observingconditions"
+        "status.alpaca.clients.safetymonitor.connected",
+        "status.alpaca.clients.safetymonitor.lastCheckedAgeMs",
+        "status.alpaca.clients.safetymonitor.silent",
+        "status.alpaca.clients.safetymonitor.watching"
       ],
-      "requiredBy": "025 FR-009, 021, 026 FR-002",
+      "requiredBy": "025 FR-009, 021, 026 FR-002 (amended: Status card shows only what no other card does)",
       "visibility": {
-        "rule": "when",
-        "when": "send mode needs an app, an app is connected, or one was seen since boot"
+        "rule": "always"
       },
       "priority": 4,
       "location": "card:status",
-      "test": "imaging-app"
+      "test": "imaging-app",
+      "note": "One tile per Alpaca device: connected, gone quiet or waiting, and when it last checked; one \"Alpaca off\" tile when Alpaca is switched off."
     },
     {
       "id": "sensor-faults",
@@ -230,39 +196,15 @@
         "status.sensors.wind",
         "status.sensors.gps"
       ],
-      "requiredBy": "025 FR-006, FR-013, 026 FR-002",
+      "requiredBy": "025 FR-006, FR-013, 026 FR-002 (amended: Status card shows only what no other card does)",
       "visibility": {
         "rule": "when",
         "when": "an expected sensor is not ok"
       },
       "priority": 5,
-      "location": "card:status",
-      "test": "sensor-faults"
-    },
-    {
-      "id": "settings-not-in-effect",
-      "label": "status.notInEffectCount",
-      "sources": [
-        "deps.D-05",
-        "deps.D-06",
-        "deps.D-07",
-        "deps.D-08",
-        "deps.D-09",
-        "deps.D-10",
-        "deps.D-11",
-        "deps.D-20",
-        "deps.D-31",
-        "deps.D-35",
-        "deps.D-37"
-      ],
-      "requiredBy": "025 FR-011, 020, 026 FR-002",
-      "visibility": {
-        "rule": "when",
-        "when": "a setting that affects alerts or safety is on but not in effect"
-      },
-      "priority": 6,
-      "location": "card:status",
-      "test": "settings-not-in-effect"
+      "location": "card:sensor",
+      "test": "sensor-faults",
+      "note": "Each sensor's own card in its fault state (title and pill); not repeated in the Status card."
     },
     {
       "id": "language",
@@ -282,13 +224,6 @@
       "label": "status.clock",
       "sources": [
         "readings.timeValid",
-        "status.sky.nightKnown",
-        "status.sky.locationSource",
-        "status.sky.latitude",
-        "status.sky.longitude",
-        "status.sky.isNight",
-        "status.sky.sunAltitudeDeg",
-        "status.sky",
         "status.ntp.synced",
         "status.ntp.activeSource",
         "status.ntp.status",
@@ -298,10 +233,10 @@
         "status.time.timezone",
         "status.time"
       ],
-      "requiredBy": "025 FR-016, 005, 026 FR-002",
+      "requiredBy": "025 FR-016, 005, 026 FR-002 (amended: Status card shows only what no other card does)",
       "visibility": {
         "rule": "when",
-        "when": "the clock is not set or no location is known (sources on demand)"
+        "when": "the clock is not set"
       },
       "priority": 7,
       "location": "card:status",
@@ -915,6 +850,131 @@
       "match": "status.configRevision",
       "reason": "Change counter: tells the page when to reload the settings",
       "shownOn": "Dashboard, Settings"
+    },
+    {
+      "match": "readings.safety.rulesNotInEffect",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "safety.rulesNotInEffect",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-15",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-16",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-17",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-18",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-19",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-05",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-06",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-07",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-08",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-09",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-10",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-11",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-20",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-31",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-35",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-37",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "status.sky.nightKnown",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky.locationSource",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky.latitude",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky.longitude",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky.isNight",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky.sunAltitudeDeg",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
     }
   ]
 }

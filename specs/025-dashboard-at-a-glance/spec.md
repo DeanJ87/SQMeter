@@ -4,9 +4,28 @@
 
 **Created**: 2026-10-09
 
-**Status**: Implemented (PR #111) - the at-a-glance area superseded by 026 (Status card, PR #117)
+**Status**: Implemented (PR #111) - the at-a-glance area superseded by 026 (Status card, PR #117); content amended October 2026 (below)
 
 ## Context
+
+> **Amended (October 2026, after use on a real device)**: the Status card's job is the **imaging
+> app** - is an Alpaca client such as N.I.N.A. watching each device - and **whether alerts go
+> out**, plus problems no other card shows. Each fact appears in exactly one place on the
+> dashboard (026 DS-08):
+>
+> - The safety verdict is the Safety Monitor card's (FR-005, FR-006 move there); data freshness is
+>   the Sky Quality card's pill, which reads Live, Stale, No updates or Offline (FR-014), with a
+>   Status row only while the light sensor has failed and the data isn't live; a sensor's fault is
+>   its own card's (FR-013).
+> - Settings and safety rules that are on but not in effect are shown in **Settings** where they
+>   are set - each rule in Settings → Safety with "Not in effect" and the reason - not on the
+>   dashboard (FR-011, FR-012's not-in-effect list). The rain-hold countdown stays on the Safety
+>   Monitor card.
+> - The imaging app is always shown (FR-009): one tile per Alpaca device, or one "Alpaca off" tile.
+>   Not connected is a dim resting state, counted as something to check only when the send mode
+>   waits for an imaging app.
+> - Clock not set stays a Status row; an unknown location doesn't (FR-016): it's shown with the
+>   location setting, and the Sun & Moon card needs a location to appear.
 
 The dashboard (spec 010) was designed before specs 015 and 020–021 added device state that decides
 whether the observatory is safe to use and whether anyone will be told when it isn't. Today much of
