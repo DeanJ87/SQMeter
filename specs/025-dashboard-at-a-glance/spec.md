@@ -253,6 +253,8 @@ panel.
 
 **At-a-glance area**
 
+> **Superseded by 026** (FR-001..FR-003): the at-a-glance area is replaced by a **Status card** like the other dashboard cards. What must be visible without a click, the priority order and the inventory still apply; placement and the one-line format (FR-005, FR-006 placement, FR-014 placement, FR-020, SC-004) do not.
+
 - **FR-005**: The dashboard MUST have an at-a-glance area at the top, above the cards, that is
   always present and shows, in the priority order of the Edge Cases: connection/freshness, safety
   verdict, alert sending state, and any active problem items. When everything is healthy it MUST
