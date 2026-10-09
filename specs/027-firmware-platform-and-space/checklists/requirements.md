@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain – three owner decisions are listed under "Clarifications needed from the owner" (layout, WPA3, beta.4)
+- [x] No [NEEDS CLARIFICATION] markers remain – the owner decided layout (whole-chip, settings kept), WPA3 (keep) and beta.4 (no 2.x release; next release is 3.x) on 2026-10-09
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic where possible
@@ -31,4 +31,4 @@
 
 ## Notes
 
-- The owner's three decisions go through `/speckit-clarify` before `/speckit-plan`.
+- All owner decisions are recorded under Clarifications; ready for `/speckit-plan`.

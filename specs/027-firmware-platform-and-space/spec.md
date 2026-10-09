@@ -236,7 +236,9 @@ This decision makes FR-015 apply and adds:
   the new partition table, both app slots' firmware and the filesystem in one step, without erasing
   NVS.
 
-### Still open
-
-1. **WPA3 (FR-011)**: keep (recommended) or drop for 27 KB?
-2. **beta.4**: ship on 2.x with the trims first (recommended)?
+- Q: Keep WPA3 (FR-011)? → A: **Yes, keep it.** WPA3-only networks stay supported; the 27 KB stays
+  spent.
+- Q: Ship beta.4 on 2.x with the trims first? → A: **No.** The next release is the 3.x release on
+  the whole-chip layout. Consequences: the trims (FR-004, FR-005) and the CI budget (FR-001..003)
+  land as part of this work, not as a separate 2.x release; FR-016's "last 2.x release" fallback is
+  v0.2.0-beta.3.
