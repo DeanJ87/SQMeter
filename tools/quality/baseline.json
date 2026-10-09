@@ -4,8 +4,6 @@
     "LIMIT-01": {
       "src/OtaUpdater.cpp": 1,
       "src/TimeManager.cpp": 1,
-      "src/WebServer.cpp": 8,
-      "src/main.cpp": 2,
       "src/sensors/RG15Sensor.cpp": 2,
       "src/sensors/TSL2591Sensor.cpp": 1,
       "tools/demo-core/bridge.cpp": 1,
@@ -16,10 +14,7 @@
       "web/src/mocks/data.ts": 1
     },
     "LIMIT-02": {
-      "src/AlertDispatcher.cpp": 1,
       "src/OtaUpdater.cpp": 1,
-      "src/WebServer.cpp": 5,
-      "src/main.cpp": 1,
       "src/sensors/RG15Sensor.cpp": 2,
       "tools/demo-core/bridge.cpp": 1,
       "web/src/components/AlertsBell.tsx": 1,
@@ -39,13 +34,9 @@
       "web/src/utils/versionCompare.ts": 1
     },
     "LIMIT-03": {
-      "src/AlertDispatcher.cpp": 1,
-      "src/OtaUpdater.cpp": 1,
-      "src/WebServer.cpp": 3,
-      "src/sensors/RG15Sensor.cpp": 2
+      "src/OtaUpdater.cpp": 1
     },
     "LIMIT-04": {
-      "src/WebServer.cpp": 1,
       "src/sensors/RG15Sensor.cpp": 1,
       "test/test_alpaca_logic/test_main.cpp": 1,
       "tools/demo-core/bridge.cpp": 1,
