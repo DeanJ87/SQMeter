@@ -121,6 +121,70 @@ void test_latch_across_millis_wrap()
     TEST_ASSERT_FALSE(latch.latched);
 }
 
+// Daily total reset (spec 003 FR-004): first check at or after HH:MM, once a day.
+static Rain::LocalTime at(int year, int yearDay, int hour, int minute)
+{
+    Rain::LocalTime t;
+    t.year = year;
+    t.yearDay = yearDay;
+    t.hour = hour;
+    t.minute = minute;
+    return t;
+}
+
+static Rain::ResetDecision decide(const Rain::LocalTime &now, int32_t lastDay)
+{
+    return Rain::dailyReset(now, 9, 0, lastDay); // reset at 09:00
+}
+
+void test_daily_reset_adopts_without_resetting_first()
+{
+    // Nothing recorded (first boot, upgrade): adopt today, keep the total.
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Adopt), static_cast<int>(decide(at(2026, 100, 15, 0), Rain::NO_RESET_DAY)));
+}
+
+void test_daily_reset_fires_once_at_or_after_the_time()
+{
+    const int32_t yesterday = Rain::resetDay(at(2026, 99, 9, 0), 9, 0);
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Wait), static_cast<int>(decide(at(2026, 100, 8, 59), yesterday)));
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Reset), static_cast<int>(decide(at(2026, 100, 9, 0), yesterday)));
+    const int32_t today = Rain::resetDay(at(2026, 100, 9, 0), 9, 0);
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Wait), static_cast<int>(decide(at(2026, 100, 9, 1), today)));
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Wait), static_cast<int>(decide(at(2026, 100, 23, 59), today)));
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Wait), static_cast<int>(decide(at(2026, 101, 8, 59), today)));
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Reset), static_cast<int>(decide(at(2026, 101, 9, 0), today)));
+}
+
+void test_daily_reset_survives_a_restart_over_the_minute()
+{
+    // Down from 08:58 to 09:07: the first check after boot still resets.
+    const int32_t yesterday = Rain::resetDay(at(2026, 99, 9, 0), 9, 0);
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Reset), static_cast<int>(decide(at(2026, 100, 9, 7), yesterday)));
+    // A stall past several days still resets once.
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Reset), static_cast<int>(decide(at(2026, 103, 14, 0), yesterday)));
+}
+
+void test_daily_reset_handles_dst_and_clock_steps()
+{
+    const int32_t yesterday = Rain::resetDay(at(2026, 87, 1, 30), 1, 30);
+    // Spring forward 01:00 -> 02:00 skips 01:30: the 02:00 check resets.
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Reset), static_cast<int>(Rain::dailyReset(at(2026, 88, 2, 0), 1, 30, yesterday)));
+    // Fall back repeats 01:30: the second pass doesn't reset again.
+    const int32_t today = Rain::resetDay(at(2026, 298, 1, 30), 1, 30);
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Wait), static_cast<int>(Rain::dailyReset(at(2026, 298, 1, 30), 1, 30, today)));
+    // The clock steps back a day: no second reset.
+    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Wait), static_cast<int>(Rain::dailyReset(at(2026, 297, 12, 0), 1, 30, today)));
+}
+
+void test_reset_day_crosses_years()
+{
+    // 31 Dec 2025 23:00 and 1 Jan 2026 08:00 are the same reset day (reset 09:00).
+    TEST_ASSERT_EQUAL(Rain::resetDay(at(2025, 364, 23, 0), 9, 0), Rain::resetDay(at(2026, 0, 8, 0), 9, 0));
+    TEST_ASSERT_EQUAL(Rain::resetDay(at(2025, 364, 23, 0), 9, 0) + 1, Rain::resetDay(at(2026, 0, 9, 0), 9, 0));
+    // Leap year: 2024 has 366 days.
+    TEST_ASSERT_EQUAL(Rain::resetDay(at(2024, 365, 12, 0), 0, 0) + 1, Rain::resetDay(at(2025, 0, 12, 0), 0, 0));
+}
+
 int main()
 {
     UNITY_BEGIN();
@@ -131,5 +195,10 @@ int main()
     RUN_TEST(test_latch_expires_without_readings);
     RUN_TEST(test_new_event_restarts_accumulation);
     RUN_TEST(test_latch_across_millis_wrap);
+    RUN_TEST(test_daily_reset_adopts_without_resetting_first);
+    RUN_TEST(test_daily_reset_fires_once_at_or_after_the_time);
+    RUN_TEST(test_daily_reset_survives_a_restart_over_the_minute);
+    RUN_TEST(test_daily_reset_handles_dst_and_clock_steps);
+    RUN_TEST(test_reset_day_crosses_years);
     return UNITY_END();
 }

@@ -95,6 +95,9 @@ namespace SQM
         Rain::Latch currentLatch() const;
         void applyLatch(const Rain::Latch &latch);
         void maybeRunScheduledTotalReset(uint32_t now);
+        int32_t loadLastResetDay();
+        void saveLastResetDay(int32_t day);
+        void forgetLastResetDay();
         static const char *stateToString(RG15State state);
         bool start(bool probeImmediately);
         void applyConfig();

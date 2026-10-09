@@ -72,7 +72,9 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
     }
   };
 
-  const calibratedAt = calibration.darkCalibratedAt >= CLOCK_VALID ? new Date(calibration.darkCalibratedAt * 1000).toLocaleString() : null;
+  // Labelled: shown in this browser's time zone, not the device's (spec 005 FR-007).
+  const calibratedAt =
+    calibration.darkCalibratedAt >= CLOCK_VALID ? `${new Date(calibration.darkCalibratedAt * 1000).toLocaleString()} (this browser's time)` : null;
   const [testingRain, setTestingRain] = useState(false);
   const [rainResult, setRainResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const rain = config.rain ?? defaultRainConfig;

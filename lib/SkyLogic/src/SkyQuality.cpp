@@ -36,6 +36,16 @@ namespace SQM
         return 12.6f - 2.5f * log10f(lux);
     }
 
+    CalibratedLight SkyQuality::calibrate(float rawLux, bool calibrationEnabled, float sqmOffset)
+    {
+        CalibratedLight light{};
+        light.rawSqm = luxToSQM(rawLux);
+        light.calibratedSqm = calibrationEnabled ? light.rawSqm + sqmOffset : light.rawSqm;
+        // Back to lux so every consumer of illuminance sees the calibrated sky.
+        light.lux = powf(10.0f, (12.6f - light.calibratedSqm) / 2.5f);
+        return light;
+    }
+
     float SkyQuality::sqmToNELM(float sqm)
     {
         // Unihedron formula:
