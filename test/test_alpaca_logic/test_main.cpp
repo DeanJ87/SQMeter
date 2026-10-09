@@ -477,7 +477,7 @@ void test_rain_makes_unsafe(void)
     in.raining = true;
     SafetyResult r = evaluateSafety(in, t);
     TEST_ASSERT_FALSE(r.isSafe);
-    TEST_ASSERT_EQUAL_UINT32(UNSAFE_RAIN, r.reasonFlags);
+    TEST_ASSERT_EQUAL_UINT32(UnsafeRain, r.reasonFlags);
 }
 
 void test_rain_checked_even_when_other_data_stale(void)
@@ -487,8 +487,8 @@ void test_rain_checked_even_when_other_data_stale(void)
     in.secondsSinceLastGoodData = 9999;
     in.raining = true;
     SafetyResult r = evaluateSafety(in, t);
-    TEST_ASSERT_TRUE(r.reasonFlags & UNSAFE_RAIN);
-    TEST_ASSERT_TRUE(r.reasonFlags & UNSAFE_STALE_DATA);
+    TEST_ASSERT_TRUE(r.reasonFlags & UnsafeRain);
+    TEST_ASSERT_TRUE(r.reasonFlags & UnsafeStaleData);
 }
 
 // D-15: rain rules are not in effect (ignored) without the rain sensor.
@@ -512,7 +512,7 @@ void test_rain_sensor_required(void)
     in.rainSensorHealthy = false;
     SafetyResult r = evaluateSafety(in, t);
     TEST_ASSERT_FALSE(r.isSafe);
-    TEST_ASSERT_EQUAL_UINT32(UNSAFE_RAIN_SENSOR_FAULT, r.reasonFlags);
+    TEST_ASSERT_EQUAL_UINT32(UnsafeRainSensorFault, r.reasonFlags);
 
     t.rainSensorRequired = false;
     TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe);
@@ -530,7 +530,7 @@ void test_environment_fault_blocks_humidity_rules(void)
     t.humidityMaxSafe = 90.0f;
     SafetyResult r = evaluateSafety(in, t);
     TEST_ASSERT_FALSE(r.isSafe);
-    TEST_ASSERT_EQUAL_UINT32(UNSAFE_ENVIRONMENT_FAULT, r.reasonFlags);
+    TEST_ASSERT_EQUAL_UINT32(UnsafeEnvironmentFault, r.reasonFlags);
 }
 
 void test_faulted_sensor_skips_its_threshold(void)
@@ -544,7 +544,7 @@ void test_faulted_sensor_skips_its_threshold(void)
     in.skyLightFault = true;
     in.cloudCoverPercent = 100.0f; // computed from zeroed MLX readings
     in.sqm = 0.0f;                 // from zeroed TSL readings
-    TEST_ASSERT_EQUAL_UINT32(UNSAFE_SENSOR_FAULT, evaluateSafety(in, t).reasonFlags);
+    TEST_ASSERT_EQUAL_UINT32(UnsafeSensorFault, evaluateSafety(in, t).reasonFlags);
 }
 
 void test_safe_delay_filter(void)
@@ -592,11 +592,11 @@ void test_wind_limits(void)
     TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe);
 
     in.windSpeedMs = 10.0f;
-    TEST_ASSERT_EQUAL_UINT32(UNSAFE_WIND, evaluateSafety(in, t).reasonFlags);
+    TEST_ASSERT_EQUAL_UINT32(UnsafeWind, evaluateSafety(in, t).reasonFlags);
 
     in.windSpeedMs = 5.0f;
     in.windGustMs = 16.0f;
-    TEST_ASSERT_EQUAL_UINT32(UNSAFE_WIND_GUST, evaluateSafety(in, t).reasonFlags);
+    TEST_ASSERT_EQUAL_UINT32(UnsafeWindGust, evaluateSafety(in, t).reasonFlags);
 }
 
 // D-16: a wind limit without an anemometer is fail-safe (unsafe).
@@ -605,7 +605,7 @@ void test_wind_limit_without_sensor_is_unsafe(void)
     SafetyThresholds t;
     t.windGustUnsafeEnabled = true;
     SafetyInputs in = freshSafeInputs();
-    TEST_ASSERT_EQUAL_UINT32(UNSAFE_WIND_SENSOR_FAULT, evaluateSafety(in, t).reasonFlags);
+    TEST_ASSERT_EQUAL_UINT32(UnsafeWindSensorFault, evaluateSafety(in, t).reasonFlags);
 
     t.windGustUnsafeEnabled = false; // no wind rules -> anemometer irrelevant
     TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe);

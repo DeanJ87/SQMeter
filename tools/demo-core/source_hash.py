@@ -13,7 +13,14 @@ STAMP = os.path.join(ROOT, "web", "src", "demo", "core", "SOURCE_HASH")
 
 
 def sources():
-    patterns = ["tools/demo-core/bridge.cpp", "tools/demo-core/build.sh", "lib/*/src/*.cpp", "lib/*/include/*.h", "lib/*/include/*/*.h"]
+    patterns = [
+        "tools/demo-core/bridge.cpp",
+        "tools/demo-core/build.sh",
+        "lib/*/src/*.cpp",
+        "lib/*/src/*.h",
+        "lib/*/include/*.h",
+        "lib/*/include/*/*.h",
+    ]
     files = set()
     for pattern in patterns:
         files.update(glob.glob(os.path.join(ROOT, pattern)))

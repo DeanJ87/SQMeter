@@ -116,23 +116,27 @@ namespace SQM
         void writeSky(JsonObject sky, const NightState &night);
 
         // Alerts.
-        Alerts::AlertInputs alertInputs(
-            const SafetyStatus &status,
-            const SensorSnapshot &snapshot,
-            const Alpaca::ObservingConditionsSnapshot &obs,
-            const Config &cfg,
-            const NightState &night,
-            uint32_t nowMs);
+        // The device state an alert pass reads: settings, readings, darkness
+        // and the safety verdict.
+        struct AlertSources
+        {
+            const Config &cfg;
+            const Alpaca::ObservingConditionsSnapshot &obs;
+            const NightState &night;
+            const SafetyStatus &status;
+        };
+        // The device's local time ("HH:MM") and date for {time} and {date}.
+        struct LocalClock
+        {
+            std::string time;
+            std::string date;
+        };
+        Alerts::AlertInputs alertInputs(const AlertSources &sources, const SensorSnapshot &snapshot, uint32_t nowMs);
         Alerts::AlertRules alertRules(const Config &cfg);
         const AlertsConfig::EventSetting *eventSettingFor(const AlertsConfig &alerts, Alerts::AlertType type);
         // Template variables for an alert: readings, settings, then the event's own.
         std::vector<std::pair<std::string, std::string>> alertVars(
-            const Config &cfg,
-            const Alpaca::ObservingConditionsSnapshot &obs,
-            const NightState &night,
-            const Alerts::Alert &alert,
-            const std::string &localTime,
-            const std::string &localDate);
+            const AlertSources &sources, const Alerts::Alert &alert, const LocalClock &clock);
         void applyAlertTemplate(
             Alerts::Alert &alert, const AlertsConfig::EventSetting &setting, const std::vector<std::pair<std::string, std::string>> &vars);
 
@@ -166,12 +170,8 @@ namespace SQM
             Alerts::AlertEngine &engine,
             const Alerts::AlertInputs &inputs,
             const Alerts::AlertRules &rules,
-            const Config &cfg,
-            const Alpaca::ObservingConditionsSnapshot &obs,
-            const NightState &night,
-            const SafetyStatus &status,
-            const std::string &localTime,
-            const std::string &localDate);
+            const AlertSources &sources,
+            const LocalClock &clock);
 
         // "Test" on an event row of the Alerts settings: a sample of each event.
         struct SampleAlert
@@ -186,18 +186,16 @@ namespace SQM
         // The test notification: the generic one (sample == nullptr) or a
         // sample of an event in the given level, sound and wording, filled in
         // from live readings.
+        // The level, sound and wording chosen for a test of an event.
+        struct TestWording
+        {
+            uint8_t level = 0;
+            std::string sound;
+            std::string title;
+            std::string message;
+        };
         Alerts::Alert buildTestAlert(
-            const SampleAlert *sample,
-            uint8_t level,
-            const std::string &sound,
-            const std::string &title,
-            const std::string &message,
-            const SafetyStatus &safety,
-            const Config &cfg,
-            const Alpaca::ObservingConditionsSnapshot &obs,
-            const NightState &night,
-            const std::string &localTime,
-            const std::string &localDate);
+            const SampleAlert *sample, const TestWording &wording, const AlertSources &sources, const LocalClock &clock);
 
         // ISO 8601 UTC, or "" before the clock is set.
         std::string isoUtc(int64_t epoch);

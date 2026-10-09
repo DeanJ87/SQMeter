@@ -24,9 +24,9 @@ namespace SQM
             // ok unless the driver reports a problem or the last good reading is too old.
             Readings::Status readingStatus(SensorStatus status, bool initialized, uint32_t lastUpdate, uint32_t now, uint32_t staleAfter)
             {
-                if (!initialized || status == SensorStatus::NOT_INITIALIZED)
+                if (!initialized || status == SensorStatus::NotInitialized)
                     return Readings::Status::Missing;
-                if (status != SensorStatus::OK)
+                if (status != SensorStatus::Ok)
                     return Readings::Status::Error;
                 if (lastUpdate == 0 || now - lastUpdate > staleAfter)
                     return Readings::Status::Stale;
@@ -52,29 +52,29 @@ namespace SQM
             {
                 switch (state)
                 {
-                case RG15State::RG15_DISABLED:
+                case RG15State::Disabled:
                     return "disabled";
-                case RG15State::RG15_CONFIGURED:
+                case RG15State::Configured:
                     return "configured";
-                case RG15State::RG15_UART_OPENED:
+                case RG15State::UartOpened:
                     return "uart_opened";
-                case RG15State::RG15_CONFIGURING:
+                case RG15State::Configuring:
                     return "configuring";
-                case RG15State::RG15_COMMAND_SENT:
+                case RG15State::CommandSent:
                     return "command_sent";
-                case RG15State::RG15_AWAITING_RESPONSE:
+                case RG15State::AwaitingResponse:
                     return "awaiting_response";
-                case RG15State::RG15_ACKNOWLEDGED:
+                case RG15State::Acknowledged:
                     return "acknowledged";
-                case RG15State::RG15_READING_RECEIVED:
+                case RG15State::ReadingReceived:
                     return "reading_received";
-                case RG15State::RG15_PARSE_ERROR:
+                case RG15State::ParseError:
                     return "parse_error";
-                case RG15State::RG15_TIMEOUT:
+                case RG15State::Timeout:
                     return "timeout";
-                case RG15State::RG15_STALE:
+                case RG15State::Stale:
                     return "stale";
-                case RG15State::RG15_ONLINE:
+                case RG15State::Online:
                     return "online";
                 default:
                     return "unknown";
@@ -143,7 +143,7 @@ namespace SQM
 
             bool windFresh(const WindReading &wind, uint32_t now)
             {
-                return wind.status == SensorStatus::OK && wind.timestamp != 0 && ageMs(now, wind.timestamp) <= WIND_STALE_MS;
+                return wind.status == SensorStatus::Ok && wind.timestamp != 0 && ageMs(now, wind.timestamp) <= WIND_STALE_MS;
             }
         } // namespace
 
@@ -159,123 +159,140 @@ namespace SQM
         void derive(SensorSnapshot &snapshot, const Config &cfg)
         {
             snapshot.sky = SkyQuality::calculate(snapshot.tsl.lux);
-            snapshot.humidityMeasured = snapshot.bmeInitialized && snapshot.bme.status == SensorStatus::OK;
+            snapshot.humidityMeasured = snapshot.bmeInitialized && snapshot.bme.status == SensorStatus::Ok;
             snapshot.cloudHumidity = snapshot.humidityMeasured ? snapshot.bme.humidity : ASSUMED_HUMIDITY_PERCENT;
             snapshot.cloud = CloudDetection::calculate(
                 snapshot.mlx.objectTemp,
                 snapshot.mlx.ambientTemp,
                 snapshot.cloudHumidity,
-                cfg.cloudDetection.clearSkyThreshold,
-                cfg.cloudDetection.cloudyThreshold,
-                cfg.cloudDetection.humidityCorrection);
+                {cfg.cloudDetection.clearSkyThreshold, cfg.cloudDetection.cloudyThreshold, cfg.cloudDetection.humidityCorrection});
         }
+
+        namespace
+        {
+            // Light, sky quality, environment, IR and clouds: the I2C sensors.
+            void readSkyGroups(Readings::Snapshot &r, const SensorSnapshot &snapshot, uint32_t now, uint32_t staleAfter)
+            {
+                // Light sensor + sky quality. The TSL2591 samples on its own ~600 ms cadence.
+                const TSL2591Reading &tsl = snapshot.tsl;
+                r.light.status = readingStatus(tsl.status, snapshot.tslInitialized, snapshot.tslLastUpdate, now, staleAfter);
+                r.light.ageMs = ageMs(now, tsl.timestamp);
+                r.light.lux = tsl.lux;
+                r.light.visible = tsl.visible;
+                r.light.infrared = tsl.infrared;
+                r.light.full = tsl.full;
+                r.light.gain = snapshot.tslDiagnostics.gainName != nullptr ? snapshot.tslDiagnostics.gainName : "";
+                r.light.gainFactor = snapshot.tslDiagnostics.gainFactor;
+                r.light.integrationMs = snapshot.tslDiagnostics.integrationMs;
+                r.light.saturated = snapshot.tslDiagnostics.saturated;
+                r.light.nightMode = snapshot.tslDiagnostics.nightMode;
+                const SkyQualityMetrics &sky = snapshot.sky;
+                r.sky.sqm = sky.sqm;
+                r.sky.rawSqm = tsl.rawSqm;
+                r.sky.nelm = sky.nelm;
+                r.sky.bortle = static_cast<int>(std::lround(sky.bortle));
+                r.sky.description = SkyQuality::getBortleDescription(sky.bortle);
+                r.sky.calibrated = snapshot.tslDiagnostics.calibrated;
+                r.sky.averagingWindowSeconds = snapshot.tslDiagnostics.averagingWindowSeconds;
+
+                const BME280Reading &bme = snapshot.bme;
+                r.environment.status = readingStatus(bme.status, snapshot.bmeInitialized, snapshot.bmeLastUpdate, now, staleAfter);
+                r.environment.ageMs = ageMs(now, bme.timestamp);
+                r.environment.temperature = bme.temperature;
+                r.environment.humidity = bme.humidity;
+                r.environment.pressure = bme.pressure;
+                r.environment.dewpoint = bme.dewpoint;
+
+                const MLX90614Reading &mlx = snapshot.mlx;
+                r.infrared.status = readingStatus(mlx.status, snapshot.mlxInitialized, snapshot.mlxLastUpdate, now, staleAfter);
+                r.infrared.ageMs = ageMs(now, mlx.timestamp);
+                r.infrared.skyTemperature = mlx.objectTemp;
+                r.infrared.ambientTemperature = mlx.ambientTemp;
+                // Without the BME280 the cloud model assumes 53% humidity, and says so.
+                const CloudMetrics &cloud = snapshot.cloud;
+                r.clouds.coverPercent = cloud.cloudCoverPercent;
+                r.clouds.condition = cloudConditionName(cloud.condition);
+                r.clouds.description = cloud.description;
+                r.clouds.temperatureDelta = cloud.temperatureDelta;
+                r.clouds.correctedDelta = cloud.correctedDelta;
+                r.clouds.humidity = snapshot.cloudHumidity;
+                r.clouds.humidityMeasured = snapshot.humidityMeasured;
+            }
+
+            void readGps(Readings::Snapshot &r, const SensorSnapshot &snapshot, const Config &cfg)
+            {
+                r.gps.present = cfg.gps.enabled;
+                if (r.gps.present)
+                {
+                    const GPSReading &gps = snapshot.gps;
+                    r.gps.status = snapshot.gpsInitialized
+                                       ? (gps.status == SensorStatus::Ok || gps.status == SensorStatus::Timeout ? Readings::Status::Ok
+                                                                                                                : Readings::Status::Error)
+                                       : Readings::Status::Missing;
+                    r.gps.ageMs = gps.age;
+                    r.gps.fix = gps.hasFix;
+                    r.gps.satellites = gps.satellites;
+                    r.gps.latitude = gps.latitude;
+                    r.gps.longitude = gps.longitude;
+                    r.gps.altitude = gps.altitude;
+                    r.gps.hdop = gps.hdop / 100.0;
+                }
+            }
+
+            void readRain(Readings::Snapshot &r, const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)
+            {
+                r.rain.present = cfg.rain.enabled;
+                if (r.rain.present)
+                {
+                    const RG15Reading &rain = snapshot.rg15;
+                    r.rain.status = !snapshot.rg15Initialized || !rain.online ? Readings::Status::Missing
+                                    : rain.stale                              ? Readings::Status::Stale
+                                                                              : Readings::Status::Ok;
+                    r.rain.ageMs = ageMs(now, rain.timestamp);
+                    // Always metric: the RG-15 can be switched to inches.
+                    const double toMm = rain.imperial ? 25.4 : 1.0;
+                    r.rain.raining = rain.isRaining || rain.rainLatched;
+                    r.rain.rainingNow = rain.isRaining;
+                    r.rain.intensity = rain.rInt * toMm;
+                    r.rain.eventAccumulation = rain.localEventAcc * toMm;
+                    r.rain.sensorEventAccumulation = rain.eventAcc * toMm;
+                    r.rain.totalAccumulation = rain.totalAcc * toMm;
+                    r.rain.lensFault = rain.lensBad;
+                    r.rain.emitterSaturated = rain.emSat;
+                }
+            }
+
+            void readWind(Readings::Snapshot &r, const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)
+            {
+                r.wind.present = cfg.wind.enabled;
+                if (r.wind.present)
+                {
+                    const WindReading &wind = snapshot.wind;
+                    r.wind.status = wind.status == SensorStatus::Ok               ? Readings::Status::Ok
+                                    : wind.status == SensorStatus::NotInitialized ? Readings::Status::Missing
+                                                                                  : Readings::Status::Error;
+                    r.wind.ageMs = ageMs(now, wind.timestamp);
+                    r.wind.speed = wind.speedMs;
+                    r.wind.gust = wind.gustMs;
+                    r.wind.directionValid = cfg.wind.directionEnabled && wind.directionValid;
+                    r.wind.direction = wind.directionDeg;
+                    r.wind.vaneFault = wind.vaneFault;
+                }
+            }
+        } // namespace
 
         Readings::Snapshot buildReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now, int64_t epoch)
         {
             const uint32_t staleAfter = cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
             Readings::Snapshot r;
-
             r.timeValid = epoch >= CLOCK_VALID_EPOCH;
             r.timestamp = r.timeValid ? epoch : 0;
             r.dataAgeMs = ageMs(now, snapshot.dataTimestamp);
             r.dataStale = snapshot.dataTimestamp == 0 || r.dataAgeMs > staleAfter;
-
-            // Light sensor + sky quality. The TSL2591 samples on its own ~600 ms cadence.
-            const TSL2591Reading &tsl = snapshot.tsl;
-            r.light.status = readingStatus(tsl.status, snapshot.tslInitialized, snapshot.tslLastUpdate, now, staleAfter);
-            r.light.ageMs = ageMs(now, tsl.timestamp);
-            r.light.lux = tsl.lux;
-            r.light.visible = tsl.visible;
-            r.light.infrared = tsl.infrared;
-            r.light.full = tsl.full;
-            r.light.gain = snapshot.tslDiagnostics.gainName != nullptr ? snapshot.tslDiagnostics.gainName : "";
-            r.light.gainFactor = snapshot.tslDiagnostics.gainFactor;
-            r.light.integrationMs = snapshot.tslDiagnostics.integrationMs;
-            r.light.saturated = snapshot.tslDiagnostics.saturated;
-            r.light.nightMode = snapshot.tslDiagnostics.nightMode;
-            const SkyQualityMetrics &sky = snapshot.sky;
-            r.sky.sqm = sky.sqm;
-            r.sky.rawSqm = tsl.rawSqm;
-            r.sky.nelm = sky.nelm;
-            r.sky.bortle = static_cast<int>(sky.bortle + 0.5f);
-            r.sky.description = SkyQuality::getBortleDescription(sky.bortle);
-            r.sky.calibrated = snapshot.tslDiagnostics.calibrated;
-            r.sky.averagingWindowSeconds = snapshot.tslDiagnostics.averagingWindowSeconds;
-
-            const BME280Reading &bme = snapshot.bme;
-            r.environment.status = readingStatus(bme.status, snapshot.bmeInitialized, snapshot.bmeLastUpdate, now, staleAfter);
-            r.environment.ageMs = ageMs(now, bme.timestamp);
-            r.environment.temperature = bme.temperature;
-            r.environment.humidity = bme.humidity;
-            r.environment.pressure = bme.pressure;
-            r.environment.dewpoint = bme.dewpoint;
-
-            const MLX90614Reading &mlx = snapshot.mlx;
-            r.infrared.status = readingStatus(mlx.status, snapshot.mlxInitialized, snapshot.mlxLastUpdate, now, staleAfter);
-            r.infrared.ageMs = ageMs(now, mlx.timestamp);
-            r.infrared.skyTemperature = mlx.objectTemp;
-            r.infrared.ambientTemperature = mlx.ambientTemp;
-            // Without the BME280 the cloud model assumes 53% humidity, and says so.
-            const CloudMetrics &cloud = snapshot.cloud;
-            r.clouds.coverPercent = cloud.cloudCoverPercent;
-            r.clouds.condition = cloudConditionName(cloud.condition);
-            r.clouds.description = cloud.description;
-            r.clouds.temperatureDelta = cloud.temperatureDelta;
-            r.clouds.correctedDelta = cloud.correctedDelta;
-            r.clouds.humidity = snapshot.cloudHumidity;
-            r.clouds.humidityMeasured = snapshot.humidityMeasured;
-
-            r.gps.present = cfg.gps.enabled;
-            if (r.gps.present)
-            {
-                const GPSReading &gps = snapshot.gps;
-                r.gps.status = snapshot.gpsInitialized
-                                   ? (gps.status == SensorStatus::OK || gps.status == SensorStatus::TIMEOUT ? Readings::Status::Ok
-                                                                                                            : Readings::Status::Error)
-                                   : Readings::Status::Missing;
-                r.gps.ageMs = gps.age;
-                r.gps.fix = gps.hasFix;
-                r.gps.satellites = gps.satellites;
-                r.gps.latitude = gps.latitude;
-                r.gps.longitude = gps.longitude;
-                r.gps.altitude = gps.altitude;
-                r.gps.hdop = gps.hdop / 100.0;
-            }
-
-            r.rain.present = cfg.rain.enabled;
-            if (r.rain.present)
-            {
-                const RG15Reading &rain = snapshot.rg15;
-                r.rain.status = !snapshot.rg15Initialized || !rain.online ? Readings::Status::Missing
-                                : rain.stale                              ? Readings::Status::Stale
-                                                                          : Readings::Status::Ok;
-                r.rain.ageMs = ageMs(now, rain.timestamp);
-                // Always metric: the RG-15 can be switched to inches.
-                const double toMm = rain.imperial ? 25.4 : 1.0;
-                r.rain.raining = rain.isRaining || rain.rainLatched;
-                r.rain.rainingNow = rain.isRaining;
-                r.rain.intensity = rain.rInt * toMm;
-                r.rain.eventAccumulation = rain.localEventAcc * toMm;
-                r.rain.sensorEventAccumulation = rain.eventAcc * toMm;
-                r.rain.totalAccumulation = rain.totalAcc * toMm;
-                r.rain.lensFault = rain.lensBad;
-                r.rain.emitterSaturated = rain.emSat;
-            }
-
-            r.wind.present = cfg.wind.enabled;
-            if (r.wind.present)
-            {
-                const WindReading &wind = snapshot.wind;
-                r.wind.status = wind.status == SensorStatus::OK                ? Readings::Status::Ok
-                                : wind.status == SensorStatus::NOT_INITIALIZED ? Readings::Status::Missing
-                                                                               : Readings::Status::Error;
-                r.wind.ageMs = ageMs(now, wind.timestamp);
-                r.wind.speed = wind.speedMs;
-                r.wind.gust = wind.gustMs;
-                r.wind.directionValid = cfg.wind.directionEnabled && wind.directionValid;
-                r.wind.direction = wind.directionDeg;
-                r.wind.vaneFault = wind.vaneFault;
-            }
+            readSkyGroups(r, snapshot, now, staleAfter);
+            readGps(r, snapshot, cfg);
+            readRain(r, snapshot, cfg, now);
+            readWind(r, snapshot, cfg, now);
             return r;
         }
 
@@ -354,7 +371,7 @@ namespace SQM
                     result.everRead = true;
                     const uint32_t age = ageMs(now, source.lastUpdate);
                     youngestRead = std::min(youngestRead, age);
-                    if (source.status == SensorStatus::OK)
+                    if (source.status == SensorStatus::Ok)
                     {
                         anyAnswering = true;
                         oldestAnswering = std::max(oldestAnswering, age);
@@ -372,9 +389,9 @@ namespace SQM
             const RequiredDataAge data = requiredDataAge(snapshot, now);
             in.hasEverHadGoodData = data.everRead;
             in.secondsSinceLastGoodData = data.ageMs / 1000;
-            in.skyLightFault = snapshot.tsl.status != SensorStatus::OK;
-            in.irSkyFault = snapshot.mlx.status != SensorStatus::OK;
-            in.requiredSensorFault = snapshot.tsl.status != SensorStatus::OK || snapshot.mlx.status != SensorStatus::OK;
+            in.skyLightFault = snapshot.tsl.status != SensorStatus::Ok;
+            in.irSkyFault = snapshot.mlx.status != SensorStatus::Ok;
+            in.requiredSensorFault = snapshot.tsl.status != SensorStatus::Ok || snapshot.mlx.status != SensorStatus::Ok;
 
             in.sqm = snapshot.sky.sqm;
             in.cloudCoverPercent = snapshot.cloud.cloudCoverPercent;
@@ -385,7 +402,7 @@ namespace SQM
 
             in.rainSensorEnabled = cfg.rain.enabled;
             in.rainSensorHealthy =
-                snapshot.rg15.online && !snapshot.rg15.stale && snapshot.rg15.status == SensorStatus::OK && !snapshot.rg15.lensBad;
+                snapshot.rg15.online && !snapshot.rg15.stale && snapshot.rg15.status == SensorStatus::Ok && !snapshot.rg15.lensBad;
             // rainLatched holds for rain.rainClearDelayMs after the last drop -
             // the hold-off before a roof should re-open.
             in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
@@ -427,7 +444,7 @@ namespace SQM
                 Alpaca::SourceState state;
                 state.present = present;
                 state.ageSeconds = ageMs(now, lastUpdate) / 1000.0;
-                state.valid = present && status == SensorStatus::OK && lastUpdate != 0 && ageMs(now, lastUpdate) <= staleAfter;
+                state.valid = present && status == SensorStatus::Ok && lastUpdate != 0 && ageMs(now, lastUpdate) <= staleAfter;
                 return state;
             };
 
@@ -444,7 +461,7 @@ namespace SQM
             snap.rain.present = cfg.rain.enabled && snapshot.rg15.timestamp != 0;
             snap.rain.ageSeconds = ageMs(now, snapshot.rg15.timestamp) / 1000.0;
             snap.rain.valid = cfg.rain.enabled && snapshot.rg15.online && !snapshot.rg15.stale &&
-                              snapshot.rg15.status == SensorStatus::OK && snapshot.rg15.timestamp != 0;
+                              snapshot.rg15.status == SensorStatus::Ok && snapshot.rg15.timestamp != 0;
 
             const bool fresh = windFresh(snapshot.wind, now);
             snap.wind.present = cfg.wind.enabled && snapshot.wind.timestamp != 0;
@@ -545,387 +562,6 @@ namespace SQM
                 sky["isNight"] = n.isNight;
                 sky["sunAltitudeDeg"] = rounded(n.sunAltitudeDeg, 1);
             }
-        }
-
-        Alerts::AlertInputs alertInputs(
-            const SafetyStatus &status,
-            const SensorSnapshot &snapshot,
-            const Alpaca::ObservingConditionsSnapshot &obs,
-            const Config &cfg,
-            const NightState &n,
-            uint32_t now)
-        {
-            Alerts::AlertInputs in;
-            in.nowSeconds = now / 1000;
-            in.safetyKnown = status.evaluatedAtMs != 0;
-            in.safetySettling = (!status.isSafe && status.rawSafe) || (status.reasonFlags & Alpaca::UNSAFE_NO_DATA) != 0;
-            in.isSafe = status.isSafe;
-            in.unsafeReasons = status.reasons;
-
-            in.rainEnabled = cfg.rain.enabled;
-            in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
-            in.rainRateMmPerHour = obs.rainRateMmPerHour;
-            in.lensFault = snapshot.rg15.lensBad;
-
-            in.sensors[0] = {"TSL2591 light", true, obs.skyLight.valid};
-            in.sensors[1] = {"MLX90614 IR", true, obs.irSky.valid};
-            in.sensors[2] = {"BME280 environment", true, obs.environment.valid};
-            in.sensors[3] = {"RG-15 rain", cfg.rain.enabled, obs.rain.valid};
-            in.sensors[4] = {"Wind", obs.wind.present, obs.wind.valid};
-
-            in.environmentValid = obs.environment.valid;
-            in.temperatureC = obs.temperatureC;
-            in.dewpointC = obs.dewpointC;
-            in.skyValid = obs.irSky.valid;
-            in.cloudCoverPercent = obs.cloudCoverPercent;
-            in.nightKnown = n.known;
-            in.isNight = n.isNight;
-            return in;
-        }
-
-        Alerts::AlertRules alertRules(const Config &cfg)
-        {
-            Alerts::AlertRules rules;
-            const AlertsConfig &a = cfg.alerts;
-            rules.onSafetyChange = a.unsafe.level || a.safe.level;
-            rules.onRain = a.rainStarted.level || a.rainStopped.level;
-            rules.onSensorFault = a.sensorFault.level || a.sensorRecovered.level;
-            rules.onDewRisk = a.dewRisk.level != 0;
-            rules.dewRiskMarginC = a.dewRiskMarginC;
-            rules.onClearSky = a.clearSky.level != 0;
-            rules.clearSkyCloudPercent = a.clearSkyCloudPercent;
-            rules.onCloudedOver = a.cloudedOver.level != 0;
-            rules.cloudedOverCloudPercent = a.cloudedOverCloudPercent;
-            rules.skyNightOnly = a.skyNightOnly;
-            rules.safetyNightOnly = a.safetyNightOnly;
-            rules.cooldownSeconds = a.cooldownSeconds;
-            rules.onClientLost = a.clientLost.level != 0;
-            rules.onClientBack = a.clientBack.level != 0;
-            rules.onClientDisconnected = a.clientDisconnected.level != 0;
-            return rules;
-        }
-
-        const AlertsConfig::EventSetting *eventSettingFor(const AlertsConfig &a, Alerts::AlertType type)
-        {
-            switch (type)
-            {
-            case Alerts::AlertType::Unsafe:
-                return &a.unsafe;
-            case Alerts::AlertType::Safe:
-                return &a.safe;
-            case Alerts::AlertType::RainStarted:
-                return &a.rainStarted;
-            case Alerts::AlertType::RainStopped:
-                return &a.rainStopped;
-            case Alerts::AlertType::SensorFault:
-            case Alerts::AlertType::LensFault:
-                return &a.sensorFault;
-            case Alerts::AlertType::SensorRecovered:
-                return &a.sensorRecovered;
-            case Alerts::AlertType::DewRisk:
-                return &a.dewRisk;
-            case Alerts::AlertType::ClearSky:
-                return &a.clearSky;
-            case Alerts::AlertType::CloudedOver:
-                return &a.cloudedOver;
-            case Alerts::AlertType::ClientLost:
-                return &a.clientLost;
-            case Alerts::AlertType::ClientBack:
-                return &a.clientBack;
-            case Alerts::AlertType::ClientDisconnected:
-                return &a.clientDisconnected;
-            default:
-                return nullptr;
-            }
-        }
-
-        std::vector<std::pair<std::string, std::string>> alertVars(
-            const Config &cfg,
-            const Alpaca::ObservingConditionsSnapshot &obs,
-            const NightState &n,
-            const Alerts::Alert &alert,
-            const std::string &localTime,
-            const std::string &localDate)
-        {
-            auto num = [](bool valid, double value, int decimals) -> std::string
-            {
-                if (!valid)
-                    return "--";
-                char buffer[24];
-                std::snprintf(buffer, sizeof(buffer), "%.*f", decimals, value);
-                return buffer;
-            };
-            const AlertsConfig &a = cfg.alerts;
-            const AlpacaConfig &limits = cfg.alpaca;
-
-            // Readings and settings first; the event's own values (reasons,
-            // sensor, ...) come after and win on a name clash.
-            std::vector<std::pair<std::string, std::string>> vars = {
-                {"device", cfg.deviceName},
-                {"event", Alerts::alertTypeName(alert.type)},
-                {"level", Alerts::alertLevelName(alert.level)},
-                {"time", localTime},
-                {"date", localDate},
-                {"sqm", num(obs.skyLight.valid, obs.skyQualityMagArcsec2, 2)},
-                {"sqm_min", num(true, limits.sqmMinSafe, 2)},
-                {"cloud", num(obs.irSky.valid, obs.cloudCoverPercent, 0)},
-                {"cloud_max", num(true, limits.cloudCoverUnsafePercent, 0)},
-                {"clear_below", num(true, a.clearSkyCloudPercent, 0)},
-                {"cloudy_above", num(true, a.cloudedOverCloudPercent, 0)},
-                {"sky_temp", num(obs.irSky.valid, obs.skyTemperatureC, 1)},
-                {"temp", num(obs.environment.valid, obs.temperatureC, 1)},
-                {"humidity", num(obs.environment.valid, obs.humidityPercent, 0)},
-                {"humidity_max", num(true, limits.humidityMaxSafe, 0)},
-                {"dewpoint", num(obs.environment.valid, obs.dewpointC, 1)},
-                {"dew_margin", num(obs.environment.valid, obs.temperatureC - obs.dewpointC, 1)},
-                {"pressure", num(obs.environment.valid, obs.pressureHPa, 0)},
-                {"rain_rate", num(obs.rain.valid, obs.rainRateMmPerHour, 1)},
-                {"wind", num(obs.wind.valid, obs.windSpeedMs, 1)},
-                {"gust", num(obs.wind.valid, obs.windGustMs, 1)},
-                {"sun_alt", num(n.known, n.sunAltitudeDeg, 1)},
-            };
-            vars.insert(vars.end(), alert.vars.begin(), alert.vars.end());
-            return vars;
-        }
-
-        void applyAlertTemplate(
-            Alerts::Alert &alert, const AlertsConfig::EventSetting &setting, const std::vector<std::pair<std::string, std::string>> &vars)
-        {
-            if (!setting.title.empty())
-                alert.title = Alerts::renderTemplate(setting.title, vars);
-            if (!setting.message.empty())
-                alert.message = Alerts::renderTemplate(setting.message, vars);
-            // Not needed past this point, and the recent-alerts list keeps alerts.
-            alert.vars.clear();
-            alert.vars.shrink_to_fit();
-        }
-
-        void clientSilenceMs(const Config &cfg, uint32_t (&out)[Alpaca::DEVICE_COUNT])
-        {
-            out[static_cast<size_t>(Alpaca::Device::SafetyMonitor)] = cfg.alerts.clientSilentSafetySeconds * 1000;
-            out[static_cast<size_t>(Alpaca::Device::ObservingConditions)] = cfg.alerts.clientSilentWeatherSeconds * 1000;
-        }
-
-        std::string formatDuration(uint32_t seconds)
-        {
-            if (seconds < 60)
-                return std::to_string(seconds) + " s";
-            const uint32_t minutes = (seconds + 30) / 60;
-            if (minutes < 60)
-                return std::to_string(minutes) + " min";
-            return std::to_string(minutes / 60) + " h" + (minutes % 60 != 0 ? " " + std::to_string(minutes % 60) + " min" : "");
-        }
-
-        namespace
-        {
-            const char *const CLIENT_DEVICE_NAMES[Alpaca::DEVICE_COUNT] = {"safety monitor", "weather device"};
-            const char *const CLIENT_DEVICE_KEYS[Alpaca::DEVICE_COUNT] = {"safetymonitor", "observingconditions"};
-
-            // The local clock time `ageSeconds` ago, from the current "HH:MM";
-            // "N min ago" when there's no clock.
-            std::string lastCheckedText(uint32_t ageSeconds, const std::string &localTime)
-            {
-                const bool clock = localTime.size() == 5 && localTime[2] == ':' && std::isdigit(static_cast<unsigned char>(localTime[0])) &&
-                                   std::isdigit(static_cast<unsigned char>(localTime[1])) &&
-                                   std::isdigit(static_cast<unsigned char>(localTime[3])) &&
-                                   std::isdigit(static_cast<unsigned char>(localTime[4]));
-                if (!clock)
-                    return formatDuration(ageSeconds) + " ago";
-                const int now = std::stoi(localTime.substr(0, 2)) * 60 + std::stoi(localTime.substr(3, 2));
-                const int then = ((now - static_cast<int>(ageSeconds / 60)) % 1440 + 1440) % 1440;
-                char buffer[8];
-                std::snprintf(buffer, sizeof(buffer), "%02d:%02d", then / 60, then % 60);
-                return buffer;
-            }
-        } // namespace
-
-        void addClientInputs(
-            Alerts::AlertInputs &inputs, const Alpaca::ClientWatch &watch, const Config &cfg, uint32_t nowMs, const std::string &localTime)
-        {
-            uint32_t silence[Alpaca::DEVICE_COUNT];
-            clientSilenceMs(cfg, silence);
-            for (size_t i = 0; i < Alpaca::DEVICE_COUNT; ++i)
-            {
-                const Alpaca::ClientState &state = watch.state(static_cast<Alpaca::Device>(i));
-                Alerts::ClientInputs &client = inputs.clients[i];
-                client.device = CLIENT_DEVICE_NAMES[i];
-                client.watching = state.watching;
-                client.silent = state.silent;
-                client.disconnectedNow = state.disconnectedNow;
-                client.silentFor = formatDuration(silence[i] / 1000);
-                client.lastChecked = state.everRequested ? lastCheckedText((nowMs - state.lastRequestMs) / 1000, localTime) : "never";
-                client.clientId = state.hasClientId ? std::to_string(state.clientId) : "";
-            }
-        }
-
-        void writeClientWatch(JsonObject alpaca, const Alpaca::ClientWatch &watch, const Config &cfg, uint32_t nowMs)
-        {
-            alpaca["enabled"] = cfg.alpaca.enabled;
-            JsonObject clients = alpaca.createNestedObject("clients");
-            for (size_t i = 0; i < Alpaca::DEVICE_COUNT; ++i)
-            {
-                const Alpaca::ClientState &state = watch.state(static_cast<Alpaca::Device>(i));
-                JsonObject client = clients.createNestedObject(CLIENT_DEVICE_KEYS[i]);
-                client["connected"] = state.connected;
-                client["watching"] = state.watching;
-                client["silent"] = state.silent;
-                if (state.everRequested)
-                    client["lastCheckedAgeMs"] = nowMs - state.lastRequestMs;
-                else
-                    client["lastCheckedAgeMs"] = nullptr;
-                if (state.hasClientId)
-                    client["clientId"] = state.clientId;
-                else
-                    client["clientId"] = nullptr;
-            }
-        }
-
-        Alerts::SendMode sendMode(const Config &cfg)
-        {
-            return cfg.alerts.sendMode == AlertsConfig::SendMode::WhileConnected ? Alerts::SendMode::WhileConnected : Alerts::SendMode::Any;
-        }
-
-        Alerts::SendMode effectiveSendMode(const Config &cfg)
-        {
-            // dep: D-12 - imaging apps connect over Alpaca: with it off, "only while
-            // an imaging app is connected" isn't in effect and alerts go out any time.
-            return cfg.alpaca.enabled ? sendMode(cfg) : Alerts::SendMode::Any;
-        }
-
-        void writeAlertSchedule(JsonObject target, const Alerts::ScheduleState &state, const Config &cfg, uint32_t nowMs)
-        {
-            target["armed"] = state.sending;
-            target["armWithAlpaca"] = cfg.alerts.sendMode == AlertsConfig::SendMode::WhileConnected;
-            target["mode"] = Alerts::sendModeName(sendMode(cfg));
-            target["reason"] = Alerts::scheduleReasonName(state.reason);
-            const std::string since = isoUtc(state.sinceEpoch);
-            if (since.empty())
-                target["since"] = nullptr;
-            else
-                target["since"] = since;
-            if (state.sinceKnown)
-                target["sinceAgeMs"] = nowMs - state.sinceMs;
-            else
-                target["sinceAgeMs"] = nullptr;
-        }
-
-        AlertStep runAlerts(
-            Alerts::AlertEngine &engine,
-            const Alerts::AlertInputs &inputs,
-            const Alerts::AlertRules &rules,
-            const Config &cfg,
-            const Alpaca::ObservingConditionsSnapshot &obs,
-            const NightState &n,
-            const SafetyStatus &status,
-            const std::string &localTime,
-            const std::string &localDate)
-        {
-            AlertStep step;
-            for (Alerts::Alert alert : engine.update(inputs, rules))
-            {
-                const AlertsConfig::EventSetting *setting = eventSettingFor(cfg.alerts, alert.type);
-                if (setting == nullptr || setting->level == 0)
-                    continue;
-                alert.level = static_cast<Alerts::AlertLevel>(setting->level);
-                alert.sound = setting->sound;
-                applyAlertTemplate(alert, *setting, alertVars(cfg, obs, n, alert, localTime, localDate));
-                if (alert.level == Alerts::AlertLevel::Wake)
-                    step.alarmFlags |= status.reasonFlags | (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UNSAFE_RAIN : 0u) |
-                                       (alert.type == Alerts::AlertType::SensorFault || alert.type == Alerts::AlertType::LensFault
-                                            ? Alpaca::UNSAFE_SENSOR_FAULT
-                                            : 0u);
-                step.outgoing.push_back(std::move(alert));
-            }
-            return step;
-        }
-
-        namespace
-        {
-            constexpr SampleAlert SAMPLE_ALERTS[] = {
-                {"unsafe", Alerts::AlertType::Unsafe, "Observatory UNSAFE", "It turns unsafe", Alpaca::UNSAFE_CLOUD_COVER},
-                {"safe", Alerts::AlertType::Safe, "Observatory safe", "It's safe again", 0},
-                {"rain_started", Alerts::AlertType::RainStarted, "Rain detected", "Rain starts", Alpaca::UNSAFE_RAIN},
-                {"rain_stopped", Alerts::AlertType::RainStopped, "Rain cleared", "Rain stops", 0},
-                {"sensor_fault", Alerts::AlertType::SensorFault, "Sensor fault", "A sensor fails", Alpaca::UNSAFE_SENSOR_FAULT},
-                {"sensor_recovered", Alerts::AlertType::SensorRecovered, "Sensor recovered", "A sensor recovers", 0},
-                {"dew_risk", Alerts::AlertType::DewRisk, "Dew risk", "Dew risk", Alpaca::UNSAFE_DEWPOINT},
-                {"clear_sky", Alerts::AlertType::ClearSky, "Dark and clear", "Skies clear up", 0},
-                {"clouded_over", Alerts::AlertType::CloudedOver, "Clouded over", "Skies cloud over", Alpaca::UNSAFE_CLOUD_COVER},
-                {"client_lost", Alerts::AlertType::ClientLost, "Imaging app stopped checking", "The imaging app stops checking", 0},
-                {"client_back", Alerts::AlertType::ClientBack, "Imaging app is back", "The imaging app is back", 0},
-                {"client_disconnected",
-                 Alerts::AlertType::ClientDisconnected,
-                 "Imaging app disconnected",
-                 "The imaging app disconnects",
-                 0},
-            };
-        } // namespace
-
-        const SampleAlert *sampleAlert(const std::string &key)
-        {
-            for (const SampleAlert &sample : SAMPLE_ALERTS)
-                if (key == sample.key)
-                    return &sample;
-            return nullptr;
-        }
-
-        Alerts::Alert buildTestAlert(
-            const SampleAlert *sample,
-            uint8_t level,
-            const std::string &sound,
-            const std::string &title,
-            const std::string &message,
-            const SafetyStatus &safety,
-            const Config &cfg,
-            const Alpaca::ObservingConditionsSnapshot &obs,
-            const NightState &n,
-            const std::string &localTime,
-            const std::string &localDate)
-        {
-            Alerts::Alert test;
-            if (sample == nullptr)
-            {
-                test.type = Alerts::AlertType::Test;
-                test.level = Alerts::AlertLevel::Normal;
-                test.title = "Test notification";
-                test.message = "Alerts from this SQMeter are working.";
-                return test;
-            }
-            test.type = sample->type;
-            test.level = static_cast<Alerts::AlertLevel>(level);
-            test.sound = sound;
-            test.title = sample->title;
-            test.message = std::string("This is how a \"") + sample->label + "\" alert arrives.";
-
-            // Custom wording is filled in from live readings; values only a
-            // real event has (the reasons, which sensor) are examples unless
-            // they apply right now.
-            if (sample->type == Alerts::AlertType::Unsafe)
-            {
-                const std::vector<std::string> reasons =
-                    safety.isSafe ? std::vector<std::string>{"Cloud 62% >= 35% (example)"} : safety.reasons;
-                std::string inline_;
-                for (const std::string &reason : reasons)
-                    inline_ += (inline_.empty() ? "" : "; ") + reason;
-                test.vars = {
-                    {"reasons", Alerts::joinReasons(reasons)},
-                    {"reasons_inline", inline_},
-                    {"reason_count", std::to_string(reasons.size())}};
-            }
-            else if (sample->type == Alerts::AlertType::SensorFault || sample->type == Alerts::AlertType::SensorRecovered)
-                test.vars = {{"sensor", "TSL2591 light (example)"}};
-            else if (
-                sample->type == Alerts::AlertType::ClientLost || sample->type == Alerts::AlertType::ClientBack ||
-                sample->type == Alerts::AlertType::ClientDisconnected)
-                test.vars = {
-                    {"device", "safety monitor"},
-                    {"silent_for", formatDuration(cfg.alerts.clientSilentSafetySeconds)},
-                    {"last_checked", "2 min ago (example)"},
-                    {"client_id", "1234 (example)"}};
-            AlertsConfig::EventSetting custom{level, sound, title, message};
-            applyAlertTemplate(test, custom, alertVars(cfg, obs, n, test, localTime, localDate));
-            test.title = "Test: " + test.title;
-            return test;
         }
 
         std::string isoUtc(int64_t epoch)

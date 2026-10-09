@@ -21,7 +21,7 @@ namespace
     {
         SensorSnapshot s;
         s.tslInitialized = s.bmeInitialized = s.mlxInitialized = true;
-        s.tsl.status = s.bme.status = s.mlx.status = SensorStatus::OK;
+        s.tsl.status = s.bme.status = s.mlx.status = SensorStatus::Ok;
         s.tsl.timestamp = s.bme.timestamp = s.mlx.timestamp = now - 500;
         s.tslLastUpdate = s.bmeLastUpdate = s.mlxLastUpdate = now - 500;
         s.dataTimestamp = now - 500;
@@ -59,7 +59,7 @@ void test_observing_conditions_missing_vs_failed_sensors()
     // MLX90614 not detected at boot, RG-15 switched on but never answered.
     SensorSnapshot s = healthy(now);
     s.mlxInitialized = false;
-    s.mlx.status = SensorStatus::NOT_INITIALIZED;
+    s.mlx.status = SensorStatus::NotInitialized;
     s.mlxLastUpdate = 0;
     Core::derive(s, cfg);
     ObservingConditionsSnapshot obs = Core::observingConditions(s, cfg, now);
@@ -73,7 +73,7 @@ void test_observing_conditions_missing_vs_failed_sensors()
 
     // Both answered once, then failed / went stale: a driver error, still described.
     s.mlxInitialized = true;
-    s.mlx.status = SensorStatus::READ_ERROR;
+    s.mlx.status = SensorStatus::ReadError;
     s.mlxLastUpdate = now - 500;
     s.rg15.timestamp = now - 120000;
     s.rg15.online = false;
@@ -114,7 +114,7 @@ void test_missing_stale_and_clock()
     const uint32_t now = 100000;
     SensorSnapshot s = healthy(now);
     s.mlxInitialized = false;
-    s.mlx.status = SensorStatus::NOT_INITIALIZED;
+    s.mlx.status = SensorStatus::NotInitialized;
     s.bmeLastUpdate = now - 20000; // older than read interval + grace
     const Config cfg = defaults();
     Core::derive(s, cfg);
@@ -195,7 +195,7 @@ void test_rain_makes_unsafe_even_when_stale()
     s.rg15Initialized = true;
     s.rg15.online = true;
     s.rg15.stale = false;
-    s.rg15.status = SensorStatus::OK;
+    s.rg15.status = SensorStatus::Ok;
     s.rg15.timestamp = now - 100;
     s.rg15.isRaining = true;
     s.rg15.rInt = 2.0f;
@@ -204,8 +204,8 @@ void test_rain_makes_unsafe_even_when_stale()
     Core::derive(s, cfg);
     const auto result = Alpaca::evaluateSafety(Core::safetyInputs(s, cfg, now), Core::safetyThresholds(cfg));
     TEST_ASSERT_FALSE(result.isSafe);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_RAIN);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_STALE_DATA);
+    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeRain);
+    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeStaleData);
 }
 
 namespace
@@ -217,7 +217,7 @@ namespace
         s.rg15Initialized = true;
         s.rg15.online = true;
         s.rg15.stale = false;
-        s.rg15.status = SensorStatus::OK;
+        s.rg15.status = SensorStatus::Ok;
         s.rg15.timestamp = now - 100;
     }
 
@@ -240,7 +240,7 @@ void test_stale_when_a_required_sensor_stops_refreshing()
     s.tslLastUpdate = now - 600000; // but the TSL2591 hasn't read for 10 min
     const auto result = verdict(s, cfg, now);
     TEST_ASSERT_FALSE(result.isSafe);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_STALE_DATA);
+    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeStaleData);
 
     SensorSnapshot fresh = healthy(now);
     TEST_ASSERT_TRUE(verdict(fresh, cfg, now).isSafe);
@@ -253,17 +253,17 @@ void test_missing_sensor_is_a_fault_not_stale()
     SensorSnapshot s = healthy(now);
     const Config cfg = defaults();
     s.mlxInitialized = false;
-    s.mlx.status = SensorStatus::NOT_INITIALIZED;
+    s.mlx.status = SensorStatus::NotInitialized;
     s.mlxLastUpdate = 0;
     const auto result = verdict(s, cfg, now);
     TEST_ASSERT_FALSE(result.isSafe);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_SENSOR_FAULT);
-    TEST_ASSERT_FALSE(result.reasonFlags & Alpaca::UNSAFE_STALE_DATA);
-    TEST_ASSERT_FALSE(result.reasonFlags & Alpaca::UNSAFE_NO_DATA);
+    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeSensorFault);
+    TEST_ASSERT_FALSE(result.reasonFlags & Alpaca::UnsafeStaleData);
+    TEST_ASSERT_FALSE(result.reasonFlags & Alpaca::UnsafeNoData);
 
     s.tslLastUpdate = 0;
-    s.tsl.status = SensorStatus::READ_ERROR;
-    TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UNSAFE_NO_DATA);
+    s.tsl.status = SensorStatus::ReadError;
+    TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UnsafeNoData);
 }
 
 // specs/006: the rain sensor's health feeds the verdict - a dirty lens or a
@@ -282,17 +282,17 @@ void test_rain_sensor_lens_fault_and_stale_are_unsafe()
     s.rg15.lensBad = true;
     auto result = verdict(s, cfg, now);
     TEST_ASSERT_FALSE(result.isSafe);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_RAIN_SENSOR_FAULT);
+    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeRainSensorFault);
 
     s.rg15.lensBad = false;
     s.rg15.stale = true;
     result = verdict(s, cfg, now);
     TEST_ASSERT_FALSE(result.isSafe);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UNSAFE_RAIN_SENSOR_FAULT);
+    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeRainSensorFault);
 
     s.rg15.stale = false;
     s.rg15.online = false;
-    TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UNSAFE_RAIN_SENSOR_FAULT);
+    TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UnsafeRainSensorFault);
 }
 
 void test_night_from_location_and_clock()
@@ -339,21 +339,13 @@ void test_alert_wording_and_levels()
     status.isSafe = true;
     status.rawSafe = true;
     // Baseline pass, then unsafe after the engine's 60 s start-up grace.
-    Core::runAlerts(
-        engine, Core::alertInputs(status, s, obs, cfg, night, now), Core::alertRules(cfg), cfg, obs, night, status, "23:00", "2026-10-07");
+    const Core::AlertSources sources{cfg, obs, night, status};
+    Core::runAlerts(engine, Core::alertInputs(sources, s, now), Core::alertRules(cfg), sources, Core::LocalClock{"23:00", "2026-10-07"});
     status.isSafe = false;
     status.rawSafe = false;
     status.reasons = {"Cloud 96% >= 90%"};
     const Core::AlertStep step = Core::runAlerts(
-        engine,
-        Core::alertInputs(status, s, obs, cfg, night, now + 70000),
-        Core::alertRules(cfg),
-        cfg,
-        obs,
-        night,
-        status,
-        "23:01",
-        "2026-10-07");
+        engine, Core::alertInputs(sources, s, now + 70000), Core::alertRules(cfg), sources, Core::LocalClock{"23:01", "2026-10-07"});
     TEST_ASSERT_EQUAL(1, step.outgoing.size());
     const Alerts::Alert &alert = step.outgoing[0];
     TEST_ASSERT_EQUAL(static_cast<int>(Alerts::AlertLevel::Urgent), static_cast<int>(alert.level));
@@ -366,15 +358,7 @@ void test_alert_wording_and_levels()
     status.isSafe = status.rawSafe = true;
     status.reasons.clear();
     const Core::AlertStep quiet = Core::runAlerts(
-        engine,
-        Core::alertInputs(status, s, obs, cfg, night, now + 600000),
-        Core::alertRules(cfg),
-        cfg,
-        obs,
-        night,
-        status,
-        "23:11",
-        "2026-10-07");
+        engine, Core::alertInputs(sources, s, now + 600000), Core::alertRules(cfg), sources, Core::LocalClock{"23:11", "2026-10-07"});
     TEST_ASSERT_EQUAL(0, quiet.outgoing.size());
 }
 
@@ -397,8 +381,10 @@ void test_alert_vars_match_the_shared_list()
     Core::derive(s, cfg);
     Alerts::Alert alert; // no event values of its own
     std::set<std::string> filled;
-    for (const auto &v :
-         Core::alertVars(cfg, Core::observingConditions(s, cfg, now), Core::night(s, cfg, NIGHT_EPOCH), alert, "23:00", "2026-10-07"))
+    const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(s, cfg, now);
+    const Core::NightState night = Core::night(s, cfg, NIGHT_EPOCH);
+    const SafetyStatus status{};
+    for (const auto &v : Core::alertVars(Core::AlertSources{cfg, obs, night, status}, alert, Core::LocalClock{"23:00", "2026-10-07"}))
         filled.insert(v.first);
     TEST_ASSERT_TRUE_MESSAGE(filled == shared, "Core::alertVars and template-variables.json \"common\" differ");
 }

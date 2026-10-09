@@ -37,7 +37,7 @@ namespace SQM
     {
         if (!initialized)
         {
-            reading.status = SensorStatus::NOT_INITIALIZED;
+            reading.status = SensorStatus::NotInitialized;
             return;
         }
 
@@ -48,7 +48,7 @@ namespace SQM
         }
         else
         {
-            reading.status = SensorStatus::READ_ERROR;
+            reading.status = SensorStatus::ReadError;
         }
     }
 
@@ -88,7 +88,7 @@ namespace SQM
             reading.latitude = gps->location.lat();
             reading.longitude = gps->location.lng();
             reading.age = gps->location.age();
-            reading.status = SensorStatus::OK;
+            reading.status = SensorStatus::Ok;
             lastUpdateTime = millis();
 
             Logger::debug(TAG, "GPS Fix: %.6f, %.6f", reading.latitude, reading.longitude);
@@ -96,7 +96,7 @@ namespace SQM
         else
         {
             reading.hasFix = false;
-            reading.status = SensorStatus::READ_ERROR;
+            reading.status = SensorStatus::ReadError;
 
             // Log periodically while waiting for fix
             static unsigned long lastLog = 0;
