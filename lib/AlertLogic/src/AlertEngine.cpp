@@ -371,6 +371,31 @@ namespace SQM
             return alerts;
         }
 
+        // "Stopped checking" follows the usual cooldown; "is back" answers the
+        // "stopped checking" it pairs with straight away (spec 021 FR-009), so
+        // each one gets exactly one "back" and flapping is still limited by
+        // the cooldown on "stopped checking".
+        AlertEngine::ClientChange AlertEngine::clientSilence(size_t i, bool silent, bool allowed, uint32_t now, uint32_t cooldown)
+        {
+            Tracker &tracker = clients[i];
+            if (!silent && tracker.initialized && tracker.notified && allowed)
+            {
+                tracker.notified = false;
+                tracker.pending = false;
+                const bool answered = lostAnnounced[i];
+                lostAnnounced[i] = false;
+                return answered ? ClientChange::Back : ClientChange::None;
+            }
+            if (!silent && !allowed)
+                lostAnnounced[i] = false; // back while paused: nothing left to answer
+            if (sync(tracker, silent, now, cooldown, allowed) && silent)
+            {
+                lostAnnounced[i] = true;
+                return ClientChange::Lost;
+            }
+            return ClientChange::None;
+        }
+
         void AlertEngine::updateClients(const AlertInputs &in, const AlertRules &rules, std::vector<Alert> &alerts)
         {
             const uint32_t now = in.nowSeconds;
@@ -398,16 +423,19 @@ namespace SQM
                     clients[i].initialized = true;
                     clients[i].notified = false;
                     clients[i].pending = false;
+                    lostAnnounced[i] = false;
                     disconnectPending[i] = rules.onClientDisconnected;
                 }
-                else if (sync(clients[i], client.silent, now, cooldown, client.watching && (rules.onClientLost || rules.onClientBack)))
+                else
                 {
-                    if (client.silent && rules.onClientLost)
+                    const bool allowed = client.watching && (rules.onClientLost || rules.onClientBack);
+                    const ClientChange change = clientSilence(i, client.silent, allowed, now, cooldown);
+                    if (change == ClientChange::Lost && rules.onClientLost)
                         alerts.push_back(withVars(make(
                             AlertType::ClientLost,
                             "Imaging app stopped checking",
                             "No request to the " + device + " for " + client.silentFor + " - last checked " + client.lastChecked + ".")));
-                    else if (!client.silent && rules.onClientBack)
+                    else if (change == ClientChange::Back && rules.onClientBack)
                         alerts.push_back(
                             withVars(make(AlertType::ClientBack, "Imaging app is back", "The " + device + " is being checked again.")));
                 }
