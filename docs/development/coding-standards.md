@@ -211,6 +211,17 @@ The web UI is translated (spec 023, [Translations](translations.md)). No baselin
 
 ---
 
+## Dashboard (DASH)
+
+The dashboard shows the device state that decides whether it is safe to observe and whether anyone will be told (spec 025). `web/src/dashboard/inventory.json` records, for every field the device reports and every settings dependency, where the dashboard shows it, or why it doesn't.
+
+| ID | Rule | Check |
+|---|---|---|
+| DASH-01 | A change that adds device state a user would act on (a status, readings, safety or alerts field, or a settings dependency) updates the inventory: shown, with its visibility rule and a test in `web/tests/dashboard.spec.ts` that drives the demo into the state, or not shown with a reason. State that can block observing or silence alerts goes in the at-a-glance area. | converge |
+| DASH-02 | Every contract-schema field and dependency id is mapped; every shown entry has a test and a translated label; no mapping is stale. | auto (`tools/dashboard/check.py`) |
+
+---
+
 ## Exceptions (EXC)
 
 | ID | Rule | Check |

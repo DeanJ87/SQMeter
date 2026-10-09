@@ -1,0 +1,891 @@
+{
+  "about": "What the dashboard shows and why (spec 025). Every field of the status, readings, safety and alerts-armed schemas and every settings-dependency id is mapped here: shown (with a test in web/tests/dashboard.spec.ts) or not shown (with a reason). Checked by tools/dashboard/check.py (DASH-02).",
+  "shown": [
+    {
+      "id": "freshness",
+      "label": "glance.live",
+      "sources": [
+        "readings.dataStale",
+        "readings.dataAgeMs"
+      ],
+      "requiredBy": "025 FR-014, 010",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 1,
+      "location": "glance",
+      "test": "freshness"
+    },
+    {
+      "id": "safety-verdict",
+      "label": "glance.safe",
+      "sources": [
+        "readings.safety.safe",
+        "readings.safety.rawSafe",
+        "readings.safety.reasons",
+        "readings.safety.secondsUntilSafe",
+        "readings.safety.changedAgeMs",
+        "readings.safety",
+        "safety.safe",
+        "safety.rawSafe",
+        "safety.reasons",
+        "safety.secondsUntilSafe",
+        "safety.changedAgeMs"
+      ],
+      "requiredBy": "025 FR-005, 006",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 2,
+      "location": "glance",
+      "test": "safety-verdict"
+    },
+    {
+      "id": "safety-not-shared",
+      "label": "safetyCard.notSharedWithNI",
+      "sources": [
+        "readings.safety.alpacaEnabled",
+        "safety.alpacaEnabled"
+      ],
+      "requiredBy": "007",
+      "visibility": {
+        "rule": "when",
+        "when": "Alpaca is off"
+      },
+      "priority": 2,
+      "location": "card:safety",
+      "test": "safety-not-shared"
+    },
+    {
+      "id": "rules-not-in-effect",
+      "label": "glance.ruleNotInEffect",
+      "sources": [
+        "readings.safety.rulesNotInEffect",
+        "safety.rulesNotInEffect",
+        "deps.D-15",
+        "deps.D-16",
+        "deps.D-17",
+        "deps.D-18",
+        "deps.D-19"
+      ],
+      "requiredBy": "025 FR-012, 020",
+      "visibility": {
+        "rule": "when",
+        "when": "a safety rule is on but its sensor is off"
+      },
+      "priority": 6,
+      "location": "card:safety",
+      "test": "rules-not-in-effect"
+    },
+    {
+      "id": "rain-hold",
+      "label": "glance.rainHeld",
+      "sources": [
+        "readings.rain.clearInSeconds",
+        "readings.rain.rainingNow"
+      ],
+      "requiredBy": "025 FR-012, 003",
+      "visibility": {
+        "rule": "when",
+        "when": "rain stopped but the clear delay holds the verdict"
+      },
+      "priority": 2,
+      "location": "card:safety",
+      "test": "rain-hold"
+    },
+    {
+      "id": "alerts-state",
+      "label": "settings.alertSchedule.sendingAlerts",
+      "sources": [
+        "status.alerts.armed",
+        "status.alerts.mode",
+        "status.alerts.reason",
+        "status.alerts.since",
+        "status.alerts.sinceAgeMs",
+        "status.alerts.armWithAlpaca",
+        "status.alerts",
+        "alerts-armed.armed",
+        "alerts-armed.mode",
+        "alerts-armed.reason",
+        "alerts-armed.since",
+        "alerts-armed.sinceAgeMs",
+        "alerts-armed.armWithAlpaca"
+      ],
+      "requiredBy": "025 FR-008, 021",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 3,
+      "location": "glance",
+      "test": "alerts-state"
+    },
+    {
+      "id": "alerts-mode-not-in-effect",
+      "label": "glance.sendModeNotInEffect",
+      "sources": [
+        "deps.D-12",
+        "status.alpaca.enabled",
+        "status.alpaca"
+      ],
+      "requiredBy": "025 FR-010, 020 D-12",
+      "visibility": {
+        "rule": "when",
+        "when": "send mode is \"only while an imaging app is connected\" and Alpaca is off"
+      },
+      "priority": 3,
+      "location": "glance",
+      "test": "alerts-mode-not-in-effect"
+    },
+    {
+      "id": "no-channel",
+      "label": "glance.noChannel",
+      "sources": [
+        "deps.D-01",
+        "deps.D-02",
+        "deps.D-03",
+        "deps.D-04"
+      ],
+      "requiredBy": "025 FR-011, US1-6",
+      "visibility": {
+        "rule": "when",
+        "when": "alerts are on but no enabled channel can send"
+      },
+      "priority": 3,
+      "location": "glance",
+      "test": "no-channel"
+    },
+    {
+      "id": "imaging-app",
+      "label": "glance.imagingApp",
+      "sources": [
+        "status.alpaca.clients.safetymonitor.connected",
+        "status.alpaca.clients.safetymonitor.watching",
+        "status.alpaca.clients.safetymonitor.silent",
+        "status.alpaca.clients.safetymonitor.lastCheckedAgeMs",
+        "status.alpaca.clients.observingconditions.connected",
+        "status.alpaca.clients.observingconditions.watching",
+        "status.alpaca.clients.observingconditions.silent",
+        "status.alpaca.clients.observingconditions.lastCheckedAgeMs",
+        "status.alpaca.clients",
+        "status.alpaca.clients.safetymonitor",
+        "status.alpaca.clients.observingconditions"
+      ],
+      "requiredBy": "025 FR-009, 021",
+      "visibility": {
+        "rule": "when",
+        "when": "send mode needs an app, an app is connected, or one was seen since boot"
+      },
+      "priority": 4,
+      "location": "glance",
+      "test": "imaging-app"
+    },
+    {
+      "id": "sensor-faults",
+      "label": "glance.sensorFault",
+      "sources": [
+        "status.sensors.light.status",
+        "status.sensors.light.ageMs",
+        "status.sensors.infrared.status",
+        "status.sensors.infrared.ageMs",
+        "status.sensors.environment.status",
+        "status.sensors.environment.ageMs",
+        "status.sensors.rain.status",
+        "status.sensors.rain.ageMs",
+        "status.sensors.wind.status",
+        "status.sensors.wind.ageMs",
+        "status.sensors.gps.status",
+        "status.sensors.gps.ageMs",
+        "readings.light.status",
+        "readings.infrared.status",
+        "readings.environment.status",
+        "readings.clouds.status",
+        "readings.rain.status",
+        "readings.wind.status",
+        "readings.gps.status",
+        "readings.sky.status",
+        "readings.light.ageMs",
+        "readings.infrared.ageMs",
+        "readings.environment.ageMs",
+        "readings.rain.ageMs",
+        "readings.wind.ageMs",
+        "readings.gps.ageMs",
+        "status.sensors.wind.vaneStatus",
+        "status.sensors",
+        "status.sensors.light",
+        "status.sensors.infrared",
+        "status.sensors.environment",
+        "status.sensors.rain",
+        "status.sensors.wind",
+        "status.sensors.gps"
+      ],
+      "requiredBy": "025 FR-006, FR-013",
+      "visibility": {
+        "rule": "when",
+        "when": "an expected sensor is not ok"
+      },
+      "priority": 5,
+      "location": "glance",
+      "test": "sensor-faults"
+    },
+    {
+      "id": "settings-not-in-effect",
+      "label": "glance.settingsNotInEffect",
+      "sources": [
+        "deps.D-05",
+        "deps.D-06",
+        "deps.D-07",
+        "deps.D-08",
+        "deps.D-09",
+        "deps.D-10",
+        "deps.D-11",
+        "deps.D-20",
+        "deps.D-31",
+        "deps.D-35",
+        "deps.D-37"
+      ],
+      "requiredBy": "025 FR-011, 020",
+      "visibility": {
+        "rule": "when",
+        "when": "a setting that affects alerts or safety is on but not in effect"
+      },
+      "priority": 6,
+      "location": "glance",
+      "test": "settings-not-in-effect"
+    },
+    {
+      "id": "clock-location",
+      "label": "glance.clockNotSet",
+      "sources": [
+        "readings.timeValid",
+        "status.sky.nightKnown",
+        "status.sky.locationSource",
+        "status.sky.latitude",
+        "status.sky.longitude",
+        "status.sky.isNight",
+        "status.sky.sunAltitudeDeg",
+        "status.sky",
+        "status.ntp.synced",
+        "status.ntp.activeSource",
+        "status.ntp.status",
+        "status.ntp",
+        "status.time.epoch",
+        "status.time.iso",
+        "status.time.timezone",
+        "status.time"
+      ],
+      "requiredBy": "025 FR-016, 005",
+      "visibility": {
+        "rule": "when",
+        "when": "the clock is not set or no location is known (sources on demand)"
+      },
+      "priority": 7,
+      "location": "glance",
+      "test": "clock-location"
+    },
+    {
+      "id": "phone-alarm",
+      "label": "glance.phoneAlarm",
+      "sources": [
+        "status.ble.alarm.active",
+        "status.ble.alarm.sequence",
+        "status.ble.alarm.acknowledgedSequence",
+        "status.ble.alarm.bondedPhones",
+        "status.ble.alarm.serviceActive",
+        "status.ble.alarm",
+        "status.ble",
+        "status.ble.available",
+        "status.ble.active",
+        "status.ble.clients"
+      ],
+      "requiredBy": "025 FR-017, 009",
+      "visibility": {
+        "rule": "when",
+        "when": "a phone alarm is ringing"
+      },
+      "priority": 8,
+      "location": "glance",
+      "test": "phone-alarm"
+    },
+    {
+      "id": "update-available",
+      "label": "glance.updateAvailable",
+      "sources": [],
+      "requiredBy": "025 FR-018, 012",
+      "visibility": {
+        "rule": "when",
+        "when": "the Updates page's last check this session found a newer release"
+      },
+      "priority": 9,
+      "location": "card:device",
+      "test": "update-available"
+    },
+    {
+      "id": "demo-marker",
+      "label": "glance.demo",
+      "sources": [],
+      "requiredBy": "025 FR-022, 019",
+      "visibility": {
+        "rule": "when",
+        "when": "the demo"
+      },
+      "priority": 9,
+      "location": "glance",
+      "test": "demo-marker"
+    },
+    {
+      "id": "sky-card",
+      "label": "dashboard.skyQuality",
+      "sources": [
+        "readings.sky.sqm",
+        "readings.sky.bortle",
+        "readings.sky.nelm",
+        "readings.sky.description",
+        "readings.sky"
+      ],
+      "requiredBy": "001, 010",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 10,
+      "location": "card:sky",
+      "test": "sky-card"
+    },
+    {
+      "id": "light-card",
+      "label": "dashboard.lightSensor",
+      "sources": [
+        "readings.light.lux",
+        "readings.light.visible",
+        "readings.light.infrared",
+        "readings.light.full",
+        "readings.light"
+      ],
+      "requiredBy": "001, 010",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 10,
+      "location": "card:light",
+      "test": "light-card"
+    },
+    {
+      "id": "cloud-card",
+      "label": "dashboard.cloudConditions",
+      "sources": [
+        "readings.clouds.condition",
+        "readings.clouds.coverPercent",
+        "readings.clouds.description",
+        "readings.clouds.temperatureDelta",
+        "readings.clouds.correctedDelta",
+        "readings.clouds.humidity",
+        "readings.clouds.humiditySource",
+        "readings.clouds",
+        "readings.infrared.skyTemperature",
+        "readings.infrared.ambientTemperature",
+        "readings.infrared"
+      ],
+      "requiredBy": "002, 010",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 10,
+      "location": "card:clouds",
+      "test": "cloud-card"
+    },
+    {
+      "id": "environment-card",
+      "label": "dashboard.environment",
+      "sources": [
+        "readings.environment.temperature",
+        "readings.environment.humidity",
+        "readings.environment.pressure",
+        "readings.environment.dewpoint",
+        "readings.environment"
+      ],
+      "requiredBy": "002, 010",
+      "visibility": {
+        "rule": "when",
+        "when": "the BME280 is fitted"
+      },
+      "priority": 10,
+      "location": "card:environment",
+      "test": "environment-card"
+    },
+    {
+      "id": "rain-card",
+      "label": "dashboard.rainSensor",
+      "sources": [
+        "readings.rain.raining",
+        "readings.rain.intensity",
+        "readings.rain.eventAccumulation",
+        "readings.rain.totalAccumulation",
+        "readings.rain.lensFault",
+        "readings.rain.emitterSaturated",
+        "readings.rain"
+      ],
+      "requiredBy": "003, 010",
+      "visibility": {
+        "rule": "when",
+        "when": "the rain sensor is on"
+      },
+      "priority": 10,
+      "location": "card:rain",
+      "test": "rain-card"
+    },
+    {
+      "id": "wind-card",
+      "label": "dashboard.wind",
+      "sources": [
+        "readings.wind.speed",
+        "readings.wind.gust",
+        "readings.wind.direction",
+        "readings.wind.vaneFault",
+        "readings.wind"
+      ],
+      "requiredBy": "004, 010",
+      "visibility": {
+        "rule": "when",
+        "when": "the anemometer is on"
+      },
+      "priority": 10,
+      "location": "card:wind",
+      "test": "wind-card"
+    },
+    {
+      "id": "gps-card",
+      "label": "dashboard.gpsLocation",
+      "sources": [
+        "readings.gps.fix",
+        "readings.gps.latitude",
+        "readings.gps.longitude",
+        "readings.gps.altitude",
+        "readings.gps.satellites",
+        "readings.gps.hdop",
+        "readings.gps"
+      ],
+      "requiredBy": "005, 010",
+      "visibility": {
+        "rule": "when",
+        "when": "GPS is on"
+      },
+      "priority": 10,
+      "location": "card:gps",
+      "test": "gps-card"
+    },
+    {
+      "id": "device-network-card",
+      "label": "dashboard.deviceNetwork",
+      "sources": [
+        "status.wifi.ssid",
+        "status.wifi.rssi",
+        "status.wifi.ip",
+        "status.wifi.connected",
+        "status.wifi",
+        "status.firmware.version",
+        "status.firmware",
+        "status.uptime"
+      ],
+      "requiredBy": "010, 025 FR-015",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "device-network-card"
+    },
+    {
+      "id": "ipv6",
+      "label": "glance.ipv6",
+      "sources": [
+        "status.wifi.ipv6.enabled",
+        "status.wifi.ipv6.addresses",
+        "status.wifi.ipv6",
+        "status.wifi.ipv6.addresses[].address",
+        "status.wifi.ipv6.addresses[].scope"
+      ],
+      "requiredBy": "025 FR-015, 015",
+      "visibility": {
+        "rule": "when",
+        "when": "IPv6 is on"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "ipv6"
+    },
+    {
+      "id": "mdns",
+      "label": "glance.localName",
+      "sources": [
+        "status.wifi.hostname",
+        "status.wifi.mdns"
+      ],
+      "requiredBy": "025 FR-015, 013",
+      "visibility": {
+        "rule": "when",
+        "when": "mDNS is on"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "mdns"
+    },
+    {
+      "id": "mqtt-state",
+      "label": "glance.mqtt",
+      "sources": [
+        "status.mqtt.enabled",
+        "status.mqtt.connected",
+        "status.mqtt.state",
+        "status.mqtt"
+      ],
+      "requiredBy": "025 FR-015, 013",
+      "visibility": {
+        "rule": "when",
+        "when": "MQTT is on"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "mqtt-state"
+    }
+  ],
+  "notShown": [
+    {
+      "match": "status.diagnostics.**",
+      "reason": "Sensor troubleshooting counters",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.partitions.**",
+      "reason": "Flash layout",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.heapStages.**",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.stackFree.**",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.freeHeap",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.heapSize",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.maxAllocHeap",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.minFreeHeap",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.sketchSize",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.freeSketchSpace",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.flashSize",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.fsTotal",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.fsUsed",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.cpuFreqMHz",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.bootCount",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.resetReason",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.sensorSnapshotBytes",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.mqtt.availabilityTopic",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.broker",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.clientId",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.lastPublish",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.lastReconnectAttempt",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.port",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.topic",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.ntp.drift",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.lastSync",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.nextSync",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.server",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.gpsTimeUTC",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.gpsSatellites",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.gpsHasFix",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.enabled",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.gpsEnabled",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.buildDate",
+      "reason": "Build details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.buildTime",
+      "reason": "Build details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.name",
+      "reason": "Build details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.variant",
+      "reason": "Build details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.wifi.apMode",
+      "reason": "Setup and hardware details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.wifi.connectPending",
+      "reason": "Setup and hardware details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.wifi.mac",
+      "reason": "Setup and hardware details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.alpaca.clients.safetymonitor.clientId",
+      "reason": "The app's own name for itself; in alert text ({client_id})",
+      "shownOn": "Alpaca"
+    },
+    {
+      "match": "status.alpaca.clients.observingconditions.clientId",
+      "reason": "The app's own name for itself; in alert text ({client_id})",
+      "shownOn": "Alpaca"
+    },
+    {
+      "match": "readings.timestamp",
+      "reason": "Machine timestamp; ages are shown instead"
+    },
+    {
+      "match": "readings.safety.reasonFlags",
+      "reason": "Machine-readable form of the reasons, which are shown"
+    },
+    {
+      "match": "safety.reasonFlags",
+      "reason": "Machine-readable form of the reasons, which are shown"
+    },
+    {
+      "match": "readings.safety.evaluatedAgeMs",
+      "reason": "Internal timing of the evaluation"
+    },
+    {
+      "match": "safety.evaluatedAgeMs",
+      "reason": "Internal timing of the evaluation"
+    },
+    {
+      "match": "readings.rain.sensorEventAccumulation",
+      "reason": "The RG-15's own counter",
+      "shownOn": "System"
+    },
+    {
+      "match": "readings.sky.averagingWindowSeconds",
+      "reason": "A setting",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "readings.sky.calibrated",
+      "reason": "Calibration state",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "readings.sky.rawSqm",
+      "reason": "Before the SQM offset; the corrected value is shown",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "readings.light.gain",
+      "reason": "Light sensor internals",
+      "shownOn": "System"
+    },
+    {
+      "match": "readings.light.gainFactor",
+      "reason": "Light sensor internals",
+      "shownOn": "System"
+    },
+    {
+      "match": "readings.light.integrationMs",
+      "reason": "Light sensor internals",
+      "shownOn": "System"
+    },
+    {
+      "match": "readings.light.saturated",
+      "reason": "Light sensor internals",
+      "shownOn": "System"
+    },
+    {
+      "match": "readings.light.nightMode",
+      "reason": "Light sensor internals",
+      "shownOn": "System"
+    },
+    {
+      "match": "deps.D-13",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-14",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-21",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-22",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-23",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-24",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-25",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-26",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-28",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-29",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-30",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-32",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-36",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-27",
+      "reason": "A constraint: the save is refused, so it is never saved and inactive"
+    },
+    {
+      "match": "deps.D-33",
+      "reason": "A constraint: the save is refused, so it is never saved and inactive"
+    },
+    {
+      "match": "deps.D-34",
+      "reason": "A constraint: the save is refused, so it is never saved and inactive"
+    }
+  ]
+}

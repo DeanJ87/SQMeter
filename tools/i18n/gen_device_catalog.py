@@ -34,6 +34,7 @@ SOURCES = {
     "lib/LanguageLogic/src/LanguageLogic.cpp": ("language", {}),
     "src/LanguagePack.cpp": ("language", {"fail": [0], "sendError": [2]}),
     "lib/SkyLogic/src/CloudDetection.cpp": ("sky", {}),
+    "lib/SettingsDeps/src/SettingsDeps.cpp": ("safety", {"push_back": [0]}),
     "lib/SkyLogic/src/SkyQuality.cpp": ("sky", {}),
 }
 # `<target>["error"] = <expr>;` and `error = <expr>;` assignments are device text too.
