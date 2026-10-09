@@ -141,7 +141,7 @@ Given that feature description, do this:
     7. Identify Key Entities (if data involved)
     8. Return: SUCCESS (spec ready for planning)
 
-7. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
+7. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings. NEVER copy the user's prompt into the spec (no `**Input**: User description` line, no quoted request): describe the feature in the spec's own words. The build's integrity checks fail on it (constitution, Development Workflow).
 
 8. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
 

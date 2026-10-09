@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill temperature, humidity, pressure, dew point (BME280) and IR cloud detection (MLX90614)."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Know whether it's clear (Priority: P1)

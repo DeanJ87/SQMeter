@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill the optional RG-15 rain gauge: readings, rain latch, daily total, diagnostics and controls."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Know when it's raining (Priority: P1)
