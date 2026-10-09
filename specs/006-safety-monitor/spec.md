@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill the safety verdict: rules, fail-safe behaviour, reasons, safe delay, history and where the verdict is published."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - A verdict I can trust with the roof (Priority: P1)

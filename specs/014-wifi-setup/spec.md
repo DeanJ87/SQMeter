@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill first boot: the setup hotspot and captive portal, joining WiFi, finding the device on the network, and reconnecting."
-
 ## Clarifications
 
 ### Session 2026-10-08
