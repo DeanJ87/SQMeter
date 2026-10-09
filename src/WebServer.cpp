@@ -1530,6 +1530,11 @@ namespace SQM
 
     void WebServer::handleWiFiScan(AsyncWebServerRequest *request)
     {
+        // Starting a radio scan is an action, like joining a network
+        // (/api/wifi/connect): both need the password when protection is on.
+        if (!requireAuth(request))
+            return;
+
         int n = WiFi.scanComplete();
 
         if (n == WIFI_SCAN_RUNNING)

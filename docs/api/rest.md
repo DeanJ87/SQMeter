@@ -192,7 +192,7 @@ Whether each setting that depends on another setting, on hardware or on the netw
 
 ### `GET /api/wifi/scan`
 
-Scan for nearby WiFi networks. The scan runs in the background: the first call starts it and returns `202` with `"scanning": true`; call again (about once a second) until `"scanning": false` and the list arrives.
+Scan for nearby WiFi networks (needs the password when [protection](../user-guide/security.md) is on, like `/api/wifi/connect`). The scan runs in the background: the first call starts it and returns `202` with `"scanning": true`; call again (about once a second) until `"scanning": false` and the list arrives.
 
 ```bash
 curl http://sqmeter.local/api/wifi/scan

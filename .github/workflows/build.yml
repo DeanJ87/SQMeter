@@ -10,6 +10,8 @@ on:
       - 'lib/**'
       - 'test/**'
       - 'tools/settings-deps/**'
+      - 'tools/api/**'
+      - 'docs/api/rest.md'
       - 'docs/reference/settings-dependencies.md'
       - 'web/src/**'
       - 'web/package.json'
@@ -139,6 +141,13 @@ jobs:
         run: |
           python3 tools/settings-deps/test_check.py
           python3 tools/settings-deps/check.py
+
+      # Every HTTP route is declared with its auth and documented
+      # (specs 011 FR-006, 014 FR-005).
+      - name: API routes registry
+        run: |
+          python3 tools/api/test_routes.py
+          python3 tools/api/routes.py
 
       # The demo runs this firmware code in the browser (web/src/demo/core);
       # a change to lib/ must ship with a rebuilt core.
