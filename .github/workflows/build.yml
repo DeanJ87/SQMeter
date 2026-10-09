@@ -4,32 +4,6 @@ name: Build Firmware & LittleFS
 on:
   pull_request:
     branches: [ master, main ]
-    paths:
-      - 'src/**'
-      - 'include/**'
-      - 'lib/**'
-      - 'test/**'
-      - 'tools/settings-deps/**'
-      - 'tools/api/**'
-      - 'tools/dashboard/**'
-      - 'docs/api/rest.md'
-      - 'docs/reference/settings-dependencies.md'
-      - 'web/src/**'
-      - 'web/package.json'
-      - 'web/package-lock.json'
-      - 'web/tsconfig.json'
-      - 'web/vite.config.ts'
-      - 'web/vitest.config.ts'
-      - 'web/index.html'
-      - 'web/public/**'
-      - 'platformio.ini'
-      - 'partitions.csv'
-      - 'scripts/**'
-      - 'tools/ui/**'
-      - 'tools/firmware/**'
-      - '.github/workflows/build.yml'
-      - 'specs/**'
-      - '.specify/**'
   push:
     tags: [ 'v*' ]
 
@@ -40,7 +14,72 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # `build` is a required check, so it must report on every pull request.
+  # This cheap job decides whether the full build has anything to do; when
+  # nothing it covers changed (docs, changelog), `build` is skipped, and a
+  # skipped required check counts as passed. Tag builds always run.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        name: Did anything the build covers change?
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          base="${{ github.event.pull_request.base.sha }}"
+          changed=$(git diff --name-only "$base"...HEAD)
+          echo "$changed"
+          patterns=$(cat <<'EOF'
+            src/**
+            include/**
+            lib/**
+            test/**
+            tools/settings-deps/**
+            tools/api/**
+            tools/dashboard/**
+            docs/api/rest.md
+            docs/reference/settings-dependencies.md
+            web/src/**
+            web/package.json
+            web/package-lock.json
+            web/tsconfig.json
+            web/vite.config.ts
+            web/vitest.config.ts
+            web/index.html
+            web/public/**
+            platformio.ini
+            partitions.csv
+            scripts/**
+            tools/ui/**
+            tools/firmware/**
+            .github/workflows/build.yml
+            specs/**
+            .specify/**
+          EOF
+          )
+          code=false
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            while IFS= read -r pat; do
+              pat="${pat#"${pat%%[![:space:]]*}"}"
+              [ -z "$pat" ] && continue
+              case "$file" in
+                $pat) code=true; break 2;;  # case globs: * also matches "/", so src/** covers src/a/b
+              esac
+            done <<< "$patterns"
+          done <<< "$changed"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
