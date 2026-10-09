@@ -32,4 +32,4 @@
 ## Phase 5: Verification
 
 - [x] T016 All gates: native tests, both builds, budget, quality, web, Playwright, docs, diagrams, demo core
-- [ ] T017 Spare device: USB flash keeping NVS, pages, contract check, ConformU, update check, NTP, language, OTA, rollback, refusals, heap; record in device-results.md (FR-006, SC-002..SC-005)
+- [x] T017 Spare device: USB flash keeping NVS, pages, contract check, ConformU, update check, NTP, language, OTA, rollback, refusals, heap; record in device-results.md (FR-006, SC-002..SC-005)
