@@ -6,6 +6,8 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
 
 **Settings** has six tabs. Changes are kept until you **Save**; a tab with a problem shows a red dot, and settings that only take effect after a restart ask for one when you save.
 
+Some settings only work when something else is on - MQTT alerts need MQTT, rain alerts need the rain sensor, night-only alerts need your location. Such a setting can't be switched on while what it needs is off, and if you switch the other thing off later the setting is kept exactly as it was but marked **Inactive** with the reason and a button that takes you to the fix. The device doesn't act on it until then, and nothing has to be set up again when you switch the other thing back on. Before you save, a note lists anything the change would make inactive. Every such setting is listed in [Settings dependencies](../reference/settings-dependencies.md).
+
 === "Device"
     Name, password protection, command-line uploads (ArduinoOTA), Bluetooth.
 
@@ -293,9 +295,9 @@ When GPS is enabled and has a fix, it can serve as the primary time source for a
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Enable command-line ArduinoOTA uploads |
-| `password` | string | `""` | Required when command-line ArduinoOTA is enabled |
+| `password` | string | `""` | Needed for command-line ArduinoOTA to start |
 
-ArduinoOTA is disabled unless both `ota.enabled` is `true` and `ota.password` is set. The web UI OTA upload page is separate from command-line ArduinoOTA.
+ArduinoOTA only runs when `ota.enabled` is `true` and `ota.password` is set. Switched on without a password it is saved but inactive ("Set an upload password"). The web UI OTA upload page is separate from command-line ArduinoOTA.
 
 ### HTTP Authentication
 
@@ -303,7 +305,7 @@ ArduinoOTA is disabled unless both `ota.enabled` is `true` and `ota.password` is
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Require credentials for mutation endpoints |
 | `username` | string | `"admin"` | Username for HTTP Basic Auth |
-| `password` | string | `""` | Password (required when auth is enabled) |
+| `password` | string | `""` | Password - a save with auth on and no password is refused: "HTTP auth password is required when auth is enabled" |
 
 When `auth.enabled` is `true`, the following endpoints require HTTP Basic Auth credentials:
 

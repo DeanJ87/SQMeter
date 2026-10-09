@@ -122,6 +122,25 @@ void test_safety_with_safe_delay()
     TEST_ASSERT_EQUAL(1000, doc["evaluatedAgeMs"].as<int>());
 }
 
+// D-15 (specs/020-settings-dependencies): rain rules switched on without the
+// rain sensor are ignored, and the safety document says so.
+void test_safety_lists_rules_not_in_effect()
+{
+    Config cfg = defaults();
+    cfg.rain.enabled = false;
+    cfg.alpaca.rainUnsafeEnabled = true;
+    cfg.alpaca.rainSensorRequired = false;
+    SafetyStatus status;
+    DynamicJsonDocument doc(1536);
+    Core::writeSafety(doc.to<JsonObject>(), status, cfg, 1000);
+    TEST_ASSERT_EQUAL(1, doc["rulesNotInEffect"].size());
+    TEST_ASSERT_EQUAL_STRING("Unsafe while raining - rain sensor is off", doc["rulesNotInEffect"][0]);
+
+    cfg.rain.enabled = true;
+    Core::writeSafety(doc.to<JsonObject>(), status, cfg, 1000);
+    TEST_ASSERT_EQUAL(0, doc["rulesNotInEffect"].size());
+}
+
 void test_rain_makes_unsafe_even_when_stale()
 {
     const uint32_t now = 100000;
@@ -243,6 +262,7 @@ int main()
     RUN_TEST(test_derive_and_readings);
     RUN_TEST(test_missing_stale_and_clock);
     RUN_TEST(test_safety_with_safe_delay);
+    RUN_TEST(test_safety_lists_rules_not_in_effect);
     RUN_TEST(test_rain_makes_unsafe_even_when_stale);
     RUN_TEST(test_night_from_location_and_clock);
     RUN_TEST(test_alert_wording_and_levels);

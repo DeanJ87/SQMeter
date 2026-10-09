@@ -129,14 +129,16 @@ describe('Alert schedule status line', () => {
     expect(await screen.findByText('The imaging app has gone quiet - safety monitor last checked 4m ago.')).toBeInTheDocument();
   });
 
+  // D-12/D-37 (specs/020-settings-dependencies): the imaging-app mode and events need Alpaca.
   it('warns when imaging-app mode needs Alpaca, which is off', async () => {
     server.use(http.get('/api/config', () => HttpResponse.json({ ...mockConfig, alpaca: { ...mockConfig.alpaca, enabled: false } })));
     await openAlerts();
     fireEvent.change(screen.getByRole('combobox', { name: 'When to send' }), { target: { value: 'whileConnected' } });
-    expect(await screen.findByText('Imaging apps connect over Alpaca, which is switched off.')).toBeInTheDocument();
+    // The mode, and the two imaging-app events that are on by default.
+    expect((await screen.findAllByText('Inactive - Alpaca is off')).length).toBe(3);
     const lost = document.querySelector('[data-event="client_lost"]') as HTMLElement;
     expect(within(lost).getByText('The imaging app stops checking')).toBeInTheDocument();
-    expect(screen.getAllByText('Alpaca is switched off.').length).toBe(3);
+    expect(screen.getByText('Alpaca is off.')).toBeInTheDocument(); // "disconnects" is off and can't be raised
   });
 });
 

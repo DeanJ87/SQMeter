@@ -162,19 +162,34 @@ namespace SQM
         static_cast<AlertDispatcher *>(arg)->run();
     }
 
-    void AlertDispatcher::dispatch(const Alerts::Alert &alert, const AlertsConfig &cfg, const std::string &deviceName, uint8_t channelMask)
+    void AlertDispatcher::dispatch(
+        const Alerts::Alert &alert,
+        const AlertsConfig &cfg,
+        const std::string &deviceName,
+        uint8_t channelMask,
+        const ChannelBlocks &blocked)
     {
         AlertRecord record;
         record.uptimeSeconds = millis() / 1000;
         record.epochSeconds = epochNow();
         record.alert = alert;
 
-        const bool wanted[ALERT_CHANNEL_COUNT] = {
+        bool wanted[ALERT_CHANNEL_COUNT] = {
             cfg.mqttEnabled && (channelMask & alertChannelBit(AlertChannel::Mqtt)),
             cfg.pushoverEnabled && (channelMask & alertChannelBit(AlertChannel::Pushover)),
             cfg.ntfyEnabled && (channelMask & alertChannelBit(AlertChannel::Ntfy)),
             cfg.webhookEnabled && (channelMask & alertChannelBit(AlertChannel::Webhook)),
         };
+        // Switched on but inactive (e.g. MQTT alerts with MQTT off): skipped, never "failed".
+        for (size_t i = 0; i < ALERT_CHANNEL_COUNT; ++i)
+        {
+            if (wanted[i] && blocked[i] != nullptr)
+            {
+                wanted[i] = false;
+                record.status[i] = DeliveryStatus::Skipped;
+                record.detail[i] = blocked[i];
+            }
+        }
 
         // MQTT: publish right here on the main loop task.
         if (wanted[0])

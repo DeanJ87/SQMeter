@@ -23,6 +23,7 @@
 #include "DeviceCore.h"
 #include "RainLogic.h"
 #include "SafetyHistoryLog.h"
+#include "SettingsDeps.h"
 #include "calculations/Dewpoint.h"
 #include "calculations/SkyQuality.h"
 
@@ -50,7 +51,8 @@ namespace
         int64_t epochSeconds = 0;
         Alerts::Alert alert;
         bool channel[4] = {false, false, false, false};
-        uint8_t requested = 0x0F; // channels asked for: all, or the one a per-channel test named
+        uint8_t requested = 0x0F;                                      // channels asked for: all, or the one a per-channel test named
+        const char *skipped[4] = {nullptr, nullptr, nullptr, nullptr}; // switched on but inactive: why
     };
 } // namespace
 
@@ -176,6 +178,17 @@ public:
         return serialize(doc);
     }
 
+    // GET /api/settings/effective: what's actually in effect, from the
+    // device's own dependency rules (specs/020-settings-dependencies).
+    std::string effective() const
+    {
+        const Deps::Facts f = facts();
+        const std::vector<Deps::Entry> entries = Deps::evaluate(cfg, f);
+        DynamicJsonDocument doc(Deps::reportCapacity(entries));
+        Deps::writeReport(doc.to<JsonObject>(), entries, f);
+        return serialize(doc);
+    }
+
     // What the device is still waiting on: the light average catching up,
     // the rain clear delay and held-back alerts (the demo panel's waits;
     // specs/019-demo-conditions/contracts/core-pending.md).
@@ -276,6 +289,13 @@ public:
             JsonObject channels = item.createNestedObject("channels");
             for (size_t i = 0; i < 4; ++i)
             {
+                if (it->skipped[i] != nullptr)
+                {
+                    JsonObject ch = channels.createNestedObject(CHANNEL_NAMES[i]);
+                    ch["status"] = "skipped";
+                    ch["detail"] = it->skipped[i];
+                    continue;
+                }
                 if (!it->channel[i])
                     continue;
                 JsonObject ch = channels.createNestedObject(CHANNEL_NAMES[i]);
@@ -610,6 +630,18 @@ private:
         target["body"] = request.body;
     }
 
+    // The demo's network is simulated: WiFi is up, and the broker is
+    // "connected" whenever MQTT is on.
+    Deps::Facts facts() const
+    {
+        Deps::Facts f;
+        Core::sensorFacts(f, snapshot, Core::buildReadings(snapshot, cfg, nowMs, epoch));
+        f.wifiConnected = true;
+        f.mqttConnected = cfg.mqtt.enabled;
+        f.clockSet = epoch >= Core::CLOCK_VALID_EPOCH;
+        return f;
+    }
+
     uint8_t enabledChannels() const
     {
         return (cfg.alerts.mqttEnabled ? 0x01 : 0) | (cfg.alerts.pushoverEnabled ? 0x02 : 0) | (cfg.alerts.ntfyEnabled ? 0x04 : 0) |
@@ -625,8 +657,21 @@ private:
         r.alert = alert;
         r.requested = mask;
         const uint8_t send = mask & enabledChannels();
+        // Switched on but inactive (e.g. MQTT alerts with MQTT off): skipped
+        // with the reason, like the device. Alerts being off doesn't block.
+        const std::vector<Deps::Entry> entries = Deps::evaluate(cfg, facts());
+        static const char *const SETTINGS[] = {
+            "alerts.mqtt.enabled", "alerts.pushover.enabled", "alerts.ntfy.enabled", "alerts.webhook.enabled"};
         for (size_t i = 0; i < 4; ++i)
-            r.channel[i] = (send & (1u << i)) != 0;
+        {
+            if ((send & (1u << i)) == 0)
+                continue;
+            const Deps::Reason *reason = Deps::reasonFor(entries, SETTINGS[i]); // dep: D-01 D-02 D-03
+            if (reason != nullptr && std::string(reason->code) != "alerts-off")
+                r.skipped[i] = reason->text;
+            else
+                r.channel[i] = true;
+        }
         records.push_back(r);
         if (records.size() > MAX_RECORDS)
             records.pop_front();
@@ -679,7 +724,7 @@ private:
 
         // After this pass's alerts: "disconnected" goes out before it pauses.
         const bool wasSending = schedule.state().sending;
-        if (schedule.update(Core::sendMode(cfg), router.anyConnected(), nowMs, validEpoch()))
+        if (schedule.update(Core::effectiveSendMode(cfg), router.anyConnected(), nowMs, validEpoch()))
             scheduleChanged(wasSending);
     }
 
@@ -940,6 +985,7 @@ EMSCRIPTEN_BINDINGS(sqmeter_core)
         .function("readings", &EmulatedDevice::readings)
         .function("statusParts", &EmulatedDevice::statusParts)
         .function("safety", &EmulatedDevice::safetyDocument)
+        .function("effective", &EmulatedDevice::effective)
         .function("pending", &EmulatedDevice::pending)
         .function("safetyHistory", &EmulatedDevice::safetyHistory)
         .function("recentAlerts", &EmulatedDevice::recentAlerts)

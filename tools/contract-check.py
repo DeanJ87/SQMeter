@@ -18,6 +18,7 @@ ENDPOINTS = [
     ("/api/sensors", "readings"),
     ("/api/status", "status"),
     ("/api/safety", "safety"),
+    ("/api/settings/effective", "settings-effective"),
     ("/api/config", "config"),
     ("/api/alerts/recent", "alerts-recent"),
     ("/api/alerts/armed", "alerts-armed"),

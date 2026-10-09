@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "settings-effective",
+  "type": "object",
+  "properties": {
+    "facts": {
+      "type": "object",
+      "properties": {
+        "bluetoothBuild": {
+          "type": "boolean"
+        },
+        "bluetoothRunning": {
+          "type": "boolean"
+        },
+        "clockSet": {
+          "type": "boolean"
+        },
+        "environmentDetected": {
+          "type": "boolean"
+        },
+        "gpsFix": {
+          "type": "boolean"
+        },
+        "gpsRunning": {
+          "type": "boolean"
+        },
+        "infraredDetected": {
+          "type": "boolean"
+        },
+        "lightDetected": {
+          "type": "boolean"
+        },
+        "mqttConnected": {
+          "type": "boolean"
+        },
+        "pairedPhones": {
+          "type": "number"
+        },
+        "wifiConnected": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "bluetoothBuild",
+        "bluetoothRunning",
+        "clockSet",
+        "environmentDetected",
+        "gpsFix",
+        "gpsRunning",
+        "infraredDetected",
+        "lightDetected",
+        "mqttConnected",
+        "pairedPhones",
+        "wifiConnected"
+      ],
+      "additionalProperties": false
+    },
+    "settings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fix": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "neutral": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "setting": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "unmet": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "setting",
+          "state"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "facts",
+    "settings"
+  ],
+  "additionalProperties": false
+}

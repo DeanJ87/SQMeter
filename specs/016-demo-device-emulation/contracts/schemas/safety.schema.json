@@ -24,6 +24,12 @@
         "type": "string"
       }
     },
+    "rulesNotInEffect": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "safe": {
       "type": "boolean"
     },
@@ -38,6 +44,7 @@
     "rawSafe",
     "reasonFlags",
     "reasons",
+    "rulesNotInEffect",
     "safe",
     "secondsUntilSafe"
   ],

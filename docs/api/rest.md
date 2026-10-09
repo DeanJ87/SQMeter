@@ -78,7 +78,7 @@ curl http://sqmeter.local/api/sensors
   "environment": { "status": "error", "ageMs": 61000 },
   "infrared": { "status": "ok", "ageMs": 3100, "skyTemperature": -24.7, "ambientTemperature": 12.4 },
   "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "description": "Clear", "temperatureDelta": -37.1, "correctedDelta": -33.0, "humidity": 53, "humiditySource": "assumed" },
-  "safety": { "safe": true, "rawSafe": true, "reasons": [], "reasonFlags": 0, "secondsUntilSafe": 0, "alpacaEnabled": true, "evaluatedAgeMs": 412, "changedAgeMs": 3600000 }
+  "safety": { "safe": true, "rawSafe": true, "reasons": [], "reasonFlags": 0, "secondsUntilSafe": 0, "rulesNotInEffect": [], "alpacaEnabled": true, "evaluatedAgeMs": 412, "changedAgeMs": 3600000 }
 }
 ```
 
@@ -156,6 +156,37 @@ Successful saves return:
 
 !!! note
     `POST` is the primary method. The firmware also accepts `PUT` for compatibility with full-resource settings clients.
+
+A setting whose dependency is off is saved as sent and reported inactive by `GET /api/settings/effective`; it isn't rejected. Only combinations that can never work are refused, with the reason in `error` (see [Settings dependencies](../reference/settings-dependencies.md)).
+
+---
+
+### `GET /api/settings/effective`
+
+Whether each setting that depends on another setting, on hardware or on the network is actually in effect. Settings are reported as saved; this says what the device does with them. Read-only, no secrets.
+
+```json
+{
+  "facts": { "wifiConnected": true, "mqttConnected": false, "clockSet": true, "gpsRunning": false, "gpsFix": false,
+             "bluetoothBuild": false, "bluetoothRunning": false, "pairedPhones": 0,
+             "lightDetected": true, "infraredDetected": true, "environmentDetected": true },
+  "settings": [
+    { "id": "D-01", "setting": "alerts.mqtt.enabled", "state": "inactive", "reason": "mqtt-off", "text": "MQTT is off", "fix": "network#mqtt" },
+    { "id": "D-15", "setting": "alpaca.rainUnsafeEnabled", "state": "inactive", "reason": "rain-off", "text": "Rain sensor is off", "fix": "sensors#rain", "unmet": "inactive" },
+    { "id": "D-28", "setting": "ntp.enabled", "state": "active" }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `facts` | What the device knows at run time: network, broker, clock, GPS, Bluetooth, and which sky sensors answer |
+| `id` | [Catalogue](../reference/settings-dependencies.md) entry that decides the state (the first unmet one when inactive) |
+| `setting` | Path of the setting in `/api/config` (a few are derived, e.g. `alerts.wakePhones`: an event at Wake me) |
+| `state` | `off` (switched off), `active`, or `inactive` (on, but something it needs is missing) |
+| `reason`, `text`, `fix` | Why it's inactive and where it's fixed (`tab#section` in Settings, or `restart`) |
+| `unmet` | Safety rules only: `inactive` (ignored, listed in `rulesNotInEffect`) or `fail-safe` (the verdict reports unsafe) |
+| `neutral` | Inactive by default and harmless (e.g. publishing rain with no rain sensor) |
 
 ---
 
@@ -306,6 +337,7 @@ The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clie
   "reasonFlags": 512,
   "reasons": ["Rain detected"],
   "secondsUntilSafe": 0,
+  "rulesNotInEffect": [],
   "evaluatedAgeMs": 412,
   "changedAgeMs": 1260000
 }
@@ -317,6 +349,7 @@ The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clie
 | `rawSafe` | Instantaneous rule evaluation, before the safe delay |
 | `reasons` / `reasonFlags` | Why it's unsafe (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault) |
 | `secondsUntilSafe` | Remaining safe-delay countdown while `rawSafe` is true but `safe` isn't yet |
+| `rulesNotInEffect` | Rules switched on but ignored because what they need is off, e.g. `"Unsafe while raining - rain sensor is off"`. Rules that can't measure their limit (wind, cloud, SQM, humidity) report unsafe instead |
 | `changedAgeMs` | Time since `safe` last changed |
 
 ---
@@ -340,7 +373,7 @@ See [Alerts](../user-guide/alerts.md) for setup.
 
 ### `POST /api/alerts/test?channel=<mqtt|pushover|ntfy|webhook|all>`
 
-Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. `400` if the channel is unknown or not enabled. Requires HTTP auth when enabled.
+Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. `400` if the channel is unknown or not enabled. A channel that is switched on but can't deliver right now (MQTT off, no WiFi) is recorded as `skipped` with the reason, never `failed`. Requires HTTP auth when enabled.
 
 Add `event=<unsafe|safe|rain_started|rain_stopped|sensor_fault|sensor_recovered|dew_risk|clear_sky|clouded_over|client_lost|client_back|client_disconnected>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Level 4 (wake me) also rings paired Bluetooth phones; with no push channel enabled, it only rings the phones. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`, filled in from current readings.
 

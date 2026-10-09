@@ -310,6 +310,17 @@ namespace SQM
             }
         }
 
+        void sensorFacts(Deps::Facts &facts, const SensorSnapshot &snapshot, const Readings::Snapshot &readings)
+        {
+            // Found and answering; a stale reading still means it's there.
+            auto detected = [](Readings::Status status) { return status == Readings::Status::Ok || status == Readings::Status::Stale; };
+            facts.lightDetected = detected(readings.light.status);
+            facts.infraredDetected = detected(readings.infrared.status);
+            facts.environmentDetected = detected(readings.environment.status);
+            facts.gpsRunning = snapshot.gpsInitialized;
+            facts.gpsFix = snapshot.gpsInitialized && snapshot.gps.hasFix;
+        }
+
         Alpaca::SafetyInputs safetyInputs(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)
         {
             Alpaca::SafetyInputs in;
@@ -438,6 +449,11 @@ namespace SQM
             for (const std::string &reason : status.reasons)
                 reasons.add(reason);
             target["secondsUntilSafe"] = status.secondsUntilSafe;
+            // Rules switched on but ignored because their sensor is off
+            // (specs/020-settings-dependencies FR-009).
+            JsonArray notInEffect = target.createNestedArray("rulesNotInEffect");
+            for (const std::string &rule : Deps::rulesNotInEffect(cfg))
+                notInEffect.add(rule);
             target["evaluatedAgeMs"] = ageMs(now, status.evaluatedAtMs);
             target["changedAgeMs"] = ageMs(now, status.changedAtMs);
         }
@@ -717,6 +733,13 @@ namespace SQM
         Alerts::SendMode sendMode(const Config &cfg)
         {
             return cfg.alerts.sendMode == AlertsConfig::SendMode::WhileConnected ? Alerts::SendMode::WhileConnected : Alerts::SendMode::Any;
+        }
+
+        Alerts::SendMode effectiveSendMode(const Config &cfg)
+        {
+            // dep: D-12 - imaging apps connect over Alpaca: with it off, "only while
+            // an imaging app is connected" isn't in effect and alerts go out any time.
+            return cfg.alpaca.enabled ? sendMode(cfg) : Alerts::SendMode::Any;
         }
 
         void writeAlertSchedule(JsonObject target, const Alerts::ScheduleState &state, const Config &cfg, uint32_t nowMs)

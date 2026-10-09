@@ -46,12 +46,13 @@ export const mqttConfigSchema = z
       .optional(),
     homeAssistant: z.object({ enabled: z.boolean(), discoveryPrefix: z.string() }).optional(),
   })
+  // D-33 (a constraint): the device's own message.
   .refine((data) => !data.enabled || data.broker.trim().length > 0, {
-    message: 'MQTT broker is required when MQTT is enabled',
+    message: 'MQTT broker and topic are required when MQTT is enabled',
     path: ['broker'],
   })
   .refine((data) => !data.enabled || data.topic.trim().length > 0, {
-    message: 'MQTT topic is required when MQTT is enabled',
+    message: 'MQTT broker and topic are required when MQTT is enabled',
     path: ['topic'],
   })
   // Same rule as the device: letters, digits, _ - and / between levels.
@@ -64,15 +65,12 @@ export const mqttConfigSchema = z
     path: ['homeAssistant', 'discoveryPrefix'],
   });
 
-export const otaConfigSchema = z
-  .object({
-    enabled: z.boolean(),
-    password: z.string(),
-  })
-  .refine((data) => !data.enabled || data.password.length > 0, {
-    message: 'ArduinoOTA password is required when command-line OTA is enabled',
-    path: ['password'],
-  });
+// Command-line uploads without a password are kept but not in effect - a
+// dependency (D-32), shown under the switch, not a rejected save.
+export const otaConfigSchema = z.object({
+  enabled: z.boolean(),
+  password: z.string(),
+});
 
 export const authConfigSchema = z
   .object({
@@ -80,12 +78,9 @@ export const authConfigSchema = z
     username: z.string(),
     password: z.string(),
   })
-  .refine((data) => !data.enabled || data.username.length > 0, {
-    message: 'Username is required when HTTP auth is enabled',
-    path: ['username'],
-  })
+  // D-34 (a constraint): the device's own rule and message.
   .refine((data) => !data.enabled || data.password.length > 0, {
-    message: 'Password is required when HTTP auth is enabled',
+    message: 'HTTP auth password is required when auth is enabled',
     path: ['password'],
   });
 
@@ -375,19 +370,18 @@ export const configSchema = z
     if (!data.ntp.enabled && !data.gps.enabled) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Enable at least one time source: NTP or GPS',
+        message: 'At least one time source must be enabled', // D-27
         path: ['ntp', 'enabled'],
       });
       return;
     }
 
     const sourceEnabled = (source: number) => (source === 0 ? data.ntp.enabled : data.gps.enabled);
-    const sourceName = (source: number) => (source === 0 ? 'NTP' : 'GPS');
 
     if (!sourceEnabled(data.primaryTimeSource)) {
       ctx.addIssue({
         code: 'custom',
-        message: `Primary time source ${sourceName(data.primaryTimeSource)} is disabled`,
+        message: 'Primary time source is disabled',
         path: ['primaryTimeSource'],
       });
     }
@@ -395,7 +389,7 @@ export const configSchema = z
     if (data.ntp.enabled && data.gps.enabled && !sourceEnabled(data.secondaryTimeSource)) {
       ctx.addIssue({
         code: 'custom',
-        message: `Secondary time source ${sourceName(data.secondaryTimeSource)} is disabled`,
+        message: 'Secondary time source is disabled',
         path: ['secondaryTimeSource'],
       });
     }
@@ -403,7 +397,7 @@ export const configSchema = z
     if (data.ntp.enabled && data.gps.enabled && data.primaryTimeSource === data.secondaryTimeSource) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Primary and secondary time sources must be different',
+        message: 'Time sources must be different when both NTP and GPS are enabled',
         path: ['secondaryTimeSource'],
       });
     }

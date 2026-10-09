@@ -7,7 +7,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceCore.cpp#runAlerts src/WebServer.cpp#WebServer::processAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 8226200e423f08fe
+fingerprint: 821edad756a501ec
 -->
 <figure class="diagram" markdown>
 
@@ -27,12 +27,15 @@ flowchart TB
     ON -->|yes| MASTER{"Send alerts on?"}
     ON -->|"yes, level Wake me"| BLE["Paired phones ring over Bluetooth"]
     MASTER -->|no| NOPUSH["No channel is used"]
-    MASTER -->|yes| MQTT["MQTT: published at once"]
-    MASTER -->|yes| HTTP["Pushover, ntfy, webhook:<br/>queued, sent in the background"]
+    MASTER -->|yes| INEFFECT{"Channel in effect?"}
+    INEFFECT -->|"no: MQTT off,<br/>no WiFi"| INACTIVE["<b>Skipped</b>, with the reason;<br/>nothing attempted"]
+    INEFFECT -->|yes| MQTT["MQTT: published at once"]
+    INEFFECT -->|yes| HTTP["Pushover, ntfy, webhook:<br/>queued, sent in the background"]
     HTTP --> CANSEND{"Network free?"}
     CANSEND -->|no| SKIPPED["<b>Skipped</b>, with the reason<br/>WiFi down, a firmware update,<br/>or another HTTPS request"]
     CANSEND -->|yes| SENT["Sent, or Failed after one retry"]
     MQTT --> RECENT["Recent alerts: each channel's result"]
+    INACTIVE --> RECENT
     SKIPPED --> RECENT
     SENT --> RECENT
 ```
@@ -56,6 +59,7 @@ flowchart TB
     7. While sending:
         - a **Wake me** alert rings paired phones over Bluetooth, even with **Send alerts** off;
         - with **Send alerts** on, it goes to every enabled channel: MQTT at once; Pushover, ntfy and the webhook in the background.
+        - a channel that is switched on but not in effect (MQTT alerts with MQTT off, internet channels without WiFi) is **skipped** with the reason, and nothing is attempted.
     8. A background send is **skipped** when WiFi is down, a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
     9. Each channel's result appears under **Recent alerts**.
 
@@ -246,7 +250,7 @@ The safe/unsafe flag (`<base>/safe`, `<base>/safety`) is published whenever MQTT
 
 **Clear** in the flyout empties the list on the device.
 
-While alerts are on, a bell in the header shows how many alerts arrived since you last looked, and opens the last 20 alerts since boot with each channel's delivery status (`sent`, `failed` with the reason, or `skipped` - e.g. no WiFi, or an OTA update in progress). **Send test** waits for that status and shows the actual result. The list is also available from `GET /api/alerts/recent`.
+While alerts are on, a bell in the header shows how many alerts arrived since you last looked, and opens the last 20 alerts since boot with each channel's delivery status (`sent`, `failed` with the reason, or `skipped` - e.g. no WiFi, MQTT switched off, or an OTA update in progress). A channel that can't deliver shows as **Inactive** with the reason under its switch, isn't counted in the channels badge, and has no **Send test** until it can. **Send test** waits for that status and shows the actual result. The list is also available from `GET /api/alerts/recent`.
 
 ## Pushover keys
 

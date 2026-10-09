@@ -201,6 +201,26 @@ void test_discovery_messages(void)
     TEST_ASSERT_TRUE(sawSwitch);
 }
 
+// D-13: Home Assistant's Alerts switch is only announced while alerts can
+// go out, and removed otherwise.
+void test_discovery_alerts_switch_needs_alerts(void)
+{
+    DiscoveryDevice device{"sqmeter_aabbccddeeff", "Roof SQM", "0.3.0", "sqmeter", "homeassistant"};
+    Groups groups;
+    groups.alertsSwitch = false;
+    std::string switchPayload = "unset";
+    forEachDiscovery(
+        device,
+        groups,
+        true,
+        [&](const std::string &topic, const std::string &payload)
+        {
+            if (topic == "homeassistant/switch/sqmeter_aabbccddeeff/alerts/config")
+                switchPayload = payload;
+        });
+    TEST_ASSERT_EQUAL_STRING("", switchPayload.c_str());
+}
+
 int main(int argc, char **argv)
 {
     (void)argc;
@@ -213,5 +233,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_timestamp_is_zero_without_clock);
     RUN_TEST(test_every_key_is_camel_case);
     RUN_TEST(test_discovery_messages);
+    RUN_TEST(test_discovery_alerts_switch_needs_alerts);
     return UNITY_END();
 }

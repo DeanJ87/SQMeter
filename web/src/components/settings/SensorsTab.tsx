@@ -3,7 +3,19 @@ import { useState } from 'preact/hooks';
 import type { SettingsTabProps } from './context';
 import { defaultRainConfig, defaultSkyAveraging, defaultSkyCalibration, defaultWindConfig } from './defaults';
 import type { SensorAvailability } from './hardware';
-import { ActionButton, Field, Group, NumberInput, Requires, ResultNote, SelectInput, SettingsCard, StatusBadge, Toggle } from './controls';
+import {
+  ActionButton,
+  DepToggle,
+  Field,
+  Group,
+  NumberInput,
+  Requires,
+  ResultNote,
+  SelectInput,
+  SettingsCard,
+  StatusBadge,
+  Toggle,
+} from './controls';
 
 const ANEMOMETER_PRESETS = [
   { value: '2.4', label: 'Misol / Argent / SparkFun' },
@@ -18,7 +30,18 @@ const detectionBadge = (sensor: SensorAvailability, labels = { ok: 'Detected', b
 
 const CLOCK_VALID = 1704067200; // calibration times below this are uptime, not dates
 
-const SensorsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, applyStored, error, hw, status, dirty }) => {
+const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
+  config,
+  update,
+  updateMany,
+  applyStored,
+  error,
+  hw,
+  status,
+  dirty,
+  deps,
+  fix,
+}) => {
   const [calibrating, setCalibrating] = useState(false);
   const [calibrationResult, setCalibrationResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const averaging = { ...defaultSkyAveraging, ...config.skyAveraging };
@@ -91,7 +114,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upd
 
   return (
     <>
-      <SettingsCard title="Sky sensors" hint="Detected at boot. Restart after fixing wiring.">
+      <SettingsCard id="sky-sensors" title="Sky sensors" hint="Detected at boot. Restart after fixing wiring.">
         <div>
           {[
             ['TSL2591 light', hw.skyLight],
@@ -157,7 +180,9 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upd
             />
           </Field>
         </div>
-        <Toggle
+        <DepToggle
+          entry={deps.get('skyCalibration.enabled')}
+          onFix={fix}
           label="Apply SQM offset"
           hint="Added to every SQM reading, e.g. to match a reference meter such as an SQM-L."
           checked={calibration.enabled}
@@ -359,7 +384,9 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upd
                 />
               </Field>
             </div>
-            <Toggle
+            <DepToggle
+              entry={deps.get('rain.dailyResetEnabled')}
+              onFix={fix}
               label="Reset the daily total"
               checked={rain.dailyResetEnabled ?? false}
               onChange={(v) => update(['rain', 'dailyResetEnabled'], v)}
@@ -435,7 +462,13 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upd
               title="Wind vane"
               aside={wind.directionEnabled && hw.windVane.detected === false ? <StatusBadge tone="bad" label="Vane fault" /> : undefined}
             >
-              <Toggle label="Wind vane" checked={wind.directionEnabled} onChange={(v) => update(['wind', 'directionEnabled'], v)} />
+              <DepToggle
+                entry={deps.get('wind.directionEnabled')}
+                onFix={fix}
+                label="Wind vane"
+                checked={wind.directionEnabled}
+                onChange={(v) => update(['wind', 'directionEnabled'], v)}
+              />
               {wind.directionEnabled && (
                 <div class="form-grid">
                   <Field label="Pin" error={error('wind.directionPin')} hint="GPIO 32-39 only: ADC2 can't be read while WiFi is on.">

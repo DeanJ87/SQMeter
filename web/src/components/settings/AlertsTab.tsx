@@ -16,8 +16,11 @@ import {
   secondsToMinutes,
 } from './alertSchedule';
 import { InfoTip, Note } from '../ui';
+import type { DepEntry } from '../../lib/settingsDeps';
 import {
   ActionButton,
+  DepNote,
+  DepToggle,
   Field,
   Group,
   NumberInput,
@@ -193,7 +196,19 @@ const EVENT_VARS: Partial<Record<AlertEventKey, string[]>> = {
   client_disconnected: ['client_id'],
 };
 
-const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw, status, dirty, goTo }) => {
+// On this tab the "Alerts are off" link (D-04) is shown once, by the Send
+// alerts switch, not on every row - and channels can be set up and tested
+// while alerts are off.
+const withoutAlertsOff = (entry: DepEntry): DepEntry => {
+  const { blockedBy, ...rest } = entry;
+  const next: DepEntry = blockedBy && blockedBy.reason !== 'alerts-off' ? { ...rest, blockedBy } : rest;
+  return entry.reason === 'alerts-off'
+    ? { ...next, state: 'active', reason: undefined, text: undefined, fix: undefined, id: entry.id }
+    : next;
+};
+
+const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, status, dirty, deps, fix }) => {
+  const dep = (setting: string) => withoutAlertsOff(deps.get(setting));
   const alerts = mergeAlertsConfig(config.alerts);
   const [testResult, setTestResult] = useState<{ target: string; type: 'success' | 'error' | 'pending'; text: string } | null>(null);
 
@@ -293,22 +308,23 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
     ));
 
   // Render function (not a nested component) so re-renders don't remount it.
-  const testButton = (channel: AlertChannelName) => (
-    <div class="btn-row">
-      <ActionButton
-        onClick={() => sendTest(channel)}
-        disabled={dirty || testResult?.type === 'pending'}
-        title={dirty ? 'Save first' : undefined}
-      >
-        Send test
-      </ActionButton>
-      {resultNote(channel)}
-    </div>
-  );
+  const testButton = (channel: AlertChannelName) => {
+    const entry = dep(`alerts.${channel}.enabled`);
+    if (entry.state === 'off' || entry.state === 'inactive') return null;
+    return (
+      <div class="btn-row">
+        <ActionButton
+          onClick={() => sendTest(channel)}
+          disabled={dirty || testResult?.type === 'pending'}
+          title={dirty ? 'Save first' : undefined}
+        >
+          Send test
+        </ActionButton>
+        {resultNote(channel)}
+      </div>
+    );
+  };
 
-  const rainReason = !hw.rain.enabled ? 'Rain sensor is off.' : null;
-  const dewReason = hw.environment.detected === false ? 'BME280 not detected.' : null;
-  const skyReason = hw.irSky.detected === false ? 'MLX90614 not detected.' : null;
   const pushoverOn = alerts.pushover.enabled;
 
   // Paused or sending is live device state, not a saved setting.
@@ -317,7 +333,6 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
     if (!(await sendPauseOrResume(resume))) showToast({ message: 'Could not reach the device', tone: 'bad' });
   };
   const sendMode: AlertSendMode = alerts.sendMode ?? (alerts.armWithAlpaca ? 'whileConnected' : 'any');
-  const alpacaOff = config.alpaca?.enabled === false;
   const [editing, setEditing] = useState<AlertEventKey | null>(null);
   // Where a clicked {variable} goes: the last focused title/message field.
   const lastField = useRef<{ key: AlertEventKey; field: 'title' | 'message'; el: HTMLInputElement | HTMLTextAreaElement } | null>(null);
@@ -404,13 +419,11 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
   };
 
   // Render function (not a nested component) so re-renders don't remount it.
-  const eventRow = (
-    key: AlertEventKey,
-    label: string,
-    opts: { hint?: string; blocked?: string | null; fix?: () => void; threshold?: ComponentChildren } = {},
-  ) => {
+  const eventRow = (key: AlertEventKey, label: string, opts: { hint?: string; threshold?: ComponentChildren } = {}) => {
     const event = alerts.events[key];
-    const locked = Boolean(opts.blocked) && event.level === 0;
+    const entry = dep(`alerts.events.${key}.level`);
+    // Can't be raised from Off while what it needs is missing (FR-005).
+    const locked = event.level === 0 && entry.blockedBy !== undefined;
     return (
       <>
         <div class="event-row" data-event={key}>
@@ -442,8 +455,8 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             ))}
           <ActionButton
             onClick={() => sendEventTest(key)}
-            disabled={off || event.level === 0 || testResult?.type === 'pending'}
-            title={event.level === 0 ? 'Off' : `Send a sample "${label}" alert at this level`}
+            disabled={off || event.level === 0 || entry.state === 'inactive' || testResult?.type === 'pending'}
+            title={event.level === 0 ? 'Off' : entry.state === 'inactive' ? entry.text : `Send a sample "${label}" alert at this level`}
           >
             Test
           </ActionButton>
@@ -453,16 +466,10 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         </div>
         {resultNote(key)}
         {editing === key && templateEditor(key)}
-        {opts.blocked && (
-          <Requires tone={event.level > 0 ? 'warn' : 'info'} onFix={opts.fix}>
-            {opts.blocked}
-          </Requires>
-        )}
+        <DepNote entry={entry} onFix={fix} />
       </>
     );
   };
-  // Unknown until status loads; a location typed but not yet saved counts.
-  const noLocation = status !== null && status.sky?.locationSource === 'none' && !config.location?.set;
   // A GPS fix wins over the location in Settings (saved or not).
   const location =
     status?.sky?.locationSource === 'gps' && status.sky.latitude !== undefined && status.sky.longitude !== undefined
@@ -473,7 +480,11 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
   const darknessNote = location
     ? describeDarkness(location.latitude, location.longitude, alerts.nightSunAltitudeDeg, status?.sky?.sunAltitudeDeg, deviceTime(status))
     : null;
-  const channelCount = [alerts.pushover.enabled, alerts.ntfy.enabled, alerts.webhook.enabled, alerts.mqtt.enabled].filter(Boolean).length;
+  // Counts only channels that can deliver (FR-007).
+  const channelEntries = (['pushover', 'ntfy', 'webhook', 'mqtt'] as const).map((channel) => dep(`alerts.${channel}.enabled`));
+  const channelsOn = channelEntries.filter((e) => e.state !== 'off').length;
+  const channelCount = channelEntries.filter((e) => e.state === 'active' || e.state === 'unknown').length;
+  const wakePhones = deps.get('alerts.wakePhones');
 
   return (
     <>
@@ -491,7 +502,10 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         }
       >
         <Toggle label="Send alerts" checked={alerts.enabled} onChange={(v) => set(['enabled'], v)} />
-        {!off && channelCount === 0 && <Requires tone="warn">Turn on a channel below.</Requires>}
+        {!off && channelsOn === 0 && <Requires tone="warn">Turn on a channel below.</Requires>}
+        {!off && channelsOn > 0 && channelCount === 0 && (
+          <Requires tone="warn">Alerts reach nowhere: no channel can deliver right now.</Requires>
+        )}
         {!off && (
           <Group title="When to send">
             <SelectInput
@@ -506,11 +520,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
               }
             />
             <Note>{SEND_MODE_OPTIONS.find((option) => option.value === sendMode)?.help}</Note>
-            {sendMode === 'whileConnected' && alpacaOff && (
-              <Requires tone="warn" onFix={() => goTo('safety', 'alpaca')}>
-                Imaging apps connect over Alpaca, which is switched off.
-              </Requires>
-            )}
+            {dep('alerts.sendMode').state === 'inactive' && <DepNote entry={dep('alerts.sendMode')} onFix={fix} />}
             <div class="btn-row" data-schedule-status>
               {shownSchedule && (
                 <Note tone={shownSchedule.armed ? 'ok' : 'warn'}>
@@ -544,12 +554,11 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             </div>
             {eventRow('unsafe', 'It turns unsafe', { hint: 'Lists the reasons.' })}
             {eventRow('safe', "It's safe again")}
-            {eventRow('rain_started', 'Rain starts', { blocked: rainReason, fix: () => goTo('sensors', 'rain') })}
-            {eventRow('rain_stopped', 'Rain stops', { blocked: rainReason, fix: () => goTo('sensors', 'rain') })}
+            {eventRow('rain_started', 'Rain starts')}
+            {eventRow('rain_stopped', 'Rain stops')}
             {eventRow('sensor_fault', 'A sensor fails', { hint: 'Includes the RG-15 lens fault.' })}
             {eventRow('sensor_recovered', 'A sensor recovers')}
             {eventRow('dew_risk', 'Dew risk within', {
-              blocked: dewReason,
               threshold: (
                 <NumberInput
                   min={0}
@@ -565,7 +574,6 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
               hint: 'Temperature within this margin of the dew point.',
             })}
             {eventRow('clear_sky', 'Skies clear up below', {
-              blocked: skyReason,
               threshold: (
                 <NumberInput
                   min={0}
@@ -581,7 +589,6 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
               hint: 'Cloud cover.',
             })}
             {eventRow('clouded_over', 'Skies cloud over above', {
-              blocked: skyReason,
               threshold: (
                 <NumberInput
                   min={0}
@@ -599,21 +606,16 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             })}
             {eventRow('client_lost', 'The imaging app stops checking', {
               hint: 'No request reached the safety monitor or weather device for the time below. A crash, a sleeping PC or a network drop.',
-              blocked: alpacaOff ? 'Alpaca is switched off.' : null,
-              fix: () => goTo('safety', 'alpaca'),
             })}
             {eventRow('client_back', 'The imaging app is back', {
               hint: 'It started checking again after going quiet.',
-              blocked: alpacaOff ? 'Alpaca is switched off.' : null,
-              fix: () => goTo('safety', 'alpaca'),
             })}
             {eventRow('client_disconnected', 'The imaging app disconnects', {
               hint: 'It disconnected normally, for example at the end of a session.',
-              blocked: alpacaOff ? 'Alpaca is switched off.' : null,
-              fix: () => goTo('safety', 'alpaca'),
             })}
           </div>
           {err('cloudedOverCloudPercent') && <Note tone="bad">{err('cloudedOverCloudPercent')}</Note>}
+          {wakePhones.state === 'inactive' && <DepNote entry={wakePhones} onFix={fix} prefix="Phones won't ring" />}
           <div class="form-grid">
             <Field
               label="Silent for - safety monitor"
@@ -650,16 +652,18 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           </div>
           <div class="rule-row">
             <div class="toggle-stack">
-              <Toggle
+              <DepToggle
+                entry={dep('alerts.skyNightOnly')}
+                onFix={fix}
                 label="Sky alerts only when it's dark"
                 checked={alerts.skyNightOnly}
                 onChange={(v) => set(['skyNightOnly'], v)}
                 disabled={off}
                 hint="From the sun's position at your location. If it's already clear at nightfall, you get one 'Dark and clear' alert."
-                blockedReason={noLocation ? 'Needs your location.' : null}
-                onFix={() => goTo('time', 'location')}
               />
-              <Toggle
+              <DepToggle
+                entry={dep('alerts.safetyNightOnly')}
+                onFix={fix}
                 label="Safety alerts only when it's dark"
                 checked={alerts.safetyNightOnly}
                 onChange={(v) => set(['safetyNightOnly'], v)}
@@ -705,7 +709,13 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         hint="Tests use the saved settings and work while alerts are off. Sent alerts appear under the bell in the header."
       >
         <Group>
-          <Toggle label="Pushover" checked={alerts.pushover.enabled} onChange={(v) => set(['pushover', 'enabled'], v)} />
+          <DepToggle
+            entry={dep('alerts.pushover.enabled')}
+            onFix={fix}
+            label="Pushover"
+            checked={alerts.pushover.enabled}
+            onChange={(v) => set(['pushover', 'enabled'], v)}
+          />
           {alerts.pushover.enabled && (
             <>
               <div class="form-grid">
@@ -738,7 +748,13 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         </Group>
 
         <Group>
-          <Toggle label="ntfy" checked={alerts.ntfy.enabled} onChange={(v) => set(['ntfy', 'enabled'], v)} />
+          <DepToggle
+            entry={dep('alerts.ntfy.enabled')}
+            onFix={fix}
+            label="ntfy"
+            checked={alerts.ntfy.enabled}
+            onChange={(v) => set(['ntfy', 'enabled'], v)}
+          />
           {alerts.ntfy.enabled && (
             <>
               <div class="form-grid">
@@ -758,7 +774,9 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
         </Group>
 
         <Group>
-          <Toggle
+          <DepToggle
+            entry={dep('alerts.webhook.enabled')}
+            onFix={fix}
             label="Webhook"
             checked={alerts.webhook.enabled}
             onChange={(v) => set(['webhook', 'enabled'], v)}
@@ -798,22 +816,16 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           )}
         </Group>
 
-        <Group
-          aside={
-            alerts.mqtt.enabled && hw.mqtt.enabled && hw.mqtt.connected === false ? (
-              <StatusBadge tone="bad" label="Broker not connected" />
-            ) : undefined
-          }
-        >
-          <Toggle
+        <Group>
+          <DepToggle
+            entry={dep('alerts.mqtt.enabled')}
+            onFix={fix}
             label="MQTT"
             checked={alerts.mqtt.enabled}
             onChange={(v) => set(['mqtt', 'enabled'], v)}
-            blockedReason={!hw.mqtt.enabled ? 'MQTT is off.' : null}
-            onFix={() => goTo('network', 'mqtt')}
             hint={`Publishes each alert to ${config.mqtt.topic}/alerts. The safe flag is set under Network → MQTT → Publish.`}
           />
-          {alerts.mqtt.enabled && hw.mqtt.enabled && testButton('mqtt')}
+          {testButton('mqtt')}
         </Group>
       </SettingsCard>
     </>

@@ -75,6 +75,38 @@ void test_rejections_say_why()
     TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"sensor\":{\"readIntervalMs\":100}}").c_str());
 }
 
+// Constraints (specs/020-settings-dependencies): combinations that can never
+// work stay rejected with the device's message - D-27 time sources, D-33
+// MQTT broker and topic, D-34 HTTP auth password. The web UI shows the same
+// messages before saving (web/src/__tests__/configSchema.test.ts).
+void test_constraints_rejected_with_messages()
+{
+    struct
+    {
+        const char *json;
+        const char *message;
+    } cases[] = {
+        {R"({"ntp":{"enabled":false},"gps":{"enabled":false}})", "At least one time source must be enabled"},                      // D-27
+        {R"({"mqtt":{"enabled":true,"broker":"","topic":"sqmeter"}})", "MQTT broker and topic are required when MQTT is enabled"}, // D-33
+        {R"({"auth":{"enabled":true,"username":"admin","password":""}})", "HTTP auth password is required when auth is enabled"},  // D-34
+    };
+    for (const auto &c : cases)
+    {
+        std::string error;
+        TEST_ASSERT_FALSE_MESSAGE(Config::fromJson(c.json, nullptr, &error).has_value(), c.json);
+        TEST_ASSERT_EQUAL_STRING_MESSAGE(c.message, error.c_str(), c.json);
+    }
+}
+
+// D-32 is a dependency, not a constraint: command-line uploads without a
+// password are kept (devices in the field store this) and reported inactive.
+void test_ota_without_password_is_kept()
+{
+    auto cfg = Config::fromJson(R"({"ota":{"enabled":true,"password":""}})");
+    TEST_ASSERT_TRUE(cfg.has_value());
+    TEST_ASSERT_TRUE(cfg->ota.enabled);
+}
+
 void test_read_interval_boundaries()
 {
     TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"sensor\":{\"readIntervalMs\":3600000}}").c_str());
@@ -192,6 +224,8 @@ int main()
     RUN_TEST(test_partial_json_merges_onto_base);
     RUN_TEST(test_rejections_say_why);
     RUN_TEST(test_read_interval_boundaries);
+    RUN_TEST(test_constraints_rejected_with_messages);
+    RUN_TEST(test_ota_without_password_is_kept);
     RUN_TEST(test_mqtt_interval_and_hostname_boundaries);
     RUN_TEST(test_alert_schedule_defaults);
     RUN_TEST(test_arm_with_alpaca_migrates_and_is_still_written);

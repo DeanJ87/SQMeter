@@ -5,9 +5,9 @@ import Settings from '../Settings';
 import { Toaster } from '../toast';
 import { mockConfig, mockStatus } from '../../mocks/data';
 import { server } from '../../test/mswServer';
+import { mockDevice } from '../../test/mockDevice';
 
-const withConfig = (overrides: Record<string, unknown>) =>
-  server.use(http.get('/api/config', () => HttpResponse.json({ ...mockConfig, ...overrides })));
+const withConfig = (overrides: Record<string, unknown>) => mockDevice({ config: overrides });
 
 describe('Settings', () => {
   afterEach(() => {
@@ -40,10 +40,10 @@ describe('Settings', () => {
     render(<Settings />);
 
     const toggle = await screen.findByLabelText('Unsafe while raining');
-    expect(toggle).toBeDisabled();
+    await waitFor(() => expect(toggle).toBeDisabled());
     expect(screen.getAllByText(/Rain sensor is off\./).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getAllByText('Set up')[0]);
+    fireEvent.click(screen.getAllByText('Turn on')[0]);
     expect(await screen.findByRole('tab', { name: 'Sensors', selected: true })).toBeInTheDocument();
   });
 
@@ -54,7 +54,8 @@ describe('Settings', () => {
 
     const toggle = await screen.findByLabelText('Unsafe while raining');
     expect(toggle).not.toBeDisabled();
-    expect(screen.getAllByText(/Reports unsafe while on/).length).toBe(2);
+    // Rain rules are ignored without the sensor (D-15), not fail-safe.
+    await waitFor(() => expect(screen.getAllByText('Not in effect - Rain sensor is off').length).toBe(2));
   });
 
   it('greys out sky rules when the MLX90614 was not detected', async () => {
@@ -63,7 +64,7 @@ describe('Settings', () => {
         HttpResponse.json({ ...mockStatus, sensors: { ...mockStatus.sensors, infrared: { status: 'missing', ageMs: 0 } } }),
       ),
     );
-    withConfig({ alpaca: { ...mockConfig.alpaca, cloudCoverEnabled: false } });
+    mockDevice({ config: { alpaca: { ...mockConfig.alpaca, cloudCoverEnabled: false } }, facts: { infraredDetected: false } });
     window.history.replaceState(null, '', '/settings?tab=safety');
     render(<Settings />);
 

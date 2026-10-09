@@ -8,6 +8,9 @@ on:
       - 'src/**'
       - 'include/**'
       - 'lib/**'
+      - 'test/**'
+      - 'tools/settings-deps/**'
+      - 'docs/reference/settings-dependencies.md'
       - 'web/src/**'
       - 'web/package.json'
       - 'web/package-lock.json'
@@ -128,6 +131,14 @@ jobs:
 
       - name: Run native unit tests
         run: pio test -e native
+
+      # Every setting that depends on another is catalogued, implemented on the
+      # device and in the web UI's preview, tested, and documented
+      # (specs/020-settings-dependencies).
+      - name: Settings dependencies catalogue
+        run: |
+          python3 tools/settings-deps/test_check.py
+          python3 tools/settings-deps/check.py
 
       # The demo runs this firmware code in the browser (web/src/demo/core);
       # a change to lib/ must ship with a rebuilt core.

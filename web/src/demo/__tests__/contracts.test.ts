@@ -35,6 +35,7 @@ describe('demo documents match the device contract', () => {
   it('readings (/api/sensors, /ws/sensors)', () => check('readings', JSON.parse(demoDevice.readings())));
   it('status (/api/status, /ws/status)', () => check('status', statusDocument()));
   it('safety', () => check('safety', JSON.parse(demoDevice.safety())));
+  it('settings in effect (specs/020-settings-dependencies)', () => check('settings-effective', JSON.parse(demoDevice.effective())));
   it('config', () => check('config', JSON.parse(demoDevice.getConfig())));
   it('recent alerts', () => check('alerts-recent', JSON.parse(demoDevice.recentAlerts())));
   it('alerts sending or paused (/api/alerts/armed)', () => check('alerts-armed', JSON.parse(demoDevice.armedDocument())));
