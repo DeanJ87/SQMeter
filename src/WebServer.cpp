@@ -18,6 +18,8 @@
 #include "calculations/CloudDetection.h"
 #include "sensors/RG15Sensor.h"
 #include "AlpacaDiscovery.h"
+#include "Ipv6Network.h"
+#include "WiFiManager.h"
 #include "HeapTrace.h"
 #include "SunPosition.h"
 #include "SafetyHistory.h"
@@ -190,7 +192,13 @@ namespace SQM
 
         if (getConfigCallback().alpaca.enabled)
         {
-            if (alpacaDiscoveryUdp.listen(Alpaca::DISCOVERY_UDP_PORT))
+            // With IPv6 on, one dual-stack socket takes IPv4 broadcasts and
+            // the IPv6 discovery group (spec 015, FR-005).
+            const bool ipv6 = WiFiManager::ipv6Running();
+            const bool listening = ipv6 ? alpacaDiscoveryUdp.listen(IP_ANY_TYPE, Alpaca::DISCOVERY_UDP_PORT)
+                                        : alpacaDiscoveryUdp.listen(Alpaca::DISCOVERY_UDP_PORT);
+            alpacaIpv6Pending = listening && ipv6;
+            if (listening)
             {
                 // Replies straight from the UDP task: discovery answers
                 // within milliseconds instead of waiting for a main-loop pass.
@@ -244,6 +252,9 @@ namespace SQM
                 }
             });
 
+        if (WiFiManager::ipv6Running())
+            Ipv6Network::addLanOnlyMiddleware(server);
+
         server.begin();
         Logger::info(TAG, "Web server started");
     }
@@ -257,6 +268,11 @@ namespace SQM
         const uint32_t now = millis();
 
         applyPendingArm();
+        if (alpacaIpv6Pending && now - lastAlpacaIpv6Attempt >= 5000)
+        {
+            lastAlpacaIpv6Attempt = now;
+            alpacaIpv6Pending = !Ipv6Network::joinAlpacaDiscoveryGroup();
+        }
         if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
             publishArmedState();
         publishMqttReadings(now);
@@ -2230,6 +2246,7 @@ namespace SQM
             wifi["hostname"] = cfg.wifi.hostname;
             wifi["mdns"] = cfg.wifi.mdns;
         }
+        Ipv6Network::appendStatus(wifi);
 
         // Per-sensor health for present hardware, and bring-up diagnostics.
         // Readings themselves are in /api/sensors.

@@ -56,6 +56,8 @@ namespace SQM
         // the next connection. Addresses are the station's valid ones
         // (link-local, then SLAAC); empty while IPv6 is off or not connected.
         bool isIpv6Enabled() const { return config.ipv6; }
+        // The setting the device started with (changes apply at restart).
+        static bool ipv6Running() { return ipv6Wanted; }
         static std::vector<Net::Ipv6> ipv6Addresses();
 
     private:
