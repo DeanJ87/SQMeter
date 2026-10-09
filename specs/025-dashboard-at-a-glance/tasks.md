@@ -34,5 +34,5 @@
 
 - [x] T017 `web/tests/dashboard.spec.ts`: per shown inventory entry, drive the demo into the state and assert shown, then hidden (FR-003); add the dashboard states to the a11y inventory (SC-006)
 - [x] T018 Docs: user-guide/dashboard.md describes every inventory item; screenshots via the screenshot test; REST; diagrams checked (FR-023)
-- [x] T019 Budget: UI bundle gzip delta ≤ 4 KB (SC-007); firmware delta recorded
+- [x] T019 Budget: UI bundle gzip delta ≤ 10 KB (SC-007, SIZE-01); firmware delta recorded
 - [x] T020 Converge

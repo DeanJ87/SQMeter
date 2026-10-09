@@ -43,7 +43,7 @@ flowchart TB
 <!-- diagram: DIA-14
 sources: .specify/memory/constitution.md .claude/skills/
 blocking: false
-fingerprint: 236fe614167e289e
+fingerprint: 831f5a1ebd9fc106
 -->
 <figure class="diagram" markdown>
 
@@ -141,7 +141,8 @@ pio run --target uploadfs
 
 ```bash
 cd web && npm install && npm run build && cd ..
-cp -r web/dist data
+python3 tools/ui/pack_data.py   # web/dist -> data/, gzipped
+python3 tools/ui/size_check.py  # SIZE-01, SIZE-02
 pio run                  # firmware
 pio run --target buildfs # littlefs image
 ```

@@ -223,6 +223,18 @@ The dashboard shows the device state that decides whether it is safe to observe 
 
 ---
 
+## Size (SIZE)
+
+The device serves the web UI from a 512 KB LittleFS partition that also holds the chosen language file, and phones load it over the setup hotspot. The UI is stored gzipped (`tools/ui/pack_data.py`); `tools/ui/size_check.py` prints the sizes in CI.
+
+| ID | Rule | Check |
+|---|---|---|
+| SIZE-01 | A change grows the device UI's gzipped JS + CSS by at most 10 KB over `tools/ui/size-baseline.json`. A feature that needs more records it with `python3 tools/ui/size_check.py --update-baseline` and says why in its pull request; a smaller change that shrinks the UI records the saving the same way. | auto (`tools/ui/size_check.py`) |
+| SIZE-02 | The UI as stored, plus one language file at its 64 KB limit, plus LittleFS block overhead, uses at most 75% of the smallest LittleFS partition. | auto (`tools/ui/size_check.py`) |
+| SIZE-03 | Text files go onto the device gzipped; demo-only files (the MSW service worker) never do. | auto (`tools/ui/test_ui_size.py`) |
+
+---
+
 ## Exceptions (EXC)
 
 | ID | Rule | Check |

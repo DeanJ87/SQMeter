@@ -1,5 +1,6 @@
 <!--
 Sync Impact Report
+- 1.1.1 -> 1.1.2 (PATCH): Principle IV states the web UI size budgets (SIZE-01, SIZE-02)
 - Version: 1.0.0 -> 1.1.0 (MINOR: new Principle VIII, expanded quality gates)
 - Added: VIII. Code Quality Standards
 - Modified: Platform Constraints (code style now points to the standard); Development Workflow
@@ -63,6 +64,9 @@ The ESP32 has fixed memory and flash; exceeding them breaks devices in the field
   `stackFree`) and keep the main loop stack headroom above 2 KB.
 - Persisted config MUST stay within its NVS limits (main JSON 5100 bytes, alerts JSON 3900
   bytes) and be validated before saving.
+- The web UI is stored gzipped on LittleFS and MUST fit with a language file at its limit in 75%
+  of the partition; one change grows its gzipped JS + CSS by at most 10 KB unless the PR records
+  and justifies more (coding standard SIZE-01, SIZE-02).
 
 ### V. Quiet, Consistent UI
 
@@ -164,4 +168,4 @@ Code is read far more often than it's written, by people and by AI agents workin
   Tracking section.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 1.1.1 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-09
+**Version**: 1.1.2 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-09
