@@ -57,6 +57,8 @@ namespace SQM
         ActiveTimeSource getActiveTimeSource() const { return activeSource; }
 
     private:
+        void fillGpsStatus(TimeStatus &status) const;
+        uint32_t nextSyncInMs() const;
         static constexpr const char *TAG = "TimeManager";
 
         NTPConfig ntpConfig;

@@ -15,6 +15,8 @@ STAMP = os.path.join(ROOT, "web", "src", "demo", "core", "SOURCE_HASH")
 def sources():
     patterns = [
         "tools/demo-core/bridge.cpp",
+        "tools/demo-core/sensor_feed.cpp",
+        "tools/demo-core/sensor_feed.h",
         "tools/demo-core/build.sh",
         "lib/*/src/*.cpp",
         "lib/*/src/*.h",
@@ -39,7 +41,10 @@ def digest():
 if __name__ == "__main__":
     current = digest()
     if "--check" in sys.argv:
-        stamped = open(STAMP).read().strip() if os.path.exists(STAMP) else ""
+        stamped = ""
+        if os.path.exists(STAMP):
+            with open(STAMP) as handle:
+                stamped = handle.read().strip()
         if stamped != current:
             print("The demo's device core is out of date: lib/ or tools/demo-core changed.")
             print("Rebuild it with tools/demo-core/build.sh (needs Emscripten, see tools/demo-core/VERSION) and commit web/src/demo/core.")

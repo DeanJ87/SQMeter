@@ -132,6 +132,30 @@ namespace SQM
         reading.calibrated = calibrationEnabled;
     }
 
+    // Lux from the latest counts: the visible channel (CH0 - CH1) over CPL.
+    float TSL2591Sensor::luxFromCounts(bool saturated, float cpl) const
+    {
+        if (saturated)
+        {
+            // Sensor saturated - clamp to bright daylight value (~100,000 lux)
+            Logger::debug(
+                TAG,
+                "Sensor saturated (bright daylight) - Full: %u, IR: %u, Lux clamped to %.0f",
+                reading.full,
+                reading.infrared,
+                100000.0F);
+            return 100000.0F;
+        }
+        if (reading.full == 0)
+            return 0.0F;
+        if (reading.infrared > reading.full)
+            return (float)reading.full / cpl; // IR overflow - use fallback with full spectrum
+        // Allow reporting of EXTREMELY low values - no artificial floor (dark
+        // skies can be 0.00001 lux or lower); only prevent negative values.
+        const float lux = ((float)reading.full - (float)reading.infrared) / cpl;
+        return lux < 0.0F ? 0.0F : lux;
+    }
+
     bool TSL2591Sensor::readSensor()
     {
         uint32_t lum = sensor->getFullLuminosity();
@@ -145,37 +169,7 @@ namespace SQM
         bool saturated = (reading.full >= 0xFFFF || reading.infrared >= 0xFFFF);
         reading.saturated = saturated || reading.full >= SATURATION_THRESHOLD || reading.infrared >= SATURATION_THRESHOLD;
 
-        // Calculate lux using visible channel (CH0 - CH1)
-        float luxCalc = 0.0F;
-
-        if (saturated)
-        {
-            // Sensor saturated - clamp to bright daylight value (~100,000 lux)
-            luxCalc = 100000.0F;
-            Logger::debug(
-                TAG, "Sensor saturated (bright daylight) - Full: %u, IR: %u, Lux clamped to %.0f", reading.full, reading.infrared, luxCalc);
-        }
-        else if (reading.full == 0)
-        {
-            luxCalc = 0.0F;
-        }
-        else if (reading.infrared > reading.full)
-        {
-            // IR overflow - use fallback with full spectrum
-            luxCalc = (float)reading.full / cpl;
-        }
-        else
-        {
-            // Standard calculation: (Visible channel) / CPL
-            luxCalc = ((float)reading.full - (float)reading.infrared) / cpl;
-
-            // Allow reporting of EXTREMELY low values - no artificial floor
-            // Dark skies can be as low as 0.00001 lux or even lower
-            if (luxCalc < 0.0F)
-            {
-                luxCalc = 0.0F; // Only prevent negative values
-            }
-        }
+        const float luxCalc = luxFromCounts(saturated, cpl);
 
         reading.rawLux = luxCalc;
         reading.lux = luxCalc;

@@ -2,11 +2,6 @@
   "about": "Existing coding-standard findings per rule per file (spec 017). New findings fail CI; burn these down and run `python3 tools/quality/check.py --update-baseline`.",
   "counts": {
     "LIMIT-01": {
-      "src/OtaUpdater.cpp": 1,
-      "src/TimeManager.cpp": 1,
-      "src/sensors/RG15Sensor.cpp": 2,
-      "src/sensors/TSL2591Sensor.cpp": 1,
-      "tools/demo-core/bridge.cpp": 1,
       "web/src/components/Dashboard.tsx": 1,
       "web/src/components/settings/AlertsTab.tsx": 1,
       "web/src/components/settings/SensorsTab.tsx": 1,
@@ -14,9 +9,6 @@
       "web/src/mocks/data.ts": 1
     },
     "LIMIT-02": {
-      "src/OtaUpdater.cpp": 1,
-      "src/sensors/RG15Sensor.cpp": 2,
-      "tools/demo-core/bridge.cpp": 1,
       "web/src/components/AlertsBell.tsx": 1,
       "web/src/components/Dashboard.tsx": 1,
       "web/src/components/NightChart.tsx": 1,
@@ -33,12 +25,7 @@
       "web/src/components/settings/tabs.ts": 1,
       "web/src/utils/versionCompare.ts": 1
     },
-    "LIMIT-03": {
-      "src/OtaUpdater.cpp": 1
-    },
     "LIMIT-04": {
-      "src/sensors/RG15Sensor.cpp": 1,
-      "test/test_alpaca_logic/test_main.cpp": 1,
       "tools/demo-core/bridge.cpp": 1,
       "web/src/components/Dashboard.tsx": 1,
       "web/src/components/settings/AlertsTab.tsx": 1,
@@ -47,12 +34,9 @@
       "web/src/types/index.ts": 1
     },
     "LIMIT-05": {
-      "tools/contract-check.py": 1,
       "web/src/hooks/useWifiScan.ts": 2
     },
     "LINT-01": {
-      "tools/contract-check.py": 1,
-      "tools/demo-core/source_hash.py": 1,
       "web/src/components/Masonry.tsx": 1,
       "web/src/components/NightChart.tsx": 1,
       "web/src/components/Settings.tsx": 2,
