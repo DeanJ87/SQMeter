@@ -270,6 +270,141 @@ button {
   gap: 0.5rem;
 }
 
+/* At a glance (specs/025): one calm line when all is well, then each problem. */
+.glance {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.glance-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.glance-demo {
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  color: var(--cyan);
+  font-size: 0.8rem;
+}
+
+.glance-list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.glance-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line-soft);
+  border-inline-start: 3px solid var(--amber);
+  border-radius: 0.6rem;
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.glance-problem {
+  border-inline-start-color: var(--red);
+}
+
+.glance-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: var(--amber);
+  color: #0b1118;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.glance-problem .glance-mark {
+  background: var(--red);
+}
+
+.glance-body {
+  display: grid;
+  flex: 1 1 14rem;
+  gap: 0.15rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.glance-detail {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.glance-fix {
+  color: var(--cyan);
+  font-size: 0.85rem;
+}
+
+.glance-more {
+  display: none;
+  justify-self: start;
+  padding: 0.3rem 0;
+  border: 0;
+  background: none;
+  color: var(--cyan);
+}
+
+/* On a phone the first three problems show; the rest behind "Show all" (FR-020). */
+@media (max-width: 640px) {
+  .glance-list.is-limited .glance-item:nth-child(n + 4) {
+    display: none;
+  }
+
+  .glance-more {
+    display: block;
+  }
+}
+
+.dashboard.is-disconnected .masonry {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+
+.device-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-top: 0.6rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.device-addresses {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.rules-off {
+  margin: 0.4rem 0;
+  padding-inline-start: 1.1rem;
+  color: var(--amber);
+  font-size: 0.85rem;
+}
+
 .masonry {
   position: relative;
 }

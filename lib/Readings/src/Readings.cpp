@@ -128,6 +128,9 @@ namespace SQM
                 {
                     rain["raining"] = s.rain.raining;
                     rain["rainingNow"] = s.rain.rainingNow;
+                    // Rain has stopped but the clear delay still holds it (spec 025 FR-012).
+                    if (s.rain.raining && !s.rain.rainingNow && s.rain.clearInMs > 0)
+                        rain["clearInSeconds"] = (s.rain.clearInMs + 999) / 1000;
                     rain["intensity"] = rounded(s.rain.intensity, 2);
                     rain["eventAccumulation"] = rounded(s.rain.eventAccumulation, 2);
                     rain["sensorEventAccumulation"] = rounded(s.rain.sensorEventAccumulation, 2);

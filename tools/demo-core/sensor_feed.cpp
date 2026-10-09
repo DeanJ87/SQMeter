@@ -205,6 +205,7 @@ namespace SQM
             rain.emSat = false;
             Rain::observe(latch, rain.rInt, rain.acc, now, cfg.rain.rainClearDelayMs);
             rain.rainLatched = latch.latched;
+            rain.lastRainMs = latch.lastRainMs;
             rain.localEventAcc = latch.eventAccumulation;
         }
         else

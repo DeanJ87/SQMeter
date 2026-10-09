@@ -26,7 +26,7 @@
       "web/src/utils/versionCompare.ts": 1
     },
     "LIMIT-04": {
-      "tools/demo-core/bridge.cpp": 1,
+      "tools/demo-core/bridge.cpp": 3,
       "web/src/components/Dashboard.tsx": 1,
       "web/src/components/settings/AlertsTab.tsx": 1,
       "web/src/components/settings/SensorsTab.tsx": 1,

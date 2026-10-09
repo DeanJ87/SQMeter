@@ -2,7 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useQuiet } from '../hooks/useQuiet';
-import type { Config, SensorData, SystemStatus } from '../types';
+import type { Config, SensorData, SensorHealth, SystemStatus } from '../types';
 import { Button, Card, Icon, MetricTile, Note, Pill, ReadingRow, SensorReadingRow } from './ui';
 import SafetyCard from './SafetyCard';
 import SunMoonCard from './SunMoonCard';
@@ -10,9 +10,16 @@ import { deviceTime } from '../lib/deviceTime';
 import { summariseSeries, useAnnounceChange } from '../lib/a11y';
 import Masonry, { MasonryItem, mergeOrder, moveInOrder } from './Masonry';
 import { t } from '../i18n';
-import { formatAgeMs, formatCoordinates, formatNumber, formatUptime } from '../i18n/format';
+import { formatAgeMs, formatCoordinates, formatNumber } from '../i18n/format';
 import { svgNumber } from '../lib/svg';
 import { deviceText } from '../i18n/deviceMessage';
+import AtAGlance from '../dashboard/AtAGlance';
+import DeviceCard from '../dashboard/DeviceCard';
+import FaultCard from '../dashboard/FaultCard';
+import { expectedSensors, glanceItems, sensorEffect, type Sensor } from '../dashboard/glance';
+import { useEffectiveReport } from '../dashboard/useGlanceData';
+import { useAlertSchedule } from '../hooks/useAlertSchedule';
+import { acknowledgePhoneAlarm } from '../lib/phoneAlarm';
 
 const bortleTone = (bortle?: number): string => {
   if (typeof bortle !== 'number') return 'tone-muted';
@@ -33,14 +40,6 @@ const windTone = (value: number | undefined, enabled: boolean | undefined, limit
   if (value >= limit) return 'tone-red';
   if (value >= limit * 0.8) return 'tone-amber';
   return base;
-};
-
-const rssiTone = (rssi?: number) => {
-  if (typeof rssi !== 'number') return { tone: 'pill-dim', label: t('dashboard.unknown') };
-  if (rssi > -60) return { tone: 'pill-green', label: t('dashboard.strong') };
-  if (rssi > -75) return { tone: 'pill-cyan', label: t('dashboard.good') };
-  if (rssi > -85) return { tone: 'pill-amber', label: t('dashboard.weak') };
-  return { tone: 'pill-red', label: t('dashboard.poor') };
 };
 
 const compassPoint = (degrees: number) => t('dashboard.compassPoints').split(' ')[Math.round(degrees / 22.5) % 16];
@@ -126,6 +125,8 @@ const Dashboard: FunctionalComponent = () => {
   const { data: status } = useWebSocket<SystemStatus>('/ws/status');
   const [config, setConfig] = useState<Config | null>(null);
   const [sqmHistory, setSqmHistory] = useState<number[]>([]);
+  const effective = useEffectiveReport();
+  const { schedule, pauseOrResume } = useAlertSchedule(status?.alerts);
 
   useEffect(() => {
     fetch('/api/config')
@@ -158,11 +159,20 @@ const Dashboard: FunctionalComponent = () => {
   const isStale = Boolean(sensors?.dataStale) || quiet;
   const live = connected && Boolean(sensors) && !isStale;
   const skyTone = bortleTone(sensors?.sky?.bortle);
-  // Cards only show for sensors that are switched on and responding.
+  // An expected sensor that isn't ok keeps its card, in a fault state (specs/025 FR-013).
+  const expected = expectedSensors(status, config);
+  const fault = (sensor: Sensor) => {
+    if (!expected.includes(sensor)) return null;
+    const entry = status?.sensors[sensor] ?? (sensors?.[sensor] as { status?: SensorHealth; ageMs?: number } | undefined);
+    return entry?.status && entry.status !== 'ok' ? { health: entry.status, ageMs: entry.ageMs } : null;
+  };
+  const faultCard = (sensor: Sensor, title: string, icon: string) => {
+    const f = fault(sensor);
+    return f && <FaultCard title={title} icon={icon} health={f.health} ageMs={f.ageMs} effect={sensorEffect(sensor)} />;
+  };
   const lightOk = sensors?.light?.status === 'ok';
   const irOk = sensors?.infrared?.status === 'ok';
   const cloudCover = sensors?.clouds?.coverPercent;
-  const rssi = rssiTone(status?.wifi?.rssi);
   // A GPS fix wins over the location typed into Settings.
   const location =
     sensors?.gps?.fix && sensors.gps.latitude !== undefined && sensors.gps.longitude !== undefined
@@ -179,7 +189,12 @@ const Dashboard: FunctionalComponent = () => {
         ? { text: t('dashboard.stale'), tone: 'pill-amber' }
         : { text: t('dashboard.offline'), tone: 'pill-red' };
 
-  if (!connected || !sensors) {
+  const items = glanceItems({ sensors, status, config, effective, connected, quiet, schedule });
+  const onAction = (action: 'resume' | 'acknowledge') => void (action === 'resume' ? pauseOrResume(true) : acknowledgePhoneAlarm());
+
+  // Nothing received yet; once data has arrived, a lost connection keeps the
+  // last values on screen, greyed, with the at-a-glance line saying so (US2-4).
+  if (!sensors) {
     return (
       <div class="empty-state">
         <StatusDot ok={false} />
@@ -190,19 +205,20 @@ const Dashboard: FunctionalComponent = () => {
   }
 
   const cards: (MasonryItem | false | null | undefined)[] = [
-    { id: 'safety', title: t('dashboard.safety'), node: <SafetyCard safety={sensors.safety} /> },
+    {
+      id: 'safety',
+      title: t('dashboard.safety'),
+      node: <SafetyCard safety={sensors.safety} rainClearInSeconds={rain?.clearInSeconds} />,
+    },
     {
       id: 'sky',
       title: t('dashboard.skyQuality'),
       node: !lightOk ? (
-        <Card
-          title={t('dashboard.skyQuality')}
-          icon="star"
-          tone="muted"
-          actions={<Pill tone="pill-red">{t('dashboard.notDetected')}</Pill>}
-        >
-          <Note>{t('dashboard.theTsl2591LightSensorIsn')}</Note>
-        </Card>
+        (faultCard('light', t('dashboard.skyQuality'), 'star') ?? (
+          <Card title={t('dashboard.skyQuality')} icon="star" tone="muted">
+            <Note>{t('dashboard.theTsl2591LightSensorIsn')}</Note>
+          </Card>
+        ))
       ) : (
         <section class={`hero-card ${skyTone}`}>
           <div class="hero-topline">
@@ -242,10 +258,10 @@ const Dashboard: FunctionalComponent = () => {
         title: t('dashboard.sunMoon'),
         node: <SunMoonCard latitude={location.latitude} longitude={location.longitude} deviceNow={deviceTime(status)} />,
       },
-    irOk && {
+    (irOk || fault('infrared')) && {
       id: 'cloud',
       title: t('dashboard.cloudConditions'),
-      node: (
+      node: faultCard('infrared', t('dashboard.cloudConditions'), 'cloud') || (
         <Card
           title={t('dashboard.cloudConditions')}
           icon="cloud"
@@ -269,10 +285,10 @@ const Dashboard: FunctionalComponent = () => {
         </Card>
       ),
     },
-    sensors.environment.status === 'ok' && {
+    (sensors.environment.status === 'ok' || fault('environment')) && {
       id: 'environment',
       title: t('dashboard.environment'),
-      node: (
+      node: faultCard('environment', t('dashboard.environment'), 'therm') || (
         <Card title={t('dashboard.environment')} icon="therm" tone="amber">
           <div class="tile-grid two">
             <MetricTile
@@ -298,38 +314,40 @@ const Dashboard: FunctionalComponent = () => {
         </Card>
       ),
     },
-    sensors.gps && {
+    (sensors.gps || fault('gps')) && {
       id: 'gps',
       title: 'GPS',
-      node: (
-        <Card
-          title={t('dashboard.gpsLocation')}
-          icon="gps"
-          tone={sensors.gps.fix ? 'green' : 'muted'}
-          actions={
-            <>
-              <Pill tone={sensors.gps.fix ? 'pill-green' : 'pill-dim'}>
-                {sensors.gps.fix ? t('dashboard.lockAcquired') : t('dashboard.noFix')}
-              </Pill>
-            </>
-          }
-        >
-          <div class="coordinate-line mono">
-            {sensors.gps.fix ? formatCoordinates(sensors.gps.latitude ?? 0, sensors.gps.longitude ?? 0, 6) : '--'}
-          </div>
-          <div class="tile-grid gps-metrics">
-            <MetricTile label={t('dashboard.satellites')} value={String(sensors.gps.satellites ?? 0)} tone="tone-green" />
-            <MetricTile label={t('dashboard.altitude')} value={sensors.gps.fix ? formatNumber(sensors.gps.altitude, 0) : '--'} unit="m" />
-            <MetricTile label="HDOP" value={sensors.gps.fix ? formatNumber(sensors.gps.hdop, 1) : '--'} />
-            <MetricTile label={t('dashboard.fixAge')} value={formatAgeMs(sensors.gps.ageMs)} />
-          </div>
-        </Card>
-      ),
+      node:
+        faultCard('gps', t('dashboard.gpsLocation'), 'gps') ||
+        (sensors.gps && (
+          <Card
+            title={t('dashboard.gpsLocation')}
+            icon="gps"
+            tone={sensors.gps.fix ? 'green' : 'muted'}
+            actions={
+              <>
+                <Pill tone={sensors.gps.fix ? 'pill-green' : 'pill-dim'}>
+                  {sensors.gps.fix ? t('dashboard.lockAcquired') : t('dashboard.noFix')}
+                </Pill>
+              </>
+            }
+          >
+            <div class="coordinate-line mono">
+              {sensors.gps.fix ? formatCoordinates(sensors.gps.latitude ?? 0, sensors.gps.longitude ?? 0, 6) : '--'}
+            </div>
+            <div class="tile-grid gps-metrics">
+              <MetricTile label={t('dashboard.satellites')} value={String(sensors.gps.satellites ?? 0)} tone="tone-green" />
+              <MetricTile label={t('dashboard.altitude')} value={sensors.gps.fix ? formatNumber(sensors.gps.altitude, 0) : '--'} unit="m" />
+              <MetricTile label="HDOP" value={sensors.gps.fix ? formatNumber(sensors.gps.hdop, 1) : '--'} />
+              <MetricTile label={t('dashboard.fixAge')} value={formatAgeMs(sensors.gps.ageMs)} />
+            </div>
+          </Card>
+        )),
     },
-    lightOk && {
+    (lightOk || fault('light')) && {
       id: 'light',
       title: t('dashboard.lightSensor'),
-      node: (
+      node: faultCard('light', t('dashboard.lightSensor'), 'eye') || (
         <Card title={t('dashboard.lightSensor')} icon="eye" tone="cyan">
           <SensorReadingRow label={t('dashboard.illuminance')} value={formatNumber(sensors.light.lux, 5)} unit="lux" />
           <SensorReadingRow label={t('dashboard.visible')} value={String(sensors.light.visible)} unit={t('dashboard.rawUnit')} />
@@ -341,115 +359,96 @@ const Dashboard: FunctionalComponent = () => {
     {
       id: 'device',
       title: t('dashboard.deviceNetwork'),
-      node: (
-        <Card title={t('dashboard.deviceNetwork')} icon="wifi" tone="cyan">
-          <div class="tile-grid two">
-            <div class="metric-tile left">
-              <div class="metric-label">{t('dashboard.wifi')}</div>
-              <Pill tone={rssi.tone}>{rssi.label}</Pill>
-              <div class="metric-sub mono">{status?.wifi?.rssi ?? '--'} dBm</div>
-              <div class="metric-sub">{status?.wifi?.ssid ?? '--'}</div>
-            </div>
-            <div class="metric-tile left">
-              <div class="metric-label">{t('dashboard.ipAddress')}</div>
-              <div class="metric-value tone-cyan small">{status?.wifi?.ip ?? '--'}</div>
-              <div class="metric-label pushed">{t('dashboard.uptime')}</div>
-              <div class="metric-sub mono">{formatUptime(status?.uptime)}</div>
-            </div>
-          </div>
-          {status?.firmware?.version && (
-            <div class="firmware-row">
-              <span>{t('dashboard.firmware')}</span>
-              <Pill>v{status.firmware.version}</Pill>
-            </div>
-          )}
-        </Card>
-      ),
+      node: <DeviceCard status={status} />,
     },
-    irOk && {
+    (irOk || fault('infrared')) && {
       id: 'ir',
       title: t('dashboard.irTemperature'),
-      node: (
+      node: faultCard('infrared', t('dashboard.irTemperature'), 'therm') || (
         <Card title={t('dashboard.irTemperature')} icon="therm" tone="violet">
           <ReadingRow label={t('dashboard.skyTemperature')} value={`${formatNumber(sensors.infrared.skyTemperature, 1)} °C`} />
           <ReadingRow label={t('dashboard.ambient')} value={`${formatNumber(sensors.infrared.ambientTemperature, 1)} °C`} />
         </Card>
       ),
     },
-    sensors.wind && {
+    (sensors.wind || fault('wind')) && {
       id: 'wind',
       title: t('dashboard.wind'),
-      node: (
-        <Card
-          title={t('dashboard.wind')}
-          icon="cloud"
-          tone="cyan"
-          actions={
-            <Pill tone={sensors.wind.status === 'ok' ? 'pill-green' : 'pill-red'}>
-              {sensors.wind.status === 'ok' ? t('dashboard.online') : t('dashboard.offline')}
-            </Pill>
-          }
-        >
-          <div class="metric-grid">
-            <MetricTile
-              label={t('dashboard.speed')}
-              value={formatNumber(sensors.wind.speed, 1)}
-              unit={t('dashboard.mSNumberKmH', { number: formatNumber((sensors.wind.speed ?? 0) * 3.6, 0) })}
-              tone={windTone(sensors.wind.speed, config?.alpaca?.windSpeedUnsafeEnabled, config?.alpaca?.windSpeedUnsafeMs, 'tone-cyan')}
-            />
-            <MetricTile
-              label={t('dashboard.gust')}
-              value={formatNumber(sensors.wind.gust, 1)}
-              unit={t('dashboard.mSNumberKmH', { number: formatNumber((sensors.wind.gust ?? 0) * 3.6, 0) })}
-              tone={windTone(sensors.wind.gust, config?.alpaca?.windGustUnsafeEnabled, config?.alpaca?.windGustUnsafeMs)}
-            />
-            <MetricTile
-              label={t('dashboard.direction')}
-              value={sensors.wind.direction !== undefined ? compassPoint(sensors.wind.direction) : '--'}
-              unit={
-                sensors.wind.direction !== undefined
-                  ? `${formatNumber(sensors.wind.direction, 0)}°`
-                  : sensors.wind.vaneFault
-                    ? t('dashboard.vaneFault')
-                    : t('dashboard.calm')
-              }
-            />
-          </div>
-        </Card>
-      ),
+      node:
+        faultCard('wind', t('dashboard.wind'), 'cloud') ||
+        (sensors.wind && (
+          <Card
+            title={t('dashboard.wind')}
+            icon="cloud"
+            tone="cyan"
+            actions={
+              <Pill tone={sensors.wind.status === 'ok' ? 'pill-green' : 'pill-red'}>
+                {sensors.wind.status === 'ok' ? t('dashboard.online') : t('dashboard.offline')}
+              </Pill>
+            }
+          >
+            <div class="metric-grid">
+              <MetricTile
+                label={t('dashboard.speed')}
+                value={formatNumber(sensors.wind.speed, 1)}
+                unit={t('dashboard.mSNumberKmH', { number: formatNumber((sensors.wind.speed ?? 0) * 3.6, 0) })}
+                tone={windTone(sensors.wind.speed, config?.alpaca?.windSpeedUnsafeEnabled, config?.alpaca?.windSpeedUnsafeMs, 'tone-cyan')}
+              />
+              <MetricTile
+                label={t('dashboard.gust')}
+                value={formatNumber(sensors.wind.gust, 1)}
+                unit={t('dashboard.mSNumberKmH', { number: formatNumber((sensors.wind.gust ?? 0) * 3.6, 0) })}
+                tone={windTone(sensors.wind.gust, config?.alpaca?.windGustUnsafeEnabled, config?.alpaca?.windGustUnsafeMs)}
+              />
+              <MetricTile
+                label={t('dashboard.direction')}
+                value={sensors.wind.direction !== undefined ? compassPoint(sensors.wind.direction) : '--'}
+                unit={
+                  sensors.wind.direction !== undefined
+                    ? `${formatNumber(sensors.wind.direction, 0)}°`
+                    : sensors.wind.vaneFault
+                      ? t('dashboard.vaneFault')
+                      : t('dashboard.calm')
+                }
+              />
+            </div>
+          </Card>
+        )),
     },
-    rain && {
+    (rain || fault('rain')) && {
       id: 'rain',
       title: t('dashboard.rainSensor'),
-      node: (
-        <Card
-          title={t('dashboard.rainSensor')}
-          icon="rain"
-          tone="cyan"
-          actions={
-            <>
-              <Pill tone={rainStatus.tone}>{rainStatus.text}</Pill>
-            </>
-          }
-        >
-          <div class="metric-grid">
-            <MetricTile
-              label={t('dashboard.raining')}
-              value={rain.raining ? t('dashboard.yes') : rain.status === 'ok' ? t('dashboard.no') : '--'}
-              tone={rain.raining ? 'tone-amber' : 'tone-green'}
-            />
-            <MetricTile label={t('dashboard.intensity')} value={formatNumber(rainValue(rain.intensity), 1)} unit={rainUnits.intensity} />
-            <MetricTile label={t('dashboard.event')} value={formatNumber(rainValue(rain.eventAccumulation), 2)} unit={rainUnits.depth} />
-            <MetricTile label={t('dashboard.daily')} value={formatNumber(rainValue(rain.totalAccumulation), 2)} unit={rainUnits.depth} />
-          </div>
-          {(rain.lensFault || rain.emitterSaturated) && (
-            <div class="warning-list">
-              {rain.lensFault && <span>{t('dashboard.lensFaultCleanOrInspect')}</span>}
-              {rain.emitterSaturated && <span>{t('dashboard.emitterSaturationDetected')}</span>}
+      node:
+        faultCard('rain', t('dashboard.rainSensor'), 'rain') ||
+        (rain && (
+          <Card
+            title={t('dashboard.rainSensor')}
+            icon="rain"
+            tone="cyan"
+            actions={
+              <>
+                <Pill tone={rainStatus.tone}>{rainStatus.text}</Pill>
+              </>
+            }
+          >
+            <div class="metric-grid">
+              <MetricTile
+                label={t('dashboard.raining')}
+                value={rain.raining ? t('dashboard.yes') : rain.status === 'ok' ? t('dashboard.no') : '--'}
+                tone={rain.raining ? 'tone-amber' : 'tone-green'}
+              />
+              <MetricTile label={t('dashboard.intensity')} value={formatNumber(rainValue(rain.intensity), 1)} unit={rainUnits.intensity} />
+              <MetricTile label={t('dashboard.event')} value={formatNumber(rainValue(rain.eventAccumulation), 2)} unit={rainUnits.depth} />
+              <MetricTile label={t('dashboard.daily')} value={formatNumber(rainValue(rain.totalAccumulation), 2)} unit={rainUnits.depth} />
             </div>
-          )}
-        </Card>
-      ),
+            {(rain.lensFault || rain.emitterSaturated) && (
+              <div class="warning-list">
+                {rain.lensFault && <span>{t('dashboard.lensFaultCleanOrInspect')}</span>}
+                {rain.emitterSaturated && <span>{t('dashboard.emitterSaturationDetected')}</span>}
+              </div>
+            )}
+          </Card>
+        )),
     },
   ];
   const visible = cards.filter((card): card is MasonryItem => Boolean(card));
@@ -468,7 +467,8 @@ const Dashboard: FunctionalComponent = () => {
   };
 
   return (
-    <div class="dashboard page-enter">
+    <div class={`dashboard page-enter${connected ? '' : ' is-disconnected'}`}>
+      <AtAGlance items={items} onAction={onAction} />
       <div class="dashboard-toolbar">
         {arranging && (
           <Button

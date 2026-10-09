@@ -99,6 +99,22 @@ void test_latch_expires_without_readings()
     TEST_ASSERT_FALSE(latch.latched);
 }
 
+void test_clear_remaining()
+{
+    const uint32_t delay = 60000;
+    Rain::Latch latch;
+    TEST_ASSERT_EQUAL_UINT32(0, Rain::clearRemainingMs(latch, 1000, delay)); // never rained
+    Rain::observe(latch, 1.0f, 0.1f, 5000, delay);
+    TEST_ASSERT_EQUAL_UINT32(delay, Rain::clearRemainingMs(latch, 5000, delay)); // still raining
+    TEST_ASSERT_EQUAL_UINT32(delay - 20000, Rain::clearRemainingMs(latch, 25000, delay));
+    Rain::expire(latch, 5000 + delay + 1, delay);
+    TEST_ASSERT_EQUAL_UINT32(0, Rain::clearRemainingMs(latch, 5000 + delay + 1, delay)); // released
+    // millis() wrap: rain just before the wrap, checked just after.
+    Rain::Latch wrapped;
+    Rain::observe(wrapped, 1.0f, 0.1f, 0xFFFFF000u, delay);
+    TEST_ASSERT_EQUAL_UINT32(delay - 0x2000u, Rain::clearRemainingMs(wrapped, 0x1000u, delay));
+}
+
 void test_new_event_restarts_accumulation()
 {
     const uint32_t delay = 1000;
@@ -194,6 +210,7 @@ int main()
     RUN_TEST(test_rejects_garbled_lines);
     RUN_TEST(test_latch_holds_for_clear_delay);
     RUN_TEST(test_latch_expires_without_readings);
+    RUN_TEST(test_clear_remaining);
     RUN_TEST(test_new_event_restarts_accumulation);
     RUN_TEST(test_latch_across_millis_wrap);
     RUN_TEST(test_daily_reset_adopts_without_resetting_first);

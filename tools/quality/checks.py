@@ -68,6 +68,8 @@ HINTS = {
     "ERR-01": "don't swallow the error: handle it, return it or log what failed",
     "EXC-01": "a suppression names the rule and says why on the same line, e.g. `// NOLINT(rule): reason`",
     "LINT-01": "fix the linter finding, or suppress it with a reason (EXC-01)",
+    "DASH-02": "map the field or dependency in web/src/dashboard/inventory.json (shown with a test, or notShown with a reason): "
+    "python3 tools/dashboard/check.py",
     "I18N-05": "format with web/src/i18n/format.ts and read typed numbers with web/src/i18n/parse.ts "
     "(SVG geometry: web/src/lib/svg.ts; option values: Number(value))",
     "I18N-01": "move the text to web/src/i18n/en.json and use t() (or `// i18n-ignore: <reason>`)",
@@ -192,6 +194,15 @@ def check_eslint(fix: bool, targets: tuple[str, ...] = (".",)) -> list[Finding]:
             rule = ESLINT_RULES.get(msg.get("ruleId") or "", "LINT-01")
             findings.append(Finding(rule, path, msg.get("line", 1), f"{msg['message']} [{msg.get('ruleId')}]"))
     return findings
+
+
+def check_dashboard() -> list[Finding]:
+    """DASH-02: every device field and settings dependency is on the dashboard inventory (spec 025)."""
+    out = run([sys.executable, "tools/dashboard/check.py", "--json"])
+    try:
+        return [Finding("DASH-02", item["file"], item["line"], item["message"]) for item in json.loads(out.stdout or "[]")]
+    except json.JSONDecodeError:
+        sys.exit(f"check.py: tools/dashboard/check.py failed:\n{out.stderr or out.stdout}")
 
 
 def check_i18n() -> list[Finding]:
