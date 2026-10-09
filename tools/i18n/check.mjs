@@ -27,6 +27,10 @@ const SHARED_KEEP = (() => {
 export const languageCodes = () =>
   [...fs.readFileSync(path.join(I18N, 'languages.ts'), 'utf8').matchAll(/code: '([^']+)'/g)].map((m) => m[1]).filter((c) => c !== 'en');
 
+// Languages written without spaces between words: text joined to other text
+// ("、", "和") needs no space around it, so English's edge spaces are optional.
+const NO_WORD_SPACES = new Set(['ja', 'zh-Hans']);
+
 const readJson = (file, problems) => {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -60,7 +64,7 @@ export function checkLanguage(code, en, messages, file) {
     if (typeof english === 'string') {
       if (typeof value !== 'string') add(`${code}: ${key} must be a string, like English`);
       else if (!value.trim()) add(`${code}: ${key} is empty`);
-      else if (/^\s/.test(english) !== /^\s/.test(value) || /\s$/.test(english) !== /\s$/.test(value))
+      else if (!NO_WORD_SPACES.has(code) && (/^\s/.test(english) !== /^\s/.test(value) || /\s$/.test(english) !== /\s$/.test(value)))
         add(`${code}: ${key} must keep English's leading/trailing space (it is joined to other text)`);
       else if (!samePlaceholders(placeholders(english), placeholders(value)))
         add(`${code}: ${key} placeholders {${placeholders(value).join('}, {')}} differ from English {${placeholders(english).join('}, {')}}`);
