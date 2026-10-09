@@ -45,7 +45,11 @@ const samePlaceholders = (a, b) => JSON.stringify([...new Set(a)].sort()) === JS
 export function checkLanguage(code, en, messages, file) {
   const problems = [];
   const add = (message) => problems.push({ file, message });
-  const required = new Intl.PluralRules(code).resolvedOptions().pluralCategories;
+  // The plural forms this language uses for the counts the UI shows (0-1000).
+  // Spanish, French, Italian and Portuguese have a "many" form only for
+  // millions, which never appear here.
+  const rules = new Intl.PluralRules(code);
+  const required = [...new Set(Array.from({ length: 1001 }, (_, n) => rules.select(n)))];
   for (const key of Object.keys(en)) {
     if (!(key in messages)) {
       add(`${code}: missing key ${key}`);
