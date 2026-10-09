@@ -68,6 +68,9 @@ HINTS = {
     "ERR-01": "don't swallow the error: handle it, return it or log what failed",
     "EXC-01": "a suppression names the rule and says why on the same line, e.g. `// NOLINT(rule): reason`",
     "LINT-01": "fix the linter finding, or suppress it with a reason (EXC-01)",
+    "I18N-01": "move the text to web/src/i18n/en.json and use t() (or `// i18n-ignore: <reason>`)",
+    "I18N-02": "every language file needs exactly the English keys, placeholders and plural forms: "
+    "run `node tools/i18n/check.mjs`, then `python3 tools/i18n/translate.py`",
 }
 
 
@@ -185,6 +188,24 @@ def check_eslint(fix: bool, targets: tuple[str, ...] = (".",)) -> list[Finding]:
         for msg in result["messages"]:
             rule = ESLINT_RULES.get(msg.get("ruleId") or "", "LINT-01")
             findings.append(Finding(rule, path, msg.get("line", 1), f"{msg['message']} [{msg.get('ruleId')}]"))
+    return findings
+
+
+def check_i18n() -> list[Finding]:
+    """I18N-01 hard-coded UI text and I18N-02 incomplete translations (spec 023)."""
+    findings = []
+    out = run(["node", "tools/i18n/literals.mjs", "--json"])
+    try:
+        for item in json.loads(out.stdout or "[]"):
+            findings.append(Finding("I18N-01", item["file"], item["line"], f'hard-coded UI text "{item["text"]}"'))
+    except json.JSONDecodeError:
+        sys.exit(f"check.py: tools/i18n/literals.mjs failed:\n{out.stderr or out.stdout}")
+    out = run(["node", "tools/i18n/check.mjs", "--json"])
+    try:
+        for item in json.loads(out.stdout or "[]"):
+            findings.append(Finding("I18N-02", item["file"], 1, item["message"]))
+    except json.JSONDecodeError:
+        sys.exit(f"check.py: tools/i18n/check.mjs failed:\n{out.stderr or out.stdout}")
     return findings
 
 
