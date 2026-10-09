@@ -228,6 +228,7 @@
   "device.language.theDownloadWasIncompleteTryAgain": "İndirme eksik kaldı: yeniden deneyin",
   "device.language.theLanguageFileIsTooBig": "Dil dosyası çok büyük (en fazla 64 KB)",
   "device.language.theLanguageFileSChecksumIs": "Dil dosyasının sağlama toplamı eksik veya bozuk",
+  "device.language.theLastLanguageDownloadDidnT": "Son dil indirmesi tamamlanmadı: yeniden denemek için dili tekrar seçin",
   "device.ota.busySendingAlertsTryAgainIn": "Uyarılar gönderiliyor: biraz sonra yeniden deneyin",
   "device.ota.downloadFailedHttpHttpcode": "İndirme başarısız (HTTP {httpCode})",
   "device.ota.downloadIncompleteWrittenOfExpectedsizeBytes": "İndirme eksik ({written}/{expectedSize} bayt)",

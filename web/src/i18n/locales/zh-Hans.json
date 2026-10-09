@@ -225,6 +225,7 @@
   "device.language.theDownloadWasIncompleteTryAgain": "下载不完整：请重试",
   "device.language.theLanguageFileIsTooBig": "语言文件过大（最大64 KB）",
   "device.language.theLanguageFileSChecksumIs": "语言文件的校验和缺失或已损坏",
+  "device.language.theLastLanguageDownloadDidnT": "上次的语言文件下载未完成：请重新选择该语言以重试",
   "device.ota.busySendingAlertsTryAgainIn": "正在发送警报：请稍后重试",
   "device.ota.downloadFailedHttpHttpcode": "下载失败（HTTP {httpCode}）",
   "device.ota.downloadIncompleteWrittenOfExpectedsizeBytes": "下载不完整（{written}/{expectedSize}字节）",

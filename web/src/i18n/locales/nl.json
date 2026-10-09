@@ -228,6 +228,7 @@
   "device.language.theDownloadWasIncompleteTryAgain": "De download was onvolledig: probeer het opnieuw",
   "device.language.theLanguageFileIsTooBig": "Het taalbestand is te groot (maximaal 64 KB)",
   "device.language.theLanguageFileSChecksumIs": "De controlesom van het taalbestand ontbreekt of is beschadigd",
+  "device.language.theLastLanguageDownloadDidnT": "De laatste taaldownload is niet afgerond: kies de taal opnieuw om het nog eens te proberen",
   "device.ota.busySendingAlertsTryAgainIn": "Bezig met versturen van meldingen: probeer het zo opnieuw",
   "device.ota.downloadFailedHttpHttpcode": "Download mislukt (HTTP {httpCode})",
   "device.ota.downloadIncompleteWrittenOfExpectedsizeBytes": "Download onvolledig ({written} van {expectedSize} bytes)",

@@ -218,6 +218,7 @@
     "device.language.theDownloadWasIncompleteTryAgain": "faa286ddc9",
     "device.language.theLanguageFileIsTooBig": "ce8e75f646",
     "device.language.theLanguageFileSChecksumIs": "df738e7950",
+    "device.language.theLastLanguageDownloadDidnT": "ed01aee9a5",
     "device.ota.busySendingAlertsTryAgainIn": "f461b20ebd",
     "device.ota.downloadFailedHttpHttpcode": "bc4f57decb",
     "device.ota.downloadIncompleteWrittenOfExpectedsizeBytes": "07919c6de9",

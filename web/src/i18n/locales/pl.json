@@ -234,6 +234,7 @@
   "device.language.theDownloadWasIncompleteTryAgain": "Pobieranie było niekompletne – spróbuj ponownie",
   "device.language.theLanguageFileIsTooBig": "Plik językowy jest za duży (maks. 64 KB)",
   "device.language.theLanguageFileSChecksumIs": "Brak sumy kontrolnej pliku językowego lub jest uszkodzona",
+  "device.language.theLastLanguageDownloadDidnT": "Ostatnie pobieranie języka nie zostało ukończone – wybierz język ponownie, aby spróbować jeszcze raz",
   "device.ota.busySendingAlertsTryAgainIn": "Trwa wysyłanie powiadomień – spróbuj ponownie za chwilę",
   "device.ota.downloadFailedHttpHttpcode": "Pobieranie nie powiodło się (HTTP {httpCode})",
   "device.ota.downloadIncompleteWrittenOfExpectedsizeBytes": "Pobieranie niekompletne ({written} z {expectedSize} bajtów)",

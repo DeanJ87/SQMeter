@@ -49,5 +49,19 @@ namespace SQM
         };
         FileCheck checkFile(const uint8_t *head, size_t headLength, size_t size, size_t freeBytes);
         const char *fileCheckMessage(FileCheck check);
+
+        // What to do about the language file once WiFi is up after a boot.
+        // `unfinishedAttempt`: a download was still running when the device
+        // last stopped (a crash or power loss mid-download). Retrying that
+        // automatically on every boot could loop forever, so it waits for the
+        // user to choose the language again.
+        enum class BootAction
+        {
+            Nothing,        // English: nothing to fetch
+            UseInstalled,   // the stored file matches this firmware
+            Restore,        // fetch the file for this firmware
+            WaitAfterCrash, // last attempt never finished: don't retry by itself
+        };
+        BootAction bootAction(const std::string &code, bool installedMatches, bool unfinishedAttempt);
     } // namespace Language
 } // namespace SQM
