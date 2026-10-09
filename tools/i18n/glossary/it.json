@@ -27,7 +27,7 @@
     "twilight": "crepuscolo",
     "settings": "impostazioni",
     "firmware": "firmware",
-    "dashboard": "pannello",
+    "dashboard": "pannello|dashboard",
     "restart": "riavviare",
     "threshold": "soglia",
     "calibration": "calibrazione",

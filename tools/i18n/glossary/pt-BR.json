@@ -28,7 +28,7 @@
     "settings": "configurações",
     "firmware": "firmware",
     "dashboard": "painel",
-    "restart": "reiniciar",
+    "restart": "reiniciar|reinício",
     "threshold": "limite",
     "calibration": "calibração",
     "reading": "leitura"

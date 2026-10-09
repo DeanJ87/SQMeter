@@ -593,7 +593,7 @@
   "settings.alerts.urgent": "Dringend",
   "settings.alerts.useTheDefaultWording": "Standaardtekst gebruiken",
   "settings.alerts.usedWhereAnEventS": "Gebruikt als het geluid van een gebeurtenis op Standaard staat.",
-  "settings.alerts.userKey": "User key",
+  "settings.alerts.userKey": "Gebruikerssleutel",
   "settings.alerts.varEvent": "Naam van de gebeurtenis, bijv. unsafe of rain_started",
   "settings.alerts.varLevel": "Niveau van de melding",
   "settings.alerts.vibrateOnly": "Alleen trillen",

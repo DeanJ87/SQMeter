@@ -19,7 +19,7 @@
     "gust": "windstoot",
     "alert": "melding",
     "pause": "pauzeren",
-    "resume": "hervatten",
+    "resume": "hervatten|verder",
     "safe": "veilig",
     "unsafe": "onveilig",
     "safe delay": "veiligheidsvertraging",

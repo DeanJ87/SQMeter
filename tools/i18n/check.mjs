@@ -87,6 +87,16 @@ export function checkLanguage(code, en, messages, file) {
   return problems;
 }
 
+// A glossary term counts as used when each of its words appears by its stem,
+// so inflected forms match ("wznowić" -> "wznów", "riavviare" -> "riavvia").
+export const usesTerm = (text, term) => {
+  const lower = text.toLowerCase();
+  return term
+    .toLowerCase()
+    .split(/\s+/)
+    .every((word) => lower.includes(word.length > 4 ? word.slice(0, Math.max(4, Math.ceil(word.length * 0.6))) : word));
+};
+
 /** Review flags (FR-022): not failures, a worklist for the review pass. */
 export function reviewLanguage(code, en, messages, context, glossary) {
   const flags = [];
@@ -101,9 +111,11 @@ export function reviewLanguage(code, en, messages, context, glossary) {
     if (code !== 'en' && text === enText && words.some((w) => !isKept(w))) flags.push(`${code}: ${key} looks untranslated: "${text}"`);
     const limit = /max (\d+)/.exec(context[key] ?? '')?.[1];
     if (limit && text.length > Number(limit)) flags.push(`${code}: ${key} is ${text.length} chars, over the limit ${limit}: "${text}"`);
+    // Placeholders, MQTT topics and API paths ({resume}, <base>/safe) aren't prose.
+    const prose = enText.replace(/\{\w+\}/g, ' ').replace(/\S*\/\S*/g, ' ');
     for (const [term, translation] of Object.entries(glossary?.terms ?? {})) {
-      if (new RegExp(`\\b${term}\\b`, 'i').test(enText) && translation && !text.toLowerCase().includes(String(translation).toLowerCase().split('|')[0]))
-        flags.push(`${code}: ${key} doesn't use the glossary term "${term}" -> "${translation}"`);
+      if (!translation || !new RegExp(`\\b${term}\\b`, 'i').test(prose)) continue;
+      if (!String(translation).split('|').some((alt) => usesTerm(text, alt))) flags.push(`${code}: ${key} doesn't use the glossary term "${term}" -> "${translation}"`);
     }
   }
   return flags;

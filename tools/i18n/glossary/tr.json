@@ -21,15 +21,15 @@
     "pause": "duraklat",
     "resume": "sürdür",
     "safe": "güvenli",
-    "unsafe": "güvenli değil",
+    "unsafe": "güvenli değil|güvenli olma|güvenli sayılmaz",
     "safe delay": "güvenli bekleme süresi",
     "rain clear delay": "yağmur sonrası bekleme",
     "twilight": "alacakaranlık",
-    "settings": "ayarlar",
+    "settings": "ayarlar|ayar",
     "firmware": "üretici yazılımı",
     "dashboard": "pano",
     "restart": "yeniden başlat",
-    "threshold": "eşik",
+    "threshold": "eşik|eşiğ",
     "calibration": "kalibrasyon",
     "reading": "ölçüm"
   }

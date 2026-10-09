@@ -21,7 +21,7 @@
     "pause": "일시 중지",
     "resume": "재개",
     "safe": "안전",
-    "unsafe": "안전하지 않음",
+    "unsafe": "안전하지 않음|안전하지 않",
     "safe delay": "안전 판정 대기 시간",
     "rain clear delay": "비 그친 후 대기 시간",
     "twilight": "박명",
