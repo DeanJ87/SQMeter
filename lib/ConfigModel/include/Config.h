@@ -188,6 +188,9 @@ namespace SQM
         };
         static constexpr size_t MAX_TEMPLATE_TITLE = 80;
         static constexpr size_t MAX_TEMPLATE_MESSAGE = 240;
+        // Custom wording within the limits, counted in characters (as the
+        // web UI counts them), not UTF-8 bytes.
+        static bool templateFits(const std::string &title, const std::string &message);
         EventSetting unsafe;
         EventSetting safe;
         EventSetting rainStarted;

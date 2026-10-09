@@ -1362,6 +1362,15 @@ a.status-row-main:focus-visible .status-row-label {
   width: 100%;
 }
 
+.inline-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .btn-row {
   display: flex;
   flex-wrap: wrap;

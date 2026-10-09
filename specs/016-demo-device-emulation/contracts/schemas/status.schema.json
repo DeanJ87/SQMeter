@@ -43,6 +43,10 @@
             "null",
             "number"
           ]
+        },
+        "recentRevision": {
+          "type": "integer",
+          "minimum": 0
         }
       },
       "required": [
@@ -51,7 +55,8 @@
         "mode",
         "reason",
         "since",
-        "sinceAgeMs"
+        "sinceAgeMs",
+        "recentRevision"
       ],
       "additionalProperties": false
     },
@@ -856,6 +861,10 @@
         "ssid"
       ],
       "additionalProperties": false
+    },
+    "configRevision": {
+      "type": "integer",
+      "minimum": 0
     }
   },
   "required": [
@@ -886,7 +895,8 @@
     "stackFree",
     "time",
     "uptime",
-    "wifi"
+    "wifi",
+    "configRevision"
   ],
   "additionalProperties": false
 }

@@ -24,7 +24,7 @@ SQMeter measures light pollution in real time using an ESP32. It gives you SQM m
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/sensors/ include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h include/OtaUpdater.h include/TimeManager.h
 blocking: false
-fingerprint: db1269fd34b05db2
+fingerprint: 6ea1640633b96329
 -->
 ```mermaid
 flowchart LR

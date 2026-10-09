@@ -273,6 +273,7 @@ namespace SQM
     {
         // System stats
         doc["uptime"] = millis() / 1000;
+        doc["configRevision"] = configRevision;
         doc["freeHeap"] = ESP.getFreeHeap();
         // Stack headroom (bytes never used). This handler runs on the
         // AsyncTCP task, so "asyncTcp" is that task's own high-water mark.
@@ -372,7 +373,9 @@ namespace SQM
         appendFirmware(doc);
         appendRuntime(doc);
         Core::writeSky(doc.createNestedObject("sky"), computeNight(snapshot, getConfigCallback()));
-        Core::writeAlertSchedule(doc.createNestedObject("alerts"), sharedSchedule(), getConfigCallback(), millis());
+        JsonObject alerts = doc.createNestedObject("alerts");
+        Core::writeAlertSchedule(alerts, sharedSchedule(), getConfigCallback(), millis());
+        alerts["recentRevision"] = alertDispatcher ? alertDispatcher->recentRevision() : 0;
         Core::writeClientWatch(doc.createNestedObject("alpaca"), sharedClientWatch(), getConfigCallback(), millis());
         appendMemory(doc);
         appendPartitions(doc);

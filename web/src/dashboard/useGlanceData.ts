@@ -2,11 +2,12 @@ import { useEffect, useState } from 'preact/hooks';
 import { fetchEffectiveReport, type EffectiveReport } from '../lib/settingsDeps';
 
 // Which settings are on but not in effect (specs/025 FR-011, research D9):
-// read on load, every minute, and when the tab comes back into view.
+// read on load, every minute, when the tab comes back into view, and when the
+// device says its settings changed (`configRevision`).
 
 const REFRESH_MS = 60_000;
 
-export const useEffectiveReport = (): EffectiveReport | null => {
+export const useEffectiveReport = (configRevision?: number): EffectiveReport | null => {
   const [report, setReport] = useState<EffectiveReport | null>(null);
   useEffect(() => {
     let alive = true;
@@ -20,6 +21,6 @@ export const useEffectiveReport = (): EffectiveReport | null => {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, []);
+  }, [configRevision]);
   return report;
 };

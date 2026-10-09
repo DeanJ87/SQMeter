@@ -75,6 +75,7 @@ export interface SystemStatus {
     };
   };
   uptime: number;
+  configRevision?: number; // goes up whenever the device saves its settings
   bootCount?: number;
   resetReason?: number; // ESP-IDF esp_reset_reason_t
   freeHeap: number;

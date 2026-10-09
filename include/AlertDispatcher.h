@@ -87,6 +87,9 @@ namespace SQM
 
         std::vector<AlertRecord> recent() const;
         void clearRecent();
+        // Goes up whenever recent() would answer differently (a new alert, a
+        // channel's result, a clear), so the UI can fetch the list only then.
+        uint32_t recentRevision() const { return revision; }
 
     private:
         static constexpr size_t MAX_RECORDS = 20;
@@ -124,6 +127,7 @@ namespace SQM
         SemaphoreHandle_t mutex = nullptr;
         std::vector<AlertRecord> records;
         uint32_t nextId = 1;
+        volatile uint32_t revision = 0;
     };
 
 } // namespace SQM

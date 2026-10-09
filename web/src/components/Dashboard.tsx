@@ -68,14 +68,17 @@ const Dashboard: FunctionalComponent = () => {
   const quiet = useQuiet(lastMessageAt);
   const { data: status } = useWebSocket<SystemStatus>('/ws/status');
   const [config, setConfig] = useState<Config | null>(null);
-  const effective = useEffectiveReport();
+  const configRevision = status?.configRevision;
+  const effective = useEffectiveReport(configRevision);
   const { schedule, pauseOrResume } = useAlertSchedule(status?.alerts);
 
+  // Read again whenever the device's settings change, so a new location
+  // reaches Sun & Moon without a reload. A failed read keeps what's shown.
   useEffect(() => {
     getJson<Config>('/api/config')
-      .then((data) => setConfig(data))
-      .catch(() => setConfig(null));
-  }, []);
+      .then((data) => data && setConfig(data))
+      .catch(() => undefined);
+  }, [configRevision]);
 
   const sqmHistory = useSqmHistory(sensors?.sky?.sqm);
 

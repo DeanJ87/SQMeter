@@ -29,7 +29,7 @@ const SoundSelect: FunctionalComponent<{ view: AlertsView; eventKey: AlertEventK
   return (
     <SelectInput
       value={event.sound}
-      ariaLabel={`${label}: sound`}
+      ariaLabel={t('settings.alerts.soundFor', { label })}
       options={soundOptions(event.sound, t('settings.alerts.default'))}
       disabled={view.off}
       onChange={(v) => view.set(['events', key, 'sound'], v)}
@@ -65,7 +65,7 @@ export const AlertEventRow: FunctionalComponent<AlertEventRowProps> = ({
         </span>
         <SelectInput
           value={String(event.level)}
-          ariaLabel={`${label}: level`}
+          ariaLabel={t('settings.alerts.levelFor', { label })}
           options={LEVEL_OPTIONS}
           disabled={off || locked}
           onChange={(v) => set(['events', key, 'level'], Number(v))}

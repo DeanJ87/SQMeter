@@ -48,12 +48,33 @@ const ipv6Addresses = (running: boolean) => ({
     : [],
 });
 
+// Like the device's alerts.recentRevision: changes whenever the recent-alerts
+// list would read differently (a new alert, a channel result, a clear), not
+// with the ages that tick by every second.
+const recentRevision = () => {
+  const recent = JSON.parse(demoDevice.recentAlerts()) as { alerts?: { id: number; channels?: unknown }[] };
+  const key = (recent.alerts ?? []).map((a) => `${a.id}:${JSON.stringify(a.channels ?? {})}`).join('|');
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return hash;
+};
+
+// Like the device's configRevision: changes when the settings change.
+const configRevision = () => {
+  const text = JSON.stringify(demoDevice.rawConfig());
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+  return hash;
+};
+
 export function statusDocument() {
   const parts = demoDevice.statusParts();
   const cfg = demoDevice.rawConfig();
   return {
     ...mockStatus,
     ...parts,
+    alerts: { ...parts.alerts, recentRevision: recentRevision() },
+    configRevision: configRevision(),
     firmware: { ...mockStatus.firmware, version: '0.2.0-beta.3' },
     time: { epoch: Math.floor(demoDevice.now.getTime() / 1000), iso: demoDevice.isoTime, timezone: cfg.ntp?.timezone ?? 'UTC0' },
     wifi: {
@@ -188,6 +209,19 @@ export const demoHandlers = [
     const send = () => client.send(JSON.stringify(statusDocument()));
     send();
     const interval = setInterval(send, 2000);
-    client.addEventListener('close', () => clearInterval(interval));
+    // As on the device: a change to the recent alerts or the settings is pushed at once.
+    const revisions = () => `${recentRevision()}:${configRevision()}`;
+    let lastRevision = revisions();
+    const unsubscribe = demoDevice.onChange(() => {
+      const revision = revisions();
+      if (revision !== lastRevision) {
+        lastRevision = revision;
+        send();
+      }
+    });
+    client.addEventListener('close', () => {
+      clearInterval(interval);
+      unsubscribe();
+    });
   }),
 ];

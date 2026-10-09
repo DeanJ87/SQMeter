@@ -26,12 +26,13 @@ curl http://sqmeter.local/api/status
 ```json
 {
   "uptime": 3600,
+  "configRevision": 3,
   "freeHeap": 128728,
   "firmware": { "name": "SQMeter", "version": "0.3.0", "buildDate": "Oct  8 2026", "buildTime": "12:00:00", "variant": "standard" },
   "time": { "epoch": 1791494565, "iso": "2026-10-08T22:22:45+0100", "timezone": "GMT0BST,M3.5.0/1,M10.5.0" },
   "wifi": { "connected": true, "ssid": "MyNetwork", "ip": "192.168.1.42", "rssi": -62, "mac": "AA:BB:CC:DD:EE:FF", "connectPending": false, "apMode": false, "hostname": "sqmeter", "mdns": true, "ipv6": { "enabled": true, "addresses": [{ "address": "fe80::a00:27ff:fe4e:66a1", "scope": "link-local" }, { "address": "2a02:8010:abcd:1:a00:27ff:fe4e:66a1", "scope": "global" }] } },
   "sky": { "locationSource": "manual", "nightKnown": true, "latitude": 51.4779, "longitude": -0.0015, "isNight": false, "sunAltitudeDeg": 19.4 },
-  "alerts": { "armed": true, "armWithAlpaca": true, "mode": "whileConnected", "reason": "client-connected", "since": "2026-10-08T20:58:02Z", "sinceAgeMs": 412000 },
+  "alerts": { "armed": true, "armWithAlpaca": true, "mode": "whileConnected", "reason": "client-connected", "since": "2026-10-08T20:58:02Z", "sinceAgeMs": 412000, "recentRevision": 7 },
   "alpaca": {
     "enabled": true,
     "clients": {
@@ -54,7 +55,7 @@ curl http://sqmeter.local/api/status
 }
 ```
 
-`alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object. `alpaca.clients` says, per Alpaca device, whether an imaging app has it `connected`, whether one is `watching` (connected, or polling since the restart), whether it has gone `silent` (no request for the alert's **Silent for** time), how long ago it last checked (`lastCheckedAgeMs`, `null` if never since the restart) and the last Alpaca `clientId` (`null` if none); the web UI's own requests aren't counted ([The imaging app](../user-guide/alerts.md#the-imaging-app)).
+`alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object, plus `recentRevision`, which goes up whenever [`/api/alerts/recent`](#get-apialertsrecent) would answer differently. `configRevision` goes up whenever the settings are saved. Both only say *that* something changed, so a page fetches the details then; they restart from 0 after a restart. `alpaca.clients` says, per Alpaca device, whether an imaging app has it `connected`, whether one is `watching` (connected, or polling since the restart), whether it has gone `silent` (no request for the alert's **Silent for** time), how long ago it last checked (`lastCheckedAgeMs`, `null` if never since the restart) and the last Alpaca `clientId` (`null` if none); the web UI's own requests aren't counted ([The imaging app](../user-guide/alerts.md#the-imaging-app)).
 
 `time.epoch` is Unix seconds like every other timestamp (`0` until the clock is set); `time.iso` is the device's local time with its UTC offset, for display.
 

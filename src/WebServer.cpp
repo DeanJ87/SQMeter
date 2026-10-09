@@ -97,7 +97,15 @@ namespace SQM
           timeManager(timeMgr),
           mqttClient(mqtt),
           getConfigCallback(getConfig),
-          saveConfigCallback(saveConfig),
+          // A save bumps configRevision (/api/status): open pages reload the settings.
+          saveConfigCallback(
+              [this, saveConfig](const Config &cfg)
+              {
+                  const bool saved = saveConfig(cfg);
+                  if (saved)
+                      ++configRevision;
+                  return saved;
+              }),
           lastSensorBroadcast(0),
           lastStatusBroadcast(0),
           sensorSnapshotMutex(xSemaphoreCreateMutex()),
@@ -340,10 +348,15 @@ namespace SQM
         }
 
         // Broadcast status data every 2 seconds (for System page)
-        if (now - lastStatusBroadcast >= WS_STATUS_BROADCAST_INTERVAL_MS)
+        // ... and at once when the recent alerts or the settings change.
+        const uint32_t alertsRevision = alertDispatcher ? alertDispatcher->recentRevision() : 0;
+        const bool changed = alertsRevision != lastAlertsRevision || configRevision != lastConfigRevision;
+        if (now - lastStatusBroadcast >= WS_STATUS_BROADCAST_INTERVAL_MS || changed)
         {
             broadcastStatusData();
             lastStatusBroadcast = now;
+            lastAlertsRevision = alertsRevision;
+            lastConfigRevision = configRevision;
         }
     }
 

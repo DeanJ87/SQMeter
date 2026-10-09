@@ -397,7 +397,7 @@ namespace SQM
                 return "Sound name too long";
             out.title = paramOr(request, "title", String());
             out.message = paramOr(request, "message", String());
-            if (out.title.length() > AlertsConfig::MAX_TEMPLATE_TITLE || out.message.length() > AlertsConfig::MAX_TEMPLATE_MESSAGE)
+            if (!AlertsConfig::templateFits(out.title.c_str(), out.message.c_str()))
                 return "Title is up to 80 characters and message up to 240";
             return nullptr;
         }

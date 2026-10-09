@@ -64,7 +64,7 @@ describe('Alert levels', () => {
     const row = document.querySelector('[data-event="clouded_over"]')!;
     fireEvent.click(within(row as HTMLElement).getByRole('button', { name: 'Test' }));
 
-    expect(await screen.findByText('Pushover sent', {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByText('Pushover: Sent', {}, { timeout: 4000 })).toBeInTheDocument();
     expect(query).toBe('?channel=all&event=clouded_over&level=4&sound=siren&title=&message=');
   });
 });

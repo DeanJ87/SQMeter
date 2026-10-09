@@ -71,7 +71,7 @@ asyncio.run(stream())
 
 ## Notes
 
-- `/ws/status` streams the same object as [`GET /api/status`](rest.md#get-apistatus) every 2 seconds (WiFi, memory, MQTT, Bluetooth, darkness/sun position)
+- `/ws/status` streams the same object as [`GET /api/status`](rest.md#get-apistatus) every 2 seconds (WiFi, memory, MQTT, Bluetooth, darkness/sun position). It is also sent at once when the recent alerts change: `alerts.recentRevision` goes up whenever [`GET /api/alerts/recent`](rest.md#get-apialertsrecent) would answer differently, so a page fetches the list only then
 - The server broadcasts to all connected clients simultaneously
 - There is no authentication on the WebSocket endpoint
 - Broadcasts happen every 1 second regardless of `sensor.readIntervalMs`

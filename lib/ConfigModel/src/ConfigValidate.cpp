@@ -29,6 +29,17 @@ namespace SQM
             return true;
         }
 
+        // Characters, not bytes: the web UI counts what people type, and one
+        // Japanese or Arabic character is two or three bytes in UTF-8.
+        size_t utf8Length(const std::string &text)
+        {
+            size_t count = 0;
+            for (char c : text)
+                if ((static_cast<unsigned char>(c) & 0xC0) != 0x80) // not a continuation byte
+                    ++count;
+            return count;
+        }
+
         // A DNS label, so it works as <hostname>.local (same rule as the web UI).
         bool validHostname(const std::string &name)
         {
@@ -272,8 +283,7 @@ namespace SQM
             {
                 if (entry.second->level > 4)
                     return setError(error, "Alerts: event levels are 0 (off) to 4 (wake me)");
-                if (entry.second->title.size() > AlertsConfig::MAX_TEMPLATE_TITLE ||
-                    entry.second->message.size() > AlertsConfig::MAX_TEMPLATE_MESSAGE)
+                if (!AlertsConfig::templateFits(entry.second->title, entry.second->message))
                     return setError(error, "Alerts: custom titles are up to 80 characters and messages up to 240");
             }
             if (a.sendMode != AlertsConfig::SendMode::Any && a.sendMode != AlertsConfig::SendMode::WhileConnected)
@@ -299,6 +309,11 @@ namespace SQM
             return true;
         }
     } // namespace
+
+    bool AlertsConfig::templateFits(const std::string &title, const std::string &message)
+    {
+        return utf8Length(title) <= MAX_TEMPLATE_TITLE && utf8Length(message) <= MAX_TEMPLATE_MESSAGE;
+    }
 
     namespace ConfigDetail
     {

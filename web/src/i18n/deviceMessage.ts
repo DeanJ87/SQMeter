@@ -45,7 +45,9 @@ export function deviceText(text: string | null | undefined): string {
   templates ??= compile();
   for (const template of templates) {
     const match = template.pattern.exec(text);
-    if (match) return t(template.key, Object.fromEntries(template.names.map((name, i) => [name, match[i + 1]])));
+    // The values can be device text themselves ("Test: {title}" with
+    // "Rain detected"), so they're translated too.
+    if (match) return t(template.key, Object.fromEntries(template.names.map((name, i) => [name, deviceText(match[i + 1])])));
   }
   return text;
 }

@@ -105,6 +105,9 @@ namespace SQM
 
         uint32_t lastSensorBroadcast;
         uint32_t lastStatusBroadcast;
+        uint32_t lastAlertsRevision = 0;
+        volatile uint32_t configRevision = 0;
+        uint32_t lastConfigRevision = 0;
         SensorSnapshot sensorSnapshot;
         SemaphoreHandle_t sensorSnapshotMutex;
         bool wifiConnectActive;
