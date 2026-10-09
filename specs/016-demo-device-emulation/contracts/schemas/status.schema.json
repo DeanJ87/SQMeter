@@ -756,7 +756,7 @@
       "type": "object",
       "properties": {
         "epoch": {
-          "type": "integer"
+          "type": "number"
         },
         "iso": {
           "type": "string"
