@@ -1089,6 +1089,7 @@
   "units.secondsAgo": "há {n} s",
   "units.secondsShort": "{n} s",
   "updates.aNewerReleaseTagIs": "Há uma versão mais nova ({tag}) disponível.",
+  "updates.actionToTag": "{action} ({tag})",
   "updates.applyingUpdateProgress": "Aplicando a atualização... {progress}%",
   "updates.applyingUpdateRounded": "Aplicando a atualização... {rounded}%",
   "updates.beta": "Beta",

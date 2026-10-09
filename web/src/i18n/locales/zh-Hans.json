@@ -1081,6 +1081,7 @@
   "units.secondsAgo": "{n}秒前",
   "units.secondsShort": "{n}秒",
   "updates.aNewerReleaseTagIs": "有更新的版本（{tag}）可用。",
+  "updates.actionToTag": "{action}（{tag}）",
   "updates.applyingUpdateProgress": "正在应用更新... {progress}%",
   "updates.applyingUpdateRounded": "正在应用更新... {rounded}%",
   "updates.beta": "测试版",

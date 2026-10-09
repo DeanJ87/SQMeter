@@ -1089,6 +1089,7 @@
   "units.secondsAgo": "{n} s geleden",
   "units.secondsShort": "{n} s",
   "updates.aNewerReleaseTagIs": "Er is een nieuwere release ({tag}) beschikbaar.",
+  "updates.actionToTag": "{action} ({tag})",
   "updates.applyingUpdateProgress": "Update installeren... {progress}%",
   "updates.applyingUpdateRounded": "Update installeren... {rounded}%",
   "updates.beta": "Bèta",

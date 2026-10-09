@@ -240,7 +240,10 @@ const GithubUpdates: FunctionalComponent = () => {
                 ? t('updates.waitingForRestart')
                 : installed
                   ? t('updates.installed')
-                  : `${downgrade ? t('updates.downgrade') : t('updates.update')} to ${selectedRelease?.tag ?? '...'}`}
+                  : t('updates.actionToTag', {
+                      action: downgrade ? t('updates.downgrade') : t('updates.update'),
+                      tag: selectedRelease?.tag ?? '...',
+                    })}
             </Button>
           </div>
         )}

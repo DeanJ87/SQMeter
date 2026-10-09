@@ -1063,6 +1063,7 @@
   "units.secondsAgo": "How long ago, e.g. \"12 s ago\"; {n} is the number of seconds.",
   "units.secondsShort": "Compact duration in seconds, e.g. \"45s\"; {n} is the number.",
   "updates.aNewerReleaseTagIs": "Updates page (firmware updates). Keep every {placeholder} exactly; values are filled in by the UI.",
+  "updates.actionToTag": "Updates page (firmware updates). Keep every {placeholder} exactly; values are filled in by the UI.",
   "updates.applyingUpdateProgress": "Updates page (firmware updates). Keep every {placeholder} exactly; values are filled in by the UI.",
   "updates.applyingUpdateRounded": "Updates page (firmware updates). Keep every {placeholder} exactly; values are filled in by the UI.",
   "updates.beta": "Updates page (firmware updates): an option in a list or a short label; max 12 chars.",

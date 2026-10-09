@@ -1081,6 +1081,7 @@
   "units.secondsAgo": "{n} dtk lalu",
   "units.secondsShort": "{n} d",
   "updates.aNewerReleaseTagIs": "Rilis yang lebih baru ({tag}) tersedia.",
+  "updates.actionToTag": "{action} ({tag})",
   "updates.applyingUpdateProgress": "Menerapkan pembaruan... {progress}%",
   "updates.applyingUpdateRounded": "Menerapkan pembaruan... {rounded}%",
   "updates.beta": "Beta",

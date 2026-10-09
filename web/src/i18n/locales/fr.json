@@ -1089,6 +1089,7 @@
   "units.secondsAgo": "il y a {n} s",
   "units.secondsShort": "{n} s",
   "updates.aNewerReleaseTagIs": "Une version plus récente ({tag}) est disponible.",
+  "updates.actionToTag": "{action} ({tag})",
   "updates.applyingUpdateProgress": "Application de la mise à jour... {progress} %",
   "updates.applyingUpdateRounded": "Application de la mise à jour... {rounded} %",
   "updates.beta": "Bêta",

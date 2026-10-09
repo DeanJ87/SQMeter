@@ -1114,6 +1114,9 @@ button {
   top: env(safe-area-inset-top, 0px);
   z-index: 7;
   display: flex;
+  /* Scroll inside, never widen the page (longer tab names in other languages). */
+  min-width: 0;
+  max-width: 100%;
   gap: 0.25rem;
   margin: 0 0 1rem;
   padding: 0.3rem;
@@ -1180,6 +1183,14 @@ button {
 @media (max-width: 760px) {
   .settings-tabs {
     position: static;
+  }
+}
+
+/* Longer button labels in other languages wrap on phones (specs/023-i18n). */
+@media (max-width: 480px) {
+  .btn {
+    max-width: 100%;
+    white-space: normal;
   }
 }
 
@@ -1464,6 +1475,9 @@ button {
 
 .input {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
   min-height: 2.3rem;
   padding: 0.4rem 0.7rem;
   border: 1px solid var(--control-edge);
@@ -1560,7 +1574,8 @@ input[type='file'].input::file-selector-button {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  /* min(): a long option or label in another language never widens the page. */
+  grid-template-columns: repeat(auto-fill, minmax(min(11rem, 100%), 1fr));
   gap: 0.85rem 1rem;
 }
 

@@ -1119,6 +1119,7 @@
   "units.secondsAgo": "قبل {n} ث",
   "units.secondsShort": "{n} ث",
   "updates.aNewerReleaseTagIs": "يتوفر إصدار أحدث ({tag}).",
+  "updates.actionToTag": "{action} ({tag})",
   "updates.applyingUpdateProgress": "جارٍ تطبيق التحديث... {progress}%",
   "updates.applyingUpdateRounded": "جارٍ تطبيق التحديث... {rounded}%",
   "updates.beta": "تجريبي",

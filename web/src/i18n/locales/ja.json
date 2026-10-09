@@ -1081,6 +1081,7 @@
   "units.secondsAgo": "{n}秒前",
   "units.secondsShort": "{n}秒",
   "updates.aNewerReleaseTagIs": "新しいリリース（{tag}）があります。",
+  "updates.actionToTag": "{action}（{tag}）",
   "updates.applyingUpdateProgress": "アップデートを適用中... {progress}%",
   "updates.applyingUpdateRounded": "アップデートを適用中... {rounded}%",
   "updates.beta": "ベータ",

@@ -45,6 +45,22 @@ const open = async (page: Page, code: string, route: string) => {
 
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
+// The innermost elements that stick out past the right edge, to say what to fix.
+const culprits = (page: Page) =>
+  page.evaluate(() => {
+    const edge = document.documentElement.clientWidth + 1;
+    // Inside a box that scrolls or clips, sticking out is fine.
+    const clipped = (el: Element) => {
+      for (let p = el.parentElement; p; p = p.parentElement) if (getComputedStyle(p).overflowX !== 'visible') return true;
+      return false;
+    };
+    const out = [...document.querySelectorAll('main *')].filter((el) => el.getBoundingClientRect().right > edge && !clipped(el));
+    return out
+      .filter((el) => !out.some((other) => other !== el && el.contains(other)))
+      .slice(0, 3)
+      .map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join('.')} "${(el.textContent ?? '').trim().slice(0, 40)}"`);
+  });
+
 // Readings and charts stay left-to-right in a right-to-left page.
 const ltrIslands = (page: Page) =>
   page.evaluate(() =>
@@ -74,11 +90,11 @@ for (const code of LANGS) {
         const where = `${entry.id} @ ${viewport.name}`;
         const html = await page.evaluate(() => ({ lang: document.documentElement.lang, dir: document.documentElement.dir }));
         if (html.lang !== code || html.dir !== (rtl ? 'rtl' : 'ltr')) problems.push(`${where}: html lang="${html.lang}" dir="${html.dir}"`);
-        const nav = await page.getByRole('navigation').first().innerText();
+        const nav = (await page.getByRole('navigation').first().textContent()) ?? ''; // not innerText: CSS uppercases it on phones
         if (!nav.includes(String(messages['layout.settings'])))
           problems.push(`${where}: navigation not in ${code}: ${nav.replace(/\s+/g, ' ')}`);
         const wider = await overflow(page);
-        if (wider > 1) problems.push(`${where}: page is ${wider}px wider than the viewport`);
+        if (wider > 1) problems.push(`${where}: page is ${wider}px wider than the viewport: ${(await culprits(page)).join(', ')}`);
         await page.screenshot({ path: testInfo.outputPath(`${code}-${viewport.name}-${entry.id}.png`), fullPage: true });
         if (!rtl) continue;
         const flipped = await ltrIslands(page);

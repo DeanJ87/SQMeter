@@ -1081,6 +1081,7 @@
   "units.secondsAgo": "{n}초 전",
   "units.secondsShort": "{n}초",
   "updates.aNewerReleaseTagIs": "새 릴리스({tag})가 있습니다.",
+  "updates.actionToTag": "{action} ({tag})",
   "updates.applyingUpdateProgress": "업데이트 적용 중... {progress}%",
   "updates.applyingUpdateRounded": "업데이트 적용 중... {rounded}%",
   "updates.beta": "베타",
