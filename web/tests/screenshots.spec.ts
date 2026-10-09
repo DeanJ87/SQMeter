@@ -66,7 +66,7 @@ test('dashboard', async ({ page }) => {
   await page.goto('./?scenario=night&panel=hidden');
   await waitForDemoApp(page);
   await expect(page.getByRole('heading', { name: 'Sky Quality' })).toBeVisible();
-  await expect(page.getByText('Live')).toBeVisible();
+  await expect(page.locator('.glance-line')).toContainText('Live');
   await capturePage(page, 'dashboard');
 });
 
