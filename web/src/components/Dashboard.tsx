@@ -10,7 +10,8 @@ import { deviceTime } from '../lib/deviceTime';
 import { summariseSeries, useAnnounceChange } from '../lib/a11y';
 import Masonry, { MasonryItem, mergeOrder, moveInOrder } from './Masonry';
 import { t } from '../i18n';
-import { formatAgeMs, formatNumber, formatUptime } from '../i18n/format';
+import { formatAgeMs, formatCoordinates, formatNumber, formatUptime } from '../i18n/format';
+import { svgNumber } from '../lib/svg';
 import { deviceText } from '../i18n/deviceMessage';
 
 const bortleTone = (bortle?: number): string => {
@@ -50,7 +51,7 @@ const StatusDot: FunctionalComponent<{ ok: boolean }> = ({ ok }) => (
 
 // `label` names the series; screen readers get its trend in words (spec 022).
 const MiniSpark: FunctionalComponent<{ values: number[]; tone: string; label: string }> = ({ values, tone, label }) => {
-  const summary = summariseSeries(label, values, (value) => value.toFixed(2));
+  const summary = summariseSeries(label, values, (value) => formatNumber(value, 2));
   if (values.length < 2) return <div class="sparkline" role="img" aria-label={summary} />;
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -60,7 +61,7 @@ const MiniSpark: FunctionalComponent<{ values: number[]; tone: string; label: st
     y: 34 - ((value - min) / range) * 30,
   }));
   const linePath = points.reduce((path, point, index) => {
-    if (index === 0) return `M ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+    if (index === 0) return `M ${svgNumber(point.x)} ${svgNumber(point.y)}`;
 
     const previous = points[index - 1];
     const beforePrevious = points[index - 2] ?? previous;
@@ -78,12 +79,12 @@ const MiniSpark: FunctionalComponent<{ values: number[]; tone: string; label: st
     return [
       path,
       'C',
-      controlStart.x.toFixed(1),
-      controlStart.y.toFixed(1),
-      controlEnd.x.toFixed(1),
-      controlEnd.y.toFixed(1),
-      point.x.toFixed(1),
-      point.y.toFixed(1),
+      svgNumber(controlStart.x),
+      svgNumber(controlStart.y),
+      svgNumber(controlEnd.x),
+      svgNumber(controlEnd.y),
+      svgNumber(point.x),
+      svgNumber(point.y),
     ].join(' ');
   }, '');
   const fillPath = `${linePath} L 100 36 L 0 36 Z`;
@@ -314,9 +315,7 @@ const Dashboard: FunctionalComponent = () => {
           }
         >
           <div class="coordinate-line mono">
-            {sensors.gps.fix
-              ? `${Math.abs(sensors.gps.latitude ?? 0).toFixed(6)} ${(sensors.gps.latitude ?? 0) >= 0 ? 'N' : 'S'}, ${Math.abs(sensors.gps.longitude ?? 0).toFixed(6)} ${(sensors.gps.longitude ?? 0) >= 0 ? 'E' : 'W'}`
-              : '--'}
+            {sensors.gps.fix ? formatCoordinates(sensors.gps.latitude ?? 0, sensors.gps.longitude ?? 0, 6) : '--'}
           </div>
           <div class="tile-grid gps-metrics">
             <MetricTile label={t('dashboard.satellites')} value={String(sensors.gps.satellites ?? 0)} tone="tone-green" />

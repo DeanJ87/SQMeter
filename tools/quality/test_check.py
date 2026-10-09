@@ -177,6 +177,16 @@ class SampleTest(unittest.TestCase):
         found = rules(checks.check_eslint(False, (web_path(path),)))
         self.assertTrue({"STRUCT-04", "STRUCT-05", "SMELL-18", "LIMIT-03", "ERR-01", "SMELL-11", "NAME-05"} <= found, found)
 
+    def test_locale_formatting(self):
+        text = (
+            "export const a = (n: number) => n.toFixed(2);\n"
+            "export const b = (s: string) => parseFloat(s);\n"
+            "export const c = (d: Date) => d.toLocaleTimeString();\n"
+        )
+        path = self.write(WEB_SAMPLES, "Locale.tsx", text)
+        findings = [f for f in checks.check_eslint(False, (web_path(path),)) if f.rule == "I18N-05"]
+        self.assertEqual(len(findings), 3, findings)
+
     def test_ts_size_limits(self):
         branches = "".join(f"  if (a === {i}) return {i};\n" for i in range(70))
         nest = "  if (a) { if (a) { if (a) { if (a) { if (a) { return 1; } } } } }\n"

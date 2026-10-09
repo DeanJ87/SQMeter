@@ -16,9 +16,9 @@ import {
   StatusBadge,
   Toggle,
 } from './controls';
-import { currentLanguage, t } from '../../i18n';
+import { t } from '../../i18n';
 import { deviceError } from '../../i18n/deviceMessage';
-import { formatNumber } from '../../i18n/format';
+import { formatDateTime, formatNumber } from '../../i18n/format';
 
 const ANEMOMETER_PRESETS = [
   { value: '2.4', label: t('settings.sensors.misolArgentSparkfun') },
@@ -81,7 +81,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
   // Labelled: shown in this browser's time zone, not the device's (spec 005 FR-007).
   const calibratedAt =
     calibration.darkCalibratedAt >= CLOCK_VALID
-      ? new Date(calibration.darkCalibratedAt * 1000).toLocaleString(currentLanguage()) + t('settings.alerts.thisBrowserSTime')
+      ? formatDateTime(new Date(calibration.darkCalibratedAt * 1000)) + t('settings.alerts.thisBrowserSTime')
       : null;
   const [testingRain, setTestingRain] = useState(false);
   const [rainResult, setRainResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -112,14 +112,14 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
   };
 
   const setDailyReset = (value: string) => {
-    const [hour, minute] = value.split(':').map((part) => parseInt(part, 10));
+    const [hour, minute] = value.split(':').map(Number);
     updateMany([
       [['rain', 'dailyResetHour'], Number.isFinite(hour) ? hour : 0],
       [['rain', 'dailyResetMinute'], Number.isFinite(minute) ? minute : 0],
     ]);
   };
 
-  const windPreset = ANEMOMETER_PRESETS.find((p) => Math.abs(parseFloat(p.value) - wind.kmhPerHz) < 0.0005)?.value ?? 'custom';
+  const windPreset = ANEMOMETER_PRESETS.find((p) => Math.abs(Number(p.value) - wind.kmhPerHz) < 0.0005)?.value ?? 'custom';
   const detected = (sensor: SensorAvailability) =>
     sensor.detected === null ? undefined : sensor.detected ? (
       <StatusBadge tone="ok" label="OK" />
@@ -171,7 +171,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
                 { value: '100000', label: t('settings.sensors.100Khz') },
                 { value: '400000', label: t('settings.sensors.400Khz') },
               ]}
-              onChange={(v) => update(['sensor', 'i2cFrequency'], parseInt(v, 10))}
+              onChange={(v) => update(['sensor', 'i2cFrequency'], Number(v))}
             />
           </Field>
         </div>
@@ -282,6 +282,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
             error={error('cloudDetection.clearSkyThreshold')}
           >
             <NumberInput
+              dataField="cloudDetection.clearSkyThreshold"
               min={-30}
               max={0}
               step={0.1}
@@ -358,7 +359,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
                   dataField="rain.baudRate"
                   value={String(rain.baudRate)}
                   options={['2400', '4800', '9600', '19200'].map((b) => ({ value: b, label: b }))}
-                  onChange={(v) => update(['rain', 'baudRate'], parseInt(v, 10))}
+                  onChange={(v) => update(['rain', 'baudRate'], Number(v))}
                 />
               </Field>
               <Field label={t('settings.sensors.pollEvery')} error={error('rain.pollIntervalMs')}>
@@ -469,7 +470,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
                 <SelectInput
                   value={windPreset}
                   options={[...ANEMOMETER_PRESETS, { value: 'custom', label: t('settings.sensors.other') }]}
-                  onChange={(v) => v !== 'custom' && update(['wind', 'kmhPerHz'], parseFloat(v))}
+                  onChange={(v) => v !== 'custom' && update(['wind', 'kmhPerHz'], Number(v))}
                 />
               </Field>
               <Field label={t('settings.sensors.speedPerPulse')} error={error('wind.kmhPerHz')} hint={t('settings.sensors.kmhPerClosure')}>

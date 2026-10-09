@@ -43,5 +43,12 @@ es tú; fr vous; de Sie; it tu; nl je; pt-BR você; pl impersonal forms and infi
 ## D12 Translation tool
 **Decision**: `tools/i18n/translate.py` (standard library only) sends, per language, the new and changed keys with their context notes, the glossary and the register to the Anthropic Messages API (`claude-sonnet-5`), then makes a second review call on the result (fluency, glossary, length, back-translation of safety strings), validates with `check.mjs`, and only then writes. `record.json` stores a hash of the English each key was translated from.
 
+## D14 Numbers: input, grouping and digits (FR-017)
+**Decision**: Every number shown or typed in the UI goes through `web/src/i18n/format.ts` and `web/src/i18n/parse.ts`; ESLint rule I18N-05 bans `toFixed`, `toPrecision`, `toLocale*String`, `parseFloat` and `parseInt` in components and the demo (SVG geometry uses `web/src/lib/svg.ts`, select option values `Number(value)`).
+- **Digits**: Latin in every language (`<lang>-u-nu-latn`). Readings, units and coordinates sit in left-to-right runs, the device, MQTT, Alpaca and the docs use Latin digits, and the Arabic glossary already asks for them; Arabic-Indic digits next to Latin units would read inconsistently. Typed Arabic-Indic and Persian digits are still accepted.
+- **Typed numbers**: setting fields are text inputs (`type="number"` follows the browser's locale, not the app's, and silently drops "21,5" in some browsers). The language's decimal separator is accepted and the other as a fallback; grouping only in whole groups of three; a lone fallback separator before exactly three digits ("1.234" in German, "1,234" in English) is ambiguous and rejected unless the whole part is 0; anything else unreadable is kept on screen with a message, never truncated. iOS decimal keypads have no minus sign, so fields that allow negatives get the full keyboard.
+- **Grouping**: readings are never grouped (21,48 not 2.148,0); counts and sizes are (65.535 in German, 65 535 in French).
+**Alternatives**: keeping `type="number"` (browser-locale dependent, no control over messages); Arabic-Indic digits for Arabic (inconsistent with units, MQTT and the device).
+
 ## D13 Initial translation
 The committed translations were written for this feature by an AI (Claude) acting as a native-speaker UI translator for each language, from the glossaries and context notes, then reviewed with D8. Native speakers can improve them through ordinary PRs.

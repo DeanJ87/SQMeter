@@ -1,5 +1,6 @@
 import type { SystemStatus } from '../../types';
 import { t } from '../../i18n';
+import { formatNumber } from '../../i18n/format';
 import { darkness, formatClock, formatDuration } from '../../lib/astro';
 
 // The darkness note under "Only send safety alerts when it's dark"
@@ -25,7 +26,7 @@ export const describeDarkness = ({ sky, location, formLimitDeg, deviceNow }: Dar
   if (!sky) return null;
   if (!sky.nightKnown || sky.sunAltitudeDeg === undefined || sky.isNight === undefined) return t('settings.alerts.darknessUnknown');
   const sun = sky.sunAltitudeDeg;
-  const sunNow = t('settings.alerts.sunAtFixedNowValue', { fixed: sun.toFixed(1), value: t('settings.alerts.deviceSuffix') });
+  const sunNow = t('settings.alerts.sunAtFixedNowValue', { fixed: formatNumber(sun, 1), value: t('settings.alerts.deviceSuffix') });
   // The device compares against its saved limit; a different answer from
   // the form's limit means that limit isn't saved yet.
   const unsaved = sun < formLimitDeg !== sky.isNight ? t('settings.alerts.saveToApplyLimit') : '';
