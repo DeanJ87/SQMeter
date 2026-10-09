@@ -321,11 +321,57 @@ namespace SQM
             facts.gpsFix = snapshot.gpsInitialized && snapshot.gps.hasFix;
         }
 
+        namespace
+        {
+        // Age of the sky data the verdict rests on: the older of the two
+        // required sensors' last successful reads (TSL2591, MLX90614), not the
+        // time the read loop last ran - a sensor that keeps reporting OK
+        // without a fresh read is stale (specs/006 US1/AC4). A sensor that is
+        // faulted is reported as a fault instead, so only answering sensors
+        // count; with neither answering, the youngest successful read does.
+        struct RequiredDataAge
+        {
+            bool everRead = false;
+            uint32_t ageMs = 0;
+        };
+
+        RequiredDataAge requiredDataAge(const SensorSnapshot &snapshot, uint32_t now)
+        {
+            struct Source
+            {
+                SensorStatus status;
+                uint32_t lastUpdate;
+            };
+            const Source sources[] = {{snapshot.tsl.status, snapshot.tslLastUpdate}, {snapshot.mlx.status, snapshot.mlxLastUpdate}};
+            RequiredDataAge result;
+            bool anyAnswering = false;
+            uint32_t oldestAnswering = 0;
+            uint32_t youngestRead = UINT32_MAX;
+            for (const Source &source : sources)
+            {
+                if (source.lastUpdate == 0)
+                    continue;
+                result.everRead = true;
+                const uint32_t age = ageMs(now, source.lastUpdate);
+                youngestRead = std::min(youngestRead, age);
+                if (source.status == SensorStatus::OK)
+                {
+                    anyAnswering = true;
+                    oldestAnswering = std::max(oldestAnswering, age);
+                }
+            }
+            if (result.everRead)
+                result.ageMs = anyAnswering ? oldestAnswering : youngestRead;
+            return result;
+        }
+        } // namespace
+
         Alpaca::SafetyInputs safetyInputs(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)
         {
             Alpaca::SafetyInputs in;
-            in.hasEverHadGoodData = snapshot.dataTimestamp != 0;
-            in.secondsSinceLastGoodData = ageMs(now, snapshot.dataTimestamp) / 1000;
+            const RequiredDataAge data = requiredDataAge(snapshot, now);
+            in.hasEverHadGoodData = data.everRead;
+            in.secondsSinceLastGoodData = data.ageMs / 1000;
             in.skyLightFault = snapshot.tsl.status != SensorStatus::OK;
             in.irSkyFault = snapshot.mlx.status != SensorStatus::OK;
             in.requiredSensorFault = snapshot.tsl.status != SensorStatus::OK || snapshot.mlx.status != SensorStatus::OK;
@@ -426,7 +472,7 @@ namespace SQM
         bool updateSafety(
             SafetyStatus &status, Alpaca::SafeDelayFilter &filter, const Alpaca::SafetyResult &result, const Config &cfg, uint32_t now)
         {
-            const bool reportedSafe = filter.update(result.isSafe, now / 1000, cfg.alpaca.safeDelaySeconds);
+            const bool reportedSafe = filter.update(result.isSafe, now, cfg.alpaca.safeDelaySeconds);
             const bool changed = reportedSafe != status.isSafe || status.evaluatedAtMs == 0;
             if (changed)
                 status.changedAtMs = now;
