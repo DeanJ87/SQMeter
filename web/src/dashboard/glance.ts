@@ -1,5 +1,5 @@
 import type { AlertSchedule, AlpacaClientState, Config, SensorData, SensorHealth, SystemStatus } from '../types';
-import type { DepEntry, EffectiveReport } from '../lib/settingsDeps';
+import { REASONS, type DepEntry, type EffectiveReport } from '../lib/settingsDeps';
 import { describeSchedule } from '../components/settings/alertSchedule';
 import { describeClient } from '../lib/alpacaClients';
 import { formatAgeMs, formatAgo } from '../i18n/format';
@@ -124,6 +124,9 @@ const settingsLink = (tab: string, anchor?: string) => ({
   href: `#/settings?tab=${tab}${anchor ? `&section=${anchor}` : ''}`,
 });
 
+// The device reports its reason in English; Settings shows the translated text (spec 020).
+const reasonText = (entry: DepEntry) => (entry.reason && REASONS[entry.reason]?.text) || entry.text || '';
+
 const inactive = (effective: EffectiveReport | null, ids: Set<string>): DepEntry[] =>
   (effective?.settings ?? []).filter((entry) => entry.state === 'inactive' && ids.has(entry.id));
 
@@ -153,7 +156,7 @@ const channelsItem = ({ config, effective }: GlanceInput): GlanceItem | null => 
     severity: 'problem',
     priority: 3,
     text: t('glance.noChannel'),
-    detail: blocked[0].text,
+    detail: reasonText(blocked[0]),
     fix: settingsLink('alerts'),
   };
 };
@@ -225,7 +228,7 @@ const settingsItem = ({ effective }: GlanceInput): GlanceItem | null => {
     severity: 'note',
     priority: 6,
     text: t('glance.settingsNotInEffect', { count: entries.length }),
-    detail: entries.map((entry) => entry.text).join(' · '),
+    detail: entries.map(reasonText).join(' · '),
     fix: settingsLink('alerts'),
   };
 };
