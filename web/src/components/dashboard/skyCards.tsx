@@ -9,14 +9,16 @@ import { bortleTone, conditionTone } from './tones';
 
 type Readings = { sensors: SensorData };
 
-const liveTone = (live: boolean, isStale: boolean) => (live ? 'pill-green' : isStale ? 'pill-amber' : 'pill-dim');
-const liveText = (live: boolean, isStale: boolean) =>
-  live ? t('dashboard.live') : isStale ? t('dashboard.stale') : t('dashboard.connected');
+// Data freshness lives here, on the Sky Quality card's pill (DS-08): the
+// Status card doesn't repeat it.
+export type Freshness = 'live' | 'stale' | 'quiet' | 'offline';
+const LIVE_TONE: Record<Freshness, string> = { live: 'pill-green', stale: 'pill-amber', quiet: 'pill-amber', offline: 'pill-red' };
+const liveText = (state: Freshness) =>
+  ({ live: t('dashboard.live'), stale: t('dashboard.stale'), quiet: t('status.noUpdates'), offline: t('status.offline') })[state];
 
-export const SkyHero: FunctionalComponent<Readings & { live: boolean; isStale: boolean; sqmHistory: number[] }> = ({
+export const SkyHero: FunctionalComponent<Readings & { freshness: Freshness; sqmHistory: number[] }> = ({
   sensors,
-  live,
-  isStale,
+  freshness,
   sqmHistory,
 }) => {
   const skyTone = bortleTone(sensors?.sky?.bortle);
@@ -28,9 +30,11 @@ export const SkyHero: FunctionalComponent<Readings & { live: boolean; isStale: b
           <h2>{t('dashboard.skyQuality')}</h2>
         </div>
         <div class="hero-pills">
-          <Pill tone={liveTone(live, isStale)}>
-            <StatusDot ok={live} /> {liveText(live, isStale)}
-          </Pill>
+          <span data-inventory="freshness">
+            <Pill tone={LIVE_TONE[freshness]}>
+              <StatusDot ok={freshness === 'live'} /> {liveText(freshness)}
+            </Pill>
+          </span>
           <Pill tone={skyTone.replace('tone-', 'pill-')}>
             {t('dashboard.bortleNumber', { number: formatNumber(sensors.sky.bortle, 0) })}
           </Pill>

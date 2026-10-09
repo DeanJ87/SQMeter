@@ -4,16 +4,17 @@ import { useAnnounceChange } from '../lib/a11y';
 import { Button, Card, InfoTip, Pill } from '../components/ui';
 import { spoken, toCheck, type GlanceItem, type Severity } from './glance';
 
-// The Status card (specs/026 FR-001..FR-003, DS-01..DS-08): the device's
-// state as a card like the others. Tiles for Safety, Alerts, Data and the
-// imaging app when it matters; every other problem one row - its name, a
-// pill, "?" for detail - and the row goes to where it's fixed.
+// The Status card (specs/025, 026 FR-001..FR-003, DS-01..DS-08): a card like
+// the others whose job is the imaging app - is N.I.N.A. (or another Alpaca
+// client) watching each device - and whether alerts go out. Problems no other
+// card shows are one row each - name, pill, "?" - and the row goes to where
+// it's fixed. Nothing another card already shows (DS-08).
 
 type Action = 'resume' | 'acknowledge';
 
-const TONE: Record<Severity, string> = { ok: 'pill-green', note: 'pill-amber', problem: 'pill-red' };
-// Tiles in the reviewed mockup's order: is it safe, will anyone be told, is the data live.
-const TILE_ORDER = ['safety-verdict', 'alerts-state', 'freshness', 'imaging-app'];
+const TONE: Record<Severity, string> = { ok: 'pill-green', idle: 'pill-dim', note: 'pill-amber', problem: 'pill-red' };
+// Tiles: the imaging app (one per Alpaca device), then whether anyone will be told.
+const TILE_ORDER = ['imaging-app', 'alerts-state'];
 const TILES = new Set(TILE_ORDER);
 
 // A tile is its label, "?" and a pill (DS-08): the why is in "?", and only an
@@ -27,6 +28,7 @@ const Tile: FunctionalComponent<{ item: GlanceItem; onAction: (action: Action) =
       </div>
       <Pill tone={TONE[item.severity]}>{item.state}</Pill>
       {item.sub && <div class="metric-sub">{item.sub}</div>}
+      {item.checked && <div class="metric-sub">{item.checked}</div>}
       {fix && 'action' in fix && (
         <Button small onClick={() => onAction(fix.action)}>
           {fix.label}
@@ -69,7 +71,7 @@ const Row: FunctionalComponent<{ item: GlanceItem; onAction: (action: Action) =>
 
 const StatusCard: FunctionalComponent<{ items: GlanceItem[]; onAction: (action: Action) => void }> = ({ items, onAction }) => {
   const tiles = items.filter((entry) => TILES.has(entry.id)).sort((a, b) => TILE_ORDER.indexOf(a.id) - TILE_ORDER.indexOf(b.id));
-  const rows = items.filter((entry) => !TILES.has(entry.id) && entry.severity !== 'ok');
+  const rows = items.filter((entry) => !TILES.has(entry.id) && (entry.severity === 'note' || entry.severity === 'problem'));
   const open = toCheck(items);
   const worst: Severity = open.some((entry) => entry.severity === 'problem') ? 'problem' : open.length ? 'note' : 'ok';
   // Announced once when something stops working (spec 022): not every update.

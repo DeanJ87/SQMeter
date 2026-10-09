@@ -74,7 +74,7 @@ test('status card', async ({ page }) => {
   await page.goto('./?scenario=night&panel=hidden');
   await waitForDemoApp(page);
   const card = page.locator('[data-inventory="status-card"]');
-  await expect(card.locator('[data-inventory="freshness"]')).toContainText('Live');
+  await expect(card.locator('[data-inventory="alerts-state"]')).toContainText('Sending');
   await waitForLayout(page);
   await card.screenshot({ path: save('status-card') });
 });
