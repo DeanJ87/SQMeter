@@ -30,6 +30,11 @@ SOURCES = {
     "lib/AlpacaLogic/src/SafetyEvaluator.cpp": ("safety", {"addReason": [2], "addReasonf": "fmt2"}),
     "lib/AlertLogic/src/AlertEngine.cpp": ("alert", {"make": [1, 2], "format": "fmt0"}),
     "src/WebServer.cpp": ("api", {"createErrorJson": [0]}),
+    "src/WebServerApi.cpp": ("api", {"createErrorJson": [0]}),
+    "src/WebServerAlerts.cpp": ("api", {"createErrorJson": [0]}),
+    "src/WebServerAlpaca.cpp": ("api", {"createErrorJson": [0]}),
+    "src/WebServerStatus.cpp": ("api", {"createErrorJson": [0]}),
+    "src/WebServerUpdates.cpp": ("api", {"createErrorJson": [0]}),
     "src/OtaUpdater.cpp": ("ota", {"errorCb": [0]}),
     "tools/demo-core/bridge.cpp": ("api", {"errorJson": [0]}),
     "lib/LanguageLogic/src/LanguageLogic.cpp": ("language", {}),
@@ -41,6 +46,12 @@ SOURCES = {
 # `<target>["error"] = <expr>;` and `error = <expr>;` assignments are device text too.
 ASSIGN = {
     "src/WebServer.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
+    # MQTT test errors come from mqttStateText(), which returns them.
+    "src/WebServerApi.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*|(?<![\w.>])return\s*(?=")'),
+    "src/WebServerAlerts.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
+    "src/WebServerAlpaca.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
+    "src/WebServerStatus.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
+    "src/WebServerUpdates.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "src/OtaUpdater.cpp": re.compile(r"(?<![\w.>])error\s*=\s*(?!=)"),
     "tools/demo-core/bridge.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "src/LanguagePack.cpp": re.compile(r"(?<![\w.>])error\s*=\s*(?=\")"),

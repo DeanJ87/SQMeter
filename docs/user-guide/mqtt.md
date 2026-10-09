@@ -47,9 +47,9 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels.
 Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 
 <!-- diagram: DIA-09
-sources: src/WebServer.cpp#WebServer::publishMqttReadings src/WebServer.cpp#WebServer::publishMqttSafety src/WebServer.cpp#WebServer::publishArmedState src/WebServer.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
+sources: src/WebServerStatus.cpp#WebServer::publishMqttReadings src/WebServerAlerts.cpp#WebServer::publishMqttSafety src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: 960ff1e2b1f9524c
+fingerprint: 51d14cf13224d654
 -->
 <figure class="diagram" markdown>
 

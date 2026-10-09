@@ -43,17 +43,19 @@ namespace SQM
         using GetConfigCallback = std::function<const Config &()>;
         using SaveConfigCallback = std::function<bool(const Config &)>;
 
+        // The sensors the server reads and acts on (calibration, RG-15 commands).
+        struct Sensors
+        {
+            TSL2591Sensor &tsl;
+            BME280Sensor &bme;
+            MLX90614Sensor &mlx;
+            GPSSensor &gps;
+            RG15Sensor &rg15;
+            WindSensor &wind;
+        };
+
         WebServer(
-            TSL2591Sensor &tsl,
-            BME280Sensor &bme,
-            MLX90614Sensor &mlx,
-            GPSSensor &gps,
-            RG15Sensor &rg15,
-            WindSensor &wind,
-            TimeManager *timeMgr,
-            MQTTClient *mqtt,
-            GetConfigCallback getConfig,
-            SaveConfigCallback saveConfig);
+            const Sensors &sensors, TimeManager *timeMgr, MQTTClient *mqtt, GetConfigCallback getConfig, SaveConfigCallback saveConfig);
         ~WebServer();
 
         // Delete copy operations
@@ -119,6 +121,12 @@ namespace SQM
         bool alpacaIpv6Pending = false;
         uint32_t lastAlpacaIpv6Attempt = 0;
         void retryAlpacaIpv6Discovery(uint32_t now);
+        // begin(), step by step.
+        void restoreAlertSchedule();
+        void subscribeArmCommands();
+        void startBle();
+        void startAlpacaDiscovery();
+        static void handleNotFound(AsyncWebServerRequest *request);
         // The Alpaca HTTP API lives in lib/AlpacaLogic (Alpaca::Router) so the
         // CI simulator runs the same code; this feeds it the device's state.
         class AlpacaBackend : public Alpaca::Backend
@@ -207,6 +215,11 @@ namespace SQM
         uint32_t mqttSafetyPublishedAt = 0;
         static constexpr uint32_t MQTT_SAFETY_REPUBLISH_MS = 60000;
         void processAlerts(const SafetyStatus &status);
+        void seedAlertEngine();
+        void watchClients(Alerts::AlertInputs &inputs, const Config &cfg, const std::string &localTime);
+        void updateBle(const Alerts::AlertInputs &inputs, const Core::AlertSources &sources);
+        void sendAlerts(const Core::AlertStep &step, const Core::AlertSources &sources, const SensorSnapshot &snapshot, uint32_t epoch);
+        void forwardBleAcks(const Config &cfg, const SensorSnapshot &snapshot);
 
         static Core::NightState computeNight(const SensorSnapshot &snapshot, const Config &cfg);
         // What the settings dependencies need to know (lib/SettingsDeps).
@@ -218,6 +231,13 @@ namespace SQM
         static void localClock(std::string &timeText, std::string &dateText);
         void publishMqttSafety(const SafetyStatus &status);
         void setupAlertRoutes();
+        void handleAlertTest(AsyncWebServerRequest *request);
+        void handleAlertsClear(AsyncWebServerRequest *request);
+        void handleBleAck(AsyncWebServerRequest *request);
+        void handleBleForgetBonds(AsyncWebServerRequest *request);
+        void handleArm(AsyncWebServerRequest *request, bool armed);
+        void handleAlertsArmed(AsyncWebServerRequest *request);
+        void handleAlertsRecent(AsyncWebServerRequest *request);
 
         BleService ble;
 
@@ -226,7 +246,11 @@ namespace SQM
         void setupAPIRoutes();
         void setupWebSocket();
         void setupOTA();
+        void handleFsUploadDone(AsyncWebServerRequest *request);
+        void handleFirmwareUploadDone(AsyncWebServerRequest *request);
         void setupGithubUpdates();
+        void handleUpdatesCheck(AsyncWebServerRequest *request);
+        void handleUpdatesApply(AsyncWebServerRequest *request, JsonVariant &json);
         void setupAlpacaRoutes();
         void handleAlpacaRequest(AsyncWebServerRequest *request);
 
@@ -242,13 +266,20 @@ namespace SQM
         void handleRG15Reboot(AsyncWebServerRequest *request);
         void handleMQTTTest(AsyncWebServerRequest *request, JsonVariant &json);
         void pollWiFiConnect();
+        // setupAPIRoutes(), by group (registration order matters: more
+        // specific paths first).
+        void setupReadingRoutes();
+        void setupSettingsRoutes();
+        void setupNetworkRoutes();
+        static void handleSafetyHistory(AsyncWebServerRequest *request);
+        void handleSettingsEffective(AsyncWebServerRequest *request);
+        void handleGetSafety(AsyncWebServerRequest *request);
+        void handleSetConfig(AsyncWebServerRequest *request, JsonVariant &json);
+        void handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json);
 
         // WebSocket handlers
-        void onSensorWebSocketEvent(
-            AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
-
-        void onStatusWebSocketEvent(
-            AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
+        void onSensorWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
+        void onStatusWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
 
         // Helper functions
         bool requireAuth(AsyncWebServerRequest *request) const;
@@ -256,6 +287,12 @@ namespace SQM
         std::string createSensorDataJson() const;
         void appendSafetyStatus(JsonObject target) const;
         std::string createStatusJson() const;
+        // createStatusJson() sections, in document order.
+        void appendFirmware(JsonDocument &doc) const;
+        void appendRuntime(JsonDocument &doc) const;
+        void appendTime(JsonDocument &doc) const;
+        void appendWifi(JsonDocument &doc) const;
+        void appendMqttStatus(JsonDocument &doc) const;
         static std::string createErrorJson(const char *error);
         static uint32_t ageMs(uint32_t now, uint32_t timestamp);
 

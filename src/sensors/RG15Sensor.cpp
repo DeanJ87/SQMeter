@@ -109,36 +109,61 @@ namespace SQM
         }
     }
 
-    RG15Sensor::RG15Sensor(
-        uint8_t rxPin,
-        uint8_t txPin,
-        uint32_t baudRate,
-        const std::string &mode,
-        const std::string &resolution,
-        const std::string &units,
-        bool enabled,
-        bool debugUart,
-        uint32_t pollIntervalMs,
-        uint32_t rainClearDelayMs,
-        bool dailyResetEnabled,
-        uint8_t dailyResetHour,
-        uint8_t dailyResetMinute)
-        : enabledConfig(enabled),
-          debugUart(debugUart),
-          rxPin(rxPin),
-          txPin(txPin),
-          baudRate(baudRate),
-          mode(mode),
-          resolution(resolution),
-          units(units),
-          pollIntervalMs(pollIntervalMs),
-          rainClearDelayMs(rainClearDelayMs),
-          dailyResetEnabled(dailyResetEnabled),
-          dailyResetHour(dailyResetHour),
-          dailyResetMinute(dailyResetMinute),
+    namespace
+    {
+        RainConfig disabledRain()
+        {
+            RainConfig rain;
+            rain.enabled = false;
+            rain.rxPin = 18;
+            rain.txPin = 19;
+            rain.baudRate = 9600;
+            rain.debugUart = false;
+            rain.mode = "polling";
+            rain.resolution = "high";
+            rain.units = "metric";
+            rain.pollIntervalMs = 5000;
+            rain.rainClearDelayMs = 900000;
+            rain.dailyResetEnabled = false;
+            rain.dailyResetHour = 0;
+            rain.dailyResetMinute = 0;
+            return rain;
+        }
+    } // namespace
+
+    RG15Sensor::RG15Sensor()
+        : RG15Sensor(disabledRain())
+    {
+    }
+
+    RG15Sensor::RG15Sensor(const RainConfig &config)
+        : enabledConfig(config.enabled),
           serial(std::make_unique<HardwareSerial>(UART_NUM)),
           stateMutex(xSemaphoreCreateMutex())
     {
+        applySettings(config);
+        diagnostics.enabled = config.enabled;
+        diagnostics.configured = config.enabled;
+        diagnostics.responseTimeoutMs = RESPONSE_TIMEOUT_MS;
+        diagnostics.staleTimeoutMs = effectiveStaleTimeoutMs();
+        diagnostics.uartPort = UART_NUM;
+    }
+
+    void RG15Sensor::applySettings(const RainConfig &config)
+    {
+        rxPin = config.rxPin;
+        txPin = config.txPin;
+        baudRate = config.baudRate;
+        mode = config.mode;
+        resolution = config.resolution;
+        units = config.units;
+        debugUart = config.debugUart;
+        pollIntervalMs = config.pollIntervalMs;
+        rainClearDelayMs = config.rainClearDelayMs;
+        dailyResetEnabled = config.dailyResetEnabled;
+        dailyResetHour = config.dailyResetHour;
+        dailyResetMinute = config.dailyResetMinute;
+
         diagnostics.rxPin = rxPin;
         diagnostics.txPin = txPin;
         diagnostics.baudRate = baudRate;
@@ -146,16 +171,11 @@ namespace SQM
         diagnostics.resolution = resolution;
         diagnostics.units = units;
         diagnostics.debugUart = debugUart;
-        diagnostics.enabled = enabled;
-        diagnostics.configured = enabled;
         diagnostics.pollIntervalMs = pollIntervalMs;
         diagnostics.rainClearDelayMs = rainClearDelayMs;
         diagnostics.dailyResetEnabled = dailyResetEnabled;
         diagnostics.dailyResetHour = dailyResetHour;
         diagnostics.dailyResetMinute = dailyResetMinute;
-        diagnostics.responseTimeoutMs = RESPONSE_TIMEOUT_MS;
-        diagnostics.staleTimeoutMs = effectiveStaleTimeoutMs();
-        diagnostics.uartPort = UART_NUM;
     }
 
     void RG15Sensor::resetSessionState()
@@ -1182,56 +1202,20 @@ namespace SQM
         Logger::info(TAG, "RG-15 stopped");
     }
 
-    void RG15Sensor::reconfigure(
-        uint8_t newRxPin,
-        uint8_t newTxPin,
-        uint32_t newBaudRate,
-        const std::string &newMode,
-        const std::string &newResolution,
-        const std::string &newUnits,
-        bool newDebugUart,
-        uint32_t newPollIntervalMs,
-        uint32_t newRainClearDelayMs,
-        bool newDailyResetEnabled,
-        uint8_t newDailyResetHour,
-        uint8_t newDailyResetMinute)
+    void RG15Sensor::reconfigure(const RainConfig &config)
     {
         stop();
 
         // A schedule that's switched on or moved starts fresh: the current
         // day is adopted, so the change doesn't wipe today's total at once.
-        if ((newDailyResetEnabled && !dailyResetEnabled) || newDailyResetHour != dailyResetHour || newDailyResetMinute != dailyResetMinute)
+        if ((config.dailyResetEnabled && !dailyResetEnabled) || config.dailyResetHour != dailyResetHour ||
+            config.dailyResetMinute != dailyResetMinute)
         {
             forgetLastResetDay();
         }
 
-        rxPin = newRxPin;
-        txPin = newTxPin;
-        baudRate = newBaudRate;
-        mode = newMode;
-        resolution = newResolution;
-        units = newUnits;
-        debugUart = newDebugUart;
-        pollIntervalMs = newPollIntervalMs;
-        rainClearDelayMs = newRainClearDelayMs;
-        dailyResetEnabled = newDailyResetEnabled;
-        dailyResetHour = newDailyResetHour;
-        dailyResetMinute = newDailyResetMinute;
+        applySettings(config);
         enabledConfig = true;
-
-        diagnostics.rxPin = rxPin;
-        diagnostics.txPin = txPin;
-        diagnostics.baudRate = baudRate;
-        diagnostics.mode = mode;
-        diagnostics.resolution = resolution;
-        diagnostics.units = units;
-        diagnostics.debugUart = debugUart;
-        diagnostics.pollIntervalMs = pollIntervalMs;
-        diagnostics.rainClearDelayMs = rainClearDelayMs;
-        diagnostics.dailyResetEnabled = dailyResetEnabled;
-        diagnostics.dailyResetHour = dailyResetHour;
-        diagnostics.dailyResetMinute = dailyResetMinute;
-
         start(false);
     }
 

@@ -97,19 +97,7 @@ bool saveConfigCallback(const Config &newConfig)
         {
             if (config.rain.enabled)
             {
-                rg15Sensor->reconfigure(
-                    config.rain.rxPin,
-                    config.rain.txPin,
-                    config.rain.baudRate,
-                    config.rain.mode,
-                    config.rain.resolution,
-                    config.rain.units,
-                    config.rain.debugUart,
-                    config.rain.pollIntervalMs,
-                    config.rain.rainClearDelayMs,
-                    config.rain.dailyResetEnabled,
-                    config.rain.dailyResetHour,
-                    config.rain.dailyResetMinute);
+                rg15Sensor->reconfigure(config.rain);
             }
             else
             {
@@ -141,6 +129,35 @@ void setupI2C()
     Wire.setClock(config.sensor.i2cFrequency);
 }
 
+// GPS and the RG-15 (UART, not I2C): created switched off when disabled,
+// so the web server always has an object to report on.
+void setupSerialSensors()
+{
+    if (config.gps.enabled)
+    {
+        gpsSensor = std::make_unique<GPSSensor>(config.gps.rxPin, config.gps.txPin, config.gps.baudRate);
+        if (!gpsSensor->begin())
+            Logger::warn("Main", "GPS initialization failed");
+    }
+    else
+    {
+        gpsSensor = std::make_unique<GPSSensor>();
+        Logger::info("Main", "GPS disabled in configuration");
+    }
+
+    if (config.rain.enabled)
+    {
+        rg15Sensor = std::make_unique<RG15Sensor>(config.rain);
+        if (!rg15Sensor->begin())
+            Logger::warn("Main", "RG-15 initialization failed");
+    }
+    else
+    {
+        rg15Sensor = std::make_unique<RG15Sensor>();
+        Logger::info("Main", "RG-15 rain sensor disabled in configuration");
+    }
+}
+
 void setupSensors()
 {
     Logger::info("Main", "Initializing sensors");
@@ -150,89 +167,22 @@ void setupSensors()
     mlxSensor = std::make_unique<MLX90614Sensor>();
 
     if (!tslSensor->begin())
-    {
         Logger::error("Main", "Failed to initialize TSL2591");
-    }
     tslSensor->configureSkyMeasurement(config.skyAveraging, config.skyCalibration);
-
     if (!bmeSensor->begin())
-    {
         Logger::warn("Main", "BME280 not detected (optional sensor)");
-    }
-
     if (!mlxSensor->begin())
-    {
         Logger::warn("Main", "MLX90614 not detected (optional sensor)");
-    }
 
-    // Initialize GPS (UART, not I2C)
-    // Configuration-driven initialization
-    if (config.gps.enabled)
-    {
-        gpsSensor = std::make_unique<GPSSensor>(config.gps.rxPin, config.gps.txPin, config.gps.baudRate);
-        if (!gpsSensor->begin())
-        {
-            Logger::warn("Main", "GPS initialization failed");
-        }
-    }
-    else
-    {
-        // Create disabled GPS sensor for API consistency
-        gpsSensor = std::make_unique<GPSSensor>();
-        Logger::info("Main", "GPS disabled in configuration");
-    }
-
-    // Initialize RG-15 rain sensor (UART, not I2C)
-    if (config.rain.enabled)
-    {
-        rg15Sensor = std::make_unique<RG15Sensor>(
-            config.rain.rxPin,
-            config.rain.txPin,
-            config.rain.baudRate,
-            config.rain.mode,
-            config.rain.resolution,
-            config.rain.units,
-            true,
-            config.rain.debugUart,
-            config.rain.pollIntervalMs,
-            config.rain.rainClearDelayMs,
-            config.rain.dailyResetEnabled,
-            config.rain.dailyResetHour,
-            config.rain.dailyResetMinute);
-        if (!rg15Sensor->begin())
-        {
-            Logger::warn("Main", "RG-15 initialization failed");
-        }
-    }
-    else
-    {
-        rg15Sensor = std::make_unique<RG15Sensor>();
-        Logger::info("Main", "RG-15 rain sensor disabled in configuration");
-    }
+    setupSerialSensors();
 
     windSensor = std::make_unique<WindSensor>();
     windSensor->configure(toWindSettings(config.wind));
     windSensor->begin();
 }
 
-void setup()
+void loadConfig()
 {
-    Serial.begin(115200);
-    delay(100);
-    bootCount++;
-    SQM::SafetyHistory::begin(static_cast<uint8_t>(esp_reset_reason()));
-
-    // Initialize logging
-    Logger::init();
-    Logger::info("Main", "=== SQMeter Starting ===");
-    Logger::info("Main", "ESP32 Chip: %s Rev %d", ESP.getChipModel(), ESP.getChipRevision());
-    Logger::info("Main", "Flash: %d bytes", ESP.getFlashChipSize());
-    HeapTrace::mark("boot");
-
-    // Setup watchdog
-    setupWatchdog();
-
-    // Load configuration
     if (Config::load(config))
     {
         Logger::info("Main", "Configuration loaded");
@@ -242,28 +192,20 @@ void setup()
         config = Config::createDefault();
         Logger::warn("Main", "Using default configuration");
     }
-
     HeapTrace::mark("config loaded");
+}
 
-    // Mount LittleFS for serving web files
+void mountFilesystem()
+{
     if (!LittleFS.begin(false))
-    {
         Logger::error("Main", "Failed to mount LittleFS; filesystem not formatted automatically");
-    }
     else
-    {
         Logger::info("Main", "LittleFS mounted successfully");
-    }
+}
 
-    // Initialize I2C
-    setupI2C();
-
-    // Initialize sensors
-    setupSensors();
-
-    HeapTrace::mark("sensors");
-
-    // Initialize WiFi
+// Join the saved network, or open the setup hotspot (captive portal).
+void startWifi()
+{
     wifiManager = std::make_unique<WiFiManager>(config.wifi);
     wifiManager->begin();
 
@@ -274,110 +216,122 @@ void setup()
         delay(500);
         attempts++;
     }
-
     if (!wifiManager->isConnected() && !wifiManager->isInAPMode())
     {
         Logger::warn("Main", "WiFi connection failed, starting captive portal");
         wifiManager->startCaptivePortal();
     }
-
     wifiManager->startMdns();
     HeapTrace::mark("wifi");
+}
 
-    // Initialize ArduinoOTA for command-line firmware uploads only when configured securely.
-    if (wifiManager->isConnected() && config.ota.enabled && !config.ota.password.empty())
+void onArduinoOtaStart()
+{
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH)
     {
-        ArduinoOTA.setHostname(config.wifi.hostname.c_str());
-        ArduinoOTA.setPassword(config.ota.password.c_str());
-        ArduinoOTA.setMdnsEnabled(false); // WiFiManager owns mDNS (and it can be off)
-
-        ArduinoOTA.onStart(
-            []()
-            {
-                String type;
-                if (ArduinoOTA.getCommand() == U_FLASH)
-                {
-                    type = "firmware";
-                }
-                else
-                { // U_SPIFFS
-                    type = "filesystem";
-                    LittleFS.end(); // Unmount filesystem
-                }
-                Logger::info("OTA", "Start updating %s", type.c_str());
-            });
-
-        ArduinoOTA.onEnd([]() { Logger::info("OTA", "Update complete"); });
-
-        ArduinoOTA.onProgress(
-            [](unsigned int progress, unsigned int total)
-            {
-                static int lastPercent = -1;
-                int percent = (progress / (total / 100));
-                if (percent != lastPercent && percent % 10 == 0)
-                {
-                    Logger::info("OTA", "Progress: %u%%", percent);
-                    lastPercent = percent;
-                }
-            });
-
-        ArduinoOTA.onError(
-            [](ota_error_t error)
-            {
-                Logger::error("OTA", "Error[%u]: ", error);
-                if (error == OTA_AUTH_ERROR)
-                    Logger::error("OTA", "Auth Failed");
-                else if (error == OTA_BEGIN_ERROR)
-                    Logger::error("OTA", "Begin Failed");
-                else if (error == OTA_CONNECT_ERROR)
-                    Logger::error("OTA", "Connect Failed");
-                else if (error == OTA_RECEIVE_ERROR)
-                    Logger::error("OTA", "Receive Failed");
-                else if (error == OTA_END_ERROR)
-                    Logger::error("OTA", "End Failed");
-            });
-
-        ArduinoOTA.begin();
-        if (wifiManager->isMdnsRunning())
-            MDNS.enableArduino(3232, true);
-        arduinoOTAEnabled = true;
-        Logger::info("Main", "ArduinoOTA enabled with password authentication");
+        type = "firmware";
     }
-    else if (wifiManager->isConnected())
+    else
+    { // U_SPIFFS
+        type = "filesystem";
+        LittleFS.end(); // Unmount filesystem
+    }
+    Logger::info("OTA", "Start updating %s", type.c_str());
+}
+
+void onArduinoOtaProgress(unsigned int progress, unsigned int total)
+{
+    static int lastPercent = -1;
+    int percent = (progress / (total / 100));
+    if (percent != lastPercent && percent % 10 == 0)
+    {
+        Logger::info("OTA", "Progress: %u%%", percent);
+        lastPercent = percent;
+    }
+}
+
+void onArduinoOtaError(ota_error_t error)
+{
+    Logger::error("OTA", "Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR)
+        Logger::error("OTA", "Auth Failed");
+    else if (error == OTA_BEGIN_ERROR)
+        Logger::error("OTA", "Begin Failed");
+    else if (error == OTA_CONNECT_ERROR)
+        Logger::error("OTA", "Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR)
+        Logger::error("OTA", "Receive Failed");
+    else if (error == OTA_END_ERROR)
+        Logger::error("OTA", "End Failed");
+}
+
+// ArduinoOTA for command-line firmware uploads, only when configured securely.
+void startArduinoOta()
+{
+    if (!wifiManager->isConnected())
+        return;
+    if (!config.ota.enabled || config.ota.password.empty())
     {
         Logger::warn("Main", "ArduinoOTA disabled; configure ota.enabled and ota.password to enable command-line OTA");
+        return;
     }
+    ArduinoOTA.setHostname(config.wifi.hostname.c_str());
+    ArduinoOTA.setPassword(config.ota.password.c_str());
+    ArduinoOTA.setMdnsEnabled(false); // WiFiManager owns mDNS (and it can be off)
+    ArduinoOTA.onStart(onArduinoOtaStart);
+    ArduinoOTA.onEnd([]() { Logger::info("OTA", "Update complete"); });
+    ArduinoOTA.onProgress(onArduinoOtaProgress);
+    ArduinoOTA.onError(onArduinoOtaError);
+    ArduinoOTA.begin();
+    if (wifiManager->isMdnsRunning())
+        MDNS.enableArduino(3232, true);
+    arduinoOTAEnabled = true;
+    Logger::info("Main", "ArduinoOTA enabled with password authentication");
+}
 
-    // Initialize time manager with GPS/NTP priority
+// Time (GPS/NTP priority), MQTT, then the web server, which needs them all.
+void startServices()
+{
     timeManager =
         std::make_unique<TimeManager>(config.ntp, config.gps, config.primaryTimeSource, config.secondaryTimeSource, gpsSensor.get());
     if (wifiManager->isConnected())
-    {
         timeManager->begin();
-    }
-
     HeapTrace::mark("ota + time");
 
-    // Initialize MQTT
     mqttClient = std::make_unique<MQTTClient>(config.mqtt);
     mqttClient->begin();
     HeapTrace::mark("mqtt");
 
-    // Initialize web server
-    webServer = std::make_unique<WebServer>(
-        *tslSensor,
-        *bmeSensor,
-        *mlxSensor,
-        *gpsSensor,
-        *rg15Sensor,
-        *windSensor,
-        timeManager.get(),
-        mqttClient.get(),
-        getConfigCallback,
-        saveConfigCallback);
+    const WebServer::Sensors sensors{*tslSensor, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor, *windSensor};
+    webServer = std::make_unique<WebServer>(sensors, timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
     webServer->begin();
     webServer->refreshSensorSnapshot(lastSensorUpdate);
     HeapTrace::mark("setup complete");
+}
+
+void setup()
+{
+    Serial.begin(115200);
+    delay(100);
+    bootCount++;
+    SQM::SafetyHistory::begin(static_cast<uint8_t>(esp_reset_reason()));
+
+    Logger::init();
+    Logger::info("Main", "=== SQMeter Starting ===");
+    Logger::info("Main", "ESP32 Chip: %s Rev %d", ESP.getChipModel(), ESP.getChipRevision());
+    Logger::info("Main", "Flash: %d bytes", ESP.getFlashChipSize());
+    HeapTrace::mark("boot");
+
+    setupWatchdog();
+    loadConfig();
+    mountFilesystem();
+    setupI2C();
+    setupSensors();
+    HeapTrace::mark("sensors");
+    startWifi();
+    startArduinoOta();
+    startServices();
 
     Logger::info("Main", "=== Setup complete ===");
     Logger::info("Main", "IP Address: %s", wifiManager->getIPAddress().c_str());

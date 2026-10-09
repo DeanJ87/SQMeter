@@ -51,28 +51,44 @@ namespace SQM
             return http.begin(client, url.c_str());
         }
 
-        bool httpPost(
-            const std::string &url,
-            const char *contentType,
-            const std::string &body,
-            const std::vector<std::pair<std::string, std::string>> &headers,
-            bool insecureTls,
-            std::string &detail,
-            const char *rootCa = ALERT_ROOT_CA_PEM)
+        // Which certificates an HTTPS request trusts.
+        struct TlsTrust
         {
-            const std::unique_ptr<WiFiClient> client = clientFor(url, insecureTls, rootCa);
+            bool insecure = false; // the webhook's "skip certificate check"
+            const char *rootCa = ALERT_ROOT_CA_PEM;
+        };
+
+        // A failed reply's text. Pushover (and ntfy) explain failures in
+        // JSON: show the message itself rather than truncated raw JSON.
+        std::string errorBody(HTTPClient &http)
+        {
+            String response = http.getString();
+            StaticJsonDocument<512> errorDoc;
+            if (!deserializeJson(errorDoc, response))
+            {
+                const char *message = errorDoc["errors"][0] | errorDoc["error"] | static_cast<const char *>(nullptr);
+                if (message != nullptr)
+                    response = message;
+            }
+            return response.length() > 0 ? ": " + std::string(response.substring(0, MAX_ERROR_BODY_CHARS).c_str()) : std::string();
+        }
+
+        bool httpPost(const Delivery::HttpRequest &request, const TlsTrust &tls, std::string &detail)
+        {
+            const std::unique_ptr<WiFiClient> client = clientFor(request.url, tls.insecure, tls.rootCa);
             HTTPClient http;
             http.setTimeout(HTTP_TIMEOUT_MS);
             http.setConnectTimeout(HTTP_TIMEOUT_MS);
-            if (!beginRequest(http, *client, url))
+            if (!beginRequest(http, *client, request.url))
             {
                 detail = "Invalid URL";
                 return false;
             }
-            http.addHeader("Content-Type", contentType);
-            for (const auto &header : headers)
+            http.addHeader("Content-Type", request.contentType.c_str());
+            for (const auto &header : request.headers)
                 http.addHeader(header.first.c_str(), header.second.c_str());
 
+            const std::string &body = request.body;
             const int code = http.POST(reinterpret_cast<uint8_t *>(const_cast<char *>(body.data())), body.size());
             if (code <= 0)
             {
@@ -80,28 +96,49 @@ namespace SQM
                 http.end();
                 return false;
             }
-
             detail = "HTTP " + std::to_string(code);
             const bool ok = code >= 200 && code < 300;
             if (!ok)
-            {
-                String response = http.getString();
-                // Pushover (and ntfy) explain failures in JSON: show the
-                // message itself rather than truncated raw JSON.
-                StaticJsonDocument<512> errorDoc;
-                if (!deserializeJson(errorDoc, response))
-                {
-                    const char *message = errorDoc["errors"][0] | errorDoc["error"] | static_cast<const char *>(nullptr);
-                    if (message != nullptr)
-                        response = message;
-                }
-                if (response.length() > 0)
-                    detail += ": " + std::string(response.substring(0, MAX_ERROR_BODY_CHARS).c_str());
-            }
+                detail += errorBody(http);
             http.end();
             return ok;
         }
 
+        void wantedChannels(const AlertsConfig &cfg, uint8_t channelMask, bool (&wanted)[ALERT_CHANNEL_COUNT])
+        {
+            wanted[0] = cfg.mqttEnabled && (channelMask & alertChannelBit(AlertChannel::Mqtt));
+            wanted[1] = cfg.pushoverEnabled && (channelMask & alertChannelBit(AlertChannel::Pushover));
+            wanted[2] = cfg.ntfyEnabled && (channelMask & alertChannelBit(AlertChannel::Ntfy));
+            wanted[3] = cfg.webhookEnabled && (channelMask & alertChannelBit(AlertChannel::Webhook));
+        }
+
+        // Switched on but inactive (e.g. MQTT alerts with MQTT off): skipped, never "failed".
+        void skipBlocked(AlertRecord &record, const ChannelBlocks &blocked, bool (&wanted)[ALERT_CHANNEL_COUNT])
+        {
+            for (size_t i = 0; i < ALERT_CHANNEL_COUNT; ++i)
+            {
+                if (!wanted[i] || blocked[i] == nullptr)
+                    continue;
+                wanted[i] = false;
+                record.status[i] = DeliveryStatus::Skipped;
+                record.detail[i] = blocked[i];
+            }
+        }
+
+        // The HTTP channels (everything but MQTT) still to send, marked
+        // pending; returns their bits.
+        uint8_t markPending(AlertRecord &record, const bool (&wanted)[ALERT_CHANNEL_COUNT])
+        {
+            uint8_t httpMask = 0;
+            for (size_t i = 1; i < ALERT_CHANNEL_COUNT; ++i)
+            {
+                if (!wanted[i])
+                    continue;
+                record.status[i] = DeliveryStatus::Pending;
+                httpMask |= static_cast<uint8_t>(1u << i);
+            }
+            return httpMask;
+        }
     } // namespace
 
     const char *alertChannelName(AlertChannel channel)
@@ -185,22 +222,9 @@ namespace SQM
         record.epochSeconds = epochNow();
         record.alert = alert;
 
-        bool wanted[ALERT_CHANNEL_COUNT] = {
-            cfg.mqttEnabled && (channelMask & alertChannelBit(AlertChannel::Mqtt)),
-            cfg.pushoverEnabled && (channelMask & alertChannelBit(AlertChannel::Pushover)),
-            cfg.ntfyEnabled && (channelMask & alertChannelBit(AlertChannel::Ntfy)),
-            cfg.webhookEnabled && (channelMask & alertChannelBit(AlertChannel::Webhook)),
-        };
-        // Switched on but inactive (e.g. MQTT alerts with MQTT off): skipped, never "failed".
-        for (size_t i = 0; i < ALERT_CHANNEL_COUNT; ++i)
-        {
-            if (wanted[i] && blocked[i] != nullptr)
-            {
-                wanted[i] = false;
-                record.status[i] = DeliveryStatus::Skipped;
-                record.detail[i] = blocked[i];
-            }
-        }
+        bool wanted[ALERT_CHANNEL_COUNT];
+        wantedChannels(cfg, channelMask, wanted);
+        skipBlocked(record, blocked, wanted);
 
         // MQTT: publish right here on the main loop task.
         if (wanted[0])
@@ -211,15 +235,7 @@ namespace SQM
             record.detail[0] = ok ? "Published" : "MQTT not connected";
         }
 
-        uint8_t httpMask = 0;
-        for (size_t i = 1; i < ALERT_CHANNEL_COUNT; ++i)
-        {
-            if (wanted[i])
-            {
-                record.status[i] = DeliveryStatus::Pending;
-                httpMask |= static_cast<uint8_t>(1u << i);
-            }
-        }
+        const uint8_t httpMask = markPending(record, wanted);
 
         const uint32_t id = store(record);
         Logger::info(TAG, "%s: %s", alert.title.c_str(), alert.message.c_str());
@@ -334,7 +350,7 @@ namespace SQM
     {
         const Delivery::HttpRequest request = Delivery::pushoverRequest(
             job.alert, {job.cfg.pushoverUserKey, job.cfg.pushoverAppToken, job.cfg.pushoverSound}, job.deviceName);
-        return httpPost(request.url, request.contentType.c_str(), request.body, request.headers, false, detail, PUSHOVER_ROOT_CA_PEM);
+        return httpPost(request, TlsTrust{false, PUSHOVER_ROOT_CA_PEM}, detail);
     }
 
     bool AlertDispatcher::sendNtfy(const Job &job, std::string &detail)
@@ -342,25 +358,18 @@ namespace SQM
         const Delivery::HttpRequest request =
             Delivery::ntfyRequest(job.alert, {job.cfg.ntfyServer, job.cfg.ntfyTopic, job.cfg.ntfyToken}, job.deviceName);
         const bool ntfySh = request.url.rfind("https://ntfy.sh/", 0) == 0;
-        return httpPost(
-            request.url,
-            request.contentType.c_str(),
-            request.body,
-            request.headers,
-            false,
-            detail,
-            ntfySh ? NTFY_SH_ROOT_CA_PEM : ALERT_ROOT_CA_PEM);
+        return httpPost(request, TlsTrust{false, ntfySh ? NTFY_SH_ROOT_CA_PEM : ALERT_ROOT_CA_PEM}, detail);
     }
 
     bool AlertDispatcher::sendWebhook(const Job &job, std::string &detail)
     {
-        const std::string body = Delivery::alertJson(job.alert, job.deviceName, epochNow());
-
-        std::vector<std::pair<std::string, std::string>> headers;
+        Delivery::HttpRequest request;
+        request.url = job.cfg.webhookUrl;
+        request.contentType = "application/json";
+        request.body = Delivery::alertJson(job.alert, job.deviceName, epochNow());
         if (!job.cfg.webhookAuthHeader.empty())
-            headers.push_back({"Authorization", job.cfg.webhookAuthHeader});
-
-        return httpPost(job.cfg.webhookUrl, "application/json", body, headers, job.cfg.webhookInsecureTls, detail);
+            request.headers.push_back({"Authorization", job.cfg.webhookAuthHeader});
+        return httpPost(request, TlsTrust{job.cfg.webhookInsecureTls, ALERT_ROOT_CA_PEM}, detail);
     }
 
     void AlertDispatcher::setStatus(uint32_t recordId, AlertChannel channel, DeliveryStatus status, const std::string &detail)
