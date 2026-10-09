@@ -2,7 +2,6 @@
   "about": "Existing coding-standard findings per rule per file (spec 017). New findings fail CI; burn these down and run `python3 tools/quality/check.py --update-baseline`.",
   "counts": {
     "LIMIT-01": {
-      "src/sensors/RG15Sensor.cpp": 2,
       "web/src/components/Dashboard.tsx": 1,
       "web/src/components/settings/AlertsTab.tsx": 1,
       "web/src/components/settings/SensorsTab.tsx": 1,
@@ -10,7 +9,6 @@
       "web/src/mocks/data.ts": 1
     },
     "LIMIT-02": {
-      "src/sensors/RG15Sensor.cpp": 2,
       "web/src/components/AlertsBell.tsx": 1,
       "web/src/components/Dashboard.tsx": 1,
       "web/src/components/NightChart.tsx": 1,
@@ -28,7 +26,6 @@
       "web/src/utils/versionCompare.ts": 1
     },
     "LIMIT-04": {
-      "src/sensors/RG15Sensor.cpp": 1,
       "tools/demo-core/bridge.cpp": 1,
       "web/src/components/Dashboard.tsx": 1,
       "web/src/components/settings/AlertsTab.tsx": 1,

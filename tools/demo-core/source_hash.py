@@ -15,6 +15,8 @@ STAMP = os.path.join(ROOT, "web", "src", "demo", "core", "SOURCE_HASH")
 def sources():
     patterns = [
         "tools/demo-core/bridge.cpp",
+        "tools/demo-core/sensor_feed.cpp",
+        "tools/demo-core/sensor_feed.h",
         "tools/demo-core/build.sh",
         "lib/*/src/*.cpp",
         "lib/*/src/*.h",
