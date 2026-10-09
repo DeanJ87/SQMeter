@@ -48,6 +48,25 @@ TYPES = {
 }
 
 
+def validate_object(value, schema, path, errors):
+    """Required keys present; every key either in the contract or allowed extra."""
+    props = schema.get("properties", {})
+    errors.extend(f"{path}/{key}: missing" for key in schema.get("required", []) if key not in value)
+    extra = schema.get("additionalProperties", True)
+    for key, item in value.items():
+        if key in props:
+            validate(item, props[key], f"{path}/{key}", errors)
+        elif extra is False:
+            errors.append(f"{path}/{key}: not in the contract")
+        elif isinstance(extra, dict):
+            validate(item, extra, f"{path}/{key}", errors)
+
+
+def load_schema(path):
+    with open(path) as handle:
+        return json.load(handle)
+
+
 def validate(value, schema, path, errors):
     """The subset of JSON Schema the generated schemas use."""
     types = schema.get("type")
@@ -57,18 +76,7 @@ def validate(value, schema, path, errors):
             errors.append(f"{path or '/'}: expected {'/'.join(allowed)}, got {type(value).__name__}")
             return
     if isinstance(value, dict):
-        props = schema.get("properties", {})
-        for key in schema.get("required", []):
-            if key not in value:
-                errors.append(f"{path}/{key}: missing")
-        extra = schema.get("additionalProperties", True)
-        for key, item in value.items():
-            if key in props:
-                validate(item, props[key], f"{path}/{key}", errors)
-            elif extra is False:
-                errors.append(f"{path}/{key}: not in the contract")
-            elif isinstance(extra, dict):
-                validate(item, extra, f"{path}/{key}", errors)
+        validate_object(value, schema, path, errors)
     if isinstance(value, list) and "items" in schema:
         for i, item in enumerate(value):
             validate(item, schema["items"], f"{path}[{i}]", errors)
@@ -139,7 +147,7 @@ def main():
         sys.exit(2)
     base = sys.argv[1].rstrip("/")
     auth = sys.argv[2] if len(sys.argv) == 3 else None
-    schemas = {os.path.basename(p)[: -len(".schema.json")]: json.load(open(p)) for p in glob.glob(os.path.join(SCHEMAS, "*.schema.json"))}
+    schemas = {os.path.basename(p)[: -len(".schema.json")]: load_schema(p) for p in glob.glob(os.path.join(SCHEMAS, "*.schema.json"))}
     failed = 0
     for path, name in ENDPOINTS:
         try:
