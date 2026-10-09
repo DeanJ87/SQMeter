@@ -1,10 +1,10 @@
 # Feature Specification: IPv6 (Dual Stack)
 
-**Feature Branch**: `feat/ipv6` (to be created when implementation starts)
+**Feature Branch**: `feat/015-ipv6`
 
 **Created**: 2026-10-08
 
-**Status**: Draft
+**Status**: Implemented (amended 2026-10-09 - FR-006 scope, see research R6)
 
 **Input**: User description: "IPv6 support (dual-stack). SQMeter should work on IPv6 networks, not only IPv4: get IPv6 addresses (link-local and SLAAC global) on WiFi, serve the web UI, REST API, WebSockets and ASCOM Alpaca over IPv6, answer mDNS for <hostname>.local with AAAA records so names resolve without IPv4-only fallbacks or 5-second lookup stalls, connect outbound over IPv6 where the network offers it (MQTT broker, Pushover/ntfy/webhook alerts, GitHub update checks, NTP), and support Alpaca discovery over IPv6 (ff12::00a1:2345, port 32227). It must stay fully working on IPv4-only networks, be configurable (on by default if reliable, with an off switch like mDNS), show the device's IPv6 addresses, and never advertise an IPv6 address for a service that doesn't listen on IPv6."
 
@@ -14,6 +14,16 @@
 
 - Q: A global IPv6 address can make the device reachable from the internet if the router allows it - refuse requests from outside the LAN, or rely on the router? → A: Accept IPv6 connections only from the local network (link-local and the device's own on-link prefixes); remote access stays a VPN/proxy job.
 - Q: Must the device work on IPv6-only networks? → A: No - dual stack only (IPv6 alongside working IPv4). IPv6-only networks are a later spec.
+
+### Amendment 2026-10-09 (planning)
+
+- Arduino-ESP32 2.0.17's TLS client and SNTP only open IPv4 sockets (research R6). TLS and NTP over IPv6 need
+  the Arduino-ESP32 3.x / ESP-IDF 5 platform upgrade, which is its own spec (it changes the constitution's
+  Platform Constraints, every library pin and both image budgets). FR-006 is narrowed to plain-TCP
+  outbound on this platform; every TLS/NTP service in scope is reachable over IPv4, so nothing regresses.
+- The web server's async TCP library only listened on IPv4; it moves to AsyncTCP 3.4.10, which listens on
+  both families (research R2). The assumption below that "the web server listens on all address families"
+  was wrong for the pinned library.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -150,12 +160,15 @@ effect after restart.
   advertised service doesn't accept connections.
 - **FR-005**: The device MUST answer Alpaca discovery requests sent to the Alpaca IPv6 discovery group,
   in addition to IPv4 broadcast.
-- **FR-006**: Outbound connections (MQTT, Pushover, ntfy, webhooks, GitHub update checks and downloads,
-  NTP) MUST work to IPv6 addresses and to names that resolve only to IPv6.
+- **FR-006**: Plain-TCP outbound connections (MQTT and `http://` webhooks) MUST work to IPv6 addresses and to
+  names that resolve only to IPv6. TLS clients (Pushover, ntfy over https, https webhooks, GitHub update
+  checks and downloads) and NTP stay IPv4 until the platform-upgrade spec (amendment 2026-10-09); settings
+  MUST say so where they'd otherwise accept an IPv6 address that can't work (an https URL with an IPv6
+  literal).
 - **FR-007**: Settings MUST accept IPv6 literals wherever a host or URL is entered, and validate them
   in the browser and on the device with the same rules.
-- **FR-008**: For names with both IPv4 and IPv6 addresses, a failed IPv6 attempt MUST fall back to IPv4
-  within a few seconds, so broken upstream IPv6 never stops alerts, MQTT or updates.
+- **FR-008**: Broken upstream IPv6 MUST never stop alerts, MQTT or updates. Names with both IPv4 and IPv6
+  addresses are reached over IPv4 (the platform resolver prefers A), so no IPv6 attempt is made for them.
 - **FR-009**: IPv6 MUST be switchable (default on); with it off the device MUST behave exactly as an
   IPv4-only device.
 - **FR-010**: The status API and the System page MUST show each current IPv6 address and its scope

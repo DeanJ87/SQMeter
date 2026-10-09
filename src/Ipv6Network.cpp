@@ -54,7 +54,8 @@ namespace SQM
                     // IPv4 connections report no IPv6 address: unchanged.
                     if (isZero(peer) || Net::allowedPeer(peer, WiFiManager::ipv6Addresses()))
                         return next();
-                    Logger::warn(TAG, "Refused %s from %s (outside the local network)", request->url().c_str(), Net::formatIpv6(peer).c_str());
+                    Logger::warn(
+                        TAG, "Refused %s from %s (outside the local network)", request->url().c_str(), Net::formatIpv6(peer).c_str());
                     request->send(403, "text/plain", "IPv6 requests are only accepted from the local network");
                 });
         }

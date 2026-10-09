@@ -54,7 +54,7 @@ export const formatIpv6 = (address: Ipv6): string => {
   const groups = Array.from({ length: 8 }, (_, i) => (address[i * 2] << 8) | address[i * 2 + 1]);
   let bestStart = -1;
   let bestLength = 1;
-  for (let i = 0; i < 8; ) {
+  for (let i = 0; i < 8;) {
     if (groups[i] !== 0) {
       i++;
       continue;
@@ -166,35 +166,27 @@ export const URL_ERRORS = {
 
 export type UrlResult = { url: HttpUrl; error?: undefined } | { url?: undefined; error: string };
 
+// A URL's host[:port]; IPv6 hosts must be bracketed.
+const parseAuthority = (authority: string): HostResult => {
+  if (authority.startsWith('[')) return parseHost(authority);
+  const colon = authority.indexOf(':');
+  if (colon === -1) return parseHost(authority);
+  if (authority.indexOf(':', colon + 1) !== -1) return { error: HOST_ERRORS.needsBrackets };
+  const result = parseHost(authority.slice(0, colon));
+  if (!result.host) return result;
+  const port = parsePort(authority.slice(colon + 1));
+  return port === null ? { error: HOST_ERRORS.badPort } : { host: { ...result.host, port } };
+};
+
 export const parseHttpUrl = (text: string): UrlResult => {
-  let https = false;
-  let rest: string;
-  if (text.startsWith('http://')) rest = text.slice(7);
-  else if (text.startsWith('https://')) {
-    https = true;
-    rest = text.slice(8);
-  } else return { error: URL_ERRORS.scheme };
-
-  const end = rest.search(/[/?#]/);
-  const authority = end === -1 ? rest : rest.slice(0, end);
-  let path = end === -1 ? '/' : rest.slice(end);
-  if (!path.startsWith('/')) path = `/${path}`;
-
-  let result: HostResult;
-  if (authority.startsWith('[')) {
-    result = parseHost(authority);
-  } else {
-    const colon = authority.indexOf(':');
-    const name = colon === -1 ? authority : authority.slice(0, colon);
-    if (colon !== -1 && authority.indexOf(':', colon + 1) !== -1) result = { error: HOST_ERRORS.needsBrackets };
-    else {
-      result = parseHost(name);
-      if (result.host && colon !== -1) {
-        const port = parsePort(authority.slice(colon + 1));
-        result = port === null ? { error: HOST_ERRORS.badPort } : { host: { ...result.host, port } };
-      }
-    }
-  }
+  const scheme = /^(https?):\/\//.exec(text);
+  if (!scheme) return { error: URL_ERRORS.scheme };
+  const https = scheme[1] === 'https';
+  const remainder = text.slice(scheme[0].length);
+  const end = remainder.search(/[/?#]/);
+  const authority = end === -1 ? remainder : remainder.slice(0, end);
+  const path = end === -1 ? '/' : remainder.slice(end).replace(/^(?!\/)/, '/');
+  const result = parseAuthority(authority);
   if (!result.host) return { error: result.error };
   if (https && result.host.ipv6) return { error: URL_ERRORS.httpsIpv6 };
   return { url: { https, host: result.host, port: result.host.port || (https ? 443 : 80), path } };

@@ -19,6 +19,10 @@ SQMeter does **not** defend against:
 - Brute-force attacks; there is no rate limiting or account lockout.
 - Remote internet attackers — do not expose the device to the public internet.
 
+Over IPv6 the device only accepts requests from link-local addresses and its own network prefixes
+([IPv6](ipv6.md)), so a router that lets IPv6 in doesn't open it to the internet by itself. That's a
+backstop, not protection: keep it behind your firewall.
+
 ---
 
 ## HTTP authentication

@@ -236,8 +236,7 @@ void test_ipv6_broker_and_webhook_forms()
     // Accepted: bare and bracketed IPv6, bracketed with a port, http with a bracketed IPv6.
     TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"mqtt":{"enabled":true,"broker":"fd00::10","topic":"sqm"}})").c_str());
     TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"mqtt":{"enabled":true,"broker":"[fd00::10]:1883","topic":"sqm"}})").c_str());
-    TEST_ASSERT_EQUAL_STRING(
-        "", rejectReason(R"({"alerts":{"webhook":{"enabled":true,"url":"http://[fd00::10]:8080/hook"}}})").c_str());
+    TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"alerts":{"webhook":{"enabled":true,"url":"http://[fd00::10]:8080/hook"}}})").c_str());
 
     TEST_ASSERT_EQUAL_STRING(
         "MQTT broker: Put the port in the Port field",

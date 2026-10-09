@@ -94,7 +94,7 @@ The **Setup** (cog) button next to either device in N.I.N.A. opens `http://<devi
 ### If discovery doesn't find the device
 
 - Confirm **Serve Alpaca devices** is on under **Settings → Safety → ASCOM Alpaca** and the device has been restarted since
-- Discovery is a UDP broadcast - it won't cross VLANs/subnets or most VPNs; N.I.N.A. and the device need to be on the same local network segment
+- Discovery is a UDP broadcast (and, with [IPv6](ipv6.md) on, the IPv6 group `ff12::a1:2345`) - it won't cross VLANs/subnets or most VPNs; N.I.N.A. and the device need to be on the same local network segment
 - As a fallback, most Alpaca clients (including N.I.N.A.) let you add a device manually by IP:port instead of relying on discovery - use the device's IP and port `80`
 
 ---

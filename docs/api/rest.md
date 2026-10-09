@@ -28,7 +28,7 @@ curl http://sqmeter.local/api/status
   "uptime": 3600,
   "freeHeap": 128728,
   "firmware": { "name": "SQMeter", "version": "0.3.0", "buildDate": "Oct  8 2026", "buildTime": "12:00:00", "variant": "standard" },
-  "wifi": { "connected": true, "ssid": "MyNetwork", "ip": "192.168.1.42", "rssi": -62, "mac": "AA:BB:CC:DD:EE:FF", "connectPending": false, "apMode": false, "hostname": "sqmeter", "mdns": true },
+  "wifi": { "connected": true, "ssid": "MyNetwork", "ip": "192.168.1.42", "rssi": -62, "mac": "AA:BB:CC:DD:EE:FF", "connectPending": false, "apMode": false, "hostname": "sqmeter", "mdns": true, "ipv6": { "enabled": true, "addresses": [{ "address": "fe80::a00:27ff:fe4e:66a1", "scope": "link-local" }, { "address": "2a02:8010:abcd:1:a00:27ff:fe4e:66a1", "scope": "global" }] } },
   "sky": { "locationSource": "manual", "nightKnown": true, "latitude": 51.4779, "longitude": -0.0015, "isNight": false, "sunAltitudeDeg": 19.4 },
   "alerts": { "armed": true, "armWithAlpaca": true, "mode": "whileConnected", "reason": "client-connected", "since": "2026-10-08T20:58:02Z", "sinceAgeMs": 412000 },
   "alpaca": {

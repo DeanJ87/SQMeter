@@ -31,8 +31,14 @@ async function alpacaParams(request: Request): Promise<[string, string][]> {
 // GET /api/status: the device core's decisions (sky, sensors, diagnostics,
 // uptime) with the hardware sections a real ESP32 would report.
 // A dual-stack home network: link-local plus a SLAAC global address
-// (documentation prefix 2001:db8::/32, spec 015).
-const demoIpv6 = (running: boolean) => ({
+// (documentation prefix 2001:db8::/32, spec 015). The setting applies at
+// boot: the page load, or a restart.
+let ipv6AtBoot: boolean | null = null;
+const demoIpv6 = (cfg: { wifi?: { ipv6?: boolean } }) => {
+  ipv6AtBoot ??= cfg.wifi?.ipv6 ?? true;
+  return ipv6Addresses(ipv6AtBoot);
+};
+const ipv6Addresses = (running: boolean) => ({
   enabled: running,
   addresses: running
     ? [
@@ -55,7 +61,7 @@ export function statusDocument() {
       ssid: joinedSsid ?? (cfg.wifi?.ssid || mockStatus.wifi.ssid),
       hostname: cfg.wifi?.hostname,
       mdns: cfg.wifi?.mdns ?? true,
-      ipv6: demoIpv6(demoDevice.ipv6Running),
+      ipv6: demoIpv6(cfg),
       apMode: false,
       connectPending: false,
     },
@@ -96,6 +102,7 @@ export const demoHandlers = [
   http.put('/api/config', async ({ request }) => reply(demoDevice.applyConfig(await request.text()))),
   http.post('/api/restart', () => {
     demoDevice.restart();
+    ipv6AtBoot = null;
     return HttpResponse.json({ success: true, message: 'Restarting...' });
   }),
 

@@ -151,6 +151,31 @@ namespace SQM
                 out.ipv6 = true;
                 return HostError::None;
             }
+
+            // "http://" or "https://"; `remainder` is what follows.
+            bool splitScheme(const std::string &text, bool &https, std::string &remainder)
+            {
+                https = text.rfind("https://", 0) == 0;
+                if (!https && text.rfind("http://", 0) != 0)
+                    return false;
+                remainder = text.substr(https ? 8 : 7);
+                return true;
+            }
+
+            // A URL's host[:port]; IPv6 hosts must be bracketed.
+            HostError parseAuthority(const std::string &authority, Host &out)
+            {
+                if (!authority.empty() && authority[0] == '[')
+                    return parseHost(authority, out);
+                // name[:port] or a.b.c.d[:port]; a second ':' means an unbracketed IPv6 address.
+                const size_t colon = authority.find(':');
+                if (colon != std::string::npos && authority.find(':', colon + 1) != std::string::npos)
+                    return HostError::NeedsBrackets;
+                const HostError error = parseHost(authority.substr(0, colon), out);
+                if (error == HostError::None && colon != std::string::npos && !parsePort(authority.substr(colon + 1), out.port))
+                    return HostError::BadPort;
+                return error;
+            }
         } // namespace
 
         bool parseIpv6(const std::string &text, Ipv6 &out)
@@ -373,44 +398,16 @@ namespace SQM
             out = HttpUrl{};
             if (hostError)
                 *hostError = HostError::None;
-            std::string rest;
-            if (text.rfind("http://", 0) == 0)
-            {
-                rest = text.substr(7);
-            }
-            else if (text.rfind("https://", 0) == 0)
-            {
-                out.https = true;
-                rest = text.substr(8);
-            }
-            else
-            {
+            std::string remainder;
+            if (!splitScheme(text, out.https, remainder))
                 return UrlError::Scheme;
-            }
 
-            const size_t slash = rest.find_first_of("/?#");
-            const std::string authority = rest.substr(0, slash);
-            out.path = slash == std::string::npos ? "/" : rest.substr(slash);
+            const size_t slash = remainder.find_first_of("/?#");
+            out.path = slash == std::string::npos ? "/" : remainder.substr(slash);
             if (out.path[0] != '/')
                 out.path = "/" + out.path;
 
-            HostError error = HostError::None;
-            if (!authority.empty() && authority[0] == '[')
-            {
-                error = parseHost(authority, out.host);
-            }
-            else
-            {
-                // name[:port] or a.b.c.d[:port]; a second ':' means an unbracketed IPv6 address.
-                const size_t colon = authority.find(':');
-                const std::string name = authority.substr(0, colon);
-                if (colon != std::string::npos && authority.find(':', colon + 1) != std::string::npos)
-                    error = HostError::NeedsBrackets;
-                else
-                    error = parseHost(name, out.host);
-                if (error == HostError::None && colon != std::string::npos && !parsePort(authority.substr(colon + 1), out.host.port))
-                    error = HostError::BadPort;
-            }
+            const HostError error = parseAuthority(remainder.substr(0, slash), out.host);
             if (error != HostError::None)
             {
                 if (hostError)

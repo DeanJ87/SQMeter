@@ -115,14 +115,11 @@ class DemoDevice {
   private inputs: Conditions = cloneConditions(DEFAULT_CONDITIONS);
   private activeRamps: Ramp[] = [];
   timeMultiplier = 1;
-  /** IPv6 as the emulated device booted with it (the setting applies at restart, spec 015). */
-  ipv6Running = true;
 
   async start() {
     const module = await createSqmCore();
     this.core = new module.EmulatedDevice(JSON.stringify({ version: DEMO_VERSION, mac: 'a1b2c3d4e5f6' })) as Core;
     this.restore();
-    this.ipv6Running = this.config().wifi?.ipv6 ?? true;
     this.lastWall = Date.now();
     // ?scenario=rain etc. - for links from the docs and for screenshots.
     const requested = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('scenario');
@@ -274,7 +271,6 @@ class DemoDevice {
     this.restartingUntil = Date.now() + 4000;
     setTimeout(() => {
       this.core.restart(this.demoMs);
-      this.ipv6Running = this.config().wifi?.ipv6 ?? true;
       this.step();
     }, 4000);
   }

@@ -5,7 +5,7 @@ SQMeter ships with no WiFi credentials. On first power-on it starts in **hotspot
 <!-- diagram: DIA-07
 sources: src/WiFiManager.cpp#WiFiManager::begin src/WiFiManager.cpp#WiFiManager::startCaptivePortal src/WiFiManager.cpp#WiFiManager::updateCredentials lib/CaptiveDns/ src/WebServer.cpp#WebServer::pollWiFiConnect src/WebServer.cpp#WebServer::setupStaticRoutes src/main.cpp#loop
 blocking: false
-fingerprint: 2e04f7b60fd953e7
+fingerprint: 8f6eee8f35f49535
 -->
 <figure class="diagram" markdown>
 

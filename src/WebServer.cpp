@@ -261,6 +261,14 @@ namespace SQM
         Logger::info(TAG, "Web server started");
     }
 
+    void WebServer::retryAlpacaIpv6Discovery(uint32_t now)
+    {
+        if (!alpacaIpv6Pending || now - lastAlpacaIpv6Attempt < 5000)
+            return;
+        lastAlpacaIpv6Attempt = now;
+        alpacaIpv6Pending = !Ipv6Network::joinAlpacaDiscoveryGroup();
+    }
+
     void WebServer::handle()
     {
         wsSensors.cleanupClients();
@@ -270,11 +278,7 @@ namespace SQM
         const uint32_t now = millis();
 
         applyPendingArm();
-        if (alpacaIpv6Pending && now - lastAlpacaIpv6Attempt >= 5000)
-        {
-            lastAlpacaIpv6Attempt = now;
-            alpacaIpv6Pending = !Ipv6Network::joinAlpacaDiscoveryGroup();
-        }
+        retryAlpacaIpv6Discovery(now);
         if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
             publishArmedState();
         publishMqttReadings(now);
