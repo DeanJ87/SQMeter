@@ -39,6 +39,34 @@ const cardPosition = (box: Box | null): Record<string, string> => {
   return { top: `${top}px`, left: `${left}px` };
 };
 
+// A card docked at the bottom of the screen (the offer, and the tour card on
+// phones) reserves its height so the settings save bar and toasts sit above it
+// instead of underneath (specs/019 SC-007, specs/022 A11Y no hidden controls).
+const DOCK_CLASS = 'has-tour-dock';
+const DOCK_VAR = '--tour-dock';
+
+const useDockSpace = (docked: boolean) => {
+  const ref = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const root = document.documentElement;
+    if (!docked || !el) return undefined;
+    const measure = () => root.style.setProperty(DOCK_VAR, `${Math.max(0, window.innerHeight - el.getBoundingClientRect().top)}px`);
+    measure();
+    document.body.classList.add(DOCK_CLASS);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(el);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+      document.body.classList.remove(DOCK_CLASS);
+      root.style.removeProperty(DOCK_VAR);
+    };
+  }, [docked]);
+  return ref;
+};
+
 const useRerender = () => {
   const [, setTick] = useState(0);
   return useCallback(() => setTick((n) => n + 1), []);
@@ -101,11 +129,13 @@ const TourCard: FunctionalComponent<{ index: number }> = ({ index }) => {
   const box = targetBox(step);
   const waiting = step.done !== undefined && !step.done();
   const last = index === TOUR_STEPS.length - 1;
+  const dock = useDockSpace(window.innerWidth < PHONE_WIDTH);
 
   return (
     <>
       {box && <div class="tour-outline" style={{ top: box.top - 4, left: box.left - 4, width: box.width + 8, height: box.height + 8 }} />}
       <section
+        ref={dock}
         class="tour-card card"
         role="dialog"
         aria-modal="false"
@@ -140,19 +170,22 @@ const TourCard: FunctionalComponent<{ index: number }> = ({ index }) => {
   );
 };
 
-const TourOffer: FunctionalComponent = () => (
-  <section class="tour-offer card" aria-label="Tour">
-    <p>New here? A short tour shows what SQMeter does - about 2 minutes.</p>
-    <div class="btn-row">
-      <Button small variant="primary" onClick={() => tour.start()}>
-        Take the tour
-      </Button>
-      <Button small variant="link" onClick={() => tour.end('dismissed')}>
-        No thanks
-      </Button>
-    </div>
-  </section>
-);
+const TourOffer: FunctionalComponent = () => {
+  const dock = useDockSpace(true);
+  return (
+    <section ref={dock} class="tour-offer card" aria-label="Tour">
+      <p>New here? A short tour shows what SQMeter does - about 2 minutes.</p>
+      <div class="btn-row">
+        <Button small variant="primary" onClick={() => tour.start()}>
+          Take the tour
+        </Button>
+        <Button small variant="link" onClick={() => tour.end('dismissed')}>
+          No thanks
+        </Button>
+      </div>
+    </section>
+  );
+};
 
 const Tour: FunctionalComponent = () => {
   const rerender = useRerender();

@@ -2264,6 +2264,16 @@ input[type='file'].input::file-selector-button {
   bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 3.25rem);
 }
 
+/* A docked tour card or offer (specs/018) reserves its height (--tour-dock,
+   measured from the bottom of the screen to its top edge) the same way. */
+.has-tour-dock .save-bar {
+  bottom: calc(var(--tour-dock, 0px) + 0.5rem);
+}
+
+.has-tour-dock .toaster {
+  bottom: calc(var(--tour-dock, 0px) + 0.5rem);
+}
+
 .demo-panel-toggle {
   padding: 0.55rem 0.95rem;
   border: 1px solid rgba(85, 199, 242, 0.45);
