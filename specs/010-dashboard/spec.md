@@ -70,6 +70,8 @@ values are plausible for a real device.
 
 - **FR-001**: The dashboard MUST show the listed cards only for enabled, working hardware, with
   live/stale state.
+  > **Superseded in part by 025** (FR-013): hardware that is switched on but has failed keeps its
+  > card, in a fault state; only switched-off hardware is hidden.
 - **FR-002**: Cards MUST lay out in balanced columns by width (1 to 4) and be rearrangeable (drag,
   arrows, reset), persisting per browser.
 - **FR-003**: The header MUST show the alerts bell when alerts are enabled, crossed out while they

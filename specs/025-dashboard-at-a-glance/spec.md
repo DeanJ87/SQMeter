@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-09
 
-**Status**: Draft
+**Status**: Implemented (PR #111) - the at-a-glance area superseded by 026 (Status card, PR #117)
 
 ## Context
 

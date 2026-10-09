@@ -254,6 +254,7 @@ The web UI is built from a small set of parts in `web/src/components/ui.tsx`, an
 | DS-25 | No filler: "at a glance", "simply", "please note", "note that", "it is important", "in order to", "ensure", "seamless", "worked out in", "as soon as the device has it"; no parentheses that restate the label. Product names (N.I.N.A.) only as examples. | auto (`tools/ui/copy_check.py`) |
 | DS-26 | Whose time or place it is (this browser's time zone, the device's location) is said once, in a hint, not on every line. | converge |
 | DS-27 | One name for each thing in the UI, alerts, Home Assistant and the docs, from `tools/i18n/glossary/en.json`, including card titles and the safety reasons and alert titles the firmware sends. Part numbers are extra detail where hardware matters (System page rows, hardware docs, Alpaca sensor descriptions), never the name. | auto (`tools/ui/label_check.py`) |
+| DS-28 | Docs name the UI as it is: every bold `Settings → Tab → Card → Control` path uses labels the UI shows (`web/src/i18n/en.json`, or a product-name card title like "ASCOM Alpaca"), so renaming a tab or card can't leave the docs pointing at something that's gone. | auto (`tools/docs/ui_paths.py`, DS-PATH) |
 
 The type of each English string comes from its context note in `web/src/i18n/en.context.json` (`python3 tools/ui/copy_check.py --list`). A string that can't follow a rule is listed in `tools/ui/copy-exceptions.json` with its reason (EXC-01).
 

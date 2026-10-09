@@ -72,7 +72,7 @@ flowchart LR
 - Real-time dashboard with reorderable cards and a Sun & Moon night chart
 - REST API and MQTT publishing (including a 1/0 safe flag for logging)
 - OTA firmware updates from the browser, or self-updated directly from GitHub Releases
-- Captive portal Wi-Fi setup on first boot
+- Captive portal WiFi setup on first boot
 
 ## Quick Start
 

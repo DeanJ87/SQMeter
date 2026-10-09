@@ -132,6 +132,15 @@
       ],
       "avoid": [],
       "ha": "Alerts"
+    },
+    {
+      "name": "WiFi",
+      "keys": [
+        "dashboard.wifi"
+      ],
+      "avoid": [
+        "Wi-Fi"
+      ]
     }
   ]
 }

@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: Implemented (see plan.md, tasks.md)
+**Status**: Implemented (PR #106; fixes #109, #110, #115, #119) - converged; FR-024 superseded by 026
 
 ## Overview
 
