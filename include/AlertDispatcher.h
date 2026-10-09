@@ -127,7 +127,7 @@ namespace SQM
         SemaphoreHandle_t mutex = nullptr;
         std::vector<AlertRecord> records;
         uint32_t nextId = 1;
-        volatile uint32_t revision = 0;
+        std::atomic<uint32_t> revision{0};
     };
 
 } // namespace SQM

@@ -196,7 +196,7 @@ namespace SQM
     {
         const uint32_t macSuffix = static_cast<uint32_t>(ESP.getEfuseMac() & 0xFFFFFFULL);
         char id[24];
-        snprintf(id, sizeof(id), "SQMeter-%06X", macSuffix);
+        snprintf(id, sizeof(id), "SQMeter-%06lX", static_cast<unsigned long>(macSuffix));
         return std::string(id);
     }
 

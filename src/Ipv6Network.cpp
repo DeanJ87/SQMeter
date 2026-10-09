@@ -34,38 +34,12 @@ namespace SQM
 
         void listenIpv6(AsyncWebServer &server, uint16_t port)
         {
-            // Lives as long as the web server (the device's lifetime).
-            static AsyncServer *listener = nullptr;
-            if (listener != nullptr)
-                return;
-            listener = new AsyncServer(IPv6Address(), port);
-            // As AsyncWebServer does for its own listener.
-            listener->onClient(
-                [](void *arg, AsyncClient *client)
-                {
-                    if (client == nullptr)
-                        return;
-                    // Only IPv6 connections reach this listener.
-                    const ip6_addr_t remote = client->getRemoteAddress6();
-                    Net::Ipv6 peer{};
-                    memcpy(peer.data(), remote.addr, peer.size());
-                    if (!Net::allowedPeer(peer, WiFiManager::ipv6Addresses()))
-                    {
-                        Logger::warn(TAG, "Refused a connection from %s (outside the local network)", Net::formatIpv6(peer).c_str());
-                        client->write(REFUSED, sizeof(REFUSED) - 1);
-                        client->close();
-                        return;
-                    }
-                    client->setRxTimeout(3);
-                    if (new AsyncWebServerRequest(static_cast<AsyncWebServer *>(arg), client) == nullptr)
-                    {
-                        client->abort();
-                        delete client;
-                    }
-                },
-                &server);
-            listener->begin();
-            Logger::info(TAG, "Web server listening on IPv6 port %u", port);
+            // SPIKE (027): on Arduino 3.x AsyncTCP 3.5 binds dual-stack, so the
+            // separate IPv6 listener (which needed AsyncWebServerRequest's
+            // now-private constructor) goes away; the local-network peer check
+            // has to move to a filter on the main server. Not ported in the spike.
+            (void)server;
+            (void)port;
         }
 
         bool joinAlpacaDiscoveryGroup()
@@ -87,7 +61,8 @@ namespace SQM
             if (!packet.isIPv6())
                 return true;
             Net::Ipv6 peer{};
-            memcpy(peer.data(), static_cast<const uint8_t *>(packet.remoteIPv6()), peer.size());
+            // SPIKE (027): IPAddress holds v6 on 3.x; raw byte access needs porting.
+            (void)packet;
             return Net::allowedPeer(peer, WiFiManager::ipv6Addresses());
         }
 

@@ -36,7 +36,7 @@ namespace SQM
         // a Home Assistant proxy can all see the device.
         class ServerCallbacks : public NimBLEServerCallbacks
         {
-            void onConnect(NimBLEServer *server) override
+            void onConnect(NimBLEServer *server, NimBLEConnInfo &) override
             {
                 if (server->getConnectedCount() < CONFIG_BT_NIMBLE_MAX_CONNECTIONS)
                     NimBLEDevice::startAdvertising();
@@ -56,7 +56,7 @@ namespace SQM
             {
             }
 
-            void onWrite(NimBLECharacteristic *characteristic) override
+            void onWrite(NimBLECharacteristic *characteristic, NimBLEConnInfo &) override
             {
                 const std::string value = characteristic->getValue();
                 uint32_t seq = 0;
@@ -123,7 +123,7 @@ namespace SQM
 
         NimBLEAdvertising *advertising = NimBLEDevice::getAdvertising();
         advertising->addServiceUUID(Ble::SERVICE_UUID);
-        advertising->setScanResponse(true);
+        advertising->enableScanResponse(true);
         advertising->setMinInterval(ADVERT_INTERVAL_MIN);
         advertising->setMaxInterval(ADVERT_INTERVAL_MAX);
         advertising->start();

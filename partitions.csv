@@ -1,6 +1,11 @@
+# One whole-chip layout for both builds (spec 027, layout "l2").
+# nvs and otadata keep their offsets and sizes from the earlier layouts, so a
+# USB flash that skips 0x9000-0xDFFF keeps every setting. Two 1.75 MB app slots
+# and 448 KB of LittleFS fill the 4 MB flash. Changing the layout needs a USB
+# flash: OTA can't rewrite the partition table.
 # Name,   Type, SubType, Offset,  Size, Flags
 nvs,      data, nvs,     0x9000,  0x5000,
 otadata,  data, ota,     0xe000,  0x2000,
-app0,     app,  ota_0,   0x10000, 0x180000,
-app1,     app,  ota_1,   0x190000,0x180000,
-spiffs,   data, spiffs,  0x310000,0x80000,
+app0,     app,  ota_0,   0x10000, 0x1C0000,
+app1,     app,  ota_1,   0x1D0000,0x1C0000,
+spiffs,   data, spiffs,  0x390000,0x70000,

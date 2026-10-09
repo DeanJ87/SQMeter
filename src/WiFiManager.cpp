@@ -290,7 +290,7 @@ namespace SQM
             // A link-local address starts IPv6 (at STA_CONNECTED the interface
             // isn't up yet and this fails); router advertisements then add
             // global/unique-local ones by themselves (SLAAC).
-            if (ipv6Wanted && !WiFi.enableIpV6())
+            if (ipv6Wanted && !WiFi.enableIPv6())
                 Logger::warn(TAG, "IPv6 failed to start");
             break;
 

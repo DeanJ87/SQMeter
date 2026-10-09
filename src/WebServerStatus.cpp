@@ -273,7 +273,7 @@ namespace SQM
     {
         // System stats
         doc["uptime"] = millis() / 1000;
-        doc["configRevision"] = configRevision;
+        doc["configRevision"] = configRevision.load();
         doc["freeHeap"] = ESP.getFreeHeap();
         // Stack headroom (bytes never used). This handler runs on the
         // AsyncTCP task, so "asyncTcp" is that task's own high-water mark.

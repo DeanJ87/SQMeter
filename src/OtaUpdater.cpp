@@ -84,7 +84,7 @@ namespace SQM
         // of the stream when the size is unknown). False if a chunk is refused.
         bool copyBody(HTTPClient &http, const Download &download, size_t expectedSize, const ProgressRange &progress, size_t &written)
         {
-            WiFiClient *stream = http.getStreamPtr();
+            NetworkClient *stream = http.getStreamPtr();
             uint8_t buf[1024];
             written = 0;
             int lastPercent = -1;

@@ -117,7 +117,9 @@ bool saveConfigCallback(const Config &newConfig)
 void setupWatchdog()
 {
     Logger::info("Main", "Configuring watchdog timer (30s)");
-    esp_task_wdt_init(30, true); // 30 second timeout
+    // IDF 5: the task watchdog is already initialised by the core; reconfigure it.
+    const esp_task_wdt_config_t wdtConfig = {.timeout_ms = 30000, .idle_core_mask = 0, .trigger_panic = true};
+    esp_task_wdt_reconfigure(&wdtConfig);
     esp_task_wdt_add(NULL);
 }
 
