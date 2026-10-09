@@ -82,6 +82,15 @@ namespace SQM
             return joined;
         }
 
+        bool allowedDiscoveryPeer(AsyncUDPPacket &packet)
+        {
+            if (!packet.isIPv6())
+                return true;
+            Net::Ipv6 peer{};
+            memcpy(peer.data(), static_cast<const uint8_t *>(packet.remoteIPv6()), peer.size());
+            return Net::allowedPeer(peer, WiFiManager::ipv6Addresses());
+        }
+
         void appendStatus(JsonObject wifi)
         {
             JsonObject ipv6 = wifi.createNestedObject("ipv6");

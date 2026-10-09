@@ -87,6 +87,11 @@ namespace SQM
         UrlError parseHttpUrl(const std::string &text, HttpUrl &out, HostError *hostError = nullptr);
         std::string urlErrorText(UrlError error, HostError hostError);
 
+        // NTP is IPv4-only on this platform (spec 015 research R6): an IPv6
+        // literal as an NTP server would never answer, so settings refuse it.
+        constexpr const char *NTP_IPV6_TEXT = "NTP over IPv6 isn't supported yet - use a host name or an IPv4 address";
+        bool isIpv6Literal(const std::string &text);
+
         // "fd00::10" -> "[fd00::10]", names and IPv4 unchanged (for URLs and Host headers).
         std::string hostForUrl(const Host &host);
     } // namespace Net

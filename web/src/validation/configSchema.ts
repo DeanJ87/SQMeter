@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseHost, parseHttpUrl } from '../lib/netAddress';
+import { NTP_IPV6_TEXT, isIpv6Literal, parseHost, parseHttpUrl } from '../lib/netAddress';
 
 // Valid ESP32 GPIO pins
 const validGPIOs = [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39];
@@ -94,8 +94,11 @@ export const authConfigSchema = z
 
 export const ntpConfigSchema = z.object({
   enabled: z.boolean(),
-  server1: z.string().min(1, 'Primary NTP server is required'),
-  server2: z.string(),
+  server1: z
+    .string()
+    .min(1, 'Primary NTP server is required')
+    .refine((v) => !isIpv6Literal(v), NTP_IPV6_TEXT),
+  server2: z.string().refine((v) => !isIpv6Literal(v), NTP_IPV6_TEXT),
   timezone: z.string().min(1, 'Timezone is required'),
   syncIntervalMs: z
     .number()
@@ -265,8 +268,6 @@ export const rainSensorConfigSchema = z
     path: ['rxPin'],
   });
 
-const httpUrl = z.string().regex(/^https?:\/\/.+/, 'Must start with http:// or https://');
-
 export const alertsConfigSchema = z
   .object({
     enabled: z.boolean(),
@@ -324,9 +325,8 @@ export const alertsConfigSchema = z
       });
     }
     if (data.ntfy.enabled) {
-      if (!httpUrl.safeParse(data.ntfy.server).success) {
-        ctx.addIssue({ code: 'custom', path: ['ntfy', 'server'], message: 'Server must start with http:// or https://' });
-      }
+      const server = parseHttpUrl(data.ntfy.server);
+      if (server.error) ctx.addIssue({ code: 'custom', path: ['ntfy', 'server'], message: server.error });
       if (!data.ntfy.topic) {
         ctx.addIssue({ code: 'custom', path: ['ntfy', 'topic'], message: 'Topic is required' });
       }

@@ -46,7 +46,7 @@ configure. When the provider changes the prefix the device follows. The same lis
 <!-- diagram: DIA-16
 sources: lib/NetAddress/ src/Ipv6Network.cpp
 blocking: true
-fingerprint: fc19154308f2113e
+fingerprint: 8cbfbaa510c5dc1e
 -->
 <figure class="diagram" markdown>
 
@@ -75,7 +75,8 @@ flowchart LR
 A global IPv6 address is, in principle, reachable from the internet if the router allows it. So
 over IPv6 the device only accepts requests from link-local addresses and from addresses in its own
 network prefixes; anything else gets `403 IPv6 requests are only accepted from the local network`.
-That covers the web UI, the API, WebSockets and Alpaca. IPv4 is unchanged.
+That covers the web UI, the API, WebSockets and Alpaca; Alpaca discovery over IPv6 only answers the same
+local addresses. IPv4 is unchanged.
 
 This is a backstop, not a reason to expose the device: it still has no TLS, so keep it behind your
 router's firewall and use a VPN for remote access ([Security](security.md)).

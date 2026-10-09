@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { allowedPeer, formatIpv6, hostForUrl, isIpv4Mapped, parseHost, parseHttpUrl, parseIpv6, scopeOf, type Ipv6 } from '../netAddress';
+import {
+  allowedPeer,
+  formatIpv6,
+  hostForUrl,
+  isIpv4Mapped,
+  isIpv6Literal,
+  parseHost,
+  parseHttpUrl,
+  parseIpv6,
+  scopeOf,
+  type Ipv6,
+} from '../netAddress';
 import cases from '../../../../test/fixtures/net-address/cases.json';
 
 // The device (lib/NetAddress) and this mirror must give the same answers:
@@ -54,6 +65,13 @@ describe('http URLs', () => {
     expect(result.url?.host.ipv6).toBe(c.ipv6);
     expect(result.url?.port).toBe(c.port);
     expect(result.url?.path).toBe(c.path);
+  });
+
+  it('spots IPv6 literals (NTP servers refuse them)', () => {
+    expect(isIpv6Literal('2001:db8::123')).toBe(true);
+    expect(isIpv6Literal('[fd00::1]')).toBe(true);
+    expect(isIpv6Literal('pool.ntp.org')).toBe(false);
+    expect(isIpv6Literal('192.168.1.1')).toBe(false);
   });
 
   it('brackets IPv6 hosts only', () => {

@@ -439,6 +439,12 @@ namespace SQM
             return "";
         }
 
+        bool isIpv6Literal(const std::string &text)
+        {
+            Host host;
+            return parseHost(text, host) == HostError::None && host.ipv6;
+        }
+
         std::string hostForUrl(const Host &host)
         {
             return host.ipv6 ? "[" + host.name + "]" : host.name;

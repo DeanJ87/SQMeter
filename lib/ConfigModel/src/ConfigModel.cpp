@@ -117,13 +117,24 @@ namespace SQM
                 if (hostError != Net::HostError::None)
                     return setError(error, std::string("MQTT broker: ") + Net::hostErrorText(hostError));
             }
-            if (cfg.alerts.webhookEnabled)
+            const std::pair<bool, std::pair<const char *, const std::string *>> urls[] = {
+                {cfg.alerts.webhookEnabled, {"Alerts: webhook URL: ", &cfg.alerts.webhookUrl}},
+                {cfg.alerts.ntfyEnabled, {"Alerts: ntfy server: ", &cfg.alerts.ntfyServer}},
+            };
+            for (const auto &entry : urls)
             {
+                if (!entry.first)
+                    continue;
                 Net::HttpUrl url;
                 Net::HostError hostError = Net::HostError::None;
-                const Net::UrlError urlError = Net::parseHttpUrl(cfg.alerts.webhookUrl, url, &hostError);
+                const Net::UrlError urlError = Net::parseHttpUrl(*entry.second.second, url, &hostError);
                 if (urlError != Net::UrlError::None)
-                    return setError(error, "Alerts: webhook URL: " + Net::urlErrorText(urlError, hostError));
+                    return setError(error, entry.second.first + Net::urlErrorText(urlError, hostError));
+            }
+            for (const std::string *server : {&cfg.ntp.server1, &cfg.ntp.server2})
+            {
+                if (Net::isIpv6Literal(*server))
+                    return setError(error, std::string("NTP server: ") + Net::NTP_IPV6_TEXT);
             }
             return true;
         }

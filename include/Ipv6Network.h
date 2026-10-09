@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ArduinoJson.h>
+#include <AsyncUDP.h>
 #include <ESPAsyncWebServer.h>
 
 namespace SQM
@@ -24,6 +25,9 @@ namespace SQM
         // Joins the Alpaca discovery group once the station has an IPv6
         // address; true once joined (call until it is).
         bool joinAlpacaDiscoveryGroup();
+
+        // FR-011 for Alpaca discovery: IPv4 always; IPv6 only from the local network.
+        bool allowedDiscoveryPeer(AsyncUDPPacket &packet);
 
         // wifi.ipv6 = {enabled, addresses: [{address, scope}]}.
         void appendStatus(JsonObject wifi);

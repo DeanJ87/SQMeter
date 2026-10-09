@@ -47,3 +47,10 @@
 - [x] T022 Docs: new docs/user-guide/ipv6.md (with diagram DIA-16, blocking), configuration, REST status, security, Alpaca, alerts, troubleshooting; diagram check
 - [x] T023 Gates: native tests, both firmware builds (sizes), web tsc/vitest/build/build:demo, Playwright, quality check, settings-deps, diagrams, SOURCE_HASH, mkdocs --strict
 - [x] T024 Device verification on the spare per quickstart.md (results in quickstart.md; the IPv6-client checks need a client on the device's subnet - listed there)
+
+## Phase 8: Convergence (2026-10-09)
+
+- [x] T025 ntfy server URL checked with the same IPv6-aware URL rules as the webhook (FR-007) in lib/ConfigModel/src/ConfigModel.cpp and web/src/validation/configSchema.ts
+- [x] T026 NTP servers refuse IPv6 literals with the reason (NTP is IPv4-only here, FR-006 amendment) - lib/NetAddress `isIpv6Literal`, ConfigModel, configSchema, tests
+- [x] T027 Alpaca discovery answers IPv6 requests only from the local network (FR-011) - `Ipv6Network::allowedDiscoveryPeer` in src/Ipv6Network.cpp, src/WebServer.cpp
+

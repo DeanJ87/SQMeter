@@ -193,3 +193,7 @@ export const parseHttpUrl = (text: string): UrlResult => {
 };
 
 export const hostForUrl = (host: Host) => (host.ipv6 ? `[${host.name}]` : host.name);
+
+// NTP is IPv4-only on the device's platform (spec 015 research R6).
+export const NTP_IPV6_TEXT = "NTP over IPv6 isn't supported yet - use a host name or an IPv4 address";
+export const isIpv6Literal = (text: string) => parseHost(text).host?.ipv6 === true;

@@ -247,6 +247,15 @@ void test_ipv6_broker_and_webhook_forms()
         "Alerts: webhook URL: https to an IPv6 address isn't supported yet - use a host name, or http",
         rejectReason(R"({"alerts":{"webhook":{"enabled":true,"url":"https://[fd00::10]/hook"}}})").c_str());
 
+    TEST_ASSERT_EQUAL_STRING(
+        "Alerts: ntfy server: https to an IPv6 address isn't supported yet - use a host name, or http",
+        rejectReason(R"({"alerts":{"ntfy":{"enabled":true,"server":"https://[fd00::10]","topic":"t"}}})").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "", rejectReason(R"({"alerts":{"ntfy":{"enabled":true,"server":"http://[fd00::10]:8080","topic":"t"}}})").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "NTP server: NTP over IPv6 isn't supported yet - use a host name or an IPv4 address",
+        rejectReason(R"({"ntp":{"server2":"2001:db8::123"}})").c_str());
+
     // Saved config isn't held to the new forms, so it always loads.
     const auto stored = Config::fromJson(R"({"mqtt":{"enabled":true,"broker":"broker.local:1883","topic":"sqm"}})");
     TEST_ASSERT_TRUE(stored.has_value());

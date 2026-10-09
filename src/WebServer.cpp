@@ -207,7 +207,7 @@ namespace SQM
                 alpacaDiscoveryUdp.onPacket(
                     [](AsyncUDPPacket &packet)
                     {
-                        if (!Alpaca::isValidDiscoveryRequest(packet.data(), packet.length()))
+                        if (!Alpaca::isValidDiscoveryRequest(packet.data(), packet.length()) || !Ipv6Network::allowedDiscoveryPeer(packet))
                             return;
                         const std::string response = Alpaca::buildDiscoveryResponse(PORT);
                         packet.write(reinterpret_cast<const uint8_t *>(response.data()), response.size());
