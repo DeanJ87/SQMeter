@@ -135,6 +135,7 @@ export const mockStatus: SystemStatus = {
     buildDate: 'Apr 24 2026',
     buildTime: '12:00:00',
     variant: 'standard',
+    layout: 'l2',
   },
   ble: {
     available: false,

@@ -132,8 +132,9 @@ namespace SQM
             case Verdict::OtherLayout:
                 return "Built for a different partition layout.";
             case Verdict::OtherBuild:
-                return deviceBuild == Build::Ble ? "This is the standard build; this device runs the Bluetooth build."
-                                                 : "This is the Bluetooth build; this device runs the standard build.";
+                if (deviceBuild == Build::Ble)
+                    return "Wrong build: this device needs the Bluetooth build.";
+                return "Wrong build: this device needs the standard build.";
             }
             return "";
         }

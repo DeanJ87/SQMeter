@@ -24,9 +24,9 @@ on:
       - 'web/public/**'
       - 'platformio.ini'
       - 'partitions.csv'
-      - 'partitions_ble.csv'
       - 'scripts/**'
       - 'tools/ui/**'
+      - 'tools/firmware/**'
       - '.github/workflows/build.yml'
       - 'specs/**'
       - '.specify/**'
@@ -59,21 +59,15 @@ jobs:
         with:
           node-version: '24'
 
+      # Downloaded packages only. pioarduino rebuilds the framework in place
+      # from custom_sdkconfig (spec 027), so builds always start clean: no
+      # cached .pio/build, and an exact-key package cache (a different
+      # platformio.ini never restores another configuration's framework).
       - name: Cache PlatformIO packages
         uses: actions/cache@v4
         with:
           path: ~/.platformio
-          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
-          restore-keys: |
-            ${{ runner.os }}-pio-
-
-      - name: Cache PlatformIO build
-        uses: actions/cache@v4
-        with:
-          path: .pio/build
-          key: ${{ runner.os }}-pio-build-${{ hashFiles('platformio.ini', 'src/**', 'include/**', 'partitions.csv') }}
-          restore-keys: |
-            ${{ runner.os }}-pio-build-
+          key: ${{ runner.os }}-pio3-${{ hashFiles('platformio.ini') }}
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -83,8 +77,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-npm-
 
+      # pioarduino (Arduino-ESP32 3.x) needs PlatformIO Core 6.2 or newer.
       - name: Install PlatformIO and esptool
-        run: pip install platformio esptool
+        run: pip install "platformio>=6.2" esptool
 
       # Stamp version.h with the git tag so the firmware reports its release version
       - name: Inject release version
@@ -207,42 +202,43 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
 
       - name: Build firmware
-        run: pio run
+        run: pio run -e esp32dev
 
       - name: Build LittleFS image
-        run: pio run --target buildfs
+        run: pio run -e esp32dev --target buildfs
 
-      # Optional BLE variant (larger app partitions, see partitions_ble.csv).
-      # Shares the standard LittleFS image - same 512 KB size.
+      # The Bluetooth build. Both builds use the same partition layout and
+      # share the LittleFS image (spec 027).
       - name: Build BLE firmware
         run: pio run -e esp32dev-ble
 
-      # Merge all pieces into a single binary for fresh ESP32 flashing.
-      # NVS (0x9000) is intentionally excluded — it is user config and should
-      # start empty so the device can be configured via the web UI on first boot.
-      - name: Create complete flash image
+      # SIZE-04 (spec 027): each build against its app slot - warn above 90%,
+      # fail above 95% - and the change from the target branch's record.
+      - name: Firmware flash budget
         run: |
-          BOOT_APP0=$(find ~/.platformio -name "boot_app0.bin" | head -1)
-          esptool.py --chip esp32 merge_bin \
-            -o .pio/build/esp32dev/complete-flash.bin \
-            --flash_mode dio \
-            --flash_freq 40m \
-            --flash_size 4MB \
-            0x1000  .pio/build/esp32dev/bootloader.bin \
-            0x8000  .pio/build/esp32dev/partitions.bin \
-            0xe000  "${BOOT_APP0}" \
-            0x10000 .pio/build/esp32dev/firmware.bin \
-            0x310000 .pio/build/esp32dev/littlefs.bin
-          esptool.py --chip esp32 merge_bin \
-            -o .pio/build/esp32dev-ble/complete-flash.bin \
-            --flash_mode dio \
-            --flash_freq 40m \
-            --flash_size 4MB \
-            0x1000  .pio/build/esp32dev-ble/bootloader.bin \
-            0x8000  .pio/build/esp32dev-ble/partitions.bin \
-            0xe000  "${BOOT_APP0}" \
-            0x10000 .pio/build/esp32dev-ble/firmware.bin \
-            0x380000 .pio/build/esp32dev/littlefs.bin
+          python3 -m unittest tools/firmware/test_firmware_tools.py
+          if [ -n "${BASE_REF}" ]; then
+            git fetch --depth=1 origin "${BASE_REF}"
+            python3 tools/firmware/flash_budget.py --base-ref FETCH_HEAD | tee "$RUNNER_TEMP/flash.txt"
+          else
+            python3 tools/firmware/flash_budget.py | tee "$RUNNER_TEMP/flash.txt"
+          fi
+          { echo '### Firmware size'; echo '```'; cat "$RUNNER_TEMP/flash.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      # The one-time USB flash to the whole-chip layout (spec 027 FR-019):
+      # each part at its own offset, so NVS - the device's settings - is kept.
+      - name: Create USB flash packages
+        run: |
+          VERSION="$(grep -o 'FIRMWARE_VERSION "[^"]*"' include/version.h | cut -d'"' -f2)"
+          BOOT_APP0=$(find ~/.platformio/packages/framework-arduinoespressif32 -name "boot_app0.bin" | head -1)
+          for build in standard ble; do
+            env=esp32dev; [ "$build" = ble ] && env=esp32dev-ble
+            python3 tools/firmware/usb_package.py --build "$build" --version "$VERSION" \
+              --build-dir ".pio/build/$env" --fs .pio/build/esp32dev/littlefs.bin \
+              --boot-app0 "$BOOT_APP0" --out ".pio/build/usb-$build.zip"
+          done
 
       # PR builds: keep 5 days (inspection only). Tag builds go into GitHub Releases permanently.
       - name: Upload firmware artifact
@@ -261,11 +257,11 @@ jobs:
           if-no-files-found: error
           retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
-      - name: Upload complete flash artifact
+      - name: Upload USB flash packages
         uses: actions/upload-artifact@v4
         with:
-          name: complete-flash
-          path: .pio/build/esp32dev/complete-flash.bin
+          name: usb-flash
+          path: .pio/build/usb-*.zip
           if-no-files-found: error
           retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
@@ -274,14 +270,6 @@ jobs:
         with:
           name: firmware-ble
           path: .pio/build/esp32dev-ble/firmware.bin
-          if-no-files-found: error
-          retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
-
-      - name: Upload BLE complete flash artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: complete-flash-ble
-          path: .pio/build/esp32dev-ble/complete-flash.bin
           if-no-files-found: error
           retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
@@ -305,14 +293,16 @@ jobs:
           VERSION="${GITHUB_REF#refs/tags/v}"
           python3 tools/i18n/build_packs.py --version "${VERSION}" --out i18n
 
+      # "l2" names for the whole-chip layout (spec 027): v0.2.x firmware looks
+      # for sqmeter-firmware-*, so it never offers a release it can't install.
       - name: Rename binaries with version tag
         run: |
           VERSION="${GITHUB_REF#refs/tags/}"
-          mv firmware/firmware.bin             sqmeter-firmware-${VERSION}.bin
-          mv littlefs/littlefs.bin             sqmeter-littlefs-${VERSION}.bin
-          mv complete-flash/complete-flash.bin sqmeter-complete-flash-${VERSION}.bin
-          mv firmware-ble/firmware.bin             sqmeter-ble-firmware-${VERSION}.bin
-          mv complete-flash-ble/complete-flash.bin sqmeter-ble-complete-flash-${VERSION}.bin
+          mv firmware/firmware.bin         sqmeter-l2-firmware-${VERSION}.bin
+          mv littlefs/littlefs.bin         sqmeter-l2-littlefs-${VERSION}.bin
+          mv firmware-ble/firmware.bin     sqmeter-l2-ble-firmware-${VERSION}.bin
+          mv usb-flash/usb-standard.zip    sqmeter-l2-usb-standard-${VERSION}.zip
+          mv usb-flash/usb-ble.zip         sqmeter-l2-usb-ble-${VERSION}.zip
 
       # Any tag with a semver prerelease segment (e.g. v0.1.4-beta.1) is
       # published as a GitHub prerelease, which is what the device's
@@ -335,9 +325,8 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ steps.prerelease.outputs.value }}
           files: |
-            sqmeter-firmware-*.bin
-            sqmeter-littlefs-*.bin
-            sqmeter-complete-flash-*.bin
-            sqmeter-ble-firmware-*.bin
-            sqmeter-ble-complete-flash-*.bin
+            sqmeter-l2-firmware-*.bin
+            sqmeter-l2-littlefs-*.bin
+            sqmeter-l2-ble-firmware-*.bin
+            sqmeter-l2-usb-*.zip
             i18n/sqmeter-i18n-*

@@ -144,6 +144,9 @@ const CheckNotes: FunctionalComponent<{ checking: boolean; checkError: string; e
   </>
 );
 
+// The one-time move to the whole-chip partition layout (spec 027).
+const USB_FLASH_GUIDE = 'https://sqmeter.dev/getting-started/usb-flash/';
+
 const GithubUpdates: FunctionalComponent = () => {
   const { data: statusMsg } = useWebSocket<StatusMessage>('/ws/status');
   const currentStatus = statusMsg && 'firmware' in statusMsg ? statusMsg : null;
@@ -165,6 +168,14 @@ const GithubUpdates: FunctionalComponent = () => {
     <Card title={t('updates.firmware')} icon="upload" hint={t('updates.updatesFirmwareAndWebUi')}>
       <div class="card-body">
         <ReadingRow label={t('updates.installed')} value={currentVersion ? `v${currentVersion}` : '--'} valueClass="tone-cyan" />
+        {currentStatus?.firmware?.layout === 'legacy' && (
+          <Note tone="warn">
+            {t('updates.needsUsbFlash')}{' '}
+            <a href={USB_FLASH_GUIDE} target="_blank" rel="noopener noreferrer">
+              {t('updates.usbFlashGuide')}
+            </a>
+          </Note>
+        )}
         <div class="form-grid">
           <TrackSelect track={track} onChange={setTrack} disabled={checking || busy} />
           {releases.length > 0 && (

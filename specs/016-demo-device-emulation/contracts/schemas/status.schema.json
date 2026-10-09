@@ -360,6 +360,13 @@
         "buildTime": {
           "type": "string"
         },
+        "layout": {
+          "type": "string",
+          "enum": [
+            "l2",
+            "legacy"
+          ]
+        },
         "name": {
           "type": "string"
         },
@@ -373,6 +380,7 @@
       "required": [
         "buildDate",
         "buildTime",
+        "layout",
         "name",
         "variant",
         "version"

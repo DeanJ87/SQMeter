@@ -53,6 +53,8 @@ export interface SystemStatus {
     buildDate: string;
     buildTime: string;
     variant?: 'standard' | 'ble';
+    // Spec 027: 'legacy' when the device still needs the one-time USB flash.
+    layout?: 'l2' | 'legacy';
   };
   sky?: {
     locationSource: 'gps' | 'manual' | 'none';
