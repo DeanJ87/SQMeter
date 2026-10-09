@@ -8,13 +8,20 @@ import { parseLanguageFile, type DeviceLanguage } from '../i18n/loader';
 
 const POLL_MS = 1000;
 const WAIT_MS = 60_000;
+// A restarting device often doesn't refuse the connection, it just doesn't
+// answer: give up on a poll after this, so the page can say it's restarting.
+const POLL_TIMEOUT_MS = 3000;
 
 export const fetchLanguageStatus = async (): Promise<DeviceLanguage | null> => {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), POLL_TIMEOUT_MS);
   try {
-    const response = await fetch('/api/i18n', { cache: 'no-store' });
+    const response = await fetch('/api/i18n', { cache: 'no-store', signal: abort.signal });
     return response.ok ? ((await response.json()) as DeviceLanguage) : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 };
 
@@ -66,7 +73,7 @@ export const useLanguageProgress = () => {
   return value;
 };
 
-const UNREACHABLE_AFTER = 2; // failed polls in a row before "restarting"
+const UNREACHABLE_AFTER = 1; // failed or timed-out polls in a row before "restarting"
 const RELOAD_DELAY_MS = 800;
 
 // One poll's verdict: the next phase, or null to keep waiting.
