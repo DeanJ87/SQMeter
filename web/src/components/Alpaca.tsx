@@ -7,6 +7,7 @@ import { useAlpacaClients, type AlpacaClients } from '../hooks/useAlpacaClients'
 import SafetyCard from './SafetyCard';
 import { Button, Card, Note, Pill, ReadingRow } from './ui';
 import { t } from '../i18n';
+import { formatCount, formatNumber, formatTime } from '../i18n/format';
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -21,7 +22,7 @@ const alpacaGet = async <T,>(path: string): Promise<AlpacaResponse<T> | null> =>
 };
 
 const formatStateValue = (value: unknown): string => {
-  if (typeof value === 'number') return Number.isInteger(value) ? String(value) : value.toFixed(2);
+  if (typeof value === 'number') return Number.isInteger(value) ? formatCount(value) : formatNumber(value, 2);
   if (typeof value === 'boolean') return value ? 'true' : 'false';
   return String(value);
 };
@@ -205,7 +206,7 @@ const Alpaca: FunctionalComponent = () => {
         );
       })}
 
-      {lastUpdated && <Note>{t('alpaca.updatedLocaletimestring', { localeTimeString: lastUpdated.toLocaleTimeString() })}</Note>}
+      {lastUpdated && <Note>{t('alpaca.updatedLocaletimestring', { localeTimeString: formatTime(lastUpdated) })}</Note>}
     </div>
   );
 };

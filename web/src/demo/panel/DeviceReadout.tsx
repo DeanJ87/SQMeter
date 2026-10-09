@@ -2,6 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { INPUTS, type Ramp } from '../conditions';
 import { demoDevice, type Pending } from '../device';
 import { formatInput } from './NumberField';
+import { formatNumber } from '../../i18n/format';
 
 // What the device makes of the readings (spec 019 US2): its own derived
 // values, and what it's still waiting on, read from the device core. Nothing
@@ -73,10 +74,10 @@ function readoutRows(readings: Readings): { label: string; value: string }[] {
   const rows = [
     {
       label: 'Sky quality',
-      value: ok(sky) ? `${sky?.sqm?.toFixed(2)} · NELM ${sky?.nelm?.toFixed(1)} · Bortle ${sky?.bortle}` : NO_READING,
+      value: ok(sky) ? `${formatNumber(sky?.sqm, 2)} · NELM ${formatNumber(sky?.nelm, 1)} · Bortle ${sky?.bortle}` : NO_READING,
     },
-    { label: 'Clouds', value: ok(clouds) ? `${clouds?.coverPercent?.toFixed(0)}% · ${clouds?.description}` : NO_READING },
-    { label: 'Dew point', value: ok(environment) ? `${environment?.dewpoint?.toFixed(1)} °C` : NO_READING },
+    { label: 'Clouds', value: ok(clouds) ? `${formatNumber(clouds?.coverPercent, 0)}% · ${clouds?.description}` : NO_READING },
+    { label: 'Dew point', value: ok(environment) ? `${formatNumber(environment?.dewpoint, 1)} °C` : NO_READING },
   ];
   if (rain) rows.push({ label: 'Rain', value: rainText(rain) });
   return rows;
@@ -84,7 +85,7 @@ function readoutRows(readings: Readings): { label: string; value: string }[] {
 
 function rainText(rain: NonNullable<Readings['rain']>) {
   if (!ok(rain)) return NO_READING;
-  if (rain.rainingNow) return `raining ${rain.intensity?.toFixed(1)} mm/h`;
+  if (rain.rainingNow) return `raining ${formatNumber(rain.intensity, 1)} mm/h`;
   return rain.raining ? 'held after rain' : 'dry';
 }
 

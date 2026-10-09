@@ -4,6 +4,7 @@ import { route } from 'preact-router';
 import type { SafetyStatus } from '../types';
 import { Button, Card, Note, Pill } from './ui';
 import { t } from '../i18n';
+import { formatDateTime, formatTime } from '../i18n/format';
 import { deviceText } from '../i18n/deviceMessage';
 
 const verdict = (safety: SafetyStatus) => {
@@ -78,9 +79,7 @@ const historyTime = (entry: HistoryEntry, currentBoot: number) => {
   if (entry.timestamp) {
     const date = new Date(entry.timestamp * 1000);
     const sameDay = date.toDateString() === new Date().toDateString();
-    return sameDay
-      ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : date.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    return sameDay ? formatTime(date) : formatDateTime(date, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
   }
   return entry.boot === currentBoot ? `${entry.uptime}s after start` : 'earlier';
 };

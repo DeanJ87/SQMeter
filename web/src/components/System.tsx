@@ -6,14 +6,8 @@ import type { SensorHealth, SystemStatus } from '../types';
 import { Button, Card, Note, Pill, ProgressMeter, ReadingRow } from './ui';
 import { showToast } from './toast';
 import { t } from '../i18n';
-import { formatAgeMs, formatUptime } from '../i18n/format';
+import { formatAgeMs, formatBytes, formatUptime } from '../i18n/format';
 import { deviceError } from '../i18n/deviceMessage';
-
-const formatBytes = (bytes: number): string => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1048576) return `${(bytes / 1024).toFixed(2)} KB`;
-  return `${(bytes / 1048576).toFixed(2)} MB`;
-};
 
 const formatShortAgeMs = (value: number | null | undefined): string => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > 86400000) return '--';

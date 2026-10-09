@@ -204,7 +204,7 @@ test('every control stays inside the browser (SC-008)', async ({ page }) => {
   for (const title of ['Air (BME280)', 'Rain (RG-15)', 'Wind', 'GPS']) await openGroup(page, title);
   for (const checkbox of await page.locator('.demo-panel-body input[type=checkbox]').all())
     if (await checkbox.isEnabled()) await checkbox.click();
-  for (const input of await page.locator('.demo-panel-body input[type=number]').all()) {
+  for (const input of await page.locator('.demo-panel-body input[data-demo-number]').all()) {
     if (!(await input.isEnabled())) continue;
     await input.fill('1');
     await input.press('Enter');

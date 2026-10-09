@@ -5,6 +5,8 @@ import { defaultLocationConfig } from './defaults';
 import type { SettingsTabProps } from './context';
 import { ActionButton, DepToggle, Field, Group, NumberInput, SelectInput, SettingsCard, StatusBadge, TextInput } from './controls';
 import { t } from '../../i18n';
+import { formatCoordinatesInput } from '../../i18n/format';
+import { parseCoordinates } from '../../i18n/parse';
 
 // Common time zones in POSIX TZ format
 export const TIMEZONE_OPTIONS = [
@@ -20,14 +22,8 @@ export const TIMEZONE_OPTIONS = [
   { label: t('settings.time.asiaTokyoJst'), value: 'JST-9' },
 ];
 
-// "51.4779, -0.0015" (or space separated) -> [lat, lon]; null if it isn't that.
-export const parseCoordinates = (text: string): [number, number] | null => {
-  const match = text.trim().match(/^(-?\d+(?:\.\d+)?)\s*[,\s]\s*(-?\d+(?:\.\d+)?)$/);
-  if (!match) return null;
-  const lat = parseFloat(match[1]);
-  const lon = parseFloat(match[2]);
-  return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? [lat, lon] : null;
-};
+// "51.4779, -0.0015", "51,4779; -0,0015", "51,4779 -0,0015"... -> [lat, lon]; null if it isn't that.
+export { parseCoordinates };
 
 const NTP = 0;
 const GPS = 1;
@@ -36,7 +32,7 @@ const LAST_SOURCE = t('settings.time.atLeastOneTimeSource');
 
 const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw, status, deps, fix }) => {
   const location = { ...defaultLocationConfig, ...config.location };
-  const [coords, setCoords] = useState(location.set ? `${location.latitude}, ${location.longitude}` : '');
+  const [coords, setCoords] = useState(location.set ? formatCoordinatesInput(location.latitude, location.longitude) : '');
   const [coordsError, setCoordsError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const canUseBrowserLocation = typeof window !== 'undefined' && window.isSecureContext && 'geolocation' in navigator;
@@ -65,7 +61,7 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocating(false);
-        applyCoords(`${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+        applyCoords(formatCoordinatesInput(position.coords.latitude, position.coords.longitude));
       },
       () => {
         setLocating(false);
@@ -220,7 +216,7 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
                   dataField="gps.baudRate"
                   value={String(config.gps.baudRate)}
                   options={['4800', '9600', '19200', '38400', '57600', '115200'].map((b) => ({ value: b, label: b }))}
-                  onChange={(v) => update(['gps', 'baudRate'], parseInt(v, 10))}
+                  onChange={(v) => update(['gps', 'baudRate'], Number(v))}
                 />
               </Field>
             </div>
@@ -243,7 +239,7 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
                     { value: String(GPS), label: 'GPS' },
                   ]}
                   onChange={(v) => {
-                    const primary = parseInt(v, 10);
+                    const primary = Number(v);
                     updateMany([
                       [['primaryTimeSource'], primary],
                       [['secondaryTimeSource'], primary === NTP ? GPS : NTP],
