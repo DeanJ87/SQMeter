@@ -71,13 +71,15 @@ const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; de
 
   const darkLabel = dark.darkNow
     ? t('sunMoonCard.darkNowUntilClock', { clock: formatClock(dark.end) })
-    : dark.start
-      ? t('sunMoonCard.darkClockClock2Value', {
-          clock: formatClock(dark.start),
-          clock2: formatClock(dark.end),
-          value: dark.end ? ` · ${formatDuration(dark.end.valueOf() - dark.start.valueOf())}` : '',
+    : dark.start && dark.end
+      ? t('sunMoonCard.darkFromTo', {
+          from: formatClock(dark.start),
+          to: formatClock(dark.end),
+          duration: formatDuration(dark.end.valueOf() - dark.start.valueOf()),
         })
-      : t('sunMoonCard.noAstronomicalDarkTonight');
+      : dark.start
+        ? t('sunMoonCard.darkFrom', { from: formatClock(dark.start) })
+        : t('sunMoonCard.noAstronomicalDarkTonight');
   const moonTimes = [
     moonrise && { time: moonrise, text: t('sunMoonCard.moonRises', { clock: formatClock(moonrise) }) },
     moonset && { time: moonset, text: t('sunMoonCard.moonSets', { clock: formatClock(moonset) }) },
@@ -88,7 +90,13 @@ const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; de
     .join(t('common.listSeparator'));
 
   return (
-    <Card title={t('sunMoonCard.sunMoon')} icon="moon" tone="violet" actions={<Pill tone={PHASE_TONE[phase]}>{skyPhaseLabel(phase)}</Pill>}>
+    <Card
+      title={t('sunMoonCard.sunMoon')}
+      icon="moon"
+      tone="violet"
+      hint={browserZone ? t('sunMoonCard.timesInZone', { zone: browserZone }) : t('sunMoonCard.timesInBrowserZone')}
+      actions={<Pill tone={PHASE_TONE[phase]}>{skyPhaseLabel(phase)}</Pill>}
+    >
       <div class="sun-moon">
         <MoonDisc phase={illumination.phase} southern={latitude < 0} />
         <div class="sun-moon-summary">
@@ -103,10 +111,6 @@ const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; de
         </div>
       </div>
       <NightChart latitude={latitude} longitude={longitude} now={now} />
-      {/* Worked out in the browser for the device's location; times are this browser's clock. */}
-      <p class="note note-muted">
-        {browserZone ? t('sunMoonCard.timesInZone', { zone: browserZone }) : t('sunMoonCard.timesInBrowserZone')}
-      </p>
     </Card>
   );
 };

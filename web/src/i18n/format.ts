@@ -26,6 +26,12 @@ export const formatCount = (value: number | undefined | null, digits = 0) =>
 export const formatSignificant = (value: number, digits: number) =>
   value.toLocaleString(formatLocale(), { minimumSignificantDigits: digits, maximumSignificantDigits: digits, useGrouping: false });
 
+/** Illuminance as read (specs/026 A12): whole lux from 100 up (grouped), 3 significant figures below, e.g. 12,513 / 0.000294. */
+export const formatIlluminance = (lux: number | undefined | null) => {
+  if (typeof lux !== 'number' || !Number.isFinite(lux)) return '--';
+  return Math.abs(lux) >= 100 ? formatCount(Math.round(lux)) : formatSignificant(lux, 3);
+};
+
 /** A number as typed into an input: the language's decimal separator, no grouping, no rounding. */
 export const formatInputNumber = (value: number) =>
   Number.isFinite(value) ? value.toLocaleString(formatLocale(), { maximumFractionDigits: 10, useGrouping: false }) : '';

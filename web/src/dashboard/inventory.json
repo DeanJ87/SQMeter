@@ -1,6 +1,18 @@
 {
-  "about": "What the dashboard shows and why (spec 025). Every field of the status, readings, safety and alerts-armed schemas and every settings-dependency id is mapped here: shown (with a test in web/tests/dashboard.spec.ts) or not shown (with a reason). Checked by tools/dashboard/check.py (DASH-02).",
+  "about": "What the dashboard shows and why (spec 025; the Status card, spec 026). Every field of the status, readings, safety and alerts-armed schemas and every settings-dependency id is mapped here: shown (with a test in web/tests/dashboard.spec.ts) or not shown (with a reason). Checked by tools/dashboard/check.py (DASH-02).",
   "shown": [
+    {
+      "id": "status-card",
+      "label": "status.title",
+      "sources": [],
+      "requiredBy": "026 FR-001, FR-003",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 0,
+      "location": "card:status",
+      "test": "status-card"
+    },
     {
       "id": "freshness",
       "label": "dashboard.live",
@@ -8,12 +20,12 @@
         "readings.dataStale",
         "readings.dataAgeMs"
       ],
-      "requiredBy": "025 FR-014, 010",
+      "requiredBy": "025 FR-014, 010, 026 FR-002",
       "visibility": {
         "rule": "always"
       },
       "priority": 1,
-      "location": "glance",
+      "location": "card:status",
       "test": "freshness"
     },
     {
@@ -32,12 +44,12 @@
         "safety.secondsUntilSafe",
         "safety.changedAgeMs"
       ],
-      "requiredBy": "025 FR-005, 006",
+      "requiredBy": "025 FR-005, 006, 026 FR-002",
       "visibility": {
         "rule": "always"
       },
       "priority": 2,
-      "location": "glance",
+      "location": "card:status",
       "test": "safety-verdict"
     },
     {
@@ -58,7 +70,7 @@
     },
     {
       "id": "rules-not-in-effect",
-      "label": "glance.ruleNotInEffect",
+      "label": "status.notInEffect",
       "sources": [
         "readings.safety.rulesNotInEffect",
         "safety.rulesNotInEffect",
@@ -111,52 +123,52 @@
         "alerts-armed.sinceAgeMs",
         "alerts-armed.armWithAlpaca"
       ],
-      "requiredBy": "025 FR-008, 021",
+      "requiredBy": "025 FR-008, 021, 026 FR-002",
       "visibility": {
         "rule": "always"
       },
       "priority": 3,
-      "location": "glance",
+      "location": "card:status",
       "test": "alerts-state"
     },
     {
       "id": "alerts-mode-not-in-effect",
-      "label": "glance.sendModeNotInEffect",
+      "label": "status.sendMode",
       "sources": [
         "deps.D-12",
         "status.alpaca.enabled",
         "status.alpaca"
       ],
-      "requiredBy": "025 FR-010, 020 D-12",
+      "requiredBy": "025 FR-010, 020 D-12, 026 FR-002",
       "visibility": {
         "rule": "when",
         "when": "send mode is \"only while an imaging app is connected\" and Alpaca is off"
       },
       "priority": 3,
-      "location": "glance",
+      "location": "card:status",
       "test": "alerts-mode-not-in-effect"
     },
     {
       "id": "no-channel",
-      "label": "glance.noChannel",
+      "label": "status.channels",
       "sources": [
         "deps.D-01",
         "deps.D-02",
         "deps.D-03",
         "deps.D-04"
       ],
-      "requiredBy": "025 FR-011, US1-6",
+      "requiredBy": "025 FR-011, US1-6, 026 FR-002",
       "visibility": {
         "rule": "when",
         "when": "alerts are on but no enabled channel can send"
       },
       "priority": 3,
-      "location": "glance",
+      "location": "card:status",
       "test": "no-channel"
     },
     {
       "id": "imaging-app",
-      "label": "glance.imagingApp",
+      "label": "status.imagingApp",
       "sources": [
         "status.alpaca.clients.safetymonitor.connected",
         "status.alpaca.clients.safetymonitor.watching",
@@ -170,18 +182,18 @@
         "status.alpaca.clients.safetymonitor",
         "status.alpaca.clients.observingconditions"
       ],
-      "requiredBy": "025 FR-009, 021",
+      "requiredBy": "025 FR-009, 021, 026 FR-002",
       "visibility": {
         "rule": "when",
         "when": "send mode needs an app, an app is connected, or one was seen since boot"
       },
       "priority": 4,
-      "location": "glance",
+      "location": "card:status",
       "test": "imaging-app"
     },
     {
       "id": "sensor-faults",
-      "label": "glance.sensorFault",
+      "label": "sensor.infrared",
       "sources": [
         "status.sensors.light.status",
         "status.sensors.light.ageMs",
@@ -218,18 +230,18 @@
         "status.sensors.wind",
         "status.sensors.gps"
       ],
-      "requiredBy": "025 FR-006, FR-013",
+      "requiredBy": "025 FR-006, FR-013, 026 FR-002",
       "visibility": {
         "rule": "when",
         "when": "an expected sensor is not ok"
       },
       "priority": 5,
-      "location": "glance",
+      "location": "card:status",
       "test": "sensor-faults"
     },
     {
       "id": "settings-not-in-effect",
-      "label": "glance.settingsNotInEffect",
+      "label": "status.notInEffectCount",
       "sources": [
         "deps.D-05",
         "deps.D-06",
@@ -243,18 +255,31 @@
         "deps.D-35",
         "deps.D-37"
       ],
-      "requiredBy": "025 FR-011, 020",
+      "requiredBy": "025 FR-011, 020, 026 FR-002",
       "visibility": {
         "rule": "when",
         "when": "a setting that affects alerts or safety is on but not in effect"
       },
       "priority": 6,
-      "location": "glance",
+      "location": "card:status",
       "test": "settings-not-in-effect"
     },
     {
+      "id": "language",
+      "label": "status.notLoaded",
+      "sources": [],
+      "requiredBy": "023 FR-024, 026 FR-004",
+      "visibility": {
+        "rule": "when",
+        "when": "the chosen language file is missing, damaged or still downloading after a reload"
+      },
+      "priority": 6,
+      "location": "card:status",
+      "test": "language"
+    },
+    {
       "id": "clock-location",
-      "label": "glance.clockNotSet",
+      "label": "status.clock",
       "sources": [
         "readings.timeValid",
         "status.sky.nightKnown",
@@ -273,18 +298,18 @@
         "status.time.timezone",
         "status.time"
       ],
-      "requiredBy": "025 FR-016, 005",
+      "requiredBy": "025 FR-016, 005, 026 FR-002",
       "visibility": {
         "rule": "when",
         "when": "the clock is not set or no location is known (sources on demand)"
       },
       "priority": 7,
-      "location": "glance",
+      "location": "card:status",
       "test": "clock-location"
     },
     {
       "id": "phone-alarm",
-      "label": "glance.phoneAlarm",
+      "label": "status.phoneAlarm",
       "sources": [
         "status.ble.alarm.active",
         "status.ble.alarm.sequence",
@@ -297,13 +322,13 @@
         "status.ble.active",
         "status.ble.clients"
       ],
-      "requiredBy": "025 FR-017, 009",
+      "requiredBy": "025 FR-017, 009, 026 FR-002",
       "visibility": {
         "rule": "when",
         "when": "a phone alarm is ringing"
       },
       "priority": 8,
-      "location": "glance",
+      "location": "card:status",
       "test": "phone-alarm",
       "testIn": "unit",
       "demoCannot": "The phone alarm needs the Bluetooth build; the demo is the standard build."
@@ -320,19 +345,6 @@
       "priority": 9,
       "location": "card:device",
       "test": "update-available"
-    },
-    {
-      "id": "demo-marker",
-      "label": "glance.demo",
-      "sources": [],
-      "requiredBy": "025 FR-022, 019",
-      "visibility": {
-        "rule": "when",
-        "when": "the demo"
-      },
-      "priority": 9,
-      "location": "glance",
-      "test": "demo-marker"
     },
     {
       "id": "sky-card",

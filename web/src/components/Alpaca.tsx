@@ -1,7 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
 import { route } from 'preact-router';
-import { describeClient } from '../lib/alpacaClients';
+import { CLIENT_PILL, describeClient } from '../lib/alpacaClients';
 import { useAlpacaClients, type AlpacaClients } from '../hooks/useAlpacaClients';
 import { deviceBasePath, useAlpacaDevices } from '../hooks/useAlpacaDevices';
 import SafetyCard from './SafetyCard';
@@ -48,8 +48,6 @@ const CopyableUrl: FunctionalComponent<{ label: string; url: string; open?: bool
   );
 };
 
-const CLIENT_TONE = { ok: 'tone-green', warn: 'tone-amber', muted: '' } as const;
-
 // Whether an imaging app is checking each device (specs/021).
 const ImagingAppState: FunctionalComponent<{ clients: AlpacaClients | null; enabled: boolean }> = ({ clients, enabled }) =>
   enabled && clients ? (
@@ -61,8 +59,16 @@ const ImagingAppState: FunctionalComponent<{ clients: AlpacaClients | null; enab
           [t('alpaca.weatherDevice'), clients.observingconditions],
         ] as const
       ).map(([label, state]) => {
-        const { text, tone } = describeClient(state);
-        return <ReadingRow key={label} label={label} value={text} valueClass={CLIENT_TONE[tone]} />;
+        const view = describeClient(state);
+        return (
+          <div class="reading-row" key={label}>
+            <span class="reading-label">{label}</span>
+            <span class="client-state">
+              {view.checked && <span class="system-subtle">{view.checked}</span>}
+              <Pill tone={CLIENT_PILL[view.tone]}>{view.state}</Pill>
+            </span>
+          </div>
+        );
       })}
     </div>
   ) : null;

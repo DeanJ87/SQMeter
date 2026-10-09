@@ -70,6 +70,12 @@ const DemoPanel: FunctionalComponent = () => {
       )}
       <button ref={toggle} type="button" class="demo-panel-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span aria-hidden="true">✦</span> Demo
+        {/* The demo device's clock isn't the real time (spec 019): say so where the demo is named (spec 026). */}
+        {Math.abs(demoDevice.now.valueOf() - Date.now()) > 60_000 && (
+          <span class="demo-clock-moved" data-inventory="demo-marker">
+            Clock moved
+          </span>
+        )}
       </button>
     </div>
   );

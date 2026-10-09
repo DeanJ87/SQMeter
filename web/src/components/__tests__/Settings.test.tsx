@@ -65,7 +65,7 @@ describe('Settings', () => {
     const toggle = await screen.findByLabelText('Unsafe while raining');
     expect(toggle).not.toBeDisabled();
     // Rain rules are ignored without the sensor (D-15), not fail-safe.
-    await waitFor(() => expect(screen.getAllByText('Not in effect - Rain sensor is off').length).toBe(2));
+    await waitFor(() => expect(screen.getAllByText('Not in effect: Rain sensor is off').length).toBe(2));
   });
 
   it('greys out sky rules when the MLX90614 was not detected', async () => {

@@ -51,3 +51,28 @@ for (const width of [320, 390]) {
     await expectClear(page, page.getByRole('button', { name: 'Save' }));
   });
 }
+
+// Nothing sits between the header and the dashboard cards (specs/026 FR-014,
+// DS-01): information lives in cards; the only thing above the grid is the
+// Arrange toolbar.
+for (const width of [1280, 390]) {
+  test(`at ${width} px nothing but the toolbar sits between the header and the cards`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('./?panel=hidden#/');
+    await expect(page.locator('[data-inventory="status-card"]')).toBeVisible({ timeout: 15_000 });
+    const between = await page.evaluate(() => {
+      const top = document.querySelector('.app-header')!.getBoundingClientRect().bottom;
+      const masonry = document.querySelector('.masonry')!;
+      const grid = masonry.getBoundingClientRect().top;
+      const toolbar = document.querySelector('.dashboard-toolbar');
+      return Array.from(document.querySelectorAll('main *'))
+        .filter((el) => !toolbar?.contains(el) && !el.contains(masonry) && !masonry.contains(el))
+        .filter((el) => {
+          const box = el.getBoundingClientRect();
+          return box.width > 0 && box.height > 0 && box.bottom > top + 1 && box.top < grid - 1;
+        })
+        .map((el) => `${el.tagName.toLowerCase()}.${el.className}`);
+    });
+    expect(between).toEqual([]);
+  });
+}

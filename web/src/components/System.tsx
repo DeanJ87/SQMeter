@@ -6,6 +6,7 @@ import type { SensorHealth, SystemStatus } from '../types';
 import { Button, Card, Note, Pill, ProgressMeter, ReadingRow } from './ui';
 import { showToast } from './toast';
 import { t } from '../i18n';
+import { SENSOR_MODEL, sensorName, type SensorId } from '../lib/sensorNames';
 import { formatAgeMs, formatBytes, formatUptime } from '../i18n/format';
 import { deviceError } from '../i18n/deviceMessage';
 import { bodyOf, post } from '../lib/api';
@@ -36,11 +37,14 @@ const InfoRow: FunctionalComponent<{ label: string; value: string; tone?: string
   <ReadingRow label={label} value={value} valueClass={tone} />
 );
 
-const SensorRow: FunctionalComponent<{ name: string; status: SensorHealth }> = ({ name, status }) => {
+// One name per sensor (specs/026 DS-27), with its part number here, where hardware matters.
+const SensorRow: FunctionalComponent<{ sensor: SensorId; status: SensorHealth }> = ({ sensor, status }) => {
   const badge = sensorBadge(status);
   return (
     <div class="reading-row">
-      <span class="reading-label">{name}</span>
+      <span class="reading-label">
+        {sensorName(sensor)} {SENSOR_MODEL[sensor] && <span class="system-subtle mono">{SENSOR_MODEL[sensor]}</span>}
+      </span>
       <Pill tone={badge.tone}>{badge.text}</Pill>
     </div>
   );
@@ -126,12 +130,12 @@ const RuntimeCard: FunctionalComponent<{ status: Status }> = ({ status }) => {
 const SensorsCard: FunctionalComponent<{ sensors: Status['sensors'] }> = ({ sensors }) => (
   <Card title={t('system.sensors')} icon="eye" tone="green">
     <div class="system-list">
-      <SensorRow name="TSL2591 Light Sensor" status={sensors.light.status} />
-      <SensorRow name="BME280 Environment" status={sensors.environment.status} />
-      <SensorRow name="MLX90614 IR Temperature" status={sensors.infrared.status} />
-      {sensors.gps && <SensorRow name="GPS Module" status={sensors.gps.status} />}
-      {sensors.rain && <SensorRow name="RG-15 Rain Sensor" status={sensors.rain.status} />}
-      {sensors.wind && <SensorRow name="Anemometer" status={sensors.wind.status} />}
+      <SensorRow sensor="light" status={sensors.light.status} />
+      <SensorRow sensor="environment" status={sensors.environment.status} />
+      <SensorRow sensor="infrared" status={sensors.infrared.status} />
+      {sensors.gps && <SensorRow sensor="gps" status={sensors.gps.status} />}
+      {sensors.rain && <SensorRow sensor="rain" status={sensors.rain.status} />}
+      {sensors.wind && <SensorRow sensor="wind" status={sensors.wind.status} />}
     </div>
   </Card>
 );

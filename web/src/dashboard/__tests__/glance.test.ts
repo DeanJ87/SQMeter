@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { generateSensorData, mockConfig, mockStatus } from '../../mocks/data';
 import type { AlertSchedule, Config, SensorData, SystemStatus } from '../../types';
 import type { EffectiveReport } from '../../lib/settingsDeps';
-import { expectedSensors, glanceItems, healthyLine, type GlanceInput } from '../glance';
+import { expectedSensors, glanceItems, toCheck, type GlanceInput } from '../glance';
 
-// Every visibility rule of the at-a-glance area (specs/025 FR-005..FR-017).
+// Every visibility rule of the Status card (specs/025 FR-005..FR-017, 026 FR-002).
 
 const healthySensors = (): SensorData => {
   const s = generateSensorData();
@@ -45,28 +45,38 @@ const withStatus = (change: (status: SystemStatus) => void) => {
 };
 
 describe('glanceItems', () => {
-  it('is one calm line when all is well', () => {
+  it('is all good when all is well', () => {
     const items = glanceItems(input({ config: withConfig((c) => (c.alerts!.enabled = true)) }));
-    expect(items.filter((item) => item.severity !== 'ok')).toEqual([]);
-    // The mock device has an imaging app connected: shown compactly, never as a problem.
-    expect(healthyLine(items)).toMatch(/^Live · Safe · Sending alerts · Imaging app \(safety monitor\): Connected/);
+    expect(toCheck(items)).toEqual([]);
+    // Tiles: Data, Safety, Alerts; the mock device has an imaging app connected - a tile, never a problem.
+    expect(items.map((item) => [item.label, item.state])).toEqual(
+      expect.arrayContaining([
+        ['Data', 'Live'],
+        ['Safety', 'Safe'],
+        ['Alerts', 'Sending'],
+        ['Imaging app', 'Connected'],
+      ]),
+    );
   });
 
   it('says when the stream is down, quiet or the data is stale (FR-014)', () => {
     expect(glanceItems(input({ connected: false }))[0]).toMatchObject({
       id: 'freshness',
       severity: 'problem',
-      text: 'Disconnected from the device',
+      state: 'Offline',
     });
-    expect(glanceItems(input({ quiet: true }))[0].text).toBe('Updates stopped');
-    expect(glanceItems(input({ sensors: { ...healthySensors(), dataStale: true, dataAgeMs: 40_000 } }))[0].text).toMatch(/^Stale data/);
+    expect(glanceItems(input({ quiet: true }))[0].state).toBe('No updates');
+    expect(glanceItems(input({ sensors: { ...healthySensors(), dataStale: true, dataAgeMs: 40_000 } }))[0]).toMatchObject({
+      state: 'Stale',
+      sub: '40.0 s old',
+    });
   });
 
   it('puts an unsafe verdict first after freshness, with its reasons', () => {
     const sensors = healthySensors();
     sensors.safety = { ...sensors.safety!, safe: false, rawSafe: false, reasons: ['Rain detected'] };
     const items = glanceItems(input({ sensors }));
-    expect(items[1]).toMatchObject({ id: 'safety-verdict', severity: 'problem', text: 'Unsafe', detail: 'Rain detected' });
+    expect(items[1]).toMatchObject({ id: 'safety-verdict', severity: 'problem', state: 'Unsafe', sub: 'Rain detected' });
   });
 
   it('shows paused alerts with a Resume action (FR-008)', () => {
@@ -74,8 +84,8 @@ describe('glanceItems', () => {
     const item = glanceItems(input({ schedule, config: withConfig((c) => (c.alerts!.enabled = true)) })).find(
       (i) => i.id === 'alerts-state',
     );
-    expect(item).toMatchObject({ severity: 'problem', fix: { action: 'resume' } });
-    expect(item?.text).toMatch(/^Paused by you/);
+    expect(item).toMatchObject({ severity: 'problem', state: 'Paused', fix: { action: 'resume' } });
+    expect(item?.sub).toMatch(/^Paused by you/);
   });
 
   it('says alerts are waiting for an imaging app (US1-3)', () => {
@@ -85,8 +95,8 @@ describe('glanceItems', () => {
       c.alerts!.sendMode = 'whileConnected';
     });
     const item = glanceItems(input({ schedule, config })).find((i) => i.id === 'alerts-state');
-    expect(item?.text).toMatch(/^Waiting for an imaging app/);
-    expect(item?.fix).toMatchObject({ href: '#/alpaca' });
+    expect(item).toMatchObject({ state: 'Waiting', detail: 'Nothing is sent until an imaging app connects.' });
+    expect(item?.sub).toMatch(/^Waiting for an imaging app/);
   });
 
   it('says alerts are off once', () => {
@@ -149,7 +159,10 @@ describe('glanceItems', () => {
     const failedBme = withStatus((s) => (s.sensors.environment = { status: 'error', ageMs: 90_000 }));
     expect(ids({ status: failedBme })).toContain('sensor-faults');
     const deadIr = withStatus((s) => (s.sensors.infrared = { status: 'missing' }));
-    expect(glanceItems(input({ status: deadIr })).find((i) => i.id === 'sensor-faults')?.text).toMatch(/^IR sky sensor/);
+    expect(glanceItems(input({ status: deadIr })).find((i) => i.id === 'sensor-faults')).toMatchObject({
+      label: 'IR sky sensor',
+      state: 'Not responding',
+    });
   });
 
   it('summarises settings not in effect that matter (FR-011)', () => {
@@ -160,13 +173,20 @@ describe('glanceItems', () => {
         { id: 'D-14', setting: 'mqtt.publish.gps', state: 'inactive', text: 'GPS is off' },
       ],
     };
-    expect(glanceItems(input({ effective })).find((i) => i.id === 'settings-not-in-effect')?.text).toBe('1 setting not in effect');
+    expect(glanceItems(input({ effective })).find((i) => i.id === 'settings-not-in-effect')).toMatchObject({
+      label: 'Settings',
+      state: '1 not in effect',
+      detail: 'Rain sensor is off',
+    });
   });
 
   it('says the clock or location is unknown (FR-016)', () => {
     expect(ids({ sensors: { ...healthySensors(), timeValid: false } })).toContain('clock-location');
     const noLocation = withStatus((s) => (s.sky = { locationSource: 'none', nightKnown: false }));
-    expect(glanceItems(input({ status: noLocation })).find((i) => i.id === 'clock-location')?.text).toMatch(/^No location/);
+    expect(glanceItems(input({ status: noLocation })).find((i) => i.id === 'clock-location')).toMatchObject({
+      label: 'Location',
+      state: 'Unknown',
+    });
   });
 
   it('shows a ringing phone alarm with Acknowledge (FR-017)', () => {
