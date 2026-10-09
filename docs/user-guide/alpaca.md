@@ -24,9 +24,9 @@ Alpaca support is disabled by default. With it off, every Alpaca endpoint still 
 ## Connecting from N.I.N.A.
 
 <!-- diagram: DIA-10
-sources: lib/AlpacaLogic/src/AlpacaDiscovery.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp src/WebServer.cpp#WebServer::setupAlpacaRoutes
+sources: lib/AlpacaLogic/src/AlpacaDiscovery.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp src/WebServerAlpaca.cpp#WebServer::setupAlpacaRoutes
 blocking: false
-fingerprint: d8cc1708bc78cd84
+fingerprint: 39c02b39edaa7210
 -->
 <figure class="diagram" markdown>
 

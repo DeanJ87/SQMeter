@@ -2,6 +2,8 @@ import { FunctionalComponent } from 'preact';
 import { useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { formatClock, moonIllumination, moonPosition, SkyPhase, skyPhase, skyPhaseLabel, sunPosition } from '../lib/astro';
 import { t } from '../i18n';
+import { formatNumber } from '../i18n/format';
+import { svgNumber } from '../lib/svg';
 
 // Noon-to-noon altitude chart for the coming (or current) night: twilight as
 // background bands, the moon's altitude as a curve, a "now" line, and a
@@ -73,7 +75,7 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
   const moonSegments: string[] = [];
   let segment: string[] = [];
   for (const sample of samples) {
-    if (sample.moon > 0) segment.push(`${x(sample.t).toFixed(1)},${y(sample.moon).toFixed(1)}`);
+    if (sample.moon > 0) segment.push(`${svgNumber(x(sample.t))},${svgNumber(y(sample.moon))}`);
     else if (segment.length) {
       moonSegments.push(segment.join(' '));
       segment = [];
@@ -193,11 +195,11 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
       {hover && (
         <div class="chart-tip" style={{ left: `${Math.min(Math.max(x(hover.date.valueOf()), 70), width - 70)}px` }}>
           <strong>{formatClock(hover.date)}</strong>
-          <span>{t('nightChart.sunFixedValue', { fixed: hover.sun.toFixed(1), value: skyPhaseLabel(skyPhase(hover.sun)) })}</span>
+          <span>{t('nightChart.sunFixedValue', { fixed: formatNumber(hover.sun, 1), value: skyPhaseLabel(skyPhase(hover.sun)) })}</span>
           <span>
             {hover.moon > 0
-              ? t('nightChart.hoverMoonUp', { altitude: hover.moon.toFixed(0), lit: (hover.lit * 100).toFixed(0) })
-              : t('nightChart.hoverMoonDown', { lit: (hover.lit * 100).toFixed(0) })}
+              ? t('nightChart.hoverMoonUp', { altitude: formatNumber(hover.moon, 0), lit: formatNumber(hover.lit * 100, 0) })
+              : t('nightChart.hoverMoonDown', { lit: formatNumber(hover.lit * 100, 0) })}
           </span>
         </div>
       )}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every HTTP route the device serves is declared, with its auth, and documented.
 
-Reads the route registrations in src/WebServer.cpp and src/LanguagePack.cpp (``server.on(...)`` and
+Reads the route registrations in src/WebServer*.cpp and src/LanguagePack.cpp (``server.on(...)`` and
 ``new AsyncCallbackJsonWebHandler(...)``), works out whether each one calls
 ``requireAuth`` (directly, or in a handler it calls), and compares that with
 tools/api/routes.json. Fails when a route is missing from the registry, the
@@ -17,8 +17,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-# Files that register routes: WebServer.cpp, and the modules it hands the server to.
-SOURCES = [ROOT / "src" / "WebServer.cpp", ROOT / "src" / "LanguagePack.cpp"]
+# Files that register routes: the web server's sources, and the modules it hands the server to.
+SOURCES = [*sorted((ROOT / "src").glob("WebServer*.cpp")), ROOT / "src" / "LanguagePack.cpp"]
 REGISTRY = ROOT / "tools" / "api" / "routes.json"
 REST_DOCS = ROOT / "docs" / "api" / "rest.md"
 

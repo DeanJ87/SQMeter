@@ -1,6 +1,8 @@
 import { FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
 import { INPUTS, type NumericInput } from '../conditions';
+import { formatNumber, formatSignificant } from '../../i18n/format';
+import { parseNumber } from '../../i18n/parse';
 
 // Number fields for the Demo panel: the label carries the unit (FR-021); the
 // value is committed on Enter or leaving the field, and the device's value
@@ -9,7 +11,7 @@ import { INPUTS, type NumericInput } from '../conditions';
 const decimals = (step: number) => (step >= 1 ? 0 : Math.min(4, Math.ceil(-Math.log10(step))));
 
 export const formatInput = (field: NumericInput, value: number) =>
-  field === 'light.lux' ? value.toPrecision(3) : value.toFixed(decimals(INPUTS[field].step));
+  field === 'light.lux' ? formatSignificant(value, 3) : formatNumber(value, decimals(INPUTS[field].step));
 
 export const DraftNumber: FunctionalComponent<{
   id: string;
@@ -24,9 +26,9 @@ export const DraftNumber: FunctionalComponent<{
 
   const commit = () => {
     if (draft === null) return;
-    const parsed = Number.parseFloat(draft);
+    const parsed = parseNumber(draft);
     setDraft(null);
-    if (Number.isFinite(parsed)) onCommit(parsed);
+    if (parsed.ok) onCommit(parsed.value);
   };
 
   return (
@@ -38,9 +40,10 @@ export const DraftNumber: FunctionalComponent<{
         <input
           id={id}
           class="input"
-          type="number"
-          inputMode="decimal"
-          step="any"
+          type="text"
+          inputMode="text"
+          autoComplete="off"
+          data-demo-number
           disabled={disabled}
           value={draft ?? valueText}
           onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
