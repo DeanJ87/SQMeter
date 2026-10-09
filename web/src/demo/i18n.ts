@@ -38,7 +38,14 @@ export const i18nHandlers = [
       ? HttpResponse.json({ started: true }, { status: 202 })
       : HttpResponse.json({ error: 'English is built in' }, { status: 409 }),
   ),
-  http.post('/api/i18n/upload', () => HttpResponse.json({ success: true, status: i18nDocument() })),
+  // As the device: the browser checked the file and says which language it is.
+  http.post('/api/i18n/upload', ({ request }) => {
+    const lang = new URL(request.url).searchParams.get('lang') ?? '';
+    if (!isLanguageCode(lang) || lang === 'en')
+      return HttpResponse.json({ error: "That isn't a SQMeter language file (.json.gz)" }, { status: 400 });
+    demoDevice.applyConfig(JSON.stringify({ ...demoDevice.rawConfig(), language: lang }));
+    return HttpResponse.json(i18nDocument());
+  }),
   http.get('*/lang.json', async () => {
     const load = LOCALES[`../i18n/locales/${language()}.json`];
     if (!load) return new HttpResponse(null, { status: 404 });
