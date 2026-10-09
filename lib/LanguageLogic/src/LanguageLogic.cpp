@@ -1,5 +1,5 @@
 #include "LanguageLogic.h"
-#include "ReleaseLogic.h"
+#include "ReleaseUrls.h"
 
 #include <cctype>
 #include <cstdlib>

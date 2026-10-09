@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ReleaseUrls.h"
+
 #include <ArduinoJson.h>
 
 #include <cstddef>
@@ -22,9 +24,6 @@ namespace SQM
 
     namespace Releases
     {
-        // Release files are downloaded from here: <base><tag>/<file name>.
-        constexpr const char *DOWNLOAD_BASE = "https://github.com/DeanJ87/SQMeter/releases/download/";
-
         // Spec 027: files for the whole-chip partition layout ("l2"). Older
         // firmware looks for "sqmeter-firmware-" and friends, so it never
         // offers a release it would install into the wrong layout.
