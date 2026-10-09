@@ -4,6 +4,27 @@ All notable changes to SQMeter are documented here.
 
 ## [Unreleased]
 
+### One-time USB flash (v0.3)
+
+- **Arduino-ESP32 3.x** (ESP-IDF 5.5): a maintained platform with current TLS. The secure clients
+  (Pushover, ntfy, https webhooks, GitHub updates, language downloads) and time sync now reach a
+  host name that only has an IPv6 address.
+- **New partition layout for both builds**: two 1.75 MB firmware slots and a 448 KB web UI
+  partition, using the whole 4 MB flash. **Every device needs one USB flash to move to it**; your
+  settings, WiFi included, are kept. Use the browser flasher or the release's USB package:
+  https://sqmeter.dev/getting-started/usb-flash/
+- Release files are now named `sqmeter-l2-*` (firmware, Bluetooth firmware, web UI, USB packages).
+  Devices on v0.2 don't list v0.3 under "Check for updates"; the old single-file
+  `sqmeter-complete-flash-*` images are gone (they reset settings).
+- The device refuses an update file made for another partition layout or the other build, before
+  switching to it, and says why; a web UI file for another layout is refused before anything is
+  erased.
+- A new firmware is only kept once it has started properly (WiFi and the web server up); one that
+  fails while starting rolls back to the previous firmware.
+- `/api/status` reports `firmware.layout` (`l2`, or `legacy` when the device still needs the USB
+  flash; the Updates page then says so).
+- CI fails a pull request that pushes either firmware build past 95% of its app slot (SIZE-04).
+
 ### Changed
 
 - **Sensor names in device text** use the same names as the UI: safety reasons read "Sensor fault: IR sky sensor" (was "MLX90614 IR"), "Sensor fault: light sensor", "Sensor fault: environment sensor" (was "Humidity sensor fault - humidity/dew point rules can't be evaluated"); sensor alerts are titled "Sensor fault: {name}" / "Sensor recovered: {name}"; `rulesNotInEffect` lists rule names only ("Unsafe while raining"). This is the text sent over MQTT, to Alpaca clients and in alerts: match `reasonFlags` and alert types in automations, not the text.

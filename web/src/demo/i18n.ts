@@ -8,7 +8,7 @@ import { demoDevice } from './device';
 // locale is its own chunk), so nothing leaves the browser.
 
 const LOCALES = import.meta.glob('../i18n/locales/*.json', { import: 'default' });
-const VERSION = '0.2.0-beta.3';
+const VERSION = '0.3.0-beta.1';
 
 const language = (): string => demoDevice.rawConfig().language ?? 'en';
 

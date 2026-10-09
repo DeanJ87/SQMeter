@@ -232,27 +232,28 @@
 
 namespace SQM
 {
-
-    // Root CAs trusted for outbound alert notifications. Each TLS connection
-    // parses every certificate it's given into heap, so connections to a
-    // known host get only that host's root; webhooks (any host) and
-    // self-hosted ntfy get the whole bundle.
+    // The root certificates SQMeter trusts (spec 027 FR-005: each embedded
+    // once). Each TLS connection parses every certificate it's given into
+    // heap, so a connection to a known host gets only that host's roots;
+    // webhooks (any host) and self-hosted ntfy get the whole set.
     //
     // Extracted from the macOS system trust store and verified against the
-    // live chains of api.pushover.net, ntfy.sh, discord.com and
-    // hooks.slack.com with `openssl s_client -CAfile <bundle>`.
-
-    // api.pushover.net chains to DigiCert Global Root G2.
-    static const char *PUSHOVER_ROOT_CA_PEM = SQM_CA_DIGICERT_GLOBAL_ROOT_G2;
-
-    // ntfy.sh (and other Let's Encrypt sites) chain to ISRG Root X1.
-    static const char *NTFY_SH_ROOT_CA_PEM = SQM_CA_ISRG_ROOT_X1;
-
-    // Everything: Let's Encrypt (ISRG X1/X2), DigiCert, Sectigo/USERTrust,
-    // Google Trust Services and Amazon - covers Discord, Slack, Home
-    // Assistant Cloud and most hosted webhooks.
-    static const char *ALERT_ROOT_CA_PEM = SQM_CA_ISRG_ROOT_X1 SQM_CA_ISRG_ROOT_X2 SQM_CA_DIGICERT_GLOBAL_ROOT_G2
-        SQM_CA_DIGICERT_GLOBAL_ROOT_CA SQM_CA_USERTRUST_RSA_CERTIFICATION_AUTHORITY SQM_CA_USERTRUST_ECC_CERTIFICATION_AUTHORITY
-            SQM_CA_GTS_ROOT_R1 SQM_CA_GTS_ROOT_R4 SQM_CA_AMAZON_ROOT_CA_1;
-
+    // live chains of api.pushover.net, ntfy.sh, discord.com,
+    // hooks.slack.com, api.github.com and objects.githubusercontent.com with
+    // `openssl s_client -CAfile <bundle>`. They're long-lived roots
+    // (2035-2038), but intermediates change: if updates or alerts start
+    // failing with TLS handshake errors, re-verify first.
+    //
+    // One block, ordered so each smaller set is the tail of the larger one:
+    //   ALERT_ROOT_CA_PEM  = everything below
+    //   PUSHOVER_ROOT_CA_PEM = DigiCert Global Root G2 + the GitHub roots
+    //   GITHUB_ROOT_CA_PEM = USERTrust ECC (api.github.com) + ISRG X1 (release downloads)
+    //   NTFY_SH_ROOT_CA_PEM = ISRG X1 (ntfy.sh and other Let's Encrypt sites)
+    // Defined in src/RootCertificates.cpp.
+    extern const char *const ALERT_ROOT_CA_PEM;
+    extern const char *const GITHUB_ROOT_CA_PEM;
+    extern const char *const NTFY_SH_ROOT_CA_PEM;
+    // api.pushover.net chains to DigiCert Global Root G2: the tail from G2 on
+    // (G2 + the two GitHub roots), so G2 is embedded once too.
+    extern const char *const PUSHOVER_ROOT_CA_PEM;
 } // namespace SQM

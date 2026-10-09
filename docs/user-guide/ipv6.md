@@ -46,7 +46,7 @@ configure. When the provider changes the prefix the device follows. The same lis
 <!-- diagram: DIA-16
 sources: lib/NetAddress/ src/Ipv6Network.cpp
 blocking: true
-fingerprint: 8cbfbaa510c5dc1e
+fingerprint: ef1a1b0660c60a27
 -->
 <figure class="diagram" markdown>
 
@@ -89,12 +89,14 @@ router's firewall and use a VPN for remote access ([Security](security.md)).
 |---|---|
 | MQTT broker | Yes - an IPv6 address (`fd00::10`, or `[fd00::10]:1883` to give the port there) or a name that only has an IPv6 address |
 | Webhook (`http://`) | Yes - `http://[fd00::10]:8080/hook` or a name that only has an IPv6 address |
-| Webhook (`https://`), Pushover, ntfy, GitHub update checks, NTP | IPv4 for now |
+| Webhook (`https://`), Pushover, ntfy, GitHub update checks and downloads, language downloads, NTP | Yes, by name - a name that only has an IPv6 address is reached over IPv6 (since v0.3) |
 
 Names with both kinds of address are reached over IPv4, so a broken IPv6 connection upstream never
-delays MQTT, alerts or updates. The secure (https) clients on the current firmware platform only
-speak IPv4; they move to IPv6 with a later platform upgrade. All of those services are reachable
-over IPv4 today, so nothing stops working.
+delays MQTT, alerts or updates.
+
+An IPv6 *address* typed into an `https://` webhook or the NTP server field isn't accepted yet: use a
+host name. (From v0.3 the secure clients and time sync can use IPv6; typed addresses for them
+haven't been verified on hardware.)
 
 Settings check IPv6 addresses the same way in the browser and on the device:
 
@@ -105,6 +107,7 @@ Settings check IPv6 addresses the same way in the browser and on the device:
 | `broker.local:1883` | "Put the port in the Port field" |
 | `fe80::1%wlan0` | "Leave out the %zone - the device has one network interface" |
 | `https://[fd00::10]/hook` | "https to an IPv6 address isn't supported yet - use a host name, or http" |
+| NTP server `fd00::1` | "NTP over IPv6 isn't supported yet - use a host name or an IPv4 address" |
 
 ---
 

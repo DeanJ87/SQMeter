@@ -283,7 +283,7 @@ namespace SQM
             return false;
         mbedtls_sha256_context sha;
         mbedtls_sha256_init(&sha);
-        mbedtls_sha256_starts_ret(&sha, 0);
+        mbedtls_sha256_starts(&sha, 0);
         size_t written = 0;
         std::string error;
         const bool ok = httpsDownload(
@@ -291,14 +291,14 @@ namespace SQM
             entry.size,
             [&](const uint8_t *data, size_t len)
             {
-                mbedtls_sha256_update_ret(&sha, data, len);
+                mbedtls_sha256_update(&sha, data, len);
                 return file.write(data, len) == len;
             },
             written,
             error);
         file.close();
         uint8_t digest[32];
-        mbedtls_sha256_finish_ret(&sha, digest);
+        mbedtls_sha256_finish(&sha, digest);
         mbedtls_sha256_free(&sha);
         return ok && written == entry.size && hex(digest) == entry.sha256;
     }

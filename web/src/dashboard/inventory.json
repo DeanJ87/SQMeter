@@ -748,6 +748,11 @@
       "shownOn": "System"
     },
     {
+      "match": "status.firmware.layout",
+      "reason": "Only matters when updating: a device still on the old partition layout is told on the Updates page",
+      "shownOn": "Updates"
+    },
+    {
       "match": "status.wifi.apMode",
       "reason": "Setup and hardware details",
       "shownOn": "System"

@@ -68,7 +68,7 @@ jobs:
             ${{ runner.os }}-pio-
 
       - name: Install PlatformIO
-        run: pip install platformio
+        run: pip install "platformio>=6.2"
 
       - name: Build the Alpaca simulator
         run: tools/alpaca-sim/build.sh

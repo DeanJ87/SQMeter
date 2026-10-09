@@ -26,6 +26,7 @@
 #include "HeapTrace.h"
 #include "SunPosition.h"
 #include "SafetyHistory.h"
+#include "FirmwareMarker.h"
 #include <Preferences.h>
 
 extern uint32_t bootCount;
@@ -255,6 +256,9 @@ namespace SQM
         firmware["buildDate"] = FIRMWARE_BUILD_DATE;
         firmware["buildTime"] = FIRMWARE_BUILD_TIME;
         firmware["variant"] = BleService::available() ? "ble" : "standard";
+        // Spec 027: "l2" (the whole-chip layout), or "legacy" when the device
+        // still needs the one-time USB flash.
+        firmware["layout"] = FirmwareMarker::layout();
 
         JsonObject bleStatus = doc.createNestedObject("ble");
         bleStatus["available"] = BleService::available();
@@ -273,7 +277,7 @@ namespace SQM
     {
         // System stats
         doc["uptime"] = millis() / 1000;
-        doc["configRevision"] = configRevision;
+        doc["configRevision"] = configRevision.load();
         doc["freeHeap"] = ESP.getFreeHeap();
         // Stack headroom (bytes never used). This handler runs on the
         // AsyncTCP task, so "asyncTcp" is that task's own high-water mark.

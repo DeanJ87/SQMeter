@@ -22,7 +22,7 @@ namespace SQM
             portENTER_CRITICAL_ISR(&pulseMux);
             if (now - lastPulseUs >= DEBOUNCE_US)
             {
-                ++pulseCount;
+                pulseCount = pulseCount + 1; // C++20: no ++ on volatile
                 lastPulseUs = now;
             }
             portEXIT_CRITICAL_ISR(&pulseMux);

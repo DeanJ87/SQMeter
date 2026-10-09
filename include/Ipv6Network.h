@@ -14,13 +14,13 @@ namespace SQM
         // ff12::a1:2345 - the Alpaca IPv6 discovery group (link scope).
         constexpr const char *ALPACA_DISCOVERY_GROUP = "ff12::a1:2345";
 
-        // The web server's own listener is IPv4-only on this platform's
-        // AsyncTCP (research R2): a second, IPv6-only listener on the same
-        // port hands its connections to the same server. FR-011: a peer
-        // outside link-local and the device's own /64 prefixes gets a 403 and
-        // the connection is closed before any request is read - so not even an
-        // upload handler (which writes as data arrives) runs for it.
-        void listenIpv6(AsyncWebServer &server, uint16_t port);
+        // The web server's listener: one dual-stack socket owned here instead
+        // of AsyncWebServer::begin(), so every connection is checked as it is
+        // accepted. FR-011: an IPv6 peer outside link-local and the device's
+        // own /64 prefixes gets a 403 and the connection is closed before any
+        // request is read - so not even an upload handler (which writes as
+        // data arrives) runs for it. IPv4 peers are always served.
+        void listen(AsyncWebServer &server, uint16_t port);
 
         // Joins the Alpaca discovery group once the station has an IPv6
         // address; true once joined (call until it is).

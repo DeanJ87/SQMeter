@@ -45,7 +45,7 @@ Thumbs.db
 *.swo
 *~
 
-# Root CA source certificates (already embedded in include/GithubRootCA.h)
+# Root CA source certificates (already embedded in include/AlertRootCA.h)
 /*.pem
 
 # Alpaca simulator binary (tools/alpaca-sim/build.sh)
@@ -62,3 +62,11 @@ docs/assets/javascripts/vendor/
 .venv-*/
 web/playwright.local.config.ts
 web/*.local.*
+
+# pioarduino hybrid compile (spec 027): generated per build, never committed
+/.dummy/
+/managed_components/
+/sdkconfig
+/sdkconfig.*
+/dependencies.lock
+/CMakeLists.txt

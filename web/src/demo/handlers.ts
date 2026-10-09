@@ -75,7 +75,7 @@ export function statusDocument() {
     ...parts,
     alerts: { ...parts.alerts, recentRevision: recentRevision() },
     configRevision: configRevision(),
-    firmware: { ...mockStatus.firmware, version: '0.2.0-beta.3' },
+    firmware: { ...mockStatus.firmware, version: '0.3.0-beta.1' },
     time: { epoch: Math.floor(demoDevice.now.getTime() / 1000), iso: demoDevice.isoTime, timezone: cfg.ntp?.timezone ?? 'UTC0' },
     wifi: {
       ...mockStatus.wifi,

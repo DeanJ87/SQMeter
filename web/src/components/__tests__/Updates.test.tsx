@@ -68,6 +68,27 @@ describe('Updates - GitHub check for updates', () => {
     expect(screen.getByRole('button', { name: /Downgrade to v0\.1\.4/ })).toBeEnabled();
   });
 
+  it('tells a device on the old partition layout it needs the USB flash (spec 027)', async () => {
+    vi.mocked(useWebSocket).mockReturnValue({
+      data: { firmware: { name: 'SQMeter', version: '0.3.0-beta.1', buildDate: 'x', buildTime: 'y', layout: 'legacy' } },
+      connected: true,
+      lastMessageAt: Date.now(),
+    });
+    render(<Updates />);
+    expect(screen.getByText(/needs the one-time USB flash/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'How to' })).toHaveAttribute('href', 'https://sqmeter.dev/getting-started/usb-flash/');
+  });
+
+  it('says nothing about the USB flash on the current layout', async () => {
+    vi.mocked(useWebSocket).mockReturnValue({
+      data: { firmware: { name: 'SQMeter', version: '0.3.0-beta.1', buildDate: 'x', buildTime: 'y', layout: 'l2' } },
+      connected: true,
+      lastMessageAt: Date.now(),
+    });
+    render(<Updates />);
+    expect(screen.queryByText(/needs the one-time USB flash/)).toBeNull();
+  });
+
   it('switches to the beta track and fetches beta releases', async () => {
     render(<Updates />);
 

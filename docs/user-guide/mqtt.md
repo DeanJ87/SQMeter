@@ -49,7 +49,7 @@ Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 <!-- diagram: DIA-09
 sources: src/WebServerStatus.cpp#WebServer::publishMqttReadings src/WebServerAlerts.cpp#WebServer::publishMqttSafety src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: 51d14cf13224d654
+fingerprint: f9e2d263e55aa878
 -->
 <figure class="diagram" markdown>
 

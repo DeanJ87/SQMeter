@@ -1,5 +1,8 @@
 <!--
 Sync Impact Report
+- 1.2.0 -> 1.3.0 (MINOR, spec 027): platform Arduino-ESP32 3.x / ESP-IDF 5.5 (pioarduino); one
+  whole-chip partition layout for both builds; firmware flash budget (SIZE-04); OTA refuses images
+  for another layout or build
 - 1.1.2 -> 1.2.0 (MINOR): the quality gate includes the UI design system (DS rules, spec 026);
   UI specs include a reviewed mockup
 - 1.1.1 -> 1.1.2 (PATCH): Principle IV states the web UI size budgets (SIZE-01, SIZE-02)
@@ -58,8 +61,8 @@ The ESP32 has fixed memory and flash; exceeding them breaks devices in the field
 
 - Firmware MUST build with `-Wall -Wextra -Werror` and zero warnings, for both the standard and
   the Bluetooth build.
-- Both firmware images MUST fit their OTA app slots (standard 1.5 MB, Bluetooth 1.69 MB); a PR
-  that adds more than ~20 KB of flash states the new usage.
+- Both firmware images MUST fit their 1.75 MB OTA app slots: CI warns above 90% of the slot and
+  fails above 95% unless the PR records and justifies more (coding standard SIZE-04).
 - Request handlers on the async TCP task MUST NOT block on the network or on long sensor work;
   HTTPS sends run on their own task, one TLS session at a time.
 - Changes that add heap or stack use MUST be measured on a device (`/api/status` heap and
@@ -115,7 +118,10 @@ Code is read far more often than it's written, by people and by AI agents workin
 
 ## Platform Constraints
 
-- **Firmware:** C++17 on Arduino-ESP32 2.0.17 via PlatformIO; ESPAsyncWebServer (handlers
+- **Firmware:** C++17 on Arduino-ESP32 3.x (ESP-IDF 5.5, the pinned pioarduino platform; PlatformIO
+  Core 6.2 or newer). ESP-IDF options live in `custom_sdkconfig` and the build fails if one doesn't
+  apply. One partition layout (`partitions.csv`, "l2") for both builds; every image carries a
+  marker of its layout and build, and OTA refuses a mismatch. ESPAsyncWebServer (handlers
   match by prefix, so register specific routes before general ones); ArduinoJson 6; NimBLE
   for the Bluetooth build. Code follows `CONTRIBUTING.md`: enums and structs over strings,
   RAII, const-correctness, `std::string` in logic code - in full in the coding standard
@@ -174,4 +180,4 @@ Code is read far more often than it's written, by people and by AI agents workin
   Tracking section.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 1.2.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-09
+**Version**: 1.3.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-09

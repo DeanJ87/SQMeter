@@ -28,7 +28,7 @@ curl http://sqmeter.local/api/status
   "uptime": 3600,
   "configRevision": 3,
   "freeHeap": 128728,
-  "firmware": { "name": "SQMeter", "version": "0.3.0", "buildDate": "Oct  8 2026", "buildTime": "12:00:00", "variant": "standard" },
+  "firmware": { "name": "SQMeter", "version": "0.3.0", "buildDate": "Oct  8 2026", "buildTime": "12:00:00", "variant": "standard", "layout": "l2" },
   "time": { "epoch": 1791494565, "iso": "2026-10-08T22:22:45+0100", "timezone": "GMT0BST,M3.5.0/1,M10.5.0" },
   "wifi": { "connected": true, "ssid": "MyNetwork", "ip": "192.168.1.42", "rssi": -62, "mac": "AA:BB:CC:DD:EE:FF", "connectPending": false, "apMode": false, "hostname": "sqmeter", "mdns": true, "ipv6": { "enabled": true, "addresses": [{ "address": "fe80::a00:27ff:fe4e:66a1", "scope": "link-local" }, { "address": "2a02:8010:abcd:1:a00:27ff:fe4e:66a1", "scope": "global" }] } },
   "sky": { "locationSource": "manual", "nightKnown": true, "latitude": 51.4779, "longitude": -0.0015, "isNight": false, "sunAltitudeDeg": 19.4 },
@@ -249,10 +249,10 @@ OTA firmware update. Send a raw `.bin` file as `multipart/form-data`.
 
 ```bash
 curl -X POST http://sqmeter.local/api/update \
-  -F "firmware=@sqmeter-firmware-v0.0.1.bin"
+  -F "firmware=@sqmeter-l2-firmware-v0.3.0.bin"
 ```
 
-Returns 200 `{"success": true}` and reboots, or 500 `{"error": "..."}` (for example "Could not activate partition") and keeps the running firmware.
+Returns 200 `{"success": true}` and reboots; 400 `{"error": "..."}` when the file isn't for this device's partition layout or build (spec 027; nothing was changed); or 500 `{"error": "..."}` (for example "Could not activate partition") and keeps the running firmware.
 
 ---
 
@@ -262,10 +262,10 @@ OTA filesystem update. Send a LittleFS image as `multipart/form-data`.
 
 ```bash
 curl -X POST http://sqmeter.local/api/update/fs \
-  -F "filesystem=@sqmeter-littlefs-v0.0.1.bin"
+  -F "filesystem=@sqmeter-l2-littlefs-v0.3.0.bin"
 ```
 
-Use this endpoint for web UI assets only. It does not update firmware and does not erase NVS configuration. Responses are as for `/api/update`.
+Use this endpoint for web UI assets only. It does not update firmware and does not erase NVS configuration. The image must fill the web UI partition exactly; one for a different layout gets 400 before anything is erased. Responses are as for `/api/update`.
 
 Both upload endpoints need the password when protection is on. Keep SQMeter on a trusted network and don't port-forward it.
 
@@ -288,19 +288,22 @@ curl "http://sqmeter.local/api/updates/check?track=stable"
 ```json
 [
   {
-    "tag": "v0.1.3",
-    "name": "SQMeter v0.1.3",
+    "tag": "v0.3.0",
+    "name": "SQMeter v0.3.0",
     "prerelease": false,
-    "publishedAt": "2026-06-28T17:35:57Z",
-    "firmwareAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.1.3/sqmeter-firmware-v0.1.3.bin",
-    "firmwareAssetSize": 1123472,
-    "fsAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.1.3/sqmeter-littlefs-v0.1.3.bin",
-    "fsAssetSize": 524288
+    "publishedAt": "2026-11-01T17:35:57Z",
+    "firmwareAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.3.0/sqmeter-l2-firmware-v0.3.0.bin",
+    "firmwareAssetSize": 1532128,
+    "fsAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.3.0/sqmeter-l2-littlefs-v0.3.0.bin",
+    "fsAssetSize": 458752
   }
 ]
 ```
 
-`track` is `stable` (default) or `beta`, mapped directly from GitHub's `prerelease` flag. A release without both a `sqmeter-firmware-*.bin` and a `sqmeter-littlefs-*.bin` asset is omitted entirely.
+`track` is `stable` (default) or `beta`, mapped directly from GitHub's `prerelease` flag. A release without both a firmware file for this build (`sqmeter-l2-firmware-*.bin`, or `sqmeter-l2-ble-firmware-*.bin` on the Bluetooth build) and a `sqmeter-l2-littlefs-*.bin` file is omitted entirely - so releases for the old partition layout (v0.2) aren't listed.
+
+Errors: `502 {"error": "..."}` when GitHub can't be reached or its answer can't be read (a dropped
+connection is retried once first), `409` while another check is running.
 
 ---
 
@@ -312,10 +315,10 @@ Starts a self-download-and-flash of a release returned by `check`, using its ass
 curl -X POST http://sqmeter.local/api/updates/apply \
   -H "Content-Type: application/json" \
   -d '{
-    "firmwareAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.1.3/sqmeter-firmware-v0.1.3.bin",
-    "firmwareAssetSize": 1123472,
-    "fsAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.1.3/sqmeter-littlefs-v0.1.3.bin",
-    "fsAssetSize": 524288
+    "firmwareAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.3.0/sqmeter-l2-firmware-v0.3.0.bin",
+    "firmwareAssetSize": 1532128,
+    "fsAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.3.0/sqmeter-l2-littlefs-v0.3.0.bin",
+    "fsAssetSize": 458752
   }'
 ```
 

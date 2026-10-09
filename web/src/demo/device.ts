@@ -25,7 +25,7 @@ import { simulatorLocation, sunLux } from './simulator';
 
 const STORAGE_KEY = 'sqm.demo.v2';
 const OLD_STORAGE_KEY = 'sqm.demo.v1';
-const DEMO_VERSION = '0.2.0-beta.3';
+const DEMO_VERSION = '0.3.0-beta.1';
 const LONDON_TZ = 'GMT0BST,M3.5.0/1,M10.5.0';
 // Cloud shortcuts roll in over this long unless another ramp is chosen (FR-010).
 export const CLOUD_RAMP_MS = 40_000;

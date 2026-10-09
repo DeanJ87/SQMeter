@@ -46,10 +46,12 @@
 
 1. Ensure stable power — don't run on a weak USB charger during flash
 2. Check WiFi signal strength (RSSI better than -75 dBm)
-3. Verify the `.bin` file is the right type (`firmware`, not `complete-flash` or `littlefs`)
+3. Verify the `.bin` file is the right one: `sqmeter-l2-firmware-*` (or `sqmeter-l2-ble-firmware-*` on the Bluetooth build), not the web UI file. The device refuses files for another layout or build and says why.
 4. Don't navigate away from the update page during upload
 
-If the device stops responding after a failed OTA, it should fall back to the previous app slot on next boot. If it doesn't, reflash via USB.
+If a new firmware doesn't finish starting (WiFi and the web server up), the device falls back to the previous app slot on its next boot. If it still doesn't respond, reflash via USB ([One-time USB flash](../getting-started/usb-flash.md) - settings are kept).
+
+"Not firmware for this device" when uploading a v0.3 file: the device is still on v0.2's partition layout and needs the [one-time USB flash](../getting-started/usb-flash.md).
 
 "Could not activate partition" after an upload usually means the transfer was corrupted on a weak link - upload again.
 
@@ -125,4 +127,4 @@ Nuclear option — clears firmware, filesystem, and NVS (WiFi config, all settin
 esptool.py --chip esp32 --port PORT erase_flash
 ```
 
-Then re-flash from the release `sqmeter-complete-flash-*.bin`.
+Then flash the release's USB package ([Flashing](../getting-started/flashing.md)); the device starts with the setup hotspot.

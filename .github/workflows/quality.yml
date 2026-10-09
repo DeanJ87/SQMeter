@@ -54,7 +54,7 @@ jobs:
           key: ${{ runner.os }}-pio-quality-${{ hashFiles('platformio.ini') }}
 
       - name: Install quality tools
-        run: pip install -r tools/quality/requirements.txt platformio
+        run: pip install -r tools/quality/requirements.txt "platformio>=6.2"
 
       # clang-tidy needs the native test environment's ArduinoJson.
       - name: Install native libraries

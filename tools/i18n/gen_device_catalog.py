@@ -34,8 +34,10 @@ SOURCES = {
     "src/WebServerAlerts.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerAlpaca.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerStatus.cpp": ("api", {"createErrorJson": [0]}),
-    "src/WebServerUpdates.cpp": ("api", {"createErrorJson": [0]}),
+    "src/WebServerUpdates.cpp": ("api", {"createErrorJson": [0], "fail": [0]}),
     "src/OtaUpdater.cpp": ("ota", {"errorCb": [0]}),
+    # Why an update file is refused (spec 027 FR-020).
+    "lib/FirmwareImage/src/FirmwareImage.cpp": ("ota", {}),
     "tools/demo-core/bridge.cpp": ("api", {"errorJson": [0]}),
     "lib/LanguageLogic/src/LanguageLogic.cpp": ("language", {}),
     "src/LanguagePack.cpp": ("language", {"fail": [0], "sendError": [2]}),
@@ -63,6 +65,7 @@ ASSIGN = {
     # The cloud condition and Bortle descriptions (/api/sensors).
     "lib/SkyLogic/src/CloudDetection.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/SkyLogic/src/SkyQuality.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
+    "lib/FirmwareImage/src/FirmwareImage.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r"\btest\.(?:title|message)\s*=\s*"),
     "src/AlertDispatcher.cpp": re.compile(r"(?<![\w.>])(?:detail|record\.detail\[[^\]]+\])\s*=\s*(?!=)"),
 }

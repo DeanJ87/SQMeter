@@ -5,14 +5,13 @@
 
 namespace SQM
 {
-    // A WiFiClient that also connects over IPv6 (specs/015-ipv6-dual-stack).
-    // Arduino-ESP32 2.0.17's WiFiClient resolves names IPv4-only and opens
-    // IPv4 sockets; this one resolves with getaddrinfo, so an IPv6 literal or
-    // a name with only an IPv6 address works. lwIP returns the IPv4 address
-    // when a name has both, so dual-stack servers keep using IPv4 and broken
-    // upstream IPv6 never delays a connection (FR-008). Used for plain-TCP
-    // outbound connections (MQTT, http webhooks); TLS stays IPv4 on this
-    // platform (research R6).
+    // A WiFiClient that also connects to IPv6 literals and IPv6-only names
+    // (specs/015-ipv6-dual-stack). It resolves with getaddrinfo; lwIP returns
+    // the IPv4 address when a name has both, so dual-stack servers keep using
+    // IPv4 and broken upstream IPv6 never delays a connection (FR-008). Used
+    // for plain-TCP outbound connections (MQTT, http webhooks). Since
+    // Arduino-ESP32 3.x (spec 027) the TLS clients and SNTP resolve names the
+    // same way on their own.
     class DualStackClient : public WiFiClient
     {
     public:

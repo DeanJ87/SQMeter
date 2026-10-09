@@ -32,32 +32,37 @@ namespace SQM
             }
         } // namespace
 
-        void listenIpv6(AsyncWebServer &server, uint16_t port)
+        void listen(AsyncWebServer &server, uint16_t port)
         {
             // Lives as long as the web server (the device's lifetime).
             static AsyncServer *listener = nullptr;
             if (listener != nullptr)
                 return;
-            listener = new AsyncServer(IPv6Address(), port);
-            // As AsyncWebServer does for its own listener.
+            // One dual-stack socket (AsyncTCP binds IPADDR_TYPE_ANY): IPv4 and
+            // IPv6 clients both arrive here, before any request is read.
+            listener = new AsyncServer(port);
+            listener->setNoDelay(true);
             listener->onClient(
                 [](void *arg, AsyncClient *client)
                 {
                     if (client == nullptr)
                         return;
-                    // Only IPv6 connections reach this listener.
-                    const ip6_addr_t remote = client->getRemoteAddress6();
-                    Net::Ipv6 peer{};
-                    memcpy(peer.data(), remote.addr, peer.size());
-                    if (!Net::allowedPeer(peer, WiFiManager::ipv6Addresses()))
+                    if (client->remoteIP().type() == IPv6)
                     {
-                        Logger::warn(TAG, "Refused a connection from %s (outside the local network)", Net::formatIpv6(peer).c_str());
-                        client->write(REFUSED, sizeof(REFUSED) - 1);
-                        client->close();
-                        return;
+                        const ip6_addr_t remote = client->getRemoteAddress6();
+                        Net::Ipv6 peer{};
+                        memcpy(peer.data(), remote.addr, peer.size());
+                        if (!Net::allowedPeer(peer, WiFiManager::ipv6Addresses()))
+                        {
+                            Logger::warn(TAG, "Refused a connection from %s (outside the local network)", Net::formatIpv6(peer).c_str());
+                            client->write(REFUSED, sizeof(REFUSED) - 1);
+                            client->close();
+                            return;
+                        }
                     }
+                    // As AsyncWebServer does for its own listener.
                     client->setRxTimeout(3);
-                    if (new AsyncWebServerRequest(static_cast<AsyncWebServer *>(arg), client) == nullptr)
+                    if (!AsyncWebServerRequest::create(static_cast<AsyncWebServer *>(arg), client))
                     {
                         client->abort();
                         delete client;
@@ -65,7 +70,7 @@ namespace SQM
                 },
                 &server);
             listener->begin();
-            Logger::info(TAG, "Web server listening on IPv6 port %u", port);
+            Logger::info(TAG, "Web server listening on port %u (IPv4 and IPv6)", port);
         }
 
         bool joinAlpacaDiscoveryGroup()
@@ -86,8 +91,10 @@ namespace SQM
         {
             if (!packet.isIPv6())
                 return true;
+            ip_addr_t remote{};
+            packet.remoteIP().to_ip_addr_t(&remote);
             Net::Ipv6 peer{};
-            memcpy(peer.data(), static_cast<const uint8_t *>(packet.remoteIPv6()), peer.size());
+            memcpy(peer.data(), remote.u_addr.ip6.addr, peer.size());
             return Net::allowedPeer(peer, WiFiManager::ipv6Addresses());
         }
 

@@ -135,7 +135,7 @@ namespace SQM
     bool TimeManager::syncFromNTP()
     {
         Logger::info(TAG, "Attempting sync from NTP");
-        sntp_stop();
+        esp_sntp_stop();
         sntp_init();
         // NTP sync is async - will be verified in handle() when time > 1000000000
         // Set activeSource as pending NTP
@@ -213,7 +213,7 @@ namespace SQM
             Logger::info(TAG, "Time config changed, re-synchronizing");
             if (ntpConfig.enabled)
             {
-                sntp_stop();
+                esp_sntp_stop();
             }
             // Trigger immediate re-sync with new config
             syncTime();

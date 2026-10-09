@@ -1,24 +1,39 @@
 # Flashing Your Device
 
-Download the latest release from [GitHub Releases](https://github.com/DeanJ87/SQMeter/releases) and flash your ESP32 over USB. You only need to do this once — after that you can update over WiFi.
+Flash your ESP32 over USB once; after that it updates over WiFi from its Updates page.
+
+The quickest way is the [browser flasher](usb-flash.md): plug the ESP32 in, pick the build and click Install. This page covers the same thing with `esptool` on the command line.
+
+!!! note "Moving from v0.2 to v0.3 or later"
+    v0.3 uses a new partition layout (more room for firmware), so a device on v0.2 moves to it with one USB flash. Your settings, WiFi included, are kept. See [One-time USB flash](usb-flash.md).
 
 ---
 
 ## What's in a Release
 
-Each release ships three binaries:
+| File | What it's for |
+|------|---------------|
+| `sqmeter-l2-usb-standard-vX.Y.Z.zip` | **USB flash, standard build**: every part plus the `esptool` command |
+| `sqmeter-l2-usb-ble-vX.Y.Z.zip` | **USB flash, Bluetooth build** |
+| `sqmeter-l2-firmware-vX.Y.Z.bin` | Over-the-air update (standard build) |
+| `sqmeter-l2-ble-firmware-vX.Y.Z.bin` | Over-the-air update (Bluetooth build) |
+| `sqmeter-l2-littlefs-vX.Y.Z.bin` | The web UI, for both builds |
+| `sqmeter-i18n-*` | Language files the device downloads |
 
-| File | When to use |
-|------|-------------|
-| `sqmeter-complete-flash-vX.Y.Z.bin` | **Fresh ESP32** — everything in one file |
-| `sqmeter-firmware-vX.Y.Z.bin` | OTA update via web UI |
-| `sqmeter-littlefs-vX.Y.Z.bin` | Web UI update only |
+`l2` is the partition layout the files are for. The device refuses an update file made for a different layout or the other build.
 
-For a brand-new device, you only need `sqmeter-complete-flash-*.bin`.
+### Standard or Bluetooth build?
+
+| Build | Choose it if |
+|---|---|
+| Standard | You don't need Bluetooth - recommended |
+| Bluetooth | You want the phone alarm or BLE broadcasts ([Bluetooth](../user-guide/ble.md)) |
+
+Both builds use the same partition layout, so you can switch between them with a USB flash and keep your settings.
 
 ---
 
-## Prerequisites
+## Flash with esptool
 
 Install `esptool`:
 
@@ -26,18 +41,15 @@ Install `esptool`:
 pip install esptool
 ```
 
----
-
-## Fresh Flash (Recommended for New Devices)
-
-One command, one file. Flashes bootloader, partition table, firmware, and web UI filesystem all at once:
+Unzip the USB package for your build and, from that folder:
 
 ```bash
-esptool.py --chip esp32 --port PORT --baud 115200 \
-  write_flash 0x0 sqmeter-complete-flash-v0.0.1.bin
+esptool.py --chip esp32 --port PORT --baud 460800 write_flash \
+  0x1000 bootloader.bin 0x8000 partitions.bin 0xE000 boot_app0.bin \
+  0x10000 firmware.bin 0x390000 littlefs.bin
 ```
 
-Replace `PORT` with your serial port:
+The same command is in the package's `FLASH.txt`. Replace `PORT` with your serial port:
 
 === "macOS / Linux"
     ```
@@ -56,48 +68,20 @@ Replace `PORT` with your serial port:
     ```
     esptool will scan and print the detected port.
 
-### Standard or Bluetooth build?
-
-Each release has two builds:
-
-| Build | Files | Choose it if |
-|---|---|---|
-| Standard | `sqmeter-complete-flash-*.bin`, `sqmeter-firmware-*.bin` | You don't need Bluetooth - recommended |
-| Bluetooth | `sqmeter-ble-complete-flash-*.bin`, `sqmeter-ble-firmware-*.bin` | You want the phone alarm or BLE broadcasts ([Bluetooth](../user-guide/ble.md)) |
-
-The Bluetooth build uses a different partition layout, so the **first** install has to be a USB flash of `sqmeter-ble-complete-flash-*.bin` at `0x0`, as above. After that it updates over the web UI like the standard build. Going back to the standard build is also a USB flash.
-
----
-
-## Selective Updates (Existing Devices)
-
-Prefer OTA updates from the web UI — no cable needed. But if you need USB:
-
-### Firmware only
-```bash
-esptool.py --chip esp32 --port PORT --baud 115200 \
-  write_flash 0x10000 sqmeter-firmware-v0.0.1.bin
-```
-
-### Web UI filesystem only
-```bash
-esptool.py --chip esp32 --port PORT --baud 115200 \
-  write_flash 0x310000 sqmeter-littlefs-v0.0.1.bin
-```
-
-On the Bluetooth build the firmware goes to `0x10000` too, but the web UI filesystem lives at `0x380000`.
-
-!!! note "NVS is safe"
-    Firmware and filesystem updates never touch the NVS partition where your WiFi credentials and settings are stored.
+!!! note "Settings are kept"
+    Nothing is written between `0x9000` and `0xDFFF`, where the device keeps its settings and WiFi
+    credentials. Don't run `erase_flash` unless you want to start again from the setup hotspot.
 
 ---
 
 ## Flash Memory Map
 
+The same for both builds:
+
 | Partition | Offset | Size | Contents |
 |-----------|--------|------|----------|
-| nvs | `0x9000` | 20 KB | WiFi credentials, settings |
-| otadata | `0xe000` | 8 KB | OTA boot slot indicator |
-| app0 | `0x10000` | 1.5 MB | Firmware |
-| app1 | `0x190000` | 1.5 MB | OTA update slot |
-| spiffs | `0x310000` | 512 KB | Web UI (LittleFS) |
+| nvs | `0x9000` | 20 KB | Settings, WiFi credentials |
+| otadata | `0xE000` | 8 KB | Which app slot boots |
+| app0 | `0x10000` | 1.75 MB | Firmware |
+| app1 | `0x1D0000` | 1.75 MB | The other firmware slot (over-the-air updates) |
+| spiffs | `0x390000` | 448 KB | Web UI and language file (LittleFS) |

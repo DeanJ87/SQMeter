@@ -175,9 +175,8 @@ namespace SQM
         // SPA fallback - serve index.html for any non-API routes
         server.onNotFound([](AsyncWebServerRequest *request) { handleNotFound(request); });
 
-        server.begin();
-        if (WiFiManager::ipv6Running())
-            Ipv6Network::listenIpv6(server, PORT);
+        // Not server.begin(): the device owns the listener (Ipv6Network::listen).
+        Ipv6Network::listen(server, PORT);
         Logger::info(TAG, "Web server started");
     }
 
