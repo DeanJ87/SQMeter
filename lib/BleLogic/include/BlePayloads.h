@@ -24,11 +24,11 @@ namespace SQM
 
         enum StateFlag : uint8_t
         {
-            FLAG_SAFE = 1u << 0,
-            FLAG_RAINING = 1u << 1,
-            FLAG_RAIN_SENSOR = 1u << 2, // rain sensor enabled
-            FLAG_SAFETY_KNOWN = 1u << 3,
-            FLAG_RAIN_HEALTHY = 1u << 4,
+            FlagSafe = 1u << 0,
+            FlagRaining = 1u << 1,
+            FlagRainSensor = 1u << 2, // rain sensor enabled
+            FlagSafetyKnown = 1u << 3,
+            FlagRainHealthy = 1u << 4,
         };
 
         struct State

@@ -35,16 +35,16 @@ namespace SQM
         {
             uint8_t flags = 0;
             if (state.safetyKnown)
-                flags |= FLAG_SAFETY_KNOWN;
+                flags |= FlagSafetyKnown;
             if (state.safetyKnown && state.isSafe)
-                flags |= FLAG_SAFE;
+                flags |= FlagSafe;
             if (state.rainEnabled)
             {
-                flags |= FLAG_RAIN_SENSOR;
+                flags |= FlagRainSensor;
                 if (state.raining)
-                    flags |= FLAG_RAINING;
+                    flags |= FlagRaining;
                 if (state.rainHealthy)
-                    flags |= FLAG_RAIN_HEALTHY;
+                    flags |= FlagRainHealthy;
             }
             return flags;
         }
@@ -61,7 +61,7 @@ namespace SQM
         std::string encodeRain(const State &state)
         {
             std::string out;
-            out += static_cast<char>(stateFlags(state) & (FLAG_RAIN_SENSOR | FLAG_RAINING | FLAG_RAIN_HEALTHY));
+            out += static_cast<char>(stateFlags(state) & (FlagRainSensor | FlagRaining | FlagRainHealthy));
             putU16(out, state.rainEnabled ? scaled(state.rainRateMmPerHour, 100.0f, 0xFFFE) : 0);
             return out;
         }

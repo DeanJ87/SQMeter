@@ -32,7 +32,7 @@ void test_unknown_safety_never_reports_safe(void)
     State state;
     state.isSafe = true; // but not yet evaluated
     TEST_ASSERT_EQUAL_UINT8(0, byteAt(encodeSafety(state), 0));
-    TEST_ASSERT_EQUAL_UINT8(0, stateFlags(state) & FLAG_SAFE);
+    TEST_ASSERT_EQUAL_UINT8(0, stateFlags(state) & FlagSafe);
 }
 
 void test_rain_payload(void)
@@ -44,7 +44,7 @@ void test_rain_payload(void)
     state.rainRateMmPerHour = 2.47f;
     std::string p = encodeRain(state);
     TEST_ASSERT_EQUAL(3, p.size());
-    TEST_ASSERT_EQUAL_UINT8(FLAG_RAIN_SENSOR | FLAG_RAINING | FLAG_RAIN_HEALTHY, byteAt(p, 0));
+    TEST_ASSERT_EQUAL_UINT8(FlagRainSensor | FlagRaining | FlagRainHealthy, byteAt(p, 0));
     TEST_ASSERT_EQUAL_UINT16(247, byteAt(p, 1) | (byteAt(p, 2) << 8));
 
     state.rainEnabled = false;
@@ -67,7 +67,7 @@ void test_advertisement(void)
     TEST_ASSERT_EQUAL_UINT8('S', byteAt(p, 2));
     TEST_ASSERT_EQUAL_UINT8('Q', byteAt(p, 3));
     TEST_ASSERT_EQUAL_UINT8(ADVERT_VERSION, byteAt(p, 4));
-    TEST_ASSERT_EQUAL_UINT8(FLAG_SAFETY_KNOWN | FLAG_SAFE, byteAt(p, 5));
+    TEST_ASSERT_EQUAL_UINT8(FlagSafetyKnown | FlagSafe, byteAt(p, 5));
     TEST_ASSERT_EQUAL_UINT16(2134, byteAt(p, 6) | (byteAt(p, 7) << 8));
 
     state.sqmValid = false;
@@ -85,7 +85,7 @@ void test_alarm_raise_encode(void)
     std::string p = alarm.encode();
     TEST_ASSERT_EQUAL(13, p.size());
     TEST_ASSERT_EQUAL_UINT8(1, byteAt(p, 0)); // seq 1
-    TEST_ASSERT_EQUAL_UINT8(ALARM_ACTIVE, byteAt(p, 4));
+    TEST_ASSERT_EQUAL_UINT8(AlarmActive, byteAt(p, 4));
     TEST_ASSERT_EQUAL_UINT8(0x02, byteAt(p, 6)); // reason bit 9 -> byte 1 of flags
 }
 
@@ -101,7 +101,7 @@ void test_alarm_repeats_until_acknowledged(void)
     TEST_ASSERT_TRUE(alarm.acknowledge(1, 46000));
     TEST_ASSERT_FALSE(alarm.active());
     TEST_ASSERT_FALSE(alarm.resendDue(200000));
-    TEST_ASSERT_EQUAL_UINT8(ALARM_NONE, byteAt(alarm.encode(), 4));
+    TEST_ASSERT_EQUAL_UINT8(AlarmNone, byteAt(alarm.encode(), 4));
 }
 
 void test_stale_ack_cannot_cancel_newer_alarm(void)
@@ -128,7 +128,7 @@ void test_info_never_overrides_active_alarm(void)
 {
     AlarmTracker alarm;
     TEST_ASSERT_TRUE(alarm.raiseInfo(0, 0, 0));
-    TEST_ASSERT_EQUAL_UINT8(ALARM_INFO, byteAt(alarm.encode(), 4));
+    TEST_ASSERT_EQUAL_UINT8(AlarmInfo, byteAt(alarm.encode(), 4));
     alarm.raiseAlarm(1, 0, 10);
     TEST_ASSERT_FALSE(alarm.raiseInfo(0, 0, 20)); // "safe again" must not silence the phone
     TEST_ASSERT_TRUE(alarm.active());

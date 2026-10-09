@@ -3,9 +3,9 @@
 SQMeter runs on any standard ESP32 dev board. The three core sensors share the I²C bus; the optional GPS, RG-15 rain gauge and anemometer/vane have their own pins.
 
 <!-- diagram: DIA-13
-sources: lib/ConfigModel/src/ConfigModel.cpp#createDefault src/main.cpp#setupI2C src/sensors/WindSensor.cpp
+sources: lib/ConfigModel/src/ConfigModel.cpp src/main.cpp#setupI2C src/sensors/WindSensor.cpp
 blocking: false
-fingerprint: acfc0d6baa8e55aa
+fingerprint: 9260317410be5750
 -->
 <figure class="diagram" markdown>
 
