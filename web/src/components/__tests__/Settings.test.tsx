@@ -111,6 +111,31 @@ describe('Settings', () => {
     expect(screen.getByRole('button', { name: 'Restart' })).toBeInTheDocument();
   });
 
+  it('offers a restart after switching IPv6 off (spec 015)', async () => {
+    window.history.replaceState(null, '', '/settings?tab=network');
+    render(<Toaster />);
+    render(<Settings />);
+
+    fireEvent.click(await screen.findByLabelText('IPv6'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved. Restart to apply IPv6.')).toBeInTheDocument();
+  });
+
+  it('checks the MQTT broker with the device rules, IPv6 included', async () => {
+    window.history.replaceState(null, '', '/settings?tab=network');
+    withConfig({ mqtt: { ...mockConfig.mqtt, enabled: true, broker: 'broker.local' } });
+    render(<Settings />);
+
+    const broker = await screen.findByDisplayValue('broker.local');
+    fireEvent.input(broker, { target: { value: 'broker.local:1883' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Put the port in the Port field')).toBeInTheDocument();
+
+    fireEvent.input(broker, { target: { value: '[fd00::10]:1883' } });
+    await waitFor(() => expect(screen.queryByText('Put the port in the Port field')).toBeNull());
+  });
+
   it('just confirms saves that apply immediately', async () => {
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Toaster />);

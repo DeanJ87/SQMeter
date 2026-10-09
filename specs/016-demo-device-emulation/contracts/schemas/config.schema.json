@@ -935,6 +935,9 @@
         "hostname": {
           "type": "string"
         },
+        "ipv6": {
+          "type": "boolean"
+        },
         "maxReconnectDelayMs": {
           "type": "number"
         },
@@ -954,6 +957,7 @@
       "required": [
         "autoReconnect",
         "hostname",
+        "ipv6",
         "maxReconnectDelayMs",
         "mdns",
         "password",

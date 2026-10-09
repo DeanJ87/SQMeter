@@ -232,6 +232,8 @@ export interface SystemStatus {
     apMode?: boolean; // the "SQM-Setup" hotspot is up
     hostname?: string;
     mdns?: boolean;
+    // spec 015: the setting the device is running with and its current addresses
+    ipv6?: { enabled: boolean; addresses: { address: string; scope: 'link-local' | 'unique-local' | 'global' }[] };
   };
   mqtt?: {
     enabled: boolean;
@@ -270,6 +272,7 @@ export interface WiFiConfig {
   password: string;
   hostname: string;
   mdns?: boolean;
+  ipv6?: boolean;
   autoReconnect: boolean;
   reconnectDelayMs: number;
   maxReconnectDelayMs: number;

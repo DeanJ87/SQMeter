@@ -60,6 +60,10 @@
           "state": "active",
           "id": "D-36"
         },
+        "wifi.ipv6": {
+          "state": "active",
+          "id": "D-36"
+        },
         "gps.enabled": {
           "state": "off",
           "id": "D-26"
@@ -1075,7 +1079,7 @@
       }
     },
     {
-      "name": "D-28/D-36 NTP and mDNS without WiFi (setup hotspot)",
+      "name": "D-28/D-36 NTP, mDNS and IPv6 without WiFi (setup hotspot)",
       "config": {},
       "facts": {
         "wifiConnected": false
@@ -1087,6 +1091,11 @@
           "reason": "wifi-disconnected"
         },
         "wifi.mdns": {
+          "state": "inactive",
+          "id": "D-36",
+          "reason": "wifi-disconnected"
+        },
+        "wifi.ipv6": {
           "state": "inactive",
           "id": "D-36",
           "reason": "wifi-disconnected"
@@ -1261,6 +1270,10 @@
       },
       "expect": {
         "wifi.mdns": {
+          "state": "active",
+          "id": "D-36"
+        },
+        "wifi.ipv6": {
           "state": "active",
           "id": "D-36"
         },

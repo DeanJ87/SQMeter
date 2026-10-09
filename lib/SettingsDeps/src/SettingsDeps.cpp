@@ -255,6 +255,7 @@ namespace SQM
                 c.add("ble.phoneAlarm", "D-31", !cfg.ble.passkey.empty(), {bleBuild, {"D-31", "ble-off", cfg.ble.enabled}, bleRunning});
                 c.add("ota.enabled", "D-32", cfg.ota.enabled, {{"D-32", "ota-no-password", !cfg.ota.password.empty()}});
                 c.add("wifi.mdns", "D-36", cfg.wifi.mdns, {{"D-36", "wifi-disconnected", c.f.wifiConnected}});
+                c.add("wifi.ipv6", "D-36", cfg.wifi.ipv6, {{"D-36", "wifi-disconnected", c.f.wifiConnected}});
             }
         } // namespace
 

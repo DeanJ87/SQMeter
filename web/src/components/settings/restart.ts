@@ -31,6 +31,7 @@ export const restartReasons = (before: Config, after: Config): string[] => {
   ) {
     reasons.push('I2C');
   }
+  if ((before.wifi.ipv6 ?? true) !== (after.wifi.ipv6 ?? true)) reasons.push('IPv6');
   if ((before.alpaca?.enabled ?? false) !== (after.alpaca?.enabled ?? false)) reasons.push(t('settings.restart.alpacaDiscovery'));
   if (
     changed([before.ble?.enabled, before.ble?.passkey], [after.ble?.enabled, after.ble?.passkey]) ||

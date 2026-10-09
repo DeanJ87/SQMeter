@@ -23,7 +23,7 @@ const SKIP_PROP =
   /^(class|className|id|key|type|href|src|role|variant|tone|icon|name|for|htmlFor|rel|target|method|autocomplete|autoComplete|inputMode|pattern|dataField|size|align|value|step|min|max|d|viewBox|fill|stroke|xmlns|path|route|channel|event|kind|unit|field|setting|code|tab|anchor|mode|level|state|status|testId|style|color|font|format|accept|lang|dir|clientId)$/;
 // Names and units that are the same in every language.
 const KEEP =
-  /^(SQMeter|SQMeter Demo|N\.I\.N\.A\.|ASCOM Alpaca|Alpaca|MQTT|ntfy|Pushover|Home Assistant|GitHub|NTP|GPS|BME280|TSL2591|MLX90614|RG-15|ESP32|UTC|SSID|IP|OK)$/;
+  /^(SQMeter|SQMeter Demo|N\.I\.N\.A\.|ASCOM Alpaca|Alpaca|MQTT|ntfy|Pushover|Home Assistant|GitHub|NTP|GPS|BME280|TSL2591|MLX90614|RG-15|ESP32|UTC|SSID|IP|IPv6|OK)$/;
 // Units are the same in every language (units are their own setting).
 const UNITS = /^(mag\s*\/\s*arcsec²|hPa|m\/s|km\/h|mm\/h|mm|°C|°|%|lux|dBm|ms|s|min|h|KB|MB|Hz|kHz|V|SQM|NELM|HDOP|RSSI)$/;
 const PROTOCOLS = /^(HTTP|HTTPS|TCP|UDP|WebSocket)$/;

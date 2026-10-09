@@ -9,6 +9,8 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include "DualStackClient.h"
+#include "NetAddress.h"
 #include <ctime>
 #include <memory>
 
@@ -26,6 +28,29 @@ namespace SQM
             return now >= 1704067200 ? static_cast<int64_t>(now) : 0;
         }
 
+        // Plain http also reaches IPv6 literals and IPv6-only names (spec 015).
+        std::unique_ptr<WiFiClient> clientFor(const std::string &url, bool insecureTls, const char *rootCa)
+        {
+            if (url.rfind("https://", 0) != 0)
+                return std::make_unique<DualStackClient>();
+            auto secure = std::make_unique<WiFiClientSecure>();
+            if (insecureTls)
+                secure->setInsecure();
+            else
+                secure->setCACert(rootCa);
+            return secure;
+        }
+
+        // HTTPClient splits "http://[fd00::10]:8080/x" at the first ':', so IPv6
+        // hosts go in by parts (the bracketed host is the Host header).
+        bool beginRequest(HTTPClient &http, WiFiClient &client, const std::string &url)
+        {
+            Net::HttpUrl parsed;
+            if (Net::parseHttpUrl(url, parsed) == Net::UrlError::None && parsed.host.ipv6)
+                return http.begin(client, Net::hostForUrl(parsed.host).c_str(), parsed.port, parsed.path.c_str(), parsed.https);
+            return http.begin(client, url.c_str());
+        }
+
         bool httpPost(
             const std::string &url,
             const char *contentType,
@@ -35,25 +60,11 @@ namespace SQM
             std::string &detail,
             const char *rootCa = ALERT_ROOT_CA_PEM)
         {
-            std::unique_ptr<WiFiClient> client;
-            if (url.rfind("https://", 0) == 0)
-            {
-                auto secure = std::make_unique<WiFiClientSecure>();
-                if (insecureTls)
-                    secure->setInsecure();
-                else
-                    secure->setCACert(rootCa);
-                client = std::move(secure);
-            }
-            else
-            {
-                client = std::make_unique<WiFiClient>();
-            }
-
+            const std::unique_ptr<WiFiClient> client = clientFor(url, insecureTls, rootCa);
             HTTPClient http;
             http.setTimeout(HTTP_TIMEOUT_MS);
             http.setConnectTimeout(HTTP_TIMEOUT_MS);
-            if (!http.begin(*client, url.c_str()))
+            if (!beginRequest(http, *client, url))
             {
                 detail = "Invalid URL";
                 return false;

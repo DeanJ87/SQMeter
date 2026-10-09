@@ -1,6 +1,7 @@
 #include "Config.h"
 #include "BleAlarm.h"
 #include "LanguageLogic.h"
+#include "NetAddress.h"
 #include <ArduinoJson.h>
 #include <array>
 #include <cctype>
@@ -106,6 +107,39 @@ namespace SQM
             return false;
         }
 
+        // MQTT broker and webhook URL forms, IPv6 literals included (spec 015);
+        // web/src/validation/configSchema.ts applies the same rules.
+        bool validateAddresses(const Config &cfg, std::string *error)
+        {
+            if (!cfg.mqtt.broker.empty())
+            {
+                Net::Host host;
+                const Net::HostError hostError = Net::parseHost(cfg.mqtt.broker, host);
+                if (hostError != Net::HostError::None)
+                    return setError(error, std::string("MQTT broker: ") + Net::hostErrorText(hostError));
+            }
+            const std::pair<bool, std::pair<const char *, const std::string *>> urls[] = {
+                {cfg.alerts.webhookEnabled, {"Alerts: webhook URL: ", &cfg.alerts.webhookUrl}},
+                {cfg.alerts.ntfyEnabled, {"Alerts: ntfy server: ", &cfg.alerts.ntfyServer}},
+            };
+            for (const auto &entry : urls)
+            {
+                if (!entry.first)
+                    continue;
+                Net::HttpUrl url;
+                Net::HostError hostError = Net::HostError::None;
+                const Net::UrlError urlError = Net::parseHttpUrl(*entry.second.second, url, &hostError);
+                if (urlError != Net::UrlError::None)
+                    return setError(error, entry.second.first + Net::urlErrorText(urlError, hostError));
+            }
+            for (const std::string *server : {&cfg.ntp.server1, &cfg.ntp.server2})
+            {
+                if (Net::isIpv6Literal(*server))
+                    return setError(error, std::string("NTP server: ") + Net::NTP_IPV6_TEXT);
+            }
+            return true;
+        }
+
         bool inRange(float value, float min, float max)
         {
             return std::isfinite(value) && value >= min && value <= max;
@@ -193,6 +227,7 @@ namespace SQM
         cfg.wifi.password = "";
         cfg.wifi.hostname = "sqmeter";
         cfg.wifi.mdns = true;
+        cfg.wifi.ipv6 = true;
         cfg.wifi.autoReconnect = true;
         cfg.wifi.reconnectDelayMs = 1000;
         cfg.wifi.maxReconnectDelayMs = 300000; // 5 minutes
@@ -510,6 +545,7 @@ namespace SQM
         wifi["password"] = redactSecrets && !this->wifi.password.empty() ? SECRET_MASK : this->wifi.password.c_str();
         wifi["hostname"] = this->wifi.hostname;
         wifi["mdns"] = this->wifi.mdns;
+        wifi["ipv6"] = this->wifi.ipv6;
         wifi["autoReconnect"] = this->wifi.autoReconnect;
         wifi["reconnectDelayMs"] = this->wifi.reconnectDelayMs;
         wifi["maxReconnectDelayMs"] = this->wifi.maxReconnectDelayMs;
@@ -1008,6 +1044,8 @@ namespace SQM
                 cfg.wifi.hostname = wifi["hostname"] | "sqmeter";
             if (wifi.containsKey("mdns"))
                 cfg.wifi.mdns = wifi["mdns"] | true;
+            if (wifi.containsKey("ipv6"))
+                cfg.wifi.ipv6 = wifi["ipv6"] | true;
             if (wifi.containsKey("autoReconnect"))
                 cfg.wifi.autoReconnect = wifi["autoReconnect"] | true;
             if (wifi.containsKey("reconnectDelayMs"))
@@ -1377,6 +1415,12 @@ namespace SQM
         normalizeTimeSources(cfg);
 
         if (!cfg.validate(errorOut))
+            return false;
+
+        // Host and URL forms (IPv6 literals, spec 015) are only enforced for
+        // changes coming from the UI/API, like the key format below, so a
+        // value stored by older firmware never stops the config from loading.
+        if (preserveSecretPlaceholders && !validateAddresses(cfg, errorOut))
             return false;
 
         // Key format is only enforced for changes coming from the UI/API, so a

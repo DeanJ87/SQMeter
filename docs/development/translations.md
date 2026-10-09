@@ -4,7 +4,7 @@ The web UI is translated into 13 languages besides English (spec 023). This page
 
 ## How it fits together
 
-<!-- diagram: DIA-16
+<!-- diagram: DIA-17
 sources: tools/i18n/gen_device_catalog.py tools/i18n/translate.py tools/i18n/build_packs.py src/LanguagePack.cpp web/src/i18n/loader.ts
 blocking: false
 fingerprint: 78a5e3dff47c16cd

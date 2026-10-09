@@ -80,6 +80,7 @@ nav:
     - Dashboard: user-guide/dashboard.md
     - Configuration: user-guide/configuration.md
     - Security: user-guide/security.md
+    - IPv6: user-guide/ipv6.md
     - MQTT Integration: user-guide/mqtt.md
     - indi-allsky: user-guide/indi-allsky.md
     - OTA Updates: user-guide/ota.md

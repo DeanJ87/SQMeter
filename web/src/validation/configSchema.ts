@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { t } from '../i18n';
 import { alertsConfigSchema } from './alertsSchema';
+import { isIpv6Literal, ntpIpv6Text, parseHost } from '../lib/netAddress';
 
 // Valid ESP32 GPIO pins
 const validGPIOs = [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39];
@@ -14,6 +15,7 @@ export const wifiConfigSchema = z.object({
     .max(32, t('validation.configSchema.hostnameCanBeAtMost'))
     .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/, t('validation.configSchema.useLettersNumbersAndHyphens')),
   mdns: z.boolean().optional(),
+  ipv6: z.boolean().optional(),
   autoReconnect: z.boolean(),
   reconnectDelayMs: z.number().int().positive().max(86400000, t('validation.configSchema.reconnectDelayCanBeAtMost24')),
   maxReconnectDelayMs: z.number().int().positive().max(86400000, t('validation.configSchema.reconnectDelayCanBeAtMost24')),
@@ -53,6 +55,12 @@ export const mqttConfigSchema = z
     message: t('validation.configSchema.mqttBrokerAndTopicAre'),
     path: ['broker'],
   })
+  // Host forms, IPv6 included - the device's rules (lib/NetAddress, spec 015).
+  .superRefine((data, ctx) => {
+    if (data.broker === '') return;
+    const host = parseHost(data.broker);
+    if (host.error) ctx.addIssue({ code: 'custom', path: ['broker'], message: host.error });
+  })
   .refine((data) => !data.enabled || data.topic.trim().length > 0, {
     message: t('validation.configSchema.mqttBrokerAndTopicAre'),
     path: ['topic'],
@@ -88,8 +96,11 @@ export const authConfigSchema = z
 
 export const ntpConfigSchema = z.object({
   enabled: z.boolean(),
-  server1: z.string().min(1, t('validation.configSchema.primaryNtpServerIsRequired')),
-  server2: z.string(),
+  server1: z
+    .string()
+    .min(1, t('validation.configSchema.primaryNtpServerIsRequired'))
+    .refine((v) => !isIpv6Literal(v), ntpIpv6Text()),
+  server2: z.string().refine((v) => !isIpv6Literal(v), ntpIpv6Text()),
   timezone: z.string().min(1, t('validation.configSchema.timezoneIsRequired')),
   syncIntervalMs: z
     .number()

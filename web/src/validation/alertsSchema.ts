@@ -1,9 +1,8 @@
 import { z } from 'zod';
 import { t } from '../i18n';
+import { parseHttpUrl } from '../lib/netAddress';
 
 // Alerts settings (split from configSchema.ts to keep files short).
-
-const httpUrl = z.string().regex(/^https?:\/\/.+/, t('validation.configSchema.mustStartWithHttpOr'));
 
 export const alertsConfigSchema = z
   .object({
@@ -72,14 +71,14 @@ export const alertsConfigSchema = z
       });
     }
     if (data.ntfy.enabled) {
-      if (!httpUrl.safeParse(data.ntfy.server).success) {
-        ctx.addIssue({ code: 'custom', path: ['ntfy', 'server'], message: t('validation.configSchema.serverMustStartWithHttp') });
-      }
+      const server = parseHttpUrl(data.ntfy.server);
+      if (server.error) ctx.addIssue({ code: 'custom', path: ['ntfy', 'server'], message: server.error });
       if (!data.ntfy.topic) {
         ctx.addIssue({ code: 'custom', path: ['ntfy', 'topic'], message: t('validation.configSchema.topicIsRequired') });
       }
     }
-    if (data.webhook.enabled && !httpUrl.safeParse(data.webhook.url).success) {
-      ctx.addIssue({ code: 'custom', path: ['webhook', 'url'], message: t('validation.configSchema.webhookUrlMustStartWith') });
+    if (data.webhook.enabled) {
+      const url = parseHttpUrl(data.webhook.url);
+      if (url.error) ctx.addIssue({ code: 'custom', path: ['webhook', 'url'], message: url.error });
     }
   });

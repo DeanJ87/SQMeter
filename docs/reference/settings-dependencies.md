@@ -47,4 +47,4 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-34 | `auth.password` | HTTP auth on needs a password | Constraint | - |
 | D-35 | `gps.enabled`, `ble.enabled`, `ble.phoneAlarm`, `alerts.wakePhones`, `mqtt.publish.gps` | A restart since GPS or Bluetooth was switched on (both start at boot) | Dependency | GPS starts after a restart (gps-restart); Bluetooth starts after a restart (ble-restart) |
 | D-37 | `alerts.events.client_lost.level`, `alerts.events.client_back.level`, `alerts.events.client_disconnected.level` | Alpaca on - imaging apps connect over Alpaca (spec 021) | Dependency | Alpaca is off (alpaca-off) |
-| D-36 | `wifi.mdns` | WiFi connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
+| D-36 | `wifi.mdns`, `wifi.ipv6` | WiFi connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |

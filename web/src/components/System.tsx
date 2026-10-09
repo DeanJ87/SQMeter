@@ -35,6 +35,8 @@ const sensorBadge = (status: SensorHealth): { text: string; tone: string } => {
   }
 };
 
+const IPV6_SCOPE_KEYS = { 'link-local': 'system.ipv6LinkLocal', 'unique-local': 'system.ipv6Local', global: 'system.ipv6Global' } as const;
+
 const InfoRow: FunctionalComponent<{ label: string; value: string; tone?: string }> = ({ label, value, tone = '' }) => (
   <ReadingRow label={label} value={value} valueClass={tone} />
 );
@@ -270,6 +272,14 @@ const System: FunctionalComponent = () => {
             <>
               <InfoRow label="SSID" value={status.wifi.ssid} />
               <InfoRow label={t('system.ipAddress')} value={status.wifi.ip} tone="tone-cyan" />
+              {status.wifi.ipv6?.addresses.map((entry) => (
+                <InfoRow
+                  key={entry.address}
+                  label={t('system.ipv6Scope', { scope: t(IPV6_SCOPE_KEYS[entry.scope]) })}
+                  value={entry.address}
+                  tone="tone-cyan"
+                />
+              ))}
               <InfoRow label={t('system.signal')} value={`${status.wifi.rssi} dBm`} />
               <InfoRow label={t('system.macAddress')} value={status.wifi.mac} />
             </>

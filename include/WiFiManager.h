@@ -1,10 +1,12 @@
 #pragma once
 
 #include "Config.h"
+#include "NetAddress.h"
 #include <WiFi.h>
 #include <AsyncUDP.h>
 #include <functional>
 #include <optional>
+#include <vector>
 
 namespace SQM
 {
@@ -50,6 +52,14 @@ namespace SQM
         void startMdns();
         bool isMdnsRunning() const { return mdnsStarted; }
 
+        // IPv6 on the joined network (spec 015): on when the setting is, from
+        // the next connection. Addresses are the station's valid ones
+        // (link-local, then SLAAC); empty while IPv6 is off or not connected.
+        bool isIpv6Enabled() const { return config.ipv6; }
+        // The setting the device started with (changes apply at restart).
+        static bool ipv6Running() { return ipv6Wanted; }
+        static std::vector<Net::Ipv6> ipv6Addresses();
+
     private:
         static constexpr const char *TAG = "WiFiManager";
         static constexpr const char *AP_SSID = "SQM-Setup";
@@ -74,6 +84,8 @@ namespace SQM
         void stopAPMode();
 
         static void onWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info);
+        // Read by the static event handler (it runs on the WiFi event task).
+        static bool ipv6Wanted;
     };
 
 } // namespace SQM
