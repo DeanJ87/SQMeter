@@ -78,12 +78,14 @@ describe('restartReasons', () => {
   });
 
   // The WiFi manager reads all its settings at boot (spec 011 FR-003).
-  it.each([['mdns', false], ['autoReconnect', false], ['reconnectDelayMs', 2000], ['maxReconnectDelayMs', 600000]] as const)(
-    'needs a restart for wifi.%s',
-    (key, value) => {
-      expect(restartReasons(base, { ...base, wifi: { ...base.wifi, [key]: value } })).toEqual(['WiFi']);
-    },
-  );
+  it.each([
+    ['mdns', false],
+    ['autoReconnect', false],
+    ['reconnectDelayMs', 2000],
+    ['maxReconnectDelayMs', 600000],
+  ] as const)('needs a restart for wifi.%s', (key, value) => {
+    expect(restartReasons(base, { ...base, wifi: { ...base.wifi, [key]: value } })).toEqual(['WiFi']);
+  });
 });
 
 describe('parseCoordinates', () => {

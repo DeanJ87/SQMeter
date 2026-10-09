@@ -4,14 +4,17 @@
 struct String
 {
     std::string s;
-    String(const char *c = "") : s(c) {}
+    String(const char *c = "")
+        : s(c)
+    {
+    }
     const char *c_str() const { return s.c_str(); }
     size_t length() const { return s.size(); }
     bool isEmpty() const { return s.empty(); }
 };
 class Preferences
 {
-  public:
+public:
     bool begin(const char *, bool = false) { return true; }
     void end() {}
     String getString(const char *, const char *d = "") { return String(d); }

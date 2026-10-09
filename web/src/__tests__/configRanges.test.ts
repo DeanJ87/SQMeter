@@ -33,8 +33,26 @@ const accepts = (range: Range, value: number) => {
 
 const checks = (range: Range): [number, boolean][] => {
   const step = range.int ? 1 : 0.1;
-  const low: [number, boolean][] = range.gt !== undefined ? [[range.gt, false], [range.gt + step, true]] : [[range.min!, true], [range.min! - step, false]];
-  const high: [number, boolean][] = range.lt !== undefined ? [[range.lt, false], [range.lt - step, true]] : [[range.max!, true], [range.max! + step, false]];
+  const low: [number, boolean][] =
+    range.gt !== undefined
+      ? [
+          [range.gt, false],
+          [range.gt + step, true],
+        ]
+      : [
+          [range.min!, true],
+          [range.min! - step, false],
+        ];
+  const high: [number, boolean][] =
+    range.lt !== undefined
+      ? [
+          [range.lt, false],
+          [range.lt - step, true],
+        ]
+      : [
+          [range.max!, true],
+          [range.max! + step, false],
+        ];
   return [...low, ...high];
 };
 

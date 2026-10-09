@@ -8,7 +8,15 @@ export const restartReasons = (before: Config, after: Config): string[] => {
   const reasons: string[] = [];
   // WiFiManager takes its settings at boot (src/main.cpp doesn't pass a
   // saved config on), so every WiFi field needs a restart.
-  const wifi = (c: Config) => [c.wifi.ssid, c.wifi.password, c.wifi.hostname, c.wifi.mdns, c.wifi.autoReconnect, c.wifi.reconnectDelayMs, c.wifi.maxReconnectDelayMs];
+  const wifi = (c: Config) => [
+    c.wifi.ssid,
+    c.wifi.password,
+    c.wifi.hostname,
+    c.wifi.mdns,
+    c.wifi.autoReconnect,
+    c.wifi.reconnectDelayMs,
+    c.wifi.maxReconnectDelayMs,
+  ];
   if (changed(wifi(before), wifi(after))) {
     reasons.push('WiFi');
   }

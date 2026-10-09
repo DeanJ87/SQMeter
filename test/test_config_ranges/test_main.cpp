@@ -27,8 +27,8 @@ namespace
     void setPath(JsonDocument &doc, const std::string &path, JsonVariantConst value)
     {
         const size_t dot = path.find('.');
-        JsonObject section = doc[path.substr(0, dot)].isNull() ? doc.createNestedObject(path.substr(0, dot))
-                                                                : doc[path.substr(0, dot)].as<JsonObject>();
+        JsonObject section =
+            doc[path.substr(0, dot)].isNull() ? doc.createNestedObject(path.substr(0, dot)) : doc[path.substr(0, dot)].as<JsonObject>();
         section[path.substr(dot + 1)] = value;
     }
 

@@ -26,25 +26,28 @@ STRING = re.compile(r'"((?:[^"\\]|\\.)*)"')
 CALL = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
 
 
+def after_literal(text, i):
+    """Index just past the string ("...") or character ('x') literal starting at i."""
+    if text[i] == "'":
+        return i + (4 if text[i + 1] == "\\" else 3)
+    i += 1
+    while i < len(text) and text[i] != '"':
+        i += 2 if text[i] == "\\" else 1
+    return i + 1
+
+
 def matching_close(text, open_index, open_char="(", close_char=")"):
     """Index of the bracket closing the one at open_index, skipping string literals."""
     depth = 0
     i = open_index
     while i < len(text):
         c = text[i]
-        if c == '"':
-            i += 1
-            while i < len(text) and text[i] != '"':
-                i += 2 if text[i] == "\\" else 1
-        elif c == "'":
-            i += 3 if text[i + 1] != "\\" else 4
+        if c in "\"'":
+            i = after_literal(text, i)
             continue
-        elif c == open_char:
-            depth += 1
-        elif c == close_char:
-            depth -= 1
-            if depth == 0:
-                return i
+        depth += (c == open_char) - (c == close_char)
+        if depth == 0 and c == close_char:
+            return i
         i += 1
     raise ValueError(f"unbalanced {open_char} at {open_index}")
 

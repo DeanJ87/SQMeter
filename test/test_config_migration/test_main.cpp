@@ -106,12 +106,30 @@ namespace
 void setUp() {}
 void tearDown() {}
 
-void test_v0_1_0() { loadRelease("v0.1.0"); }
-void test_v0_1_3() { loadRelease("v0.1.3"); }
-void test_v0_1_4_beta_1() { loadRelease("v0.1.4-beta.1"); }
-void test_v0_2_0_beta_1() { loadRelease("v0.2.0-beta.1"); }
-void test_v0_2_0_beta_2() { loadRelease("v0.2.0-beta.2"); }
-void test_v0_2_0_beta_3() { loadRelease("v0.2.0-beta.3"); }
+void test_v0_1_0()
+{
+    loadRelease("v0.1.0");
+}
+void test_v0_1_3()
+{
+    loadRelease("v0.1.3");
+}
+void test_v0_1_4_beta_1()
+{
+    loadRelease("v0.1.4-beta.1");
+}
+void test_v0_2_0_beta_1()
+{
+    loadRelease("v0.2.0-beta.1");
+}
+void test_v0_2_0_beta_2()
+{
+    loadRelease("v0.2.0-beta.2");
+}
+void test_v0_2_0_beta_3()
+{
+    loadRelease("v0.2.0-beta.3");
+}
 
 // Settings too big for their NVS entry are refused with a message that says
 // what to do, rather than saved and lost on the next boot.
@@ -124,7 +142,8 @@ void test_oversized_alert_texts_are_refused_clearly()
         message += "\\\"";
     const std::string title(80, 'y');
     std::string events;
-    for (const char *name : {"unsafe", "safe", "rain_started", "rain_stopped", "sensor_fault", "sensor_recovered", "dew_risk", "clear_sky", "clouded_over"})
+    for (const char *name :
+         {"unsafe", "safe", "rain_started", "rain_stopped", "sensor_fault", "sensor_recovered", "dew_risk", "clear_sky", "clouded_over"})
     {
         events += events.empty() ? "" : ",";
         events += std::string("\"") + name + "\":{\"level\":2,\"title\":\"" + title + "\",\"message\":\"" + message + "\"}";

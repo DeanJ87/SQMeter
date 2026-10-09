@@ -280,7 +280,11 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
               onChange={(v) => update(['cloudDetection', 'cloudyThreshold'], v)}
             />
           </Field>
-          <Field label="Humidity correction" hint="AAG CloudWatcher k1, default 0.75. Without the BME280 a fixed 53% humidity is assumed." error={error('cloudDetection.humidityCorrection')}>
+          <Field
+            label="Humidity correction"
+            hint="AAG CloudWatcher k1, default 0.75. Without the BME280 a fixed 53% humidity is assumed."
+            error={error('cloudDetection.humidityCorrection')}
+          >
             <NumberInput
               min={0}
               max={2}
