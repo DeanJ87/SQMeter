@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-09
 
-**Status**: Draft – research done ([research.md](research.md)), for the owner's review. Nothing built.
+**Status**: Implementing (feat/027-arduino3). Clarified 2026-10-09.
 
 ## Context
 
@@ -236,7 +236,21 @@ This decision makes FR-015 apply and adds:
   the new partition table, both app slots' firmware and the filesystem in one step, without erasing
   NVS.
 
-### Still open
+- Q: WPA3 (FR-011): keep, or drop for 27 KB? → A: **Keep.** Both builds keep WPA3; the space
+  comes from the new layout instead.
+- Q: Ship v0.2.0-beta.4 on 2.x first? → A: **No.** The next release is the 3.x one,
+  **v0.3.0-beta.1**. The last 2.x release, the FR-016 fallback, is v0.2.0-beta.3.
 
-1. **WPA3 (FR-011)**: keep (recommended) or drop for 27 KB?
-2. **beta.4**: ship on 2.x with the trims first (recommended)?
+These decisions change three requirements:
+
+- **FR-012 / FR-014 (OTA from 2.x)** are superseded by FR-015/FR-018: devices reach the new layout
+  by one USB flash, not OTA. A 2.x device MUST NOT be offered the 3.x release by its update check
+  (the new release's assets use names the 2.x update check doesn't match), and 3.x firmware MUST
+  refuse OTA images built for another layout or build (FR-020).
+- **FR-020**: Every firmware image MUST carry a marker naming its partition layout and build
+  (standard or BLE). The device MUST refuse an OTA image (manual upload or GitHub update) whose
+  marker is missing or doesn't match the device's layout and build, and a filesystem image whose
+  size doesn't match its LittleFS partition, each with a message that says what to do. A device
+  running 3.x firmware on an old layout MUST say it needs the one-time USB flash.
+- **FR-021**: The device MUST mark a new firmware valid only once it has started properly (WiFi
+  and the web server up), so a firmware that fails during start-up rolls back to the previous one.
