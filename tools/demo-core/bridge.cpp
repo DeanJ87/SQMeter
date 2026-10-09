@@ -744,10 +744,20 @@ private:
     // Simulated sensors -> the readings the drivers would produce.
     void readSensors(JsonObjectConst in)
     {
-        const uint32_t now = nowMs;
-        snapshot.dataTimestamp = now;
-        snapshot.capturedAt = now;
+        snapshot.dataTimestamp = nowMs;
+        snapshot.capturedAt = nowMs;
+        readLight(in);
+        lightDiagnostics();
+        readEnvironment(in);
+        readGps(in);
+        readRain(in);
+        rainDiagnostics();
+        readWind(in);
+    }
 
+    void readLight(JsonObjectConst in)
+    {
+        const uint32_t now = nowMs;
         // TSL2591: detected at boot unless the demo says it's missing.
         JsonObjectConst light = in["light"];
         snapshot.tslInitialized = light["present"] | true;
@@ -772,6 +782,12 @@ private:
         {
             tsl.status = SensorStatus::Timeout;
         }
+    }
+
+    void lightDiagnostics()
+    {
+        const uint32_t now = nowMs;
+        const TSL2591Reading &tsl = snapshot.tsl;
         TSL2591Diagnostics &d = snapshot.tslDiagnostics;
         d.gainName = tsl.nightMode ? "MAX" : "HIGH";
         d.gainFactor = tsl.nightMode ? 9876.0f : 428.0f;
@@ -787,7 +803,11 @@ private:
         d.nightMode = tsl.nightMode;
         d.calibrated = tsl.calibrated;
         d.saturated = false;
+    }
 
+    void readEnvironment(JsonObjectConst in)
+    {
+        const uint32_t now = nowMs;
         // BME280
         JsonObjectConst env = in["environment"];
         snapshot.bmeInitialized = env["present"] | true;
@@ -823,7 +843,11 @@ private:
         {
             snapshot.mlx.status = SensorStatus::Timeout;
         }
+    }
 
+    void readGps(JsonObjectConst in)
+    {
+        const uint32_t now = nowMs;
         // GPS: the driver starts at boot, so it follows the settings at the last restart.
         snapshot.gpsInitialized = bootConfig.gps.enabled;
         GPSReading &gps = snapshot.gps;
@@ -852,7 +876,11 @@ private:
         {
             gps = GPSReading{};
         }
+    }
 
+    void readRain(JsonObjectConst in)
+    {
+        const uint32_t now = nowMs;
         // RG-15: started and stopped with the setting.
         snapshot.rg15Initialized = cfg.rain.enabled;
         RG15Reading &rain = snapshot.rg15;
@@ -888,6 +916,12 @@ private:
             rain.status = cfg.rain.enabled ? SensorStatus::Timeout : SensorStatus::NotInitialized;
             lastRainTickMs = 0;
         }
+    }
+
+    void rainDiagnostics()
+    {
+        const uint32_t now = nowMs;
+        const RG15Reading &rain = snapshot.rg15;
         RG15Diagnostics &rd = snapshot.rg15Diagnostics;
         rd.state = cfg.rain.enabled ? (rain.online ? RG15State::Online : RG15State::Timeout) : RG15State::Disabled;
         rd.uartOpened = cfg.rain.enabled;
@@ -912,7 +946,11 @@ private:
             rd.lastRawResponse = std::string(line);
         }
         rd.lastRainDetectedMs = rainLatch.lastRainMs;
+    }
 
+    void readWind(JsonObjectConst in)
+    {
+        const uint32_t now = nowMs;
         // Anemometer + vane
         WindReading &wind = snapshot.wind;
         JsonObjectConst w = in["wind"];

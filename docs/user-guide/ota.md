@@ -115,7 +115,7 @@ If the new firmware is invalid or fails before it has started, the bootloader go
 <!-- diagram: DIA-08
 sources: src/OtaUpdater.cpp#OtaUpdater::runApply src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFirmware src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFilesystem lib/ReleaseLogic/ src/OtaUpdater.cpp#OtaUpdater::checkForUpdate
 blocking: false
-fingerprint: c6651a1f12020f2c
+fingerprint: 69d4f8be12747f8c
 -->
 <figure class="diagram" markdown>
 

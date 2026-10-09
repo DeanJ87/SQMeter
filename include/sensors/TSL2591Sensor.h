@@ -50,6 +50,7 @@ namespace SQM
         uint16_t rejectedSamples = 0;
 
         bool readSensor();
+        float luxFromCounts(bool saturated, float cpl) const;
         void resetRollingSamples();
         void pushSample(uint16_t full, uint16_t ir, uint16_t visible);
         void updateRollingReading();
