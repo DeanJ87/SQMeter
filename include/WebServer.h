@@ -111,6 +111,10 @@ namespace SQM
         std::unique_ptr<OtaUpdater> otaUpdater;
 
         AsyncUDP alpacaDiscoveryUdp; // answers in the network task, not the main loop
+        // IPv6 discovery (ff12::a1:2345) needs an IPv6 address first; retried from handle().
+        bool alpacaIpv6Pending = false;
+        uint32_t lastAlpacaIpv6Attempt = 0;
+        void retryAlpacaIpv6Discovery(uint32_t now);
         // The Alpaca HTTP API lives in lib/AlpacaLogic (Alpaca::Router) so the
         // CI simulator runs the same code; this feeds it the device's state.
         class AlpacaBackend : public Alpaca::Backend

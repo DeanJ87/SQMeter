@@ -1,4 +1,5 @@
 #include "MQTTClient.h"
+#include "NetAddress.h"
 #include "Logger.h"
 #include <ArduinoJson.h>
 #include <WiFi.h>
@@ -15,6 +16,19 @@ namespace SQM
     {
     }
 
+    void MQTTClient::resolveBroker()
+    {
+        Net::Host host;
+        if (Net::parseHost(config.broker, host) == Net::HostError::None)
+        {
+            brokerHost = host.name;
+            brokerPort = host.port != 0 ? host.port : config.port;
+            return;
+        }
+        brokerHost = config.broker;
+        brokerPort = config.port;
+    }
+
     void MQTTClient::begin()
     {
         if (!config.enabled)
@@ -24,7 +38,8 @@ namespace SQM
         }
 
         Logger::info(TAG, "Initializing MQTT client");
-        mqttClient->setServer(config.broker.c_str(), config.port);
+        resolveBroker();
+        mqttClient->setServer(brokerHost.c_str(), brokerPort);
         mqttClient->setBufferSize(3072); // Fits cloud and RG-15 diagnostics payloads
         mqttClient->setKeepAlive(60);
         mqttClient->setSocketTimeout(10);
@@ -91,7 +106,8 @@ namespace SQM
 
         if (config.enabled)
         {
-            mqttClient->setServer(config.broker.c_str(), config.port);
+            resolveBroker();
+            mqttClient->setServer(brokerHost.c_str(), brokerPort);
             if (mqttClient->connected())
             {
                 publishAvailability(false);
@@ -114,7 +130,7 @@ namespace SQM
         if (!config.enabled)
             return;
 
-        Logger::info(TAG, "Connecting to MQTT broker: %s:%d", config.broker.c_str(), config.port);
+        Logger::info(TAG, "Connecting to MQTT broker: %s port %d", config.broker.c_str(), brokerPort);
 
         const std::string clientId = buildClientId();
         const std::string availabilityTopic = getAvailabilityTopic();

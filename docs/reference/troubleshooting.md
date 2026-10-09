@@ -33,6 +33,15 @@
 
 ---
 
+## Can't Reach the Device Over IPv6
+
+- **System → WiFi** should list a `link-local` address; if it lists none, check **Settings → Network → IPv6** is on and restart the device.
+- No `global`/`local` address means the router isn't announcing an IPv6 prefix - link-local still works on the local network (`http://[fe80::...%en0]/` - add your computer's interface after `%`).
+- `403 IPv6 requests are only accepted from the local network`: you're coming from outside the device's own network prefix (another VLAN, a VPN, the internet). Use the IPv4 address, or a VPN that puts you on the same network ([IPv6](../user-guide/ipv6.md)).
+- Lookups of `sqmeter.local` slow or IPv4-only: check mDNS is on; with IPv6 on, the device answers AAAA as well as A.
+
+---
+
 ## OTA Update Fails
 
 1. Ensure stable power — don't run on a weak USB charger during flash

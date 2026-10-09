@@ -228,7 +228,7 @@ Enable **ntfy** and set a topic. The server defaults to `https://ntfy.sh`; use y
 
 ### Webhook
 
-POSTs a JSON body to any `http://` or `https://` URL - e.g. a Home Assistant webhook trigger, Node-RED, or a relay to Discord/Slack:
+POSTs a JSON body to any `http://` or `https://` URL - e.g. a Home Assistant webhook trigger, Node-RED, or a relay to Discord/Slack. An `http://` URL can use an IPv6 address in brackets (`http://[fd00::10]:8080/hook`); `https://` needs a host name ([IPv6](ipv6.md)):
 
 ```json
 {"device":"SQM-ESP32","event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.4 mm/h).","level":"wake","timestamp":1759500000}

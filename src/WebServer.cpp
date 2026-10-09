@@ -18,6 +18,10 @@
 #include "calculations/CloudDetection.h"
 #include "sensors/RG15Sensor.h"
 #include "AlpacaDiscovery.h"
+#include "Ipv6Network.h"
+#include "DualStackClient.h"
+#include "NetAddress.h"
+#include "WiFiManager.h"
 #include "HeapTrace.h"
 #include "SunPosition.h"
 #include "SafetyHistory.h"
@@ -190,14 +194,20 @@ namespace SQM
 
         if (getConfigCallback().alpaca.enabled)
         {
-            if (alpacaDiscoveryUdp.listen(Alpaca::DISCOVERY_UDP_PORT))
+            // With IPv6 on, one dual-stack socket takes IPv4 broadcasts and
+            // the IPv6 discovery group (spec 015, FR-005).
+            const bool ipv6 = WiFiManager::ipv6Running();
+            const bool listening = ipv6 ? alpacaDiscoveryUdp.listen(IP_ANY_TYPE, Alpaca::DISCOVERY_UDP_PORT)
+                                        : alpacaDiscoveryUdp.listen(Alpaca::DISCOVERY_UDP_PORT);
+            alpacaIpv6Pending = listening && ipv6;
+            if (listening)
             {
                 // Replies straight from the UDP task: discovery answers
                 // within milliseconds instead of waiting for a main-loop pass.
                 alpacaDiscoveryUdp.onPacket(
                     [](AsyncUDPPacket &packet)
                     {
-                        if (!Alpaca::isValidDiscoveryRequest(packet.data(), packet.length()))
+                        if (!Alpaca::isValidDiscoveryRequest(packet.data(), packet.length()) || !Ipv6Network::allowedDiscoveryPeer(packet))
                             return;
                         const std::string response = Alpaca::buildDiscoveryResponse(PORT);
                         packet.write(reinterpret_cast<const uint8_t *>(response.data()), response.size());
@@ -245,7 +255,17 @@ namespace SQM
             });
 
         server.begin();
+        if (WiFiManager::ipv6Running())
+            Ipv6Network::listenIpv6(server, PORT);
         Logger::info(TAG, "Web server started");
+    }
+
+    void WebServer::retryAlpacaIpv6Discovery(uint32_t now)
+    {
+        if (!alpacaIpv6Pending || now - lastAlpacaIpv6Attempt < 5000)
+            return;
+        lastAlpacaIpv6Attempt = now;
+        alpacaIpv6Pending = !Ipv6Network::joinAlpacaDiscoveryGroup();
     }
 
     void WebServer::handle()
@@ -257,6 +277,7 @@ namespace SQM
         const uint32_t now = millis();
 
         applyPendingArm();
+        retryAlpacaIpv6Discovery(now);
         if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
             publishArmedState();
         publishMqttReadings(now);
@@ -1779,10 +1800,25 @@ namespace SQM
         const char *password = jsonObj["password"] | "";
         const char *clientId = jsonObj["clientId"] | "SQM-Test";
 
-        Logger::info(TAG, "Testing MQTT connection to %s:%d", broker, port);
+        // "[fd00::10]:1883" and bare IPv6 work as in the saved settings (spec 015).
+        Net::Host host;
+        const Net::HostError hostError = Net::parseHost(broker, host);
+        if (hostError != Net::HostError::None)
+        {
+            StaticJsonDocument<192> reply;
+            reply["success"] = false;
+            reply["error"] = std::string("MQTT broker: ") + Net::hostErrorText(hostError);
+            std::string body;
+            serializeJson(reply, body);
+            request->send(400, "application/json", body.c_str());
+            return;
+        }
+        if (host.port != 0)
+            port = host.port;
+        Logger::info(TAG, "Testing MQTT connection to %s port %d", host.name.c_str(), port);
 
-        WiFiClient testWifiClient;
-        PubSubClient testMqtt(broker, port, testWifiClient);
+        DualStackClient testWifiClient;
+        PubSubClient testMqtt(host.name.c_str(), port, testWifiClient);
 
         bool connected = false;
         String errorMsg = "";
@@ -2242,6 +2278,7 @@ namespace SQM
             wifi["hostname"] = cfg.wifi.hostname;
             wifi["mdns"] = cfg.wifi.mdns;
         }
+        Ipv6Network::appendStatus(wifi);
 
         // Per-sensor health for present hardware, and bring-up diagnostics.
         // Readings themselves are in /api/sensors.

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { NTP_IPV6_TEXT, isIpv6Literal, parseHost, parseHttpUrl } from '../lib/netAddress';
 
 // Valid ESP32 GPIO pins
 const validGPIOs = [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39];
@@ -12,6 +13,7 @@ export const wifiConfigSchema = z.object({
     .max(32, 'Hostname can be at most 32 characters')
     .regex(/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/, 'Use letters, numbers and hyphens (not at either end)'),
   mdns: z.boolean().optional(),
+  ipv6: z.boolean().optional(),
   autoReconnect: z.boolean(),
   reconnectDelayMs: z.number().int().positive().max(86400000, 'Reconnect delay can be at most 24 hours'),
   maxReconnectDelayMs: z.number().int().positive().max(86400000, 'Reconnect delay can be at most 24 hours'),
@@ -51,6 +53,12 @@ export const mqttConfigSchema = z
     message: 'MQTT broker and topic are required when MQTT is enabled',
     path: ['broker'],
   })
+  // Host forms, IPv6 included - the device's rules (lib/NetAddress, spec 015).
+  .superRefine((data, ctx) => {
+    if (data.broker === '') return;
+    const host = parseHost(data.broker);
+    if (host.error) ctx.addIssue({ code: 'custom', path: ['broker'], message: host.error });
+  })
   .refine((data) => !data.enabled || data.topic.trim().length > 0, {
     message: 'MQTT broker and topic are required when MQTT is enabled',
     path: ['topic'],
@@ -86,8 +94,11 @@ export const authConfigSchema = z
 
 export const ntpConfigSchema = z.object({
   enabled: z.boolean(),
-  server1: z.string().min(1, 'Primary NTP server is required'),
-  server2: z.string(),
+  server1: z
+    .string()
+    .min(1, 'Primary NTP server is required')
+    .refine((v) => !isIpv6Literal(v), NTP_IPV6_TEXT),
+  server2: z.string().refine((v) => !isIpv6Literal(v), NTP_IPV6_TEXT),
   timezone: z.string().min(1, 'Timezone is required'),
   syncIntervalMs: z
     .number()
@@ -257,8 +268,6 @@ export const rainSensorConfigSchema = z
     path: ['rxPin'],
   });
 
-const httpUrl = z.string().regex(/^https?:\/\/.+/, 'Must start with http:// or https://');
-
 export const alertsConfigSchema = z
   .object({
     enabled: z.boolean(),
@@ -316,15 +325,15 @@ export const alertsConfigSchema = z
       });
     }
     if (data.ntfy.enabled) {
-      if (!httpUrl.safeParse(data.ntfy.server).success) {
-        ctx.addIssue({ code: 'custom', path: ['ntfy', 'server'], message: 'Server must start with http:// or https://' });
-      }
+      const server = parseHttpUrl(data.ntfy.server);
+      if (server.error) ctx.addIssue({ code: 'custom', path: ['ntfy', 'server'], message: server.error });
       if (!data.ntfy.topic) {
         ctx.addIssue({ code: 'custom', path: ['ntfy', 'topic'], message: 'Topic is required' });
       }
     }
-    if (data.webhook.enabled && !httpUrl.safeParse(data.webhook.url).success) {
-      ctx.addIssue({ code: 'custom', path: ['webhook', 'url'], message: 'Webhook URL must start with http:// or https://' });
+    if (data.webhook.enabled) {
+      const url = parseHttpUrl(data.webhook.url);
+      if (url.error) ctx.addIssue({ code: 'custom', path: ['webhook', 'url'], message: url.error });
     }
   });
 

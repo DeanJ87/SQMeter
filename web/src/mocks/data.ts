@@ -191,6 +191,13 @@ export const mockStatus: SystemStatus = {
     apMode: false,
     hostname: 'sqmeter',
     mdns: true,
+    ipv6: {
+      enabled: true,
+      addresses: [
+        { address: 'fe80::a3b2:c3ff:fed4:e5f6', scope: 'link-local' },
+        { address: '2001:db8:4a2c:1:a3b2:c3ff:fed4:e5f6', scope: 'global' },
+      ],
+    },
   },
   mqtt: {
     enabled: true,
@@ -258,6 +265,7 @@ export const mockConfig: Config = {
     password: '',
     hostname: 'sqmeter',
     mdns: true,
+    ipv6: true,
     autoReconnect: true,
     reconnectDelayMs: 1000,
     maxReconnectDelayMs: 300000,

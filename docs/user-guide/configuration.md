@@ -53,6 +53,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "password": "YourWiFiPassword",
     "hostname": "sqmeter",
     "mdns": true,
+    "ipv6": true,
     "autoReconnect": true,
     "reconnectDelayMs": 1000,
     "maxReconnectDelayMs": 300000
@@ -236,6 +237,7 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
 | `password` | string | — | Network password |
 | `hostname` | string | `"sqmeter"` | Network name: `hostname.local` via mDNS and the DHCP host name. Letters, numbers and hyphens, up to 32 |
 | `mdns` | bool | `true` | Advertise `hostname.local` and the web service via mDNS |
+| `ipv6` | bool | `true` | IPv6 alongside IPv4 on the joined network; applies after a restart - see [IPv6](ipv6.md) |
 | `autoReconnect` | bool | `true` | Reconnect on WiFi drop |
 | `reconnectDelayMs` | int | `1000` | Initial reconnect delay (ms) |
 | `maxReconnectDelayMs` | int | `300000` | Max reconnect backoff — 5 min |
@@ -278,7 +280,7 @@ When GPS is enabled and has a fix, it can serve as the primary time source for a
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Enable MQTT publishing |
-| `broker` | string | — | Broker hostname or IP |
+| `broker` | string | — | Broker hostname, IPv4 address, or IPv6 address (`fd00::10`, or `[fd00::10]:1883` to give the port here) - see [IPv6](ipv6.md) |
 | `port` | int | `1883` | Broker port |
 | `username` | string | `""` | Auth username (leave empty if none) |
 | `password` | string | `""` | Auth password |
