@@ -1,6 +1,7 @@
 #include "DeviceCore.h"
 
 #include "SunPosition.h"
+#include "RainLogic.h"
 
 #include <algorithm>
 #include <cctype>
@@ -254,6 +255,10 @@ namespace SQM
                 const double toMm = rain.imperial ? 25.4 : 1.0;
                 r.rain.raining = rain.isRaining || rain.rainLatched;
                 r.rain.rainingNow = rain.isRaining;
+                Rain::Latch latch;
+                latch.latched = rain.rainLatched;
+                latch.lastRainMs = rain.lastRainMs;
+                r.rain.clearInMs = Rain::clearRemainingMs(latch, now, cfg.rain.rainClearDelayMs);
                 r.rain.intensity = rain.rInt * toMm;
                 r.rain.eventAccumulation = rain.localEventAcc * toMm;
                 r.rain.sensorEventAccumulation = rain.eventAcc * toMm;

@@ -209,11 +209,7 @@ public:
         rainClear["latched"] = rainLatch.latched;
         rainClear["rainingNow"] = rainingNow;
         if (rainLatch.latched && !rainingNow && rainLatch.lastRainMs != 0)
-        {
-            const uint32_t since = nowMs - rainLatch.lastRainMs;
-            const uint32_t delay = cfg.rain.rainClearDelayMs;
-            rainClear["remainingSeconds"] = since < delay ? (delay - since + 999) / 1000 : 0;
-        }
+            rainClear["remainingSeconds"] = (Rain::clearRemainingMs(rainLatch, nowMs, cfg.rain.rainClearDelayMs) + 999) / 1000;
 
         JsonArray alerts = doc.createNestedArray("alerts");
         if (cfg.alerts.enabled)
@@ -891,6 +887,7 @@ private:
             rain.emSat = false;
             Rain::observe(rainLatch, rain.rInt, rain.acc, now, cfg.rain.rainClearDelayMs);
             rain.rainLatched = rainLatch.latched;
+            rain.lastRainMs = rainLatch.lastRainMs;
             rain.localEventAcc = rainLatch.eventAccumulation;
         }
         else

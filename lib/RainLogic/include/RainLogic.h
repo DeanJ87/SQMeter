@@ -45,6 +45,9 @@ namespace SQM
         // Release the latch once the clear delay has passed with no rain
         // (called between readings too, e.g. while the sensor is silent).
         void expire(Latch &latch, uint32_t now, uint32_t clearDelayMs);
+        // How long until a held latch releases, in ms; 0 when not latched
+        // (spec 025 FR-012). Rain still falling keeps it at the full delay.
+        uint32_t clearRemainingMs(const Latch &latch, uint32_t now, uint32_t clearDelayMs);
 
         // The daily total reset (spec 003 FR-004). Each "reset day" starts at
         // the configured local HH:MM, so the reset fires on the first check at

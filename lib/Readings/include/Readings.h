@@ -100,6 +100,7 @@ namespace SQM
             uint32_t ageMs = 0;
             bool raining = false;                 // latched for the clear delay
             bool rainingNow = false;              // instantaneous
+            uint32_t clearInMs = 0;               // until the hold releases, 0 = not held (spec 025)
             double intensity = 0.0;               // mm/h
             double eventAccumulation = 0.0;       // mm, device event (clear delay)
             double sensorEventAccumulation = 0.0; // mm, RG-15's own event

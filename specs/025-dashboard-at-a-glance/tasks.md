@@ -4,8 +4,8 @@
 
 ## Phase 1: Device field (US3)
 
-- [ ] T001 `Rain::clearRemainingMs()` in lib/RainLogic (+ native tests: held, released, still raining, never rained)
-- [ ] T002 `readings.rain.clearInSeconds` in lib/Readings and the device/demo readings document; readings schema, REST docs; demo core rebuilt and its `pending()` using the shared function
+- [x] T001 `Rain::clearRemainingMs()` in lib/RainLogic (+ native tests: held, released, still raining, never rained)
+- [x] T002 `readings.rain.clearInSeconds` in lib/Readings and the device/demo readings document; readings schema, REST docs; demo core rebuilt and its `pending()` using the shared function
 
 ## Phase 2: Inventory and enforcement (US5)
 

@@ -116,6 +116,14 @@ namespace SQM
             }
         }
 
+        uint32_t clearRemainingMs(const Latch &latch, uint32_t now, uint32_t clearDelayMs)
+        {
+            if (!latch.latched || latch.lastRainMs == 0)
+                return 0;
+            const uint32_t since = now - latch.lastRainMs; // wrap-safe
+            return since < clearDelayMs ? clearDelayMs - since : 0;
+        }
+
         namespace
         {
             constexpr int MINUTES_PER_DAY = 24 * 60;

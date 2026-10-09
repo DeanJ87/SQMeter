@@ -918,6 +918,7 @@ namespace SQM
     void RG15Sensor::applyLatch(const Rain::Latch &latch)
     {
         reading.rainLatched = latch.latched;
+        reading.lastRainMs = latch.lastRainMs;
         reading.localEventAcc = latch.eventAccumulation;
         diagnostics.lastRainDetectedMs = latch.lastRainMs;
     }

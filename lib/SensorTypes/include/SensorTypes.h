@@ -172,6 +172,7 @@ namespace SQM
     {
         bool isRaining;
         bool rainLatched;
+        uint32_t lastRainMs; // millis() of the last reading that saw rain, 0 = never (the latch's)
         bool online;
         bool stale;
         float acc;           // Accumulation since last poll (mm or in)
@@ -187,6 +188,7 @@ namespace SQM
         RG15Reading()
             : isRaining(false),
               rainLatched(false),
+              lastRainMs(0),
               online(false),
               stale(true),
               acc(0.0f),
