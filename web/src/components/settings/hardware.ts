@@ -33,40 +33,50 @@ const i2cSensor = (sensor?: { status: string }): SensorAvailability => ({
   savedEnabled: true,
 });
 
+type Sensors = SystemStatus['sensors'] | undefined;
+
+// Optional hardware only appears in status while the device runs with it on.
+const runningIn = (sensors: Sensors, present: unknown) => (sensors ? Boolean(present) : null);
+
+const rainAvailability = (config: Config, sensors: Sensors): SensorAvailability => {
+  const running = runningIn(sensors, sensors?.rain);
+  return {
+    enabled: config.rain?.enabled ?? false,
+    // Only meaningful if the device is already running with the sensor on.
+    detected: running ? sensors?.rain?.status === 'ok' : null,
+    savedEnabled: running,
+  };
+};
+
+const windAvailability = (config: Config, sensors: Sensors): Pick<Hardware, 'wind' | 'windVane'> => {
+  const running = runningIn(sensors, sensors?.wind);
+  const enabled = config.wind?.enabled ?? false;
+  return {
+    wind: { enabled, detected: running ? sensors?.wind?.status === 'ok' : null, savedEnabled: running },
+    windVane: {
+      enabled: enabled && (config.wind?.directionEnabled ?? false),
+      detected: running ? sensors?.wind?.vaneStatus !== 'fault' : null,
+      savedEnabled: running,
+    },
+  };
+};
+
+const gpsAvailability = (config: Config, sensors: Sensors): SensorAvailability => {
+  // 'missing' while enabled: switched on but not started (needs a restart).
+  const started = sensors?.gps ? sensors.gps.status !== 'missing' : null;
+  return { enabled: config.gps.enabled, detected: started, savedEnabled: started };
+};
+
 export const deriveHardware = (config: Config, status: SystemStatus | null): Hardware => {
   const sensors = status?.sensors;
-  // Optional hardware only appears in status while the device runs with it on.
-  const rainRunning = sensors ? Boolean(sensors.rain) : null;
-  const windRunning = sensors ? Boolean(sensors.wind) : null;
-  const windEnabled = config.wind?.enabled ?? false;
-
   return {
     statusLoaded: status !== null,
     skyLight: i2cSensor(sensors?.light),
     irSky: i2cSensor(sensors?.infrared),
     environment: i2cSensor(sensors?.environment),
-    rain: {
-      enabled: config.rain?.enabled ?? false,
-      // Only meaningful if the device is already running with the sensor on.
-      detected: rainRunning ? sensors?.rain?.status === 'ok' : null,
-      savedEnabled: rainRunning,
-    },
-    wind: {
-      enabled: windEnabled,
-      detected: windRunning ? sensors?.wind?.status === 'ok' : null,
-      savedEnabled: windRunning,
-    },
-    windVane: {
-      enabled: windEnabled && (config.wind?.directionEnabled ?? false),
-      detected: windRunning ? sensors?.wind?.vaneStatus !== 'fault' : null,
-      savedEnabled: windRunning,
-    },
-    gps: {
-      enabled: config.gps.enabled,
-      // 'missing' while enabled: switched on but not started (needs a restart).
-      detected: sensors?.gps ? sensors.gps.status !== 'missing' : null,
-      savedEnabled: sensors?.gps ? sensors.gps.status !== 'missing' : null,
-    },
+    rain: rainAvailability(config, sensors),
+    ...windAvailability(config, sensors),
+    gps: gpsAvailability(config, sensors),
     mqtt: {
       enabled: config.mqtt.enabled,
       connected: status?.mqtt ? status.mqtt.connected : null,
