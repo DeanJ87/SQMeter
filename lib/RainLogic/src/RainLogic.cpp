@@ -55,6 +55,40 @@ namespace SQM
             }
         } // namespace
 
+        namespace
+        {
+            bool within(float value, float max)
+            {
+                return value >= 0.0f && value <= max; // false for NaN
+            }
+
+            bool fieldsInRange(const Line &parsed)
+            {
+                return within(parsed.acc, 9999.0f) && within(parsed.eventAcc, 9999.0f) && within(parsed.totalAcc, 999999.0f) &&
+                       within(parsed.rInt, 9999.0f);
+            }
+
+            // Unit after RInt, then optional flags.
+            void readUnitAndFlags(const std::string &line, Line &parsed)
+            {
+                const size_t rIntPos = line.find("RInt");
+                size_t unitPos = line.find("mmph", rIntPos);
+                if (unitPos == std::string::npos)
+                {
+                    unitPos = line.find("iph", rIntPos);
+                    parsed.imperial = unitPos != std::string::npos;
+                }
+                if (unitPos == std::string::npos)
+                    return;
+                const size_t flagsStart = line.find(' ', unitPos);
+                if (flagsStart == std::string::npos)
+                    return;
+                const std::string flags = line.substr(flagsStart);
+                parsed.lensBad = hasFlagToken(flags, "i") || hasFlagToken(flags, "LensBad");
+                parsed.emSat = hasFlagToken(flags, "o") || hasFlagToken(flags, "EmSat");
+            }
+        } // namespace
+
         ParseResult parseLine(const std::string &line, Line &out)
         {
             if (line.length() < 20)
@@ -65,29 +99,9 @@ namespace SQM
                 !extractFloatField(line, "TotalAcc", parsed.totalAcc) || !extractFloatField(line, "RInt", parsed.rInt))
                 return ParseResult::MissingField;
 
-            if (!(parsed.acc >= 0.0f && parsed.acc <= 9999.0f) || !(parsed.eventAcc >= 0.0f && parsed.eventAcc <= 9999.0f) ||
-                !(parsed.totalAcc >= 0.0f && parsed.totalAcc <= 999999.0f) || !(parsed.rInt >= 0.0f && parsed.rInt <= 9999.0f))
+            if (!fieldsInRange(parsed))
                 return ParseResult::OutOfRange;
-
-            // Unit after RInt, then optional flags.
-            const size_t rIntPos = line.find("RInt");
-            size_t unitPos = line.find("mmph", rIntPos);
-            if (unitPos == std::string::npos)
-            {
-                unitPos = line.find("iph", rIntPos);
-                parsed.imperial = unitPos != std::string::npos;
-            }
-            if (unitPos != std::string::npos)
-            {
-                const size_t flagsStart = line.find(' ', unitPos);
-                if (flagsStart != std::string::npos)
-                {
-                    const std::string flags = line.substr(flagsStart);
-                    parsed.lensBad = hasFlagToken(flags, "i") || hasFlagToken(flags, "LensBad");
-                    parsed.emSat = hasFlagToken(flags, "o") || hasFlagToken(flags, "EmSat");
-                }
-            }
-
+            readUnitAndFlags(line, parsed);
             out = parsed;
             return ParseResult::Ok;
         }

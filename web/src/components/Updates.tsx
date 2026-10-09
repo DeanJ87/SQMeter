@@ -8,6 +8,7 @@ import { Button, Card, Note, ProgressMeter, ReadingRow } from './ui';
 import { t } from '../i18n';
 import { deviceError } from '../i18n/deviceMessage';
 import { saveUpdateCheck } from '../lib/lastUpdateCheck';
+import { formatCount } from '../i18n/format';
 
 type UpdateType = 'firmware' | 'filesystem';
 type ReleaseTrack = 'stable' | 'beta';
@@ -428,7 +429,7 @@ const Updates: FunctionalComponent = () => {
               />
             </div>
           </div>
-          {file && <Note>{t('updates.nameFixedKb', { name: file.name, fixed: (file.size / 1024).toFixed(0) })}</Note>}
+          {file && <Note>{t('updates.nameFixedKb', { name: file.name, fixed: formatCount(Math.round(file.size / 1024)) })}</Note>}
           {uploading && <ProgressMeter value={uploadProgress} label={t('updates.uploadProgress')} announceSteps />}
           {status && <Note tone={statusTone}>{status}</Note>}
           <div class="btn-row">

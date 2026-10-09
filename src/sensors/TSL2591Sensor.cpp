@@ -84,18 +84,18 @@ namespace SQM
     {
         if (!initialized)
         {
-            reading.status = SensorStatus::NOT_INITIALIZED;
+            reading.status = SensorStatus::NotInitialized;
             return;
         }
 
         if (readSensor())
         {
-            reading.status = SensorStatus::OK;
+            reading.status = SensorStatus::Ok;
             lastUpdateTime = millis();
         }
         else
         {
-            reading.status = SensorStatus::READ_ERROR;
+            reading.status = SensorStatus::ReadError;
         }
     }
 

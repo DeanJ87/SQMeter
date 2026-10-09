@@ -185,9 +185,9 @@ namespace SQM
             return stacked;
         }
 
-        bool AlertEngine::sync(Tracker &tracker, bool current, uint32_t now, uint32_t cooldown, bool emitAllowed, uint32_t settle)
+        bool AlertEngine::sync(Tracker &tracker, bool current, const Emit &emit)
         {
-            if (!tracker.initialized || !emitAllowed)
+            if (!tracker.initialized || !emit.allowed)
             {
                 // Follow the condition silently so enabling a rule (or the end
                 // of the startup grace) doesn't announce a stale transition.
@@ -204,16 +204,16 @@ namespace SQM
             if (!tracker.pending)
             {
                 tracker.pending = true;
-                tracker.pendingSince = now;
+                tracker.pendingSince = emit.now;
             }
-            if (now - tracker.pendingSince < settle)
+            if (emit.now - tracker.pendingSince < emit.settle)
                 return false;
-            if (tracker.hasNotified && now - tracker.lastNotifiedAt < cooldown)
+            if (tracker.hasNotified && emit.now - tracker.lastNotifiedAt < emit.cooldown)
                 return false; // retried on a later update
             tracker.notified = current;
             tracker.pending = false;
             tracker.hasNotified = true;
-            tracker.lastNotifiedAt = now;
+            tracker.lastNotifiedAt = emit.now;
             return true;
         }
 
@@ -225,48 +225,43 @@ namespace SQM
             safetySeeded = true;
         }
 
-        std::vector<Alert> AlertEngine::update(const AlertInputs &in, const AlertRules &rules)
+        void AlertEngine::updateSafety(const AlertInputs &in, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts)
         {
-            std::vector<Alert> alerts;
-            if (!started)
-            {
-                started = true;
-                startedAt = in.nowSeconds;
-            }
-            const bool pastGrace = in.nowSeconds - startedAt >= rules.startupGraceSeconds;
-            const uint32_t now = in.nowSeconds;
-            const uint32_t cooldown = rules.cooldownSeconds;
-
             // Safety verdict
             // A seeded verdict waits out the startup grace instead of being
             // overwritten by whatever the sensors say while starting up.
-            const bool holdSeed = safetySeeded && !pastGrace;
+            const bool holdSeed = safetySeeded && !step.pastGrace;
             const bool safetyDaylight = rules.safetyNightOnly && in.nightKnown && !in.isNight;
             if (in.safetyKnown && !in.safetySettling && !holdSeed && !safetyDaylight)
             {
                 const bool unsafe = !in.isSafe;
-                if (sync(safety, unsafe, now, cooldown, pastGrace && rules.onSafetyChange))
+                if (sync(safety, unsafe, step.emit(rules.onSafetyChange)))
                 {
                     if (unsafe)
                     {
                         const std::string reasons =
                             in.unsafeReasons.empty() ? std::string("Safety rules failing") : joinReasons(in.unsafeReasons);
                         alerts.push_back(make(AlertType::Unsafe, "Observatory UNSAFE", reasons));
-                        std::string inline_;
+                        std::string reasonsInline;
                         for (const std::string &reason : in.unsafeReasons)
-                            inline_ += (inline_.empty() ? "" : "; ") + reason;
+                            reasonsInline += (reasonsInline.empty() ? "" : "; ") + reason;
                         alerts.back().vars = {
-                            {"reasons", reasons}, {"reasons_inline", inline_}, {"reason_count", std::to_string(in.unsafeReasons.size())}};
+                            {"reasons", reasons},
+                            {"reasons_inline", reasonsInline},
+                            {"reason_count", std::to_string(in.unsafeReasons.size())}};
                     }
                     else
                         alerts.push_back(make(AlertType::Safe, "Observatory safe", "All enabled safety rules pass."));
                 }
             }
+        }
 
+        void AlertEngine::updateRain(const AlertInputs &in, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts)
+        {
             // Rain
             if (in.rainEnabled)
             {
-                if (sync(rain, in.raining, now, cooldown, pastGrace && rules.onRain))
+                if (sync(rain, in.raining, step.emit(rules.onRain)))
                 {
                     if (in.raining)
                     {
@@ -280,14 +275,17 @@ namespace SQM
                         alerts.push_back(make(AlertType::RainStopped, "Rain cleared", "No rain for the configured rain clear delay."));
                 }
 
-                if (sync(lens, in.lensFault, now, cooldown, pastGrace && rules.onSensorFault, rules.sensorSettleSeconds) && in.lensFault)
+                if (sync(lens, in.lensFault, step.emit(rules.onSensorFault, rules.sensorSettleSeconds)) && in.lensFault)
                 {
                     alerts.push_back(make(
                         AlertType::LensFault, "Rain sensor lens fault", "The RG-15 reports a lens fault - clean or inspect the lens."));
                     alerts.back().vars = {{"sensor", "RG-15 lens"}};
                 }
             }
+        }
 
+        void AlertEngine::updateSensors(const AlertInputs &in, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts)
+        {
             // Sensor health
             for (size_t i = 0; i < SENSOR_COUNT; ++i)
             {
@@ -299,7 +297,7 @@ namespace SQM
                     continue;
                 }
                 const bool faulted = !sensor.healthy;
-                if (sync(sensors[i], faulted, now, cooldown, pastGrace && rules.onSensorFault, rules.sensorSettleSeconds))
+                if (sync(sensors[i], faulted, step.emit(rules.onSensorFault, rules.sensorSettleSeconds)))
                 {
                     if (faulted)
                         alerts.push_back(make(
@@ -314,13 +312,16 @@ namespace SQM
                     alerts.back().vars = {{"sensor", sensor.name}};
                 }
             }
+        }
 
+        void AlertEngine::updateDew(const AlertInputs &in, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts)
+        {
             // Dew risk (with hysteresis), only alert on onset
             if (in.environmentValid)
             {
                 const float margin = in.temperatureC - in.dewpointC;
                 dewObserved = dewObserved ? margin < rules.dewRiskMarginC + DEW_HYSTERESIS_C : margin < rules.dewRiskMarginC;
-                if (sync(dew, dewObserved, now, cooldown, pastGrace && rules.onDewRisk) && dewObserved)
+                if (sync(dew, dewObserved, step.emit(rules.onDewRisk)) && dewObserved)
                 {
                     alerts.push_back(make(
                         AlertType::DewRisk,
@@ -330,7 +331,10 @@ namespace SQM
                     alerts.back().vars = {{"dew_margin", format("%.1f", margin)}, {"dew_margin_min", format("%.1f", rules.dewRiskMarginC)}};
                 }
             }
+        }
 
+        void AlertEngine::updateSky(const AlertInputs &in, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts)
+        {
             // Sky clear / clouded over
             if (in.skyValid)
             {
@@ -348,7 +352,7 @@ namespace SQM
                     sky.initialized = true;
                     sky.notified = false;
                 }
-                else if (sync(sky, skyClear, now, cooldown, pastGrace && (rules.onClearSky || rules.onCloudedOver), rules.skySettleSeconds))
+                else if (sync(sky, skyClear, step.emit(rules.onClearSky || rules.onCloudedOver, rules.skySettleSeconds)))
                 {
                     if (skyClear && rules.onClearSky)
                         alerts.push_back(make(
@@ -366,7 +370,22 @@ namespace SQM
                                 rules.cloudedOverCloudPercent)));
                 }
             }
+        }
 
+        std::vector<Alert> AlertEngine::update(const AlertInputs &in, const AlertRules &rules)
+        {
+            std::vector<Alert> alerts;
+            if (!started)
+            {
+                started = true;
+                startedAt = in.nowSeconds;
+            }
+            const Step step{in.nowSeconds, rules.cooldownSeconds, in.nowSeconds - startedAt >= rules.startupGraceSeconds};
+            updateSafety(in, rules, step, alerts);
+            updateRain(in, rules, step, alerts);
+            updateSensors(in, rules, step, alerts);
+            updateDew(in, rules, step, alerts);
+            updateSky(in, rules, step, alerts);
             updateClients(in, rules, alerts);
             return alerts;
         }
@@ -388,7 +407,7 @@ namespace SQM
             }
             if (!silent && !allowed)
                 lostAnnounced[i] = false; // back while paused: nothing left to answer
-            if (sync(tracker, silent, now, cooldown, allowed) && silent)
+            if (sync(tracker, silent, Emit{now, cooldown, allowed}) && silent)
             {
                 lostAnnounced[i] = true;
                 return ClientChange::Lost;

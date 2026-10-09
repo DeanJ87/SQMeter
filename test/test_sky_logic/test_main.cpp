@@ -95,13 +95,13 @@ void test_cloud_thresholds()
 void test_cloud_calculate()
 {
     // Sky -25, ambient 10, 53% RH, k1 0.75: delta -35, corrected -35.3975 -> clear.
-    const CloudMetrics m = CloudDetection::calculate(-25.0f, 10.0f, 53.0f, -13.0f, -3.0f, 0.75f);
+    const CloudMetrics m = CloudDetection::calculate(-25.0f, 10.0f, 53.0f, {-13.0f, -3.0f, 0.75f});
     TEST_ASSERT_FLOAT_WITHIN(0.001f, -35.0f, m.temperatureDelta);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, -35.3975f, m.correctedDelta);
     TEST_ASSERT_EQUAL(static_cast<int>(CloudCondition::CLEAR), static_cast<int>(m.condition));
     TEST_ASSERT_EQUAL_STRING("Clear", m.description);
 
-    const CloudMetrics overcast = CloudDetection::calculate(8.0f, 10.0f, 90.0f, -13.0f, -3.0f, 0.75f);
+    const CloudMetrics overcast = CloudDetection::calculate(8.0f, 10.0f, 90.0f, {-13.0f, -3.0f, 0.75f});
     TEST_ASSERT_EQUAL_STRING("Overcast", overcast.description);
     TEST_ASSERT_EQUAL_FLOAT(100.0f, overcast.cloudCoverPercent);
 }

@@ -396,18 +396,13 @@ public:
         if ((mask & enabledChannels()) == 0)
             return response(400, errorJson("That channel isn't enabled - enable it and save settings first"));
 
+        const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
+        const Core::NightState night = Core::night(snapshot, cfg, epoch);
         const Alerts::Alert test = Core::buildTestAlert(
             sample,
-            level,
-            sound,
-            title,
-            message,
-            safety,
-            cfg,
-            Core::observingConditions(snapshot, cfg, nowMs),
-            Core::night(snapshot, cfg, epoch),
-            clockTime,
-            clockDate);
+            Core::TestWording{level, sound, title, message},
+            Core::AlertSources{cfg, obs, night, safety},
+            Core::LocalClock{clockTime, clockDate});
         record(test, mask);
         return response(202, "{\"success\":true,\"message\":\"Test notification queued\",\"demo\":true}");
     }
@@ -416,18 +411,10 @@ public:
     // alert recorded whatever the device's own channel switches say.
     void realTestAlert()
     {
+        const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
+        const Core::NightState night = Core::night(snapshot, cfg, epoch);
         const Alerts::Alert test = Core::buildTestAlert(
-            nullptr,
-            2,
-            "",
-            "",
-            "",
-            safety,
-            cfg,
-            Core::observingConditions(snapshot, cfg, nowMs),
-            Core::night(snapshot, cfg, epoch),
-            clockTime,
-            clockDate);
+            nullptr, Core::TestWording{2, "", "", ""}, Core::AlertSources{cfg, obs, night, safety}, Core::LocalClock{clockTime, clockDate});
         record(test, 0x0F);
     }
 
@@ -698,7 +685,8 @@ private:
         }
         const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
         const Core::NightState night = Core::night(snapshot, cfg, epoch);
-        Alerts::AlertInputs in = Core::alertInputs(safety, snapshot, obs, cfg, night, nowMs);
+        const Core::AlertSources sources{cfg, obs, night, safety};
+        Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, nowMs);
         in.nowSeconds = uptimeSeconds();
 
         // The imaging app: is each Alpaca device still being checked?
@@ -709,7 +697,7 @@ private:
         clientWatch.update(activity, silenceMs, cfg.alpaca.enabled, nowMs);
         Core::addClientInputs(in, clientWatch, cfg, nowMs, clockTime);
 
-        Core::AlertStep step = Core::runAlerts(engine, in, Core::alertRules(cfg), cfg, obs, night, safety, clockTime, clockDate);
+        Core::AlertStep step = Core::runAlerts(engine, in, Core::alertRules(cfg), sources, Core::LocalClock{clockTime, clockDate});
         if (!step.outgoing.empty() && schedule.state().sending && cfg.alerts.enabled)
         {
             record(Alerts::stackAlerts(step.outgoing), 0x0F);
@@ -762,7 +750,7 @@ private:
         TSL2591Reading &tsl = snapshot.tsl;
         if (snapshot.tslInitialized && !(light["failed"] | false))
         {
-            tsl.status = SensorStatus::OK;
+            tsl.status = SensorStatus::Ok;
             tsl.timestamp = now;
             snapshot.tslLastUpdate = now;
             tsl.rawLux = averagedLux(light["lux"] | 0.001f, light["nightMode"] | false, now);
@@ -778,7 +766,7 @@ private:
         }
         else if (snapshot.tslInitialized)
         {
-            tsl.status = SensorStatus::TIMEOUT;
+            tsl.status = SensorStatus::Timeout;
         }
         TSL2591Diagnostics &d = snapshot.tslDiagnostics;
         d.gainName = tsl.nightMode ? "MAX" : "HIGH";
@@ -802,7 +790,7 @@ private:
         if (snapshot.bmeInitialized && !(env["failed"] | false))
         {
             BME280Reading &bme = snapshot.bme;
-            bme.status = SensorStatus::OK;
+            bme.status = SensorStatus::Ok;
             bme.timestamp = now;
             snapshot.bmeLastUpdate = now;
             bme.temperature = env["temperature"] | 10.0f;
@@ -812,7 +800,7 @@ private:
         }
         else if (snapshot.bmeInitialized)
         {
-            snapshot.bme.status = SensorStatus::TIMEOUT;
+            snapshot.bme.status = SensorStatus::Timeout;
         }
 
         // MLX90614
@@ -821,7 +809,7 @@ private:
         if (snapshot.mlxInitialized && !(ir["failed"] | false))
         {
             MLX90614Reading &mlx = snapshot.mlx;
-            mlx.status = SensorStatus::OK;
+            mlx.status = SensorStatus::Ok;
             mlx.timestamp = now;
             snapshot.mlxLastUpdate = now;
             mlx.objectTemp = ir["sky"] | -20.0f;
@@ -829,7 +817,7 @@ private:
         }
         else if (snapshot.mlxInitialized)
         {
-            snapshot.mlx.status = SensorStatus::TIMEOUT;
+            snapshot.mlx.status = SensorStatus::Timeout;
         }
 
         // GPS: the driver starts at boot, so it follows the settings at the last restart.
@@ -840,12 +828,12 @@ private:
         {
             // No NMEA arriving: the driver reports a read error and the
             // reading stops updating (src/sensors/GPSSensor.cpp).
-            gps.status = SensorStatus::READ_ERROR;
+            gps.status = SensorStatus::ReadError;
             gps.hasFix = false;
         }
         else if (snapshot.gpsInitialized)
         {
-            gps.status = SensorStatus::OK;
+            gps.status = SensorStatus::Ok;
             gps.timestamp = now;
             snapshot.gpsLastUpdate = now;
             gps.hasFix = g["fix"] | true;
@@ -872,7 +860,7 @@ private:
             const float scale = imperial ? 1.0f / 25.4f : 1.0f;
             const float dtHours = lastRainTickMs == 0 ? 0.0f : (now - lastRainTickMs) / 3600000.0f;
             lastRainTickMs = now;
-            rain.status = SensorStatus::OK;
+            rain.status = SensorStatus::Ok;
             rain.online = true;
             rain.stale = false;
             rain.timestamp = now;
@@ -894,11 +882,11 @@ private:
         {
             rain.online = false;
             rain.stale = cfg.rain.enabled;
-            rain.status = cfg.rain.enabled ? SensorStatus::TIMEOUT : SensorStatus::NOT_INITIALIZED;
+            rain.status = cfg.rain.enabled ? SensorStatus::Timeout : SensorStatus::NotInitialized;
             lastRainTickMs = 0;
         }
         RG15Diagnostics &rd = snapshot.rg15Diagnostics;
-        rd.state = cfg.rain.enabled ? (rain.online ? RG15State::RG15_ONLINE : RG15State::RG15_TIMEOUT) : RG15State::RG15_DISABLED;
+        rd.state = cfg.rain.enabled ? (rain.online ? RG15State::Online : RG15State::Timeout) : RG15State::Disabled;
         rd.uartOpened = cfg.rain.enabled;
         rd.rxPin = cfg.rain.rxPin;
         rd.txPin = cfg.rain.txPin;
@@ -927,7 +915,7 @@ private:
         JsonObjectConst w = in["wind"];
         if (cfg.wind.enabled && !(w["failed"] | false))
         {
-            wind.status = SensorStatus::OK;
+            wind.status = SensorStatus::Ok;
             wind.timestamp = now;
             wind.speedMs = w["speed"] | 0.0f;
             wind.gustMs = w["gust"] | wind.speedMs;
@@ -941,7 +929,7 @@ private:
         {
             wind = WindReading{};
             if (cfg.wind.enabled)
-                wind.status = SensorStatus::TIMEOUT;
+                wind.status = SensorStatus::Timeout;
         }
     }
 

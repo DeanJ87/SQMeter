@@ -13,19 +13,19 @@ namespace SQM
 {
     enum class SensorStatus
     {
-        OK,
-        NOT_INITIALIZED,
-        READ_ERROR,
-        TIMEOUT,
-        INVALID_DATA
+        Ok,
+        NotInitialized,
+        ReadError,
+        Timeout,
+        InvalidData
     };
 
     struct SensorReading
     {
         uint32_t timestamp = 0; // millis() of the reading; 0 = never read
-        SensorStatus status = SensorStatus::NOT_INITIALIZED;
+        SensorStatus status = SensorStatus::NotInitialized;
 
-        bool isValid() const { return status == SensorStatus::OK; }
+        bool isValid() const { return status == SensorStatus::Ok; }
     };
 
     struct TSL2591Reading : public SensorReading
@@ -70,7 +70,7 @@ namespace SQM
               nightMode(false)
         {
             timestamp = 0;
-            status = SensorStatus::NOT_INITIALIZED;
+            status = SensorStatus::NotInitialized;
         }
     };
 
@@ -110,7 +110,7 @@ namespace SQM
               dewpoint(0.0f)
         {
             timestamp = 0;
-            status = SensorStatus::NOT_INITIALIZED;
+            status = SensorStatus::NotInitialized;
         }
 
         // Validate all readings are within reasonable bounds
@@ -148,24 +148,24 @@ namespace SQM
               age(0)
         {
             timestamp = 0;
-            status = SensorStatus::NOT_INITIALIZED;
+            status = SensorStatus::NotInitialized;
         }
     };
 
     enum class RG15State : uint8_t
     {
-        RG15_DISABLED = 0,
-        RG15_CONFIGURED,
-        RG15_UART_OPENED,
-        RG15_CONFIGURING,
-        RG15_COMMAND_SENT,
-        RG15_AWAITING_RESPONSE,
-        RG15_ACKNOWLEDGED,
-        RG15_READING_RECEIVED,
-        RG15_PARSE_ERROR,
-        RG15_TIMEOUT,
-        RG15_STALE,
-        RG15_ONLINE
+        Disabled = 0,
+        Configured,
+        UartOpened,
+        Configuring,
+        CommandSent,
+        AwaitingResponse,
+        Acknowledged,
+        ReadingReceived,
+        ParseError,
+        Timeout,
+        Stale,
+        Online
     };
 
     struct RG15Reading : public SensorReading
@@ -202,7 +202,7 @@ namespace SQM
               ageMs(0)
         {
             timestamp = 0;
-            status = SensorStatus::NOT_INITIALIZED;
+            status = SensorStatus::NotInitialized;
         }
     };
 
@@ -264,7 +264,7 @@ namespace SQM
               online(false),
               stale(false),
               debugUart(false),
-              state(RG15State::RG15_DISABLED),
+              state(RG15State::Disabled),
               rxPin(0),
               txPin(0),
               baudRate(9600),
@@ -323,7 +323,7 @@ namespace SQM
         WindReading()
         {
             timestamp = 0;
-            status = SensorStatus::NOT_INITIALIZED;
+            status = SensorStatus::NotInitialized;
         }
     };
 

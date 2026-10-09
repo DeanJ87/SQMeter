@@ -43,14 +43,9 @@ namespace SQM
             }
         }
 
-        void write(JsonObject root, const Snapshot &s, const Groups &groups)
+        namespace
         {
-            root["timestamp"] = s.timeValid ? s.timestamp : 0;
-            root["timeValid"] = s.timeValid;
-            root["dataAgeMs"] = s.dataAgeMs;
-            root["dataStale"] = s.dataStale;
-
-            if (groups.sky)
+            void writeSky(JsonObject root, const Snapshot &s)
             {
                 JsonObject light = group(root, "light", s.light.status, s.light.ageMs);
                 JsonObject sky = root.createNestedObject("sky");
@@ -77,7 +72,7 @@ namespace SQM
                 }
             }
 
-            if (groups.environment)
+            void writeEnvironment(JsonObject root, const Snapshot &s)
             {
                 JsonObject environment = group(root, "environment", s.environment.status, s.environment.ageMs);
                 if (s.environment.status == Status::Ok)
@@ -89,7 +84,7 @@ namespace SQM
                 }
             }
 
-            if (groups.clouds)
+            void writeClouds(JsonObject root, const Snapshot &s)
             {
                 JsonObject infrared = group(root, "infrared", s.infrared.status, s.infrared.ageMs);
                 JsonObject clouds = root.createNestedObject("clouds");
@@ -109,7 +104,7 @@ namespace SQM
                 }
             }
 
-            if (groups.gps && s.gps.present)
+            void writeGps(JsonObject root, const Snapshot &s)
             {
                 JsonObject gps = group(root, "gps", s.gps.status, s.gps.ageMs);
                 if (s.gps.status == Status::Ok)
@@ -126,7 +121,7 @@ namespace SQM
                 }
             }
 
-            if (groups.rain && s.rain.present)
+            void writeRain(JsonObject root, const Snapshot &s)
             {
                 JsonObject rain = group(root, "rain", s.rain.status, s.rain.ageMs);
                 if (s.rain.status == Status::Ok)
@@ -145,7 +140,7 @@ namespace SQM
                 }
             }
 
-            if (groups.wind && s.wind.present)
+            void writeWind(JsonObject root, const Snapshot &s)
             {
                 JsonObject wind = group(root, "wind", s.wind.status, s.wind.ageMs);
                 if (s.wind.status == Status::Ok)
@@ -157,6 +152,26 @@ namespace SQM
                     wind["vaneFault"] = s.wind.vaneFault;
                 }
             }
+        } // namespace
+
+        void write(JsonObject root, const Snapshot &s, const Groups &groups)
+        {
+            root["timestamp"] = s.timeValid ? s.timestamp : 0;
+            root["timeValid"] = s.timeValid;
+            root["dataAgeMs"] = s.dataAgeMs;
+            root["dataStale"] = s.dataStale;
+            if (groups.sky)
+                writeSky(root, s);
+            if (groups.environment)
+                writeEnvironment(root, s);
+            if (groups.clouds)
+                writeClouds(root, s);
+            if (groups.gps && s.gps.present)
+                writeGps(root, s);
+            if (groups.rain && s.rain.present)
+                writeRain(root, s);
+            if (groups.wind && s.wind.present)
+                writeWind(root, s);
         }
 
         namespace
@@ -293,39 +308,11 @@ namespace SQM
             }
         } // namespace
 
-        void forEachDiscovery(
-            const DiscoveryDevice &device,
-            const Groups &groups,
-            bool safety,
-            const std::function<void(const std::string &topic, const std::string &payload)> &publish)
+        namespace
         {
-            const std::string base = device.baseTopic;
-            for (const Entity &entity : ENTITIES)
+            // Where the entity's state comes from, and how to read it.
+            void addStateTopic(JsonDocument &doc, const Entity &entity, const std::string &base)
             {
-                const std::string topic = device.prefix + "/" + entity.component + "/" + device.id + "/" + entity.object + "/config";
-                if (!enabled(entity.group, groups, safety))
-                {
-                    publish(topic, "");
-                    continue;
-                }
-
-                DynamicJsonDocument doc(1536);
-                doc["name"] = entity.name;
-                doc["unique_id"] = device.id + "_" + entity.object;
-                doc["object_id"] = device.id + "_" + entity.object;
-
-                JsonArray availability = doc.createNestedArray("availability");
-                JsonObject online = availability.createNestedObject();
-                online["topic"] = base + "/availability";
-                if (entity.jsonGroup != nullptr)
-                {
-                    JsonObject groupOk = availability.createNestedObject();
-                    groupOk["topic"] = base + "/state";
-                    groupOk["value_template"] =
-                        std::string("{{ 'online' if value_json.") + entity.jsonGroup + ".status == 'ok' else 'offline' }}";
-                    doc["availability_mode"] = "all";
-                }
-
                 if (entity.group == Group::Safety)
                 {
                     // device_class safety: "on" means unsafe.
@@ -354,6 +341,29 @@ namespace SQM
                     doc["value_template"] = std::string("{{ ") + entity.value + " if " + entity.value + " is defined else none }}";
                     doc["state_class"] = "measurement";
                 }
+            }
+
+            std::string discoveryPayload(const DiscoveryDevice &device, const Entity &entity)
+            {
+                const std::string &base = device.baseTopic;
+                DynamicJsonDocument doc(1536);
+                doc["name"] = entity.name;
+                doc["unique_id"] = device.id + "_" + entity.object;
+                doc["object_id"] = device.id + "_" + entity.object;
+
+                JsonArray availability = doc.createNestedArray("availability");
+                JsonObject online = availability.createNestedObject();
+                online["topic"] = base + "/availability";
+                if (entity.jsonGroup != nullptr)
+                {
+                    JsonObject groupOk = availability.createNestedObject();
+                    groupOk["topic"] = base + "/state";
+                    groupOk["value_template"] =
+                        std::string("{{ 'online' if value_json.") + entity.jsonGroup + ".status == 'ok' else 'offline' }}";
+                    doc["availability_mode"] = "all";
+                }
+
+                addStateTopic(doc, entity, base);
                 if (entity.unit != nullptr)
                     doc["unit_of_measurement"] = entity.unit;
                 if (entity.deviceClass != nullptr)
@@ -370,7 +380,20 @@ namespace SQM
 
                 std::string payload;
                 serializeJson(doc, payload);
-                publish(topic, payload);
+                return payload;
+            }
+        } // namespace
+
+        void forEachDiscovery(
+            const DiscoveryDevice &device,
+            const Groups &groups,
+            bool safety,
+            const std::function<void(const std::string &topic, const std::string &payload)> &publish)
+        {
+            for (const Entity &entity : ENTITIES)
+            {
+                const std::string topic = device.prefix + "/" + entity.component + "/" + device.id + "/" + entity.object + "/config";
+                publish(topic, enabled(entity.group, groups, safety) ? discoveryPayload(device, entity) : std::string());
             }
         }
 

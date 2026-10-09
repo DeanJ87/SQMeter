@@ -1,4 +1,5 @@
 import { INPUTS, type Conditions, type NumericInput } from './conditions';
+import { formatNumber, formatSignificant } from '../i18n/format';
 
 // One-click shortcuts, worked out from the device's *current* settings
 // (spec 019 FR-008/FR-009, research R3): they set raw sensor readings that
@@ -53,7 +54,7 @@ const ALERTS_LINK = { label: 'Alerts', route: '/settings?tab=alerts' };
 
 const notResponding = (name: string): ShortcutResult => ({ ok: false, reason: `The ${name} is set to not responding - clear that first.` });
 
-const fmt = (n: number, digits = 1) => n.toFixed(digits);
+const fmt = (n: number, digits = 1) => formatNumber(n, digits);
 
 function cloudModel(config: ShortcutConfig, c: Conditions) {
   const d = config.cloudDetection ?? {};
@@ -125,10 +126,10 @@ const darkSky: Compute = (config, c, options) => {
   const result: ShortcutResult = {
     ok: true,
     changes: { 'light.lux': lux },
-    used: `Illuminance ${lux.toPrecision(3)} lux: SQM ${fmt(sqm, 2)}${calibrated}.`,
+    used: `Illuminance ${formatSignificant(lux, 3)} lux: SQM ${fmt(sqm, 2)}${calibrated}.`,
   };
   if (lux !== wanted)
-    result.clamped = `SQM ${fmt(sqm, 2)} needs ${wanted.toPrecision(3)} lux, outside the sensor's range; set to ${lux.toPrecision(3)} lux.`;
+    result.clamped = `SQM ${fmt(sqm, 2)} needs ${formatSignificant(wanted, 3)} lux, outside the sensor's range; set to ${formatSignificant(lux, 3)} lux.`;
   return result;
 };
 

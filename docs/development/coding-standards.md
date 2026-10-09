@@ -208,6 +208,7 @@ The web UI is translated (spec 023, [Translations](translations.md)). No baselin
 | I18N-02 | Every language file has exactly the English keys, the same `{placeholders}`, the plural forms its language uses and English's edge spaces; every key has a context note; the device message templates and the notes are current. | auto (`tools/i18n/check.mjs`, `gen_device_catalog.py --check`, `context.py --check`) |
 | I18N-03 | Layout uses logical CSS properties (`margin-inline-start`, `inset-inline-end`, `text-align: start`), so right-to-left languages mirror; readings, units, coordinates and charts stay left-to-right (`.ltr`, `.metric-value`). Directional arrows get `.dir-icon`. | Playwright (`web/tests/i18n.spec.ts`), converge |
 | I18N-04 | No translated label is built when a module loads: call `t()` when rendering (or in a function), because the demo imports some modules before the language is loaded. | converge |
+| I18N-05 | Numbers and dates follow the active language: format them with `web/src/i18n/format.ts` (`formatNumber`, `formatCount`, `formatBytes`, `formatCoordinates`, `formatTime`, `formatDateTime`) and read typed numbers with `parseNumber` (`web/src/i18n/parse.ts`), which takes the language's decimal separator and never truncates. No `toFixed`, `toPrecision`, `toLocale*String`, `parseFloat` or `parseInt` in components or the demo; SVG geometry uses `web/src/lib/svg.ts`, option values `Number(value)`. Digits are Latin in every language. | auto (ESLint `no-restricted-syntax`) |
 
 ---
 

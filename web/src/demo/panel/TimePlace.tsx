@@ -6,6 +6,7 @@ import { demoDevice } from '../device';
 import { formatOffset, fromLocal, toLocalParts, zoneName, type LocalParts } from '../posixTz';
 import { LOCATION_PRESETS, presetAt, TIME_PRESETS } from '../presets';
 import { Check } from './NumberField';
+import { formatCoordinates, formatDateTime } from '../../i18n/format';
 
 // The device's date, time and place (spec 019 US4): shown in the device's
 // own time zone, set exactly or from presets.
@@ -15,12 +16,11 @@ type Report = (message: Message) => void;
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-const formatPlace = (latitude: number, longitude: number) =>
-  `${Math.abs(latitude).toFixed(2)}° ${latitude >= 0 ? 'N' : 'S'}, ${Math.abs(longitude).toFixed(2)}° ${longitude >= 0 ? 'E' : 'W'}`;
+const formatPlace = (latitude: number, longitude: number) => formatCoordinates(latitude, longitude, 2, true);
 
 // Local wall time, formatted without the browser's own zone getting involved.
 const formatLocal = (local: LocalParts) =>
-  new Date(Date.UTC(local.year, local.month - 1, local.day, local.hours, local.minutes)).toLocaleString([], {
+  formatDateTime(new Date(Date.UTC(local.year, local.month - 1, local.day, local.hours, local.minutes)), {
     timeZone: 'UTC',
     dateStyle: 'medium',
     timeStyle: 'short',

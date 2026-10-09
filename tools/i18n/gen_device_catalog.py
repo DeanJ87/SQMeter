@@ -25,7 +25,8 @@ CONTEXT = ROOT / "web/src/i18n/en.context.json"
 
 # file -> (area, calls whose argument N (or "fmt" args) is device text)
 SOURCES = {
-    "lib/ConfigModel/src/ConfigModel.cpp": ("settings", {"setError": [1]}),
+    "lib/ConfigModel/src/ConfigJsonIn.cpp": ("settings", {"setError": [1]}),
+    "lib/ConfigModel/src/ConfigValidate.cpp": ("settings", {"setError": [1]}),
     "lib/AlpacaLogic/src/SafetyEvaluator.cpp": ("safety", {"addReason": [2], "addReasonf": "fmt2"}),
     "lib/AlertLogic/src/AlertEngine.cpp": ("alert", {"make": [1, 2], "format": "fmt0"}),
     "src/WebServer.cpp": ("api", {"createErrorJson": [0]}),

@@ -213,9 +213,34 @@ namespace SQM
                 uint32_t pendingSince = 0;
             };
 
+            // When a change may be announced: the time, the cooldown since the
+            // last announcement, whether announcing is allowed at all, and
+            // `settle`, the seconds a new value must hold before it counts.
+            struct Emit
+            {
+                uint32_t now;
+                uint32_t cooldown;
+                bool allowed;
+                uint32_t settle = 0;
+            };
+
             // Returns true when a transition to `current` should be emitted now.
-            // `settle`: seconds `current` must hold before it counts.
-            static bool sync(Tracker &tracker, bool current, uint32_t now, uint32_t cooldown, bool emitAllowed, uint32_t settle = 0);
+            static bool sync(Tracker &tracker, bool current, const Emit &emit);
+
+            // One update(): the time, the cooldown and whether the startup
+            // grace is over, shared by every condition.
+            struct Step
+            {
+                uint32_t now;
+                uint32_t cooldown;
+                bool pastGrace;
+                Emit emit(bool enabled, uint32_t settle = 0) const { return {now, cooldown, pastGrace && enabled, settle}; }
+            };
+            void updateSafety(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
+            void updateRain(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
+            void updateSensors(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
+            void updateDew(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
+            void updateSky(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
 
             bool started = false;
             uint32_t startedAt = 0;

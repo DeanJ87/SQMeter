@@ -14,9 +14,9 @@ namespace SQM
 
         enum AlarmLevel : uint8_t
         {
-            ALARM_NONE = 0,  // nothing active (or the last alarm was acknowledged)
-            ALARM_INFO = 1,  // something worth showing, not worth waking anyone for
-            ALARM_ACTIVE = 2 // wake someone up; repeats until acknowledged
+            AlarmNone = 0,  // nothing active (or the last alarm was acknowledged)
+            AlarmInfo = 1,  // something worth showing, not worth waking anyone for
+            AlarmActive = 2 // wake someone up; repeats until acknowledged
         };
 
         // Phone alarm state for the BLE alarm characteristic. An ACTIVE alarm
@@ -45,7 +45,7 @@ namespace SQM
             bool resendDue(uint32_t nowMs) const;
             void markSent(uint32_t nowMs) { lastSentMs = nowMs; }
 
-            bool active() const { return level == ALARM_ACTIVE; }
+            bool active() const { return level == AlarmActive; }
             uint32_t sequence() const { return seq; }
             AlarmLevel currentLevel() const { return level; }
             uint32_t acknowledgedSeq() const { return ackedSeq; }
@@ -55,7 +55,7 @@ namespace SQM
 
         private:
             uint32_t seq = 0;
-            AlarmLevel level = ALARM_NONE;
+            AlarmLevel level = AlarmNone;
             uint32_t reasons = 0;
             uint32_t epochSeconds = 0;
             uint32_t lastSentMs = 0;

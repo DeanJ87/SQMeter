@@ -32,6 +32,16 @@ namespace SQM
         }
     };
 
+    // The cloud model's settings: corrected sky-minus-ambient below
+    // `clearSky` is clear, above `cloudy` overcast; `humidityCorrection` is
+    // the AAG factor (°C per 100% RH).
+    struct CloudThresholds
+    {
+        float clearSky;
+        float cloudy;
+        float humidityCorrection;
+    };
+
     class CloudDetection
     {
     public:
@@ -50,9 +60,7 @@ namespace SQM
             float skyTemp,
             float ambientTemp,
             float relativeHumidity = 53.0f,
-            float clearSkyThreshold = CLEAR_SKY_THRESHOLD,
-            float cloudyThreshold = CLOUDY_THRESHOLD,
-            float humidityCorrection = HUMIDITY_CORRECTION_FACTOR);
+            const CloudThresholds &thresholds = {CLEAR_SKY_THRESHOLD, CLOUDY_THRESHOLD, HUMIDITY_CORRECTION_FACTOR});
 
         /**
          * Apply humidity correction to temperature delta

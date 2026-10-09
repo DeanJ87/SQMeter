@@ -141,7 +141,7 @@ Someone whose observatory has no internet still wants Spanish. Visitors to the d
 - **FR-014**: After a firmware or filesystem update, the device MUST restore the chosen language by downloading the matching file. Until then it uses what it has, with fallback (FR-013).
 - **FR-015**: Machine-readable output MUST NOT change with the language. That covers JSON keys and enum values, MQTT topics and payloads, Home Assistant discovery, the readings schema, ASCOM Alpaca, and logs.
 - **FR-016**: Alerts sent by the device (ntfy, Pushover, webhook, MQTT alert text, Bluetooth) MUST stay in English, or use the user's custom alert wording when they have set it. Settings MUST say so next to the language choice.
-- **FR-017**: Numbers and dates in the UI MUST be formatted for the chosen language: decimal separator, date order, 24-hour or 12-hour clock. Units remain their own setting.
+- **FR-017**: Numbers and dates in the UI MUST be formatted for the chosen language: decimal separator, digit grouping for counts and sizes (readings stay ungrouped), date order, 24-hour or 12-hour clock. Digits are Latin (0-9) in every language, Arabic included. Numbers a person types MUST be read in the chosen language: its decimal separator is accepted, the other one too as a fallback, grouping only in whole groups of three; a value that could be read two ways (a lone fallback separator before exactly three digits, e.g. "1.234" in German) or isn't a number MUST be rejected with a message, never truncated. Coordinates accept either decimal separator, separated by "; ", ", " or a space. Units remain their own setting. (Amended 2026-10-09: input, grouping and digits.)
 
 **Right-to-left, context and quality**
 

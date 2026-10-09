@@ -32,12 +32,13 @@ DEVICE_IMPL = "lib/SettingsDeps/src/SettingsDeps.cpp"
 WEB_IMPL = "web/src/lib/settingsDeps.ts"
 FIXTURES = "test/fixtures/settings-deps/cases.json"
 DOCS = "docs/reference/settings-dependencies.md"
-CONSTRAINT_SOURCES = ["lib/ConfigModel/src/ConfigModel.cpp", "web/src/validation/configSchema.ts"]
+CONSTRAINT_SOURCES = ["lib/ConfigModel/src/ConfigValidate.cpp", "web/src/validation/configSchema.ts"]
 
 # Device code scanned for undeclared dependencies and markers.
 DEVICE_CODE = ["src/**/*.cpp", "src/**/*.h", "include/**/*.h", "lib/*/src/*.cpp", "lib/*/include/*.h", "tools/demo-core/bridge.cpp"]
 # The evaluator itself and the settings model are where dependencies are declared.
-SCAN_EXCLUDE = {DEVICE_IMPL, "lib/SettingsDeps/include/SettingsDeps.h", "lib/ConfigModel/src/ConfigModel.cpp"}
+SETTINGS_MODEL = ["ConfigModel.cpp", "ConfigJsonIn.cpp", "ConfigJsonOut.cpp", "ConfigValidate.cpp"]
+SCAN_EXCLUDE = {DEVICE_IMPL, "lib/SettingsDeps/include/SettingsDeps.h", *(f"lib/ConfigModel/src/{name}" for name in SETTINGS_MODEL)}
 
 ID = re.compile(r"\bD-\d{2}\b")
 MARKER = re.compile(r"dep:\s*((?:D-\d{2}\s*)+)")
