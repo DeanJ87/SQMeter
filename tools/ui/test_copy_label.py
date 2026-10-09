@@ -121,6 +121,15 @@ class LabelTests(unittest.TestCase):
         )
         self.assertEqual(sorted(p.split(" ")[0] for p in problems), ["dashboard.t", "device.alert.g", "device.alert.g", "device.safety.f"])
 
+    def test_dependency_reasons_use_the_name(self):
+        # Why a setting isn't in effect is status text: the thing, not the part.
+        problems = self.run_check(
+            {"sensor.light": "Light sensor", "settingsDeps.tslMissing": "TSL2591 not detected", "settingsDeps.ok": "Light sensor not detected"},
+            {},
+            '"Alerts"',
+        )
+        self.assertEqual([p.split(" ")[0] for p in problems], ["settingsDeps.tslMissing"])
+
     def test_docs_and_home_assistant(self):
         problems = self.run_check({"sensor.light": "Light sensor"}, {"docs/guide.md": "the TSL2591 Light Sensor"})
         self.assertTrue(any("docs call" in p for p in problems))
