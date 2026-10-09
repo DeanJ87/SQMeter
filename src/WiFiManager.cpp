@@ -259,10 +259,6 @@ namespace SQM
         {
         case ARDUINO_EVENT_WIFI_STA_CONNECTED:
             Logger::info(TAG, "WiFi connected");
-            // A link-local address starts IPv6; router advertisements then
-            // add global/unique-local ones by themselves (SLAAC).
-            if (ipv6Wanted && !WiFi.enableIpV6())
-                Logger::warn(TAG, "IPv6 failed to start");
             break;
 
         case ARDUINO_EVENT_WIFI_STA_GOT_IP6:
@@ -275,6 +271,11 @@ namespace SQM
 
         case ARDUINO_EVENT_WIFI_STA_GOT_IP:
             Logger::info(TAG, "Got IP address: %s", WiFi.localIP().toString().c_str());
+            // A link-local address starts IPv6 (at STA_CONNECTED the interface
+            // isn't up yet and this fails); router advertisements then add
+            // global/unique-local ones by themselves (SLAAC).
+            if (ipv6Wanted && !WiFi.enableIpV6())
+                Logger::warn(TAG, "IPv6 failed to start");
             break;
 
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:

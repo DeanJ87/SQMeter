@@ -15,16 +15,8 @@ namespace SQM
         namespace
         {
             constexpr const char *TAG = "IPv6";
-
-            bool isZero(const Net::Ipv6 &address)
-            {
-                for (uint8_t b : address)
-                {
-                    if (b != 0)
-                        return false;
-                }
-                return true;
-            }
+            constexpr char REFUSED[] = "HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
+                                       "IPv6 requests are only accepted from the local network";
 
             // MLD state lives in the TCP/IP task; join from there.
             void joinOnTcpipTask(void *arg)
@@ -40,24 +32,40 @@ namespace SQM
             }
         } // namespace
 
-        void addLanOnlyMiddleware(AsyncWebServer &server)
+        void listenIpv6(AsyncWebServer &server, uint16_t port)
         {
-            server.addMiddleware(
-                [](AsyncWebServerRequest *request, ArMiddlewareNext next)
+            // Lives as long as the web server (the device's lifetime).
+            static AsyncServer *listener = nullptr;
+            if (listener != nullptr)
+                return;
+            listener = new AsyncServer(IPv6Address(), port);
+            // As AsyncWebServer does for its own listener.
+            listener->onClient(
+                [](void *arg, AsyncClient *client)
                 {
-                    AsyncClient *client = request->client();
                     if (client == nullptr)
-                        return next();
+                        return;
+                    // Only IPv6 connections reach this listener.
                     const ip6_addr_t remote = client->getRemoteAddress6();
                     Net::Ipv6 peer{};
                     memcpy(peer.data(), remote.addr, peer.size());
-                    // IPv4 connections report no IPv6 address: unchanged.
-                    if (isZero(peer) || Net::allowedPeer(peer, WiFiManager::ipv6Addresses()))
-                        return next();
-                    Logger::warn(
-                        TAG, "Refused %s from %s (outside the local network)", request->url().c_str(), Net::formatIpv6(peer).c_str());
-                    request->send(403, "text/plain", "IPv6 requests are only accepted from the local network");
-                });
+                    if (!Net::allowedPeer(peer, WiFiManager::ipv6Addresses()))
+                    {
+                        Logger::warn(TAG, "Refused a connection from %s (outside the local network)", Net::formatIpv6(peer).c_str());
+                        client->write(REFUSED, sizeof(REFUSED) - 1);
+                        client->close();
+                        return;
+                    }
+                    client->setRxTimeout(3);
+                    if (new AsyncWebServerRequest(static_cast<AsyncWebServer *>(arg), client) == nullptr)
+                    {
+                        client->abort();
+                        delete client;
+                    }
+                },
+                &server);
+            listener->begin();
+            Logger::info(TAG, "Web server listening on IPv6 port %u", port);
         }
 
         bool joinAlpacaDiscoveryGroup()

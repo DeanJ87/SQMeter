@@ -254,10 +254,9 @@ namespace SQM
                 }
             });
 
-        if (WiFiManager::ipv6Running())
-            Ipv6Network::addLanOnlyMiddleware(server);
-
         server.begin();
+        if (WiFiManager::ipv6Running())
+            Ipv6Network::listenIpv6(server, PORT);
         Logger::info(TAG, "Web server started");
     }
 

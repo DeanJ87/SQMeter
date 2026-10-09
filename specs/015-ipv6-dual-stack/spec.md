@@ -21,9 +21,9 @@
   the Arduino-ESP32 3.x / ESP-IDF 5 platform upgrade, which is its own spec (it changes the constitution's
   Platform Constraints, every library pin and both image budgets). FR-006 is narrowed to plain-TCP
   outbound on this platform; every TLS/NTP service in scope is reachable over IPv4, so nothing regresses.
-- The web server's async TCP library only listened on IPv4; it moves to AsyncTCP 3.4.10, which listens on
-  both families (research R2). The assumption below that "the web server listens on all address families"
-  was wrong for the pinned library.
+- The web server's async TCP library only listens on IPv4; a second, IPv6-only listener serves the same
+  routes (research R2 - AsyncTCP 3.4.10 listens on both but broke HTTP firmware uploads). The assumption
+  below that "the web server listens on all address families" was wrong for the pinned library.
 
 ## User Scenarios & Testing *(mandatory)*
 

@@ -5,7 +5,7 @@
 
 ## Phase 1: Setup
 
-- [x] T001 Pin `esp32async/AsyncTCP@3.4.10` in platformio.ini (dual-stack listening, research R2)
+- [x] T001 Decide how the web server serves IPv6 on the pinned AsyncTCP (research R2: 3.4.10 tried on the device and rejected - it breaks HTTP firmware uploads; a second IPv6-only listener instead)
 - [x] T002 [P] Create `lib/NetAddress/include/NetAddress.h`, `lib/NetAddress/src/NetAddress.cpp` and `test/fixtures/net-address/cases.json`
 
 ## Phase 2: Foundational
@@ -18,9 +18,9 @@
 ## Phase 3: US1 + US2 - reach the device over IPv6, nothing breaks on IPv4 (P1)
 
 - [x] T007 [US2] `wifi.ipv6` (default true; missing → true) in lib/ConfigModel/include/Config.h and ConfigModel.cpp (defaults, toJson, applyJson) with tests in test/test_config_model
-- [x] T008 [US1] Enable IPv6 on `ARDUINO_EVENT_WIFI_STA_CONNECTED` when `wifi.ipv6` is on; collect addresses with `esp_netif_get_all_ip6` in src/WiFiManager.cpp / include/WiFiManager.h
-- [x] T009 [US1] LAN-only middleware for IPv6 peers (403 otherwise) using `NetAddress::allowedPeer` in src/WebServer.cpp
-- [ ] T010 [US1] Confirm mDNS answers AAAA once IPv6 is up (no code if R4 holds on device); log it in quickstart results
+- [x] T008 [US1] Enable IPv6 on `ARDUINO_EVENT_WIFI_STA_GOT_IP` when `wifi.ipv6` is on (STA_CONNECTED is too early - seen on the device); collect addresses with `esp_netif_get_all_ip6` in src/WiFiManager.cpp / include/WiFiManager.h
+- [x] T009 [US1] IPv6-only listener on port 80 feeding the same AsyncWebServer, refusing peers outside the LAN at accept (403, closed before any request) with `NetAddress::allowedPeer` in src/Ipv6Network.cpp
+- [ ] T010 [US1] Confirm mDNS answers AAAA once IPv6 is up (no code if R4 holds on device) - needs an mDNS client on the device's subnet (quickstart results)
 
 ## Phase 4: US5 - see and control IPv6 (P2)
 
@@ -39,11 +39,11 @@
 
 ## Phase 6: US4 - Alpaca discovery over IPv6 (P3)
 
-- [x] T020 [US4] Second AsyncUDP on `ff12::a1:2345`:32227 started once an IPv6 address exists (Alpaca and IPv6 on) in src/WebServer.cpp / include/WebServer.h
+- [x] T020 [US4] Discovery socket on `IP_ANY_TYPE`:32227 with IPv6 on, and the `ff12::a1:2345` group joined once an IPv6 address exists (Alpaca and IPv6 on) in src/WebServer.cpp, src/Ipv6Network.cpp
 
 ## Phase 7: Polish
 
 - [x] T021 Amend spec.md FR-006/FR-008 scope and assumptions per research R2/R6
 - [x] T022 Docs: new docs/user-guide/ipv6.md (with diagram DIA-16, blocking), configuration, REST status, security, Alpaca, alerts, troubleshooting; diagram check
-- [ ] T023 Gates: native tests, both firmware builds (sizes), web tsc/vitest/build/build:demo, Playwright, quality check, settings-deps, diagrams, SOURCE_HASH, mkdocs --strict
-- [ ] T024 Device verification on the spare per quickstart.md (record results in quickstart.md)
+- [x] T023 Gates: native tests, both firmware builds (sizes), web tsc/vitest/build/build:demo, Playwright, quality check, settings-deps, diagrams, SOURCE_HASH, mkdocs --strict
+- [x] T024 Device verification on the spare per quickstart.md (results in quickstart.md; the IPv6-client checks need a client on the device's subnet - listed there)
