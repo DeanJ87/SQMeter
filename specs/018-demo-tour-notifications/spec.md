@@ -6,8 +6,6 @@
 
 **Status**: Implemented (PR #98) - converged 2026-10-09
 
-**Input**: User description: "Since the demo runs in the browser, let visitors opt in to real notifications from the demo - fill in their own Pushover / ntfy / MQTT details and receive the demo's alerts - and add walkthrough prompts like a product demo site, guiding them through the device (turn GPS off, set a location, trigger rain, see the alert)."
-
 ## Clarifications
 
 ### Session 2026-10-08

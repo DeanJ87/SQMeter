@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill device-sent alerts: events, per-event levels and sounds, custom wording, stacking, darkness limits, restarts, channels, tests, the recent list and switching alerts off when not imaging."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Be told when it matters, at the right volume (Priority: P1)

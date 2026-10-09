@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill time sources (NTP/GPS), time zone, location, darkness from the sun's position and the Sun & Moon card."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Correct time without thinking about it (Priority: P1)

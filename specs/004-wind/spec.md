@@ -6,8 +6,6 @@
 
 **Status**: As-built (backfill)
 
-**Input**: User description: "Backfill the optional cup anemometer and wind vane: speed, gust, direction, settings and safety limits."
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Wind speed and gusts (Priority: P1)
