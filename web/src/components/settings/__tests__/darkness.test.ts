@@ -6,7 +6,12 @@ const night = new Date('2026-10-08T23:00:00Z');
 
 describe('describeDarkness (spec 005 FR-005)', () => {
   it('says unknown when the device has no clock or location', () => {
-    const note = describeDarkness({ sky: { locationSource: 'none', nightKnown: false }, location: london, formLimitDeg: -12, deviceNow: night });
+    const note = describeDarkness({
+      sky: { locationSource: 'none', nightKnown: false },
+      location: london,
+      formLimitDeg: -12,
+      deviceNow: night,
+    });
     expect(note).toMatch(/unknown/);
     expect(note).not.toMatch(/Sun at/);
   });

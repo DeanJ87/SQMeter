@@ -1199,8 +1199,7 @@ namespace SQM
 
         // A schedule that's switched on or moved starts fresh: the current
         // day is adopted, so the change doesn't wipe today's total at once.
-        if ((newDailyResetEnabled && !dailyResetEnabled) || newDailyResetHour != dailyResetHour ||
-            newDailyResetMinute != dailyResetMinute)
+        if ((newDailyResetEnabled && !dailyResetEnabled) || newDailyResetHour != dailyResetHour || newDailyResetMinute != dailyResetMinute)
         {
             forgetLastResetDay();
         }

@@ -770,8 +770,7 @@ private:
             tsl.timestamp = now;
             snapshot.tslLastUpdate = now;
             tsl.rawLux = averagedLux(light["lux"] | 0.001f, light["nightMode"] | false, now);
-            const CalibratedLight calibrated =
-                SkyQuality::calibrate(tsl.rawLux, cfg.skyCalibration.enabled, cfg.skyCalibration.sqmOffset);
+            const CalibratedLight calibrated = SkyQuality::calibrate(tsl.rawLux, cfg.skyCalibration.enabled, cfg.skyCalibration.sqmOffset);
             tsl.rawSqm = calibrated.rawSqm;
             tsl.calibrated = cfg.skyCalibration.enabled;
             tsl.calibratedSqm = calibrated.calibratedSqm;

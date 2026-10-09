@@ -120,7 +120,10 @@ namespace SQM
         {
             constexpr int MINUTES_PER_DAY = 24 * 60;
 
-            bool isLeapYear(int year) { return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0; }
+            bool isLeapYear(int year)
+            {
+                return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+            }
 
             int32_t daysBeforeYear(int year)
             {

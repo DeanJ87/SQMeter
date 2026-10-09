@@ -168,7 +168,8 @@ void test_daily_reset_handles_dst_and_clock_steps()
 {
     const int32_t yesterday = Rain::resetDay(at(2026, 87, 1, 30), 1, 30);
     // Spring forward 01:00 -> 02:00 skips 01:30: the 02:00 check resets.
-    TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Reset), static_cast<int>(Rain::dailyReset(at(2026, 88, 2, 0), 1, 30, yesterday)));
+    TEST_ASSERT_EQUAL(
+        static_cast<int>(Rain::ResetDecision::Reset), static_cast<int>(Rain::dailyReset(at(2026, 88, 2, 0), 1, 30, yesterday)));
     // Fall back repeats 01:30: the second pass doesn't reset again.
     const int32_t today = Rain::resetDay(at(2026, 298, 1, 30), 1, 30);
     TEST_ASSERT_EQUAL(static_cast<int>(Rain::ResetDecision::Wait), static_cast<int>(Rain::dailyReset(at(2026, 298, 1, 30), 1, 30, today)));

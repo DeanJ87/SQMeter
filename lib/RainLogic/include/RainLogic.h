@@ -65,9 +65,9 @@ namespace SQM
 
         enum class ResetDecision : uint8_t
         {
-            Wait,      // already done for this reset day (or the clock went backwards)
-            Reset,     // send the reset now, then record the returned day
-            Adopt,     // nothing recorded yet: record this day without resetting
+            Wait,  // already done for this reset day (or the clock went backwards)
+            Reset, // send the reset now, then record the returned day
+            Adopt, // nothing recorded yet: record this day without resetting
         };
 
         // `lastResetDay` is the day last reset (or adopted), NO_RESET_DAY if
