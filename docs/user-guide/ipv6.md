@@ -46,7 +46,7 @@ configure. When the provider changes the prefix the device follows. The same lis
 <!-- diagram: DIA-16
 sources: lib/NetAddress/ src/Ipv6Network.cpp
 blocking: true
-fingerprint: 4be237ba8c483c57
+fingerprint: 9606fa541db6b281
 -->
 <figure class="diagram" markdown>
 

@@ -380,7 +380,7 @@ Cloud cover comes from the MLX90614: how much colder the sky is than the air (sk
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `clearSkyThreshold` | float | `-13` | Corrected delta at or below this is clear (0%) |
+| `clearSkyThreshold` | float | `-13` | Corrected delta below this is clear (0%) |
 | `cloudyThreshold` | float | `-3` | Corrected delta at or above this is overcast (100%); linear in between |
 | `humidityCorrection` | float | `0.75` | How strongly humidity is corrected for |
 

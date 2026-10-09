@@ -45,9 +45,10 @@ restart "safe").
    nothing is sent; at nightfall the verdict is compared with what was last announced.
 2. **Given** a restart, **When** the device starts up, **Then** start-up states aren't announced,
    and after the grace period the verdict is compared with the last safe/unsafe alert sent.
-3. **Given** alerts are switched off (UI, REST, MQTT, or automatically when N.I.N.A.
-   disconnects), **When** events occur, **Then** nothing is sent; switching on sends one quiet
-   "Alerts on" with the current verdict.
+3. **Given** alerts are paused (UI, REST, MQTT, or by "Only while an imaging app is connected"
+   when the app disconnects), **When** events occur, **Then** nothing is sent; resuming sends one
+   quiet "Alerts resumed" with the current verdict. *(Superseded by spec 021, which replaced
+   arming / "Alerts on" with the send mode and Pause / Resume.)*
 
 ---
 
@@ -96,8 +97,9 @@ delivery results appear under the bell and can be cleared.
 - **FR-003**: Simultaneous events MUST be stacked into one notification at the loudest level.
 - **FR-004**: Sky and safety alerts MUST be limitable to darkness (default on), sharing one
   darkness level; restarts MUST compare with the last announced verdict.
-- **FR-005**: Alerts MUST be switchable off/on via UI, REST, MQTT and optionally N.I.N.A.
-  connect/disconnect, persistently.
+- **FR-005**: Alerts MUST be pausable and resumable via UI, REST and MQTT, and follow the
+  send mode ("Any time" or "Only while an imaging app is connected"), persistently.
+  *(Superseded by spec 021.)*
 - **FR-006**: Templates MUST support every variable the device provides; the UI MUST offer exactly
   that set and show the device's actual default wording.
 - **FR-007**: Channel and event tests MUST report each channel's real result.
