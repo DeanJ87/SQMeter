@@ -1,71 +1,8 @@
 {
   "about": "Existing coding-standard findings per rule per file (spec 017). New findings fail CI; burn these down and run `python3 tools/quality/check.py --update-baseline`.",
   "counts": {
-    "LIMIT-01": {
-      "web/src/components/Dashboard.tsx": 1,
-      "web/src/components/settings/AlertsTab.tsx": 1,
-      "web/src/components/settings/SensorsTab.tsx": 1,
-      "web/src/hooks/useWebSocket.ts": 1,
-      "web/src/mocks/data.ts": 1
-    },
-    "LIMIT-02": {
-      "web/src/components/AlertsBell.tsx": 1,
-      "web/src/components/Dashboard.tsx": 1,
-      "web/src/components/NightChart.tsx": 1,
-      "web/src/components/System.tsx": 1,
-      "web/src/components/Updates.tsx": 1,
-      "web/src/components/WifiSetup.tsx": 1,
-      "web/src/components/settings/AlertsTab.tsx": 2,
-      "web/src/components/settings/DeviceTab.tsx": 1,
-      "web/src/components/settings/NetworkTab.tsx": 1,
-      "web/src/components/settings/SensorsTab.tsx": 1,
-      "web/src/components/settings/TimeTab.tsx": 1,
-      "web/src/components/settings/hardware.ts": 1,
-      "web/src/components/settings/restart.ts": 1,
-      "web/src/components/settings/tabs.ts": 1,
-      "web/src/utils/versionCompare.ts": 1
-    },
     "LIMIT-04": {
-      "tools/demo-core/bridge.cpp": 1,
-      "web/src/components/Dashboard.tsx": 1,
-      "web/src/components/settings/AlertsTab.tsx": 1,
-      "web/src/components/settings/SensorsTab.tsx": 1,
-      "web/src/mocks/data.ts": 1,
-      "web/src/types/index.ts": 1
-    },
-    "LIMIT-05": {
-      "web/src/hooks/useWifiScan.ts": 2
-    },
-    "LINT-01": {
-      "web/src/components/Masonry.tsx": 1,
-      "web/src/components/NightChart.tsx": 1,
-      "web/src/components/Settings.tsx": 2,
-      "web/src/components/WifiSetup.tsx": 1
-    },
-    "NAME-05": {
-      "web/src/components/__tests__/SkyCalibration.test.tsx": 1,
-      "web/tests/screenshots.spec.ts": 1
-    },
-    "SMELL-11": {
-      "web/src/components/Updates.tsx": 1
-    },
-    "SMELL-18": {
-      "web/src/components/Settings.tsx": 1
-    },
-    "STRUCT-04": {
-      "web/src/components/AlertsBell.tsx": 3,
-      "web/src/components/Alpaca.tsx": 3,
-      "web/src/components/Dashboard.tsx": 1,
-      "web/src/components/SafetyCard.tsx": 1,
-      "web/src/components/Settings.tsx": 4,
-      "web/src/components/System.tsx": 2,
-      "web/src/components/Updates.tsx": 5,
-      "web/src/components/WifiSetup.tsx": 2,
-      "web/src/components/settings/AlertsTab.tsx": 3,
-      "web/src/components/settings/DeviceTab.tsx": 1,
-      "web/src/components/settings/NetworkTab.tsx": 1,
-      "web/src/components/settings/SafetyTab.tsx": 1,
-      "web/src/components/settings/SensorsTab.tsx": 2
+      "tools/demo-core/bridge.cpp": 1
     }
   }
 }
