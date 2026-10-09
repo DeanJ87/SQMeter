@@ -33,8 +33,6 @@ On your first visit the demo offers a short tour (about two minutes): live readi
 
 Open the **✦ Demo** button (bottom right) for weather and fault scenarios:
 
-![The Demo panel: sensor readings, shortcuts, time and place](assets/screenshots/demo-panel.png)
-
 | Scenario | What you'll see |
 |---|---|
 | **Night sky** | The device's clock jumps to the darkest moment tonight, with a clear sky - Sun & Moon, darkness and the sky readings all follow |
@@ -93,7 +91,7 @@ Unless you turn on real notifications, the demo only talks to itself: there is n
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/demo/simulator.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: 1984b16dd5b6a835
+fingerprint: 3e936098ada214b2
 -->
 <figure class="diagram" markdown>
 

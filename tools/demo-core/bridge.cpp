@@ -770,10 +770,11 @@ private:
             tsl.timestamp = now;
             snapshot.tslLastUpdate = now;
             tsl.rawLux = averagedLux(light["lux"] | 0.001f, light["nightMode"] | false, now);
-            tsl.rawSqm = SkyQuality::luxToSQM(tsl.rawLux);
+            const CalibratedLight calibrated = SkyQuality::calibrate(tsl.rawLux, cfg.skyCalibration.enabled, cfg.skyCalibration.sqmOffset);
+            tsl.rawSqm = calibrated.rawSqm;
             tsl.calibrated = cfg.skyCalibration.enabled;
-            tsl.calibratedSqm = tsl.rawSqm + (cfg.skyCalibration.enabled ? cfg.skyCalibration.sqmOffset : 0.0f);
-            tsl.lux = std::pow(10.0f, (12.6f - tsl.calibratedSqm) / 2.5f);
+            tsl.calibratedSqm = calibrated.calibratedSqm;
+            tsl.lux = calibrated.lux;
             tsl.visible = light["visible"] | 0;
             tsl.infrared = light["infrared"] | 0;
             tsl.full = light["full"] | 0;

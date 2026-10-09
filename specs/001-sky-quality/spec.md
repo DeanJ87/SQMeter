@@ -94,7 +94,8 @@ reported, and night-mode readings resume after dark.
 - Dark offset larger than the current signal: corrected count never goes below zero.
 - Averaging window outside 10–300 s: clamped to the range.
 - Lux at or below zero: clamped to a minimum before conversion so SQM stays finite.
-- Calibration disabled: the offset is ignored but kept.
+- Calibration disabled: the SQM offset is ignored but kept. The dark offset is always subtracted;
+  the calibration switch gates only the SQM offset.
 
 ## Requirements *(mandatory)*
 
@@ -109,8 +110,9 @@ reported, and night-mode readings resume after dark.
   before conversion.
 - **FR-004**: Users MUST be able to capture a dark offset; it MUST be subtracted from the
   averaged visible count, never producing a negative count, and MUST persist.
-- **FR-005**: When calibration is enabled, an SQM offset MUST be applied; raw and calibrated SQM
-  MUST both be reported.
+- **FR-005**: When calibration is enabled, an SQM offset MUST be applied to the averaged reading in
+  every measurement mode (night and twilight alike); raw and calibrated SQM MUST both be reported,
+  and calibrated − raw MUST equal the offset.
 - **FR-006**: NELM MUST be computed from SQM with the Unihedron formula and be 0 below SQM 15.
 - **FR-007**: Bortle class (1–9) and its description MUST follow the documented SQM table.
 - **FR-008**: The API MUST expose lux, raw counts, gain, integration time, averaging window,

@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: Draft
+**Status**: Implemented (PR #93) - converged; manual checks open
 
 **Input**: User description: "SDD plan for an A11Y audit. An accessibility audit and remediation of the SQMeter web UI (served from the ESP32 and the demo) and the docs site (sqmeter.dev), to WCAG 2.2 AA. Cover automated checks on every page in CI with a baseline that burns down; a manual checklist (keyboard only, screen readers, zoom and reflow, reduced motion, colour not the only signal, night use); live values that don't flood screen readers; charts with text alternatives; accessible names for icon buttons; focus management in dialogs; touch target sizes. The device's storage is limited, so fixes must not bloat the UI. Publish an accessibility statement. Add accessibility rules to the coding standard."
 

@@ -105,6 +105,9 @@ clients will see.
 
 - **Alpaca device**: type, number, name, unique ID, connected state, interface version.
 - **Management description**: server name, manufacturer, version, location.
+- **Client activity** (*added by spec 021*): the last request per Alpaca device from an imaging
+  app, ignoring the web UI's own requests (`source=ui`); feeds the imaging-app alerts and
+  "Only while an imaging app is connected".
 
 ## Success Criteria *(mandatory)*
 
