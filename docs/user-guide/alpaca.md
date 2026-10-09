@@ -123,7 +123,7 @@ Each threshold has its own enable/disable toggle - a disabled threshold never co
 <!-- diagram: DIA-02
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#evaluateSafety lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceCore.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: true
-fingerprint: 32b5646c7f99dd59
+fingerprint: 3a0f120dd3ef8431
 -->
 <figure class="diagram" markdown>
 
@@ -133,7 +133,7 @@ flowchart TB
     accDescr: Every second all enabled rules are checked and each failing rule adds a reason. Rain and wind are always checked, then data freshness and sensor health; the threshold rules only run on fresh data. Any reason makes the raw verdict unsafe, which then passes through the safe delay.
     START(["Every second"]) --> ALWAYS
     ALWAYS["<b>Always checked</b>, even on stale data<br/>Force unsafe on: <i>Manual override forces unsafe</i><br/>Raining, or within the rain clear delay: <i>Rain detected</i><br/>Rain sensor offline, stale or lens fault: <i>Rain sensor offline...</i><br/>Wind limit set but anemometer off or silent: <i>Wind limit set but...</i><br/>Wind or gust at or over its limit: <i>Wind ... / Gust ...</i>"]
-    ALWAYS --> FRESHNESS["<b>Data freshness</b><br/>No sensor read since boot: <i>No successful sensor data yet</i><br/>Last read older than the stale limit, 30 s: <i>Sensor data is stale</i>"]
+    ALWAYS --> FRESHNESS["<b>Data freshness</b><br/>No light or IR read since boot: <i>No successful sensor data yet</i><br/>Light or IR sensor's last successful read older than the stale limit, 30 s: <i>Sensor data is stale</i>"]
     FRESHNESS --> HEALTH["<b>Sensor health</b><br/>TSL2591 or MLX90614 not OK: <i>Sensor fault: ...</i>"]
     HEALTH --> FRESH{"Fresh data?"}
     FRESH -->|yes| THRESHOLDS["<b>Thresholds</b><br/>Cloud cover at or over the limit, unless the MLX90614 is faulted<br/>SQM below the minimum, unless the TSL2591 is faulted<br/>Humidity or dew rule on but no humidity reading: <i>Humidity sensor fault...</i><br/>otherwise humidity over its maximum, or air minus dew point below the margin"]
@@ -161,7 +161,7 @@ flowchart TB
         - The rain sensor reports rain, or rain within the rain clear delay: "Rain detected".
         - The rain sensor is enabled but offline, stale or reporting a lens fault: "Rain sensor offline, stale or reporting a lens fault".
         - A wind limit is set but the anemometer is disabled or not reporting: "Wind limit set but the anemometer is disabled or not reporting". Otherwise wind or gust at or over its limit: "Wind ..." / "Gust ...".
-    2. **Data freshness**: no sensor read since boot gives "No successful sensor data yet"; the last read older than the stale limit (default 30 s) gives "Sensor data is stale".
+    2. **Data freshness**: no successful TSL2591 or MLX90614 read since boot gives "No successful sensor data yet". If either sensor is still answering but its last successful read is older than the stale limit (default 30 s), that gives "Sensor data is stale" - a sensor that keeps reporting OK without fresh readings counts as stale. A sensor that has stopped answering is reported under sensor health instead.
     3. **Sensor health**: the TSL2591 or MLX90614 not OK gives "Sensor fault: ..." naming which.
     4. **Only with fresh data**, the threshold rules:
         - cloud cover at or over its limit (skipped if the MLX90614 is faulted);
@@ -184,7 +184,7 @@ The Safety Monitor card's **History** lists recent safe/unsafe changes, restarts
 <!-- diagram: DIA-03
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#SafeDelayFilter::update lib/DeviceCore/src/DeviceCore.cpp#updateSafety
 blocking: true
-fingerprint: 9677b24322801cdf
+fingerprint: 3649aff0aec71fb0
 -->
 <figure class="diagram" markdown>
 

@@ -550,16 +550,29 @@ void test_faulted_sensor_skips_its_threshold(void)
 void test_safe_delay_filter(void)
 {
     SafeDelayFilter f;
-    TEST_ASSERT_FALSE(f.update(true, 100, 60)); // timer starts at first safe
+    TEST_ASSERT_FALSE(f.update(true, 100000, 60)); // timer starts at first safe
     TEST_ASSERT_EQUAL_UINT32(60, f.secondsUntilSafe());
-    TEST_ASSERT_FALSE(f.update(true, 159, 60));
-    TEST_ASSERT_TRUE(f.update(true, 160, 60));
-    TEST_ASSERT_FALSE(f.update(false, 161, 60)); // unsafe is immediate
-    TEST_ASSERT_FALSE(f.update(true, 162, 60));  // and restarts the delay
-    TEST_ASSERT_TRUE(f.update(true, 222, 60));
+    TEST_ASSERT_FALSE(f.update(true, 159000, 60));
+    TEST_ASSERT_TRUE(f.update(true, 160000, 60));
+    TEST_ASSERT_FALSE(f.update(false, 161000, 60)); // unsafe is immediate
+    TEST_ASSERT_FALSE(f.update(true, 162000, 60));  // and restarts the delay
+    TEST_ASSERT_TRUE(f.update(true, 222000, 60));
 
     SafeDelayFilter immediate;
-    TEST_ASSERT_TRUE(immediate.update(true, 5, 0));
+    TEST_ASSERT_TRUE(immediate.update(true, 5000, 0));
+}
+
+// millis() wraps after ~49.7 days; a wrap inside the delay must not report
+// safe early (it did when the delay was measured in millis()/1000 seconds).
+void test_safe_delay_filter_survives_millis_wrap(void)
+{
+    SafeDelayFilter f;
+    const uint32_t beforeWrap = 0xFFFFFFFFu - 10000; // 10 s before the wrap
+    TEST_ASSERT_FALSE(f.update(true, beforeWrap, 60));
+    TEST_ASSERT_FALSE(f.update(true, beforeWrap + 20000, 60)); // wrapped, 20 s in
+    TEST_ASSERT_EQUAL_UINT32(40, f.secondsUntilSafe());
+    TEST_ASSERT_FALSE(f.update(true, beforeWrap + 59000, 60));
+    TEST_ASSERT_TRUE(f.update(true, beforeWrap + 60000, 60));
 }
 
 // --- Wind safety ---
@@ -870,6 +883,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_environment_fault_blocks_humidity_rules);
     RUN_TEST(test_faulted_sensor_skips_its_threshold);
     RUN_TEST(test_safe_delay_filter);
+    RUN_TEST(test_safe_delay_filter_survives_millis_wrap);
     RUN_TEST(test_wind_limits);
     RUN_TEST(test_wind_limit_without_sensor_is_unsafe);
 
