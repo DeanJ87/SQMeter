@@ -5,7 +5,7 @@ SQMeter ships with no WiFi credentials. On first power-on it starts in **hotspot
 <!-- diagram: DIA-07
 sources: src/WiFiManager.cpp#WiFiManager::begin src/WiFiManager.cpp#WiFiManager::startCaptivePortal src/WiFiManager.cpp#WiFiManager::updateCredentials lib/CaptiveDns/ src/WebServerApi.cpp#WebServer::pollWiFiConnect src/WebServer.cpp#WebServer::setupStaticRoutes src/main.cpp#loop
 blocking: false
-fingerprint: fb56b42c1b6b30b5
+fingerprint: 35373016b6d3d71c
 -->
 <figure class="diagram" markdown>
 
@@ -44,7 +44,7 @@ sequenceDiagram
 ??? info "Diagram in words"
 
     1. With no saved network, or when the saved one hasn't been joined within 45 seconds of power-on, the device opens the open **SQM-Setup** hotspot at 192.168.4.1 (and keeps retrying the saved network in the background).
-    2. Your phone or laptop joins SQM-Setup. The device answers every name lookup with its own address, and redirects the system's sign-in checks (such as `/hotspot-detect.html`) to `/wifi`, so the sign-in window opens the WiFi setup screen.
+    2. Your phone or laptop joins SQM-Setup. The device answers every name lookup with its own address, and redirects the system's sign-in checks (such as `/hotspot-detect.html`) to `/wifi`, so the sign-in window opens the WiFi setup screen. Only requests that arrive over the hotspot are redirected: from your home network the device never sends a browser to 192.168.4.1.
     3. You choose a network and enter its password. The device joins it while keeping the hotspot up.
     4. **Joined within 10 seconds**: the device saves the network, the screen shows `sqmeter.local` and the IP, and about 15 seconds later the device restarts on your network and the hotspot goes. Rejoin your own network and open that address.
     5. **Wrong password or no answer**: the screen says it didn't join, and you can try again.
