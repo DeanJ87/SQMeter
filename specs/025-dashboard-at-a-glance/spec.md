@@ -180,7 +180,7 @@ they record in the dashboard inventory whether and when it is shown - or deliber
 with a reason. Every inventory item has an automated test that puts the demo device into the
 qualifying state and checks the dashboard shows it.
 
-**Why this priority**: The user's explicit ask: "to ensure we don't regress". The gaps above
+**Why this priority**: Without enforcement the gaps come back. The gaps above
 happened because nothing tied new device state to the dashboard.
 
 **Independent Test**: Add a dummy field to the status schema without an inventory entry; the check

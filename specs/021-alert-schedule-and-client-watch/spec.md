@@ -43,7 +43,7 @@ checking the safety monitor - last checked 2 min ago". When it starts checking a
 says it's back.
 
 **Why this priority**: This failure is silent and dangerous. Rain will still be detected, but
-nothing will close the roof. It is the user's explicit request, and no setting today covers it.
+nothing will close the roof, and no setting today covers it.
 
 **Independent Test**:
 1. Connect any Alpaca client (N.I.N.A., ConformU, or `curl` PUT `connected=true`), then poll

@@ -32,7 +32,7 @@
 ## Notes
 
 - The spec names some specifics on purpose:
-  - **Mermaid**, because the user asked for it and PR #30 uses it.
+  - **Mermaid**, because it is the chosen format and PR #30 uses it.
   - **Source file paths**, because each diagram must cite what it reflects. These are documentation references, not implementation choices.
   - **The CDN decision**, which is a privacy and availability requirement.
 - The diagram catalogue is prioritised. P1 (DIA-01 to DIA-05) is the minimum for completion.
