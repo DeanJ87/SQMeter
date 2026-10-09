@@ -108,5 +108,6 @@ nav:
     - Accessibility: development/accessibility.md
   - Reference:
     - Sky Quality Calculations: reference/sky-quality.md
+    - Settings Dependencies: reference/settings-dependencies.md
     - Troubleshooting: reference/troubleshooting.md
     - Accessibility: accessibility.md

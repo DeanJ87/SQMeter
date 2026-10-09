@@ -1,5 +1,6 @@
 import { ComponentChildren, createContext, FunctionalComponent } from 'preact';
 import { useContext, useId } from 'preact/hooks';
+import { FIX_LABEL, blocksSwitchingOn, noteFor, type DepEntry } from '../../lib/settingsDeps';
 import { Button, Card, InfoTip, Note, Pill } from '../ui';
 
 // Settings building blocks, all on the shared component classes so Settings
@@ -82,6 +83,47 @@ export const Toggle: FunctionalComponent<{
           <Requires tone={checked ? 'warn' : 'info'} onFix={onFix} fixLabel={fixLabel}>
             {blockedReason}
           </Requires>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Why a dependent setting isn't in effect, with its one-click fix
+// (specs/020-settings-dependencies). Inactive: a warning ("Inactive - MQTT
+// is off"), or a muted note for harmless defaults. Off but blocked: what has
+// to change before it can be switched on.
+export const DepNote: FunctionalComponent<{ entry: DepEntry; onFix: (entry: DepEntry) => void; prefix?: string }> = ({
+  entry,
+  onFix,
+  prefix,
+}) => {
+  const note = noteFor(entry, prefix);
+  if (!note) return null;
+  return (
+    <Requires tone={note.tone} onFix={() => onFix(note.target)} fixLabel={FIX_LABEL[note.reason]}>
+      <span data-dep={note.id}>{note.text}</span>
+    </Requires>
+  );
+};
+
+// A toggle for a dependent setting: can't be switched on while what it needs
+// is off (FR-005) - runtime conditions like WiFi never block - and can
+// always be switched off; shows why it isn't in effect.
+export const DepToggle: FunctionalComponent<
+  Omit<Parameters<typeof Toggle>[0], 'blockedReason' | 'onFix' | 'fixLabel'> & {
+    entry: DepEntry;
+    onFix: (entry: DepEntry) => void;
+    prefix?: string;
+  }
+> = ({ entry, onFix, prefix, ...toggle }) => {
+  const blocked = entry.state === 'off' && entry.blockedBy && blocksSwitchingOn(entry.blockedBy.reason);
+  return (
+    <div>
+      <Toggle {...toggle} disabled={toggle.disabled || (blocked && !toggle.checked)} />
+      {(entry.state === 'inactive' || blocked) && (
+        <div class="indent">
+          <DepNote entry={entry} onFix={onFix} prefix={prefix} />
         </div>
       )}
     </div>

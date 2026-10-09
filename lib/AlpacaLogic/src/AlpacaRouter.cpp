@@ -189,7 +189,7 @@ namespace SQM
             const bool get = request.get;
             const bool put = request.put;
             const size_t deviceIndex = isSafetyMonitor ? SAFETY_MONITOR : OBSERVING_CONDITIONS;
-            const bool enabled = backend.alpacaEnabled();
+            const bool enabled = backend.alpacaEnabled(); // dep: D-20
             DeviceActivity &activity = devices[deviceIndex];
             // The device's own web UI (the Alpaca page's live state) tags its
             // requests source=ui: it isn't an imaging app watching the device.

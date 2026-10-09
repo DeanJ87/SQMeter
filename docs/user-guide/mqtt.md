@@ -49,7 +49,7 @@ Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 <!-- diagram: DIA-09
 sources: src/WebServer.cpp#WebServer::publishMqttReadings src/WebServer.cpp#WebServer::publishMqttSafety src/WebServer.cpp#WebServer::publishArmedState src/WebServer.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: 32b4c4e16e4a40cf
+fingerprint: 01db723ec09e41b7
 -->
 <figure class="diagram" markdown>
 
@@ -65,7 +65,7 @@ flowchart LR
     D --> ALERTS["alerts<br/>not retained, one message per alert"]
     D --> ARMED["alerts/armed: 1 sending, 0 paused<br/>retained, on change and reconnect"]
     D --> DIAG["diagnostics<br/>not retained, every interval, off by default"]
-    D --> DISC["homeassistant/.../config<br/>retained, when discovery is on"]
+    D --> DISC["homeassistant/.../config<br/>retained, when discovery is on;<br/>the Alerts switch only while alerts can go out"]
 ```
 
 <figcaption>MQTT topic map: the one topic SQMeter listens to (left) and what it publishes (right). All but the discovery topics sit under the base topic, default <code>sqmeter</code>.</figcaption>
@@ -84,7 +84,7 @@ flowchart LR
 
     It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to resume or pause alerts.
 
-    With Home Assistant discovery on, it also publishes retained `config` topics under the discovery prefix (default `homeassistant`), and clears them when discovery is switched off or moved.
+    With Home Assistant discovery on, it also publishes retained `config` topics under the discovery prefix (default `homeassistant`), and clears them when discovery is switched off or moved. The Alerts switch is only announced while alerts can go out (Send alerts on, or paired phones that can ring), and is removed otherwise.
 
 ### Choosing what's published
 

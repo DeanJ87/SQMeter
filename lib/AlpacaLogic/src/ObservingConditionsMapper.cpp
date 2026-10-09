@@ -88,7 +88,7 @@ namespace SQM
                 return notImplemented();
 
             const SourceState &source = snapshot.*(info->source);
-            if (!source.present)
+            if (!source.present) // dep: D-21 D-22 - rain and wind need their sensors switched on
                 return notImplemented();
             if (!source.valid)
                 return noData();

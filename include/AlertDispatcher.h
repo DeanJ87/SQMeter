@@ -5,6 +5,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -41,6 +42,11 @@ namespace SQM
     };
     const char *deliveryStatusName(DeliveryStatus status);
 
+    // Why each channel that's switched on can't be used right now (nullptr:
+    // it can), e.g. "MQTT is off" - from the settings dependencies
+    // (lib/SettingsDeps). Indexed by AlertChannel.
+    using ChannelBlocks = std::array<const char *, ALERT_CHANNEL_COUNT>;
+
     struct AlertRecord
     {
         uint32_t id = 0;
@@ -70,9 +76,14 @@ namespace SQM
 
         // Main loop task only. `channelMask` restricts delivery (used for
         // per-channel test notifications); channels disabled in `cfg` are
-        // never used, test or not.
+        // never used, test or not. A channel switched on but blocked is
+        // recorded as skipped with the reason and nothing is attempted.
         void dispatch(
-            const Alerts::Alert &alert, const AlertsConfig &cfg, const std::string &deviceName, uint8_t channelMask = ALERT_CHANNELS_ALL);
+            const Alerts::Alert &alert,
+            const AlertsConfig &cfg,
+            const std::string &deviceName,
+            uint8_t channelMask = ALERT_CHANNELS_ALL,
+            const ChannelBlocks &blocked = ChannelBlocks{});
 
         std::vector<AlertRecord> recent() const;
         void clearRecent();

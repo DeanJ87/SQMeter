@@ -1,0 +1,1325 @@
+{
+  "$comment": "Shared by test/test_settings_deps (lib/SettingsDeps) and web/src/lib/__tests__/settingsDeps.test.ts (web/src/lib/settingsDeps.ts): the same config and facts must give the same answers. `config` is applied on top of the device defaults (default-config.json); `facts` on top of `baseFacts`. `expect` lists only the settings a case is about.",
+  "baseFacts": {
+    "wifiConnected": true,
+    "mqttConnected": true,
+    "clockSet": true,
+    "gpsRunning": true,
+    "gpsFix": true,
+    "bluetoothBuild": true,
+    "bluetoothRunning": true,
+    "pairedPhones": 1,
+    "lightDetected": true,
+    "infraredDetected": true,
+    "environmentDetected": true
+  },
+  "cases": [
+    {
+      "name": "fresh device: alert settings wait for alerts, publish groups wait for MQTT (neutral)",
+      "config": {},
+      "facts": {
+        "gpsRunning": false,
+        "gpsFix": false,
+        "bluetoothRunning": false,
+        "pairedPhones": 0
+      },
+      "expect": {
+        "alerts.pushover.enabled": {
+          "state": "off",
+          "id": "D-03"
+        },
+        "alerts.events.unsafe.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off"
+        },
+        "alerts.wakePhones": {
+          "state": "inactive",
+          "id": "D-08",
+          "reason": "ble-off",
+          "neutral": true
+        },
+        "mqtt.publish.gps": {
+          "state": "inactive",
+          "id": "D-14",
+          "reason": "mqtt-off",
+          "neutral": true
+        },
+        "mqtt.publish.sky": null,
+        "location.showSunMoon": {
+          "state": "inactive",
+          "id": "D-25",
+          "reason": "location-unknown",
+          "neutral": true
+        },
+        "ntp.enabled": {
+          "state": "active",
+          "id": "D-28"
+        },
+        "wifi.mdns": {
+          "state": "active",
+          "id": "D-36"
+        },
+        "gps.enabled": {
+          "state": "off",
+          "id": "D-26"
+        }
+      }
+    },
+    {
+      "name": "D-01 MQTT alert channel with MQTT off",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "mqtt": {
+            "enabled": true
+          }
+        }
+      },
+      "expect": {
+        "alerts.mqtt.enabled": {
+          "state": "inactive",
+          "id": "D-01",
+          "reason": "mqtt-off",
+          "text": "MQTT is off",
+          "fix": "network#mqtt"
+        }
+      }
+    },
+    {
+      "name": "D-01 before D-04: MQTT off is reported before alerts off (catalogue order)",
+      "config": {
+        "alerts": {
+          "enabled": false,
+          "mqtt": {
+            "enabled": true
+          }
+        }
+      },
+      "expect": {
+        "alerts.mqtt.enabled": {
+          "state": "inactive",
+          "id": "D-01",
+          "reason": "mqtt-off"
+        }
+      }
+    },
+    {
+      "name": "D-04 alert channel that works but alerts are off",
+      "config": {
+        "alerts": {
+          "enabled": false,
+          "mqtt": {
+            "enabled": true
+          }
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "sqmeter"
+        }
+      },
+      "expect": {
+        "alerts.mqtt.enabled": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off",
+          "text": "Alerts are off",
+          "fix": "alerts#alerts"
+        }
+      }
+    },
+    {
+      "name": "D-01/D-02 MQTT alert channel active with MQTT on and connected",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "mqtt": {
+            "enabled": true
+          }
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "sqmeter"
+        }
+      },
+      "expect": {
+        "alerts.mqtt.enabled": {
+          "state": "active",
+          "id": "D-01"
+        }
+      }
+    },
+    {
+      "name": "D-02 MQTT alert channel with the broker down",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "mqtt": {
+            "enabled": true
+          }
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "sqmeter"
+        }
+      },
+      "facts": {
+        "mqttConnected": false
+      },
+      "expect": {
+        "alerts.mqtt.enabled": {
+          "state": "inactive",
+          "id": "D-02",
+          "reason": "mqtt-disconnected",
+          "text": "Broker not connected"
+        }
+      }
+    },
+    {
+      "name": "D-03 internet channels without WiFi",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "pushover": {
+            "enabled": true,
+            "userKey": "u1234567890123456789012345678",
+            "appToken": "a1234567890123456789012345678"
+          },
+          "ntfy": {
+            "enabled": true,
+            "topic": "sqmeter-test"
+          },
+          "webhook": {
+            "enabled": true,
+            "url": "http://example.local/hook"
+          }
+        }
+      },
+      "facts": {
+        "wifiConnected": false
+      },
+      "expect": {
+        "alerts.pushover.enabled": {
+          "state": "inactive",
+          "id": "D-03",
+          "reason": "wifi-disconnected",
+          "text": "Not connected to WiFi",
+          "fix": "network#wifi"
+        },
+        "alerts.ntfy.enabled": {
+          "state": "inactive",
+          "id": "D-03",
+          "reason": "wifi-disconnected"
+        },
+        "alerts.webhook.enabled": {
+          "state": "inactive",
+          "id": "D-03",
+          "reason": "wifi-disconnected"
+        }
+      }
+    },
+    {
+      "name": "D-03 internet channels with WiFi",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "pushover": {
+            "enabled": true,
+            "userKey": "u1234567890123456789012345678",
+            "appToken": "a1234567890123456789012345678"
+          },
+          "ntfy": {
+            "enabled": true,
+            "topic": "sqmeter-test"
+          }
+        }
+      },
+      "expect": {
+        "alerts.pushover.enabled": {
+          "state": "active",
+          "id": "D-03"
+        },
+        "alerts.ntfy.enabled": {
+          "state": "active",
+          "id": "D-03"
+        }
+      }
+    },
+    {
+      "name": "D-05 rain events with the rain sensor off, and on",
+      "config": {
+        "alerts": {
+          "enabled": true
+        }
+      },
+      "expect": {
+        "alerts.events.rain_started.level": {
+          "state": "inactive",
+          "id": "D-05",
+          "reason": "rain-off",
+          "text": "Rain sensor is off",
+          "fix": "sensors#rain"
+        },
+        "alerts.events.rain_stopped.level": {
+          "state": "inactive",
+          "id": "D-05",
+          "reason": "rain-off"
+        },
+        "alerts.events.unsafe.level": {
+          "state": "active",
+          "id": "D-04"
+        }
+      }
+    },
+    {
+      "name": "D-05 rain events active with the rain sensor on",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "rain": {
+          "enabled": true
+        }
+      },
+      "expect": {
+        "alerts.events.rain_started.level": {
+          "state": "active",
+          "id": "D-05"
+        }
+      }
+    },
+    {
+      "name": "D-06/D-07 sky and dew events need their sensors detected",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "events": {
+            "dew_risk": {
+              "level": 2
+            },
+            "clear_sky": {
+              "level": 1
+            },
+            "clouded_over": {
+              "level": 2
+            }
+          }
+        }
+      },
+      "facts": {
+        "environmentDetected": false,
+        "infraredDetected": false
+      },
+      "expect": {
+        "alerts.events.dew_risk.level": {
+          "state": "inactive",
+          "id": "D-06",
+          "reason": "environment-missing",
+          "text": "BME280 not detected",
+          "fix": "sensors#sky-sensors"
+        },
+        "alerts.events.clear_sky.level": {
+          "state": "inactive",
+          "id": "D-07",
+          "reason": "infrared-missing",
+          "text": "MLX90614 not detected"
+        },
+        "alerts.events.clouded_over.level": {
+          "state": "inactive",
+          "id": "D-07",
+          "reason": "infrared-missing"
+        }
+      }
+    },
+    {
+      "name": "D-06/D-07 met",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "events": {
+            "dew_risk": {
+              "level": 2
+            },
+            "clear_sky": {
+              "level": 1
+            }
+          }
+        }
+      },
+      "expect": {
+        "alerts.events.dew_risk.level": {
+          "state": "active",
+          "id": "D-06"
+        },
+        "alerts.events.clear_sky.level": {
+          "state": "active",
+          "id": "D-07"
+        }
+      }
+    },
+    {
+      "name": "D-08 Wake me without the Bluetooth build",
+      "config": {
+        "alerts": {
+          "enabled": true
+        }
+      },
+      "facts": {
+        "bluetoothBuild": false
+      },
+      "expect": {
+        "alerts.wakePhones": {
+          "state": "inactive",
+          "id": "D-08",
+          "reason": "ble-build",
+          "text": "Needs the Bluetooth firmware build",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-08 Wake me: Bluetooth on but no passkey, then no phone",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "ble": {
+          "enabled": true
+        }
+      },
+      "expect": {
+        "alerts.wakePhones": {
+          "state": "inactive",
+          "id": "D-08",
+          "reason": "no-passkey",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-08 Wake me: passkey set, no phone paired",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "ble": {
+          "enabled": true,
+          "passkey": "123456"
+        }
+      },
+      "facts": {
+        "pairedPhones": 0
+      },
+      "expect": {
+        "alerts.wakePhones": {
+          "state": "inactive",
+          "id": "D-08",
+          "reason": "no-phones",
+          "text": "No phone paired",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-08/D-35 Wake me: Bluetooth switched on but not started",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "ble": {
+          "enabled": true,
+          "passkey": "123456"
+        }
+      },
+      "facts": {
+        "bluetoothRunning": false
+      },
+      "expect": {
+        "alerts.wakePhones": {
+          "state": "inactive",
+          "id": "D-35",
+          "reason": "ble-restart",
+          "fix": "restart",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-08 phones ring; Wake-me events stay in effect with push alerts off",
+      "config": {
+        "alerts": {
+          "enabled": false
+        },
+        "ble": {
+          "enabled": true,
+          "passkey": "123456"
+        }
+      },
+      "expect": {
+        "alerts.wakePhones": {
+          "state": "active",
+          "id": "D-08",
+          "neutral": true
+        },
+        "alerts.events.rain_started.level": {
+          "state": "inactive",
+          "id": "D-05",
+          "reason": "rain-off"
+        },
+        "alerts.events.sensor_fault.level": {
+          "state": "active",
+          "id": "D-04"
+        },
+        "alerts.events.unsafe.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off"
+        },
+        "alerts.pushover.enabled": {
+          "state": "off",
+          "id": "D-03"
+        },
+        "mqtt.homeAssistant.alertsSwitch": {
+          "state": "off",
+          "id": "D-13"
+        }
+      }
+    },
+    {
+      "name": "D-09/D-10 night-only alerts without a location or GPS fix",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "skyNightOnly": true,
+          "safetyNightOnly": true
+        }
+      },
+      "facts": {
+        "gpsFix": false
+      },
+      "expect": {
+        "alerts.skyNightOnly": {
+          "state": "inactive",
+          "id": "D-09",
+          "reason": "location-unknown",
+          "text": "Needs your location",
+          "fix": "time#location"
+        },
+        "alerts.safetyNightOnly": {
+          "state": "inactive",
+          "id": "D-10",
+          "reason": "location-unknown"
+        },
+        "alerts.nightSunAltitudeDeg": {
+          "state": "active",
+          "id": "D-11"
+        }
+      }
+    },
+    {
+      "name": "D-09/D-10 met by a GPS fix",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "skyNightOnly": true,
+          "safetyNightOnly": true
+        }
+      },
+      "expect": {
+        "alerts.skyNightOnly": {
+          "state": "active",
+          "id": "D-09"
+        },
+        "alerts.safetyNightOnly": {
+          "state": "active",
+          "id": "D-10"
+        }
+      }
+    },
+    {
+      "name": "D-09/D-10 met by the location in Settings (GPS not running)",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "skyNightOnly": true
+        },
+        "location": {
+          "set": true,
+          "latitude": 51.5,
+          "longitude": -0.1
+        }
+      },
+      "facts": {
+        "gpsRunning": false,
+        "gpsFix": false
+      },
+      "expect": {
+        "alerts.skyNightOnly": {
+          "state": "active",
+          "id": "D-09"
+        }
+      }
+    },
+    {
+      "name": "D-11 dark-means is off while both night-only options are off",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "skyNightOnly": false,
+          "safetyNightOnly": false
+        }
+      },
+      "expect": {
+        "alerts.nightSunAltitudeDeg": {
+          "state": "off",
+          "id": "D-11"
+        }
+      }
+    },
+    {
+      "name": "D-12 alerts follow N.I.N.A. with Alpaca off, and on",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "sendMode": "whileConnected"
+        }
+      },
+      "expect": {
+        "alerts.sendMode": {
+          "state": "inactive",
+          "id": "D-12",
+          "reason": "alpaca-off",
+          "text": "Alpaca is off",
+          "fix": "safety#alpaca"
+        }
+      }
+    },
+    {
+      "name": "D-12 met",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "sendMode": "whileConnected"
+        },
+        "alpaca": {
+          "enabled": true
+        }
+      },
+      "expect": {
+        "alerts.sendMode": {
+          "state": "active",
+          "id": "D-12"
+        }
+      }
+    },
+    {
+      "name": "D-13 Home Assistant discovery with MQTT off",
+      "config": {
+        "mqtt": {
+          "homeAssistant": {
+            "enabled": true
+          }
+        }
+      },
+      "expect": {
+        "mqtt.homeAssistant.enabled": {
+          "state": "inactive",
+          "id": "D-13",
+          "reason": "mqtt-off"
+        },
+        "mqtt.homeAssistant.alertsSwitch": {
+          "state": "inactive",
+          "id": "D-13",
+          "reason": "mqtt-off"
+        }
+      }
+    },
+    {
+      "name": "D-13 Home Assistant alerts switch with alerts off",
+      "config": {
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "sqmeter",
+          "homeAssistant": {
+            "enabled": true
+          }
+        }
+      },
+      "facts": {
+        "bluetoothRunning": false
+      },
+      "expect": {
+        "mqtt.homeAssistant.enabled": {
+          "state": "active",
+          "id": "D-13"
+        },
+        "mqtt.homeAssistant.alertsSwitch": {
+          "state": "inactive",
+          "id": "D-13",
+          "reason": "alerts-off",
+          "text": "Alerts are off"
+        }
+      }
+    },
+    {
+      "name": "D-13 met",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "sqmeter",
+          "homeAssistant": {
+            "enabled": true
+          }
+        }
+      },
+      "expect": {
+        "mqtt.homeAssistant.alertsSwitch": {
+          "state": "active",
+          "id": "D-13"
+        }
+      }
+    },
+    {
+      "name": "D-14 publish groups for switched-off sensors (neutral)",
+      "config": {
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "sqmeter"
+        }
+      },
+      "expect": {
+        "mqtt.publish.gps": {
+          "state": "inactive",
+          "id": "D-14",
+          "reason": "gps-off",
+          "neutral": true
+        },
+        "mqtt.publish.rain": {
+          "state": "inactive",
+          "id": "D-14",
+          "reason": "rain-off",
+          "neutral": true
+        },
+        "mqtt.publish.wind": {
+          "state": "inactive",
+          "id": "D-14",
+          "reason": "wind-off",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-14/D-35 publish groups met; GPS waiting for a restart",
+      "config": {
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "sqmeter"
+        },
+        "gps": {
+          "enabled": true
+        },
+        "rain": {
+          "enabled": true
+        },
+        "wind": {
+          "enabled": true
+        }
+      },
+      "facts": {
+        "gpsRunning": false,
+        "gpsFix": false
+      },
+      "expect": {
+        "mqtt.publish.gps": {
+          "state": "inactive",
+          "id": "D-35",
+          "reason": "gps-restart",
+          "text": "GPS starts after a restart",
+          "fix": "restart",
+          "neutral": true
+        },
+        "mqtt.publish.rain": {
+          "state": "active",
+          "id": "D-14",
+          "neutral": true
+        },
+        "mqtt.publish.wind": {
+          "state": "active",
+          "id": "D-14",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-15 rain rules are not in effect with the rain sensor off",
+      "config": {
+        "alpaca": {
+          "rainUnsafeEnabled": true,
+          "rainSensorRequired": true
+        }
+      },
+      "expect": {
+        "alpaca.rainUnsafeEnabled": {
+          "state": "inactive",
+          "id": "D-15",
+          "reason": "rain-off",
+          "unmet": "inactive",
+          "neutral": true
+        },
+        "alpaca.rainSensorRequired": {
+          "state": "inactive",
+          "id": "D-15",
+          "reason": "rain-off",
+          "unmet": "inactive",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-15 met",
+      "config": {
+        "rain": {
+          "enabled": true
+        },
+        "alpaca": {
+          "rainUnsafeEnabled": true
+        }
+      },
+      "expect": {
+        "alpaca.rainUnsafeEnabled": {
+          "state": "active",
+          "id": "D-15",
+          "unmet": "inactive",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-16 wind rules are fail-safe with no anemometer",
+      "config": {
+        "alpaca": {
+          "windSpeedUnsafeEnabled": true,
+          "windGustUnsafeEnabled": true
+        }
+      },
+      "expect": {
+        "alpaca.windSpeedUnsafeEnabled": {
+          "state": "inactive",
+          "id": "D-16",
+          "reason": "wind-off",
+          "unmet": "fail-safe"
+        },
+        "alpaca.windGustUnsafeEnabled": {
+          "state": "inactive",
+          "id": "D-16",
+          "reason": "wind-off",
+          "unmet": "fail-safe"
+        }
+      }
+    },
+    {
+      "name": "D-16 met",
+      "config": {
+        "wind": {
+          "enabled": true
+        },
+        "alpaca": {
+          "windSpeedUnsafeEnabled": true
+        }
+      },
+      "expect": {
+        "alpaca.windSpeedUnsafeEnabled": {
+          "state": "active",
+          "id": "D-16",
+          "unmet": "fail-safe"
+        }
+      }
+    },
+    {
+      "name": "D-17/D-18/D-19 sky and environment rules are fail-safe without their sensors",
+      "config": {
+        "alpaca": {
+          "cloudCoverEnabled": true,
+          "sqmMinEnabled": true,
+          "humidityMaxEnabled": true,
+          "dewpointMarginEnabled": true
+        }
+      },
+      "facts": {
+        "lightDetected": false,
+        "infraredDetected": false,
+        "environmentDetected": false
+      },
+      "expect": {
+        "alpaca.cloudCoverEnabled": {
+          "state": "inactive",
+          "id": "D-17",
+          "reason": "infrared-missing",
+          "unmet": "fail-safe"
+        },
+        "alpaca.sqmMinEnabled": {
+          "state": "inactive",
+          "id": "D-18",
+          "reason": "light-missing",
+          "text": "TSL2591 not detected",
+          "unmet": "fail-safe"
+        },
+        "alpaca.humidityMaxEnabled": {
+          "state": "inactive",
+          "id": "D-19",
+          "reason": "environment-missing",
+          "unmet": "fail-safe"
+        },
+        "alpaca.dewpointMarginEnabled": {
+          "state": "inactive",
+          "id": "D-19",
+          "reason": "environment-missing",
+          "unmet": "fail-safe"
+        }
+      }
+    },
+    {
+      "name": "D-17/D-18/D-19 met",
+      "config": {
+        "alpaca": {
+          "cloudCoverEnabled": true,
+          "sqmMinEnabled": true,
+          "humidityMaxEnabled": true
+        }
+      },
+      "expect": {
+        "alpaca.cloudCoverEnabled": {
+          "state": "active",
+          "id": "D-17",
+          "unmet": "fail-safe"
+        },
+        "alpaca.sqmMinEnabled": {
+          "state": "active",
+          "id": "D-18",
+          "unmet": "fail-safe"
+        },
+        "alpaca.humidityMaxEnabled": {
+          "state": "active",
+          "id": "D-19",
+          "unmet": "fail-safe"
+        }
+      }
+    },
+    {
+      "name": "D-23 wind vane needs the anemometer",
+      "config": {
+        "wind": {
+          "enabled": false,
+          "directionEnabled": true
+        }
+      },
+      "expect": {
+        "wind.directionEnabled": {
+          "state": "inactive",
+          "id": "D-23",
+          "reason": "wind-off",
+          "text": "Anemometer is off",
+          "fix": "sensors#wind"
+        }
+      }
+    },
+    {
+      "name": "D-23 met",
+      "config": {
+        "wind": {
+          "enabled": true,
+          "directionEnabled": true
+        }
+      },
+      "expect": {
+        "wind.directionEnabled": {
+          "state": "active",
+          "id": "D-23"
+        }
+      }
+    },
+    {
+      "name": "D-24 daily rain reset: sensor off, then clock not set",
+      "config": {
+        "rain": {
+          "dailyResetEnabled": true
+        }
+      },
+      "expect": {
+        "rain.dailyResetEnabled": {
+          "state": "inactive",
+          "id": "D-24",
+          "reason": "rain-off"
+        }
+      }
+    },
+    {
+      "name": "D-24 daily rain reset before the clock is set",
+      "config": {
+        "rain": {
+          "enabled": true,
+          "dailyResetEnabled": true
+        }
+      },
+      "facts": {
+        "clockSet": false
+      },
+      "expect": {
+        "rain.dailyResetEnabled": {
+          "state": "inactive",
+          "id": "D-24",
+          "reason": "clock-unset",
+          "text": "The device doesn't know the time yet",
+          "fix": "time#time-sources"
+        }
+      }
+    },
+    {
+      "name": "D-24 met",
+      "config": {
+        "rain": {
+          "enabled": true,
+          "dailyResetEnabled": true
+        }
+      },
+      "expect": {
+        "rain.dailyResetEnabled": {
+          "state": "active",
+          "id": "D-24"
+        }
+      }
+    },
+    {
+      "name": "D-25 Sun & Moon with a location",
+      "config": {
+        "location": {
+          "set": true,
+          "latitude": 51.5,
+          "longitude": -0.1,
+          "showSunMoon": true
+        }
+      },
+      "facts": {
+        "gpsRunning": false,
+        "gpsFix": false
+      },
+      "expect": {
+        "location.showSunMoon": {
+          "state": "active",
+          "id": "D-25",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-26/D-35 GPS: waiting for a restart, then no fix, then a fix",
+      "config": {
+        "gps": {
+          "enabled": true
+        }
+      },
+      "facts": {
+        "gpsRunning": false,
+        "gpsFix": false
+      },
+      "expect": {
+        "gps.enabled": {
+          "state": "inactive",
+          "id": "D-35",
+          "reason": "gps-restart"
+        }
+      }
+    },
+    {
+      "name": "D-26 GPS running without a fix",
+      "config": {
+        "gps": {
+          "enabled": true
+        }
+      },
+      "facts": {
+        "gpsFix": false
+      },
+      "expect": {
+        "gps.enabled": {
+          "state": "inactive",
+          "id": "D-26",
+          "reason": "gps-no-fix",
+          "text": "No GPS fix - using the location in Settings",
+          "fix": "time#location"
+        }
+      }
+    },
+    {
+      "name": "D-26 met",
+      "config": {
+        "gps": {
+          "enabled": true
+        }
+      },
+      "expect": {
+        "gps.enabled": {
+          "state": "active",
+          "id": "D-26"
+        }
+      }
+    },
+    {
+      "name": "D-28/D-36 NTP and mDNS without WiFi (setup hotspot)",
+      "config": {},
+      "facts": {
+        "wifiConnected": false
+      },
+      "expect": {
+        "ntp.enabled": {
+          "state": "inactive",
+          "id": "D-28",
+          "reason": "wifi-disconnected"
+        },
+        "wifi.mdns": {
+          "state": "inactive",
+          "id": "D-36",
+          "reason": "wifi-disconnected"
+        }
+      }
+    },
+    {
+      "name": "D-29 sky calibration needs the TSL2591",
+      "config": {
+        "skyCalibration": {
+          "enabled": true
+        }
+      },
+      "facts": {
+        "lightDetected": false
+      },
+      "expect": {
+        "skyCalibration.enabled": {
+          "state": "inactive",
+          "id": "D-29",
+          "reason": "light-missing"
+        }
+      }
+    },
+    {
+      "name": "D-29 met",
+      "config": {
+        "skyCalibration": {
+          "enabled": true
+        }
+      },
+      "expect": {
+        "skyCalibration.enabled": {
+          "state": "active",
+          "id": "D-29"
+        }
+      }
+    },
+    {
+      "name": "D-30/D-31 Bluetooth settings on the standard build",
+      "config": {
+        "ble": {
+          "enabled": true,
+          "passkey": "123456"
+        }
+      },
+      "facts": {
+        "bluetoothBuild": false,
+        "bluetoothRunning": false
+      },
+      "expect": {
+        "ble.enabled": {
+          "state": "inactive",
+          "id": "D-30",
+          "reason": "ble-build",
+          "fix": "device#ble"
+        },
+        "ble.phoneAlarm": {
+          "state": "inactive",
+          "id": "D-30",
+          "reason": "ble-build"
+        }
+      }
+    },
+    {
+      "name": "D-31 phone alarm with Bluetooth off",
+      "config": {
+        "ble": {
+          "enabled": false,
+          "passkey": "123456"
+        }
+      },
+      "facts": {
+        "bluetoothRunning": false
+      },
+      "expect": {
+        "ble.phoneAlarm": {
+          "state": "inactive",
+          "id": "D-31",
+          "reason": "ble-off",
+          "text": "Bluetooth is off"
+        },
+        "ble.enabled": {
+          "state": "off",
+          "id": "D-30"
+        }
+      }
+    },
+    {
+      "name": "D-30/D-31/D-35 Bluetooth switched on, not started yet",
+      "config": {
+        "ble": {
+          "enabled": true,
+          "passkey": "123456"
+        }
+      },
+      "facts": {
+        "bluetoothRunning": false
+      },
+      "expect": {
+        "ble.enabled": {
+          "state": "inactive",
+          "id": "D-35",
+          "reason": "ble-restart",
+          "text": "Bluetooth starts after a restart"
+        },
+        "ble.phoneAlarm": {
+          "state": "inactive",
+          "id": "D-35",
+          "reason": "ble-restart"
+        }
+      }
+    },
+    {
+      "name": "D-30/D-31 met",
+      "config": {
+        "ble": {
+          "enabled": true,
+          "passkey": "123456"
+        }
+      },
+      "expect": {
+        "ble.enabled": {
+          "state": "active",
+          "id": "D-30"
+        },
+        "ble.phoneAlarm": {
+          "state": "active",
+          "id": "D-31"
+        }
+      }
+    },
+    {
+      "name": "D-32 command-line uploads without a password",
+      "config": {
+        "ota": {
+          "enabled": true,
+          "password": ""
+        }
+      },
+      "expect": {
+        "ota.enabled": {
+          "state": "inactive",
+          "id": "D-32",
+          "reason": "ota-no-password",
+          "text": "Set an upload password",
+          "fix": "device#security"
+        }
+      }
+    },
+    {
+      "name": "D-32 met",
+      "config": {
+        "ota": {
+          "enabled": true,
+          "password": "secret"
+        }
+      },
+      "expect": {
+        "ota.enabled": {
+          "state": "active",
+          "id": "D-32"
+        }
+      }
+    },
+    {
+      "name": "D-36 met",
+      "config": {
+        "wifi": {
+          "mdns": true
+        }
+      },
+      "expect": {
+        "wifi.mdns": {
+          "state": "active",
+          "id": "D-36"
+        },
+        "ntp.enabled": {
+          "state": "active",
+          "id": "D-28"
+        }
+      }
+    },
+    {
+      "name": "D-37 imaging-app events need Alpaca",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "events": {
+            "client_lost": {
+              "level": 3
+            },
+            "client_disconnected": {
+              "level": 0
+            }
+          }
+        }
+      },
+      "expect": {
+        "alerts.events.client_lost.level": {
+          "state": "inactive",
+          "id": "D-37",
+          "reason": "alpaca-off",
+          "text": "Alpaca is off",
+          "fix": "safety#alpaca"
+        },
+        "alerts.events.client_disconnected.level": {
+          "state": "off",
+          "id": "D-37"
+        }
+      }
+    },
+    {
+      "name": "D-37 met",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "events": {
+            "client_lost": {
+              "level": 3
+            }
+          }
+        },
+        "alpaca": {
+          "enabled": true
+        }
+      },
+      "expect": {
+        "alerts.events.client_lost.level": {
+          "state": "active",
+          "id": "D-37"
+        }
+      }
+    }
+  ]
+}

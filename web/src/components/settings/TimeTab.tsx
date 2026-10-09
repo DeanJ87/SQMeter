@@ -3,7 +3,7 @@ import { useState } from 'preact/hooks';
 import { Note } from '../ui';
 import { defaultLocationConfig } from './defaults';
 import type { SettingsTabProps } from './context';
-import { ActionButton, Field, Group, NumberInput, SelectInput, SettingsCard, StatusBadge, TextInput, Toggle } from './controls';
+import { ActionButton, DepToggle, Field, Group, NumberInput, SelectInput, SettingsCard, StatusBadge, TextInput } from './controls';
 
 // Common time zones in POSIX TZ format
 export const TIMEZONE_OPTIONS = [
@@ -33,7 +33,7 @@ const GPS = 1;
 const SOURCE_LABEL: Record<number, string> = { [NTP]: 'NTP', [GPS]: 'GPS' };
 const LAST_SOURCE = 'At least one time source has to stay on.';
 
-const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw, status }) => {
+const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, hw, status, deps, fix }) => {
   const location = { ...defaultLocationConfig, ...config.location };
   const [coords, setCoords] = useState(location.set ? `${location.latitude}, ${location.longitude}` : '');
   const [coordsError, setCoordsError] = useState<string | null>(null);
@@ -76,12 +76,8 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
   const knownZone = TIMEZONE_OPTIONS.some((tz) => tz.value === config.ntp.timezone);
   const bothSources = config.ntp.enabled && config.gps.enabled;
 
-  // GPS starts at boot: switched on but not running yet means a restart is
-  // due, not a missing receiver.
-  const gpsBadge =
-    !config.gps.enabled || hw.gps.detected === null ? undefined : (
-      <StatusBadge tone={hw.gps.detected ? 'ok' : 'warn'} label={hw.gps.detected ? 'Running' : 'Starts after a restart'} />
-    );
+  // GPS starts at boot; waiting for a restart is shown under the switch (D-35).
+  const gpsBadge = config.gps.enabled && hw.gps.detected ? <StatusBadge tone="ok" label="Running" /> : undefined;
 
   return (
     <>
@@ -129,7 +125,9 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
             Sun at {sky.sunAltitudeDeg}° - {sky.isNight ? 'dark now' : 'not dark yet'}.
           </Note>
         )}
-        <Toggle
+        <DepToggle
+          entry={deps.get('location.showSunMoon')}
+          onFix={fix}
           label="Sun & Moon card on the dashboard"
           checked={location.showSunMoon !== false}
           onChange={(v) => update(['location', 'showSunMoon'], v)}
@@ -137,9 +135,11 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
         />
       </SettingsCard>
 
-      <SettingsCard title="Time sources">
+      <SettingsCard id="time-sources" title="Time sources">
         <Group title="NTP">
-          <Toggle
+          <DepToggle
+            entry={deps.get('ntp.enabled')}
+            onFix={fix}
             label="Internet time (NTP)"
             checked={config.ntp.enabled}
             onChange={(v) => update(['ntp', 'enabled'], v)}
@@ -180,7 +180,9 @@ const TimeTab: FunctionalComponent<SettingsTabProps> = ({ config, update, update
         </Group>
 
         <Group title="GPS" aside={gpsBadge}>
-          <Toggle
+          <DepToggle
+            entry={deps.get('gps.enabled')}
+            onFix={fix}
             dataField="gps.enabled"
             label="GPS receiver"
             checked={config.gps.enabled}

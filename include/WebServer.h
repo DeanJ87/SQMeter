@@ -201,6 +201,11 @@ namespace SQM
         void processAlerts(const SafetyStatus &status);
 
         static Core::NightState computeNight(const SensorSnapshot &snapshot, const Config &cfg);
+        // What the settings dependencies need to know (lib/SettingsDeps).
+        Deps::Facts settingsFacts(const SensorSnapshot &snapshot) const;
+        // Alert channels switched on but inactive, with the reason. Alerts
+        // being off doesn't block: tests work while alerts are off.
+        ChannelBlocks channelBlocks(const SensorSnapshot &snapshot) const;
         // "HH:MM" and "YYYY-MM-DD" in the device's time zone, or "--:--"/"--" before the clock is set.
         static void localClock(std::string &timeText, std::string &dateText);
         void publishMqttSafety(const SafetyStatus &status);

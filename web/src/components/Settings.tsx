@@ -18,9 +18,19 @@ import SensorsTab from './settings/SensorsTab';
 import { SETTINGS_TABS, locationQuery, tabForErrorPath, tabFromLocation, type SettingsTabId } from './settings/tabs';
 import TimeTab from './settings/TimeTab';
 import { listReasons, restartReasons } from './settings/restart';
+import { DEP_LABELS } from './settings/depLabels';
 import { showToast } from './toast';
-import { Button } from './ui';
+import { Button, Note } from './ui';
 import { nextTabIndex, scrollBehavior } from '../lib/a11y';
+import {
+  effectiveEntries,
+  fetchEffectiveReport,
+  fixTarget,
+  previewInactive,
+  viewOf,
+  type DepEntry,
+  type EffectiveReport,
+} from '../lib/settingsDeps';
 
 const STATUS_REFRESH_MS = 10000;
 
@@ -37,6 +47,16 @@ const setPath = (target: Config, path: ConfigPath, value: unknown): Config => {
   return root;
 };
 
+// Saving would switch these off in practice (FR-006); harmless defaults aren't news.
+const SavePreview: FunctionalComponent<{ entries: DepEntry[] }> = ({ entries }) =>
+  entries.length === 0 ? null : (
+    <Note tone="warn">
+      <span data-preview="inactive">
+        Saving makes these inactive: {entries.map((e) => `${DEP_LABELS[e.setting] ?? e.setting} (${e.text})`).join(', ')}.
+      </span>
+    </Note>
+  );
+
 const Settings: FunctionalComponent = () => {
   const initial = tabFromLocation(typeof window !== 'undefined' ? locationQuery(window.location) : '');
   const [tab, setTab] = useState<SettingsTabId>(initial.tab);
@@ -49,11 +69,16 @@ const Settings: FunctionalComponent = () => {
   const [originalWifiSsid, setOriginalWifiSsid] = useState<string | null>(null);
   const pendingAnchor = useRef<string | undefined>(initial.anchor);
 
-  const loadStatus = () =>
-    fetch('/api/status')
+  // What the device says is in effect (specs/020-settings-dependencies).
+  const [effective, setEffective] = useState<EffectiveReport | null>(null);
+
+  const loadStatus = () => {
+    void fetchEffectiveReport().then((report) => report && setEffective(report));
+    return fetch('/api/status')
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => data && setStatus(data))
       .catch(() => undefined);
+  };
 
   useEffect(() => {
     (async () => {
@@ -211,6 +236,12 @@ const Settings: FunctionalComponent = () => {
     return <div class="empty-state tone-red">Failed to load configuration</div>;
   }
 
+  const fix = (entry: DepEntry) => {
+    const target = fixTarget(entry);
+    if ('restart' in target) void restart();
+    else if (SETTINGS_TABS.some((t) => t.id === target.tab)) goTo(target.tab as SettingsTabId, target.anchor);
+  };
+
   const onTabKey = (event: KeyboardEvent) => {
     const index = SETTINGS_TABS.findIndex(({ id }) => id === tab);
     const next = nextTabIndex(event.key, index, SETTINGS_TABS.length);
@@ -231,6 +262,8 @@ const Settings: FunctionalComponent = () => {
     status,
     dirty,
     goTo,
+    deps: viewOf(effectiveEntries(config, effective, dirty)),
+    fix,
   };
 
   return (
@@ -273,6 +306,7 @@ const Settings: FunctionalComponent = () => {
         {tab === 'alerts' && <AlertsTab {...props} />}
       </div>
 
+      <SavePreview entries={previewInactive(config, saved, effective, dirty)} />
       {dirty && (
         <div class="save-bar">
           <span class="save-bar-state">Unsaved changes</span>

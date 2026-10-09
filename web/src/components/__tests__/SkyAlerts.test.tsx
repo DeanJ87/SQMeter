@@ -2,17 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import Settings from '../Settings';
-import { mockStatus } from '../../mocks/data';
+import { mockConfig, mockStatus } from '../../mocks/data';
 import { server } from '../../test/mswServer';
+import { mockDevice } from '../../test/mockDevice';
 
 describe('Sky alerts', () => {
   it("blocks 'only when it's dark' without a location, and points to Location", async () => {
     server.use(http.get('/api/status', () => HttpResponse.json({ ...mockStatus, sky: { locationSource: 'none', nightKnown: false } })));
+    mockDevice({ config: { alerts: { ...mockConfig.alerts!, skyNightOnly: false } }, facts: { gpsFix: false } });
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);
 
     await waitFor(() => expect(screen.getByText('Needs your location.')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Set up'));
+    fireEvent.click(screen.getAllByText('Set location')[0]);
     expect(await screen.findByRole('tab', { name: 'Time & Location', selected: true })).toBeInTheDocument();
 
     fireEvent.input(screen.getByPlaceholderText('51.4779, -0.0015'), { target: { value: '51.4779, -0.0015' } });

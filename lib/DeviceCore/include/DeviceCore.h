@@ -20,6 +20,7 @@
 #include "Readings.h"
 #include "SafetyEvaluator.h"
 #include "SafetyStatus.h"
+#include "SettingsDeps.h"
 #include "SensorTypes.h"
 #include "calculations/CloudDetection.h"
 #include "calculations/Dewpoint.h"
@@ -83,6 +84,10 @@ namespace SQM
         // Per-sensor health (/api/status "sensors").
         void writeSensorHealth(JsonObject sensors, const Readings::Snapshot &readings, const Config &cfg);
 
+        // The sensor and GPS facts settings dependencies need (the caller
+        // adds network, clock and Bluetooth facts).
+        void sensorFacts(Deps::Facts &facts, const SensorSnapshot &snapshot, const Readings::Snapshot &readings);
+
         // Safety verdict inputs and limits.
         Alpaca::SafetyInputs safetyInputs(const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
         Alpaca::SafetyThresholds safetyThresholds(const Config &cfg);
@@ -145,6 +150,9 @@ namespace SQM
         // When alerts go out: the setting, and the /api/alerts/armed document
         // (also /api/status "alerts").
         Alerts::SendMode sendMode(const Config &cfg);
+        // The mode the schedule acts on: the saved one, or "any time" while Alpaca
+        // is off (specs/020-settings-dependencies D-12).
+        Alerts::SendMode effectiveSendMode(const Config &cfg);
         void writeAlertSchedule(JsonObject target, const Alerts::ScheduleState &state, const Config &cfg, uint32_t nowMs);
 
         // One alert pass: the engine's raw alerts given their configured

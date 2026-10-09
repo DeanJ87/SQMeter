@@ -1,4 +1,5 @@
 import type { Config, SystemStatus } from '../../types';
+import type { DepEntry, EffectiveView } from '../../lib/settingsDeps';
 import type { Hardware } from './hardware';
 import type { SettingsTabId } from './tabs';
 
@@ -18,4 +19,8 @@ export interface SettingsTabProps {
   status: SystemStatus | null;
   dirty: boolean; // unsaved changes exist
   goTo: (tab: SettingsTabId, anchor?: string) => void;
+  // Whether each dependent setting is in effect (specs/020-settings-dependencies).
+  deps: EffectiveView;
+  // The one-click fix for an inactive setting: go to its dependency, or restart.
+  fix: (entry: DepEntry) => void;
 }

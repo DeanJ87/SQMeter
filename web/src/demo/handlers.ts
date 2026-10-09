@@ -74,6 +74,7 @@ export const demoHandlers = [
   ),
   http.get('/api/safety/history', () => json(demoDevice.safetyHistory())),
   http.get('/api/safety', () => json(demoDevice.safety())),
+  http.get('/api/settings/effective', () => json(demoDevice.effective())),
 
   // Settings
   http.get('/api/config', () => json(demoDevice.getConfig())),

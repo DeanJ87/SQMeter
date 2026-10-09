@@ -166,7 +166,7 @@ namespace SQM
                 Rain,
                 Wind,
                 Safety,
-                Always,
+                AlertsSwitch,
             };
 
             struct Entity
@@ -263,7 +263,7 @@ namespace SQM
                  nullptr,
                  "mdi:compass"},
                 {"binary_sensor", "safety", "Observatory", Group::Safety, nullptr, nullptr, nullptr, "safety", nullptr},
-                {"switch", "alerts", "Alerts", Group::Always, nullptr, nullptr, nullptr, nullptr, "mdi:bell-ring"},
+                {"switch", "alerts", "Alerts", Group::AlertsSwitch, nullptr, nullptr, nullptr, nullptr, "mdi:bell-ring"},
             };
 
             bool enabled(Group group, const Groups &groups, bool safety)
@@ -282,7 +282,8 @@ namespace SQM
                     return groups.wind;
                 case Group::Safety:
                     return safety;
-                case Group::Always:
+                case Group::AlertsSwitch:
+                    return groups.alertsSwitch;
                 default:
                     return true;
                 }
@@ -329,7 +330,7 @@ namespace SQM
                     doc["payload_on"] = "0";
                     doc["payload_off"] = "1";
                 }
-                else if (entity.group == Group::Always)
+                else if (entity.group == Group::AlertsSwitch)
                 {
                     doc["state_topic"] = base + "/alerts/armed";
                     doc["command_topic"] = base + "/alerts/armed/set";
