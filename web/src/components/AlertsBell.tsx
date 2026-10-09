@@ -1,13 +1,13 @@
-import { FunctionalComponent } from 'preact';
+import { FunctionalComponent, RefObject } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { route } from 'preact-router';
-import type { AlertRecord, AlertsRecent } from '../types';
+import type { AlertRecord } from '../types';
+import { useAlertsRecent } from '../hooks/useAlertsRecent';
 import { Button, Note } from './ui';
 import { useAnnounceChange, useDialogFocus } from '../lib/a11y';
 import { t } from '../i18n';
 import { deviceText } from '../i18n/deviceMessage';
 
-const POLL_MS = 20000;
 const SEEN_KEY = 'sqm.alerts.lastSeenId';
 
 const readSeen = () => {
@@ -55,10 +55,67 @@ export const AlertList: FunctionalComponent<{ alerts: AlertRecord[] }> = ({ aler
   </ul>
 );
 
+const BellIcon: FunctionalComponent<{ armed: boolean }> = ({ armed }) => (
+  <svg class="nav-icon-svg" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      stroke="currentColor"
+      stroke-width="1.7"
+      fill="none"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2ZM10 20a2 2 0 0 0 4 0"
+    />
+    {!armed && <path stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M4 4l16 16" />}
+  </svg>
+);
+
+type FlyoutProps = {
+  alerts: AlertRecord[];
+  armed: boolean;
+  top: number;
+  flyout: RefObject<HTMLDivElement>;
+  onSwitch: () => void;
+  onClear: () => void;
+  onClose: () => void;
+};
+
+const AlertsFlyout: FunctionalComponent<FlyoutProps> = ({ alerts, armed, top, flyout, onSwitch, onClear, onClose }) => (
+  <div class="alerts-flyout" role="dialog" aria-labelledby="alerts-flyout-title" ref={flyout} style={{ top: `${top}px` }}>
+    <div class="alerts-flyout-head">
+      <h2 id="alerts-flyout-title" tabIndex={-1} data-autofocus>
+        {/* Shown as "Alerts"; read as "Recent alerts". */}
+        <span class="sr-only">{t('alertsBell.recentAlerts')}</span>
+        <span aria-hidden="true">{t('alertsBell.alerts')}</span>
+      </h2>
+      <Button variant="link" onClick={onSwitch} title={armed ? t('alertsBell.nothingIsSentUntilYou') : undefined}>
+        {armed ? t('alertsBell.pause') : t('alertsBell.resume')}
+      </Button>
+      {alerts.length > 0 && (
+        <Button variant="link" onClick={onClear}>
+          {t('alertsBell.clear')}
+        </Button>
+      )}
+      <Button
+        variant="link"
+        onClick={() => {
+          onClose();
+          route('/settings?tab=alerts');
+        }}
+      >
+        {t('alertsBell.settings')}
+      </Button>
+    </div>
+    {!armed && <Note tone="warn">{t('alertsBell.alertsArePausedNothingIs')}</Note>}
+    {alerts.length === 0 ? <Note>{t('alertsBell.noAlerts')}</Note> : <AlertList alerts={alerts} />}
+  </div>
+);
+
+const unreadCount = (alerts: AlertRecord[], seen: number) => alerts.filter((record) => record.id > seen && record.event !== 'test').length;
+
 // Bell in the header with the last alerts the device sent. Only shown while
 // alerts are switched on.
 const AlertsBell: FunctionalComponent = () => {
-  const [data, setData] = useState<AlertsRecent | null>(null);
+  const { data, armed, switchAlerts, clear } = useAlertsRecent();
   const [open, setOpen] = useState(false);
   // The nav scrolls horizontally on phones, which would clip a dropdown, so
   // the flyout is fixed-positioned under the bell instead.
@@ -72,17 +129,7 @@ const AlertsBell: FunctionalComponent = () => {
   const newestRecord = data?.alerts[0];
   useAnnounceChange(newestRecord?.id, () => (newestRecord ? t('alertsBell.newAlertTitle', { title: newestRecord.title }) : null));
 
-  useEffect(() => {
-    const load = () =>
-      fetch('/api/alerts/recent')
-        .then((response) => (response.ok ? response.json() : null))
-        .then((body: AlertsRecent | null) => body && setData(body))
-        .catch(() => undefined);
-    load();
-    const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
-  }, []);
-
+  // Escape or a click outside closes the flyout.
   useEffect(() => {
     if (!open) return undefined;
     const close = (event: Event) => {
@@ -99,18 +146,7 @@ const AlertsBell: FunctionalComponent = () => {
   if (!data?.enabled) return null;
 
   const newest = data.alerts[0]?.id ?? 0;
-  const unread = data.alerts.filter((record) => record.id > seen && record.event !== 'test').length;
-
-  const armed = data.armed !== false;
-  const switchAlerts = () =>
-    fetch(`${armed ? '/api/alerts/disarm' : '/api/alerts/arm'}?source=ui`, { method: 'POST' })
-      .then((response) => response.ok && setData({ ...data, armed: !armed }))
-      .catch(() => undefined);
-
-  const clear = () =>
-    fetch('/api/alerts/clear', { method: 'POST' })
-      .then((response) => response.ok && setData({ ...data, alerts: [] }))
-      .catch(() => undefined);
+  const unread = unreadCount(data.alerts, seen);
 
   const toggle = () => {
     if (!open && newest > seen) {
@@ -132,54 +168,19 @@ const AlertsBell: FunctionalComponent = () => {
         aria-haspopup="dialog"
         onClick={toggle}
       >
-        <svg class="nav-icon-svg" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            stroke="currentColor"
-            stroke-width="1.7"
-            fill="none"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4l2-2ZM10 20a2 2 0 0 0 4 0"
-          />
-          {!armed && <path stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M4 4l16 16" />}
-        </svg>
+        <BellIcon armed={armed} />
         {unread > 0 && <span class="alerts-bell-count">{unread > 9 ? '9+' : unread}</span>}
       </button>
       {open && (
-        <div
-          class="alerts-flyout"
-          role="dialog"
-          aria-labelledby="alerts-flyout-title"
-          ref={flyout}
-          style={{ top: `${anchorBottom + 6}px` }}
-        >
-          <div class="alerts-flyout-head">
-            <h2 id="alerts-flyout-title" tabIndex={-1} data-autofocus>
-              {/* Shown as "Alerts"; read as "Recent alerts". */}
-              <span class="sr-only">{t('alertsBell.recentAlerts')}</span>
-              <span aria-hidden="true">{t('alertsBell.alerts')}</span>
-            </h2>
-            <Button variant="link" onClick={switchAlerts} title={armed ? t('alertsBell.nothingIsSentUntilYou') : undefined}>
-              {armed ? t('alertsBell.pause') : t('alertsBell.resume')}
-            </Button>
-            {data.alerts.length > 0 && (
-              <Button variant="link" onClick={clear}>
-                {t('alertsBell.clear')}
-              </Button>
-            )}
-            <Button
-              variant="link"
-              onClick={() => {
-                setOpen(false);
-                route('/settings?tab=alerts');
-              }}
-            >
-              {t('alertsBell.settings')}
-            </Button>
-          </div>
-          {!armed && <Note tone="warn">{t('alertsBell.alertsArePausedNothingIs')}</Note>}
-          {data.alerts.length === 0 ? <Note>{t('alertsBell.noAlerts')}</Note> : <AlertList alerts={data.alerts} />}
-        </div>
+        <AlertsFlyout
+          alerts={data.alerts}
+          armed={armed}
+          top={anchorBottom + 6}
+          flyout={flyout}
+          onSwitch={switchAlerts}
+          onClear={clear}
+          onClose={() => setOpen(false)}
+        />
       )}
     </div>
   );

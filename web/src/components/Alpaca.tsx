@@ -1,25 +1,15 @@
 import { FunctionalComponent } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { route } from 'preact-router';
-import type { AlpacaConfiguredDevice, AlpacaDeviceStateItem, AlpacaResponse, Config, SafetyStatus } from '../types';
 import { describeClient } from '../lib/alpacaClients';
 import { useAlpacaClients, type AlpacaClients } from '../hooks/useAlpacaClients';
+import { deviceBasePath, useAlpacaDevices } from '../hooks/useAlpacaDevices';
 import SafetyCard from './SafetyCard';
 import { Button, Card, Note, Pill, ReadingRow } from './ui';
 import { t } from '../i18n';
 import { formatCount, formatNumber, formatTime } from '../i18n/format';
 
 const POLL_INTERVAL_MS = 5000;
-
-const alpacaGet = async <T,>(path: string): Promise<AlpacaResponse<T> | null> => {
-  try {
-    const response = await fetch(path);
-    if (!response.ok) return null;
-    return (await response.json()) as AlpacaResponse<T>;
-  } catch {
-    return null;
-  }
-};
 
 const formatStateValue = (value: unknown): string => {
   if (typeof value === 'number') return Number.isInteger(value) ? formatCount(value) : formatNumber(value, 2);
@@ -58,8 +48,6 @@ const CopyableUrl: FunctionalComponent<{ label: string; url: string; open?: bool
   );
 };
 
-const deviceBasePath = (device: AlpacaConfiguredDevice) => `/api/v1/${device.DeviceType.toLowerCase()}/${device.DeviceNumber}`;
-
 const CLIENT_TONE = { ok: 'tone-green', warn: 'tone-amber', muted: '' } as const;
 
 // Whether an imaging app is checking each device (specs/021).
@@ -80,56 +68,12 @@ const ImagingAppState: FunctionalComponent<{ clients: AlpacaClients | null; enab
   ) : null;
 
 const Alpaca: FunctionalComponent = () => {
-  const [config, setConfig] = useState<Config | null>(null);
-  const [devices, setDevices] = useState<AlpacaConfiguredDevice[] | null>(null);
-  const [deviceStates, setDeviceStates] = useState<Record<string, AlpacaDeviceStateItem[] | null>>({});
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [safety, setSafety] = useState<SafetyStatus | null>(null);
+  const { config, devices, deviceStates, lastUpdated, safety } = useAlpacaDevices(POLL_INTERVAL_MS);
   const clients = useAlpacaClients(POLL_INTERVAL_MS);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
   const port = typeof window !== 'undefined' ? window.location.port || '80' : '80';
-
-  useEffect(() => {
-    fetch('/api/config')
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => setConfig(data))
-      .catch(() => setConfig(null));
-
-    alpacaGet<AlpacaConfiguredDevice[]>('/management/v1/configureddevices').then((response) => setDevices(response?.Value ?? []));
-  }, []);
-
-  useEffect(() => {
-    const pollSafety = () =>
-      fetch('/api/safety')
-        .then((response) => (response.ok ? response.json() : null))
-        .then((data) => setSafety(data))
-        .catch(() => setSafety(null));
-    pollSafety();
-    const timer = setInterval(pollSafety, POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!devices || devices.length === 0) return undefined;
-
-    const poll = async () => {
-      const entries = await Promise.all(
-        devices.map(async (device) => {
-          // source=ui: this page isn't an imaging app watching the device.
-          const response = await alpacaGet<AlpacaDeviceStateItem[]>(`${deviceBasePath(device)}/devicestate?source=ui`);
-          return [device.UniqueID, response && response.ErrorNumber === 0 ? response.Value : null] as const;
-        }),
-      );
-      setDeviceStates(Object.fromEntries(entries));
-      setLastUpdated(new Date());
-    };
-
-    poll();
-    const timer = setInterval(poll, POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [devices]);
 
   const enabled = config?.alpaca?.enabled ?? false;
 

@@ -3,10 +3,10 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
 
-// ESM-compatible __dirname
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// This file's directory (ESM has no __dirname).
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-const SCREENSHOTS_DIR = path.resolve(__dirname, '../../docs/assets/screenshots');
+const SCREENSHOTS_DIR = path.resolve(HERE, '../../docs/assets/screenshots');
 
 fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 

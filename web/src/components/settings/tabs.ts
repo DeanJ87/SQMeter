@@ -44,41 +44,35 @@ export const tabFromLocation = (search: string): { tab: SettingsTabId; anchor?: 
   return { tab: 'device' };
 };
 
-// Which tab owns a validation error path (e.g. "alerts.ntfy.topic").
+// Which tab owns a validation error path (e.g. "alerts.ntfy.topic"); anything else is on Device.
+const ERROR_ROOT_TAB: Record<string, SettingsTabId> = {
+  wifi: 'network',
+  mqtt: 'network',
+  mqttBroker: 'network',
+  mqttPort: 'network',
+  mqttTopic: 'network',
+  mqttInterval: 'network',
+  ntp: 'time',
+  gps: 'time',
+  location: 'time',
+  timezone: 'time',
+  primaryTimeSource: 'time',
+  secondaryTimeSource: 'time',
+  sensor: 'sensors',
+  cloudDetection: 'sensors',
+  rain: 'sensors',
+  wind: 'sensors',
+  sensorInterval: 'sensors',
+  i2cSDA: 'sensors',
+  i2cSCL: 'sensors',
+  i2cPins: 'sensors',
+  i2cFrequency: 'sensors',
+  alpaca: 'safety',
+  alerts: 'alerts',
+  ble: 'device',
+};
+
 export const tabForErrorPath = (path: string): SettingsTabId => {
   const root = path.split('.')[0];
-  switch (root) {
-    case 'wifi':
-    case 'mqtt':
-    case 'mqttBroker':
-    case 'mqttPort':
-    case 'mqttTopic':
-    case 'mqttInterval':
-      return 'network';
-    case 'ntp':
-    case 'gps':
-    case 'location':
-    case 'timezone':
-    case 'primaryTimeSource':
-    case 'secondaryTimeSource':
-      return 'time';
-    case 'sensor':
-    case 'cloudDetection':
-    case 'rain':
-    case 'wind':
-    case 'sensorInterval':
-    case 'i2cSDA':
-    case 'i2cSCL':
-    case 'i2cPins':
-    case 'i2cFrequency':
-      return 'sensors';
-    case 'alpaca':
-      return 'safety';
-    case 'alerts':
-      return 'alerts';
-    case 'ble':
-      return 'device';
-    default:
-      return 'device';
-  }
+  return Object.prototype.hasOwnProperty.call(ERROR_ROOT_TAB, root) ? ERROR_ROOT_TAB[root] : 'device';
 };
