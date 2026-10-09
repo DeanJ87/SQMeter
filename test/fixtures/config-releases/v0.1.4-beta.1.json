@@ -1,0 +1,98 @@
+{
+  "deviceName": "Observatory",
+  "timezone": "UTC",
+  "primaryTimeSource": 0,
+  "secondaryTimeSource": 0,
+  "wifi": {
+    "ssid": "HomeNet",
+    "password": "secret-wifi",
+    "hostname": "roof-sqm",
+    "autoReconnect": true,
+    "reconnectDelayMs": 1000,
+    "maxReconnectDelayMs": 300000
+  },
+  "mqtt": {
+    "enabled": true,
+    "broker": "192.168.1.10",
+    "port": 1883,
+    "username": "mq",
+    "password": "mqpass",
+    "topic": "obs/sqm",
+    "publishIntervalMs": 60000
+  },
+  "ota": {
+    "enabled": false,
+    "password": ""
+  },
+  "auth": {
+    "enabled": true,
+    "username": "admin",
+    "password": "adminpass"
+  },
+  "ntp": {
+    "enabled": true,
+    "server1": "pool.ntp.org",
+    "server2": "time.nist.gov",
+    "timezone": "GMT0BST,M3.5.0/1,M10.5.0",
+    "gmtOffsetSec": 0,
+    "daylightOffsetSec": 0,
+    "syncIntervalMs": 600000
+  },
+  "gps": {
+    "enabled": false,
+    "rxPin": 17,
+    "txPin": 16,
+    "baudRate": 9600
+  },
+  "rain": {
+    "enabled": true,
+    "rxPin": 18,
+    "txPin": 19,
+    "baudRate": 9600,
+    "debugUart": false,
+    "mode": "polling",
+    "resolution": "high",
+    "units": "metric",
+    "pollIntervalMs": 5000,
+    "rainClearDelayMs": 900000,
+    "dailyResetEnabled": false,
+    "dailyResetHour": 0,
+    "dailyResetMinute": 0
+  },
+  "sensor": {
+    "readIntervalMs": 5000,
+    "i2cSDA": 21,
+    "i2cSCL": 22,
+    "i2cFrequency": 100000
+  },
+  "skyAveraging": {
+    "windowSeconds": 90
+  },
+  "skyCalibration": {
+    "enabled": false,
+    "sqmOffset": 0.300000012,
+    "darkVisibleOffset": 0,
+    "darkFullOffset": 0,
+    "darkIrOffset": 0,
+    "darkSampleCount": 0,
+    "darkCalibratedAt": 0
+  },
+  "cloudDetection": {
+    "clearSkyThreshold": -16,
+    "cloudyThreshold": -6,
+    "humidityCorrection": 0.899999976
+  },
+  "alpaca": {
+    "enabled": true,
+    "manualOverrideUnsafe": false,
+    "staleAfterSeconds": 30,
+    "cloudCoverEnabled": true,
+    "cloudCoverUnsafePercent": 70,
+    "sqmMinEnabled": false,
+    "sqmMinSafe": 18.5,
+    "humidityMaxEnabled": false,
+    "humidityMaxSafe": 100,
+    "dewpointMarginEnabled": false,
+    "dewpointMarginMinC": 0
+  }
+}
