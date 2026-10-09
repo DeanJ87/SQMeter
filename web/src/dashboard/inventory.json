@@ -900,6 +900,16 @@
     {
       "match": "deps.D-34",
       "reason": "A constraint: the save is refused, so it is never saved and inactive"
+    },
+    {
+      "match": "status.alerts.recentRevision",
+      "reason": "Change counter: tells the page when to fetch the recent alerts",
+      "shownOn": "Alerts bell"
+    },
+    {
+      "match": "status.configRevision",
+      "reason": "Change counter: tells the page when to reload the settings",
+      "shownOn": "Dashboard, Settings"
     }
   ]
 }

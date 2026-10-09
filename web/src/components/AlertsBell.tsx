@@ -123,7 +123,9 @@ const AlertsBell: FunctionalComponent = () => {
   useDialogFocus(open, flyout, bell);
   // A new alert is announced once (spec 022 FR-009).
   const newestRecord = data?.alerts[0];
-  useAnnounceChange(newestRecord?.id, () => (newestRecord ? t('alertsBell.newAlertTitle', { title: deviceText(newestRecord.title) }) : null));
+  useAnnounceChange(newestRecord?.id, () =>
+    newestRecord ? t('alertsBell.newAlertTitle', { title: deviceText(newestRecord.title) }) : null,
+  );
 
   // Escape or a click outside closes the flyout.
   useEffect(() => {

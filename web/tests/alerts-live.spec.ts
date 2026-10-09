@@ -91,7 +91,11 @@ test('alert surfaces are translated', async ({ page }) => {
   await page.getByRole('navigation').getByRole('button').last().click(); // the bell
   await expect(page.locator('.event-list li').first()).toBeVisible();
   const texts = await visibleTexts(page);
-  const english = texts.filter((text) => leftovers.some((en) => text.includes(en)) || /^Test: |This is how a |Demo: nothing was sent|: (sent|failed|skipped)\b|: level$|: sound$/.test(text));
+  const english = texts.filter(
+    (text) =>
+      leftovers.some((en) => text.includes(en)) ||
+      /^Test: |This is how a |Demo: nothing was sent|: (sent|failed|skipped)\b|: level$|: sound$/.test(text),
+  );
   expect(english).toEqual([]);
 });
 
@@ -106,7 +110,10 @@ test('a new alert reaches the bell without waiting for a poll', async ({ page })
 
 test('a new location reaches Sun & Moon without a reload', async ({ page }) => {
   await page.goto('./#/');
-  const sunMoon = page.locator('section.sq-card').filter({ hasText: /Moon|moon/ }).first();
+  const sunMoon = page
+    .locator('section.sq-card')
+    .filter({ hasText: /Moon|moon/ })
+    .first();
   await expect(sunMoon).toBeVisible();
   await page.waitForTimeout(1500);
   const before = await sunMoon.innerText();

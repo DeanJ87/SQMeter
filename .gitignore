@@ -59,6 +59,6 @@ Thumbs.db
 docs/assets/javascripts/vendor/
 
 # Quality tools venv (tools/quality/requirements.txt)
-.venv-quality/
+.venv-*/
 web/playwright.local.config.ts
 web/*.local.*
