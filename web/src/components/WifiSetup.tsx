@@ -89,9 +89,7 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
       <div class="panel-page compact-page page-enter">
         <Card title={t('wifiSetup.connected')} icon="wifi" tone="green">
           <div class="card-body">
-            <p>
-              {tRich('wifiSetup.joinedReconnect', { ssid: <strong>{phase.ssid}</strong> })}
-            </p>
+            <p>{tRich('wifiSetup.joinedReconnect', { ssid: <strong>{phase.ssid}</strong> })}</p>
             <ul class="wifi-addresses">
               {local && (
                 <li>

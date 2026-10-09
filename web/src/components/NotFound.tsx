@@ -17,9 +17,7 @@ const NotFound: FunctionalComponent = () => {
 
         <div class="not-found-code">404</div>
         <h2 class="not-found-title">{t('notFound.pageNotFound')}</h2>
-        <p>
-          {tRich('notFound.noRoute', { path: <span>{currentPath}</span> })}
-        </p>
+        <p>{tRich('notFound.noRoute', { path: <span>{currentPath}</span> })}</p>
 
         <div class="not-found-actions">
           <button type="button" onClick={() => route('/')}>

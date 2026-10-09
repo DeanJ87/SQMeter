@@ -5,6 +5,7 @@
 //   node tools/i18n/check.mjs --json     the same as JSON [{file, message}] (tools/quality I18N-02)
 //   node tools/i18n/check.mjs --review   also print review flags: glossary misses, possible
 //                                        untranslated English, length over the context limit
+//   node tools/i18n/check.mjs --lang es --file x.json   check one candidate file instead
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -142,15 +143,30 @@ export function checkAll({ review = false } = {}) {
   return { problems, flags };
 }
 
+/** One candidate file, before it is written (tools/i18n/translate.py). */
+export function checkCandidate(code, file, { review = false } = {}) {
+  const problems = [];
+  const en = readJson(path.join(I18N, 'en.json'), problems);
+  const messages = readJson(file, problems);
+  if (!en || !messages) return { problems, flags: [] };
+  problems.push(...checkLanguage(code, en, messages, file));
+  const context = readJson(path.join(I18N, 'en.context.json'), []) ?? {};
+  const glossary = readJson(path.join(GLOSSARY, `${code}.json`), []);
+  return { problems, flags: review ? reviewLanguage(code, en, messages, context, glossary) : [] };
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
-  const { problems, flags } = checkAll({ review: args.includes('--review') });
+  const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+  const review = args.includes('--review');
+  const { problems, flags } = option('--file') ? checkCandidate(option('--lang'), option('--file'), { review }) : checkAll({ review });
   if (args.includes('--json')) {
     process.stdout.write(JSON.stringify(problems) + '\n');
     process.exit(0);
   }
   for (const p of problems) console.log(`${p.file}: ${p.message}`);
   for (const f of flags) console.log(`review: ${f}`);
-  console.log(problems.length ? `${problems.length} problem(s)` : `OK: ${languageCodes().length} languages complete`);
+  const ok = option('--file') ? `OK: ${option('--file')}` : `OK: ${languageCodes().length} languages complete`;
+  console.log(problems.length ? `${problems.length} problem(s)` : ok);
   process.exit(problems.length ? 1 : 0);
 }

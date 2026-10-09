@@ -77,7 +77,11 @@ KINDS = [
     (r"<Note[^>]*>\s*\{t\('KEY'|<p[^>]*>\s*\{t\('KEY'", "a sentence in a note", None),
     (r"<option[^>]*>\s*\{t\('KEY'|label: t\('KEY'", "an option in a list or a short label", 1.6),
     (r"<h[1-6][^>]*>\s*\{t\('KEY'", "a heading", 1.6),
-    (r"metric-label[^>]*>\{t\('KEY'|MetricTile label=\{t\('KEY'|ReadingRow label=\{t\('KEY'|InfoRow label=\{t\('KEY'", "a short label above or beside a reading", 1.5),
+    (
+        r"metric-label[^>]*>\{t\('KEY'|MetricTile label=\{t\('KEY'|ReadingRow label=\{t\('KEY'|InfoRow label=\{t\('KEY'",
+        "a short label above or beside a reading",
+        1.5,
+    ),
     (r"title: t\('KEY'", "an alert title", None),
     (r"(text|description|hint|note): t\('KEY'", "a sentence shown under or beside a control", None),
     (r"\w+: t\('KEY'", "a label in a list or table", 1.6),

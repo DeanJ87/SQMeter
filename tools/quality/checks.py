@@ -206,6 +206,13 @@ def check_i18n() -> list[Finding]:
             findings.append(Finding("I18N-02", item["file"], 1, item["message"]))
     except json.JSONDecodeError:
         sys.exit(f"check.py: tools/i18n/check.mjs failed:\n{out.stderr or out.stdout}")
+    # Generated files: the device message templates and the context notes.
+    for script, target in (("gen_device_catalog.py", "web/src/i18n/en.json"), ("context.py", "web/src/i18n/en.context.json")):
+        out = run([sys.executable, f"tools/i18n/{script}", "--check"])
+        if out.returncode:
+            findings.append(
+                Finding("I18N-02", target, 1, f"out of date: run python3 tools/i18n/{script} ({(out.stdout or out.stderr).strip()[:200]})")
+            )
     return findings
 
 
