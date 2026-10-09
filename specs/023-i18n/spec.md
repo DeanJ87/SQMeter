@@ -151,6 +151,8 @@ Someone whose observatory has no internet still wants Spanish. Visitors to the d
 - **FR-022**: Translations MUST be natural and accurate rather than literal. Each language MUST get a review pass after translation: terminology checked against the glossary, length checked against the context limits, and the safety-critical messages (safe, unsafe, rain detected, alerts paused) back-translated to English and compared. A short review note per language is committed. The translation tool (FR-005) MUST use the same context, glossary and review pass.
 - **FR-023**: No translated label or button may overflow or be clipped at 320 px or 1280 px in any supported language; an automated screenshot check covers every page per language.
 
+- **FR-024** *(added 2026-10-09)*: Switching language MUST show progress on every page until the page reloads: downloading, the device not answering (restarting; the page keeps waiting at the same address), installed, still downloading after a minute, or failed - with the device's reason, what to do (retry, or upload a file made for the running firmware version) and a Retry. After a reload, a language that couldn't load shows the device's reason (e.g. a download interrupted by a restart). *Why: on a device the switch gave no feedback while it downloaded, failed or restarted.*
+
 **Demo**
 
 - **FR-018**: The demo MUST offer the same languages, serving the files from the demo site. Choosing a language follows the device flow (download, store, fallback) without contacting any other site.

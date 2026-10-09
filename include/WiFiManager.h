@@ -71,6 +71,10 @@ namespace SQM
         bool retryPaused = false;
         bool mdnsStarted = false;
         uint32_t stationConnectedAt = 0;
+        // Boot fallback (spec 014): when trying started, and whether the saved
+        // network has been joined since boot.
+        uint32_t startedTryingAt = 0;
+        bool connectedSinceBoot = false;
 
         // Answers DNS from the network task, so phones get replies at once
         // even while the main loop is busy (a light-sensor read takes ~0.7 s).

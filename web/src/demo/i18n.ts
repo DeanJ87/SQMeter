@@ -19,25 +19,51 @@ const linked = typeof location === 'undefined' ? null : new URLSearchParams(loca
 if (linked && isLanguageCode(linked) && linked !== language())
   demoDevice.applyConfig(JSON.stringify({ ...demoDevice.rawConfig(), language: linked }));
 
+// A new language "downloads" for a moment, as on a device. Setting
+// sessionStorage `sqm.demo.languageFail` makes the download fail the way a
+// device does when no language file is published for its firmware, and
+// `interrupted` the way it reports a download a restart cut short (tests).
+const DOWNLOAD_MS = 1500;
+const FAILURES: Record<string, string> = {
+  '1': "Couldn't download the language file for this firmware version",
+  interrupted: "The last language download didn't finish - choose the language again to retry",
+};
+// The language the demo opened in counts as already installed.
+let chosen: { code: string; at: number } | null = null;
+
+const downloadFailure = () => {
+  try {
+    return FAILURES[sessionStorage.getItem('sqm.demo.languageFail') ?? ''];
+  } catch {
+    return undefined;
+  }
+};
+
 export const i18nDocument = () => {
   const code = language();
-  return {
-    language: code,
-    state: code === 'en' ? 'idle' : 'installed',
-    firmwareVersion: VERSION,
-    pack: code === 'en' ? null : { lang: code, version: VERSION, size: 0 },
-  };
+  if (!chosen) chosen = { code, at: 0 };
+  else if (code !== chosen.code) chosen = { code, at: Date.now() };
+  const base = { language: code, firmwareVersion: VERSION };
+  if (code === 'en') return { ...base, state: 'idle', pack: null };
+  if (Date.now() - chosen.at < DOWNLOAD_MS) return { ...base, state: 'downloading', pack: null };
+  const failure = downloadFailure();
+  if (failure) return { ...base, state: 'failed', pack: null, error: failure };
+  return { ...base, state: 'installed', pack: { lang: code, version: VERSION, size: 0 } };
+};
+
+const restartDownload = () => {
+  chosen = { code: language(), at: Date.now() };
 };
 
 const notEnglish = () => language() !== 'en';
 
 export const i18nHandlers = [
   http.get('/api/i18n', () => HttpResponse.json(i18nDocument())),
-  http.post('/api/i18n/install', () =>
-    notEnglish()
-      ? HttpResponse.json({ started: true }, { status: 202 })
-      : HttpResponse.json({ error: 'English is built in' }, { status: 409 }),
-  ),
+  http.post('/api/i18n/install', () => {
+    if (!notEnglish()) return HttpResponse.json({ error: 'English is built in' }, { status: 409 });
+    restartDownload();
+    return HttpResponse.json({ started: true }, { status: 202 });
+  }),
   // As the device: the browser checked the file and says which language it is.
   http.post('/api/i18n/upload', ({ request }) => {
     const lang = new URL(request.url).searchParams.get('lang') ?? '';

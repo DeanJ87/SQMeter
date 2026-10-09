@@ -19,6 +19,7 @@
 #include "calculations/CloudDetection.h"
 #include "sensors/RG15Sensor.h"
 #include "AlpacaDiscovery.h"
+#include "CaptivePortal.h"
 #include "Ipv6Network.h"
 #include "DualStackClient.h"
 #include "NetAddress.h"
@@ -45,6 +46,16 @@ namespace SQM
         std::string setupScreenUrl()
         {
             return std::string("http://") + WiFi.softAPIP().toString().c_str() + "/wifi";
+        }
+
+        // The request came in over the setup hotspot (not the home network),
+        // so it may be sent to the setup screen.
+        bool arrivedViaHotspot(AsyncWebServerRequest *request)
+        {
+            if ((WiFi.getMode() & WIFI_AP) == 0)
+                return false;
+            AsyncClient *client = request->client();
+            return client != nullptr && client->localIP() == WiFi.softAPIP();
         }
 
         // "1"/"0", "on"/"off", "true"/"false", "arm"/"disarm" (any case).
@@ -236,31 +247,35 @@ namespace SQM
 
     void WebServer::handleNotFound(AsyncWebServerRequest *request)
     {
-        String path = request->url();
-        // Alpaca device API: the spec requires HTTP 400 with a plain-text
-        // body for an unknown device type/number, method, or HTTP verb.
-        if (path.startsWith("/api/v1/"))
+        const String path = request->url();
+        const bool hostIsDevice = request->host() == WiFi.softAPIP().toString();
+        switch (CaptivePortal::notFound(path.c_str(), arrivedViaHotspot(request), hostIsDevice))
         {
+        case CaptivePortal::NotFound::AlpacaError:
+            // Alpaca device API: the spec requires HTTP 400 with a plain-text
+            // body for an unknown device type/number, method, or HTTP verb.
             Logger::debug(TAG, "400 Invalid Alpaca request: %s %s", request->methodToString(), path.c_str());
             request->send(400, "text/plain", "Invalid Alpaca device type, device number, method or HTTP verb");
             return;
-        }
-        // In setup mode every hostname resolves here; send other sites'
-        // pages to the setup screen.
-        if ((WiFi.getMode() & WIFI_AP) && !path.startsWith("/api/") && request->host() != WiFi.softAPIP().toString())
-        {
+        case CaptivePortal::NotFound::SetupScreen:
+            // On the hotspot every hostname resolves here; other sites' pages
+            // go to the setup screen. Never over the home network.
             request->redirect(setupScreenUrl().c_str());
             return;
-        }
-        if (path.startsWith("/api/"))
-        {
+        case CaptivePortal::NotFound::ApiError:
             Logger::debug(TAG, "404 Not Found (API): %s", path.c_str());
             request->send(404, "application/json", "{\"error\":\"Not found\"}");
             return;
+        case CaptivePortal::NotFound::FileMissing:
+            // A file the app asked for that isn't there (e.g. /lang.json while
+            // a language downloads): a plain 404, not the app's page.
+            request->send(404, "text/plain", "Not found");
+            return;
+        case CaptivePortal::NotFound::AppPage:
+            Logger::debug(TAG, "SPA fallback for: %s", path.c_str());
+            request->send(LittleFS, "/index.html", "text/html");
+            return;
         }
-        // For all other routes, serve index.html (SPA routing)
-        Logger::debug(TAG, "SPA fallback for: %s", path.c_str());
-        request->send(LittleFS, "/index.html", "text/html");
     }
 
     void WebServer::retryAlpacaIpv6Discovery(uint32_t now)
@@ -394,6 +409,11 @@ namespace SQM
                 HTTP_GET,
                 [](AsyncWebServerRequest *request)
                 {
+                    if (!CaptivePortal::probeOpensSetup(arrivedViaHotspot(request)))
+                    {
+                        handleNotFound(request);
+                        return;
+                    }
                     Logger::info(TAG, "Captive check %s%s -> setup screen", request->host().c_str(), request->url().c_str());
                     request->redirect(setupScreenUrl().c_str());
                 });

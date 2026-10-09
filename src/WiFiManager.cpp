@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include "CaptiveDns.h"
+#include "CaptivePortal.h"
 #include <esp_netif.h>
 
 namespace SQM
@@ -29,6 +30,7 @@ namespace SQM
         WiFi.setHostname(config.hostname.c_str());
         ipv6Wanted = config.ipv6;
         WiFi.onEvent(onWiFiEvent);
+        startedTryingAt = millis();
 
         if (!config.ssid.empty())
         {
@@ -48,11 +50,25 @@ namespace SQM
         {
             if (stationConnectedAt == 0)
                 stationConnectedAt = millis() | 1;
+            connectedSinceBoot = true;
             startMdns();
         }
         else
         {
             stationConnectedAt = 0;
+        }
+
+        // Saved network not joined since boot: open the hotspot too, but only
+        // after a fair wait - a slow router or weak signal at boot shouldn't
+        // put the device into setup mode. A later outage just reconnects.
+        if (!apMode && !connectedSinceBoot &&
+            CaptivePortal::shouldOpenHotspot(!config.ssid.empty(), isConnected(), millis() - startedTryingAt))
+        {
+            Logger::warn(
+                TAG,
+                "Saved network not joined after %lu s, opening the setup hotspot too",
+                static_cast<unsigned long>(CaptivePortal::FALLBACK_AFTER_MS / 1000));
+            startCaptivePortal();
         }
 
         if (apMode)
