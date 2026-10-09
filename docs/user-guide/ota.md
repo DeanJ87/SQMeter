@@ -20,9 +20,11 @@ The **Updates** page can check GitHub Releases directly and update the device it
 In the list, the release you're running is marked **installed** and older ones **older**:
 
 - The installed release can't be installed again: its button reads **Installed**.
-- Choosing an older release turns the button into a red **Downgrade to `<tag>`**, with a warning. Older firmware may not read settings saved by a newer one; if it can't, it starts with defaults and you set it up again from its WiFi hotspot. Releases before v0.2.0-beta.3 also can't check for updates themselves (their release list was too small), so from one of those you update by [uploading](#via-web-ui-manual-upload) the firmware.
+- Choosing an older release turns the button into a red **Downgrade to `<tag>`**, with a warning. Older firmware may not read settings saved by a newer one; if it can't, it starts with defaults and you set it up again from its WiFi hotspot.
 
-The device downloads `sqmeter-firmware-<tag>.bin` and `sqmeter-littlefs-<tag>.bin` directly from `api.github.com` over HTTPS and flashes both before rebooting - firmware and web UI are updated together as a matched pair. The web UI is written first; the device only switches to the new firmware once that's written and checked, so a failure keeps the old firmware running. A failure after the web UI is written can leave the new web UI with the old firmware until you retry. A release only appears in the list if both assets exist for it. On the Bluetooth build the device fetches `sqmeter-ble-firmware-<tag>.bin` instead, so it stays on the Bluetooth build.
+Only releases for this device's partition layout are listed: v0.3 and later (files named `sqmeter-l2-*`). A device on v0.2 doesn't see v0.3 here; it moves to it with the [one-time USB flash](../getting-started/usb-flash.md).
+
+The device downloads `sqmeter-l2-firmware-<tag>.bin` and `sqmeter-l2-littlefs-<tag>.bin` from GitHub over HTTPS and flashes both before rebooting - firmware and web UI are updated together as a matched pair. The web UI is written first; the device only switches to the new firmware once that's written and checked, so a failure keeps the old firmware running. A failure after the web UI is written can leave the new web UI with the old firmware until you retry. A release only appears in the list if both files exist for it. On the Bluetooth build the device fetches `sqmeter-l2-ble-firmware-<tag>.bin` instead, so it stays on the Bluetooth build.
 
 Progress and errors are pushed to the page over the status WebSocket; if the connection to GitHub fails partway through (no internet, DNS, etc.), the device aborts cleanly and keeps running exactly what it was running before - see [How self-update failure handling works](#how-self-update-failure-handling-works) below.
 
@@ -33,7 +35,7 @@ Progress and errors are pushed to the page over the status WebSocket; if the con
 
 ## Via Web UI (Manual Upload)
 
-1. Download `sqmeter-firmware-vX.Y.Z.bin` from [GitHub Releases](https://github.com/DeanJ87/SQMeter/releases)
+1. Download `sqmeter-l2-firmware-vX.Y.Z.bin` (or `sqmeter-l2-ble-firmware-vX.Y.Z.bin` for the Bluetooth build) from [GitHub Releases](https://github.com/DeanJ87/SQMeter/releases)
 2. Open the web UI and go to **Updates**
 3. Under **Manual upload**, choose **Firmware** as the image and select the `.bin` file
 4. Click **Upload**
@@ -41,11 +43,18 @@ Progress and errors are pushed to the page over the status WebSocket; if the con
 
 If switching the device to the new firmware fails once after a complete upload ("Could not activate partition"), it checks the image again and retries the switch before answering; the API reply then includes `"retried": true`.
 
+!!! note "Files the device refuses"
+    Every firmware file carries the partition layout and build it's made for. The device checks it
+    before switching to the new firmware and refuses, with `400` and a reason, a file that isn't for
+    this device: a v0.2 file ("Not firmware for this device..."), the other build ("Wrong build: this
+    device needs the Bluetooth build."), or another layout. A web UI file must fill this device's
+    web UI partition exactly; one made for a different layout is refused before anything is erased.
+
 !!! warning "Don't interrupt"
     Keep the browser open during upload. A power cut mid-flash leaves the slot being written incomplete; it's never booted, so the device keeps starting the firmware it was running.
 
 !!! note "Web UI updates"
-    To update the web UI (the dashboard/settings pages), upload `sqmeter-littlefs-vX.Y.Z.bin` under **Manual upload** with **Web UI (littlefs.bin)** as the image, or use esptool directly. The web UI update doesn't touch the firmware.
+    To update the web UI (the dashboard/settings pages), upload `sqmeter-l2-littlefs-vX.Y.Z.bin` under **Manual upload** with **Web UI (littlefs.bin)** as the image, or use esptool directly. The web UI update doesn't touch the firmware.
 
 !!! warning "Security"
     Updates are open to anyone who can reach the web UI unless **Settings → Device → Security → Password-protect changes** is on. Even then the login is plain HTTP: keep the device on a trusted network and don't expose it through port forwarding.
@@ -60,10 +69,10 @@ The Updates page uses these endpoints:
 |----------|---------|----------|
 | `GET /api/updates/check?track=stable\|beta` | List GitHub releases with a matched firmware+filesystem asset pair, filtered by track | - |
 | `POST /api/updates/apply` | Self-download and flash a specific release. Body: `{"firmwareAssetUrl","firmwareAssetSize","fsAssetUrl","fsAssetSize"}` (from a `check` response entry) | fetched from GitHub |
-| `POST /api/update` | Manual firmware upload | `sqmeter-firmware-vX.Y.Z.bin` |
-| `POST /api/update/fs` | Manual LittleFS/web UI upload | `sqmeter-littlefs-vX.Y.Z.bin` |
+| `POST /api/update` | Manual firmware upload | `sqmeter-l2-firmware-vX.Y.Z.bin` |
+| `POST /api/update/fs` | Manual LittleFS/web UI upload | `sqmeter-l2-littlefs-vX.Y.Z.bin` |
 
-Both upload endpoints take `multipart/form-data` and return `200 {"success": true}` or `500 {"error": "..."}`. The firmware endpoint reboots automatically after a successful upload.
+Both upload endpoints take `multipart/form-data` and return `200 {"success": true}`, `400 {"error": "..."}` for a file that isn't for this device (nothing was changed), or `500 {"error": "..."}` when writing failed. The device restarts after a successful upload.
 
 ---
 
@@ -96,21 +105,19 @@ If the device is unresponsive over WiFi, fall back to USB:
 
 ```bash
 # Firmware only
-esptool.py --chip esp32 --port PORT --baud 115200 \
-  write_flash 0x10000 sqmeter-firmware-vX.Y.Z.bin
-
-# Full reflash (nuclear option)
-esptool.py --chip esp32 --port PORT --baud 115200 \
-  write_flash 0x0 sqmeter-complete-flash-vX.Y.Z.bin
+esptool.py --chip esp32 --port PORT --baud 460800 \
+  write_flash 0x10000 sqmeter-l2-firmware-vX.Y.Z.bin
 ```
+
+For everything at once (settings kept), use the release's USB package - see [One-time USB flash](../getting-started/usb-flash.md).
 
 ---
 
 ## How OTA Works
 
-The partition table has two app slots (`app0` at `0x10000`, `app1` at `0x190000`). OTA writes the new firmware to the slot that isn't running; the image is verified when the write finishes, and only then is the bootloader pointed at it for the next boot. A partial or corrupt download is therefore never booted.
+The partition table has two app slots (`app0` at `0x10000`, `app1` at `0x1D0000`, 1.75 MB each). OTA writes the new firmware to the slot that isn't running; the image is verified when the write finishes, and only then is the bootloader pointed at it for the next boot. A partial or corrupt download is therefore never booted.
 
-If the new firmware is invalid or fails before it has started, the bootloader goes back to the previous slot. Once the new firmware has started it is kept, even if it misbehaves later, so the way back from a bad release is to install another one (or the previous one) from **Updates**, or over USB.
+A new firmware is only kept once it has started properly: WiFi, the web server and every other service up (since v0.3). If it crashes or restarts before then, the bootloader goes back to the previous slot on the next boot. Once it has started it is kept, even if it misbehaves later, so the way back from a bad release is to install another one (or the previous one) from **Updates**, or over USB.
 
 <!-- diagram: DIA-08
 sources: src/OtaUpdater.cpp#OtaUpdater::runApply src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFirmware src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFilesystem lib/ReleaseLogic/ src/OtaUpdater.cpp#OtaUpdater::checkForUpdate
@@ -157,7 +164,7 @@ sequenceDiagram
     3. **Success**: only after the firmware is verified does the device point the bootloader at the new slot, report 100 % and restart into the new firmware.
     4. **Failure** (no internet, a failed download or write): the device reports the error and the boot slot is unchanged, so the old firmware keeps running. A failure during the web UI write can leave the web UI unusable until a later update succeeds; the REST API and update endpoints still work.
     5. **Manual upload**: the browser sends a firmware or web UI file to the device, which writes it the same way and restarts.
-    6. If the new firmware is invalid or fails before it has started, the bootloader returns to the previous slot; once it has started, it's kept.
+    6. If the new firmware is invalid or fails before it has started properly (WiFi and the web server up), the bootloader returns to the previous slot; once it has started, it's kept.
 
 The LittleFS filesystem update is separate from app OTA slots. It replaces the dashboard/settings assets and preserves NVS configuration, but an interrupted filesystem upload can leave the web UI unavailable until LittleFS is flashed again over USB or a later successful OTA filesystem upload.
 

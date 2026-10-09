@@ -21,6 +21,9 @@ on:
       - 'tools/docs/**'
       - 'web/**'
       - '.github/workflows/docs.yml'
+  # A new release brings new browser-flasher files (spec 027).
+  release:
+    types: [ published ]
 
 # Cancel an in-progress docs deploy when a newer push lands on main.
 concurrency:
@@ -111,6 +114,15 @@ jobs:
       - name: Build MkDocs site
         run: mkdocs build --strict
 
+      # The browser flasher's files (spec 027 FR-019): the newest release's
+      # USB packages, served from sqmeter.dev itself.
+      - name: Browser flasher files
+        run: |
+          python3 -m unittest tools/docs/test_flash_assets.py
+          python3 tools/docs/flash_assets.py --site site
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Accessibility checks (docs)
         run: npx playwright test -c playwright.docs.config.ts
         working-directory: web
@@ -122,7 +134,7 @@ jobs:
       # Pages from DeanJ87/sqmeter-demo (one custom domain per Pages site).
       # site/demo/ is just a redirect for old links.
       - name: Publish demo to demo.sqmeter.dev
-        if: github.event_name == 'push'
+        if: github.event_name != 'pull_request'
         uses: peaceiris/actions-gh-pages@v4
         with:
           deploy_key: ${{ secrets.DEMO_DEPLOY_KEY }}
@@ -141,7 +153,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

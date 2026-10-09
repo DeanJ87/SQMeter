@@ -74,6 +74,7 @@ nav:
   - Live Demo: live-demo.md
   - Getting Started:
     - Flashing Your Device: getting-started/flashing.md
+    - One-time USB flash: getting-started/usb-flash.md
     - Hardware Setup: getting-started/hardware.md
     - First Boot: getting-started/first-setup.md
   - User Guide:

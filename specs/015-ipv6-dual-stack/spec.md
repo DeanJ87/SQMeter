@@ -223,3 +223,15 @@ effect after restart.
 - Constitution VI (trusted-LAN security): global IPv6 addresses change the exposure picture (FR-011).
 - Spec 014 (WiFi setup and mDNS), 007 (ASCOM Alpaca discovery), 008 (alerts), 012 (updates),
   013 (MQTT) - each gains IPv6 behaviour.
+
+## Amendment 2026-10-09 (spec 027)
+
+The firmware moved to Arduino-ESP32 3.x / ESP-IDF 5.5 (spec 027). Its TLS client
+(NetworkClientSecure) and SNTP resolve a host name to both address families, so the IPv4-only
+limitation above (research R6, FR-008 note) no longer applies **to names**: Pushover, ntfy, https
+webhooks, GitHub update checks and downloads, language downloads and NTP reach a name that only has
+an IPv6 address over IPv6, and still prefer IPv4 when a name has both. IPv6 *addresses* typed into
+an https URL or the NTP server field stay refused with the existing messages until they are
+verified on hardware. The web server's IPv6 listener is now the single dual-stack listener that
+`Ipv6Network::listen` owns (the FR-011 peer check still runs before any request is read).
+

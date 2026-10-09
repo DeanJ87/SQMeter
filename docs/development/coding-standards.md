@@ -269,6 +269,7 @@ The device serves the web UI from a 512 KB LittleFS partition that also holds th
 | SIZE-01 | One feature or change grows the device UI's gzipped JS + CSS by at most 10 KB. The current size is recorded in `tools/ui/size-baseline.json`; a change that moves it by more than 2 KB records the new size (`python3 tools/ui/size_check.py --update-baseline`), and CI measures the growth against the record on the branch the pull request merges into. A feature that genuinely needs more records why (`--update-baseline --reason "..."`) and justifies it in its pull request. | auto (`tools/ui/size_check.py`) |
 | SIZE-02 | The UI as stored, plus one language file at its 64 KB limit, plus LittleFS block overhead, uses at most 75% of the smallest LittleFS partition. | auto (`tools/ui/size_check.py`) |
 | SIZE-03 | Text files go onto the device gzipped; demo-only files (the MSW service worker) never do. | auto (`tools/ui/test_ui_size.py`) |
+| SIZE-04 | Each firmware build (`firmware.bin`, standard and Bluetooth) uses at most 95% of its app slot; CI warns above 90% and lists the largest contributors from the linker map. Sizes are recorded in `tools/firmware/size-baseline.json` (kept within 2 KB, `python3 tools/firmware/flash_budget.py --update-baseline`) and each pull request shows the change from its target branch. A build that genuinely needs more than 95% records why (`--update-baseline --reason "..."`). | auto (`tools/firmware/flash_budget.py`) |
 
 ---
 
