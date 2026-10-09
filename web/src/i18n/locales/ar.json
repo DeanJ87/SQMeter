@@ -238,6 +238,7 @@
   "device.language.theDownloadWasIncompleteTryAgain": "لم يكتمل التنزيل: حاول مجددًا",
   "device.language.theLanguageFileIsTooBig": "ملف اللغة كبير جدًا (64 KB كحد أقصى)",
   "device.language.theLanguageFileSChecksumIs": "المجموع الاختباري لملف اللغة مفقود أو تالف",
+  "device.language.theLastLanguageDownloadDidnT": "لم يكتمل آخر تنزيل للغة: اختر اللغة مجددًا لإعادة المحاولة",
   "device.ota.busySendingAlertsTryAgainIn": "مشغول بإرسال التنبيهات: حاول مجددًا بعد قليل",
   "device.ota.downloadFailedHttpHttpcode": "فشل التنزيل (HTTP {httpCode})",
   "device.ota.downloadIncompleteWrittenOfExpectedsizeBytes": "التنزيل غير مكتمل ({written} من {expectedSize} بايت)",

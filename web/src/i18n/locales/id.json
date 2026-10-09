@@ -225,6 +225,7 @@
   "device.language.theDownloadWasIncompleteTryAgain": "Unduhan tidak lengkap: coba lagi",
   "device.language.theLanguageFileIsTooBig": "File bahasa terlalu besar (maksimal 64 KB)",
   "device.language.theLanguageFileSChecksumIs": "Checksum file bahasa hilang atau rusak",
+  "device.language.theLastLanguageDownloadDidnT": "Unduhan bahasa terakhir tidak selesai: pilih bahasa itu lagi untuk mencoba ulang",
   "device.ota.busySendingAlertsTryAgainIn": "Sedang mengirim peringatan: coba lagi sebentar lagi",
   "device.ota.downloadFailedHttpHttpcode": "Unduhan gagal (HTTP {httpCode})",
   "device.ota.downloadIncompleteWrittenOfExpectedsizeBytes": "Unduhan tidak lengkap ({written} dari {expectedSize} byte)",
