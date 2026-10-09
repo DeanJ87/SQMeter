@@ -236,10 +236,18 @@ namespace SQM
             // Imaging app: notified value = "lost"; disconnects wait out the
             // cooldown like any other change.
             Tracker clients[CLIENT_DEVICE_COUNT];
+            bool lostAnnounced[CLIENT_DEVICE_COUNT] = {}; // a "stopped checking" awaiting its "is back"
             bool disconnectPending[CLIENT_DEVICE_COUNT] = {};
             bool disconnectSent = false;
             uint32_t disconnectSentAt = 0;
 
+            enum class ClientChange
+            {
+                None,
+                Lost,
+                Back
+            };
+            ClientChange clientSilence(size_t index, bool silent, bool allowed, uint32_t now, uint32_t cooldown);
             void updateClients(const AlertInputs &inputs, const AlertRules &rules, std::vector<Alert> &alerts);
         };
 

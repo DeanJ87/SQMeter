@@ -141,14 +141,29 @@ void test_client_flapping_respects_cooldown(void)
     rules.cooldownSeconds = 300;
     engine.update(clientInputs(0, true, false), rules);
     TEST_ASSERT_TRUE(hasType(engine.update(clientInputs(130, true, true), rules), AlertType::ClientLost));
-    // Back and silent again inside the cooldown: no more notifications.
+    // A quick return answers the loss straight away, not after the cooldown.
+    TEST_ASSERT_TRUE(hasType(engine.update(clientInputs(140, true, false), rules), AlertType::ClientBack));
+    // Flapping inside the cooldown: no more notifications.
     int sent = 0;
-    for (uint32_t t = 140; t < 400; t += 10)
+    for (uint32_t t = 150; t < 420; t += 10)
         sent += engine.update(clientInputs(t, true, (t / 20) % 2 == 0), rules).size();
     TEST_ASSERT_EQUAL(0, sent);
-    // Back for good: sent once the cooldown has run.
-    TEST_ASSERT_EQUAL(0, engine.update(clientInputs(420, true, false), rules).size());
-    TEST_ASSERT_TRUE(hasType(engine.update(clientInputs(431, true, false), rules), AlertType::ClientBack));
+    // Still silent once the cooldown has run: one more loss, then its one "back".
+    TEST_ASSERT_TRUE(hasType(engine.update(clientInputs(440, true, true), rules), AlertType::ClientLost));
+    std::vector<Alert> alerts = engine.update(clientInputs(450, true, false), rules);
+    TEST_ASSERT_EQUAL(1, alerts.size());
+    TEST_ASSERT_TRUE(hasType(alerts, AlertType::ClientBack));
+    TEST_ASSERT_EQUAL(0, engine.update(clientInputs(460, true, false), rules).size());
+}
+
+void test_client_back_only_answers_a_sent_loss(void)
+{
+    AlertEngine engine;
+    AlertRules rules = clientRules();
+    engine.update(clientInputs(0, true, false), rules);
+    // Silent while not watched (alerts paused): no loss, so no "back" either.
+    engine.update(clientInputs(130, false, true), rules);
+    TEST_ASSERT_FALSE(hasType(engine.update(clientInputs(200, true, false), rules), AlertType::ClientBack));
 }
 
 void test_client_events_ignore_grace_and_darkness(void)
@@ -210,6 +225,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_client_disconnect_after_lost_sends_no_back);
     RUN_TEST(test_client_never_watched_never_alerts);
     RUN_TEST(test_client_flapping_respects_cooldown);
+    RUN_TEST(test_client_back_only_answers_a_sent_loss);
     RUN_TEST(test_client_events_ignore_grace_and_darkness);
     RUN_TEST(test_client_events_off);
     RUN_TEST(test_client_default_wording_names_no_product);

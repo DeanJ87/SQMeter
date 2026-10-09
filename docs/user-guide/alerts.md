@@ -174,7 +174,7 @@ A crash isn't the end of a session: an imaging app that goes silent doesn't paus
 The device notices when an imaging app - anything that talks to its Alpaca devices - stops checking:
 
 - **The imaging app stops checking**: a device had a client (connected, or polling since the device restarted) and no request has reached it for its **Silent for** time - the PC slept, the app crashed or the network dropped. Sent once per loss, at Urgent by default.
-- **The imaging app is back**: the first request after that. Quiet by default.
+- **The imaging app is back**: the first request after that - straight away, even within the cooldown, so every "stops checking" gets exactly one "is back". Quiet by default. A client that keeps dropping out and coming back is still limited by the cooldown on "stops checking".
 - **The imaging app disconnects**: a normal disconnect, e.g. at the end of a session. Off by default; no "stops checking" follows it.
 
 **Silent for** is set per device: **safety monitor** (default 2 min - imaging apps check it every few seconds) and **weather device** (default 10 min - keep it longer than your app's weather interval). 30 seconds to 60 minutes.

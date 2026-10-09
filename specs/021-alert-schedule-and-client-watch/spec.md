@@ -197,9 +197,11 @@ misunderstand without seeing it.
   no "stopped checking" alert is sent. The state the client sees is spec 007's concern.
 - **The imaging app goes silent while alerts are paused by hand**: nothing is sent. The pause is
   respected. The status line still shows the client as silent.
-- **The cooldown** applies per event type, as for other events. A client that flaps between silent
-  and back doesn't produce more than one alert per cooldown period. A change held back during the
-  cooldown is sent when the cooldown ends (spec 008 behaviour).
+- **The cooldown** applies to "stopped checking" as for other events: a client that flaps between
+  silent and back doesn't produce more than one "stopped checking" per cooldown period, and a loss
+  held back during the cooldown is sent when the cooldown ends (spec 008 behaviour). "Is back"
+  answers a sent "stopped checking" straight away, without waiting for that cooldown, so each loss
+  gets exactly one "back" (FR-009); a loss never announced (e.g. while paused) gets no "back".
 - **The "Only when it's dark" settings** don't hold back client alerts. Sessions can start at
   dusk, and a silent client matters at any hour.
 - **The device has no clock** (no NTP or GPS): client alerts still work, because silence is
