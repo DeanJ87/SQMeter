@@ -60,6 +60,8 @@ export function checkLanguage(code, en, messages, file) {
     if (typeof english === 'string') {
       if (typeof value !== 'string') add(`${code}: ${key} must be a string, like English`);
       else if (!value.trim()) add(`${code}: ${key} is empty`);
+      else if (/^\s/.test(english) !== /^\s/.test(value) || /\s$/.test(english) !== /\s$/.test(value))
+        add(`${code}: ${key} must keep English's leading/trailing space (it is joined to other text)`);
       else if (!samePlaceholders(placeholders(english), placeholders(value)))
         add(`${code}: ${key} placeholders {${placeholders(value).join('}, {')}} differ from English {${placeholders(english).join('}, {')}}`);
       continue;
