@@ -139,6 +139,9 @@ export const handlers = [
 
   // REST — config
   http.get('/api/config', () => HttpResponse.json(mockConfig)),
+  http.get('/api/i18n', () =>
+    HttpResponse.json({ language: 'en', state: 'idle', firmwareVersion: mockStatus.firmware?.version ?? '', pack: null }),
+  ),
   http.get('/api/settings/effective', () =>
     HttpResponse.json({ facts: mockFacts, settings: evaluate(mockConfig, mockFacts).map(({ blockedBy: _blockedBy, ...entry }) => entry) }),
   ),

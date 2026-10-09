@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { WiFiNetwork } from '../types';
 import { t } from '../i18n';
+import { deviceError } from '../i18n/deviceMessage';
 
 const POLL_MS = 1000;
 const MAX_POLLS = 15;
@@ -27,7 +28,7 @@ export const useWifiScan = () => {
       for (let i = 0; i < MAX_POLLS && !cancelled.current; i++) {
         const response = await fetch('/api/wifi/scan');
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || t('wifiScan.scanFailed'));
+        if (!response.ok) throw new Error(deviceError(data, t('wifiScan.scanFailed')));
         if (!data.scanning) {
           const seen = new Map<string, WiFiNetwork>();
           for (const n of (data.networks || []) as WiFiNetwork[]) {

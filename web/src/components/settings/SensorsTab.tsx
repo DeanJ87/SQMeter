@@ -17,6 +17,7 @@ import {
   Toggle,
 } from './controls';
 import { t } from '../../i18n';
+import { deviceError } from '../../i18n/deviceMessage';
 
 const ANEMOMETER_PRESETS = [
   { value: '2.4', label: t('settings.sensors.misolArgentSparkfun') },
@@ -67,7 +68,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
         ]);
         setCalibrationResult({ type: 'success', text: t('settings.sensors.darkOffsetSaved') });
       } else {
-        setCalibrationResult({ type: 'error', text: result.error || t('settings.sensors.calibrationFailed') });
+        setCalibrationResult({ type: 'error', text: deviceError(result, t('settings.sensors.calibrationFailed')) });
       }
     } catch {
       setCalibrationResult({ type: 'error', text: t('settings.sensors.couldNotReachTheDevice') });
@@ -96,7 +97,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
                 ? t('settings.sensors.repliedWith', { response: result.rawResponse })
                 : t('settings.sensors.replied'),
             }
-          : { type: 'error', text: result.error || result.hint || t('settings.sensors.noReply') },
+          : { type: 'error', text: deviceError(result, result.hint || t('settings.sensors.noReply')) },
       );
     } catch {
       setRainResult({ type: 'error', text: t('settings.sensors.couldNotReachTheDevice') });

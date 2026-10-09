@@ -4,6 +4,7 @@ import { route } from 'preact-router';
 import type { SafetyStatus } from '../types';
 import { Button, Card, Note, Pill } from './ui';
 import { t } from '../i18n';
+import { deviceText } from '../i18n/deviceMessage';
 
 const verdict = (safety: SafetyStatus) => {
   if (safety.safe) return { text: t('safetyCard.safe'), tone: 'pill-green' };
@@ -15,9 +16,9 @@ const verdict = (safety: SafetyStatus) => {
 
 const formatSince = (ms: number) => {
   const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+  if (seconds < 60) return t('units.secondsShort', { n: seconds });
+  if (seconds < 3600) return t('units.minutes', { m: Math.floor(seconds / 60) });
+  return t('units.hoursMinutes', { h: Math.floor(seconds / 3600), m: Math.floor((seconds % 3600) / 60) });
 };
 
 interface HistoryEntry {
@@ -122,7 +123,7 @@ const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null; showRulesL
         {safety.reasons.length > 0 ? (
           <ul class="reason-list" aria-label={t('safetyCard.unsafeReasons')}>
             {safety.reasons.map((reason) => (
-              <li key={reason}>{reason}</li>
+              <li key={reason}>{deviceText(reason)}</li>
             ))}
           </ul>
         ) : safety.safe ? (
@@ -131,7 +132,7 @@ const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null; showRulesL
           <Note tone="warn">{t('safetyCard.waitingOutTheSafeDelay')}</Note>
         )}
         <Note action={showRulesLink ? { label: t('safetyCard.rules'), onClick: () => route('/settings?tab=safety') } : undefined}>
-          {safety.safe ? t('safetyCard.safe') : t('safetyCard.unsafe')} for {formatSince(safety.changedAgeMs)}
+          {t(safety.safe ? 'safetyCard.safeFor' : 'safetyCard.unsafeFor', { duration: formatSince(safety.changedAgeMs) })}
           {!safety.alpacaEnabled && t('safetyCard.notSharedWithNI')}
         </Note>
         <div class="btn-row">

@@ -17,6 +17,8 @@ import {
 } from './controls';
 import { defaultBleConfig } from './defaults';
 import { t } from '../../i18n';
+import { deviceError } from '../../i18n/deviceMessage';
+import LanguageCard from './LanguageCard';
 
 const randomPasskey = () => {
   const values = new Uint32Array(1);
@@ -41,7 +43,7 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
       const response = await fetch(url, { method: 'POST' });
       const body = await response.json().catch(() => ({}));
       setActionResult(
-        response.ok ? { type: 'success', text: success } : { type: 'error', text: body.error ?? t('settings.device.failed') },
+        response.ok ? { type: 'success', text: success } : { type: 'error', text: deviceError(body, t('settings.device.failed')) },
       );
     } catch {
       setActionResult({ type: 'error', text: t('settings.device.couldNotReachTheDevice') });
@@ -55,6 +57,8 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
           <TextInput dataField="deviceName" value={config.deviceName} onInput={(v) => update(['deviceName'], v)} />
         </Field>
       </SettingsCard>
+
+      <LanguageCard language={config.language ?? 'en'} onChange={(code) => update(['language'], code)} />
 
       <SettingsCard id="security" title={t('settings.device.security')}>
         <Toggle

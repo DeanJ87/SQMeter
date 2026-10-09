@@ -5,6 +5,7 @@ import type { AlertRecord, AlertsRecent } from '../types';
 import { Button, Note } from './ui';
 import { useAnnounceChange, useDialogFocus } from '../lib/a11y';
 import { t } from '../i18n';
+import { deviceText } from '../i18n/deviceMessage';
 
 const POLL_MS = 20000;
 const SEEN_KEY = 'sqm.alerts.lastSeenId';
@@ -37,10 +38,10 @@ export const AlertList: FunctionalComponent<{ alerts: AlertRecord[] }> = ({ aler
     {alerts.map((record) => (
       <li key={record.id}>
         <div class="event-head">
-          <strong>{record.title}</strong>
+          <strong>{deviceText(record.title)}</strong>
           <span>{formatAlertAge(record.ageSeconds)}</span>
         </div>
-        <p>{record.message}</p>
+        <p>{deviceText(record.message)}</p>
         <div class="event-channels">
           {Object.entries(record.channels).map(([channel, result]) => (
             <span key={channel} class={`event-${result?.status ?? 'pending'}`} title={result?.detail}>

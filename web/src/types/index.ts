@@ -490,6 +490,7 @@ export interface AlertsRecent {
 
 export interface Config {
   deviceName: string;
+  language?: string; // "en" or a supported code (specs/023-i18n); older firmware has none
   primaryTimeSource: number; // 0=NTP, 1=GPS
   secondaryTimeSource: number; // 0=NTP, 1=GPS
   wifi: WiFiConfig;

@@ -340,7 +340,7 @@ const Dashboard: FunctionalComponent = () => {
         <Card title={t('dashboard.deviceNetwork')} icon="wifi" tone="cyan">
           <div class="tile-grid two">
             <div class="metric-tile left">
-              <div class="metric-label">Wi-Fi</div>
+              <div class="metric-label">{t('dashboard.wifi')}</div>
               <Pill tone={rssi.tone}>{rssi.label}</Pill>
               <div class="metric-sub mono">{status?.wifi?.rssi ?? '--'} dBm</div>
               <div class="metric-sub">{status?.wifi?.ssid ?? '--'}</div>

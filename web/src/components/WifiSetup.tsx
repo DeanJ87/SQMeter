@@ -5,6 +5,7 @@ import { useWifiScan } from '../hooks/useWifiScan';
 import { Button, Card, Note } from './ui';
 import { Field, TextInput } from './settings/controls';
 import { t } from '../i18n';
+import { deviceError } from '../i18n/deviceMessage';
 
 // Where the "SQM-Setup" hotspot's captive portal lands: pick a network, enter
 // its password, connect. The device saves it and restarts onto that network.
@@ -44,7 +45,7 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setPhase({ kind: 'failed', ssid, text: data.error || t('wifiSetup.theDeviceRefusedTheRequest') });
+        setPhase({ kind: 'failed', ssid, text: deviceError(data, t('wifiSetup.theDeviceRefusedTheRequest')) });
         return;
       }
     } catch {
@@ -99,7 +100,7 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
                 </li>
               )}
               <li>
-                <a href={`http://${phase.ip}`}>http://{phase.ip}</a>
+                <a href={`http://${phase.ip}`}>{`http://${phase.ip}`}</a>
               </li>
             </ul>
             <Note>{t('wifiSetup.theSqmSetupHotspotTurns')}</Note>

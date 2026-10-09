@@ -24,6 +24,8 @@ const SKIP_PROP =
 // Names and units that are the same in every language.
 const KEEP =
   /^(SQMeter|SQMeter Demo|N\.I\.N\.A\.|ASCOM Alpaca|Alpaca|MQTT|ntfy|Pushover|Home Assistant|GitHub|NTP|GPS|BME280|TSL2591|MLX90614|RG-15|ESP32|UTC|SSID|IP|OK)$/;
+// Units are the same in every language (units are their own setting).
+const UNITS = /^(mag\s*\/\s*arcsec²|hPa|m\/s|km\/h|mm\/h|mm|°C|°|%|lux|dBm|ms|s|min|h|KB|MB|Hz|kHz|V|SQM|NELM|HDOP|RSSI)$/;
 const SAFE_CALLS = new Set(['t', 'tMaybe', 'require', 'fetch', 'route', 'querySelector', 'getElementById', 'matchMedia']);
 const SAFE_METHODS =
   /^(log|warn|error|debug|info|getItem|setItem|removeItem|get|has|set|delete|addEventListener|removeEventListener|startsWith|endsWith|includes|split|replace|replaceAll|querySelector|querySelectorAll|closest|matchMedia|setAttribute|getAttribute|removeAttribute|append|toLocaleTimeString|toLocaleDateString|toLocaleString|test|match|send|postMessage|getEntriesByName)$/;
@@ -84,7 +86,10 @@ export function scan(file) {
   };
   const visit = (node) => {
     if (ts.isJsxText(node)) {
-      if (isProse(node.text.replace(/\s+/g, ' '))) add(node, node.text);
+      // Any word in JSX text is UI text, even a fragment between expressions
+      // ("{a} for {b}"); units and names are the exceptions.
+      const text = node.text.replace(/\s+/g, ' ').trim();
+      if (/[A-Za-z]{2,}/.test(text) && !KEEP.test(text) && !UNITS.test(text)) add(node, node.text);
       return;
     }
     if (ts.isJsxAttribute(node) && node.initializer && ts.isStringLiteral(node.initializer)) {

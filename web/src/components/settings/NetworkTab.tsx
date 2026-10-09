@@ -19,6 +19,7 @@ import {
   Toggle,
 } from './controls';
 import { t } from '../../i18n';
+import { deviceError } from '../../i18n/deviceMessage';
 
 type Result = { type: 'success' | 'error'; text: string } | null;
 
@@ -90,7 +91,7 @@ const NetworkTab: FunctionalComponent<SettingsTabProps & { originalWifiSsid: str
       setMqttResult(
         result.success
           ? { type: 'success', text: result.message || t('settings.network.connected') }
-          : { type: 'error', text: result.error || t('settings.network.connectionFailed') },
+          : { type: 'error', text: deviceError(result, t('settings.network.connectionFailed')) },
       );
     } catch {
       setMqttResult({ type: 'error', text: t('settings.network.couldNotReachTheDevice') });

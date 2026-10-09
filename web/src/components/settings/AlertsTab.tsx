@@ -33,6 +33,7 @@ import {
   Toggle,
 } from './controls';
 import { t } from '../../i18n';
+import { deviceError } from '../../i18n/deviceMessage';
 
 const LEVEL_OPTIONS = [
   { value: '0', label: t('settings.alerts.off') },
@@ -254,7 +255,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
       const response = await fetch(`/api/alerts/test?${query}`, { method: 'POST' });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setTestResult({ target, type: 'error', text: body.error ?? t('settings.alerts.testFailed') });
+        setTestResult({ target, type: 'error', text: deviceError(body, t('settings.alerts.testFailed')) });
         return;
       }
       const deadline = Date.now() + 30000;
@@ -307,7 +308,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
           setTestResult(
             response.ok
               ? { target: key, type: 'success', text: t('settings.alerts.ringingPairedPhones') }
-              : { target: key, type: 'error', text: body.error ?? t('settings.alerts.testFailed') },
+              : { target: key, type: 'error', text: deviceError(body, t('settings.alerts.testFailed')) },
           );
         })
         .catch(() => setTestResult({ target: key, type: 'error', text: t('settings.alerts.couldNotReachTheDevice') }));

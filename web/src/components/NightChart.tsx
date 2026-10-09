@@ -179,7 +179,7 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
           <g>
             <line class="now-line" x1={x(now.valueOf())} x2={x(now.valueOf())} y1={PAD.top} y2={PAD.top + plotHeight} />
             <text class="chart-label now-label" x={x(now.valueOf()) + 3} y={PAD.top + 9}>
-              now
+              {t('nightChart.now')}
             </text>
           </g>
         )}

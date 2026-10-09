@@ -7,6 +7,7 @@ import { Button, Card, Note, Pill, ProgressMeter, ReadingRow } from './ui';
 import { showToast } from './toast';
 import { t } from '../i18n';
 import { formatAgeMs, formatUptime } from '../i18n/format';
+import { deviceError } from '../i18n/deviceMessage';
 
 const formatBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
@@ -79,7 +80,7 @@ const System: FunctionalComponent = () => {
       const data = await response.json().catch(() => ({}));
       setRg15Action({
         loading: false,
-        message: response.ok ? successMessage : data.error || t('system.failed'),
+        message: response.ok ? successMessage : deviceError(data, t('system.failed')),
       });
     } catch {
       setRg15Action({ loading: false, message: t('system.couldNotReachTheDevice') });

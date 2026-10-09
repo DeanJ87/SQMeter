@@ -32,6 +32,8 @@ import {
   type EffectiveReport,
 } from '../lib/settingsDeps';
 import { t } from '../i18n';
+import { deviceError } from '../i18n/deviceMessage';
+import { applyLanguage } from '../hooks/useLanguage';
 
 const STATUS_REFRESH_MS = 10000;
 
@@ -212,8 +214,9 @@ const Settings: FunctionalComponent = () => {
         setConfig(payload);
         setValidationErrors({});
         loadStatus();
+        if ((payload.language ?? 'en') !== (saved.language ?? 'en')) void applyLanguage(payload.language ?? 'en');
       } else {
-        showToast({ message: body?.error || t('settings.failedToSaveSettings'), tone: 'bad' });
+        showToast({ message: deviceError(body, t('settings.failedToSaveSettings')), tone: 'bad' });
       }
     } catch {
       showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' });

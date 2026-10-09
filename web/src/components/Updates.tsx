@@ -6,6 +6,7 @@ import { compareVersions, isVersionStale } from '../utils/versionCompare';
 import type { GithubRelease, SystemStatus } from '../types';
 import { Button, Card, Note, ProgressMeter, ReadingRow } from './ui';
 import { t } from '../i18n';
+import { deviceError } from '../i18n/deviceMessage';
 
 type UpdateType = 'firmware' | 'filesystem';
 type ReleaseTrack = 'stable' | 'beta';
@@ -38,7 +39,7 @@ const GithubUpdates: FunctionalComponent = () => {
       const response = await fetch(`/api/updates/check?track=${selectedTrack}`);
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${response.status}`);
+        throw new Error(deviceError(body, `HTTP ${response.status}`));
       }
       const data: GithubRelease[] = await response.json();
       setReleases(data);
@@ -146,7 +147,7 @@ const GithubUpdates: FunctionalComponent = () => {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || body.success !== true) {
-        setApplyStatus(t('updates.failedToStartUpdateValue', { value: body.error || `HTTP ${response.status}` }));
+        setApplyStatus(t('updates.failedToStartUpdateValue', { value: deviceError(body, `HTTP ${response.status}`) }));
         setApplying(false);
         return;
       }
@@ -338,7 +339,7 @@ const Updates: FunctionalComponent = () => {
               setUploading(false);
               setWaitingForReboot(true);
             } else {
-              const errorMsg = response.error || t('updates.unknownError');
+              const errorMsg = deviceError(response, t('updates.unknownError'));
               setStatus(t('updates.uploadFailedErrormsg', { errorMsg }));
               setUploading(false);
             }
@@ -351,7 +352,7 @@ const Updates: FunctionalComponent = () => {
           // Failures carry {"error": "..."} with a 4xx/5xx status.
           let errorMsg = `HTTP ${xhr.status}`;
           try {
-            errorMsg = JSON.parse(xhr.responseText).error || errorMsg;
+            errorMsg = deviceError(JSON.parse(xhr.responseText), errorMsg);
           } catch {
             // not JSON - keep the status code
           }

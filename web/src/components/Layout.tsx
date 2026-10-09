@@ -4,6 +4,8 @@ import { Toaster } from './toast';
 import AlertsBell from './AlertsBell';
 import { LIVE_REGION_ID } from '../lib/a11y';
 import { t } from '../i18n';
+import { languageProblem } from '../i18n/loader';
+import { Note } from './ui';
 
 interface LayoutProps {
   path?: string;
@@ -64,6 +66,17 @@ const TinyIcon: FunctionalComponent<{ name: string }> = ({ name }) => {
   );
 };
 
+// Shown on every page while the chosen language can't load (FR-013).
+const LanguageNotice: FunctionalComponent = () => {
+  const { kind } = languageProblem();
+  if (kind === 'none' || kind === 'otherVersion') return null;
+  return (
+    <Note tone="warn" action={{ label: t('layout.languageSettings'), onClick: () => route('/settings?tab=device&section=language') }}>
+      {kind === 'downloading' ? t('language.problemDownloading') : t('layout.languageUnavailable')}
+    </Note>
+  );
+};
+
 const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
   const [router] = useRouter();
 
@@ -118,6 +131,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
       </header>
 
       <main class="app-main" id="main" tabIndex={-1}>
+        <LanguageNotice />
         {children}
       </main>
       <Toaster />
