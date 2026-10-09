@@ -80,29 +80,29 @@ namespace SQM
     {
         switch (state)
         {
-        case RG15State::RG15_DISABLED:
+        case RG15State::Disabled:
             return "disabled";
-        case RG15State::RG15_CONFIGURED:
+        case RG15State::Configured:
             return "configured";
-        case RG15State::RG15_UART_OPENED:
+        case RG15State::UartOpened:
             return "uart_opened";
-        case RG15State::RG15_CONFIGURING:
+        case RG15State::Configuring:
             return "configuring";
-        case RG15State::RG15_COMMAND_SENT:
+        case RG15State::CommandSent:
             return "command_sent";
-        case RG15State::RG15_AWAITING_RESPONSE:
+        case RG15State::AwaitingResponse:
             return "awaiting_response";
-        case RG15State::RG15_ACKNOWLEDGED:
+        case RG15State::Acknowledged:
             return "acknowledged";
-        case RG15State::RG15_READING_RECEIVED:
+        case RG15State::ReadingReceived:
             return "reading_received";
-        case RG15State::RG15_PARSE_ERROR:
+        case RG15State::ParseError:
             return "parse_error";
-        case RG15State::RG15_TIMEOUT:
+        case RG15State::Timeout:
             return "timeout";
-        case RG15State::RG15_STALE:
+        case RG15State::Stale:
             return "stale";
-        case RG15State::RG15_ONLINE:
+        case RG15State::Online:
             return "online";
         default:
             return "unknown";
@@ -179,7 +179,7 @@ namespace SQM
         diagnostics.responseTimeoutMs = RESPONSE_TIMEOUT_MS;
         diagnostics.staleTimeoutMs = effectiveStaleTimeoutMs();
         diagnostics.uartPort = UART_NUM;
-        diagnostics.state = enabledConfig ? RG15State::RG15_CONFIGURED : RG15State::RG15_DISABLED;
+        diagnostics.state = enabledConfig ? RG15State::Configured : RG15State::Disabled;
     }
 
     void RG15Sensor::updateDiagnosticsState(RG15State state)
@@ -210,7 +210,7 @@ namespace SQM
             diagnostics.uartOpened = false;
             diagnostics.online = false;
             diagnostics.stale = false;
-            updateDiagnosticsState(RG15State::RG15_DISABLED);
+            updateDiagnosticsState(RG15State::Disabled);
             Logger::info(TAG, "RG-15 disabled in configuration");
             return true;
         }
@@ -230,7 +230,7 @@ namespace SQM
         initialized = true;
         diagnostics.uartOpened = true;
         diagnostics.configured = true;
-        updateDiagnosticsState(RG15State::RG15_UART_OPENED);
+        updateDiagnosticsState(RG15State::UartOpened);
 
         if (debugUart)
         {
@@ -269,7 +269,7 @@ namespace SQM
             return;
         }
 
-        updateDiagnosticsState(RG15State::RG15_CONFIGURING);
+        updateDiagnosticsState(RG15State::Configuring);
         diagnostics.lastAck.reset();
         diagnostics.lastRawResponse.reset();
         diagnostics.lastError.reset();
@@ -322,7 +322,7 @@ namespace SQM
             sendCommand('L', "l");
         }
 
-        updateDiagnosticsState(RG15State::RG15_CONFIGURED);
+        updateDiagnosticsState(RG15State::Configured);
     }
 
     bool RG15Sensor::sendCommand(char cmd, const char *expectedAck)
@@ -330,7 +330,7 @@ namespace SQM
         if (!initialized || !serial)
         {
             diagnostics.lastError = "uart_not_opened";
-            updateDiagnosticsState(RG15State::RG15_DISABLED);
+            updateDiagnosticsState(RG15State::Disabled);
             return false;
         }
 
@@ -350,7 +350,7 @@ namespace SQM
         }
         diagnostics.lastError.reset();
 
-        updateDiagnosticsState(RG15State::RG15_COMMAND_SENT);
+        updateDiagnosticsState(RG15State::CommandSent);
 
         if (debugUart)
         {
@@ -370,7 +370,7 @@ namespace SQM
         serial->flush();
         diagnostics.lastBytesWritten = written;
 
-        updateDiagnosticsState(RG15State::RG15_AWAITING_RESPONSE);
+        updateDiagnosticsState(RG15State::AwaitingResponse);
 
         if (!expectedAck)
         {
@@ -411,7 +411,7 @@ namespace SQM
         {
             diagnostics.timeouts++;
             diagnostics.lastError = "timeout_waiting_for_ack";
-            updateDiagnosticsState(RG15State::RG15_TIMEOUT);
+            updateDiagnosticsState(RG15State::Timeout);
             Logger::warn(TAG, "timeout waiting for ack \"%s\" after %u ms", expectedAck, RESPONSE_TIMEOUT_MS);
             return false;
         }
@@ -421,7 +421,7 @@ namespace SQM
         diagnostics.lastRawResponse = ack;
         diagnostics.lastResponseMs = diagnostics.lastAckMs;
         markCommunicationOk();
-        updateDiagnosticsState(RG15State::RG15_ACKNOWLEDGED);
+        updateDiagnosticsState(RG15State::Acknowledged);
 
         if (debugUart)
         {
@@ -459,7 +459,7 @@ namespace SQM
             if (expectedPrefix == nullptr || line.rfind(expectedPrefix, 0) == 0)
             {
                 diagnostics.lastError.reset();
-                updateDiagnosticsState(RG15State::RG15_ACKNOWLEDGED);
+                updateDiagnosticsState(RG15State::Acknowledged);
                 return true;
             }
 
@@ -470,7 +470,7 @@ namespace SQM
 
             diagnostics.parseErrors++;
             diagnostics.lastError = "unexpected_response";
-            updateDiagnosticsState(RG15State::RG15_PARSE_ERROR);
+            updateDiagnosticsState(RG15State::ParseError);
             if (debugUart)
             {
                 Logger::info(TAG, "unexpected response to \"%c\": expected prefix \"%s\"", cmd, expectedPrefix);
@@ -480,7 +480,7 @@ namespace SQM
 
         diagnostics.timeouts++;
         diagnostics.lastError = "timeout_waiting_for_response";
-        updateDiagnosticsState(RG15State::RG15_TIMEOUT);
+        updateDiagnosticsState(RG15State::Timeout);
         if (debugUart)
         {
             Logger::info(TAG, "timeout waiting for response to \"%c\" after %u ms", cmd, RESPONSE_TIMEOUT_MS);
@@ -494,7 +494,7 @@ namespace SQM
 
         if (!initialized)
         {
-            reading.status = enabledConfig ? SensorStatus::NOT_INITIALIZED : SensorStatus::NOT_INITIALIZED;
+            reading.status = enabledConfig ? SensorStatus::NotInitialized : SensorStatus::NotInitialized;
             reading.online = false;
             reading.stale = false;
             return;
@@ -524,8 +524,8 @@ namespace SQM
             {
                 reading.online = diagnostics.online;
                 reading.stale = enabledConfig;
-                reading.status = SensorStatus::TIMEOUT;
-                updateDiagnosticsState(RG15State::RG15_TIMEOUT);
+                reading.status = SensorStatus::Timeout;
+                updateDiagnosticsState(RG15State::Timeout);
                 return;
             }
 
@@ -534,17 +534,17 @@ namespace SQM
             const uint32_t staleTimeoutMs = effectiveStaleTimeoutMs();
             if (lastProofMs == 0 || proofAge > staleTimeoutMs)
             {
-                if (reading.status == SensorStatus::OK)
+                if (reading.status == SensorStatus::Ok)
                 {
                     Logger::warn(TAG, "No data for %u ms, marking stale", staleTimeoutMs);
                 }
-                reading.status = SensorStatus::TIMEOUT;
+                reading.status = SensorStatus::Timeout;
                 reading.online = diagnostics.online;
                 reading.stale = true;
-                updateDiagnosticsState(RG15State::RG15_STALE);
+                updateDiagnosticsState(RG15State::Stale);
                 diagnostics.stale = true;
             }
-            else if (reading.status != SensorStatus::OK)
+            else if (reading.status != SensorStatus::Ok)
             {
                 reading.online = diagnostics.online;
                 reading.stale = false;
@@ -557,7 +557,7 @@ namespace SQM
         if (!initialized || !serial)
         {
             diagnostics.lastError = "uart_not_opened";
-            updateDiagnosticsState(RG15State::RG15_DISABLED);
+            updateDiagnosticsState(RG15State::Disabled);
             return false;
         }
 
@@ -610,10 +610,10 @@ namespace SQM
 
         diagnostics.timeouts++;
         diagnostics.lastError = "timeout_waiting_for_response";
-        updateDiagnosticsState(RG15State::RG15_TIMEOUT);
+        updateDiagnosticsState(RG15State::Timeout);
         reading.online = diagnostics.online;
         reading.stale = true;
-        reading.status = SensorStatus::TIMEOUT;
+        reading.status = SensorStatus::Timeout;
         if (debugUart)
         {
             Logger::info(TAG, "timeout waiting for response after %u ms", RESPONSE_TIMEOUT_MS);
@@ -662,7 +662,7 @@ namespace SQM
                 diagnostics.lastAck = line;
                 diagnostics.lastAckMs = diagnostics.lastResponseMs;
                 diagnostics.lastError.reset();
-                updateDiagnosticsState(RG15State::RG15_ACKNOWLEDGED);
+                updateDiagnosticsState(RG15State::Acknowledged);
                 if (debugUart)
                 {
                     Logger::info(TAG, "RX async ack \"%s\"", line.c_str());
@@ -739,16 +739,16 @@ namespace SQM
 
     bool RG15Sensor::handleRainLine(const std::string &line)
     {
-        updateDiagnosticsState(RG15State::RG15_READING_RECEIVED);
+        updateDiagnosticsState(RG15State::ReadingReceived);
 
         if (!parseLine(line))
         {
             diagnostics.parseErrors++;
             diagnostics.lastError = "parse_failed_expected_fields";
-            updateDiagnosticsState(RG15State::RG15_PARSE_ERROR);
+            updateDiagnosticsState(RG15State::ParseError);
             reading.online = diagnostics.online;
             reading.stale = true;
-            reading.status = SensorStatus::INVALID_DATA;
+            reading.status = SensorStatus::InvalidData;
             if (debugUart)
             {
                 Logger::info(TAG, "parse failed: expected Acc/EventAcc/TotalAcc/RInt fields");
@@ -763,7 +763,7 @@ namespace SQM
         reading.online = true;
         reading.stale = false;
         reading.ageMs = 0;
-        updateDiagnosticsState(RG15State::RG15_ONLINE);
+        updateDiagnosticsState(RG15State::Online);
 
         if (debugUart)
         {
@@ -890,7 +890,7 @@ namespace SQM
 
         reading.timestamp = millis();
         reading.ageMs = 0;
-        reading.status = SensorStatus::OK;
+        reading.status = SensorStatus::Ok;
         reading.online = true;
         reading.stale = false;
         lastUpdateTime = reading.timestamp;
@@ -1152,7 +1152,7 @@ namespace SQM
         diagnostics.online = false;
         reading.online = false;
         reading.stale = true;
-        updateDiagnosticsState(RG15State::RG15_COMMAND_SENT);
+        updateDiagnosticsState(RG15State::CommandSent);
         return ok;
     }
 
@@ -1177,7 +1177,7 @@ namespace SQM
         diagnostics.uartOpened = false;
         diagnostics.online = false;
         diagnostics.stale = false;
-        updateDiagnosticsState(RG15State::RG15_DISABLED);
+        updateDiagnosticsState(RG15State::Disabled);
         Logger::info(TAG, "RG-15 stopped");
     }
 

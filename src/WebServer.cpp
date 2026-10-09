@@ -1624,7 +1624,7 @@ namespace SQM
         const RG15Reading reading = rg15Sensor.copyReading();
         const RG15Diagnostics diagnostics = rg15Sensor.getDiagnostics();
         const uint32_t now = millis();
-        const bool success = ok && reading.status == SensorStatus::OK;
+        const bool success = ok && reading.status == SensorStatus::Ok;
 
         // Success: 200 {"success": true, ...}; failure: 502 {"error": ..., ...}.
         // Both carry what was sent and received, for bring-up.

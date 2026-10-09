@@ -80,20 +80,20 @@ namespace SQM
         // detect which reasons appeared/cleared without string matching.
         enum UnsafeReasonFlag : uint32_t
         {
-            UNSAFE_MANUAL_OVERRIDE = 1u << 0,
-            UNSAFE_NO_DATA = 1u << 1,
-            UNSAFE_STALE_DATA = 1u << 2,
-            UNSAFE_SENSOR_FAULT = 1u << 3,
-            UNSAFE_CLOUD_COVER = 1u << 4,
-            UNSAFE_SKY_BRIGHT = 1u << 5,
-            UNSAFE_HUMIDITY = 1u << 6,
-            UNSAFE_DEWPOINT = 1u << 7,
-            UNSAFE_ENVIRONMENT_FAULT = 1u << 8,
-            UNSAFE_RAIN = 1u << 9,
-            UNSAFE_RAIN_SENSOR_FAULT = 1u << 10,
-            UNSAFE_WIND = 1u << 11,
-            UNSAFE_WIND_GUST = 1u << 12,
-            UNSAFE_WIND_SENSOR_FAULT = 1u << 13,
+            UnsafeManualOverride = 1u << 0,
+            UnsafeNoData = 1u << 1,
+            UnsafeStaleData = 1u << 2,
+            UnsafeSensorFault = 1u << 3,
+            UnsafeCloudCover = 1u << 4,
+            UnsafeSkyBright = 1u << 5,
+            UnsafeHumidity = 1u << 6,
+            UnsafeDewpoint = 1u << 7,
+            UnsafeEnvironmentFault = 1u << 8,
+            UnsafeRain = 1u << 9,
+            UnsafeRainSensorFault = 1u << 10,
+            UnsafeWind = 1u << 11,
+            UnsafeWindGust = 1u << 12,
+            UnsafeWindSensorFault = 1u << 13,
         };
 
         struct SafetyResult

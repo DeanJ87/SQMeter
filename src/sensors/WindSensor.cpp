@@ -76,7 +76,7 @@ namespace SQM
             analogSetPinAttenuation(settings.directionPin, ADC_11db);
         attached = true;
         lastSampleAt = millis();
-        reading.status = SensorStatus::OK;
+        reading.status = SensorStatus::Ok;
         Logger::info(
             TAG,
             "Anemometer on GPIO%u (%.3f km/h per Hz)%s",
@@ -97,7 +97,7 @@ namespace SQM
     {
         if (!settings.enabled || !attached || !aggregator)
         {
-            reading.status = SensorStatus::NOT_INITIALIZED;
+            reading.status = SensorStatus::NotInitialized;
             return;
         }
 
@@ -138,7 +138,7 @@ namespace SQM
         reading.directionValid = settings.directionEnabled && !reading.vaneFault && aggregator->directionDeg(avgDirection);
         reading.directionDeg = reading.directionValid ? avgDirection : 0.0f;
         reading.timestamp = now;
-        reading.status = SensorStatus::OK;
+        reading.status = SensorStatus::Ok;
         lastUpdateTime = now;
     }
 

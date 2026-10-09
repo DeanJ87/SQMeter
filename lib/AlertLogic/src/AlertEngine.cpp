@@ -252,11 +252,11 @@ namespace SQM
                         const std::string reasons =
                             in.unsafeReasons.empty() ? std::string("Safety rules failing") : joinReasons(in.unsafeReasons);
                         alerts.push_back(make(AlertType::Unsafe, "Observatory UNSAFE", reasons));
-                        std::string inline_;
+                        std::string reasonsInline;
                         for (const std::string &reason : in.unsafeReasons)
-                            inline_ += (inline_.empty() ? "" : "; ") + reason;
+                            reasonsInline += (reasonsInline.empty() ? "" : "; ") + reason;
                         alerts.back().vars = {
-                            {"reasons", reasons}, {"reasons_inline", inline_}, {"reason_count", std::to_string(in.unsafeReasons.size())}};
+                            {"reasons", reasons}, {"reasons_inline", reasonsInline}, {"reason_count", std::to_string(in.unsafeReasons.size())}};
                     }
                     else
                         alerts.push_back(make(AlertType::Safe, "Observatory safe", "All enabled safety rules pass."));

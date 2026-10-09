@@ -43,17 +43,10 @@ namespace SQM
         // Conservative thresholds for astronomical observations (zenith sensor)
         // Errs on the side of caution - better to overestimate cloud cover
         if (correctedDelta < clearThreshold)
-        {
             return CloudCondition::CLEAR;
-        }
-        else if (correctedDelta < cloudyThreshold)
-        {
+        if (correctedDelta < cloudyThreshold)
             return CloudCondition::CLOUDY;
-        }
-        else
-        {
-            return CloudCondition::OVERCAST;
-        }
+        return CloudCondition::OVERCAST;
     }
 
     float CloudDetection::estimateCloudCover(float correctedDelta, float clearThreshold, float cloudyThreshold)
@@ -61,22 +54,15 @@ namespace SQM
         // Linear interpolation between clear and overcast thresholds
 
         if (correctedDelta < clearThreshold)
-        {
             return 0.0f; // Truly clear
-        }
-        else if (correctedDelta >= cloudyThreshold)
-        {
+        if (correctedDelta >= cloudyThreshold)
             return 100.0f; // Overcast
-        }
-        else
-        {
-            // Linear interpolation in the cloudy range
-            float range = cloudyThreshold - clearThreshold;
-            float position = correctedDelta - clearThreshold;
-            float percent = (position / range) * 100.0f;
 
-            return std::max(0.0f, std::min(100.0f, percent));
-        }
+        // Linear interpolation in the cloudy range
+        float range = cloudyThreshold - clearThreshold;
+        float position = correctedDelta - clearThreshold;
+        float percent = (position / range) * 100.0f;
+        return std::max(0.0f, std::min(100.0f, percent));
     }
 
     const char *CloudDetection::getConditionDescription(CloudCondition condition)

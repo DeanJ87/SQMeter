@@ -24,9 +24,9 @@ namespace SQM
             // ok unless the driver reports a problem or the last good reading is too old.
             Readings::Status readingStatus(SensorStatus status, bool initialized, uint32_t lastUpdate, uint32_t now, uint32_t staleAfter)
             {
-                if (!initialized || status == SensorStatus::NOT_INITIALIZED)
+                if (!initialized || status == SensorStatus::NotInitialized)
                     return Readings::Status::Missing;
-                if (status != SensorStatus::OK)
+                if (status != SensorStatus::Ok)
                     return Readings::Status::Error;
                 if (lastUpdate == 0 || now - lastUpdate > staleAfter)
                     return Readings::Status::Stale;
@@ -52,29 +52,29 @@ namespace SQM
             {
                 switch (state)
                 {
-                case RG15State::RG15_DISABLED:
+                case RG15State::Disabled:
                     return "disabled";
-                case RG15State::RG15_CONFIGURED:
+                case RG15State::Configured:
                     return "configured";
-                case RG15State::RG15_UART_OPENED:
+                case RG15State::UartOpened:
                     return "uart_opened";
-                case RG15State::RG15_CONFIGURING:
+                case RG15State::Configuring:
                     return "configuring";
-                case RG15State::RG15_COMMAND_SENT:
+                case RG15State::CommandSent:
                     return "command_sent";
-                case RG15State::RG15_AWAITING_RESPONSE:
+                case RG15State::AwaitingResponse:
                     return "awaiting_response";
-                case RG15State::RG15_ACKNOWLEDGED:
+                case RG15State::Acknowledged:
                     return "acknowledged";
-                case RG15State::RG15_READING_RECEIVED:
+                case RG15State::ReadingReceived:
                     return "reading_received";
-                case RG15State::RG15_PARSE_ERROR:
+                case RG15State::ParseError:
                     return "parse_error";
-                case RG15State::RG15_TIMEOUT:
+                case RG15State::Timeout:
                     return "timeout";
-                case RG15State::RG15_STALE:
+                case RG15State::Stale:
                     return "stale";
-                case RG15State::RG15_ONLINE:
+                case RG15State::Online:
                     return "online";
                 default:
                     return "unknown";
@@ -143,7 +143,7 @@ namespace SQM
 
             bool windFresh(const WindReading &wind, uint32_t now)
             {
-                return wind.status == SensorStatus::OK && wind.timestamp != 0 && ageMs(now, wind.timestamp) <= WIND_STALE_MS;
+                return wind.status == SensorStatus::Ok && wind.timestamp != 0 && ageMs(now, wind.timestamp) <= WIND_STALE_MS;
             }
         } // namespace
 
@@ -159,7 +159,7 @@ namespace SQM
         void derive(SensorSnapshot &snapshot, const Config &cfg)
         {
             snapshot.sky = SkyQuality::calculate(snapshot.tsl.lux);
-            snapshot.humidityMeasured = snapshot.bmeInitialized && snapshot.bme.status == SensorStatus::OK;
+            snapshot.humidityMeasured = snapshot.bmeInitialized && snapshot.bme.status == SensorStatus::Ok;
             snapshot.cloudHumidity = snapshot.humidityMeasured ? snapshot.bme.humidity : ASSUMED_HUMIDITY_PERCENT;
             snapshot.cloud = CloudDetection::calculate(
                 snapshot.mlx.objectTemp,
@@ -197,7 +197,7 @@ namespace SQM
             r.sky.sqm = sky.sqm;
             r.sky.rawSqm = tsl.rawSqm;
             r.sky.nelm = sky.nelm;
-            r.sky.bortle = static_cast<int>(sky.bortle + 0.5f);
+            r.sky.bortle = static_cast<int>(std::lround(sky.bortle));
             r.sky.description = SkyQuality::getBortleDescription(sky.bortle);
             r.sky.calibrated = snapshot.tslDiagnostics.calibrated;
             r.sky.averagingWindowSeconds = snapshot.tslDiagnostics.averagingWindowSeconds;
@@ -230,7 +230,7 @@ namespace SQM
             {
                 const GPSReading &gps = snapshot.gps;
                 r.gps.status = snapshot.gpsInitialized
-                                   ? (gps.status == SensorStatus::OK || gps.status == SensorStatus::TIMEOUT ? Readings::Status::Ok
+                                   ? (gps.status == SensorStatus::Ok || gps.status == SensorStatus::Timeout ? Readings::Status::Ok
                                                                                                             : Readings::Status::Error)
                                    : Readings::Status::Missing;
                 r.gps.ageMs = gps.age;
@@ -266,8 +266,8 @@ namespace SQM
             if (r.wind.present)
             {
                 const WindReading &wind = snapshot.wind;
-                r.wind.status = wind.status == SensorStatus::OK                ? Readings::Status::Ok
-                                : wind.status == SensorStatus::NOT_INITIALIZED ? Readings::Status::Missing
+                r.wind.status = wind.status == SensorStatus::Ok                ? Readings::Status::Ok
+                                : wind.status == SensorStatus::NotInitialized ? Readings::Status::Missing
                                                                                : Readings::Status::Error;
                 r.wind.ageMs = ageMs(now, wind.timestamp);
                 r.wind.speed = wind.speedMs;
@@ -354,7 +354,7 @@ namespace SQM
                     result.everRead = true;
                     const uint32_t age = ageMs(now, source.lastUpdate);
                     youngestRead = std::min(youngestRead, age);
-                    if (source.status == SensorStatus::OK)
+                    if (source.status == SensorStatus::Ok)
                     {
                         anyAnswering = true;
                         oldestAnswering = std::max(oldestAnswering, age);
@@ -372,9 +372,9 @@ namespace SQM
             const RequiredDataAge data = requiredDataAge(snapshot, now);
             in.hasEverHadGoodData = data.everRead;
             in.secondsSinceLastGoodData = data.ageMs / 1000;
-            in.skyLightFault = snapshot.tsl.status != SensorStatus::OK;
-            in.irSkyFault = snapshot.mlx.status != SensorStatus::OK;
-            in.requiredSensorFault = snapshot.tsl.status != SensorStatus::OK || snapshot.mlx.status != SensorStatus::OK;
+            in.skyLightFault = snapshot.tsl.status != SensorStatus::Ok;
+            in.irSkyFault = snapshot.mlx.status != SensorStatus::Ok;
+            in.requiredSensorFault = snapshot.tsl.status != SensorStatus::Ok || snapshot.mlx.status != SensorStatus::Ok;
 
             in.sqm = snapshot.sky.sqm;
             in.cloudCoverPercent = snapshot.cloud.cloudCoverPercent;
@@ -385,7 +385,7 @@ namespace SQM
 
             in.rainSensorEnabled = cfg.rain.enabled;
             in.rainSensorHealthy =
-                snapshot.rg15.online && !snapshot.rg15.stale && snapshot.rg15.status == SensorStatus::OK && !snapshot.rg15.lensBad;
+                snapshot.rg15.online && !snapshot.rg15.stale && snapshot.rg15.status == SensorStatus::Ok && !snapshot.rg15.lensBad;
             // rainLatched holds for rain.rainClearDelayMs after the last drop -
             // the hold-off before a roof should re-open.
             in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
@@ -427,7 +427,7 @@ namespace SQM
                 Alpaca::SourceState state;
                 state.present = present;
                 state.ageSeconds = ageMs(now, lastUpdate) / 1000.0;
-                state.valid = present && status == SensorStatus::OK && lastUpdate != 0 && ageMs(now, lastUpdate) <= staleAfter;
+                state.valid = present && status == SensorStatus::Ok && lastUpdate != 0 && ageMs(now, lastUpdate) <= staleAfter;
                 return state;
             };
 
@@ -444,7 +444,7 @@ namespace SQM
             snap.rain.present = cfg.rain.enabled && snapshot.rg15.timestamp != 0;
             snap.rain.ageSeconds = ageMs(now, snapshot.rg15.timestamp) / 1000.0;
             snap.rain.valid = cfg.rain.enabled && snapshot.rg15.online && !snapshot.rg15.stale &&
-                              snapshot.rg15.status == SensorStatus::OK && snapshot.rg15.timestamp != 0;
+                              snapshot.rg15.status == SensorStatus::Ok && snapshot.rg15.timestamp != 0;
 
             const bool fresh = windFresh(snapshot.wind, now);
             snap.wind.present = cfg.wind.enabled && snapshot.wind.timestamp != 0;
@@ -558,7 +558,7 @@ namespace SQM
             Alerts::AlertInputs in;
             in.nowSeconds = now / 1000;
             in.safetyKnown = status.evaluatedAtMs != 0;
-            in.safetySettling = (!status.isSafe && status.rawSafe) || (status.reasonFlags & Alpaca::UNSAFE_NO_DATA) != 0;
+            in.safetySettling = (!status.isSafe && status.rawSafe) || (status.reasonFlags & Alpaca::UnsafeNoData) != 0;
             in.isSafe = status.isSafe;
             in.unsafeReasons = status.reasons;
 
@@ -830,9 +830,9 @@ namespace SQM
                 alert.sound = setting->sound;
                 applyAlertTemplate(alert, *setting, alertVars(cfg, obs, n, alert, localTime, localDate));
                 if (alert.level == Alerts::AlertLevel::Wake)
-                    step.alarmFlags |= status.reasonFlags | (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UNSAFE_RAIN : 0u) |
+                    step.alarmFlags |= status.reasonFlags | (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UnsafeRain : 0u) |
                                        (alert.type == Alerts::AlertType::SensorFault || alert.type == Alerts::AlertType::LensFault
-                                            ? Alpaca::UNSAFE_SENSOR_FAULT
+                                            ? Alpaca::UnsafeSensorFault
                                             : 0u);
                 step.outgoing.push_back(std::move(alert));
             }
@@ -842,15 +842,15 @@ namespace SQM
         namespace
         {
             constexpr SampleAlert SAMPLE_ALERTS[] = {
-                {"unsafe", Alerts::AlertType::Unsafe, "Observatory UNSAFE", "It turns unsafe", Alpaca::UNSAFE_CLOUD_COVER},
+                {"unsafe", Alerts::AlertType::Unsafe, "Observatory UNSAFE", "It turns unsafe", Alpaca::UnsafeCloudCover},
                 {"safe", Alerts::AlertType::Safe, "Observatory safe", "It's safe again", 0},
-                {"rain_started", Alerts::AlertType::RainStarted, "Rain detected", "Rain starts", Alpaca::UNSAFE_RAIN},
+                {"rain_started", Alerts::AlertType::RainStarted, "Rain detected", "Rain starts", Alpaca::UnsafeRain},
                 {"rain_stopped", Alerts::AlertType::RainStopped, "Rain cleared", "Rain stops", 0},
-                {"sensor_fault", Alerts::AlertType::SensorFault, "Sensor fault", "A sensor fails", Alpaca::UNSAFE_SENSOR_FAULT},
+                {"sensor_fault", Alerts::AlertType::SensorFault, "Sensor fault", "A sensor fails", Alpaca::UnsafeSensorFault},
                 {"sensor_recovered", Alerts::AlertType::SensorRecovered, "Sensor recovered", "A sensor recovers", 0},
-                {"dew_risk", Alerts::AlertType::DewRisk, "Dew risk", "Dew risk", Alpaca::UNSAFE_DEWPOINT},
+                {"dew_risk", Alerts::AlertType::DewRisk, "Dew risk", "Dew risk", Alpaca::UnsafeDewpoint},
                 {"clear_sky", Alerts::AlertType::ClearSky, "Dark and clear", "Skies clear up", 0},
-                {"clouded_over", Alerts::AlertType::CloudedOver, "Clouded over", "Skies cloud over", Alpaca::UNSAFE_CLOUD_COVER},
+                {"clouded_over", Alerts::AlertType::CloudedOver, "Clouded over", "Skies cloud over", Alpaca::UnsafeCloudCover},
                 {"client_lost", Alerts::AlertType::ClientLost, "Imaging app stopped checking", "The imaging app stops checking", 0},
                 {"client_back", Alerts::AlertType::ClientBack, "Imaging app is back", "The imaging app is back", 0},
                 {"client_disconnected",
@@ -904,12 +904,12 @@ namespace SQM
             {
                 const std::vector<std::string> reasons =
                     safety.isSafe ? std::vector<std::string>{"Cloud 62% >= 35% (example)"} : safety.reasons;
-                std::string inline_;
+                std::string reasonsInline;
                 for (const std::string &reason : reasons)
-                    inline_ += (inline_.empty() ? "" : "; ") + reason;
+                    reasonsInline += (reasonsInline.empty() ? "" : "; ") + reason;
                 test.vars = {
                     {"reasons", Alerts::joinReasons(reasons)},
-                    {"reasons_inline", inline_},
+                    {"reasons_inline", reasonsInline},
                     {"reason_count", std::to_string(reasons.size())}};
             }
             else if (sample->type == Alerts::AlertType::SensorFault || sample->type == Alerts::AlertType::SensorRecovered)
