@@ -858,7 +858,6 @@
   "settings.sensors.at": "Pukul",
   "settings.sensors.averagingWindow": "Jendela rata-rata",
   "settings.sensors.baudRate": "Baud rate",
-  "settings.sensors.bme280Environment": "Lingkungan BME280",
   "settings.sensors.calibrateDark": "Kalibrasi gelap",
   "settings.sensors.calibrationFailed": "Kalibrasi gagal",
   "settings.sensors.clear": "Cerah",
@@ -893,7 +892,6 @@
   "settings.sensors.low02Mm": "Rendah (0,2 mm)",
   "settings.sensors.lowerItForLongCables": "Turunkan untuk kabel panjang.",
   "settings.sensors.misolArgentSparkfun": "Misol / Argent / SparkFun",
-  "settings.sensors.mlx90614Ir": "MLX90614 IR",
   "settings.sensors.mlx90614NotDetected": "MLX90614 tidak terdeteksi",
   "settings.sensors.model": "Model",
   "settings.sensors.noReply": "Tidak ada balasan",
@@ -918,7 +916,6 @@
   "settings.sensors.resistorFromTheVanePin": "Resistor dari pin penunjuk arah angin ke 3,3 V.",
   "settings.sensors.resolution": "Resolusi",
   "settings.sensors.responding": "Merespons",
-  "settings.sensors.rg15RainSensor": "Sensor hujan RG-15",
   "settings.sensors.running": "Berjalan",
   "settings.sensors.rxPin": "Pin RX",
   "settings.sensors.sampleCount": {
@@ -937,7 +934,6 @@
   "settings.sensors.testCommunication": "Uji komunikasi",
   "settings.sensors.toTheRg15S": "Ke IN serial RG-15.",
   "settings.sensors.troubleshootingOnly": "Hanya untuk pemecahan masalah.",
-  "settings.sensors.tsl2591Light": "Cahaya TSL2591",
   "settings.sensors.txPin": "Pin TX",
   "settings.sensors.units": "Satuan",
   "settings.sensors.vaneFault": "Penunjuk arah angin bermasalah",
@@ -1058,7 +1054,7 @@
   "status.noneOnHint": "Aktifkan satu saluran untuk menerima peringatan.",
   "status.notInEffect": "Tidak berlaku",
   "status.notInEffectCount": {
-    "other": "{count} tidak berlaku"
+    "other": "{count} tidak aktif"
   },
   "status.notLoaded": "Tidak dimuat",
   "status.notSet": "Belum diatur",

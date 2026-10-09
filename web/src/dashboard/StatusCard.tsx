@@ -12,7 +12,9 @@ import { spoken, toCheck, type GlanceItem, type Severity } from './glance';
 type Action = 'resume' | 'acknowledge';
 
 const TONE: Record<Severity, string> = { ok: 'pill-green', note: 'pill-amber', problem: 'pill-red' };
-const TILES = new Set(['freshness', 'safety-verdict', 'alerts-state', 'imaging-app']);
+// Tiles in the reviewed mockup's order: is it safe, will anyone be told, is the data live.
+const TILE_ORDER = ['safety-verdict', 'alerts-state', 'freshness', 'imaging-app'];
+const TILES = new Set(TILE_ORDER);
 
 const Fix: FunctionalComponent<{ item: GlanceItem; onAction: (action: Action) => void }> = ({ item, onAction }) => {
   const fix = item.fix;
@@ -73,7 +75,7 @@ const Row: FunctionalComponent<{ item: GlanceItem; onAction: (action: Action) =>
 };
 
 const StatusCard: FunctionalComponent<{ items: GlanceItem[]; onAction: (action: Action) => void }> = ({ items, onAction }) => {
-  const tiles = items.filter((entry) => TILES.has(entry.id));
+  const tiles = items.filter((entry) => TILES.has(entry.id)).sort((a, b) => TILE_ORDER.indexOf(a.id) - TILE_ORDER.indexOf(b.id));
   const rows = items.filter((entry) => !TILES.has(entry.id) && entry.severity !== 'ok');
   const open = toCheck(items);
   const worst: Severity = open.some((entry) => entry.severity === 'problem') ? 'problem' : open.length ? 'note' : 'ok';

@@ -175,7 +175,7 @@ describe('glanceItems', () => {
     };
     expect(glanceItems(input({ effective })).find((i) => i.id === 'settings-not-in-effect')).toMatchObject({
       label: 'Settings',
-      state: '1 not in effect',
+      state: '1 inactive',
       detail: 'Rain sensor is off',
     });
   });

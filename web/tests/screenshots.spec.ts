@@ -66,8 +66,17 @@ test('dashboard', async ({ page }) => {
   await page.goto('./?scenario=night&panel=hidden');
   await waitForDemoApp(page);
   await expect(page.getByRole('heading', { name: 'Sky Quality' })).toBeVisible();
-  await expect(page.locator('.glance-line')).toContainText('Live');
+  await expect(page.locator('[data-inventory="freshness"]')).toContainText('Live');
   await capturePage(page, 'dashboard');
+});
+
+test('status card', async ({ page }) => {
+  await page.goto('./?scenario=night&panel=hidden');
+  await waitForDemoApp(page);
+  const card = page.locator('[data-inventory="status-card"]');
+  await expect(card.locator('[data-inventory="freshness"]')).toContainText('Live');
+  await waitForLayout(page);
+  await card.screenshot({ path: save('status-card') });
 });
 
 test('system', async ({ page }) => {

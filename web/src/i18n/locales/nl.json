@@ -865,7 +865,6 @@
   "settings.sensors.at": "Om",
   "settings.sensors.averagingWindow": "Middelingsvenster",
   "settings.sensors.baudRate": "Baudrate",
-  "settings.sensors.bme280Environment": "BME280 omgeving",
   "settings.sensors.calibrateDark": "Donker kalibreren",
   "settings.sensors.calibrationFailed": "Kalibratie mislukt",
   "settings.sensors.clear": "Helder",
@@ -900,7 +899,6 @@
   "settings.sensors.low02Mm": "Laag (0,2 mm)",
   "settings.sensors.lowerItForLongCables": "Verlaag dit bij lange kabels.",
   "settings.sensors.misolArgentSparkfun": "Misol / Argent / SparkFun",
-  "settings.sensors.mlx90614Ir": "MLX90614 IR",
   "settings.sensors.mlx90614NotDetected": "MLX90614 niet gevonden",
   "settings.sensors.model": "Model",
   "settings.sensors.noReply": "Geen antwoord",
@@ -925,7 +923,6 @@
   "settings.sensors.resistorFromTheVanePin": "Weerstand van de windvaanpin naar 3,3 V.",
   "settings.sensors.resolution": "Resolutie",
   "settings.sensors.responding": "Reageert",
-  "settings.sensors.rg15RainSensor": "Regensensor RG-15",
   "settings.sensors.running": "Actief",
   "settings.sensors.rxPin": "RX-pin",
   "settings.sensors.sampleCount": {
@@ -945,7 +942,6 @@
   "settings.sensors.testCommunication": "Communicatie testen",
   "settings.sensors.toTheRg15S": "Naar de seriële ingang IN van de RG-15.",
   "settings.sensors.troubleshootingOnly": "Alleen voor het oplossen van problemen.",
-  "settings.sensors.tsl2591Light": "TSL2591 licht",
   "settings.sensors.txPin": "TX-pin",
   "settings.sensors.units": "Eenheden",
   "settings.sensors.vaneFault": "Storing windvaan",
@@ -1066,8 +1062,8 @@
   "status.noneOnHint": "Zet een kanaal aan om meldingen te krijgen.",
   "status.notInEffect": "Niet van kracht",
   "status.notInEffectCount": {
-    "one": "{count} niet van kracht",
-    "other": "{count} niet van kracht"
+    "one": "{count} inactief",
+    "other": "{count} inactief"
   },
   "status.notLoaded": "Niet geladen",
   "status.notSet": "Niet ingesteld",

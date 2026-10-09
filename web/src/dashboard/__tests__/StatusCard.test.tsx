@@ -40,7 +40,7 @@ describe('StatusCard', () => {
         detail: "Cloud cover and the cloud safety rule can't be measured.",
         fix: { label: 'Open settings', href: '#/settings?tab=sensors' },
       }),
-      item('settings-not-in-effect', 'Settings', '1 not in effect', { severity: 'note', fix: { label: 'Open settings', href: '#/settings' } }),
+      item('settings-not-in-effect', 'Settings', '1 inactive', { severity: 'note', fix: { label: 'Open settings', href: '#/settings' } }),
     ];
     render(<StatusCard items={items} onAction={() => undefined} />);
     expect(screen.getByText('2 to check')).toBeTruthy();
@@ -72,7 +72,11 @@ describe('StatusCard', () => {
 
   it('puts the paused alerts Resume action on the Alerts tile', () => {
     const onAction = vi.fn();
-    const paused = item('alerts-state', 'Alerts', 'Paused', { severity: 'problem', sub: 'Paused by you.', fix: { label: 'Resume', action: 'resume' } });
+    const paused = item('alerts-state', 'Alerts', 'Paused', {
+      severity: 'problem',
+      sub: 'Paused by you.',
+      fix: { label: 'Resume', action: 'resume' },
+    });
     render(<StatusCard items={[healthy[0], healthy[1], paused]} onAction={onAction} />);
     const tile = screen.getByText('Alerts').closest('.status-tile') as HTMLElement;
     fireEvent.click(within(tile).getByRole('button', { name: 'Resume' }));

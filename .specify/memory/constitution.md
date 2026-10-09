@@ -1,5 +1,7 @@
 <!--
 Sync Impact Report
+- 1.1.2 -> 1.2.0 (MINOR): the quality gate includes the UI design system (DS rules, spec 026);
+  UI specs include a reviewed mockup
 - 1.1.1 -> 1.1.2 (PATCH): Principle IV states the web UI size budgets (SIZE-01, SIZE-02)
 - Version: 1.0.0 -> 1.1.0 (MINOR: new Principle VIII, expanded quality gates)
 - Added: VIII. Code Quality Standards
@@ -140,7 +142,9 @@ Code is read far more often than it's written, by people and by AI agents workin
   - ConformU against the Alpaca simulator;
   - the quality check (`tools/quality/check.py`, Principle VIII), including the dashboard
     inventory (DASH-01/02: new user-relevant device state is shown on the dashboard or
-    recorded as not shown, spec 025);
+    recorded as not shown, spec 025) and the UI design system (DS rules, spec 026: cards
+    built from the shared parts, explanations behind "?", short English copy, one name per
+    thing);
   - the docs build.
 - Firmware behaviour changes SHOULD be verified on a real device before release (OTA to the
   test device, with the owner's permission when it's in use), and the PR says what was checked.
@@ -150,6 +154,8 @@ Code is read far more often than it's written, by people and by AI agents workin
   `/speckit-implement`, repeating `/speckit-converge` until it reports converged. Specs live in
   `specs/<NNN-feature>/`. A feature's `spec.md` is a living contract while its PR is open, and
   a historical record once merged; later changes get a new spec.
+- A spec that adds or changes UI cites the DS rules it relies on and includes a mockup
+  screenshot the owner reviews before it is built (spec 026 FR-015).
 - The owner's prompts never go into the repository: no `**Input**: User description` line or
   quoted request in specs, plans, tasks, commits or PRs. Write the spec in its own words.
   The build's integrity checks enforce it for `specs/` and `.specify/`.
@@ -168,4 +174,4 @@ Code is read far more often than it's written, by people and by AI agents workin
   Tracking section.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 1.1.2 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-09
+**Version**: 1.2.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-09

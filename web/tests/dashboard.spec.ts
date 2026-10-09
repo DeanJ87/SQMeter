@@ -138,7 +138,7 @@ test('a failed sensor keeps its card and is one row: name and pill', async ({ pa
 test('settings not in effect are one row', async ({ page }) => {
   // inventory: settings-not-in-effect
   await open(page);
-  await expect(item(page, 'settings-not-in-effect')).toContainText('1 not in effect');
+  await expect(item(page, 'settings-not-in-effect')).toContainText('1 inactive');
   await setConfig(page, { 'alerts.events.*.level': 2 });
   await expect(item(page, 'settings-not-in-effect')).toHaveCount(0);
 });

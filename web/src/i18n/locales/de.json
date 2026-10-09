@@ -865,7 +865,6 @@
   "settings.sensors.at": "Um",
   "settings.sensors.averagingWindow": "Mittelungsfenster",
   "settings.sensors.baudRate": "Baudrate",
-  "settings.sensors.bme280Environment": "BME280 Umgebung",
   "settings.sensors.calibrateDark": "Dunkel kalibrieren",
   "settings.sensors.calibrationFailed": "Kalibrierung fehlgeschlagen",
   "settings.sensors.clear": "Klar",
@@ -900,7 +899,6 @@
   "settings.sensors.low02Mm": "Niedrig (0,2 mm)",
   "settings.sensors.lowerItForLongCables": "Bei langen Kabeln verringern.",
   "settings.sensors.misolArgentSparkfun": "Misol / Argent / SparkFun",
-  "settings.sensors.mlx90614Ir": "MLX90614 IR",
   "settings.sensors.mlx90614NotDetected": "MLX90614 nicht erkannt",
   "settings.sensors.model": "Modell",
   "settings.sensors.noReply": "Keine Antwort",
@@ -925,7 +923,6 @@
   "settings.sensors.resistorFromTheVanePin": "Widerstand vom Windfahnen-Pin nach 3,3 V.",
   "settings.sensors.resolution": "Auflösung",
   "settings.sensors.responding": "Antwortet",
-  "settings.sensors.rg15RainSensor": "Regensensor RG-15",
   "settings.sensors.running": "Läuft",
   "settings.sensors.rxPin": "RX-Pin",
   "settings.sensors.sampleCount": {
@@ -945,7 +942,6 @@
   "settings.sensors.testCommunication": "Kommunikation testen",
   "settings.sensors.toTheRg15S": "Zum seriellen Eingang IN des RG-15.",
   "settings.sensors.troubleshootingOnly": "Nur zur Fehlersuche.",
-  "settings.sensors.tsl2591Light": "TSL2591 Licht",
   "settings.sensors.txPin": "TX-Pin",
   "settings.sensors.units": "Einheiten",
   "settings.sensors.vaneFault": "Windfahnenfehler",
@@ -1066,8 +1062,8 @@
   "status.noneOnHint": "Aktivieren Sie einen Kanal, um Warnungen zu erhalten.",
   "status.notInEffect": "Nicht wirksam",
   "status.notInEffectCount": {
-    "one": "{count} nicht wirksam",
-    "other": "{count} nicht wirksam"
+    "one": "{count} inaktiv",
+    "other": "{count} inaktiv"
   },
   "status.notLoaded": "Nicht geladen",
   "status.notSet": "Nicht gestellt",

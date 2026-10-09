@@ -15,6 +15,14 @@ import { tour } from './tour/tourState';
 // device makes of it, shortcuts worked out from its settings, and its date,
 // time and place. Only in the demo build (mounted from main.tsx).
 
+// The demo device's clock isn't the real time (spec 019): say so where the demo is named (spec 026).
+const ClockMoved: FunctionalComponent = () =>
+  Math.abs(demoDevice.now.valueOf() - Date.now()) > 60_000 ? (
+    <span class="demo-clock-moved" data-inventory="demo-marker">
+      Clock moved
+    </span>
+  ) : null;
+
 const DemoPanel: FunctionalComponent = () => {
   const [open, setOpen] = useState(false);
   const [, setTick] = useState(0);
@@ -70,12 +78,7 @@ const DemoPanel: FunctionalComponent = () => {
       )}
       <button ref={toggle} type="button" class="demo-panel-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span aria-hidden="true">✦</span> Demo
-        {/* The demo device's clock isn't the real time (spec 019): say so where the demo is named (spec 026). */}
-        {Math.abs(demoDevice.now.valueOf() - Date.now()) > 60_000 && (
-          <span class="demo-clock-moved" data-inventory="demo-marker">
-            Clock moved
-          </span>
-        )}
+        <ClockMoved />
       </button>
     </div>
   );

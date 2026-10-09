@@ -5,6 +5,7 @@ import { compareVersions } from '../utils/versionCompare';
 import { lastUpdateCheck } from '../lib/lastUpdateCheck';
 import { formatUptime } from '../i18n/format';
 import { t, type MessageKey } from '../i18n';
+import { appHref } from '../lib/appHref';
 
 // Device & Network (specs/010, 025 FR-015, FR-018, 026 FR-005): Wi-Fi and
 // uptime as tiles; every address, the .local name, MQTT and the firmware as
@@ -127,7 +128,7 @@ const FirmwareRow: FunctionalComponent<{ version?: string }> = ({ version }) => 
     <Row label={t('dashboard.firmware')}>
       <span class="device-firmware">
         {newer && (
-          <a class="status-tile-fix" href="#/updates" data-inventory="update-available">
+          <a class="status-tile-fix" href={appHref('/updates')} data-inventory="update-available">
             {t('glance.updateAvailable', { version: latest ?? '' })}
           </a>
         )}

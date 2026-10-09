@@ -865,7 +865,6 @@
   "settings.sensors.at": "À",
   "settings.sensors.averagingWindow": "Fenêtre de moyenne",
   "settings.sensors.baudRate": "Débit en bauds",
-  "settings.sensors.bme280Environment": "BME280 environnement",
   "settings.sensors.calibrateDark": "Étalonner l'obscurité",
   "settings.sensors.calibrationFailed": "Échec de l'étalonnage",
   "settings.sensors.clear": "Dégagé",
@@ -900,7 +899,6 @@
   "settings.sensors.low02Mm": "Basse (0,2 mm)",
   "settings.sensors.lowerItForLongCables": "Réduisez-la pour les câbles longs.",
   "settings.sensors.misolArgentSparkfun": "Misol / Argent / SparkFun",
-  "settings.sensors.mlx90614Ir": "MLX90614 IR",
   "settings.sensors.mlx90614NotDetected": "MLX90614 non détecté",
   "settings.sensors.model": "Modèle",
   "settings.sensors.noReply": "Pas de réponse",
@@ -925,7 +923,6 @@
   "settings.sensors.resistorFromTheVanePin": "Résistance entre la broche de la girouette et le 3,3 V.",
   "settings.sensors.resolution": "Résolution",
   "settings.sensors.responding": "Répond",
-  "settings.sensors.rg15RainSensor": "Capteur de pluie RG-15",
   "settings.sensors.running": "En marche",
   "settings.sensors.rxPin": "Broche RX",
   "settings.sensors.sampleCount": {
@@ -945,7 +942,6 @@
   "settings.sensors.testCommunication": "Tester la communication",
   "settings.sensors.toTheRg15S": "Vers l'entrée série IN du RG-15.",
   "settings.sensors.troubleshootingOnly": "Pour le dépannage uniquement.",
-  "settings.sensors.tsl2591Light": "TSL2591 lumière",
   "settings.sensors.txPin": "Broche TX",
   "settings.sensors.units": "Unités",
   "settings.sensors.vaneFault": "Défaut de girouette",
@@ -1066,8 +1062,8 @@
   "status.noneOnHint": "Activez un canal pour recevoir des alertes.",
   "status.notInEffect": "Sans effet",
   "status.notInEffectCount": {
-    "one": "{count} sans effet",
-    "other": "{count} sans effet"
+    "one": "{count} inactif",
+    "other": "{count} inactifs"
   },
   "status.notLoaded": "Non chargée",
   "status.notSet": "Non réglée",

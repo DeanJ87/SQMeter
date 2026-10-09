@@ -8,6 +8,7 @@ import { request } from '../lib/api';
 import { formatDateTime, formatTime } from '../i18n/format';
 import { deviceText } from '../i18n/deviceMessage';
 import { formatDuration } from '../lib/astro';
+import { appHref } from '../lib/appHref';
 
 const verdict = (safety: SafetyStatus) => {
   if (safety.safe) return { text: t('safetyCard.safe'), tone: 'pill-green' };
@@ -122,7 +123,7 @@ const RulesNotInEffect: FunctionalComponent<{ rules?: string[] }> = ({ rules }) 
     <ul class="status-rows" data-inventory="rules-not-in-effect" aria-label={t('glance.rulesNotInEffect')}>
       {rules.map((rule) => (
         <li key={rule} class="status-row">
-          <a class="status-row-main" href="#/settings?tab=sensors" title={t('glance.openSettings')}>
+          <a class="status-row-main" href={appHref('/settings?tab=sensors')} title={t('glance.openSettings')}>
             <span class="status-row-label">{deviceText(rule)}</span>
             <Pill tone="pill-amber">{t('status.notInEffect')}</Pill>
           </a>

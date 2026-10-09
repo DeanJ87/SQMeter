@@ -36,7 +36,10 @@ describe('Alpaca imaging app state (specs/021, 026 DS-21)', () => {
       tone: 'warn',
     });
     expect(describeClient({ ...base, watching: true, lastCheckedAgeMs: 1000 }).state).toBe('Checking');
-    expect(describeClient({ ...base, lastCheckedAgeMs: 7200000 })).toMatchObject({ state: 'Disconnected', checked: 'Checked 2 h 0 min ago' });
+    expect(describeClient({ ...base, lastCheckedAgeMs: 7200000 })).toMatchObject({
+      state: 'Disconnected',
+      checked: 'Checked 2 h 0 min ago',
+    });
     expect(describeClient(base)).toEqual({ state: 'Waiting', tone: 'muted' });
   });
 });

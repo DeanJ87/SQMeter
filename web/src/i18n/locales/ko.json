@@ -858,7 +858,6 @@
   "settings.sensors.at": "시각",
   "settings.sensors.averagingWindow": "평균 구간",
   "settings.sensors.baudRate": "전송 속도",
-  "settings.sensors.bme280Environment": "BME280 환경",
   "settings.sensors.calibrateDark": "암흑 보정",
   "settings.sensors.calibrationFailed": "보정 실패",
   "settings.sensors.clear": "맑음",
@@ -893,7 +892,6 @@
   "settings.sensors.low02Mm": "낮음(0.2 mm)",
   "settings.sensors.lowerItForLongCables": "케이블이 길면 낮추세요.",
   "settings.sensors.misolArgentSparkfun": "Misol / Argent / SparkFun",
-  "settings.sensors.mlx90614Ir": "MLX90614 IR",
   "settings.sensors.mlx90614NotDetected": "MLX90614 감지 안 됨",
   "settings.sensors.model": "모델",
   "settings.sensors.noReply": "응답 없음",
@@ -918,7 +916,6 @@
   "settings.sensors.resistorFromTheVanePin": "풍향계 핀에서 3.3 V로 연결하는 저항.",
   "settings.sensors.resolution": "분해능",
   "settings.sensors.responding": "응답 중",
-  "settings.sensors.rg15RainSensor": "RG-15 강우 센서",
   "settings.sensors.running": "실행 중",
   "settings.sensors.rxPin": "RX 핀",
   "settings.sensors.sampleCount": {
@@ -937,7 +934,6 @@
   "settings.sensors.testCommunication": "통신 테스트",
   "settings.sensors.toTheRg15S": "RG-15의 직렬 IN으로.",
   "settings.sensors.troubleshootingOnly": "문제 해결용.",
-  "settings.sensors.tsl2591Light": "TSL2591 광 센서",
   "settings.sensors.txPin": "TX 핀",
   "settings.sensors.units": "단위",
   "settings.sensors.vaneFault": "풍향계 이상",
@@ -1058,7 +1054,7 @@
   "status.noneOnHint": "알림을 받으려면 채널을 켜세요.",
   "status.notInEffect": "적용 안 됨",
   "status.notInEffectCount": {
-    "other": "{count}개 적용 안 됨"
+    "other": "{count}개 비활성"
   },
   "status.notLoaded": "로드 안 됨",
   "status.notSet": "설정 안 됨",

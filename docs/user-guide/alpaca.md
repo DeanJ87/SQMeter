@@ -109,7 +109,7 @@ The safety verdict is re-evaluated every second from the current sensor readings
 4. **Wind / gust** - the 2-minute mean wind speed or the 10-minute peak gust is at or above its limit (both disabled by default). If a wind limit is enabled but the [anemometer](../hardware/wind.md) is disabled or not reporting, that's unsafe too
 5. **No data yet** - the device hasn't completed a sensor read since boot
 6. **Stale data** - the last successful read is older than the stale-data threshold (default 30s)
-7. **Sensor fault** - the light sensor (TSL2591) or IR temperature sensor (MLX90614) is reporting a non-OK status
+7. **Sensor fault** - the light sensor (TSL2591) or IR sky sensor (MLX90614) is reporting a non-OK status
 8. **Cloud cover** - at or above the configured threshold (default 90%, if enabled)
 9. **Sky brightness (SQM)** - below the configured minimum (disabled by default)
 10. **Humidity** - above the configured maximum (disabled by default)

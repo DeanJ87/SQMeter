@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-09
 
-**Status**: Draft - for review. Supersedes parts of spec 025 (glance area) and spec 023 (FR-024).
+**Status**: Implemented. Supersedes parts of spec 025 (glance area) and spec 023 (FR-024).
 
 ## Context
 

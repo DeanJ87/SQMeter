@@ -7,6 +7,7 @@ import { formatAgeMs, formatAgo } from '../i18n/format';
 import { deviceText } from '../i18n/deviceMessage';
 import { languageProblem } from '../i18n/loader';
 import { t, type MessageKey } from '../i18n';
+import { appHref } from '../lib/appHref';
 
 // What the Status card shows (specs/025 content, specs/026 presentation). One
 // function decides what shows and in which order; StatusCard only renders it.
@@ -87,7 +88,7 @@ const ALERT_SAFETY_DEPS = new Set(['D-05', 'D-06', 'D-07', 'D-08', 'D-09', 'D-10
 
 const settingsLink = (tab: string, anchor?: string): GlanceFix => ({
   label: t('glance.openSettings'),
-  href: `#/settings?tab=${tab}${anchor ? `&section=${anchor}` : ''}`,
+  href: appHref(`/settings?tab=${tab}${anchor ? `&section=${anchor}` : ''}`),
 });
 
 const freshness = ({ sensors, connected, quiet }: GlanceInput): GlanceItem => {
@@ -152,7 +153,8 @@ const channelsItem = ({ config, effective }: GlanceInput): GlanceItem | null => 
   if (!alerts?.enabled) return null;
   const label = t('status.channels');
   const on = (['pushover', 'ntfy', 'webhook', 'mqtt'] as const).filter((channel) => alerts[channel]?.enabled);
-  if (!on.length) return item('no-channel', 'problem', { label, state: t('status.noneOn'), detail: t('status.noneOnHint'), fix: settingsLink('alerts') });
+  if (!on.length)
+    return item('no-channel', 'problem', { label, state: t('status.noneOn'), detail: t('status.noneOnHint'), fix: settingsLink('alerts') });
   const blocked = inactive(effective, ALERT_CHANNEL_DEPS);
   const working = on.filter((channel) => !blocked.some((entry) => entry.setting === `alerts.${channel}.enabled`));
   if (working.length || !blocked.length) return null;

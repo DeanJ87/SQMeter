@@ -865,7 +865,6 @@
   "settings.sensors.at": "Às",
   "settings.sensors.averagingWindow": "Janela de média",
   "settings.sensors.baudRate": "Taxa de transmissão",
-  "settings.sensors.bme280Environment": "BME280 ambiente",
   "settings.sensors.calibrateDark": "Calibrar escuro",
   "settings.sensors.calibrationFailed": "A calibração falhou",
   "settings.sensors.clear": "Limpo",
@@ -900,7 +899,6 @@
   "settings.sensors.low02Mm": "Baixa (0,2 mm)",
   "settings.sensors.lowerItForLongCables": "Diminua para cabos longos.",
   "settings.sensors.misolArgentSparkfun": "Misol / Argent / SparkFun",
-  "settings.sensors.mlx90614Ir": "MLX90614 IR",
   "settings.sensors.mlx90614NotDetected": "MLX90614 não detectado",
   "settings.sensors.model": "Modelo",
   "settings.sensors.noReply": "Sem resposta",
@@ -925,7 +923,6 @@
   "settings.sensors.resistorFromTheVanePin": "Resistor do pino da biruta para 3,3 V.",
   "settings.sensors.resolution": "Resolução",
   "settings.sensors.responding": "Respondendo",
-  "settings.sensors.rg15RainSensor": "Sensor de chuva RG-15",
   "settings.sensors.running": "Em funcionamento",
   "settings.sensors.rxPin": "Pino RX",
   "settings.sensors.sampleCount": {
@@ -945,7 +942,6 @@
   "settings.sensors.testCommunication": "Testar comunicação",
   "settings.sensors.toTheRg15S": "Para a entrada serial IN do RG-15.",
   "settings.sensors.troubleshootingOnly": "Só para solução de problemas.",
-  "settings.sensors.tsl2591Light": "TSL2591 luz",
   "settings.sensors.txPin": "Pino TX",
   "settings.sensors.units": "Unidades",
   "settings.sensors.vaneFault": "Falha da biruta",
@@ -1066,8 +1062,8 @@
   "status.noneOnHint": "Ative um canal para receber alertas.",
   "status.notInEffect": "Sem efeito",
   "status.notInEffectCount": {
-    "one": "{count} sem efeito",
-    "other": "{count} sem efeito"
+    "one": "{count} inativa",
+    "other": "{count} inativas"
   },
   "status.notLoaded": "Não carregado",
   "status.notSet": "Não ajustado",

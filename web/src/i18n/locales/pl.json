@@ -879,7 +879,6 @@
   "settings.sensors.at": "O",
   "settings.sensors.averagingWindow": "Okno uśredniania",
   "settings.sensors.baudRate": "Prędkość transmisji",
-  "settings.sensors.bme280Environment": "BME280 otoczenie",
   "settings.sensors.calibrateDark": "Skalibruj ciemność",
   "settings.sensors.calibrationFailed": "Kalibracja nie powiodła się",
   "settings.sensors.clear": "Pogodnie",
@@ -914,7 +913,6 @@
   "settings.sensors.low02Mm": "Niska (0,2 mm)",
   "settings.sensors.lowerItForLongCables": "Zmniejsz przy długich przewodach.",
   "settings.sensors.misolArgentSparkfun": "Misol / Argent / SparkFun",
-  "settings.sensors.mlx90614Ir": "MLX90614 IR",
   "settings.sensors.mlx90614NotDetected": "Nie wykryto MLX90614",
   "settings.sensors.model": "Model",
   "settings.sensors.noReply": "Brak odpowiedzi",
@@ -939,7 +937,6 @@
   "settings.sensors.resistorFromTheVanePin": "Rezystor od pinu wiatrowskazu do 3,3 V.",
   "settings.sensors.resolution": "Rozdzielczość",
   "settings.sensors.responding": "Odpowiada",
-  "settings.sensors.rg15RainSensor": "Czujnik deszczu RG-15",
   "settings.sensors.running": "Działa",
   "settings.sensors.rxPin": "Pin RX",
   "settings.sensors.sampleCount": {
@@ -961,7 +958,6 @@
   "settings.sensors.testCommunication": "Testuj komunikację",
   "settings.sensors.toTheRg15S": "Do wejścia szeregowego IN czujnika RG-15.",
   "settings.sensors.troubleshootingOnly": "Tylko do diagnozowania problemów.",
-  "settings.sensors.tsl2591Light": "TSL2591 światło",
   "settings.sensors.txPin": "Pin TX",
   "settings.sensors.units": "Jednostki",
   "settings.sensors.vaneFault": "Usterka wiatrowskazu",
@@ -1082,10 +1078,10 @@
   "status.noneOnHint": "Włącz kanał, aby otrzymywać powiadomienia.",
   "status.notInEffect": "Nie działa",
   "status.notInEffectCount": {
-    "one": "{count} nie działa",
-    "few": "{count} nie działają",
-    "many": "{count} nie działa",
-    "other": "{count} nie działa"
+    "one": "{count} nieaktywne",
+    "few": "{count} nieaktywne",
+    "many": "{count} nieaktywnych",
+    "other": "{count} nieaktywnych"
   },
   "status.notLoaded": "Nie wczytano",
   "status.notSet": "Nieustawiony",

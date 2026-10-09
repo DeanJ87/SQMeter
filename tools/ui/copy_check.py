@@ -35,6 +35,7 @@ LIMITS = {"pill": 16, "label": 32, "note": 90, "hint": 160}
 TYPES = [
     ("hint", re.compile(r"'\?' tip|\? tip|help text|tooltip", re.I)),
     ("pill", re.compile(r"\bbadge\b|\bpill\b", re.I)),
+    ("note", re.compile(r"\bsentence\b", re.I)),
     ("label", re.compile(r"\blabel\b|\bheading\b|\btitle\b|\bbutton\b|\btab name\b|\bcolumn header\b", re.I)),
     ("note", re.compile(r"\bnote\b|\bsentence\b|\bmessage\b|\bstatus line\b|\bwarning\b|\berror\b", re.I)),
 ]
@@ -109,7 +110,7 @@ def check(root: Path = ROOT) -> list[str]:
                 problems.append(f"{base}: banned phrase {phrase!r} (DS-25)")
         if RUN_ON.search(text):
             problems.append(f"{base}: run-on line joined with ' · ' (DS-24): one fact per tile or row")
-    problems += [f"{key}: exception for a key that no longer exists" for key in exceptions if key not in {k.split('#')[0] for k in english}]
+    problems += [f"{key}: exception for a key that no longer exists" for key in exceptions if key not in {k.split("#")[0] for k in english}]
     return problems
 
 

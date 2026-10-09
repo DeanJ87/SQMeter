@@ -39,7 +39,7 @@ test('MQTT alerts with MQTT off: reported inactive, shown inactive, skipped not 
   });
 
   await page.goto('./#/settings?tab=alerts');
-  await expect(page.getByText('Inactive - MQTT is off')).toBeVisible();
+  await expect(page.getByText('Inactive: MQTT is off')).toBeVisible();
   await page.getByRole('button', { name: 'Turn on MQTT' }).click();
   await expect(page.getByRole('tab', { name: 'Network', selected: true })).toBeVisible();
 

@@ -424,7 +424,13 @@ export interface DepNoteContent {
 
 export const noteFor = (entry: DepEntry, prefix = t('settingsDeps.inactive')): DepNoteContent | null => {
   if (entry.state === 'inactive' && entry.reason) {
-    return { id: entry.id, reason: entry.reason, text: t('settingsDeps.inactiveBecause', { prefix, reason: entry.text }), tone: entry.neutral ? 'info' : 'warn', target: entry };
+    return {
+      id: entry.id,
+      reason: entry.reason,
+      text: t('settingsDeps.inactiveBecause', { prefix, reason: entry.text }),
+      tone: entry.neutral ? 'info' : 'warn',
+      target: entry,
+    };
   }
   const blocked = entry.state === 'off' ? entry.blockedBy : undefined;
   return blocked

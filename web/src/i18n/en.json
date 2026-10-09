@@ -865,7 +865,6 @@
   "settings.sensors.at": "At",
   "settings.sensors.averagingWindow": "Averaging window",
   "settings.sensors.baudRate": "Baud rate",
-  "settings.sensors.bme280Environment": "BME280 environment",
   "settings.sensors.calibrateDark": "Calibrate dark",
   "settings.sensors.calibrationFailed": "Calibration failed",
   "settings.sensors.clear": "Clear",
@@ -900,7 +899,6 @@
   "settings.sensors.low02Mm": "Low (0.2 mm)",
   "settings.sensors.lowerItForLongCables": "Lower it for long cables.",
   "settings.sensors.misolArgentSparkfun": "Misol / Argent / SparkFun",
-  "settings.sensors.mlx90614Ir": "MLX90614 IR",
   "settings.sensors.mlx90614NotDetected": "MLX90614 not detected",
   "settings.sensors.model": "Model",
   "settings.sensors.noReply": "No reply",
@@ -925,7 +923,6 @@
   "settings.sensors.resistorFromTheVanePin": "Resistor from the vane pin to 3.3 V.",
   "settings.sensors.resolution": "Resolution",
   "settings.sensors.responding": "Responding",
-  "settings.sensors.rg15RainSensor": "RG-15 rain sensor",
   "settings.sensors.running": "Running",
   "settings.sensors.rxPin": "RX pin",
   "settings.sensors.sampleCount": {
@@ -945,7 +942,6 @@
   "settings.sensors.testCommunication": "Test communication",
   "settings.sensors.toTheRg15S": "To the RG-15's serial IN.",
   "settings.sensors.troubleshootingOnly": "Troubleshooting only.",
-  "settings.sensors.tsl2591Light": "TSL2591 light",
   "settings.sensors.txPin": "TX pin",
   "settings.sensors.units": "Units",
   "settings.sensors.vaneFault": "Vane fault",
@@ -1066,8 +1062,8 @@
   "status.noneOnHint": "Turn on a channel to get alerts.",
   "status.notInEffect": "Not in effect",
   "status.notInEffectCount": {
-    "one": "{count} not in effect",
-    "other": "{count} not in effect"
+    "one": "{count} inactive",
+    "other": "{count} inactive"
   },
   "status.notLoaded": "Not loaded",
   "status.notSet": "Not set",

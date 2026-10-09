@@ -101,6 +101,23 @@
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
+## Design *(mandatory for UI changes)*
+
+<!--
+  The UI design system is docs/development/coding-standards.md (DS rules, spec 026).
+  For a change to the web UI:
+  - Cite the DS rules the design relies on (e.g. DS-01 a card, DS-04 explanations behind "?",
+    DS-06 progress in the card that started it).
+  - Include a mockup screenshot built from the existing components, and have the owner review
+    it before implementation starts.
+  - Name new English strings with their type (label, pill, note, hint) and keep them within
+    the DS-20..DS-25 limits.
+  Remove this section for changes with no UI.
+-->
+
+- **DS rules**: [DS-xx, ...]
+- **Mockup**: [path to the reviewed screenshot]
+
 ## Success Criteria *(mandatory)*
 
 <!--
