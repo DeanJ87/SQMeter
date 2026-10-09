@@ -78,11 +78,11 @@ namespace SQM
                 if (!in.requiredSensorFault)
                     return;
                 if (in.skyLightFault && in.irSkyFault)
-                    addReason(result, UnsafeSensorFault, "Sensor fault: TSL2591 light and MLX90614 IR");
+                    addReason(result, UnsafeSensorFault, "Sensor fault: light sensor and IR sky sensor");
                 else if (in.skyLightFault)
-                    addReason(result, UnsafeSensorFault, "Sensor fault: TSL2591 light");
+                    addReason(result, UnsafeSensorFault, "Sensor fault: light sensor");
                 else if (in.irSkyFault)
-                    addReason(result, UnsafeSensorFault, "Sensor fault: MLX90614 IR");
+                    addReason(result, UnsafeSensorFault, "Sensor fault: IR sky sensor");
                 else
                     addReason(result, UnsafeSensorFault, "A required sensor is reporting a fault");
             }
@@ -100,7 +100,7 @@ namespace SQM
                 const bool environmentRulesEnabled = t.humidityMaxEnabled || t.dewpointMarginEnabled;
                 if (environmentRulesEnabled && in.environmentSensorFault)
                 {
-                    addReason(result, UnsafeEnvironmentFault, "Humidity sensor fault - humidity/dew point rules can't be evaluated");
+                    addReason(result, UnsafeEnvironmentFault, "Sensor fault: environment sensor");
                     return;
                 }
                 if (t.humidityMaxEnabled && in.humidityPercent > t.humidityMaxSafe)

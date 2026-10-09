@@ -51,7 +51,7 @@ test('rain: dashboard, Alpaca page and Alpaca IsSafe agree (US1/US5, SC-002)', a
   await ready(page);
   await page.getByRole('button', { name: /Demo/ }).click();
   await page.getByRole('button', { name: 'Rain', exact: true }).click();
-  await expect(page.getByText('Rain detected').first()).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('.reason-list').getByText('Rain detected')).toBeVisible({ timeout: 15000 });
   const issafe = await api(page, '/api/v1/safetymonitor/0/issafe');
   expect(JSON.parse(issafe.body).Value).toBe(false);
   const safety = JSON.parse((await api(page, '/api/safety')).body);

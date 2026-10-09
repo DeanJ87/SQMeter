@@ -1,5 +1,5 @@
 {
-  "about": "The English names of things the UI, alerts, Home Assistant and the docs share (specs/026 DS-27). One name per thing: `keys` are the en.json strings that must say it (case aside: card titles are shown in capitals); `avoid` are other names for it that must not appear in UI text or the docs; `ha` is the Home Assistant entity name (lib/Readings) that must match. Checked by tools/ui/label_check.py. Device-sent text (device.*) keeps part numbers: it is also machine-read (Alpaca, MQTT reasons).",
+  "about": "The English names of things the UI, alerts, Home Assistant and the docs share (specs/026 DS-27). One name per thing: `keys` are the en.json strings that must say it (case aside: card titles are shown in capitals); `avoid` are other names for it that must not appear in UI text, the device's safety reasons and alert titles, or the docs; `parts` are part numbers, which name the hardware (System page, hardware docs, Alpaca sensor descriptions) but never the thing in a card title, a safety reason or an alert; `ha` is the Home Assistant entity name (lib/Readings) that must match. Checked by tools/ui/label_check.py.",
   "names": [
     {
       "name": "Light sensor",
@@ -10,16 +10,24 @@
       "avoid": [
         "TSL2591 Light Sensor",
         "Light sensor (TSL2591)"
+      ],
+      "parts": [
+        "TSL2591"
       ]
     },
     {
       "name": "IR sky sensor",
       "keys": [
-        "sensor.infrared"
+        "sensor.infrared",
+        "dashboard.irSkySensor"
       ],
       "avoid": [
         "MLX90614 IR Temperature",
-        "IR temperature sensor"
+        "IR temperature sensor",
+        "IR Temperature"
+      ],
+      "parts": [
+        "MLX90614"
       ]
     },
     {
@@ -30,6 +38,9 @@
       "avoid": [
         "Environment sensor (BME280)",
         "BME280 Environment"
+      ],
+      "parts": [
+        "BME280"
       ]
     },
     {
@@ -41,6 +52,9 @@
       ],
       "avoid": [
         "RG-15 Rain Sensor"
+      ],
+      "parts": [
+        "RG-15"
       ]
     },
     {

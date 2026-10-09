@@ -44,12 +44,12 @@ What's shown, and where each piece of device state appears (or why it doesn't), 
 | **Environment** | Temperature, humidity, pressure, dew point | BME280 fitted |
 | **GPS Location** | Fix, position, satellites, altitude, HDOP | GPS enabled |
 | **Light Sensor** | Illuminance (whole lux from 100 up, 3 significant figures below) and raw TSL2591 counts | Always |
-| **IR Temperature** | Sky and ambient temperature | Always |
+| **IR Sky Sensor** | Sky and ambient temperature from the IR sky sensor | Always |
 | **Device & Network** | WiFi signal and uptime as tiles; then one row each for IPv4, every IPv6 address (global, local, link, with "?" for the last two) when IPv6 is on, the `.local` name when mDNS is on, MQTT when it's on (**Connected**, **Retrying**, or **Can't connect** with the reason behind "?"), and the firmware version with **Update available** when the Updates page found a newer release this session | Always |
 | **Wind** | Mean speed and gust (m/s and km/h), direction. Speed and gust turn amber near and red at your safety limits | Anemometer enabled |
 | **Rain Sensor** | Raining, intensity, event and daily totals, in the RG-15's units | Rain sensor enabled |
 
-A sensor that is switched on but stops working keeps its card, in a fault state: **Not responding**, **Stale** or **Error**, what it affects and how old its last reading is - never zeros, and never a card that vanishes as if the sensor wasn't fitted. A sensor switched off in Settings has no card, and a BME280 that has never answered is taken as not fitted. The **System** page shows every sensor's status. Sun & Moon times are calculated in the browser for the device's location and shown in the browser's time zone (the card's "?" says which).
+A sensor that is switched on but stops working keeps its card with just its state in the pill: **Not responding**, **Stale** or **Error** - never zeros, and never a card that vanishes as if the sensor wasn't fitted. What it affects and how old its last reading is are in the sensor's Status row ("?"). A sensor switched off in Settings has no card, and an environment sensor that has never answered is taken as not fitted. The **System** page shows every sensor's status. Sun & Moon times are calculated in the browser for the device's location and shown in the browser's time zone (the card's "?" says which).
 
 The **Live** badge on Sky Quality turns **Stale** when readings stop arriving; the Status card's **Data** tile says the same whichever cards are shown.
 

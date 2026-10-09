@@ -38,7 +38,7 @@ describe('StatusCard', () => {
       item('sensor-faults', 'IR sky sensor', 'Error', {
         severity: 'problem',
         detail: "Cloud cover and the cloud safety rule can't be measured.",
-        fix: { label: 'Open settings', href: '#/settings?tab=sensors' },
+        fix: { label: 'Open settings', href: '/settings?tab=sensors' },
       }),
       item('settings-not-in-effect', 'Settings', '1 inactive', { severity: 'note', fix: { label: 'Open settings', href: '#/settings' } }),
     ];
@@ -46,7 +46,7 @@ describe('StatusCard', () => {
     expect(screen.getByText('2 to check')).toBeTruthy();
     const row = screen.getByText('IR sky sensor').closest('li') as HTMLElement;
     expect(within(row).getByText('Error')).toBeTruthy();
-    expect(within(row).getByRole('link').getAttribute('href')).toBe('#/settings?tab=sensors');
+    expect(within(row).getByRole('link').getAttribute('href')).toBe('/settings?tab=sensors');
     // One link per row, no repeated "Open settings" text on the page.
     expect(screen.queryAllByText('Open settings')).toHaveLength(0);
     // The detail is behind "?", not a paragraph.

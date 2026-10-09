@@ -132,7 +132,9 @@ test('a failed sensor keeps its card and is one row: name and pill', async ({ pa
   await expect(row).toContainText('IR sky sensor', { timeout: 15_000 });
   await expect(row.locator('.pill')).toHaveText(/Error|Not responding|Stale/);
   await expect(row.getByRole('link')).toHaveAttribute('href', /tab=sensors/);
-  await expect(card(page, 'Cloud Conditions')).toContainText("Cloud cover and the cloud safety rule can't be measured.");
+  // Said once (DS-08): the card keeps just its pill; what it affects is the row's "?".
+  await expect(card(page, 'Cloud Conditions').locator('.pill')).toHaveText(/Error|Not responding|Stale/);
+  for (const title of ['Cloud Conditions', 'IR Sky Sensor']) await expect(card(page, title)).not.toContainText("can't be measured");
 });
 
 test('settings not in effect are one row', async ({ page }) => {
@@ -169,9 +171,42 @@ test('safety rules not in effect and not shared with N.I.N.A.', async ({ page })
   await expect(item(page, 'rules-not-in-effect')).toHaveCount(0);
   await expect(item(page, 'safety-not-shared')).toHaveCount(0);
   await setConfig(page, { 'rain.enabled': false, 'alpaca.rainUnsafeEnabled': true, 'alpaca.enabled': false });
-  await expect(item(page, 'rules-not-in-effect')).toContainText('rain sensor is off');
-  await expect(item(page, 'safety-not-shared')).toBeVisible();
+  // The rule is the row's label, the state its pill, the reason its "?" (DS-24).
+  await expect(item(page, 'rules-not-in-effect').first()).toContainText('Unsafe while raining');
+  await expect(item(page, 'rules-not-in-effect').first().locator('.pill')).toHaveText('Not in effect');
+  await expect(item(page, 'safety-not-shared')).toContainText('Imaging apps');
+  await expect(item(page, 'safety-not-shared').locator('.pill')).toHaveText('Not shared');
 });
+
+// DS-08 and DS-24 on what the dashboard renders, not just the English
+// strings: copy composed in code can join facts too. Every card, in states
+// that show the most text: no " · " or " - " run-ons, and the Status card's
+// tiles carry no explanation under the pill.
+for (const [state, query, patch] of [
+  ['healthy', '', null],
+  ['sensor fault', '?scenario=fail-ir', null],
+  ['rain', '?scenario=rain', null],
+  [
+    'rules off and Alpaca off',
+    '',
+    { 'rain.enabled': false, 'alpaca.rainUnsafeEnabled': true, 'alpaca.enabled': false, 'alerts.enabled': false },
+  ],
+] as const) {
+  test(`no run-on text on the dashboard: ${state}`, async ({ page }) => {
+    await open(page, query);
+    if (patch) await setConfig(page, patch);
+    await page.waitForTimeout(2500);
+    for (const text of await page.locator('.masonry-item').allInnerTexts()) {
+      for (const line of text.split('\n')) {
+        expect(line, 'DS-24: one fact per line').not.toMatch(/ [·•] | [-–] /);
+      }
+    }
+    await expect(statusCard(page).locator('.status-tile a')).toHaveCount(0);
+    for (const tile of await statusCard(page).locator('.status-tile:not([data-inventory="imaging-app"])').all()) {
+      await expect(tile.locator('.metric-sub')).toHaveCount(0);
+    }
+  });
+}
 
 test('update available from this session’s check', async ({ page }) => {
   // inventory: update-available

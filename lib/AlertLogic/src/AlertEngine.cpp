@@ -278,7 +278,9 @@ namespace SQM
                 if (sync(lens, in.lensFault, step.emit(rules.onSensorFault, rules.sensorSettleSeconds)) && in.lensFault)
                 {
                     alerts.push_back(make(
-                        AlertType::LensFault, "Rain sensor lens fault", "The RG-15 reports a lens fault - clean or inspect the lens."));
+                        AlertType::LensFault,
+                        "Rain sensor lens fault",
+                        "The rain sensor reports a lens fault. Clean or inspect the lens."));
                     alerts.back().vars = {{"sensor", "RG-15 lens"}};
                 }
             }
@@ -302,12 +304,12 @@ namespace SQM
                     if (faulted)
                         alerts.push_back(make(
                             AlertType::SensorFault,
-                            std::string(sensor.name) + " sensor fault",
+                            "Sensor fault: " + std::string(sensor.name),
                             std::string(sensor.name) + " is offline or reporting errors."));
                     else
                         alerts.push_back(make(
                             AlertType::SensorRecovered,
-                            std::string(sensor.name) + " sensor recovered",
+                            "Sensor recovered: " + std::string(sensor.name),
                             std::string(sensor.name) + " is reporting normally again."));
                     alerts.back().vars = {{"sensor", sensor.name}};
                 }

@@ -68,13 +68,15 @@ export const WindCard: FunctionalComponent<{ wind: Wind; config: Config | null }
         <MetricTile
           label={t('dashboard.speed')}
           value={formatNumber(wind.speed, 1)}
-          unit={t('dashboard.mSNumberKmH', { number: formatNumber((wind.speed ?? 0) * 3.6, 0) })}
+          unit="m/s"
+          alt={t('dashboard.numberKmH', { number: formatNumber((wind.speed ?? 0) * 3.6, 0) })}
           tone={windTone(wind.speed, alpaca?.windSpeedUnsafeEnabled, alpaca?.windSpeedUnsafeMs, 'tone-cyan')}
         />
         <MetricTile
           label={t('dashboard.gust')}
           value={formatNumber(wind.gust, 1)}
-          unit={t('dashboard.mSNumberKmH', { number: formatNumber((wind.gust ?? 0) * 3.6, 0) })}
+          unit="m/s"
+          alt={t('dashboard.numberKmH', { number: formatNumber((wind.gust ?? 0) * 3.6, 0) })}
           tone={windTone(wind.gust, alpaca?.windGustUnsafeEnabled, alpaca?.windGustUnsafeMs)}
         />
         <MetricTile

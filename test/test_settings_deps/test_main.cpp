@@ -199,7 +199,7 @@ void test_rules_not_in_effect()
     cfg.rain.enabled = false;
     std::vector<std::string> rules = Deps::rulesNotInEffect(cfg);
     TEST_ASSERT_EQUAL(2, rules.size());
-    TEST_ASSERT_EQUAL_STRING("Unsafe while raining - rain sensor is off", rules[0].c_str());
+    TEST_ASSERT_EQUAL_STRING("Unsafe while raining", rules[0].c_str());
 
     cfg.rain.enabled = true;
     TEST_ASSERT_EQUAL(0, Deps::rulesNotInEffect(cfg).size());
