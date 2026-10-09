@@ -284,6 +284,7 @@ export { alertsConfigSchema };
 export const configSchema = z
   .object({
     deviceName: z.string().min(1, t('validation.configSchema.deviceNameIsRequired')),
+    language: z.string().optional(),
     primaryTimeSource: z.number().int().min(0).max(1),
     secondaryTimeSource: z.number().int().min(0).max(1),
     wifi: wifiConfigSchema,

@@ -18,8 +18,9 @@ export const PAUSE_HINT = t('settings.alertSchedule.takesEffectStraightAwayHome'
 
 // "at 21:04", "5 min ago", or nothing when it happened before this boot.
 const when = (schedule: AlertSchedule) => {
-  if (schedule.since) return ` at ${formatClock(new Date(schedule.since))}`;
-  if (schedule.sinceAgeMs !== undefined && schedule.sinceAgeMs !== null) return ` ${formatDuration(schedule.sinceAgeMs)} ago`;
+  if (schedule.since) return t('settings.alertSchedule.sinceAt', { clock: formatClock(new Date(schedule.since)) });
+  if (schedule.sinceAgeMs !== undefined && schedule.sinceAgeMs !== null)
+    return t('settings.alertSchedule.sinceAgo', { duration: formatDuration(schedule.sinceAgeMs) });
   return '';
 };
 

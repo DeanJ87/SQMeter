@@ -1,6 +1,6 @@
 import { FunctionalComponent } from 'preact';
 import { useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { formatClock, moonIllumination, moonPosition, SKY_PHASE_LABEL, SkyPhase, skyPhase, sunPosition } from '../lib/astro';
+import { formatClock, moonIllumination, moonPosition, SkyPhase, skyPhase, skyPhaseLabel, sunPosition } from '../lib/astro';
 import { t } from '../i18n';
 
 // Noon-to-noon altitude chart for the coming (or current) night: twilight as
@@ -193,7 +193,7 @@ const NightChart: FunctionalComponent<{ latitude: number; longitude: number; now
       {hover && (
         <div class="chart-tip" style={{ left: `${Math.min(Math.max(x(hover.date.valueOf()), 70), width - 70)}px` }}>
           <strong>{formatClock(hover.date)}</strong>
-          <span>{t('nightChart.sunFixedValue', { fixed: hover.sun.toFixed(1), value: SKY_PHASE_LABEL[skyPhase(hover.sun)] })}</span>
+          <span>{t('nightChart.sunFixedValue', { fixed: hover.sun.toFixed(1), value: skyPhaseLabel(skyPhase(hover.sun)) })}</span>
           <span>
             {hover.moon > 0
               ? t('nightChart.hoverMoonUp', { altitude: hover.moon.toFixed(0), lit: (hover.lit * 100).toFixed(0) })

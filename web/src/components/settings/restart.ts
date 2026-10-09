@@ -1,5 +1,5 @@
 import type { Config } from '../../types';
-import { t } from '../../i18n';
+import { currentLanguage, t } from '../../i18n';
 
 const changed = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b);
 
@@ -32,5 +32,8 @@ export const restartReasons = (before: Config, after: Config): string[] => {
   return reasons;
 };
 
+// "a, b and c" in the UI's language (British English: no comma before "and").
 export const listReasons = (reasons: string[]) =>
-  reasons.length <= 1 ? reasons.join('') : `${reasons.slice(0, -1).join(', ')} and ${reasons[reasons.length - 1]}`;
+  typeof Intl.ListFormat === 'function'
+    ? new Intl.ListFormat(currentLanguage() === 'en' ? 'en-GB' : currentLanguage(), { type: 'conjunction' }).format(reasons)
+    : reasons.join(t('common.listSeparator'));

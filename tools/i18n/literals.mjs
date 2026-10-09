@@ -20,12 +20,13 @@ const SKIP_DIRS = new Set(['__tests__', 'test', 'mocks', 'demo', 'types', 'i18n'
 const USER_ATTR =
   /^(label|title|hint|placeholder|alt|aria-label|ariaLabel|aria-description|aria-valuetext|busyLabel|message|description|heading|caption|summary|emptyText|fixLabel|confirmLabel|helpText|subtitle|actionLabel|tooltip|legend)$/;
 const SKIP_PROP =
-  /^(class|className|id|key|type|href|src|role|variant|tone|icon|name|for|htmlFor|rel|target|method|autocomplete|autoComplete|inputMode|pattern|dataField|size|align|value|step|min|max|d|viewBox|fill|stroke|xmlns|path|route|channel|event|kind|unit|field|setting|code|tab|anchor|mode|level|state|status|testId|style|color|font|format|accept|lang|dir)$/;
+  /^(class|className|id|key|type|href|src|role|variant|tone|icon|name|for|htmlFor|rel|target|method|autocomplete|autoComplete|inputMode|pattern|dataField|size|align|value|step|min|max|d|viewBox|fill|stroke|xmlns|path|route|channel|event|kind|unit|field|setting|code|tab|anchor|mode|level|state|status|testId|style|color|font|format|accept|lang|dir|clientId)$/;
 // Names and units that are the same in every language.
 const KEEP =
   /^(SQMeter|SQMeter Demo|N\.I\.N\.A\.|ASCOM Alpaca|Alpaca|MQTT|ntfy|Pushover|Home Assistant|GitHub|NTP|GPS|BME280|TSL2591|MLX90614|RG-15|ESP32|UTC|SSID|IP|OK)$/;
 // Units are the same in every language (units are their own setting).
 const UNITS = /^(mag\s*\/\s*arcsec²|hPa|m\/s|km\/h|mm\/h|mm|°C|°|%|lux|dBm|ms|s|min|h|KB|MB|Hz|kHz|V|SQM|NELM|HDOP|RSSI)$/;
+const PROTOCOLS = /^(HTTP|HTTPS|TCP|UDP|WebSocket)$/;
 const SAFE_CALLS = new Set(['t', 'tMaybe', 'require', 'fetch', 'route', 'querySelector', 'getElementById', 'matchMedia']);
 const SAFE_METHODS =
   /^(log|warn|error|debug|info|getItem|setItem|removeItem|get|has|set|delete|addEventListener|removeEventListener|startsWith|endsWith|includes|split|replace|replaceAll|querySelector|querySelectorAll|closest|matchMedia|setAttribute|getAttribute|removeAttribute|append|toLocaleTimeString|toLocaleDateString|toLocaleString|test|match|send|postMessage|getEntriesByName)$/;
@@ -56,6 +57,15 @@ function listFiles(dir, out = []) {
     } else if (/\.(ts|tsx)$/.test(entry.name) && !/\.d\.ts$|\.test\.|\.spec\./.test(entry.name)) out.push(p);
   }
   return out;
+}
+
+// Inside class={...}, className={...} or style={...}.
+function inStyleAttribute(node, sf) {
+  for (let p = node.parent; p; p = p.parent) {
+    if (ts.isJsxAttribute(p)) return /^(class|className|style)$/.test(p.name.getText(sf));
+    if (ts.isPropertyAssignment(p) && /^(class|className|transform|width|height|style)$/.test(p.name.getText(sf))) return true;
+  }
+  return false;
 }
 
 function skipContext(node, sf) {
@@ -102,7 +112,12 @@ export function scan(file) {
     }
     if (ts.isTemplateExpression(node)) {
       const text = node.head.text + node.templateSpans.map((s) => ' ' + s.literal.text).join('');
-      if (isProse(text) && /[A-Za-z]{2,}\s+[A-Za-z]{2,}/.test(text) && !skipContext(node, sf)) add(node, text);
+      // A word joined to a value by a space ("rises ${clock}") is UI text even
+      // alone; class lists and styles are the exception.
+      const beside = [...node.getText(sf).matchAll(/([A-Za-z]{3,}) \$\{|\} ([A-Za-z]{3,})/g)].map((m) => m[1] ?? m[2]);
+      const wordBesideValue = beside.some((word) => !KEEP.test(word) && !UNITS.test(word) && !PROTOCOLS.test(word));
+      const sentence = isProse(text) && /[A-Za-z]{2,}\s+[A-Za-z]{2,}/.test(text);
+      if ((sentence || wordBesideValue) && !inStyleAttribute(node, sf) && !skipContext(node, sf)) add(node, text);
     }
     ts.forEachChild(node, visit);
   };

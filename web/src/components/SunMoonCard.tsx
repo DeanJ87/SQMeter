@@ -9,7 +9,7 @@ import {
   moonPosition,
   MOON_HORIZON,
   nextCrossing,
-  SKY_PHASE_LABEL,
+  skyPhaseLabel,
   skyPhase,
   sunPosition,
 } from '../lib/astro';
@@ -78,21 +78,16 @@ const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; de
         })
       : t('sunMoonCard.noAstronomicalDarkTonight');
   const moonTimes = [
-    moonrise && { time: moonrise, text: `rises ${formatClock(moonrise)}` },
-    moonset && { time: moonset, text: `sets ${formatClock(moonset)}` },
+    moonrise && { time: moonrise, text: t('sunMoonCard.moonRises', { clock: formatClock(moonrise) }) },
+    moonset && { time: moonset, text: t('sunMoonCard.moonSets', { clock: formatClock(moonset) }) },
   ]
     .filter((event): event is { time: Date; text: string } => Boolean(event))
     .sort((a, b) => a.time.valueOf() - b.time.valueOf())
     .map((event) => event.text)
-    .join(', ');
+    .join(t('common.listSeparator'));
 
   return (
-    <Card
-      title={t('sunMoonCard.sunMoon')}
-      icon="moon"
-      tone="violet"
-      actions={<Pill tone={PHASE_TONE[phase]}>{SKY_PHASE_LABEL[phase]}</Pill>}
-    >
+    <Card title={t('sunMoonCard.sunMoon')} icon="moon" tone="violet" actions={<Pill tone={PHASE_TONE[phase]}>{skyPhaseLabel(phase)}</Pill>}>
       <div class="sun-moon">
         <MoonDisc phase={illumination.phase} southern={latitude < 0} />
         <div class="sun-moon-summary">

@@ -74,12 +74,15 @@ export const useDialogFocus = (open: boolean, container: RefObject<HTMLElement>,
 
 // --- Tabs (FR-013) ---------------------------------------------------------------
 // ARIA tabs keyboard: Left/Right wrap, Home/End jump. Null for other keys.
-export const nextTabIndex = (key: string, index: number, count: number): number | null => {
+// Right-to-left (specs/023-i18n FR-019) the tabs run the other way, so do the arrows.
+export const nextTabIndex = (key: string, index: number, count: number, rtl = false): number | null => {
   if (count <= 0) return null;
+  const forward = rtl ? 'ArrowLeft' : 'ArrowRight';
+  const back = rtl ? 'ArrowRight' : 'ArrowLeft';
   switch (key) {
-    case 'ArrowRight':
+    case forward:
       return (index + 1) % count;
-    case 'ArrowLeft':
+    case back:
       return (index - 1 + count) % count;
     case 'Home':
       return 0;

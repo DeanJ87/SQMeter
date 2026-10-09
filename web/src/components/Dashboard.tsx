@@ -10,6 +10,7 @@ import { summariseSeries, useAnnounceChange } from '../lib/a11y';
 import Masonry, { MasonryItem, mergeOrder, moveInOrder } from './Masonry';
 import { t } from '../i18n';
 import { formatAgeMs, formatNumber, formatUptime } from '../i18n/format';
+import { deviceText } from '../i18n/deviceMessage';
 
 const bortleTone = (bortle?: number): string => {
   if (typeof bortle !== 'number') return 'tone-muted';
@@ -218,7 +219,7 @@ const Dashboard: FunctionalComponent = () => {
           <div class="sqm-display">
             <div class="sqm-value">{formatNumber(sensors.sky.sqm, 2)}</div>
             <div class="sqm-unit">{t('dashboard.magArcsec')}</div>
-            <p>{sensors.sky.description ?? t('dashboard.skyQualityDataUnavailable')}</p>
+            <p>{sensors.sky.description ? deviceText(sensors.sky.description) : t('dashboard.skyQualityDataUnavailable')}</p>
           </div>
 
           <MiniSpark values={sqmHistory} tone={skyTone} label={t('dashboard.skyQuality2')} />
@@ -247,7 +248,9 @@ const Dashboard: FunctionalComponent = () => {
           tone="violet"
           actions={
             <>
-              <Pill tone={conditionTone(sensors.clouds.condition)}>{sensors.clouds.description ?? t('dashboard.unknown')}</Pill>
+              <Pill tone={conditionTone(sensors.clouds.condition)}>
+                {sensors.clouds.description ? deviceText(sensors.clouds.description) : t('dashboard.unknown')}
+              </Pill>
             </>
           }
         >
@@ -327,9 +330,9 @@ const Dashboard: FunctionalComponent = () => {
       node: (
         <Card title={t('dashboard.lightSensor')} icon="eye" tone="cyan">
           <SensorReadingRow label={t('dashboard.illuminance')} value={formatNumber(sensors.light.lux, 5)} unit="lux" />
-          <SensorReadingRow label={t('dashboard.visible')} value={String(sensors.light.visible)} unit="raw" />
-          <SensorReadingRow label={t('dashboard.infrared')} value={String(sensors.light.infrared)} unit="raw" />
-          <SensorReadingRow label={t('dashboard.fullSpectrum')} value={String(sensors.light.full)} unit="raw" />
+          <SensorReadingRow label={t('dashboard.visible')} value={String(sensors.light.visible)} unit={t('dashboard.rawUnit')} />
+          <SensorReadingRow label={t('dashboard.infrared')} value={String(sensors.light.infrared)} unit={t('dashboard.rawUnit')} />
+          <SensorReadingRow label={t('dashboard.fullSpectrum')} value={String(sensors.light.full)} unit={t('dashboard.rawUnit')} />
         </Card>
       ),
     },

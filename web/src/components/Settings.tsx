@@ -250,7 +250,7 @@ const Settings: FunctionalComponent = () => {
 
   const onTabKey = (event: KeyboardEvent) => {
     const index = SETTINGS_TABS.findIndex(({ id }) => id === tab);
-    const next = nextTabIndex(event.key, index, SETTINGS_TABS.length);
+    const next = nextTabIndex(event.key, index, SETTINGS_TABS.length, document.documentElement.dir === 'rtl');
     if (next === null) return;
     event.preventDefault();
     const nextId = SETTINGS_TABS[next].id;

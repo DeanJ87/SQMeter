@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { t, type MessageKey } from '../i18n';
 import { formatMinutes, formatTime } from '../i18n/format';
 // Low-precision sun and moon positions (after the formulas in Meeus /
 // SunCalc). Good to about a minute for sun times and a few minutes for the
@@ -135,13 +135,17 @@ export const skyPhase = (sunAltitude: number): SkyPhase =>
           ? 'astronomical'
           : 'night';
 
-export const SKY_PHASE_LABEL: Record<SkyPhase, string> = {
-  day: t('astro.daylight'),
-  civil: t('astro.civilTwilight'),
-  nautical: t('astro.nauticalTwilight'),
-  astronomical: t('astro.astronomicalTwilight'),
-  night: t('astro.dark'),
+const SKY_PHASE_KEY: Record<SkyPhase, MessageKey> = {
+  day: 'astro.daylight',
+  civil: 'astro.civilTwilight',
+  nautical: 'astro.nauticalTwilight',
+  astronomical: 'astro.astronomicalTwilight',
+  night: 'astro.dark',
 };
+
+// A function, not a table built at import: the demo imports this module
+// before the language is loaded (specs/023-i18n research D2).
+export const skyPhaseLabel = (phase: SkyPhase) => t(SKY_PHASE_KEY[phase]);
 
 // When the sun next passes below / above `darkAltitude`. If it's dark now,
 // `start` is null and `end` is when it gets light; otherwise `start` is when

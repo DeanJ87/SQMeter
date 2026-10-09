@@ -41,6 +41,11 @@ describe('nextTabIndex', () => {
   it('ignores other keys', () => {
     expect(nextTabIndex('Enter', 2, 6)).toBeNull();
   });
+
+  it('runs the other way right-to-left', () => {
+    expect(nextTabIndex('ArrowLeft', 0, 6, true)).toBe(1);
+    expect(nextTabIndex('ArrowRight', 0, 6, true)).toBe(5);
+  });
 });
 
 describe('summariseSeries', () => {

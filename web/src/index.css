@@ -2487,6 +2487,9 @@ main:focus {
    logical properties above; readings, units, coordinates, times and charts
    stay left-to-right inside the page. */
 [dir='rtl'] .metric-value,
+[dir='rtl'] .metric-unit,
+[dir='rtl'] .sqm-unit,
+[dir='rtl'] .input-unit,
 [dir='rtl'] .reading-value,
 [dir='rtl'] .mono,
 [dir='rtl'] .ltr,
@@ -2496,6 +2499,12 @@ main:focus {
 [dir='rtl'] input[type='url'] {
   direction: ltr;
   unicode-bidi: isolate;
+}
+
+/* Arrows that mean "earlier"/"later" point the other way. */
+[dir='rtl'] .dir-icon {
+  display: inline-block;
+  transform: scaleX(-1);
 }
 
 [dir='rtl'] .toggle input::before {

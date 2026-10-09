@@ -103,7 +103,7 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         id="ble"
         title={t('settings.device.bluetooth')}
         hint={t('settings.device.broadcastsSafetyAndRainState')}
-        badge={ble?.active ? <StatusBadge tone="ok" label={`${ble.clients} connected`} /> : undefined}
+        badge={ble?.active ? <StatusBadge tone="ok" label={t('settings.device.bleClientsConnected', { count: ble.clients })} /> : undefined}
       >
         {hw.bleAvailable === false && <Requires>{t('settings.device.needsTheBluetoothFirmwareBuild')}</Requires>}
         {hw.bleAvailable && (

@@ -18,6 +18,7 @@ import {
 } from './controls';
 import { t } from '../../i18n';
 import { deviceError } from '../../i18n/deviceMessage';
+import { formatNumber } from '../../i18n/format';
 
 const ANEMOMETER_PRESETS = [
   { value: '2.4', label: t('settings.sensors.misolArgentSparkfun') },
@@ -218,7 +219,8 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
             <span class="reading-label">{t('settings.sensors.darkOffset')}</span>
             <span class="reading-value">
               {calibration.darkVisibleOffset > 0
-                ? `${calibration.darkVisibleOffset.toFixed(2)} counts${calibratedAt ? ` · ${calibratedAt}` : ''}`
+                ? t('settings.sensors.darkOffsetCounts', { value: formatNumber(calibration.darkVisibleOffset, 2) }) +
+                  (calibratedAt ? ` · ${calibratedAt}` : '')
                 : t('settings.sensors.notCalibrated')}
             </span>
           </div>
@@ -227,8 +229,11 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
               <span class="reading-label">{t('settings.sensors.averagingWindow')}</span>
               <span class="reading-value">
                 {light.windowSamples
-                  ? `${Math.min(light.sampleCount, light.windowSamples)} of ${light.windowSamples} samples`
-                  : `${light.sampleCount} samples`}
+                  ? t('settings.sensors.samplesOfWindow', {
+                      count: Math.min(light.sampleCount, light.windowSamples),
+                      total: light.windowSamples,
+                    })
+                  : t('settings.sensors.sampleCount', { count: light.sampleCount })}
                 {light.nightMode === false ? t('settings.sensors.seeingLight') : ''}
               </span>
             </div>

@@ -33,6 +33,8 @@ SOURCES = {
     "tools/demo-core/bridge.cpp": ("api", {"errorJson": [0]}),
     "lib/LanguageLogic/src/LanguageLogic.cpp": ("language", {}),
     "src/LanguagePack.cpp": ("language", {"fail": [0], "sendError": [2]}),
+    "lib/SkyLogic/src/CloudDetection.cpp": ("sky", {}),
+    "lib/SkyLogic/src/SkyQuality.cpp": ("sky", {}),
 }
 # `<target>["error"] = <expr>;` and `error = <expr>;` assignments are device text too.
 ASSIGN = {
@@ -41,6 +43,9 @@ ASSIGN = {
     "tools/demo-core/bridge.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "src/LanguagePack.cpp": re.compile(r"(?<![\w.>])error\s*=\s*(?=\")"),
     "lib/LanguageLogic/src/LanguageLogic.cpp": re.compile(r"(?<![\w.>])(?:error\s*=|return)\s*(?=\")"),
+    # The cloud condition and Bortle descriptions (/api/sensors).
+    "lib/SkyLogic/src/CloudDetection.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
+    "lib/SkyLogic/src/SkyQuality.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
 }
 PRINTF = re.compile(r"%(?:[-+ 0#]*\d*(?:\.\d+)?)(?:l|ll|h|z)?[dfisuxXgc]|%%")
 

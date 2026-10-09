@@ -72,10 +72,13 @@ const Masonry: FunctionalComponent<{
   const columnWidth = columns > 0 ? (width - gap * (columns - 1)) / columns : width;
   const columnHeights = new Array(columns).fill(0);
   const positions: Record<string, { x: number; y: number }> = {};
+  // Right-to-left (specs/023-i18n FR-019) the first column is on the right.
+  const rtl = typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
+  const columnX = (column: number) => (rtl ? width - columnWidth - column * (columnWidth + gap) : column * (columnWidth + gap));
   for (const item of items) {
     let column = 0;
     for (let c = 1; c < columns; c++) if (columnHeights[c] < columnHeights[column] - 1) column = c;
-    positions[item.id] = { x: column * (columnWidth + gap), y: columnHeights[column] };
+    positions[item.id] = { x: columnX(column), y: columnHeights[column] };
     columnHeights[column] += (heights[item.id] ?? 0) + gap;
   }
   const measured = width > 0 && items.every((item) => heights[item.id] !== undefined);
@@ -134,7 +137,9 @@ const Masonry: FunctionalComponent<{
                 disabled={index === 0}
                 onClick={() => onMove?.(item.id, index - 1)}
               >
-                ←
+                <span class="dir-icon" aria-hidden="true">
+                  ←
+                </span>
               </button>
               <button
                 type="button"
@@ -143,7 +148,9 @@ const Masonry: FunctionalComponent<{
                 disabled={index === items.length - 1}
                 onClick={() => onMove?.(item.id, index + 1)}
               >
-                →
+                <span class="dir-icon" aria-hidden="true">
+                  →
+                </span>
               </button>
             </div>
           )}
