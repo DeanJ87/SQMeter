@@ -3,9 +3,11 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include "CaptiveDns.h"
+#include <esp_netif.h>
 
 namespace SQM
 {
+    bool WiFiManager::ipv6Wanted = false;
 
     WiFiManager::WiFiManager(const WiFiConfig &config)
         : config(config),
@@ -25,6 +27,7 @@ namespace SQM
     {
         WiFi.mode(WIFI_STA);
         WiFi.setHostname(config.hostname.c_str());
+        ipv6Wanted = config.ipv6;
         WiFi.onEvent(onWiFiEvent);
 
         if (!config.ssid.empty())
@@ -233,13 +236,42 @@ namespace SQM
         stopCaptivePortal();
     }
 
+    std::vector<Net::Ipv6> WiFiManager::ipv6Addresses()
+    {
+        std::vector<Net::Ipv6> addresses;
+        esp_netif_t *station = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+        if (!ipv6Wanted || station == nullptr || !WiFi.isConnected())
+            return addresses;
+        esp_ip6_addr_t found[LWIP_IPV6_NUM_ADDRESSES];
+        const int count = esp_netif_get_all_ip6(station, found);
+        for (int i = 0; i < count; ++i)
+        {
+            Net::Ipv6 address{};
+            memcpy(address.data(), found[i].addr, address.size());
+            addresses.push_back(address);
+        }
+        return addresses;
+    }
+
     void WiFiManager::onWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
     {
         switch (event)
         {
         case ARDUINO_EVENT_WIFI_STA_CONNECTED:
             Logger::info(TAG, "WiFi connected");
+            // A link-local address starts IPv6; router advertisements then
+            // add global/unique-local ones by themselves (SLAAC).
+            if (ipv6Wanted && !WiFi.enableIpV6())
+                Logger::warn(TAG, "IPv6 failed to start");
             break;
+
+        case ARDUINO_EVENT_WIFI_STA_GOT_IP6:
+        {
+            Net::Ipv6 address{};
+            memcpy(address.data(), info.got_ip6.ip6_info.ip.addr, address.size());
+            Logger::info(TAG, "Got IPv6 address: %s (%s)", Net::formatIpv6(address).c_str(), Net::scopeName(Net::scopeOf(address)));
+            break;
+        }
 
         case ARDUINO_EVENT_WIFI_STA_GOT_IP:
             Logger::info(TAG, "Got IP address: %s", WiFi.localIP().toString().c_str());

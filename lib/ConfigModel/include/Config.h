@@ -20,6 +20,7 @@ namespace SQM
         std::string password;
         std::string hostname;
         bool mdns = true; // advertise <hostname>.local and the HTTP service
+        bool ipv6 = true; // dual stack on the joined network (spec 015); applies at restart
         bool autoReconnect;
         uint32_t reconnectDelayMs;
         uint32_t maxReconnectDelayMs;

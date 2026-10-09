@@ -29,6 +29,7 @@ void test_defaults_are_valid_and_round_trip()
     TEST_ASSERT_TRUE_MESSAGE(defaults.validate(&error), error.c_str());
     TEST_ASSERT_EQUAL_STRING("sqmeter", defaults.wifi.hostname.c_str());
     TEST_ASSERT_TRUE(defaults.wifi.mdns);
+    TEST_ASSERT_TRUE(defaults.wifi.ipv6);
     TEST_ASSERT_EQUAL_STRING("sqmeter", defaults.mqtt.topic.c_str());
 
     // Loading normalises (e.g. the backup time source when GPS is off);
@@ -216,6 +217,42 @@ void test_full_client_templates_fit_and_add_nothing_to_main()
     TEST_ASSERT_EQUAL_STRING(mainBefore.c_str(), mainAfter.c_str());
 }
 
+void test_ipv6_setting_defaults_on_and_round_trips()
+{
+    const Config base = Config::createDefault();
+    // Older saved config has no "ipv6": on.
+    const auto old = Config::fromJson(R"({"wifi":{"ssid":"Home","mdns":true}})");
+    TEST_ASSERT_TRUE(old.has_value());
+    TEST_ASSERT_TRUE(old->wifi.ipv6);
+    const auto off = Config::fromJson(R"({"wifi":{"ipv6":false}})", &base);
+    TEST_ASSERT_TRUE(off.has_value());
+    TEST_ASSERT_FALSE(off->wifi.ipv6);
+    const auto again = Config::fromJson(off->toJson());
+    TEST_ASSERT_FALSE(again->wifi.ipv6);
+}
+
+void test_ipv6_broker_and_webhook_forms()
+{
+    // Accepted: bare and bracketed IPv6, bracketed with a port, http with a bracketed IPv6.
+    TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"mqtt":{"enabled":true,"broker":"fd00::10","topic":"sqm"}})").c_str());
+    TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"mqtt":{"enabled":true,"broker":"[fd00::10]:1883","topic":"sqm"}})").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "", rejectReason(R"({"alerts":{"webhook":{"enabled":true,"url":"http://[fd00::10]:8080/hook"}}})").c_str());
+
+    TEST_ASSERT_EQUAL_STRING(
+        "MQTT broker: Put the port in the Port field",
+        rejectReason(R"({"mqtt":{"enabled":true,"broker":"broker.local:1883","topic":"sqm"}})").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "MQTT broker: Not a valid IPv6 address", rejectReason(R"({"mqtt":{"enabled":true,"broker":"fd00::zz","topic":"sqm"}})").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "Alerts: webhook URL: https to an IPv6 address isn't supported yet - use a host name, or http",
+        rejectReason(R"({"alerts":{"webhook":{"enabled":true,"url":"https://[fd00::10]/hook"}}})").c_str());
+
+    // Saved config isn't held to the new forms, so it always loads.
+    const auto stored = Config::fromJson(R"({"mqtt":{"enabled":true,"broker":"broker.local:1883","topic":"sqm"}})");
+    TEST_ASSERT_TRUE(stored.has_value());
+}
+
 int main()
 {
     UNITY_BEGIN();
@@ -232,5 +269,7 @@ int main()
     RUN_TEST(test_client_silence_boundaries);
     RUN_TEST(test_stored_parts_round_trip);
     RUN_TEST(test_full_client_templates_fit_and_add_nothing_to_main);
+    RUN_TEST(test_ipv6_setting_defaults_on_and_round_trips);
+    RUN_TEST(test_ipv6_broker_and_webhook_forms);
     return UNITY_END();
 }
