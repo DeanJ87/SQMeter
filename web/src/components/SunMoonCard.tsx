@@ -16,6 +16,7 @@ import {
 import NightChart from './NightChart';
 import { Card, Pill } from './ui';
 import { t } from '../i18n';
+import { formatNumber } from '../i18n/format';
 
 const PHASE_TONE = {
   day: 'pill-amber',
@@ -94,7 +95,7 @@ const SunMoonCard: FunctionalComponent<{ latitude: number; longitude: number; de
           <strong>
             {t('sunMoonCard.moonphasenameFixedLit', {
               moonPhaseName: moonPhaseName(illumination.phase),
-              fixed: (illumination.fraction * 100).toFixed(0),
+              fixed: formatNumber(illumination.fraction * 100, 0),
             })}
           </strong>
           <span>{darkLabel}</span>

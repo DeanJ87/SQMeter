@@ -402,7 +402,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
             ariaLabel={`${label}: level`}
             options={LEVEL_OPTIONS}
             disabled={off || locked}
-            onChange={(v) => set(['events', key, 'level'], parseInt(v, 10))}
+            onChange={(v) => set(['events', key, 'level'], Number(v))}
           />
           {pushoverOn &&
             (event.level >= 2 ? (
@@ -656,7 +656,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
                 { value: '-12', label: t('settings.alerts.nauticalDark12') },
                 { value: '-18', label: t('settings.alerts.astronomicalDark18') },
               ]}
-              onChange={(v) => set(['nightSunAltitudeDeg'], parseFloat(v))}
+              onChange={(v) => set(['nightSunAltitudeDeg'], Number(v))}
             />
           </div>
           {darknessNote && <Note>{darknessNote}</Note>}

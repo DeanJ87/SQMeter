@@ -11,7 +11,9 @@ Open **Settings → Device → Language**, pick the language and **Save**.
 - Switching back to English deletes the file.
 - After a firmware update the device downloads the file for the new version by itself.
 
-Numbers, dates and times follow the language too (for example a decimal comma in German), and Arabic lays the page out right to left. Readings, units, coordinates and charts stay left to right.
+Numbers, dates and times follow the language too (for example a decimal comma in German), and Arabic lays the page out right to left. Readings, units, coordinates and charts stay left to right, and digits are always 0-9.
+
+When you type a number in Settings, use your language's decimal separator (`21,5` in German) or a point (`21.5`) - both work. Thousands separators are fine in whole groups (`1.234,5`). If a number could be read two ways, such as `1.234` in German, the field asks you to write it unambiguously instead of guessing. Coordinates can be pasted as `51.4779, -0.0015`, `51,4779; -0,0015` or `51,4779 -0,0015`.
 
 ## Without internet
 

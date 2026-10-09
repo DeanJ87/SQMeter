@@ -43,7 +43,7 @@ describe('Field', () => {
         <NumberInput value={0} onChange={() => undefined} error="Port must be 1-65535" />
       </Field>,
     );
-    const input = screen.getByRole('spinbutton', { name: 'Port' });
+    const input = screen.getByRole('textbox', { name: 'Port' });
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(input).toHaveAccessibleDescription('Port must be 1-65535');
   });
