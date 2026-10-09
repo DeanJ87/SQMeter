@@ -96,6 +96,8 @@ pip install -r docs/requirements.txt
 mkdocs serve
 ```
 
+The page screenshots (`docs/assets/screenshots/`) aren't committed: CI makes them from the demo before building the site. For a local `mkdocs build --strict` without missing-image warnings, make them first with `(cd web && npm run build:demo && npm run screenshots)`.
+
 ### Diagrams
 
 Diagrams are [Mermaid](https://mermaid.js.org/) in the Markdown, in the shape described in [`specs/024-docs-diagrams/contracts/diagram-block.md`](specs/024-docs-diagrams/contracts/diagram-block.md). Each one has:

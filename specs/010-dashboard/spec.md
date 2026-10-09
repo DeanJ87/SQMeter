@@ -25,7 +25,8 @@ data updates every second with a live/stale indicator.
 
 1. **Given** a disabled or undetected sensor, **When** the dashboard loads, **Then** its data card
    isn't shown (the sky card shows "not detected" because sky quality is the core reading).
-2. **Given** a live stream, **When** data stops arriving, **Then** the sky card shows "Stale".
+2. **Given** a live stream, **When** data stops arriving (the device flags its data old, or the
+   stream sends nothing for 5 s), **Then** the sky card shows "Stale".
 
 ---
 
@@ -62,7 +63,8 @@ values are plausible for a real device.
 ### Edge Cases
 
 - No location: Sun & Moon card hidden.
-- Alerts off: bell hidden; alerts switched off: bell crossed out.
+- Alerts off: bell hidden; alerts paused: bell crossed out. *(Superseded by 021: alerts are paused
+  and resumed, not switched off.)*
 
 ## Requirements *(mandatory)*
 
@@ -70,9 +72,10 @@ values are plausible for a real device.
 
 - **FR-001**: The dashboard MUST show the listed cards only for enabled, working hardware, with
   live/stale state.
-- **FR-002**: Cards MUST lay out in balanced columns by width and be rearrangeable (drag, arrows,
-  reset), persisting per browser.
-- **FR-003**: The header MUST show the alerts bell when alerts are enabled.
+- **FR-002**: Cards MUST lay out in balanced columns by width (1 to 4) and be rearrangeable (drag,
+  arrows, reset), persisting per browser.
+- **FR-003**: The header MUST show the alerts bell when alerts are enabled, crossed out while they
+  are paused (wording per spec 021).
 - **FR-004**: The documentation MUST include a dashboard guide and current screenshots of each page,
   generated automatically from the demo.
 - **FR-005**: The demo MUST use plausible mock data and the device's stream rates.

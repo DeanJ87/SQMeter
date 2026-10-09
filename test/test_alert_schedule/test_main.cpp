@@ -163,6 +163,28 @@ void test_upgrade_combinations(void)
     }
 }
 
+// "since" moves with every change of state or reason, through client
+// sessions; a repeated identical command keeps it (the state began then).
+void test_since_follows_every_change(void)
+{
+    for (SendMode mode : {SendMode::Any, SendMode::WhileConnected})
+    {
+        AlertSchedule schedule = started(mode, false);
+        schedule.command(true, ScheduleReason::UserRest, 2000, 100);
+        TEST_ASSERT_EQUAL_INT64(100, schedule.state().sinceEpoch);
+        schedule.update(mode, true, 3000, 200);
+        schedule.update(mode, false, 4000, 300);
+        const int64_t afterSession = mode == SendMode::Any ? 100 : 300;
+        TEST_ASSERT_EQUAL_INT64(afterSession, schedule.state().sinceEpoch);
+        TEST_ASSERT_TRUE(schedule.command(true, ScheduleReason::UserRest, 5000, 400) || mode == SendMode::Any);
+        const int64_t afterArm = mode == SendMode::Any ? 100 : 400; // identical command: no change in "any"
+        TEST_ASSERT_EQUAL_INT64(afterArm, schedule.state().sinceEpoch);
+        TEST_ASSERT_TRUE(schedule.command(false, ScheduleReason::UserRest, 6000, 500));
+        TEST_ASSERT_EQUAL_INT64(500, schedule.state().sinceEpoch);
+        TEST_ASSERT_EQUAL_UINT32(6000, schedule.state().sinceMs);
+    }
+}
+
 void test_armed_document(void)
 {
     SQM::Config cfg = SQM::Config::createDefault();
@@ -197,6 +219,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_first_update_keeps_saved_state);
     RUN_TEST(test_restore_migrated_and_bad_reason);
     RUN_TEST(test_upgrade_combinations);
+    RUN_TEST(test_since_follows_every_change);
     RUN_TEST(test_armed_document);
     return UNITY_END();
 }

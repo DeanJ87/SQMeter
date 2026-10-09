@@ -1,0 +1,210 @@
+{
+  "deviceName": "Observatory",
+  "timezone": "UTC",
+  "primaryTimeSource": 0,
+  "secondaryTimeSource": 0,
+  "wifi": {
+    "ssid": "HomeNet",
+    "password": "secret-wifi",
+    "hostname": "roof-sqm",
+    "autoReconnect": true,
+    "reconnectDelayMs": 1000,
+    "maxReconnectDelayMs": 300000
+  },
+  "mqtt": {
+    "enabled": true,
+    "broker": "192.168.1.10",
+    "port": 1883,
+    "username": "mq",
+    "password": "mqpass",
+    "topic": "obs/sqm",
+    "publishIntervalMs": 60000
+  },
+  "ota": {
+    "enabled": false,
+    "password": ""
+  },
+  "auth": {
+    "enabled": true,
+    "username": "admin",
+    "password": "adminpass"
+  },
+  "ntp": {
+    "enabled": true,
+    "server1": "pool.ntp.org",
+    "server2": "time.nist.gov",
+    "timezone": "GMT0BST,M3.5.0/1,M10.5.0",
+    "gmtOffsetSec": 0,
+    "daylightOffsetSec": 0,
+    "syncIntervalMs": 600000
+  },
+  "gps": {
+    "enabled": false,
+    "rxPin": 17,
+    "txPin": 16,
+    "baudRate": 9600
+  },
+  "rain": {
+    "enabled": true,
+    "rxPin": 18,
+    "txPin": 19,
+    "baudRate": 9600,
+    "debugUart": false,
+    "mode": "polling",
+    "resolution": "high",
+    "units": "metric",
+    "pollIntervalMs": 5000,
+    "rainClearDelayMs": 900000,
+    "dailyResetEnabled": false,
+    "dailyResetHour": 0,
+    "dailyResetMinute": 0
+  },
+  "sensor": {
+    "readIntervalMs": 5000,
+    "i2cSDA": 21,
+    "i2cSCL": 22,
+    "i2cFrequency": 100000
+  },
+  "skyAveraging": {
+    "windowSeconds": 90
+  },
+  "skyCalibration": {
+    "enabled": false,
+    "sqmOffset": 0.300000012,
+    "darkVisibleOffset": 0,
+    "darkFullOffset": 0,
+    "darkIrOffset": 0,
+    "darkSampleCount": 0,
+    "darkCalibratedAt": 0
+  },
+  "cloudDetection": {
+    "clearSkyThreshold": -16,
+    "cloudyThreshold": -6,
+    "humidityCorrection": 0.899999976
+  },
+  "alpaca": {
+    "enabled": true,
+    "manualOverrideUnsafe": false,
+    "staleAfterSeconds": 30,
+    "cloudCoverEnabled": true,
+    "cloudCoverUnsafePercent": 70,
+    "sqmMinEnabled": false,
+    "sqmMinSafe": 18.5,
+    "humidityMaxEnabled": false,
+    "humidityMaxSafe": 100,
+    "dewpointMarginEnabled": false,
+    "dewpointMarginMinC": 0,
+    "rainUnsafeEnabled": true,
+    "rainSensorRequired": true,
+    "safeDelaySeconds": 600,
+    "windSpeedUnsafeEnabled": false,
+    "windSpeedUnsafeMs": 10,
+    "windGustUnsafeEnabled": false,
+    "windGustUnsafeMs": 15
+  },
+  "ble": {
+    "enabled": false,
+    "passkey": ""
+  },
+  "location": {
+    "set": true,
+    "latitude": 51.48,
+    "longitude": -0.01,
+    "showSunMoon": true
+  },
+  "wind": {
+    "enabled": false,
+    "speedPin": 27,
+    "directionEnabled": false,
+    "directionPin": 35,
+    "kmhPerHz": 2.400000095,
+    "directionOffsetDeg": 0,
+    "vanePullupOhms": 10000
+  },
+  "alerts": {
+    "enabled": false,
+    "events": {
+      "unsafe": {
+        "level": 3,
+        "sound": "",
+        "title": "",
+        "message": ""
+      },
+      "safe": {
+        "level": 2,
+        "sound": "",
+        "title": "",
+        "message": ""
+      },
+      "rain_started": {
+        "level": 4,
+        "sound": "",
+        "title": "",
+        "message": ""
+      },
+      "rain_stopped": {
+        "level": 2,
+        "sound": "",
+        "title": "",
+        "message": ""
+      },
+      "sensor_fault": {
+        "level": 4,
+        "sound": "",
+        "title": "",
+        "message": ""
+      },
+      "sensor_recovered": {
+        "level": 1,
+        "sound": "",
+        "title": "",
+        "message": ""
+      },
+      "dew_risk": {
+        "level": 0,
+        "sound": "",
+        "title": "",
+        "message": ""
+      },
+      "clear_sky": {
+        "level": 0,
+        "sound": "",
+        "title": "",
+        "message": ""
+      },
+      "clouded_over": {
+        "level": 0,
+        "sound": "",
+        "title": "",
+        "message": ""
+      }
+    },
+    "dewRiskMarginC": 2,
+    "clearSkyCloudPercent": 20,
+    "cloudedOverCloudPercent": 70,
+    "skyNightOnly": true,
+    "nightSunAltitudeDeg": -12,
+    "cooldownSeconds": 300,
+    "pushover": {
+      "enabled": false,
+      "userKey": "",
+      "appToken": "",
+      "sound": ""
+    },
+    "ntfy": {
+      "enabled": false,
+      "server": "https://ntfy.sh",
+      "topic": "",
+      "token": ""
+    },
+    "webhook": {
+      "enabled": false,
+      "url": "",
+      "authHeader": "",
+      "insecureTls": false
+    },
+    "mqtt": {
+      "enabled": false
+    }
+  }
+}

@@ -431,22 +431,26 @@ namespace SQM
                 return state;
             };
 
+            // A sensor that isn't there - not detected at boot, or switched on
+            // but never answered since - is NotImplemented over Alpaca; one
+            // that answered and then failed or went stale is a driver error
+            // (spec 007 FR-004).
             Alpaca::ObservingConditionsSnapshot snap;
-            snap.skyLight = sourceState(true, snapshot.tsl.status, snapshot.tslLastUpdate);
-            snap.irSky = sourceState(true, snapshot.mlx.status, snapshot.mlxLastUpdate);
-            snap.environment = sourceState(true, snapshot.bme.status, snapshot.bmeLastUpdate);
+            snap.skyLight = sourceState(snapshot.tslInitialized, snapshot.tsl.status, snapshot.tslLastUpdate);
+            snap.irSky = sourceState(snapshot.mlxInitialized, snapshot.mlx.status, snapshot.mlxLastUpdate);
+            snap.environment = sourceState(snapshot.bmeInitialized, snapshot.bme.status, snapshot.bmeLastUpdate);
 
             // The RG-15 polls on its own interval and tracks its own staleness.
-            snap.rain.present = cfg.rain.enabled;
+            snap.rain.present = cfg.rain.enabled && snapshot.rg15.timestamp != 0;
             snap.rain.ageSeconds = ageMs(now, snapshot.rg15.timestamp) / 1000.0;
             snap.rain.valid = cfg.rain.enabled && snapshot.rg15.online && !snapshot.rg15.stale &&
                               snapshot.rg15.status == SensorStatus::OK && snapshot.rg15.timestamp != 0;
 
             const bool fresh = windFresh(snapshot.wind, now);
-            snap.wind.present = cfg.wind.enabled;
+            snap.wind.present = cfg.wind.enabled && snapshot.wind.timestamp != 0;
             snap.wind.valid = cfg.wind.enabled && fresh;
             snap.wind.ageSeconds = ageMs(now, snapshot.wind.timestamp) / 1000.0;
-            snap.windVane.present = cfg.wind.enabled && cfg.wind.directionEnabled;
+            snap.windVane.present = snap.wind.present && cfg.wind.directionEnabled;
             // Calm is valid (direction reported as 0); only a vane fault isn't.
             snap.windVane.valid = snap.windVane.present && fresh && !snapshot.wind.vaneFault;
             snap.windVane.ageSeconds = snap.wind.ageSeconds;

@@ -39,6 +39,7 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/update/fs` | POST | Flash filesystem OTA |
 | `/api/updates/check` | GET | Check GitHub for updates |
 | `/api/updates/apply` | POST | Install an update from GitHub |
+| `/api/wifi/scan` | GET | Scan for WiFi networks (starts a radio scan) |
 | `/api/wifi/connect` | POST | Change WiFi network |
 | `/api/mqtt/test` | POST | Test MQTT broker connection |
 | `/api/alerts/test` | POST | Send a test alert |
@@ -57,12 +58,14 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/config` | GET | Read config (passwords, keys and tokens masked) |
 | `/api/safe`, `/api/safety`, `/api/safety/history` | GET | Safety verdict, reasons and history |
 | `/api/alerts/recent`, `/api/alerts/armed` | GET | Recent alerts, sending or paused and why |
-| `/api/wifi/scan` | GET | Scan WiFi networks |
+| `/api/settings/effective` | GET | Which settings are in effect, and why not (no secrets) |
 | `/api/v1/...`, `/management/...` | GET / PUT | ASCOM Alpaca (the Alpaca spec has no auth) |
 | `/ws/sensors` | WS | Live sensor stream |
 | `/ws/status` | WS | Live status stream |
 
 Read-only integrations (Home Assistant, scripts polling sensor data) continue to work without credentials when auth is enabled.
+
+Every route and whether it needs the password is listed in `tools/api/routes.json`; CI fails if a new route isn't declared there, so a route can't ship open by accident.
 
 ### Setup
 

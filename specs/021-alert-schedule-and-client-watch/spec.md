@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: Implemented (PR #84)
+**Status**: Implemented (PR #95; spec PR #84) - converged
 
 **Input**: User description: "'On while N.I.N.A. is connected' doesn't describe what it does - it's really 'off when the SafetyMonitor Alpaca client disconnects', and that's bad wording too. 'Alerts on now?' implies switching it on bypasses something - confusing even to a native English speaker. Add the inverse: notify me if N.I.N.A. (or any Alpaca client) disconnects or stops polling for a set time, so I know the imaging software has dropped its connection to the safety monitor."
 
@@ -181,6 +181,10 @@ misunderstand without seeing it.
 
 ### Edge Cases
 
+- **"Only while an imaging app is connected" with Alpaca off** (amended by spec 020, D-12).
+  - No imaging app can connect, so holding alerts would hold them forever.
+  - The choice is kept but reported inactive ("Inactive - Alpaca is off"), and alerts go out any
+    time until Alpaca is back on. The three imaging-app events are inactive too (020 D-37).
 - **The device restarts mid-session.**
   - The device forgets connections; the client usually keeps polling and may not reconnect.
   - A request after a restart, from a client that never connected since, counts as the client
@@ -197,9 +201,11 @@ misunderstand without seeing it.
   no "stopped checking" alert is sent. The state the client sees is spec 007's concern.
 - **The imaging app goes silent while alerts are paused by hand**: nothing is sent. The pause is
   respected. The status line still shows the client as silent.
-- **The cooldown** applies per event type, as for other events. A client that flaps between silent
-  and back doesn't produce more than one alert per cooldown period. A change held back during the
-  cooldown is sent when the cooldown ends (spec 008 behaviour).
+- **The cooldown** applies to "stopped checking" as for other events: a client that flaps between
+  silent and back doesn't produce more than one "stopped checking" per cooldown period, and a loss
+  held back during the cooldown is sent when the cooldown ends (spec 008 behaviour). "Is back"
+  answers a sent "stopped checking" straight away, without waiting for that cooldown, so each loss
+  gets exactly one "back" (FR-009); a loss never announced (e.g. while paused) gets no "back".
 - **The "Only when it's dark" settings** don't hold back client alerts. Sessions can start at
   dusk, and a silent client matters at any hour.
 - **The device has no clock** (no NTP or GPS): client alerts still work, because silence is

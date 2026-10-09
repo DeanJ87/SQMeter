@@ -1,5 +1,7 @@
 # Contract: MQTT topics
 
+> **Source of truth:** the generated JSON Schemas in `specs/016-demo-device-emulation/contracts/schemas/` (checked against the demo in CI and against a device with `tools/contract-check.py`). This page records intent; fields added since (specs 019-021: e.g. `alerts` send mode and pause reason, `alpaca.clients`, `time.epoch`, `/api/settings/effective`, safety `rulesNotInEffect`) are in the schemas and `docs/api/rest.md`.
+
 `<base>` is the configured base topic (default `sqmeter`). Booleans are `1`/`0`; availability
 uses Home Assistant's `online`/`offline`.
 

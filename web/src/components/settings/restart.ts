@@ -6,9 +6,18 @@ const changed = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify
 // soon as it's saved (see saveConfigCallback in src/main.cpp).
 export const restartReasons = (before: Config, after: Config): string[] => {
   const reasons: string[] = [];
-  if (
-    changed([before.wifi.ssid, before.wifi.password, before.wifi.hostname], [after.wifi.ssid, after.wifi.password, after.wifi.hostname])
-  ) {
+  // WiFiManager takes its settings at boot (src/main.cpp doesn't pass a
+  // saved config on), so every WiFi field needs a restart.
+  const wifi = (c: Config) => [
+    c.wifi.ssid,
+    c.wifi.password,
+    c.wifi.hostname,
+    c.wifi.mdns,
+    c.wifi.autoReconnect,
+    c.wifi.reconnectDelayMs,
+    c.wifi.maxReconnectDelayMs,
+  ];
+  if (changed(wifi(before), wifi(after))) {
     reasons.push('WiFi');
   }
   if (after.ota.enabled && changed(before.ota, after.ota)) reasons.push('command-line uploads');

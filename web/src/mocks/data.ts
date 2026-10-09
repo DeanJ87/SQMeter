@@ -163,6 +163,7 @@ export const mockStatus: SystemStatus = {
     fsSize: 524288,
   },
   time: {
+    epoch: Math.floor(Date.now() / 1000),
     iso: new Date().toISOString(),
     timezone: 'GMT0',
   },

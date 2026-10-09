@@ -64,6 +64,21 @@ If the device stops responding after a failed OTA, it should fall back to the pr
 
 ---
 
+## A Connection Is Refused Under Heavy Use
+
+The ESP32's network stack holds at most **16 TCP connections** at once, including ones that have just closed (they linger for a short while). That limit is built into the ESP32 Arduino framework the firmware uses and can't be raised by a setting.
+
+Normal use is well within it. What uses connections:
+
+- each open browser tab with the SQMeter page: 2 (its live updates)
+- MQTT: 1
+- an imaging app: 1-2 per request burst (each Alpaca request is a short connection)
+- update checks and internet alerts: 1 while sending
+
+A conformance checker such as ASCOM ConformU fires hundreds of requests in quick succession; running it while other clients poll the device (another app, several browser tabs) can briefly exhaust the connections, and one request is refused. The device doesn't restart and the next request works. Close extra SQMeter tabs while running ConformU; imaging apps retry on their own.
+
+---
+
 ## An Alert Didn't Arrive (or One Did That Shouldn't Have)
 
 Open **History** on the dashboard's Safety card. It lists safety changes, restarts (and why) and every safe/unsafe alert actually sent, and survives restarts. Common reasons for no alert:

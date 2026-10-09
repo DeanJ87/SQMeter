@@ -55,7 +55,7 @@ export function statusDocument() {
     ...mockStatus,
     ...parts,
     firmware: { ...mockStatus.firmware, version: '0.2.0-beta.3' },
-    time: { iso: demoDevice.isoTime, timezone: cfg.ntp?.timezone ?? 'UTC0' },
+    time: { epoch: Math.floor(demoDevice.now.getTime() / 1000), iso: demoDevice.isoTime, timezone: cfg.ntp?.timezone ?? 'UTC0' },
     wifi: {
       ...mockStatus.wifi,
       ssid: joinedSsid ?? (cfg.wifi?.ssid || mockStatus.wifi.ssid),

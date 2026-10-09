@@ -264,7 +264,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
         badge={hw.irSky.detected === false ? <StatusBadge tone="bad" label="MLX90614 not detected" /> : undefined}
       >
         <div class="form-grid">
-          <Field label="Clear below" hint="Default -13.0">
+          <Field label="Clear below" hint="Default -13.0" error={error('cloudDetection.clearSkyThreshold')}>
             <NumberInput
               min={-30}
               max={0}
@@ -274,7 +274,7 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
               onChange={(v) => update(['cloudDetection', 'clearSkyThreshold'], v)}
             />
           </Field>
-          <Field label="Overcast above" hint="Default -3.0" error={error('cloudDetection.clearSkyThreshold')}>
+          <Field label="Overcast above" hint="Default -3.0" error={error('cloudDetection.cloudyThreshold')}>
             <NumberInput
               min={-20}
               max={10}
@@ -284,7 +284,11 @@ const SensorsTab: FunctionalComponent<SettingsTabProps> = ({
               onChange={(v) => update(['cloudDetection', 'cloudyThreshold'], v)}
             />
           </Field>
-          <Field label="Humidity correction" hint="AAG CloudWatcher k1, default 0.75. Without the BME280 a fixed 53% humidity is assumed.">
+          <Field
+            label="Humidity correction"
+            hint="AAG CloudWatcher k1, default 0.75. Without the BME280 a fixed 53% humidity is assumed."
+            error={error('cloudDetection.humidityCorrection')}
+          >
             <NumberInput
               min={0}
               max={2}

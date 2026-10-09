@@ -86,6 +86,8 @@ If no sign-in window appears on any system, open `http://192.168.4.1/wifi`.
 
 The sign-in window opens the **WiFi setup** screen with a list of nearby networks:
 
+![WiFi setup screen with a list of nearby networks](../assets/screenshots/wifi-setup.png)
+
 1. Select your home/lab network (or **Other network...** for a hidden one)
 2. Enter the password
 3. Tap **Connect**

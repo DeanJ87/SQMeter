@@ -110,7 +110,9 @@ The dashboard and integrators get live data over WebSockets with the same schema
   field names, units and meanings.
 - **FR-002**: All payload keys MUST be camelCase, and no value MUST be published under more than
   one name.
-- **FR-003**: Timestamps MUST be Unix seconds with a separate clock-valid flag.
+- **FR-003**: Timestamps MUST be Unix seconds with a separate clock-valid flag (or `0` until the
+  clock is set). Display strings (e.g. `/api/status` `time.iso`, local time with its offset) MAY sit
+  alongside, next to an `epoch` field.
 - **FR-004**: MQTT topics MUST form one documented hierarchy under a base topic, with readings,
   availability, safe/safety, alerts and alerts on/off as siblings; boolean payloads MUST follow one
   documented convention.
@@ -119,11 +121,17 @@ The dashboard and integrators get live data over WebSockets with the same schema
 - **FR-006**: Values from disabled or faulted sensors MUST NOT be emitted as if valid, on any
   interface.
 - **FR-007**: Users MUST be able to choose which MQTT groups are published and the interval.
-- **FR-008**: The device MUST support Home Assistant MQTT discovery, switchable in settings.
+- **FR-008**: The device MUST support Home Assistant MQTT discovery, switchable in settings. *(Per
+  spec 020 D-13, the Alerts switch is only announced while alerts can go out.)*
 - **FR-009**: REST endpoints MUST use one success shape and HTTP status codes for failure, with
-  `{"error": "..."}` bodies.
+  `{"error": "..."}` bodies (`action-result.schema.json`; `tools/contract-check.py` sends harmless
+  actions to a device and checks their answers).
 - **FR-010**: REST and WebSocket payloads MUST omit data for disabled hardware.
 - **FR-011**: The MQTT and REST/WebSocket documentation MUST match the device field-for-field.
+  The JSON Schemas in `specs/016-demo-device-emulation/contracts/schemas/` are the source of truth;
+  the prose contracts here describe intent and point at them.
+- **FR-012**: The device's limits on simultaneous connections MUST be documented, and a client past
+  the limit refused cleanly (see spec 011 FR-008).
 
 ### Key Entities
 
