@@ -323,47 +323,47 @@ namespace SQM
 
         namespace
         {
-        // Age of the sky data the verdict rests on: the older of the two
-        // required sensors' last successful reads (TSL2591, MLX90614), not the
-        // time the read loop last ran - a sensor that keeps reporting OK
-        // without a fresh read is stale (specs/006 US1/AC4). A sensor that is
-        // faulted is reported as a fault instead, so only answering sensors
-        // count; with neither answering, the youngest successful read does.
-        struct RequiredDataAge
-        {
-            bool everRead = false;
-            uint32_t ageMs = 0;
-        };
-
-        RequiredDataAge requiredDataAge(const SensorSnapshot &snapshot, uint32_t now)
-        {
-            struct Source
+            // Age of the sky data the verdict rests on: the older of the two
+            // required sensors' last successful reads (TSL2591, MLX90614), not the
+            // time the read loop last ran - a sensor that keeps reporting OK
+            // without a fresh read is stale (specs/006 US1/AC4). A sensor that is
+            // faulted is reported as a fault instead, so only answering sensors
+            // count; with neither answering, the youngest successful read does.
+            struct RequiredDataAge
             {
-                SensorStatus status;
-                uint32_t lastUpdate;
+                bool everRead = false;
+                uint32_t ageMs = 0;
             };
-            const Source sources[] = {{snapshot.tsl.status, snapshot.tslLastUpdate}, {snapshot.mlx.status, snapshot.mlxLastUpdate}};
-            RequiredDataAge result;
-            bool anyAnswering = false;
-            uint32_t oldestAnswering = 0;
-            uint32_t youngestRead = UINT32_MAX;
-            for (const Source &source : sources)
+
+            RequiredDataAge requiredDataAge(const SensorSnapshot &snapshot, uint32_t now)
             {
-                if (source.lastUpdate == 0)
-                    continue;
-                result.everRead = true;
-                const uint32_t age = ageMs(now, source.lastUpdate);
-                youngestRead = std::min(youngestRead, age);
-                if (source.status == SensorStatus::OK)
+                struct Source
                 {
-                    anyAnswering = true;
-                    oldestAnswering = std::max(oldestAnswering, age);
+                    SensorStatus status;
+                    uint32_t lastUpdate;
+                };
+                const Source sources[] = {{snapshot.tsl.status, snapshot.tslLastUpdate}, {snapshot.mlx.status, snapshot.mlxLastUpdate}};
+                RequiredDataAge result;
+                bool anyAnswering = false;
+                uint32_t oldestAnswering = 0;
+                uint32_t youngestRead = UINT32_MAX;
+                for (const Source &source : sources)
+                {
+                    if (source.lastUpdate == 0)
+                        continue;
+                    result.everRead = true;
+                    const uint32_t age = ageMs(now, source.lastUpdate);
+                    youngestRead = std::min(youngestRead, age);
+                    if (source.status == SensorStatus::OK)
+                    {
+                        anyAnswering = true;
+                        oldestAnswering = std::max(oldestAnswering, age);
+                    }
                 }
+                if (result.everRead)
+                    result.ageMs = anyAnswering ? oldestAnswering : youngestRead;
+                return result;
             }
-            if (result.everRead)
-                result.ageMs = anyAnswering ? oldestAnswering : youngestRead;
-            return result;
-        }
         } // namespace
 
         Alpaca::SafetyInputs safetyInputs(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)

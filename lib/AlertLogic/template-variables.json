@@ -1,5 +1,5 @@
 {
-  "_comment": "The {variables} alert wording can use: 'common' for every event, 'events' for the extra ones an event adds. The device fills them (lib/DeviceCore alertVars, lib/AlertLogic AlertEngine); the web UI offers the same list (web/src/components/settings/alertVariables.ts). 'sharesWordingWith': events worded by another event's setting. Tests in test/test_device_core, test/test_alert_logic, test/test_alert_clients and web keep all three in step.",
+  "_comment": "The {variables} alert wording can use: 'common' for every event, 'events' for the extra ones an event adds. The device fills them (lib/DeviceCore alertVars, lib/AlertLogic AlertEngine); the web UI offers the same list (web/src/components/settings/alertVariables.ts). 'sharesWordingWith': events worded by another event's setting. Tests in test/test_device_core, test/test_alert_variables and web keep all three in step.",
   "common": [
     "device",
     "event",

@@ -195,7 +195,7 @@ void test_stale_when_a_required_sensor_stops_refreshing()
     const uint32_t now = 1000000;
     SensorSnapshot s = healthy(now);
     const Config cfg = defaults();
-    s.dataTimestamp = now - 100; // the loop is running
+    s.dataTimestamp = now - 100;    // the loop is running
     s.tslLastUpdate = now - 600000; // but the TSL2591 hasn't read for 10 min
     const auto result = verdict(s, cfg, now);
     TEST_ASSERT_FALSE(result.isSafe);
