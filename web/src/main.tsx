@@ -34,12 +34,14 @@ async function init() {
 
   if (import.meta.env.VITE_DEMO_MODE === 'true') {
     const { default: DemoPanel } = await import('./demo/DemoPanel');
+    const { default: Tour } = await import('./demo/tour/Tour');
     // ?panel=hidden leaves the Demo button out (screenshots for the docs).
     const showPanel = new URLSearchParams(window.location.search).get('panel') !== 'hidden';
     render(
       <>
         <App />
         {showPanel && <DemoPanel />}
+        {showPanel && <Tour />}
       </>,
       document.getElementById('app')!,
     );

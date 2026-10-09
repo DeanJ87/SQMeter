@@ -46,6 +46,8 @@ interface Core {
   armedDocument(): string;
   setArmed(on: boolean, source: string): void;
   testAlert(params: string): string;
+  realTestAlert(): void;
+  deliveryRequests(id: number, credentials: string): string;
   calibrateDark(): string;
   alpaca(method: string, path: string, params: string): string;
   saveState(): string;
@@ -200,6 +202,8 @@ class DemoDevice {
   safety = () => this.core.safety();
   safetyHistory = () => this.core.safetyHistory();
   recentAlerts = () => this.core.recentAlerts();
+  /** What a real SQMeter would send for alert `id` (specs/018). */
+  deliveryRequests = (id: number, credentials: string) => this.core.deliveryRequests(id, credentials);
   armedDocument = () => this.core.armedDocument();
   getConfig = () => this.core.getConfig(true);
   isArmed = () => this.core.isArmed();
@@ -238,6 +242,12 @@ class DemoDevice {
     const reply = JSON.parse(this.core.testAlert(JSON.stringify(params)));
     this.persist();
     return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
+  /** The Demo panel's "Send a test" for real notifications. */
+  realTestAlert() {
+    this.core.realTestAlert();
+    this.persist();
   }
 
   calibrateDark(): Reply {

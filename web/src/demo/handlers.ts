@@ -1,5 +1,6 @@
 import { http, HttpResponse, ws } from 'msw';
 import { demoDevice, type Reply } from './device';
+import { existingRealSender, withRealResults } from './realSend';
 import { mockGithubReleases, mockStatus, mockWifiNetworks } from '../mocks/data';
 
 // The demo's requests, answered by the emulated device (./device.ts) the way
@@ -85,7 +86,7 @@ export const demoHandlers = [
   }),
 
   // Alerts
-  http.get('/api/alerts/recent', () => json(demoDevice.recentAlerts())),
+  http.get('/api/alerts/recent', () => json(withRealResults(demoDevice.recentAlerts()))),
   http.get('/api/alerts/armed', () => json(demoDevice.armedDocument())),
   http.post('/api/alerts/arm', ({ request }) => {
     demoDevice.setArmed(true, armSource(request));
@@ -99,7 +100,11 @@ export const demoHandlers = [
     demoDevice.clearAlerts();
     return HttpResponse.json({ success: true });
   }),
-  http.post('/api/alerts/test', ({ request }) => reply(demoDevice.testAlert(queryParams(request)))),
+  http.post('/api/alerts/test', ({ request }) => {
+    const result = demoDevice.testAlert(queryParams(request));
+    existingRealSender()?.check(); // opted-in real notifications (specs/018)
+    return reply(result);
+  }),
   http.post('/api/ble/ack', () => HttpResponse.json({ error: 'No phone alarm is active' }, { status: 409 })),
   http.post('/api/ble/forget-bonds', () => HttpResponse.json({ error: 'Bluetooth is off' }, { status: 409 })),
 

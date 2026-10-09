@@ -26,7 +26,7 @@ Two demo-only additions (`web/src/demo/`, never in the device UI bundle):
 **Primary Dependencies**: existing only (MSW, Playwright, Vitest, Unity, ArduinoJson 6, Emscripten 6). No
 MQTT library: the publisher is ~80 lines over `WebSocket`.
 
-**Testing**: Unity (`test/test_device_core`: delivery requests), Vitest (tour engine, rate limit, MQTT
+**Testing**: Unity (`test/test_alert_delivery`: delivery requests), Vitest (tour engine, rate limit, MQTT
 packet encoding, real-send gating), Playwright (tour with "Do it for me", keyboard/Esc, phone width, axe;
 real sending with `page.route` fulfilling ntfy/Pushover so nothing really leaves CI; the default
 no-outbound test unchanged; storage holds no keys).
@@ -52,11 +52,11 @@ can't send headers), see research R1; firmware behaviour unchanged (identical re
 ```text
 lib/DeviceCore/include/AlertDelivery.h, src/AlertDelivery.cpp   # shared request building
 src/AlertDispatcher.cpp                                       # uses AlertDelivery
-test/test_device_core/test_main.cpp                           # delivery tests
+test/test_alert_delivery/test_main.cpp                        # delivery tests
 tools/demo-core/bridge.cpp                                    # deliveryRequests(), requested mask
 web/src/demo/realSend.ts, mqttPublish.ts                      # memory-only session, sending
 web/src/demo/panel/RealNotifications.tsx                      # opt-in UI
-web/src/demo/tour/{steps.ts,tour.ts,Tour.tsx}                 # tour
+web/src/demo/tour/{steps.ts,tourState.ts,Tour.tsx}                 # tour
 web/src/demo/handlers.ts                                      # real results into /api/alerts/recent
 web/vite.demo.config.ts                                       # CSP
 web/tests/demo-tour.spec.ts, demo-real-send.spec.ts

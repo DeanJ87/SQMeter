@@ -1,7 +1,7 @@
 # Quickstart: Demo Tour and Real Notifications
 
 ```bash
-pio test -e native -f test_device_core          # AlertDelivery requests
+pio test -e native -f test_alert_delivery       # AlertDelivery requests
 pio run -e esp32dev && pio run -e esp32dev-ble  # firmware builds; same requests as before
 python3 tools/demo-core/source_hash.py --check  # demo core rebuilt
 cd web && npx tsc --noEmit && npx vitest run && npm run build:demo

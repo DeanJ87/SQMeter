@@ -7,7 +7,9 @@ import { demoDevice } from './device';
 import DeviceReadout from './panel/DeviceReadout';
 import SensorInputs from './panel/SensorInputs';
 import Shortcuts from './panel/Shortcuts';
+import RealNotifications from './panel/RealNotifications';
 import TimePlace from './panel/TimePlace';
+import { tour } from './tour/tourState';
 
 // The demo's own controls (spec 019): what each sensor reports, what the
 // device makes of it, shortcuts worked out from its settings, and its date,
@@ -40,13 +42,26 @@ const DemoPanel: FunctionalComponent = () => {
               Close
             </Button>
           </div>
-          <Note>Set what each sensor reports; the device's own code works out the rest. Nothing is sent anywhere.</Note>
+          <Note>
+            Set what each sensor reports; the device's own code works out the rest. Nothing is sent anywhere unless you turn on Real
+            notifications.
+          </Note>
           <DeviceReadout />
           <Shortcuts />
           <SensorInputs />
           <TimePlace />
           <DemoImagingApp />
+          <RealNotifications />
           <div class="btn-row">
+            <Button
+              small
+              onClick={() => {
+                setOpen(false);
+                tour.start();
+              }}
+            >
+              Take the tour
+            </Button>
             <Button small variant="danger" onClick={() => demoDevice.reset()}>
               Reset demo
             </Button>

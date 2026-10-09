@@ -7,7 +7,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceCore.cpp#runAlerts src/WebServer.cpp#WebServer::processAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 5087fc7c77378928
+fingerprint: 8226200e423f08fe
 -->
 <figure class="diagram" markdown>
 

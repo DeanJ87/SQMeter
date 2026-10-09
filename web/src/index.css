@@ -2302,6 +2302,97 @@ input[type='file'].input::file-selector-button {
   text-transform: uppercase;
 }
 
+/* Demo tour (specs/018): a non-modal card beside the control it explains. */
+.tour-outline {
+  position: fixed;
+  z-index: 40;
+  border: 2px solid var(--cyan);
+  border-radius: 0.85rem;
+  pointer-events: none;
+  box-shadow: 0 0 0 4px rgba(85, 199, 242, 0.18);
+}
+
+.tour-card,
+.tour-offer {
+  position: fixed;
+  z-index: 41;
+  width: min(21.25rem, calc(100vw - 2rem));
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--panel);
+  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.45);
+}
+
+.tour-card h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.tour-card p,
+.tour-offer p {
+  margin: 0;
+}
+
+.tour-progress {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tour-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.tour-offer {
+  left: max(1rem, env(safe-area-inset-left));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Phones: docked above the Demo button, full width. */
+@media (max-width: 599px) {
+  .tour-card,
+  .tour-offer {
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+    bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 3.25rem);
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+}
+
+/* Real notifications (specs/018) */
+.demo-check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.82rem;
+}
+
+.demo-real-channel {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.6rem 0.75rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+}
+
+.demo-real-channel legend {
+  padding: 0 0.25rem;
+  font-size: 0.8rem;
+}
+
+.demo-real-results {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.8rem;
+}
+
 .demo-section {
   display: grid;
   gap: 0.6rem;
