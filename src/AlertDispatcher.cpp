@@ -210,35 +210,37 @@ namespace SQM
             }
         }
 
-        uint32_t id = 0;
-        if (mutex && xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE)
-        {
-            id = nextId++;
-            record.id = id;
-            records.push_back(record);
-            if (records.size() > MAX_RECORDS)
-                records.erase(records.begin());
-            xSemaphoreGive(mutex);
-        }
-
+        const uint32_t id = store(record);
         Logger::info(TAG, "%s: %s", alert.title.c_str(), alert.message.c_str());
+        if (httpMask != 0 && queue != nullptr && id != 0)
+            queueHttp(new Job{id, alert, cfg, deviceName, httpMask});
+    }
 
-        if (httpMask == 0 || queue == nullptr || id == 0)
-            return;
+    uint32_t AlertDispatcher::store(AlertRecord &record)
+    {
+        if (!mutex || xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE)
+            return 0;
+        record.id = nextId++;
+        records.push_back(record);
+        if (records.size() > MAX_RECORDS)
+            records.erase(records.begin());
+        xSemaphoreGive(mutex);
+        return record.id;
+    }
 
-        Job *job = new Job{id, alert, cfg, deviceName, httpMask};
+    // HTTPS channels go to the delivery task; a full queue fails them at once.
+    void AlertDispatcher::queueHttp(Job *job)
+    {
         if (xQueueSend(queue, &job, 0) == pdTRUE)
         {
             ensureTask();
+            return;
         }
-        else
-        {
-            Logger::warn(TAG, "Alert queue full - dropping notification");
-            for (size_t i = 1; i < ALERT_CHANNEL_COUNT; ++i)
-                if (httpMask & (1u << i))
-                    setStatus(id, static_cast<AlertChannel>(i), DeliveryStatus::Failed, "Queue full");
-            delete job;
-        }
+        Logger::warn(TAG, "Alert queue full - dropping notification");
+        for (size_t i = 1; i < ALERT_CHANNEL_COUNT; ++i)
+            if (job->channelMask & (1u << i))
+                setStatus(job->recordId, static_cast<AlertChannel>(i), DeliveryStatus::Failed, "Queue full");
+        delete job;
     }
 
     void AlertDispatcher::run()
