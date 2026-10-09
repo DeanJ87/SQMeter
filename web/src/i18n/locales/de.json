@@ -56,7 +56,7 @@
   "alpacaClients.connectedChecked": "Verbunden{checked}",
   "alpacaClients.disconnectedChecked": "Getrennt{checked}",
   "alpacaClients.goneQuietChecked": "Meldet sich nicht mehr{checked}",
-  "alpacaClients.lastCheckedAgo": ", zuletzt abgefragt vor {ago}",
+  "alpacaClients.lastCheckedAgo": ", zuletzt abgefragt {ago}",
   "alpacaClients.waitingForAnImagingApp": "Warte auf eine Aufnahme-App",
   "astro.astronomicalTwilight": "Astronomische Dämmerung",
   "astro.civilTwilight": "Bürgerliche Dämmerung",

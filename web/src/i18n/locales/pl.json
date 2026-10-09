@@ -62,7 +62,7 @@
   "alpacaClients.connectedChecked": "Połączona{checked}",
   "alpacaClients.disconnectedChecked": "Rozłączona{checked}",
   "alpacaClients.goneQuietChecked": "Przestała odpowiadać{checked}",
-  "alpacaClients.lastCheckedAgo": ", ostatnie zapytanie {ago} temu",
+  "alpacaClients.lastCheckedAgo": ", ostatnie zapytanie {ago}",
   "alpacaClients.waitingForAnImagingApp": "Oczekiwanie na aplikację do astrofotografii",
   "astro.astronomicalTwilight": "Zmierzch astronomiczny",
   "astro.civilTwilight": "Zmierzch cywilny",

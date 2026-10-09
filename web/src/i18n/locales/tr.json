@@ -56,7 +56,7 @@
   "alpacaClients.connectedChecked": "Bağlı{checked}",
   "alpacaClients.disconnectedChecked": "Bağlantı kesildi{checked}",
   "alpacaClients.goneQuietChecked": "Yanıt vermiyor{checked}",
-  "alpacaClients.lastCheckedAgo": ", son sorgu {ago} önce",
+  "alpacaClients.lastCheckedAgo": ", son sorgu {ago}",
   "alpacaClients.waitingForAnImagingApp": "Görüntüleme uygulaması bekleniyor",
   "astro.astronomicalTwilight": "Astronomik alacakaranlık",
   "astro.civilTwilight": "Sivil alacakaranlık",

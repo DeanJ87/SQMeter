@@ -56,7 +56,7 @@
   "alpacaClients.connectedChecked": "Verbonden{checked}",
   "alpacaClients.disconnectedChecked": "Verbroken{checked}",
   "alpacaClients.goneQuietChecked": "Reageert niet meer{checked}",
-  "alpacaClients.lastCheckedAgo": ", laatst opgevraagd {ago} geleden",
+  "alpacaClients.lastCheckedAgo": ", laatst opgevraagd {ago}",
   "alpacaClients.waitingForAnImagingApp": "Wachten op een opname-app",
   "astro.astronomicalTwilight": "Astronomische schemering",
   "astro.civilTwilight": "Burgerlijke schemering",

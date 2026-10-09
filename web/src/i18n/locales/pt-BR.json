@@ -56,7 +56,7 @@
   "alpacaClients.connectedChecked": "Conectado{checked}",
   "alpacaClients.disconnectedChecked": "Desconectado{checked}",
   "alpacaClients.goneQuietChecked": "Parou de responder{checked}",
-  "alpacaClients.lastCheckedAgo": ", última consulta há {ago}",
+  "alpacaClients.lastCheckedAgo": ", última consulta {ago}",
   "alpacaClients.waitingForAnImagingApp": "Aguardando um app de captura",
   "astro.astronomicalTwilight": "Crepúsculo astronômico",
   "astro.civilTwilight": "Crepúsculo civil",
