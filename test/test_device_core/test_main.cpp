@@ -42,6 +42,46 @@ namespace
     }
 } // namespace
 
+// Spec 007 FR-004: a sensor that isn't there is NotImplemented; one that
+// answered and then failed is a driver error.
+void test_observing_conditions_missing_vs_failed_sensors()
+{
+    using namespace SQM::Alpaca;
+    const uint32_t now = 100000;
+    Config cfg = defaults();
+    cfg.rain.enabled = true;
+
+    // MLX90614 not detected at boot, RG-15 switched on but never answered.
+    SensorSnapshot s = healthy(now);
+    s.mlxInitialized = false;
+    s.mlx.status = SensorStatus::NOT_INITIALIZED;
+    s.mlxLastUpdate = 0;
+    Core::derive(s, cfg);
+    ObservingConditionsSnapshot obs = Core::observingConditions(s, cfg, now);
+    for (const char *name : {"skytemperature", "cloudcover", "rainrate"})
+    {
+        TEST_ASSERT_EQUAL_MESSAGE(ALPACA_ERR_NOT_IMPLEMENTED, getObservingConditionsProperty(name, obs).errorNumber, name);
+        TEST_ASSERT_EQUAL_MESSAGE(ALPACA_ERR_NOT_IMPLEMENTED, getTimeSinceLastUpdate(name, obs).errorNumber, name);
+        TEST_ASSERT_EQUAL_MESSAGE(ALPACA_ERR_NOT_IMPLEMENTED, getSensorDescription(name, obs).errorNumber, name);
+    }
+    TEST_ASSERT_TRUE(getObservingConditionsProperty("temperature", obs).ok);
+
+    // Both answered once, then failed / went stale: a driver error, still described.
+    s.mlxInitialized = true;
+    s.mlx.status = SensorStatus::READ_ERROR;
+    s.mlxLastUpdate = now - 500;
+    s.rg15.timestamp = now - 120000;
+    s.rg15.online = false;
+    s.rg15.stale = true;
+    Core::derive(s, cfg);
+    obs = Core::observingConditions(s, cfg, now);
+    for (const char *name : {"skytemperature", "cloudcover", "rainrate"})
+    {
+        TEST_ASSERT_EQUAL_MESSAGE(ALPACA_ERR_DRIVER_BASE, getObservingConditionsProperty(name, obs).errorNumber, name);
+        TEST_ASSERT_TRUE_MESSAGE(getSensorDescription(name, obs).ok, name);
+    }
+}
+
 void setUp() {}
 void tearDown() {}
 
@@ -266,6 +306,7 @@ int main()
     RUN_TEST(test_rain_makes_unsafe_even_when_stale);
     RUN_TEST(test_night_from_location_and_clock);
     RUN_TEST(test_alert_wording_and_levels);
+    RUN_TEST(test_observing_conditions_missing_vs_failed_sensors);
     RUN_TEST(test_iso_utc_and_window);
     return UNITY_END();
 }
