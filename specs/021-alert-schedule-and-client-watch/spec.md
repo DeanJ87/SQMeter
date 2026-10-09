@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: Implemented (PR #84)
+**Status**: Implemented (PR #95; spec PR #84) - converged
 
 **Input**: User description: "'On while N.I.N.A. is connected' doesn't describe what it does - it's really 'off when the SafetyMonitor Alpaca client disconnects', and that's bad wording too. 'Alerts on now?' implies switching it on bypasses something - confusing even to a native English speaker. Add the inverse: notify me if N.I.N.A. (or any Alpaca client) disconnects or stops polling for a set time, so I know the imaging software has dropped its connection to the safety monitor."
 
@@ -181,6 +181,10 @@ misunderstand without seeing it.
 
 ### Edge Cases
 
+- **"Only while an imaging app is connected" with Alpaca off** (amended by spec 020, D-12).
+  - No imaging app can connect, so holding alerts would hold them forever.
+  - The choice is kept but reported inactive ("Inactive - Alpaca is off"), and alerts go out any
+    time until Alpaca is back on. The three imaging-app events are inactive too (020 D-37).
 - **The device restarts mid-session.**
   - The device forgets connections; the client usually keeps polling and may not reconnect.
   - A request after a restart, from a client that never connected since, counts as the client

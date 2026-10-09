@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: Draft
+**Status**: Implemented (PR #89) - converged; baseline burn-down (T018-T022) open
 
 **Input**: User description: "Coding standards and code quality, enforced. Written, testable coding standards that /speckit-converge can check the codebase against, plus automatic enforcement in CI, so code smells and bad patterns don't spread. Cover naming, structure and domains, a catalogue of smells and anti-patterns, measurable limits with justified exceptions, formatting, comments, error handling and logging, tests; formatter and linters in CI with a baseline so existing violations are burned down rather than blocking all work; the standards amend the constitution so convergence checks them."
 
