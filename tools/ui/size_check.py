@@ -164,7 +164,7 @@ def print_report(m: dict, rows: list[tuple[str, str]], failures: list[str]) -> N
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Device web UI size budgets (SIZE-01, SIZE-02)")
     parser.add_argument("--data", type=Path, default=Path("data"))
-    parser.add_argument("--partitions", type=Path, nargs="+", default=[Path("partitions.csv"), Path("partitions_ble.csv")])
+    parser.add_argument("--partitions", type=Path, nargs="+", default=[Path("partitions.csv")])
     parser.add_argument("--baseline", type=Path, default=Path(__file__).with_name("size-baseline.json"))
     parser.add_argument("--base-ref", help="git ref of the branch this change merges into (e.g. origin/main)")
     parser.add_argument("--update-baseline", action="store_true", help="record the current size")

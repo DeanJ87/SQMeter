@@ -1,4 +1,5 @@
 #include "LanguageLogic.h"
+#include "ReleaseLogic.h"
 
 #include <cctype>
 #include <cstdlib>
@@ -22,7 +23,7 @@ namespace SQM
 
         std::string assetUrl(const std::string &firmwareVersion, const std::string &asset)
         {
-            return std::string(REPO_RELEASES) + "v" + firmwareVersion + "/" + asset;
+            return std::string(Releases::DOWNLOAD_BASE) + "v" + firmwareVersion + "/" + asset;
         }
 
         namespace

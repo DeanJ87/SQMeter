@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Attribute ESP32 firmware flash and static RAM to components, from a GNU ld map.
 
-Research tool for spec 027. Usage: size_map.py firmware.map [--top N] [--json]
+Spec 027 (CI flash budget and research). Usage: size_map.py firmware.map [--top N] [--json]
 
 Flash = .flash.text + .flash.rodata + .flash.appdesc + .iram0.text/.vectors +
 .dram0.data (initialised data is stored in flash).
@@ -13,7 +13,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-PROJECT_LIB_DIR = Path(__file__).resolve().parents[3] / 'lib'
+PROJECT_LIB_DIR = Path(__file__).resolve().parents[2] / 'lib'
 
 FLASH = ('.flash.text', '.flash.rodata', '.flash.appdesc', '.iram0.text', '.iram0.vectors', '.dram0.data')
 RAM = ('.dram0.data', '.dram0.bss', '.iram0.text', '.iram0.vectors')

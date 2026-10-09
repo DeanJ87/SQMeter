@@ -18,7 +18,6 @@ namespace SQM
 
         constexpr size_t MAX_FILE_BYTES = 64 * 1024; // stored, gzip-compressed
         constexpr size_t FREE_SPACE_MARGIN = 4 * 1024;
-        constexpr const char *REPO_RELEASES = "https://github.com/DeanJ87/SQMeter/releases/download/";
 
         bool isSupported(const std::string &code);
 

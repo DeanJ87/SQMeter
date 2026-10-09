@@ -9,7 +9,10 @@ namespace SQM
         namespace
         {
 
-            bool findAsset(JsonArrayConst assets, const char *prefix, std::string &url, size_t &size)
+            // The URL is built from the tag and file name rather than read from
+            // GitHub's JSON: dropping browser_download_url halves the memory
+            // each file costs in the filtered document.
+            bool findAsset(JsonArrayConst assets, const std::string &tag, const char *prefix, std::string &url, size_t &size)
             {
                 const size_t prefixLen = strlen(prefix);
                 for (JsonObjectConst asset : assets)
@@ -18,9 +21,9 @@ namespace SQM
                     const size_t len = strlen(name);
                     if (strncmp(name, prefix, prefixLen) == 0 && len > 4 && strcmp(name + len - 4, ".bin") == 0)
                     {
-                        url = asset["browser_download_url"] | "";
+                        url = std::string(DOWNLOAD_BASE) + tag + "/" + name;
                         size = asset["size"] | 0;
-                        return !url.empty();
+                        return true;
                     }
                 }
                 return false;
@@ -37,7 +40,6 @@ namespace SQM
             release["published_at"] = true;
             JsonObject asset = release["assets"].createNestedObject();
             asset["name"] = true;
-            asset["browser_download_url"] = true;
             asset["size"] = true;
         }
 
@@ -45,9 +47,9 @@ namespace SQM
         {
             std::vector<GithubRelease> results;
             const bool wantPrerelease = (track == "beta");
-            // BLE builds use larger app partitions and ship as their own asset;
-            // installing the standard firmware would silently drop BLE.
-            const char *firmwarePrefix = ble ? "sqmeter-ble-firmware-" : "sqmeter-firmware-";
+            // The BLE build ships as its own file; installing the standard
+            // firmware would silently drop Bluetooth (and the device refuses it).
+            const char *firmwarePrefix = ble ? BLE_FIRMWARE_PREFIX : FIRMWARE_PREFIX;
 
             for (JsonObjectConst release : doc.as<JsonArrayConst>())
             {
@@ -66,8 +68,8 @@ namespace SQM
                 entry.publishedAt = std::string(release["published_at"] | "");
 
                 JsonArrayConst assets = release["assets"].as<JsonArrayConst>();
-                const bool hasFirmware = findAsset(assets, firmwarePrefix, entry.firmwareAssetUrl, entry.firmwareAssetSize);
-                const bool hasFs = findAsset(assets, "sqmeter-littlefs-", entry.fsAssetUrl, entry.fsAssetSize);
+                const bool hasFirmware = findAsset(assets, entry.tag, firmwarePrefix, entry.firmwareAssetUrl, entry.firmwareAssetSize);
+                const bool hasFs = findAsset(assets, entry.tag, FS_PREFIX, entry.fsAssetUrl, entry.fsAssetSize);
                 if (!hasFirmware || !hasFs)
                     continue;
 

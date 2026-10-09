@@ -19,8 +19,12 @@ namespace
                ",\"published_at\":\"2026-10-01T00:00:00Z\",\"body\":\"long release notes\",\"assets\":[" + assets + "]}";
     }
 
-    const std::string FULL = asset("sqmeter-firmware-v1.bin", 1500000) + "," + asset("sqmeter-ble-firmware-v1.bin", 1700000) + "," +
-                             asset("sqmeter-littlefs-v1.bin", 500000);
+    const std::string FULL = asset("sqmeter-l2-firmware-v1.bin", 1500000) + "," + asset("sqmeter-l2-ble-firmware-v1.bin", 1700000) + "," +
+                             asset("sqmeter-l2-littlefs-v1.bin", 458752);
+
+    // A v0.2.x release: the old layout's files only.
+    const std::string OLD_LAYOUT = asset("sqmeter-firmware-v0.bin", 1490000) + "," + asset("sqmeter-ble-firmware-v0.bin", 1719000) + "," +
+                                   asset("sqmeter-littlefs-v0.bin", 524288);
 
     std::vector<GithubRelease> parse(const std::string &json, const char *track, bool ble)
     {
@@ -55,20 +59,32 @@ void test_picks_firmware_for_the_build()
     const std::string json = "[" + release("v1", false, FULL) + "]";
     auto standard = parse(json, "stable", false);
     TEST_ASSERT_EQUAL(1, standard.size());
-    TEST_ASSERT_EQUAL_STRING("https://example.com/sqmeter-firmware-v1.bin", standard[0].firmwareAssetUrl.c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "https://github.com/DeanJ87/SQMeter/releases/download/v1/sqmeter-l2-firmware-v1.bin", standard[0].firmwareAssetUrl.c_str());
     TEST_ASSERT_EQUAL(1500000, standard[0].firmwareAssetSize);
-    TEST_ASSERT_EQUAL_STRING("https://example.com/sqmeter-littlefs-v1.bin", standard[0].fsAssetUrl.c_str());
-    TEST_ASSERT_EQUAL(500000, standard[0].fsAssetSize);
+    TEST_ASSERT_EQUAL_STRING(
+        "https://github.com/DeanJ87/SQMeter/releases/download/v1/sqmeter-l2-littlefs-v1.bin", standard[0].fsAssetUrl.c_str());
+    TEST_ASSERT_EQUAL(458752, standard[0].fsAssetSize);
 
     auto ble = parse(json, "stable", true);
     TEST_ASSERT_EQUAL(1, ble.size());
-    TEST_ASSERT_EQUAL_STRING("https://example.com/sqmeter-ble-firmware-v1.bin", ble[0].firmwareAssetUrl.c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "https://github.com/DeanJ87/SQMeter/releases/download/v1/sqmeter-l2-ble-firmware-v1.bin", ble[0].firmwareAssetUrl.c_str());
+}
+
+void test_old_layout_releases_are_not_offered()
+{
+    // Spec 027 FR-020: v0.2.x files are for the old partition layout.
+    const std::string json = "[" + release("v0.2.0-beta.3", true, OLD_LAYOUT) + "," + release("v0.3.0-beta.1", true, FULL) + "]";
+    auto beta = parse(json, "beta", false);
+    TEST_ASSERT_EQUAL(1, beta.size());
+    TEST_ASSERT_EQUAL_STRING("v0.3.0-beta.1", beta[0].tag.c_str());
 }
 
 void test_skips_incomplete_releases()
 {
-    const std::string noFs = release("v2", false, asset("sqmeter-firmware-v2.bin") + "," + asset("sqmeter-ble-firmware-v2.bin"));
-    const std::string noBle = release("v3", false, asset("sqmeter-firmware-v3.bin") + "," + asset("sqmeter-littlefs-v3.bin"));
+    const std::string noFs = release("v2", false, asset("sqmeter-l2-firmware-v2.bin") + "," + asset("sqmeter-l2-ble-firmware-v2.bin"));
+    const std::string noBle = release("v3", false, asset("sqmeter-l2-firmware-v3.bin") + "," + asset("sqmeter-l2-littlefs-v3.bin"));
     const std::string json = "[" + noFs + "," + noBle + "]";
     auto standard = parse(json, "stable", false);
     TEST_ASSERT_EQUAL(1, standard.size());
@@ -78,31 +94,35 @@ void test_skips_incomplete_releases()
 
 void test_ignores_non_bin_and_drafts()
 {
-    const std::string sums = asset("sqmeter-firmware-v4.bin.sha256") + "," + asset("sqmeter-littlefs-v4.bin");
+    const std::string sums = asset("sqmeter-l2-firmware-v4.bin.sha256") + "," + asset("sqmeter-l2-littlefs-v4.bin");
     const std::string json = "[" + release("v4", false, sums) + "," + release("v5", false, FULL, true) + "]";
     TEST_ASSERT_EQUAL(0, parse(json, "stable", false).size());
 }
 
 void test_full_page_of_releases_fits()
 {
-    // A full page of current-style releases: every file, real-length URLs,
-    // plus the release notes and uploader details the filter drops.
+    // A full page of v0.3-style releases: the firmware, web UI and USB-flash
+    // files plus 13 languages (file + checksum) and the manifest, with
+    // real-length URLs and the release notes and uploader details the filter
+    // drops.
+    std::vector<std::string> kinds = {
+        "sqmeter-l2-firmware-", "sqmeter-l2-ble-firmware-", "sqmeter-l2-littlefs-", "sqmeter-l2-usb-standard-", "sqmeter-l2-usb-ble-",
+        "sqmeter-i18n-manifest-", "sqmeter-checksums-"};
+    for (const char *code : {"ar", "de", "es", "fr", "id", "it", "ja", "ko", "nl", "pl", "pt-BR", "tr", "zh-Hans"})
+    {
+        kinds.push_back(std::string("sqmeter-i18n-") + code + ".json.gz.");
+        kinds.push_back(std::string("sqmeter-i18n-") + code + ".json.gz.sha256.");
+    }
     std::string json = "[";
     for (int i = 0; i < Releases::PER_PAGE; ++i)
     {
         const std::string tag = "v1.2." + std::to_string(i) + "-beta.10";
         std::string assets;
-        for (const char *kind :
-             {"sqmeter-firmware-",
-              "sqmeter-ble-firmware-",
-              "sqmeter-littlefs-",
-              "sqmeter-complete-flash-",
-              "sqmeter-ble-complete-flash-",
-              "sqmeter-checksums-"})
+        for (const std::string &kind : kinds)
         {
             if (!assets.empty())
                 assets += ",";
-            assets += "{\"name\":\"" + std::string(kind) + tag +
+            assets += "{\"name\":\"" + kind + tag +
                       ".bin\",\"size\":1700000,"
                       "\"browser_download_url\":\"https://github.com/DeanJ87/SQMeter/releases/download/" +
                       tag + "/" + kind + tag + ".bin\",\"uploader\":{\"login\":\"github-actions[bot]\",\"id\":41898282}}";
@@ -121,7 +141,7 @@ void test_full_page_of_releases_fits()
     TEST_ASSERT_TRUE_MESSAGE(Releases::parse(json, "beta", true, out, error), error.c_str());
     TEST_ASSERT_EQUAL(Releases::PER_PAGE, out.size());
     TEST_ASSERT_EQUAL_STRING(
-        "https://github.com/DeanJ87/SQMeter/releases/download/v1.2.7-beta.10/sqmeter-ble-firmware-v1.2.7-beta.10.bin",
+        "https://github.com/DeanJ87/SQMeter/releases/download/v1.2.7-beta.10/sqmeter-l2-ble-firmware-v1.2.7-beta.10.bin",
         out.back().firmwareAssetUrl.c_str());
 }
 
@@ -139,6 +159,7 @@ int main()
     UNITY_BEGIN();
     RUN_TEST(test_track_filter);
     RUN_TEST(test_picks_firmware_for_the_build);
+    RUN_TEST(test_old_layout_releases_are_not_offered);
     RUN_TEST(test_skips_incomplete_releases);
     RUN_TEST(test_ignores_non_bin_and_drafts);
     RUN_TEST(test_full_page_of_releases_fits);
