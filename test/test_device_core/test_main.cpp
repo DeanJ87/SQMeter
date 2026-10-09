@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 
 #include "DeviceCore.h"
+#include "ObservingConditionsMapper.h"
 
 using namespace SQM;
 
@@ -256,6 +257,26 @@ void test_iso_utc_and_window()
     TEST_ASSERT_EQUAL(512, Core::windowSamples(diag)); // buffer cap
 }
 
+// Spec 003 edge case: rain switched off in settings -> Alpaca RainRate is
+// NotImplemented end to end, even with a stale reading still in the snapshot.
+void test_rainrate_not_implemented_when_rain_disabled()
+{
+    const uint32_t now = 100000;
+    SensorSnapshot s = healthy(now);
+    s.rg15.online = true;
+    s.rg15.rInt = 3.0f;
+    s.rg15.timestamp = now - 500;
+    Config cfg = defaults();
+    cfg.rain.enabled = false;
+    Core::derive(s, cfg);
+    const auto off = Core::observingConditions(s, cfg, now);
+    TEST_ASSERT_EQUAL(Alpaca::ALPACA_ERR_NOT_IMPLEMENTED, Alpaca::getObservingConditionsProperty("rainrate", off).errorNumber);
+
+    cfg.rain.enabled = true;
+    const auto on = Core::observingConditions(s, cfg, now);
+    TEST_ASSERT_NOT_EQUAL(Alpaca::ALPACA_ERR_NOT_IMPLEMENTED, Alpaca::getObservingConditionsProperty("rainrate", on).errorNumber);
+}
+
 int main()
 {
     UNITY_BEGIN();
@@ -267,5 +288,6 @@ int main()
     RUN_TEST(test_night_from_location_and_clock);
     RUN_TEST(test_alert_wording_and_levels);
     RUN_TEST(test_iso_utc_and_window);
+    RUN_TEST(test_rainrate_not_implemented_when_rain_disabled);
     return UNITY_END();
 }

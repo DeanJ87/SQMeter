@@ -259,24 +259,20 @@ namespace SQM
         const float rollingVisible = static_cast<float>(visibleTotal) / static_cast<float>(sampleCount);
         const float correctedVisible = std::max(0.0F, rollingVisible - darkVisibleOffset);
         const float rawLux = correctedVisible / currentCpl();
-        const float rawSqm = SkyQuality::luxToSQM(rawLux);
-        const float calibratedSqm = calibrationEnabled ? rawSqm + sqmOffset : rawSqm;
-        const float calibratedLux = powf(10.0F, (12.6F - calibratedSqm) / 2.5F);
+        const CalibratedLight light = SkyQuality::calibrate(rawLux, calibrationEnabled, sqmOffset);
 
         reading.rollingVisible = rollingVisible;
         reading.correctedVisible = correctedVisible;
         reading.darkVisibleOffset = darkVisibleOffset;
         reading.sampleCount = static_cast<uint16_t>(std::min<size_t>(sampleCount, UINT16_MAX));
         reading.rawLux = rawLux;
-        reading.rawSqm = rawSqm;
-        reading.calibratedSqm = calibratedSqm;
+        reading.rawSqm = light.rawSqm;
+        reading.calibratedSqm = light.calibratedSqm;
         reading.calibrated = calibrationEnabled;
         reading.averagingWindowSeconds = averagingWindowSeconds;
-
-        if (isNightMode())
-        {
-            reading.lux = calibratedLux;
-        }
+        // The averaged, calibrated value in every mode (spec 001 FR-003/FR-005):
+        // samples reset on each range change, so the average never mixes gains.
+        reading.lux = light.lux;
 
         (void)rollingFull;
         (void)rollingIr;

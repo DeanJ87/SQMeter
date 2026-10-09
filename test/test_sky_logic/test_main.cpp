@@ -117,6 +117,26 @@ void test_dewpoint()
     TEST_ASSERT_EQUAL_FLOAT(0.0f, dewpointMagnus(20.0f, NAN));
 }
 
+// FR-005: the offset applies to the averaged reading in every mode, so
+// calibrated - raw == offset whenever calibration is on.
+void test_calibration_offset()
+{
+    const float rawLux = 0.0003f; // dark sky
+    CalibratedLight on = SkyQuality::calibrate(rawLux, true, 0.35f);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 0.35f, on.calibratedSqm - on.rawSqm);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, on.calibratedSqm, SkyQuality::luxToSQM(on.lux));
+
+    const float twilightLux = 2.5f;
+    CalibratedLight twilight = SkyQuality::calibrate(twilightLux, true, -0.2f);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, -0.2f, twilight.calibratedSqm - twilight.rawSqm);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, twilight.calibratedSqm, SkyQuality::luxToSQM(twilight.lux));
+
+    // Disabled: the offset is kept in settings but ignored.
+    CalibratedLight off = SkyQuality::calibrate(rawLux, false, 0.35f);
+    TEST_ASSERT_EQUAL_FLOAT(off.rawSqm, off.calibratedSqm);
+    TEST_ASSERT_FLOAT_WITHIN(0.000001f, rawLux, off.lux);
+}
+
 int main()
 {
     UNITY_BEGIN();
@@ -128,5 +148,6 @@ int main()
     RUN_TEST(test_cloud_thresholds);
     RUN_TEST(test_cloud_calculate);
     RUN_TEST(test_dewpoint);
+    RUN_TEST(test_calibration_offset);
     return UNITY_END();
 }
