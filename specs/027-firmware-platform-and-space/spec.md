@@ -217,10 +217,26 @@ are restored from a backup.
 - No secure boot or flash encryption is in use (none is configured).
 - The migration targets Arduino-ESP32 3.3.x; 4.0 is reconsidered when final.
 
-## Clarifications needed from the owner
+## Clarifications
 
-1. **Partition layout (FR-015)**: change to the whole-chip layout (one USB flash per device, ~15%
-   free on standard, ~4% on BLE) or stay on today's layout (OTA only, ~0.5% free)? Recommendation:
-   stay for the first 3.x release, then change when the main device can be reached by USB.
-2. **WPA3 (FR-011)**: keep (recommended) or drop for 27 KB?
-3. **beta.4**: ship on 2.x with the trims first (recommended)?
+### Session 2026-10-09
+
+- Q: Change the partition layout (FR-015)? → A: **Yes.** This is a beta; a whole-chip reflash is
+  acceptable if it is better long term. Move to the whole-chip layout (research R3) with the 3.x
+  release. Requirement: **people's settings must be kept** across the reflash. The docs explain the
+  steps.
+
+This decision makes FR-015 apply and adds:
+
+- **FR-018**: The layout change MUST keep each device's settings. Preferred: the reflash preserves
+  the NVS partition (unchanged offset and size in the new layout), so settings survive without any
+  user action. Fallback: export settings (including secrets, under the existing auth rules) before
+  the reflash and restore them afterwards. Either way, the spare proves it before any other device.
+- **FR-019**: A browser-based flasher or a documented `esptool` command MUST write the bootloader,
+  the new partition table, both app slots' firmware and the filesystem in one step, without erasing
+  NVS.
+
+### Still open
+
+1. **WPA3 (FR-011)**: keep (recommended) or drop for 27 KB?
+2. **beta.4**: ship on 2.x with the trims first (recommended)?
