@@ -9,6 +9,8 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include "DualStackClient.h"
+#include "NetAddress.h"
 #include <ctime>
 #include <memory>
 
@@ -47,13 +49,20 @@ namespace SQM
             }
             else
             {
-                client = std::make_unique<WiFiClient>();
+                // Plain http also reaches IPv6 literals and IPv6-only names (spec 015).
+                client = std::make_unique<DualStackClient>();
             }
 
             HTTPClient http;
             http.setTimeout(HTTP_TIMEOUT_MS);
             http.setConnectTimeout(HTTP_TIMEOUT_MS);
-            if (!http.begin(*client, url.c_str()))
+            // HTTPClient splits "http://[fd00::10]:8080/x" at the first ':', so
+            // IPv6 hosts go in by parts (the bracketed host is the Host header).
+            Net::HttpUrl parsed;
+            const bool ipv6Host = Net::parseHttpUrl(url, parsed) == Net::UrlError::None && parsed.host.ipv6;
+            const bool begun = ipv6Host ? http.begin(*client, Net::hostForUrl(parsed.host).c_str(), parsed.port, parsed.path.c_str(), parsed.https)
+                                        : http.begin(*client, url.c_str());
+            if (!begun)
             {
                 detail = "Invalid URL";
                 return false;

@@ -3,7 +3,7 @@
 #include "Config.h"
 #include <PubSubClient.h>
 #include <functional>
-#include <WiFiClient.h>
+#include "DualStackClient.h"
 #include <memory>
 #include <string>
 
@@ -70,7 +70,11 @@ namespace SQM
         static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
 
         MQTTConfig config;
-        WiFiClient wifiClient;
+        DualStackClient wifiClient; // IPv4, or IPv6 literals and IPv6-only names (spec 015)
+        // The broker as PubSubClient needs it: brackets off, a "[v6]:port" port applied.
+        std::string brokerHost;
+        uint16_t brokerPort = 0;
+        void resolveBroker();
         std::unique_ptr<PubSubClient> mqttClient;
 
         uint32_t lastReconnectAttempt;

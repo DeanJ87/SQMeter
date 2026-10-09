@@ -19,6 +19,8 @@
 #include "sensors/RG15Sensor.h"
 #include "AlpacaDiscovery.h"
 #include "Ipv6Network.h"
+#include "DualStackClient.h"
+#include "NetAddress.h"
 #include "WiFiManager.h"
 #include "HeapTrace.h"
 #include "SunPosition.h"
@@ -1787,10 +1789,25 @@ namespace SQM
         const char *password = jsonObj["password"] | "";
         const char *clientId = jsonObj["clientId"] | "SQM-Test";
 
-        Logger::info(TAG, "Testing MQTT connection to %s:%d", broker, port);
+        // "[fd00::10]:1883" and bare IPv6 work as in the saved settings (spec 015).
+        Net::Host host;
+        const Net::HostError hostError = Net::parseHost(broker, host);
+        if (hostError != Net::HostError::None)
+        {
+            StaticJsonDocument<192> reply;
+            reply["success"] = false;
+            reply["error"] = std::string("MQTT broker: ") + Net::hostErrorText(hostError);
+            std::string body;
+            serializeJson(reply, body);
+            request->send(400, "application/json", body.c_str());
+            return;
+        }
+        if (host.port != 0)
+            port = host.port;
+        Logger::info(TAG, "Testing MQTT connection to %s port %d", host.name.c_str(), port);
 
-        WiFiClient testWifiClient;
-        PubSubClient testMqtt(broker, port, testWifiClient);
+        DualStackClient testWifiClient;
+        PubSubClient testMqtt(host.name.c_str(), port, testWifiClient);
 
         bool connected = false;
         String errorMsg = "";
