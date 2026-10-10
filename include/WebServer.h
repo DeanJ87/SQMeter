@@ -143,6 +143,7 @@ namespace SQM
             bool alpacaEnabled() const override;
             bool isSafe() const override;
             Alpaca::ObservingConditionsSnapshot observingConditions() const override;
+            std::string serverName() const override;
             std::string location() const override;
             std::string timestampUtc() const override;
 

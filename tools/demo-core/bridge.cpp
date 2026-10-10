@@ -74,7 +74,8 @@ public:
     bool alpacaEnabled() const override { return cfg.alpaca.enabled; }
     bool isSafe() const override { return safety.isSafe; }
     Alpaca::ObservingConditionsSnapshot observingConditions() const override { return Core::observingConditions(snapshot, cfg, nowMs); }
-    std::string location() const override { return cfg.deviceName; }
+    std::string serverName() const override { return cfg.deviceName; }
+    std::string location() const override { return Core::alpacaLocation(snapshot, cfg); }
     std::string timestampUtc() const override { return Core::isoUtc(epoch); }
 
     // --- Settings ----------------------------------------------------------

@@ -48,7 +48,8 @@ namespace
             s.windSpeedMs = 2.3f;
             return s;
         }
-        std::string location() const override { return "Alpaca simulator"; }
+        std::string serverName() const override { return "SQMeter simulator"; }
+        std::string location() const override { return SQM::Alpaca::formatLocation(51.4779, -0.0015); }
         std::string timestampUtc() const override
         {
             const time_t now = time(nullptr);
