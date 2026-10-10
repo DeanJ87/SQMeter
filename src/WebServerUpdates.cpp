@@ -254,6 +254,9 @@ namespace SQM
                 }
             }
             uploadScanner.feed(data, len);
+            if ((index & 0xFFFF) < len)
+                Logger::info("OTADBG", "chunk index=%u len=%u heap=%u max=%u", (unsigned)index, (unsigned)len, (unsigned)ESP.getFreeHeap(),
+                             (unsigned)ESP.getMaxAllocHeap());
             if (Update.write(data, len) != len)
             {
                 Logger::error("OTA", "Update.write failed: %d", Update.getError());
@@ -288,8 +291,12 @@ namespace SQM
             "/api/update",
             HTTP_POST,
             [this](AsyncWebServerRequest *request) { handleFirmwareUploadDone(request); },
-            [](AsyncWebServerRequest *, String filename, size_t index, uint8_t *data, size_t len, bool final)
-            { firmwareUploadChunk(filename, index, data, len, final); });
+            [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+            {
+                if (!index)
+                    request->onDisconnect([]() { Logger::warn("OTADBG", "upload connection closed"); });
+                firmwareUploadChunk(filename, index, data, len, final);
+            });
     }
 
     void WebServer::handleFsUploadDone(AsyncWebServerRequest *request)
