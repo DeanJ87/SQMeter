@@ -39,7 +39,8 @@ namespace SQM
             virtual bool alpacaEnabled() const = 0;
             virtual bool isSafe() const = 0;
             virtual ObservingConditionsSnapshot observingConditions() const = 0;
-            virtual std::string location() const = 0;     // device name
+            virtual std::string serverName() const = 0;   // the device's name (Settings → Device → Name)
+            virtual std::string location() const = 0;     // "lat, lon" of the location in use, or "" (formatLocation)
             virtual std::string timestampUtc() const = 0; // ISO 8601, or "" if the clock isn't set
         };
 
@@ -50,6 +51,10 @@ namespace SQM
             std::string version;
             uint64_t mac = 0; // for UniqueIDs
         };
+
+        // The management description's Location: where the device is, as
+        // "lat, lon" in machine format ('.' decimals, 4 places).
+        std::string formatLocation(double latitude, double longitude);
 
         // The two Alpaca devices, in Router order.
         enum class Device : uint8_t
