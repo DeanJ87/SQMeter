@@ -2,6 +2,9 @@
 
 #include "Readings.h"
 
+#include <clocale>
+#include <cctype>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -277,6 +280,35 @@ void test_discovery_alerts_switch_needs_alerts(void)
     TEST_ASSERT_EQUAL_STRING("", switchPayload.c_str());
 }
 
+// specs/023-i18n FR-015: readings are serialised with '.' decimals whatever
+// the C library's locale. The firmware never calls setlocale (the ESP32 stays
+// in the "C" locale), and ArduinoJson writes numbers itself; this holds that
+// even when a host process runs under a decimal-comma locale.
+void test_readings_use_a_decimal_point_under_any_locale(void)
+{
+    const char *previous = setlocale(LC_NUMERIC, nullptr);
+    std::string restore = previous ? previous : "C";
+    const char *comma[] = {"de_DE.UTF-8", "de_DE.utf8", "de_DE", "fr_FR.UTF-8", "fr_FR.utf8"};
+    for (const char *name : comma)
+        if (setlocale(LC_NUMERIC, name))
+            break;
+    char probe[16];
+    snprintf(probe, sizeof probe, "%.1f", 1.5);
+    if (strchr(probe, ',') == nullptr)
+        TEST_MESSAGE("no decimal-comma locale on this host: checked under the C locale only");
+
+    std::string json;
+    serializeJson(render(healthy()), json);
+    setlocale(LC_NUMERIC, restore.c_str());
+
+    TEST_ASSERT_NOT_NULL_MESSAGE(strstr(json.c_str(), "\"temperature\":12.3"), json.c_str());
+    TEST_ASSERT_NOT_NULL_MESSAGE(strstr(json.c_str(), "\"sqm\":21.48"), json.c_str());
+    TEST_ASSERT_NOT_NULL_MESSAGE(strstr(json.c_str(), "\"pressure\":1013.4"), json.c_str());
+    for (size_t i = 1; i + 1 < json.size(); ++i)
+        if (json[i] == ',' && isdigit(static_cast<unsigned char>(json[i - 1])) && isdigit(static_cast<unsigned char>(json[i + 1])))
+            TEST_FAIL_MESSAGE(json.c_str());
+}
+
 int main(int argc, char **argv)
 {
     (void)argc;
@@ -292,5 +324,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_every_key_is_camel_case);
     RUN_TEST(test_discovery_messages);
     RUN_TEST(test_discovery_alerts_switch_needs_alerts);
+    RUN_TEST(test_readings_use_a_decimal_point_under_any_locale);
     return UNITY_END();
 }

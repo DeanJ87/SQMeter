@@ -131,6 +131,11 @@ The dashboard and integrators get live data over WebSockets with the same schema
 - **FR-012**: The device's limits on simultaneous connections MUST be documented, and a client past
   the limit refused cleanly (see spec 011 FR-008).
 
+*Language (spec 023 FR-015):* none of these interfaces change with the UI language. Numbers are
+JSON numbers with `.` decimals and no grouping, units and names are never translated, and
+device-generated text (reasons, alert titles) is English for display only; clients key on the
+machine fields (`reasonFlags`, alert `event`).
+
 ### Key Entities
 
 - **Readings document**: timestamp, clock-valid flag, safe flag, and one group per sensor (light,

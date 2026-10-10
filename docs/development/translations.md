@@ -49,7 +49,10 @@ flowchart LR
 - Add a context note for every new key in `web/src/i18n/en.context.json`: where it appears and any length limit (`max 16 chars`). `python3 tools/i18n/context.py` adds a generated note you can improve.
 - Layout: logical CSS properties only, so Arabic mirrors (I18N-03).
 
-The rules are I18N-01..04 in the [coding standard](coding-standards.md#translations-i18n).
+The rules are I18N-01..06 in the [coding standard](coding-standards.md#translations-i18n).
+
+!!! warning "Never localise machine output"
+    Only the browser formats numbers and dates for display. Never format numbers in firmware or API code for a language: the REST API, WebSocket, MQTT, Home Assistant discovery, Alpaca, contract schemas, logs and stored settings always use JSON numbers with `.` decimals, no grouping, fixed units and untranslated names and values (spec 023 FR-015, rule I18N-06). Typed numbers are parsed with `parseNumber` and sent as numbers, never as the text the user typed. Device text such as safety reasons stays English on the wire; the UI translates it.
 
 ## Adding or changing a string
 
