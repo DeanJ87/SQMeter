@@ -86,6 +86,18 @@ An AsyncAPI 3 document describes them, reusing the same JSON Schemas.
 - Numbers and field names are locale-independent (spec 023): the description states it once.
 - Versioning: `info.version` is the firmware version; breaking changes are listed in the changelog.
 
+## Clarifications
+
+### Explorer decisions (owner, 2026-10-10)
+
+- Explorer on the demo site only. Not on the device (no space), and not on the docs site talking to
+  a user's device (an https page can't call a plain-http LAN address; the device would need a
+  trusted certificate).
+- Scalar over Swagger UI (dated), Redoc (no "Try it" in the free version) and Stoplight Elements
+  (stalled).
+- Planned later, not part of this spec: sqmeter.dev becomes a project homepage and the docs move to
+  docs.sqmeter.dev; links and the explorer must use paths that survive that move.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -113,6 +125,14 @@ An AsyncAPI 3 document describes them, reusing the same JSON Schemas.
 
 ### Key Entities
 
+- **FR-010**: An interactive API explorer MUST be published on the demo site (demo.sqmeter.dev),
+  generated from the same OpenAPI document: every operation browsable with a "Try it" request that
+  the demo's emulated device answers in the browser (no hardware, nothing leaves the browser, spec
+  016 FR-006), plus a copyable `curl` example for a real device. It uses Scalar, self-hosted and
+  pinned (no third-party CDN at runtime), themed to match the docs site (colours, type, light/dark),
+  and passes the docs accessibility checks (spec 022). The docs reference (FR-005) links to it.
+- **FR-011**: The explorer MUST NOT ship on the device: no API explorer, Swagger UI or OpenAPI
+  document in the device's filesystem (flash budget, spec 027 / SIZE-02).
 - **Route registry**: routes, methods and auth (exists).
 - **Contract schemas**: JSON Schemas of the documents (exist).
 - **OpenAPI document**: generated from the two above plus per-operation descriptions and examples kept
