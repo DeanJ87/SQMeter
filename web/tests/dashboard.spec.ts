@@ -52,29 +52,37 @@ const imagingApp = async (page: Page, button: string) => {
 
 test.describe.configure({ retries: 0 });
 
-test('healthy: a Status card like the others - Data, Safety, Alerts tiles, All good', async ({ page }) => {
-  // inventory: status-card  inventory: freshness  inventory: safety-verdict  inventory: alerts-state
+test('healthy: the Status card is the imaging app and alerts, All good', async ({ page }) => {
+  // inventory: status-card  inventory: alerts-state
   await open(page);
   await expect(statusCard(page).getByRole('heading', { name: 'Status', exact: true })).toBeVisible();
-  // The demo starts with one alert setting not in effect; make every setting work.
-  await expect(pill(page)).toHaveText('1 to check');
-  await setConfig(page, { 'alerts.events.*.level': 2 });
   await expect(pill(page)).toHaveText('All good');
-  await expect(tile(page, 'freshness')).toContainText('Live');
-  await expect(tile(page, 'safety-verdict')).toContainText('Safe');
+  // One imaging-app tile per Alpaca device, then Alerts; no Safety or Data tile (DS-08).
+  await expect(tile(page, 'imaging-app')).toHaveCount(2);
+  await expect(tile(page, 'imaging-app').first()).toContainText('Safety monitor');
   await expect(tile(page, 'alerts-state')).toContainText('Sending');
+  await expect(statusCard(page).locator('[data-inventory="safety-verdict"], [data-inventory="freshness"]')).toHaveCount(0);
   await expect(statusCard(page).locator('.status-row')).toHaveCount(0);
   // It is the first card, and nothing sits between the header and the cards (026 FR-014).
   await expect(page.locator('.masonry-item').first()).toContainText('Status');
 });
 
-test('unsafe verdict and a held rain countdown', async ({ page }) => {
+test('data freshness is the Sky Quality pill', async ({ page }) => {
+  // inventory: freshness
+  await open(page);
+  await expect(card(page, 'Sky Quality').locator('[data-inventory="freshness"]')).toContainText('Live');
+  await expect(statusCard(page)).not.toContainText('Live');
+});
+
+test('unsafe verdict and a held rain countdown are the Safety monitor card', async ({ page }) => {
   // inventory: safety-verdict  inventory: rain-hold
   await open(page);
   await expect(item(page, 'rain-hold')).toHaveCount(0);
   await open(page, '?scenario=rain');
-  await expect(tile(page, 'safety-verdict')).toContainText('Unsafe', { timeout: 15_000 });
-  await expect(pill(page)).toHaveText(/to check/);
+  const safety = card(page, 'Safety Monitor');
+  await expect(safety.locator('.card-actions .pill')).toHaveText('Unsafe', { timeout: 15_000 });
+  // Said once: the Status card doesn't repeat the verdict.
+  await expect(statusCard(page)).not.toContainText('Unsafe');
   await openPanel(page);
   await page.locator('.demo-panel').getByRole('button', { name: 'Rain stops', exact: true }).click();
   await expect(item(page, 'rain-hold')).toContainText(/Rain held, clears in/, { timeout: 15_000 });
@@ -100,18 +108,20 @@ test('send mode not in effect while Alpaca is off', async ({ page }) => {
   await expect(item(page, 'alerts-mode-not-in-effect')).toHaveCount(0);
 });
 
-test('imaging app: waiting, connected, then gone quiet', async ({ page }) => {
+test('imaging app: always shown, waiting, connected, then gone quiet; Alpaca off', async ({ page }) => {
   // inventory: imaging-app
   test.setTimeout(120_000);
   await open(page);
-  await expect(item(page, 'imaging-app')).toHaveCount(0);
+  await expect(tile(page, 'imaging-app')).toHaveCount(2);
   await setConfig(page, { 'alerts.sendMode': 'whileConnected', 'alerts.clientSilentSafetySeconds': 30 });
   await expect(tile(page, 'alerts-state')).toContainText('Waiting');
-  await expect(item(page, 'imaging-app')).toHaveCount(2);
   await imagingApp(page, 'Connect');
   await expect(item(page, 'imaging-app').filter({ hasText: 'Safety monitor' })).toContainText('Connected', { timeout: 15_000 });
   await imagingApp(page, 'Go silent');
   await expect(item(page, 'imaging-app').filter({ hasText: 'Safety monitor' })).toContainText('Gone quiet', { timeout: 60_000 });
+  await setConfig(page, { 'alerts.sendMode': 'any', 'alpaca.enabled': false });
+  await expect(tile(page, 'imaging-app')).toHaveCount(1);
+  await expect(tile(page, 'imaging-app')).toContainText('Alpaca off');
 });
 
 test('no alert channel can send', async ({ page }) => {
@@ -123,26 +133,15 @@ test('no alert channel can send', async ({ page }) => {
   await expect(item(page, 'no-channel')).toContainText("Can't send");
 });
 
-test('a failed sensor keeps its card and is one row: name and pill', async ({ page }) => {
+test('a failed sensor is its own card, not a Status row', async ({ page }) => {
   // inventory: sensor-faults  inventory: cloud-card
   await open(page);
   await expect(card(page, 'Cloud Conditions')).not.toContainText('Error');
   await open(page, '?scenario=fail-ir');
-  const row = statusCard(page).locator('.status-row[data-inventory="sensor-faults"]');
-  await expect(row).toContainText('IR sky sensor', { timeout: 15_000 });
-  await expect(row.locator('.pill')).toHaveText(/Error|Not responding|Stale/);
-  await expect(row.getByRole('link')).toHaveAttribute('href', /tab=sensors/);
-  // Said once (DS-08): the card keeps just its pill; what it affects is the row's "?".
+  await expect(card(page, 'IR Sky Sensor').locator('.pill')).toHaveText(/Error|Not responding|Stale/, { timeout: 15_000 });
   await expect(card(page, 'Cloud Conditions').locator('.pill')).toHaveText(/Error|Not responding|Stale/);
+  await expect(statusCard(page)).not.toContainText('IR sky sensor');
   for (const title of ['Cloud Conditions', 'IR Sky Sensor']) await expect(card(page, title)).not.toContainText("can't be measured");
-});
-
-test('settings not in effect are one row', async ({ page }) => {
-  // inventory: settings-not-in-effect
-  await open(page);
-  await expect(item(page, 'settings-not-in-effect')).toContainText('1 inactive');
-  await setConfig(page, { 'alerts.events.*.level': 2 });
-  await expect(item(page, 'settings-not-in-effect')).toHaveCount(0);
 });
 
 test('a language that could not load is one row', async ({ page }) => {
@@ -156,27 +155,46 @@ test('a language that could not load is one row', async ({ page }) => {
   await expect(item(page, 'language')).toContainText('Not loaded', { timeout: 15_000 });
 });
 
-test('no location: darkness unknown', async ({ page }) => {
+test('clock not set is one row; a missing location is not a Status row', async ({ page }) => {
   // inventory: clock-location
   await open(page);
   await expect(item(page, 'clock-location')).toHaveCount(0);
   await setConfig(page, { 'location.set': false, 'gps.enabled': false });
-  await expect(item(page, 'clock-location')).toContainText('Location', { timeout: 10_000 });
-  await expect(item(page, 'clock-location')).toContainText('Unknown');
+  await page.waitForTimeout(2500);
+  await expect(item(page, 'clock-location')).toHaveCount(0);
 });
 
-test('safety rules not in effect and not shared with N.I.N.A.', async ({ page }) => {
-  // inventory: rules-not-in-effect  inventory: safety-not-shared
+test('rules and settings not in effect are shown in Settings, not on the dashboard', async ({ page }) => {
   await open(page);
-  await expect(item(page, 'rules-not-in-effect')).toHaveCount(0);
-  await expect(item(page, 'safety-not-shared')).toHaveCount(0);
-  await setConfig(page, { 'rain.enabled': false, 'alpaca.rainUnsafeEnabled': true, 'alpaca.enabled': false });
-  // The rule is the row's label, the state its pill, the reason its "?" (DS-24).
-  await expect(item(page, 'rules-not-in-effect').first()).toContainText('Unsafe while raining');
-  await expect(item(page, 'rules-not-in-effect').first().locator('.pill')).toHaveText('Not in effect');
-  await expect(item(page, 'safety-not-shared')).toContainText('Imaging apps');
-  await expect(item(page, 'safety-not-shared').locator('.pill')).toHaveText('Not shared');
+  await setConfig(page, { 'rain.enabled': false, 'alpaca.rainUnsafeEnabled': true });
+  await page.waitForTimeout(2500);
+  await expect(page.locator('main')).not.toContainText('Not in effect');
+  await page.goto('./#/settings?tab=safety');
+  await expect(page.locator('main')).toContainText('Not in effect', { timeout: 10_000 });
 });
+
+// Each fact once (DS-08): the Status card never repeats what another card shows.
+for (const [state, query] of [
+  ['healthy', ''],
+  ['sensor fault', '?scenario=fail-ir'],
+  ['rain', '?scenario=rain'],
+] as const) {
+  test(`the Status card repeats no other card: ${state}`, async ({ page }) => {
+    await open(page, query);
+    await page.waitForTimeout(3000);
+    const others = (
+      await page
+        .locator('.masonry-item')
+        .filter({ hasNot: statusCard(page) })
+        .locator('.card-actions .pill, .hero-pills .pill')
+        .allInnerTexts()
+    ).map((text) => text.trim());
+    const status = (await statusCard(page).locator('.pill').allInnerTexts()).map((text) => text.trim());
+    for (const word of ['Safe', 'Unsafe', 'Live', 'Stale', 'Error', 'Not responding']) {
+      if (others.includes(word)) expect(status, `"${word}" is already on another card`).not.toContain(word);
+    }
+  });
+}
 
 // DS-08 and DS-24 on what the dashboard renders, not just the English
 // strings: copy composed in code can join facts too. Every card, in states

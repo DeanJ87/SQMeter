@@ -7,7 +7,7 @@ import FaultCard from '../../dashboard/FaultCard';
 import { expectedSensors, type Sensor } from '../../dashboard/glance';
 import { deviceTime } from '../../lib/deviceTime';
 import { t } from '../../i18n';
-import { CloudCard, IrCard, LightCard, SkyHero, SkyUnavailableCard } from './skyCards';
+import { CloudCard, IrCard, LightCard, SkyHero, SkyUnavailableCard, type Freshness } from './skyCards';
 import { EnvironmentCard, GpsCard, RainCard, WindCard } from './weatherCards';
 
 // What the dashboard's cards are drawn from, once readings have arrived.
@@ -50,8 +50,7 @@ const locationOf = ({ sensors, config }: CardContext) => {
 const skyCard = (ctx: CardContext, fault: Fault): Entry => {
   const { sensors } = ctx;
   // Stale: the device says its data is old, or the stream has gone quiet.
-  const isStale = Boolean(sensors?.dataStale) || ctx.quiet;
-  const live = ctx.connected && Boolean(sensors) && !isStale;
+  const freshness: Freshness = !ctx.connected ? 'offline' : ctx.quiet ? 'quiet' : sensors?.dataStale ? 'stale' : 'live';
   return {
     id: 'sky',
     title: t('dashboard.skyQuality'),
@@ -59,7 +58,7 @@ const skyCard = (ctx: CardContext, fault: Fault): Entry => {
       sensors?.light?.status !== 'ok' ? (
         (faultCard(fault, 'light', t('dashboard.skyQuality'), 'star') ?? <SkyUnavailableCard />)
       ) : (
-        <SkyHero sensors={sensors} live={live} isStale={isStale} sqmHistory={ctx.sqmHistory} />
+        <SkyHero sensors={sensors} freshness={freshness} sqmHistory={ctx.sqmHistory} />
       ),
   };
 };
