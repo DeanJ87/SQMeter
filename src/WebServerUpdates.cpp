@@ -68,6 +68,27 @@ namespace SQM
         FirmwareImage::Scanner uploadScanner;
         std::string uploadRefusal;
 
+        // POST /api/update: set once the last chunk has arrived. A connection
+        // that drops before then (a stalled WiFi transfer, a closed browser
+        // tab) leaves a half-written update; it is abandoned at once so the
+        // next upload starts clean instead of hanging behind it.
+        bool firmwareUploadComplete = false;
+        // The request the running update belongs to: a dropped connection
+        // is often noticed only after the next upload has started, and must
+        // not abandon that one.
+        const AsyncWebServerRequest *firmwareUploadRequest = nullptr;
+
+        void abandonUnfinishedUpload(const AsyncWebServerRequest *request)
+        {
+            if (request != firmwareUploadRequest)
+                return;
+            firmwareUploadRequest = nullptr;
+            if (firmwareUploadComplete || !Update.isRunning())
+                return;
+            Logger::warn("OTA", "Upload connection dropped before the end; update abandoned");
+            Update.abort();
+        }
+
         // Multipart framing around the image in an upload's body.
         constexpr size_t FORM_OVERHEAD = 4096;
 
@@ -239,6 +260,7 @@ namespace SQM
             {
                 Logger::info("OTA", "Firmware update started: %s", filename.c_str());
                 activatedOnRetry = false;
+                firmwareUploadComplete = false;
                 uploadScanner = FirmwareImage::Scanner();
                 uploadRefusal.clear();
                 if (Update.isRunning())
@@ -254,16 +276,16 @@ namespace SQM
                 }
             }
             uploadScanner.feed(data, len);
-            if ((index & 0xFFFF) < len)
-                Logger::info("OTADBG", "chunk index=%u len=%u heap=%u max=%u", (unsigned)index, (unsigned)len, (unsigned)ESP.getFreeHeap(),
-                             (unsigned)ESP.getMaxAllocHeap());
             if (Update.write(data, len) != len)
             {
                 Logger::error("OTA", "Update.write failed: %d", Update.getError());
                 Update.printError(Serial);
             }
             if (final)
+            {
+                firmwareUploadComplete = true;
                 firmwareUploadEnd();
+            }
         }
 
         void sendClosing(AsyncWebServerRequest *request, int status, const String &json)
@@ -294,7 +316,10 @@ namespace SQM
             [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
             {
                 if (!index)
-                    request->onDisconnect([]() { Logger::warn("OTADBG", "upload connection closed"); });
+                {
+                    firmwareUploadRequest = request;
+                    request->onDisconnect([request]() { abandonUnfinishedUpload(request); });
+                }
                 firmwareUploadChunk(filename, index, data, len, final);
             });
     }
