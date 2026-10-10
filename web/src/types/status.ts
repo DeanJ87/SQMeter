@@ -80,6 +80,12 @@ export interface SystemStatus {
   configRevision?: number; // goes up whenever the device saves its settings
   bootCount?: number;
   resetReason?: number; // ESP-IDF esp_reset_reason_t
+  // Who holds the device's connections (spec 011 FR-008).
+  connections?: {
+    tcpLimit: number;
+    liveUpdates: { sensors: number; status: number; limitPerEndpoint: number; replaced: number; stalledClosed: number };
+    alpacaRestoredAfterRestart: boolean;
+  };
   freeHeap: number;
   minFreeHeap?: number;
   maxAllocHeap?: number;

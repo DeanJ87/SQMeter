@@ -129,7 +129,9 @@ The dashboard and integrators get live data over WebSockets with the same schema
   The JSON Schemas in `specs/016-demo-device-emulation/contracts/schemas/` are the source of truth;
   the prose contracts here describe intent and point at them.
 - **FR-012**: The device's limits on simultaneous connections MUST be documented, and a client past
-  the limit refused cleanly (see spec 011 FR-008).
+  the limit refused cleanly (see spec 011 FR-008). The live-update WebSockets MUST be capped (3 per
+  endpoint) so they can't crowd out Alpaca requests, and `/api/status` MUST report the
+  `connections` it holds (schema `status.schema.json`).
 
 *Language (spec 023 FR-015):* none of these interfaces change with the UI language. Numbers are
 JSON numbers with `.` decimals and no grouping, units and names are never translated, and

@@ -390,6 +390,18 @@ namespace SQM
                 activity.connected = false;
         }
 
+        void Router::restoreConnections(const bool (&connected)[DEVICE_COUNT])
+        {
+            for (size_t i = 0; i < DEVICE_COUNT; ++i)
+                devices[i].connected = connected[i];
+        }
+
+        void Router::connectedDevices(bool (&connected)[DEVICE_COUNT]) const
+        {
+            for (size_t i = 0; i < DEVICE_COUNT; ++i)
+                connected[i] = devices[i].connected;
+        }
+
         bool Router::handle(const Request &request, Response &response)
         {
             const std::string &path = request.path;

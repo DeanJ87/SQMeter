@@ -873,6 +873,51 @@
     "configRevision": {
       "type": "integer",
       "minimum": 0
+    },
+    "connections": {
+      "type": "object",
+      "properties": {
+        "tcpLimit": {
+          "type": "number"
+        },
+        "liveUpdates": {
+          "type": "object",
+          "properties": {
+            "sensors": {
+              "type": "number"
+            },
+            "status": {
+              "type": "number"
+            },
+            "limitPerEndpoint": {
+              "type": "number"
+            },
+            "replaced": {
+              "type": "number"
+            },
+            "stalledClosed": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "sensors",
+            "status",
+            "limitPerEndpoint",
+            "replaced",
+            "stalledClosed"
+          ],
+          "additionalProperties": false
+        },
+        "alpacaRestoredAfterRestart": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "tcpLimit",
+        "liveUpdates",
+        "alpacaRestoredAfterRestart"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -904,7 +949,8 @@
     "time",
     "uptime",
     "wifi",
-    "configRevision"
+    "configRevision",
+    "connections"
   ],
   "additionalProperties": false
 }
