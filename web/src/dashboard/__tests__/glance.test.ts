@@ -4,7 +4,8 @@ import type { AlertSchedule, Config, SensorData, SystemStatus } from '../../type
 import type { EffectiveReport } from '../../lib/settingsDeps';
 import { expectedSensors, glanceItems, toCheck, type GlanceInput } from '../glance';
 
-// Every visibility rule of the Status card (specs/025 FR-005..FR-017, 026 FR-002).
+// Every visibility rule of the Status card (specs/025 FR-005..FR-017, 026 FR-002):
+// the imaging app and alerts, plus problems no other card shows (DS-08).
 
 const healthySensors = (): SensorData => {
   const s = generateSensorData();
@@ -29,7 +30,7 @@ const input = (over: Partial<GlanceInput> = {}): GlanceInput => ({
 
 const ids = (over: Partial<GlanceInput>) =>
   glanceItems(input(over))
-    .filter((item) => item.severity !== 'ok')
+    .filter((item) => item.severity === 'note' || item.severity === 'problem')
     .map((item) => item.id);
 
 const withConfig = (change: (config: Config) => void) => {
@@ -48,37 +49,36 @@ describe('glanceItems', () => {
   it('is all good when all is well', () => {
     const items = glanceItems(input({ config: withConfig((c) => (c.alerts!.enabled = true)) }));
     expect(toCheck(items)).toEqual([]);
-    // Tiles: Data, Safety, Alerts; the mock device has an imaging app connected - a tile, never a problem.
+    // Tiles: the imaging app per Alpaca device, then Alerts. No Safety or Data tile (DS-08).
     expect(items.map((item) => [item.label, item.state])).toEqual(
       expect.arrayContaining([
-        ['Data', 'Live'],
-        ['Safety', 'Safe'],
         ['Alerts', 'Sending'],
         ['Imaging app', 'Connected'],
       ]),
     );
+    expect(items.some((item) => item.id === 'safety-verdict' || item.id === 'sensor-faults')).toBe(false);
   });
 
-  it('says when the stream is down, quiet or the data is stale (FR-014)', () => {
-    expect(glanceItems(input({ connected: false }))[0]).toMatchObject({
+  it('only says the data is offline, quiet or stale when the Sky Quality card cannot (FR-014)', () => {
+    expect(glanceItems(input({ connected: false })).some((i) => i.id === 'freshness')).toBe(false);
+    const noLight = (): ReturnType<typeof healthySensors> => {
+      const sensors = healthySensors();
+      sensors.light = { ...sensors.light!, status: 'error' };
+      return sensors;
+    };
+    expect(glanceItems(input({ connected: false, sensors: noLight() }))[0]).toMatchObject({
       id: 'freshness',
       severity: 'problem',
       state: 'Offline',
     });
-    expect(glanceItems(input({ quiet: true }))[0].state).toBe('No updates');
-    expect(glanceItems(input({ sensors: { ...healthySensors(), dataStale: true, dataAgeMs: 40_000 } }))[0]).toMatchObject({
-      state: 'Stale',
-      detail: "The sensors haven't reported recently, so the verdict treats the data as stale.",
-    });
+    expect(glanceItems(input({ quiet: true, sensors: noLight() }))[0].state).toBe('No updates');
+    expect(glanceItems(input({ sensors: { ...noLight(), dataStale: true, dataAgeMs: 40_000 } }))[0]).toMatchObject({ state: 'Stale' });
   });
 
-  it('puts an unsafe verdict first after freshness, with its reasons', () => {
+  it('never repeats the safety verdict: the Safety monitor card owns it', () => {
     const sensors = healthySensors();
     sensors.safety = { ...sensors.safety!, safe: false, rawSafe: false, reasons: ['Rain detected'] };
-    const items = glanceItems(input({ sensors }));
-    // Pill only on the tile (DS-08): the reasons are behind "?".
-    expect(items[1]).toMatchObject({ id: 'safety-verdict', severity: 'problem', state: 'Unsafe', detail: 'Rain detected' });
-    expect(items[1].sub).toBeUndefined();
+    expect(glanceItems(input({ sensors })).some((i) => i.id === 'safety-verdict')).toBe(false);
   });
 
   it('shows paused alerts with a Resume action (FR-008)', () => {
@@ -136,12 +136,15 @@ describe('glanceItems', () => {
     expect(ids({ config: none })).toContain('no-channel');
   });
 
-  it('shows the imaging app when it matters, and a silent one as a problem (FR-009)', () => {
+  it('always shows the imaging app; not connected counts only when alerts wait for one (FR-009)', () => {
     const quiet = { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null };
     const status = withStatus((s) => {
       s.alpaca!.clients = { safetymonitor: { ...quiet }, observingconditions: { ...quiet } };
     });
-    expect(glanceItems(input({ status })).some((i) => i.id === 'imaging-app')).toBe(false);
+    const resting = glanceItems(input({ status })).filter((i) => i.id === 'imaging-app');
+    expect(resting).toHaveLength(2);
+    expect(resting.every((i) => i.severity === 'idle')).toBe(true);
+    expect(toCheck(glanceItems(input({ status })))).toEqual([]);
     const silent = withStatus((s) => {
       s.alpaca!.clients = {
         safetymonitor: { ...quiet, connected: true, silent: true, lastCheckedAgeMs: 120_000 },
@@ -153,43 +156,33 @@ describe('glanceItems', () => {
       c.alerts!.enabled = true;
       c.alerts!.sendMode = 'whileConnected';
     });
-    expect(glanceItems(input({ status, config: needed })).filter((i) => i.id === 'imaging-app')).toHaveLength(2);
+    expect(glanceItems(input({ status, config: needed })).filter((i) => i.id === 'imaging-app' && i.severity === 'note')).toHaveLength(2);
+    const off = withStatus((s) => (s.alpaca!.enabled = false));
+    const alpacaOff = glanceItems(input({ status: off })).filter((i) => i.id === 'imaging-app');
+    expect(alpacaOff).toHaveLength(1);
+    expect(alpacaOff[0]).toMatchObject({ state: 'Alpaca off', severity: 'idle' });
   });
 
-  it('keeps a failed sensor visible but not an unfitted one (FR-013, D6)', () => {
+  it('leaves sensor faults to their own cards (DS-08)', () => {
+    const failedBme = withStatus((s) => (s.sensors.environment = { status: 'error', ageMs: 90_000 }));
+    expect(ids({ status: failedBme })).not.toContain('sensor-faults');
+    // The dashboard still knows which sensors to expect, for their cards.
     const missingBme = withStatus((s) => (s.sensors.environment = { status: 'missing' }));
     expect(expectedSensors(missingBme, mockConfig)).not.toContain('environment');
-    const failedBme = withStatus((s) => (s.sensors.environment = { status: 'error', ageMs: 90_000 }));
-    expect(ids({ status: failedBme })).toContain('sensor-faults');
-    const deadIr = withStatus((s) => (s.sensors.infrared = { status: 'missing' }));
-    expect(glanceItems(input({ status: deadIr })).find((i) => i.id === 'sensor-faults')).toMatchObject({
-      label: 'IR sky sensor',
-      state: 'Not responding',
-    });
   });
 
-  it('summarises settings not in effect that matter (FR-011)', () => {
+  it('leaves settings not in effect to Settings', () => {
     const effective: EffectiveReport = {
       facts: {} as EffectiveReport['facts'],
-      settings: [
-        { id: 'D-05', setting: 'alerts.events.rain_started.level', state: 'inactive', text: 'Rain sensor is off' },
-        { id: 'D-14', setting: 'mqtt.publish.gps', state: 'inactive', text: 'GPS is off' },
-      ],
+      settings: [{ id: 'D-05', setting: 'alerts.events.rain_started.level', state: 'inactive', text: 'Rain sensor is off' }],
     };
-    expect(glanceItems(input({ effective })).find((i) => i.id === 'settings-not-in-effect')).toMatchObject({
-      label: 'Settings',
-      state: '1 inactive',
-      detail: 'Rain sensor is off',
-    });
+    expect(glanceItems(input({ effective })).some((i) => i.id === 'settings-not-in-effect')).toBe(false);
   });
 
-  it('says the clock or location is unknown (FR-016)', () => {
+  it('says the clock is not set; a missing location is not a Status row (FR-016)', () => {
     expect(ids({ sensors: { ...healthySensors(), timeValid: false } })).toContain('clock-location');
     const noLocation = withStatus((s) => (s.sky = { locationSource: 'none', nightKnown: false }));
-    expect(glanceItems(input({ status: noLocation })).find((i) => i.id === 'clock-location')).toMatchObject({
-      label: 'Location',
-      state: 'Unknown',
-    });
+    expect(glanceItems(input({ status: noLocation })).some((i) => i.id === 'clock-location')).toBe(false);
   });
 
   it('shows a ringing phone alarm with Acknowledge (FR-017)', () => {
@@ -205,10 +198,10 @@ describe('glanceItems', () => {
   });
 
   it('orders problems by the spec priority', () => {
-    const status = withStatus((s) => (s.sensors.infrared = { status: 'missing' }));
     const sensors = { ...healthySensors(), timeValid: false };
-    const order = glanceItems(input({ connected: false, status, sensors })).map((item) => item.id);
-    expect(order.indexOf('freshness')).toBeLessThan(order.indexOf('sensor-faults'));
-    expect(order.indexOf('sensor-faults')).toBeLessThan(order.indexOf('clock-location'));
+    sensors.light = { ...sensors.light!, status: 'error' };
+    const order = glanceItems(input({ connected: false, sensors })).map((item) => item.id);
+    expect(order.indexOf('freshness')).toBeLessThan(order.indexOf('alerts-state'));
+    expect(order.indexOf('alerts-state')).toBeLessThan(order.indexOf('clock-location'));
   });
 });

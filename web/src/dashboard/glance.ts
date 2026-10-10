@@ -1,20 +1,25 @@
-import type { AlertSchedule, AlpacaClientState, Config, SensorData, SensorHealth, SystemStatus } from '../types';
+import type { AlertSchedule, Config, SensorData, SensorHealth, SystemStatus } from '../types';
 import { REASONS, type DepEntry, type EffectiveReport } from '../lib/settingsDeps';
 import { describeSchedule } from '../components/settings/alertSchedule';
-import { sensorName, type SensorId } from '../lib/sensorNames';
+import { type SensorId } from '../lib/sensorNames';
 import { describeClient, type ClientView } from '../lib/alpacaClients';
-import { formatAgo } from '../i18n/format';
 import { deviceText } from '../i18n/deviceMessage';
 import { languageProblem } from '../i18n/loader';
 import { t, type MessageKey } from '../i18n';
 import { appHref } from '../lib/appHref';
 
-// What the Status card shows (specs/025 content, specs/026 presentation). One
-// function decides what shows and in which order; StatusCard only renders it.
-// Each item's id is an entry of inventory.json. Every item is short: a name
-// (`label`), a one- or two-word state for its pill, and the detail behind "?".
+// What the Status card shows (specs/025 content, specs/026 presentation). The
+// card's job is the imaging app and whether alerts go out, plus problems no
+// other card shows (DS-08): the verdict is the Safety monitor card's, data
+// freshness the Sky Quality card's, a sensor's fault its own card's, and
+// settings not in effect are shown in Settings. One function decides what
+// shows and in which order; StatusCard only renders it. Each item's id is an
+// entry of inventory.json. Every item is short: a name (`label`), a one- or
+// two-word state for its pill, and the detail behind "?".
 
-export type Severity = 'ok' | 'note' | 'problem';
+// idle: a normal resting state that needs nothing (no imaging app connected while
+// alerts don't depend on one): shown dim, never counted as something to check.
+export type Severity = 'ok' | 'idle' | 'note' | 'problem';
 
 export type GlanceFix = { label: string; href: string } | { label: string; action: 'resume' | 'acknowledge' };
 
@@ -25,6 +30,7 @@ export interface GlanceItem {
   label: string; // the tile label or row name, e.g. "IR sky sensor"
   state: string; // the pill, e.g. "Error"
   sub?: string; // which one, for tiles that repeat (the imaging app per Alpaca device): never a problem restated (DS-08)
+  checked?: string; // when that one last checked in, its own line (DS-24)
   detail?: string; // behind "?": the consequence or the list behind a summary
   fix?: GlanceFix;
 }
@@ -57,13 +63,10 @@ export const sensorEffect = (sensor: Sensor) => t(EFFECT[sensor]);
 // The spec's Edge Cases order, by item.
 const PRIORITY: Record<string, number> = {
   freshness: 1,
-  'safety-verdict': 2,
   'alerts-state': 3,
   'alerts-mode-not-in-effect': 3,
   'no-channel': 3,
   'imaging-app': 4,
-  'sensor-faults': 5,
-  'settings-not-in-effect': 6,
   language: 6,
   'clock-location': 7,
   'phone-alarm': 8,
@@ -73,6 +76,7 @@ interface Parts {
   label: string;
   state: string;
   sub?: string;
+  checked?: string;
   detail?: string;
   fix?: GlanceFix;
 }
@@ -82,33 +86,23 @@ const item = (id: string, severity: Severity, parts: Parts): GlanceItem => ({ id
 export const healthWords = (health: SensorHealth) =>
   health === 'missing' ? t('settings.sensors.notResponding') : health === 'stale' ? t('system.stale') : t('system.error');
 
-// Settings (spec 020) whose being inactive matters to alerts or safety (FR-011).
+// Alert channels (spec 020) whose being inactive means alerts can't go out.
 const ALERT_CHANNEL_DEPS = new Set(['D-01', 'D-02', 'D-03', 'D-04']);
-const ALERT_SAFETY_DEPS = new Set(['D-05', 'D-06', 'D-07', 'D-08', 'D-09', 'D-10', 'D-11', 'D-20', 'D-31', 'D-35', 'D-37']);
 
 const settingsLink = (tab: string, anchor?: string): GlanceFix => ({
   label: t('glance.openSettings'),
   href: appHref(`/settings?tab=${tab}${anchor ? `&section=${anchor}` : ''}`),
 });
 
-const freshness = ({ sensors, connected, quiet }: GlanceInput): GlanceItem => {
+// Freshness is the Sky Quality card's pill; it only comes here when that card
+// can't show it (the light sensor has failed), and only when it isn't live.
+const freshness = ({ sensors, connected, quiet }: GlanceInput): GlanceItem | null => {
+  if (sensors?.light?.status === 'ok') return null;
   const label = t('status.data');
   if (!connected) return item('freshness', 'problem', { label, state: t('status.offline'), detail: t('status.offlineHint') });
   if (quiet) return item('freshness', 'problem', { label, state: t('status.noUpdates'), detail: t('status.noUpdatesHint') });
   if (sensors?.dataStale) return item('freshness', 'problem', { label, state: t('system.stale'), detail: t('status.staleHint') });
-  return item('freshness', 'ok', { label, state: t('dashboard.live') });
-};
-
-const verdict = ({ sensors }: GlanceInput): GlanceItem | null => {
-  const safety = sensors?.safety;
-  if (!safety) return null;
-  const label = t('status.safety');
-  if (safety.safe) return item('safety-verdict', 'ok', { label, state: t('safetyCard.safe') });
-  // Pill only (DS-08): the reasons are the Safety monitor card's; "?" repeats them for when it's hidden.
-  if (safety.rawSafe && safety.secondsUntilSafe > 0)
-    return item('safety-verdict', 'note', { label, state: t('status.safeIn', { seconds: safety.secondsUntilSafe }) });
-  const reasons = safety.reasons.map((reason) => deviceText(reason)).join(t('common.listSeparator'));
-  return item('safety-verdict', 'problem', { label, state: t('status.unsafe'), detail: reasons || undefined });
+  return null;
 };
 
 const alertsItem = ({ config, schedule }: GlanceInput): GlanceItem | null => {
@@ -166,18 +160,32 @@ const DEVICES = [
 
 const SEVERITY: Record<ClientView['tone'], Severity> = { ok: 'ok', warn: 'problem', muted: 'note' };
 
-const imagingAppItems = ({ config, status }: GlanceInput): GlanceItem[] => {
+// The card's main job: is an imaging app (N.I.N.A. and the like) watching
+// each Alpaca device? Always shown; one tile when Alpaca is off.
+const imagingAppItems = ({ config, status, sensors }: GlanceInput): GlanceItem[] => {
+  const alpacaOn = status?.alpaca ? status.alpaca.enabled : sensors?.safety?.alpacaEnabled;
+  if (alpacaOn === false)
+    return [
+      item('imaging-app', 'idle', {
+        label: t('status.imagingApp'),
+        state: t('status.alpacaOff'),
+        detail: t('safetyCard.notSharedHint'),
+        fix: settingsLink('safety', 'alpaca'),
+      }),
+    ];
   const clients = status?.alpaca?.clients;
   if (!clients) return [];
+  // Not connected only needs a look when alerts wait for an imaging app.
   const needed = config?.alerts?.enabled && config.alerts.sendMode === 'whileConnected';
-  const seen = (state: AlpacaClientState) => state.connected || state.watching || state.silent || state.lastCheckedAgeMs !== null;
-  return DEVICES.filter(([device]) => needed || seen(clients[device])).map(([device, name]) => {
+  return DEVICES.map(([device, name]) => {
     const state = clients[device];
     const view = describeClient(state);
-    return item('imaging-app', SEVERITY[view.tone], {
+    const severity = view.tone === 'muted' && !needed ? 'idle' : SEVERITY[view.tone];
+    return item('imaging-app', severity, {
       label: t('status.imagingApp'),
       state: view.state,
-      sub: view.checked ? t('status.deviceChecked', { device: name(), checked: view.checked }) : name(),
+      sub: name(),
+      checked: view.checked,
       detail: state.silent ? t('status.goneQuietHint') : undefined,
     });
   });
@@ -195,52 +203,12 @@ export const expectedSensors = (status: SystemStatus | null, config: Config | nu
   return list;
 };
 
-const sensorHealth = (sensor: Sensor, input: GlanceInput): { health: SensorHealth; ageMs?: number } | null => {
-  const entry = input.status?.sensors[sensor];
-  if (entry) return { health: entry.status, ageMs: entry.ageMs };
-  const reading = input.sensors?.[sensor] as { status?: SensorHealth; ageMs?: number } | undefined;
-  return reading?.status ? { health: reading.status, ageMs: reading.ageMs } : null;
-};
-
-const sensorItems = (input: GlanceInput): GlanceItem[] =>
-  expectedSensors(input.status, input.config).flatMap((sensor) => {
-    const health = sensorHealth(sensor, input);
-    if (!health || health.health === 'ok') return [];
-    const age = health.ageMs ? ` ${t('glance.lastReading', { ago: formatAgo(health.ageMs) })}` : '';
-    return [
-      item('sensor-faults', 'problem', {
-        label: sensorName(sensor),
-        state: healthWords(health.health),
-        detail: sensorEffect(sensor) + age,
-        fix: settingsLink('sensors'),
-      }),
-    ];
-  });
-
-const settingsItem = ({ effective }: GlanceInput): GlanceItem | null => {
-  const entries = inactive(effective, ALERT_SAFETY_DEPS);
-  if (!entries.length) return null;
-  return item('settings-not-in-effect', 'note', {
-    label: t('status.settings'),
-    state: t('status.notInEffectCount', { count: entries.length }),
-    detail: entries.map(reasonText).join('; '),
-    fix: settingsLink('alerts'),
-  });
-};
-
-const clockItem = ({ sensors, status }: GlanceInput): GlanceItem | null => {
+const clockItem = ({ sensors }: GlanceInput): GlanceItem | null => {
   if (sensors && !sensors.timeValid)
     return item('clock-location', 'problem', {
       label: t('status.clock'),
       state: t('status.notSet'),
       detail: t('status.clockHint'),
-      fix: settingsLink('time'),
-    });
-  if (status?.sky && (status.sky.locationSource === 'none' || !status.sky.nightKnown))
-    return item('clock-location', 'problem', {
-      label: t('status.location'),
-      state: t('dashboard.unknown'),
-      detail: t('status.locationHint'),
       fix: settingsLink('time'),
     });
   return null;
@@ -271,23 +239,20 @@ const alarmItem = ({ status }: GlanceInput): GlanceItem | null =>
 export const glanceItems = (input: GlanceInput): GlanceItem[] => {
   const items = [
     freshness(input),
-    verdict(input),
     alertsItem(input),
     sendModeItem(input),
     channelsItem(input),
     ...imagingAppItems(input),
-    ...sensorItems(input),
-    settingsItem(input),
     languageItem(),
     clockItem(input),
     alarmItem(input),
   ].filter((entry): entry is GlanceItem => Boolean(entry));
-  const rank = { problem: 0, note: 1, ok: 2 } as const;
+  const rank = { problem: 0, note: 1, ok: 2, idle: 3 } as const;
   return items.sort((a, b) => a.priority - b.priority || rank[a.severity] - rank[b.severity]);
 };
 
 /** How many things need a look: every item that isn't ok. */
-export const toCheck = (items: GlanceItem[]) => items.filter((entry) => entry.severity !== 'ok');
+export const toCheck = (items: GlanceItem[]) => items.filter((entry) => entry.severity === 'note' || entry.severity === 'problem');
 
 /** A screen-reader line for an item, e.g. "IR sky sensor: Error". */
 export const spoken = (entry: GlanceItem) => `${entry.label}: ${entry.state}`;
