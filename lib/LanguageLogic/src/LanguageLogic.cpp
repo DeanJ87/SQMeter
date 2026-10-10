@@ -99,5 +99,14 @@ namespace SQM
                 return BootAction::UseInstalled;
             return unfinishedAttempt ? BootAction::WaitAfterCrash : BootAction::Restore;
         }
+
+        ChangeAction changeAction(const std::string &code, bool installedMatches, bool downloadRunning)
+        {
+            if (downloadRunning)
+                return ChangeAction::AfterRunning;
+            if (code == ENGLISH)
+                return ChangeAction::RemoveFile;
+            return installedMatches ? ChangeAction::UseInstalled : ChangeAction::Download;
+        }
     } // namespace Language
 } // namespace SQM

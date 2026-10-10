@@ -154,27 +154,41 @@ namespace SQM
         LittleFS.remove(ATTEMPT_PATH);
     }
 
+    bool LanguagePack::downloadRunning() const
+    {
+        return state == State::Downloading || state == State::Restoring;
+    }
+
     void LanguagePack::onLanguageChanged(const std::string &code)
     {
-        if (code == Language::ENGLISH)
+        std::string error;
+        switch (Language::changeAction(code, installedMatches(code), downloadRunning()))
         {
+        case Language::ChangeAction::AfterRunning:
+            changePending = true;
+            return;
+        case Language::ChangeAction::RemoveFile:
             remove();
             lastError.clear();
             state = State::Idle;
             return;
-        }
-        if (installedMatches(code))
-        {
+        case Language::ChangeAction::UseInstalled:
             state = State::Installed;
             return;
+        case Language::ChangeAction::Download:
+            if (!startDownload(code, State::Downloading, error))
+                fail(error);
+            return;
         }
-        std::string error;
-        if (!startDownload(code, State::Downloading, error))
-            fail(error);
     }
 
     void LanguagePack::loop()
     {
+        if (changePending && !downloadRunning())
+        {
+            changePending = false;
+            onLanguageChanged(language());
+        }
         if (restoreChecked || WiFi.status() != WL_CONNECTED || (WiFi.getMode() & WIFI_AP) != 0)
             return;
         restoreChecked = true;
@@ -202,7 +216,7 @@ namespace SQM
 
     bool LanguagePack::startDownload(const std::string &code, State whileRunning, std::string &error)
     {
-        if (state == State::Downloading || state == State::Restoring)
+        if (downloadRunning())
         {
             error = "A language download is already running";
             return false;
@@ -336,11 +350,16 @@ namespace SQM
 
     void LanguagePack::writeStatus(JsonObject target) const
     {
-        target["language"] = language();
-        target["state"] = stateName(state);
-        target["firmwareVersion"] = FIRMWARE_VERSION;
+        const std::string chosen = language();
         Meta meta;
-        if (readMeta(meta))
+        const bool stored = readMeta(meta);
+        // A change still to apply, or a file just installed for the previous
+        // choice, is not "installed": the web UI reloads its text on that.
+        const bool stale = changePending || (state == State::Installed && (!stored || chosen != meta.lang));
+        target["language"] = chosen;
+        target["state"] = stale ? stateName(State::Downloading) : stateName(state);
+        target["firmwareVersion"] = FIRMWARE_VERSION;
+        if (stored)
         {
             JsonObject pack = target.createNestedObject("pack");
             pack["lang"] = meta.lang;
