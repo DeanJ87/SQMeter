@@ -131,7 +131,11 @@ class LabelTests(unittest.TestCase):
     def test_dependency_reasons_use_the_name(self):
         # Why a setting isn't in effect is status text: the thing, not the part.
         problems = self.run_check(
-            {"sensor.light": "Light sensor", "settingsDeps.tslMissing": "TSL2591 not detected", "settingsDeps.ok": "Light sensor not detected"},
+            {
+                "sensor.light": "Light sensor",
+                "settingsDeps.tslMissing": "TSL2591 not detected",
+                "settingsDeps.ok": "Light sensor not detected",
+            },
             {},
             '"Alerts"',
         )
