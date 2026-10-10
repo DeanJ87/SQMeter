@@ -55,6 +55,13 @@ class CopyTests(unittest.TestCase):
         self.assertTrue(any("a.y" in p and "run-on" in p for p in problems))
         self.assertTrue(any("'please note'" in p for p in problems))
 
+    def test_labels_joined_with_a_dash(self):
+        problems = self.run_check(
+            {"a.old": "Silent for - safety monitor", "a.new": "Safety monitor silent for", "a.note": "Rain held - clears in 5 min"},
+            {"a.old": "a field or control label", "a.new": "a field or control label", "a.note": "a note"},
+        )
+        self.assertEqual([p.split(":")[0] for p in problems], ["a.old"])
+
     def test_placeholders_count_as_short_values_and_device_text_is_skipped(self):
         problems = self.run_check(
             {"a.p": {"one": "{count} to check", "other": "{count} to check"}, "device.x": "x" * 300},

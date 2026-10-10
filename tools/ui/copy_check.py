@@ -6,7 +6,7 @@ fails on:
   - a string longer than its type allows: badge/pill 16, label/title/button 32,
     note/sentence 90, "?" hint 160 characters (English; translations follow);
   - a banned filler phrase (DS-25);
-  - a run-on status line joined with " · " (DS-24).
+  - a run-on status line joined with " · ", or a label joined with " - " (DS-24).
 The type comes from the context note's wording. Strings that can't follow a
 rule are listed in tools/ui/copy-exceptions.json with a reason (EXC-01).
 
@@ -56,6 +56,7 @@ BANNED = [
     "as soon as the device has it",
 ]
 RUN_ON = re.compile(r"\S · \S")
+LABEL_JOIN = re.compile(r"\S [-–] \S")  # "Silent for - safety monitor": two facts in one label
 
 
 def flatten(node: dict, prefix: str = "") -> dict:
@@ -110,6 +111,8 @@ def check(root: Path = ROOT) -> list[str]:
                 problems.append(f"{base}: banned phrase {phrase!r} (DS-25)")
         if RUN_ON.search(text):
             problems.append(f"{base}: run-on line joined with ' · ' (DS-24): one fact per tile or row")
+        if kind == "label" and LABEL_JOIN.search(text):
+            problems.append(f"{base}: label joined with ' - ' (DS-24): one name per label, e.g. 'Safety monitor silent for'")
     problems += [f"{key}: exception for a key that no longer exists" for key in exceptions if key not in {k.split("#")[0] for k in english}]
     return problems
 
