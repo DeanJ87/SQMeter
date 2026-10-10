@@ -66,18 +66,45 @@ If a new firmware doesn't finish starting (WiFi and the web server up), the devi
 
 ---
 
+## N.I.N.A. Loses the Safety Monitor
+
+N.I.N.A. shows the SafetyMonitor (or weather device) as disconnected, and connecting again works straight away. Two things cause this:
+
+1. **The SQMeter restarted.** Open `http://<device-ip>/api/status`: if `uptime` (seconds) is shorter than the time since the drop, it restarted, and `resetReason` says why (1 power on, 3 software restart, 4 crash, 5-7 watchdog, 9 brownout). The dashboard's **History** lists restarts too. From v0.3.1 a restart the device causes itself (a crash, the watchdog, an update) keeps N.I.N.A.'s connection: `connections.alpacaRestoredAfterRestart` is `true` after one. A power cut or brownout still starts fresh; check the power supply and cable.
+2. **Other clients held all the connections.** Before v0.3.1 a browser tab left open on a laptop or phone that went to sleep could keep its live-update sockets open forever, and every wake-up added more. Once all 16 were held, N.I.N.A.'s next request couldn't connect. From v0.3.1 each live-update endpoint takes at most 3 clients (a new one replaces the oldest), a client that stops reading is closed after 10 seconds, and quiet ones are pinged so a vanished peer is dropped. On older firmware, close SQMeter tabs on devices that sleep.
+
+`/api/status` → `connections` shows who holds what:
+
+```json
+"connections": {
+  "tcpLimit": 16,
+  "liveUpdates": { "sensors": 1, "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 2 },
+  "alpacaRestoredAfterRestart": false
+}
+```
+
+`replaced` and `stalledClosed` count live-update clients closed since the restart: replaced by a newer one, or closed because they stopped reading.
+
+To be told when it happens rather than the next morning, turn on the **Imaging app stopped checking** alert (Settings → Alerts).
+
+---
+
 ## A Connection Is Refused Under Heavy Use
 
-The ESP32's network stack holds at most **16 TCP connections** at once, including ones that have just closed (they linger for a short while). That limit is built into the ESP32 Arduino framework the firmware uses and can't be raised by a setting.
+The ESP32's network stack holds at most **16 TCP connections** at once, including ones that have just closed (they linger for a short while). That limit is built into the ESP32 Arduino framework the firmware uses.
 
-Normal use is well within it. What uses connections:
+What uses connections:
 
-- each open browser tab with the SQMeter page: 2 (its live updates)
+- live updates in open browser tabs: at most 3 per endpoint, 6 in all, however many tabs are open
 - MQTT: 1
 - an imaging app: 1-2 per request burst (each Alpaca request is a short connection)
 - update checks and internet alerts: 1 while sending
 
-A conformance checker such as ASCOM ConformU fires hundreds of requests in quick succession; running it while other clients poll the device (another app, several browser tabs) can briefly exhaust the connections, and one request is refused. The device doesn't restart and the next request works. Close extra SQMeter tabs while running ConformU; imaging apps retry on their own.
+That leaves at least 8 for imaging apps and page loads.
+
+A conformance checker such as ASCOM ConformU fires hundreds of requests in quick succession; running it while other clients poll the device can briefly exhaust the connections, and one request is refused. The device doesn't restart and the next request works. Imaging apps retry on their own.
+
+`tools/soak/connection_soak.py --host <device-ip>` reproduces the worst case: it polls like N.I.N.A. while opening live-update sockets nobody reads, and reports every imaging-app request that failed.
 
 ---
 

@@ -26,15 +26,71 @@
 #include "HeapTrace.h"
 #include "SunPosition.h"
 #include "SafetyHistory.h"
+#include "ConnectionMemory.h"
+#include <esp_attr.h>
 #include <Preferences.h>
 
 extern uint32_t bootCount;
 
 // ASCOM Alpaca: the device API, management API and setup pages, routed through lib/AlpacaLogic.
 
+// Which devices an imaging app has connected, in memory that survives a
+// restart without power loss (spec 011 FR-008).
+RTC_NOINIT_ATTR static SQM::Alpaca::ConnectionMemory alpacaConnectionMemory;
+
 namespace SQM
 {
     using namespace WebShared;
+
+    namespace
+    {
+        Alpaca::ResetKind resetKind(esp_reset_reason_t reason)
+        {
+            switch (reason)
+            {
+            case ESP_RST_POWERON:
+                return Alpaca::ResetKind::PowerOn;
+            case ESP_RST_EXT:
+                return Alpaca::ResetKind::External;
+            case ESP_RST_SW:
+                return Alpaca::ResetKind::Software;
+            case ESP_RST_PANIC:
+                return Alpaca::ResetKind::Panic;
+            case ESP_RST_INT_WDT:
+            case ESP_RST_TASK_WDT:
+            case ESP_RST_WDT:
+                return Alpaca::ResetKind::Watchdog;
+            case ESP_RST_BROWNOUT:
+                return Alpaca::ResetKind::Brownout;
+            case ESP_RST_DEEPSLEEP:
+                return Alpaca::ResetKind::DeepSleep;
+            default:
+                return Alpaca::ResetKind::Unknown;
+            }
+        }
+    } // namespace
+
+    void WebServer::restoreAlpacaConnections()
+    {
+        bool connected[Alpaca::DEVICE_COUNT] = {};
+        if (Alpaca::keepsConnections(resetKind(esp_reset_reason())) && Alpaca::recallConnections(alpacaConnectionMemory, connected) &&
+            (connected[0] || connected[1]))
+        {
+            // N.I.N.A. had the device connected and the device restarted on its
+            // own: keep answering Connected = true so it doesn't see a drop.
+            alpacaRouter.restoreConnections(connected);
+            alpacaConnectionsRestored = true;
+            Logger::info(TAG, "Kept imaging-app connections across the restart");
+        }
+        rememberAlpacaConnections();
+    }
+
+    void WebServer::rememberAlpacaConnections()
+    {
+        bool connected[Alpaca::DEVICE_COUNT] = {};
+        alpacaRouter.connectedDevices(connected);
+        alpacaConnectionMemory = Alpaca::rememberConnections(connected);
+    }
 
     Alpaca::ObservingConditionsSnapshot WebServer::buildAlpacaObservingConditionsSnapshot() const
     {

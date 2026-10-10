@@ -92,6 +92,14 @@ namespace SQM
             // As after a restart: no device connected (the demo's restart).
             void resetConnections();
 
+            // After a restart the device caused itself (ConnectionMemory): the
+            // imaging app's connections as they were, without counting a
+            // disconnect.
+            void restoreConnections(const bool (&connected)[DEVICE_COUNT]);
+
+            // Which devices a client has connected, in Device order.
+            void connectedDevices(bool (&connected)[DEVICE_COUNT]) const;
+
         private:
             Response device(const Request &request);
 

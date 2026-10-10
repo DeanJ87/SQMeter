@@ -54,9 +54,12 @@ curl http://sqmeter.local/api/status
     "light": { "rollingVisible": 3.1, "correctedVisible": 3.1, "darkVisibleOffset": 0, "sampleCount": 150, "windowSamples": 150, "nightMode": true, "rejectedSamples": 0, "consecutiveSaturatedSamples": 0, "consecutiveLowSamples": 0 },
     "rain": { "state": "online", "uartOpened": true, "rxPin": 18, "txPin": 19, "baudRate": 9600, "uartPort": 1, "lastCommand": "R", "lastResponse": "Acc 0.01 mm, ...", "timeouts": 0, "parseErrors": 0, "successfulReads": 1424, "lastPollAgeMs": 40, "lastResponseAgeMs": 40, "lastSuccessfulReadAgeMs": 40 }
   },
-  "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "sqmeter", "availabilityTopic": "sqmeter/availability" }
+  "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "sqmeter", "availabilityTopic": "sqmeter/availability" },
+  "connections": { "tcpLimit": 16, "liveUpdates": { "sensors": 1, "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false }
 }
 ```
+
+`connections` shows who holds the device's TCP connections: the live-update clients per endpoint (`/ws/sensors`, `/ws/status`), the most each takes, and how many were closed since the restart because a newer one replaced them (`replaced`) or they stopped reading (`stalledClosed`). `alpacaRestoredAfterRestart` is `true` when an imaging app's connection was kept across a restart the device caused itself. See [N.I.N.A. loses the Safety Monitor](../reference/troubleshooting.md#nina-loses-the-safety-monitor).
 
 `alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object, plus `recentRevision`, which goes up whenever [`/api/alerts/recent`](#get-apialertsrecent) would answer differently. `configRevision` goes up whenever the settings are saved. Both only say *that* something changed, so a page fetches the details then; they restart from 0 after a restart. `alpaca.clients` says, per Alpaca device, whether an imaging app has it `connected`, whether one is `watching` (connected, or polling since the restart), whether it has gone `silent` (no request for the alert's **Silent for** time), how long ago it last checked (`lastCheckedAgeMs`, `null` if never since the restart) and the last Alpaca `clientId` (`null` if none); the web UI's own requests aren't counted ([The imaging app](../user-guide/alerts.md#the-imaging-app)).
 

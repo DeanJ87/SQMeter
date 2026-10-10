@@ -7,7 +7,7 @@ SQMeter exposes device data through these integration paths. The legacy raw TCP 
 <!-- diagram: DIA-15
 sources: include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h lib/AlpacaLogic/include/AlpacaRouter.h lib/Readings/include/
 blocking: false
-fingerprint: 8f08dd882ef8fe75
+fingerprint: 05ec4e17d0d22f48
 -->
 <figure class="diagram" markdown>
 

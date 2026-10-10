@@ -4,6 +4,16 @@ All notable changes to SQMeter are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- **N.I.N.A. losing the Safety Monitor**: browser tabs left open on a laptop or phone that went to sleep could hold the device's connections until N.I.N.A. couldn't connect. Live updates now take at most 3 clients per endpoint (a new one replaces the oldest), a client that stops reading is closed after 10 seconds, quiet ones are pinged, and one stuck tab no longer freezes live updates for the others.
+- After a restart the device causes itself (a crash, the watchdog, an update), an imaging app's Alpaca connection is kept, so N.I.N.A. doesn't see a disconnect.
+
+### Added
+
+- `/api/status` → `connections`: live-update clients per endpoint and how many were closed, and whether connections were kept across the last restart.
+- `tools/soak/connection_soak.py`: polls a device like N.I.N.A. while opening sockets nobody reads, and reports any failed request.
+
 ### Planned
 
 - Hardware PCB design (planned — SQMeter-Hardware repo)

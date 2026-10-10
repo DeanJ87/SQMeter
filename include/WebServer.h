@@ -25,6 +25,8 @@
 #include <atomic>
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
+#include <map>
+#include <mutex>
 #include <ArduinoJson.h>
 #include <memory>
 #include <vector>
@@ -92,6 +94,18 @@ namespace SQM
         AsyncWebServer server;
         AsyncWebSocket wsSensors; // /ws/sensors for Dashboard
         AsyncWebSocket wsStatus;  // /ws/status for System page
+        // Live-update clients closed since boot (spec 011 FR-008): the oldest
+        // past the per-endpoint limit, and ones that stopped reading.
+        uint32_t wsReplaced = 0;
+        uint32_t wsStalled = 0;
+        // Live-update clients by id, with when each one's queue was first seen
+        // full (0 = not full). Events arrive on the network task, the sweep
+        // runs on the loop task.
+        std::map<uint32_t, uint32_t> wsSensorClients;
+        std::map<uint32_t, uint32_t> wsStatusClients;
+        std::mutex wsClientsLock;
+        // Imaging-app connections restored after a restart the device caused.
+        bool alpacaConnectionsRestored = false;
 
         TSL2591Sensor &tslSensor;
         BME280Sensor &bmeSensor;
@@ -294,6 +308,13 @@ namespace SQM
         void handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json);
 
         // WebSocket handlers
+        void prepareWebSocketClient(std::map<uint32_t, uint32_t> &clients, AsyncWebSocketClient *client);
+        void capWebSocketClients(AsyncWebSocket &socket);
+        void noteWebSocketClosed(std::map<uint32_t, uint32_t> &clients, AsyncWebSocketClient *client);
+        void closeStalledClients(AsyncWebSocket &socket, std::map<uint32_t, uint32_t> &clients, uint32_t now);
+        void appendConnections(JsonDocument &doc) const;
+        void restoreAlpacaConnections();
+        void rememberAlpacaConnections();
         void onSensorWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
         void onStatusWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
 
