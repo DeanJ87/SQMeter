@@ -112,6 +112,10 @@ namespace SQM
             double sunAltitudeDeg = 0.0;
         };
         NightState night(const SensorSnapshot &snapshot, const Config &cfg, int64_t epoch);
+
+        // Alpaca's Location: the location in use (a GPS fix, else the saved
+        // location) as "lat, lon", or "" when none is known.
+        std::string alpacaLocation(const SensorSnapshot &snapshot, const Config &cfg);
         // /api/status "sky".
         void writeSky(JsonObject sky, const NightState &night);
 

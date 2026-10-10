@@ -26,7 +26,7 @@ Alpaca support is disabled by default. With it off, every Alpaca endpoint still 
 <!-- diagram: DIA-10
 sources: lib/AlpacaLogic/src/AlpacaDiscovery.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp src/WebServerAlpaca.cpp#WebServer::setupAlpacaRoutes
 blocking: false
-fingerprint: 39c02b39edaa7210
+fingerprint: 17ce21e0cb98dcc0
 -->
 <figure class="diagram" markdown>
 
@@ -67,6 +67,17 @@ sequenceDiagram
     6. Disconnecting sends `Connected=false`.
     7. SQMeter notes every request: with **When to send** set to *Only while an imaging app is connected*, a connect resumes alerts and the last disconnect pauses them; if requests stop without a disconnect, the "imaging app stopped checking" alert fires (see [Alerts](alerts.md#the-imaging-app)).
     8. With Alpaca switched off, every endpoint still answers but reports not connected, and `IsSafe` returns false with a NotConnected error.
+
+### What clients show
+
+The management API's description is how N.I.N.A. and other clients name the server:
+
+| Field | Value |
+|---|---|
+| `ServerName` | The device's name (**Settings → Device → Name**) |
+| `Manufacturer` | `SQMeter` |
+| `ManufacturerVersion` | The firmware version |
+| `Location` | Where the device is: the location in use as `lat, lon` (a GPS fix, otherwise **Settings → Time & Location → Location**), e.g. `51.4779, -0.0015`; empty when no location is set |
 
 ### SafetyMonitor
 
@@ -123,7 +134,7 @@ Each threshold has its own enable/disable toggle - a disabled threshold never co
 <!-- diagram: DIA-02
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceCore.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: true
-fingerprint: 24c64556e2707937
+fingerprint: 36a0d7b6003e792d
 -->
 <figure class="diagram" markdown>
 

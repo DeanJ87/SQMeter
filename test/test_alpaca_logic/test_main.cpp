@@ -295,7 +295,10 @@ namespace
         bool alpacaEnabled() const override { return enabled; }
         bool isSafe() const override { return safe; }
         ObservingConditionsSnapshot observingConditions() const override { return snapshot; }
-        std::string location() const override { return "Roof"; }
+        std::string name = "Observatory";
+        std::string where = "51.4779, -0.0015";
+        std::string serverName() const override { return name; }
+        std::string location() const override { return where; }
         std::string timestampUtc() const override { return ""; }
     };
 

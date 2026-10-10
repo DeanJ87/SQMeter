@@ -24,6 +24,10 @@ refresh, and they connect.
    device answers with its HTTP port promptly enough for the client's discovery window.
 2. **Given** a client, **When** it reads the management API, **Then** both devices are listed
    with stable, unique IDs that include the board's MAC address.
+2a. **Given** a device named "Observatory" with a location set, **When** a client reads
+   `/management/v1/description`, **Then** `ServerName` is "Observatory", `Manufacturer` is
+   "SQMeter" and `Location` is the location in use as "lat, lon" ('.' decimals, 4 places, a GPS
+   fix before the saved location); with no location known `Location` is empty.
 3. **Given** Alpaca is disabled, **When** a client calls any endpoint, **Then** it gets a valid
    NotConnected reply rather than a 404, and the devices aren't listed.
 
@@ -101,6 +105,11 @@ clients will see.
   fail on any error, issue or configuration alert.
 - **FR-007**: Enabling Alpaca and its restart requirement for discovery MUST be explained in the
   UI (restart prompt) and the documentation, using the UI's current names.
+- **FR-008**: The management description MUST name the server and say where it is: `ServerName`
+  = the device's name (Settings → Device → Name; the product name only if that is empty),
+  `Manufacturer` = "SQMeter", `Location` = the location in use (GPS fix, else the saved location)
+  as "lat, lon" in machine format ('.' decimals, 4 places), or "" when none is known. *(Added
+  October 2026; before, `ServerName` was always "SQMeter" and `Location` was the device name.)*
 
 ### Key Entities
 

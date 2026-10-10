@@ -9,6 +9,26 @@ All notable changes to SQMeter are documented here.
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
 
+## [0.3.1-beta.1] — 2026-10-10
+
+An over-the-air update from v0.3.0-beta.1 (same layout, no USB flash). Devices still on v0.2 need the one-time USB flash described under 0.3.0-beta.1.
+
+### Changed
+
+- **Status card**: shows whether an imaging app (N.I.N.A. or another Alpaca client) is watching each Alpaca device, and whether alerts go out. It no longer repeats what other cards show: the verdict is on Safety Monitor, data freshness on the Sky Quality pill (now **Live**, **Stale**, **No updates** or **Offline**), and a failed sensor on its own card. Not connected is dim and only counts as something to check when alerts wait for an imaging app.
+- **Safety Monitor card** shows the verdict, rain hold, Rules and History only. Rules and settings that are on but not in effect are shown in **Settings**, where they are set.
+- **Alpaca management description**: `ServerName` is now the device's name (Settings → Device → Name), not "SQMeter"; `Location` is the location in use as `lat, lon` (GPS fix, else the saved location), empty when none is set; `Manufacturer` stays "SQMeter". N.I.N.A. and other clients show the device's own name.
+- Settings-dependency reasons name the sensor ("IR sky sensor not detected"), not its part number, in every language.
+
+### Fixed
+
+- Location no longer looks stuck: the Status card showed "Location: Unknown" whenever no location was saved, and "Wake me needs the Bluetooth build" counted as a problem on every standard build.
+- Settings switches tab when the address changes (an in-app link, Back/Forward or a pasted address); it used to stay on the first tab opened.
+- Long tile values such as a dark sky's illuminance (0.000289 lux) step down a size instead of wrapping.
+- "Silent for - safety monitor" and similar labels name the device first.
+- The demo's System page shows the v0.3 partition layout.
+- Docs-only pull requests can merge again: the required `build` check now reports on every pull request.
+
 ## [0.3.0-beta.1] — 2026-10-10
 
 > **Needs a one-time USB flash.** v0.3 moves to a new partition layout. Settings, WiFi included, are kept. See https://sqmeter.dev/getting-started/usb-flash/. Devices on v0.2 don't offer this release under "Check for updates".
