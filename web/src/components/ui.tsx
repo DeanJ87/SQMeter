@@ -113,7 +113,8 @@ export const MetricTile: FunctionalComponent<{
 }> = ({ label, value, unit, alt, tone = '', align = 'center' }) => (
   <div class={`metric-tile ${align === 'left' ? 'left' : ''}`}>
     <div class="metric-label">{label}</div>
-    <div class={`metric-value ${tone}`}>{value}</div>
+    {/* A long value (e.g. 0.000289 lux) steps down a size rather than wrapping (DS-03). */}
+    <div class={`metric-value ${tone}${value.length > 6 ? ' is-long' : ''}`}>{value}</div>
     {unit && <div class="metric-unit">{unit}</div>}
     {alt && <div class="metric-unit">{alt}</div>}
   </div>

@@ -16,8 +16,8 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-03 | `alerts.pushover.enabled`, `alerts.ntfy.enabled`, `alerts.webhook.enabled` | WiFi connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
 | D-04 | `alerts.pushover.enabled`, `alerts.ntfy.enabled`, `alerts.webhook.enabled`, `alerts.mqtt.enabled`, `alerts.events.unsafe.level`, `alerts.events.safe.level`, `alerts.events.rain_started.level`, `alerts.events.rain_stopped.level`, `alerts.events.sensor_fault.level`, `alerts.events.sensor_recovered.level`, `alerts.events.dew_risk.level`, `alerts.events.clear_sky.level`, `alerts.events.clouded_over.level`, `alerts.events.client_lost.level`, `alerts.events.client_back.level`, `alerts.events.client_disconnected.level`, `alerts.skyNightOnly`, `alerts.safetyNightOnly`, `alerts.nightSunAltitudeDeg`, `alerts.sendMode` | Alerts on (Send alerts). Events at Wake me, arming and the night-only options also count while paired phones can ring; channels are push only | Dependency | Alerts are off (alerts-off) |
 | D-05 | `alerts.events.rain_started.level`, `alerts.events.rain_stopped.level` | Rain sensor on | Dependency | Rain sensor is off (rain-off) |
-| D-06 | `alerts.events.dew_risk.level` | BME280 detected | Dependency, runtime | BME280 not detected (environment-missing) |
-| D-07 | `alerts.events.clear_sky.level`, `alerts.events.clouded_over.level` | MLX90614 detected | Dependency, runtime | MLX90614 not detected (infrared-missing) |
+| D-06 | `alerts.events.dew_risk.level` | BME280 detected | Dependency, runtime | Environment sensor not detected (environment-missing) |
+| D-07 | `alerts.events.clear_sky.level`, `alerts.events.clouded_over.level` | MLX90614 detected | Dependency, runtime | IR sky sensor not detected (infrared-missing) |
 | D-08 | `alerts.wakePhones` | Bluetooth build, Bluetooth on, passkey set, at least one paired phone (Wake me still escalates Pushover and ntfy) | Dependency | Needs the Bluetooth firmware build (ble-build); Bluetooth is off (ble-off); No pairing passkey set (no-passkey); No phone paired (no-phones) |
 | D-09 | `alerts.skyNightOnly` | Location set or GPS fix | Dependency | Needs your location (location-unknown) |
 | D-10 | `alerts.safetyNightOnly` | Location set or GPS fix | Dependency | Needs your location (location-unknown) |
@@ -27,9 +27,9 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-14 | `mqtt.publish.gps`, `mqtt.publish.rain`, `mqtt.publish.wind` | MQTT on and GPS / rain sensor / anemometer on | Dependency | MQTT is off (mqtt-off); GPS is off (gps-off); Rain sensor is off (rain-off); Anemometer is off (wind-off) |
 | D-15 | `alpaca.rainUnsafeEnabled`, `alpaca.rainSensorRequired` | Rain sensor on | Dependency, inactive when unmet | Rain sensor is off (rain-off) |
 | D-16 | `alpaca.windSpeedUnsafeEnabled`, `alpaca.windGustUnsafeEnabled` | Anemometer on | Dependency, fail-safe when unmet | Anemometer is off (wind-off) |
-| D-17 | `alpaca.cloudCoverEnabled` | MLX90614 detected | Dependency, fail-safe when unmet, runtime | MLX90614 not detected (infrared-missing) |
-| D-18 | `alpaca.sqmMinEnabled` | TSL2591 detected | Dependency, fail-safe when unmet, runtime | TSL2591 not detected (light-missing) |
-| D-19 | `alpaca.humidityMaxEnabled`, `alpaca.dewpointMarginEnabled` | BME280 detected | Dependency, fail-safe when unmet, runtime | BME280 not detected (environment-missing) |
+| D-17 | `alpaca.cloudCoverEnabled` | MLX90614 detected | Dependency, fail-safe when unmet, runtime | IR sky sensor not detected (infrared-missing) |
+| D-18 | `alpaca.sqmMinEnabled` | TSL2591 detected | Dependency, fail-safe when unmet, runtime | Light sensor not detected (light-missing) |
+| D-19 | `alpaca.humidityMaxEnabled`, `alpaca.dewpointMarginEnabled` | BME280 detected | Dependency, fail-safe when unmet, runtime | Environment sensor not detected (environment-missing) |
 | D-20 | `alpaca.enabled` | Alpaca on - IsSafe and ObservingConditions served; the Alpaca page explains when it is off | Dependency | - |
 | D-21 | `rain.enabled` | Rain sensor on - Alpaca RainRate is NotImplemented otherwise | Dependency | - |
 | D-22 | `wind.enabled`, `wind.directionEnabled` | Anemometer on (direction: wind vane on) - Alpaca wind properties are NotImplemented otherwise | Dependency | - |
@@ -39,7 +39,7 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-26 | `gps.enabled` | GPS running and a GPS fix (location source) | Dependency, runtime | No GPS fix - using the location in Settings (gps-no-fix) |
 | D-27 | `primaryTimeSource`, `secondaryTimeSource`, `ntp.enabled`, `gps.enabled` | At least one time source on; primary and secondary sources on and different | Constraint | - |
 | D-28 | `ntp.enabled` | WiFi connected to a network | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
-| D-29 | `skyCalibration.enabled` | TSL2591 detected | Dependency, runtime | TSL2591 not detected (light-missing) |
+| D-29 | `skyCalibration.enabled` | TSL2591 detected | Dependency, runtime | Light sensor not detected (light-missing) |
 | D-30 | `ble.enabled`, `ble.phoneAlarm` | Bluetooth firmware build | Dependency | Needs the Bluetooth firmware build (ble-build) |
 | D-31 | `ble.phoneAlarm` | Bluetooth on and a passkey set (the alarm is on while a passkey is set) | Dependency | Bluetooth is off (ble-off) |
 | D-32 | `ota.enabled` | An OTA upload password set | Dependency | Set an upload password (ota-no-password) |

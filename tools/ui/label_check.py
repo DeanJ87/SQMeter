@@ -8,7 +8,8 @@ Reads tools/i18n/glossary/en.json and fails when:
     people read; other device text excepted) or in the docs (hardware pages
     excepted);
   - a part number (`parts`) names the thing in a card title (en.context.json
-    says "card or section title") or in a safety reason or alert title;
+    says "card or section title"), a safety reason or alert title, or a
+    settings-dependency reason (why a setting isn't in effect);
   - the Home Assistant entity name in lib/Readings doesn't match.
 
   python3 tools/ui/label_check.py          # report; exit 1 on findings
@@ -72,12 +73,20 @@ def is_title(note: str) -> bool:
 
 
 def check_parts(entry: dict, ui: dict, context: dict) -> list[tuple[str, str]]:
-    """No part number in a card title, a safety reason or an alert title: they name the thing, not the part."""
+    """No part number in a card title, a safety reason, an alert title or a dependency reason: they name the thing, not the part."""
     problems = []
     for part in entry.get("parts", []):
         pattern = re.compile(rf"(?<![\w-]){re.escape(part)}(?![\w-])")
         for key, text in ui.items():
-            where = "safety reason or alert" if key.startswith(READ_DEVICE) else "card title" if is_title(context.get(key, "")) else None
+            where = (
+                "safety reason or alert"
+                if key.startswith(READ_DEVICE)
+                else "dependency reason"
+                if key.startswith("settingsDeps.")
+                else "card title"
+                if is_title(context.get(key, ""))
+                else None
+            )
             if where and pattern.search(text):
                 problems.append((ENGLISH, f"{key} ({where}) says {part!r}: call it '{entry['name']}' (DS-27)"))
     return problems

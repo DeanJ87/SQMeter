@@ -122,7 +122,7 @@ A new firmware is only kept once it has started properly: WiFi, the web server a
 <!-- diagram: DIA-08
 sources: src/OtaUpdater.cpp#OtaUpdater::runApply src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFirmware src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFilesystem lib/ReleaseLogic/ src/OtaUpdater.cpp#OtaUpdater::checkForUpdate
 blocking: false
-fingerprint: f12a398fa1d44506
+fingerprint: 4b6865d62f2e1b9d
 -->
 <figure class="diagram" markdown>
 
