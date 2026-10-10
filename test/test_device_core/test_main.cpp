@@ -56,7 +56,7 @@ void test_observing_conditions_missing_vs_failed_sensors()
     Config cfg = defaults();
     cfg.rain.enabled = true;
 
-    // MLX90614 not detected at boot, RG-15 switched on but never answered.
+    // IR sky sensor not detected at boot, RG-15 switched on but never answered.
     SensorSnapshot s = healthy(now);
     s.mlxInitialized = false;
     s.mlx.status = SensorStatus::NotInitialized;

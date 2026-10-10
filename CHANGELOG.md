@@ -4,6 +4,15 @@ All notable changes to SQMeter are documented here.
 
 ## [Unreleased]
 
+### Planned
+
+- Hardware PCB design (planned — SQMeter-Hardware repo)
+- 3D-printed enclosure (planned — Printables)
+
+## [0.3.0-beta.1] — 2026-10-10
+
+> **Needs a one-time USB flash.** v0.3 moves to a new partition layout. Settings, WiFi included, are kept. See https://sqmeter.dev/getting-started/usb-flash/. Devices on v0.2 don't offer this release under "Check for updates".
+
 ### One-time USB flash (v0.3)
 
 - **Arduino-ESP32 3.x** (ESP-IDF 5.5): a maintained platform with current TLS. The secure clients
@@ -30,8 +39,27 @@ All notable changes to SQMeter are documented here.
 - **Sensor names in device text** use the same names as the UI: safety reasons read "Sensor fault: IR sky sensor" (was "MLX90614 IR"), "Sensor fault: light sensor", "Sensor fault: environment sensor" (was "Humidity sensor fault - humidity/dew point rules can't be evaluated"); sensor alerts are titled "Sensor fault: {name}" / "Sensor recovered: {name}"; `rulesNotInEffect` lists rule names only ("Unsafe while raining"). This is the text sent over MQTT, to Alpaca clients and in alerts: match `reasonFlags` and alert types in automations, not the text.
 - **Dashboard**: a Status card replaces the at-a-glance strip, and language download progress moves into the Language card (spec 026).
 
-- Hardware PCB design (planned — SQMeter-Hardware repo)
-- 3D-printed enclosure (planned — Printables)
+### Added
+
+- **Languages**: the web UI in Bahasa Indonesia, Spanish, French, Italian, German, Dutch, Arabic (right-to-left), Portuguese (Brazil), Polish, Japanese, Chinese (Simplified), Korean and Turkish. The device downloads the chosen language from the matching release; English is built in. Numbers, dates and decimal input follow the language.
+- **IPv6** alongside IPv4: addresses on the System page and dashboard, the web UI, API and Alpaca over IPv6 from the local network, Alpaca discovery over IPv6.
+- **Alert schedule**: "When to send" (any time, or only while an imaging app is connected), Pause / Resume, and new events when an imaging app stops checking, comes back or disconnects.
+- **Settings dependencies**: a setting whose dependency is off is kept but shown as inactive with the reason and a fix; `/api/settings/effective` reports what's in effect.
+- **Dashboard Status card**: safety, alerts, data freshness and the imaging app at a glance, with each problem listed once. Failed sensors keep their card. The rain hold counts down (`rain.clearInSeconds`).
+- **Accessibility** to WCAG 2.2 AA: contrast, focus, keyboard tabs, screen-reader names and announcements.
+- **Live updates**: new alerts and setting changes reach the page within seconds.
+- **Demo**: set raw sensor readings, presets that follow your thresholds, a guided tour, and opt-in real test notifications.
+- **Docs**: diagrams throughout, indi-allsky guide with a Node-RED flow, accessibility statement, USB flash guide with a browser flasher.
+
+### Fixed
+
+- Never redirect a home-network request to the setup hotspot (192.168.4.1); the hotspot only opens after 45 s without WiFi at boot.
+- Stale data now detected when a sensor keeps reporting old values; the safe delay survives the 49.7-day timer wrap; the RG-15 daily reset can't be skipped by a restart.
+- ObservingConditions reports "not implemented" for a sensor that isn't fitted (ConformU clean).
+- The SQM calibration offset applies in twilight too.
+- Custom alert wording is limited by characters, not bytes, so non-Latin text isn't cut short.
+- The WiFi scan needs the password when protection is on.
+- The web UI is stored gzipped on the device (425 KB to 147 KB).
 
 ## [0.2.0-beta.3] — 2026-10-08
 

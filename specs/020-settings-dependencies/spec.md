@@ -201,8 +201,8 @@ Notation:
 | D-03 | Alert channels (Pushover, ntfy, webhook) | WiFi connected to a network (not setup hotspot) | Dependency (runtime) | "Inactive - not connected to WiFi" | Broken (not reported) |
 | D-04 | All alert events and channels | Alerts on ("Send alerts") | Dependency | Section greyed: "Alerts are off" | OK |
 | D-05 | Alert events: Rain starts, Rain stops | Rain sensor on | Dependency | "Inactive - rain sensor is off" · Sensors → Rain | Partial |
-| D-06 | Alert event: Dew risk | BME280 detected | Dependency (hardware) | "Inactive - BME280 not detected" | Broken: the reason is computed but not shown on the row |
-| D-07 | Alert events: Skies clear up, Skies cloud over | MLX90614 detected | Dependency (hardware) | "Inactive - MLX90614 not detected" | Partial |
+| D-06 | Alert event: Dew risk | BME280 detected | Dependency (hardware) | "Inactive - Environment sensor not detected" | Broken: the reason is computed but not shown on the row |
+| D-07 | Alert events: Skies clear up, Skies cloud over | MLX90614 detected | Dependency (hardware) | "Inactive - IR sky sensor not detected" | Partial |
 | D-08 | Alert event level "Wake me" (rings phones) | Bluetooth build, Bluetooth on, passkey set, ≥1 paired phone | Dependency (chain) | Level kept; note "Phones won't ring - <first unmet link>" · Device → Bluetooth | **Broken**: "Wake me" is selectable and shown as ringing with no Bluetooth |
 | D-09 | Sky alerts only when it's dark | Location set or GPS fix | Dependency | "Inactive - needs your location" · Time & Location | Partial |
 | D-10 | Safety alerts only when it's dark | Location set or GPS fix | Dependency | "Inactive - needs your location" · Time & Location | **Broken**: not blocked or explained at all |
@@ -224,7 +224,7 @@ Notation:
 | D-26 | GPS as the location source | GPS on and GPS fix | Dependency (runtime) | "Using the location in Settings - no GPS fix" | OK (locationSource reported) |
 | D-27 | Primary/secondary time source | That source on | **Constraint** | Rejected: "Time sources must be different…" / "At least one time source must be enabled" | OK |
 | D-28 | NTP time | WiFi connected to a network | Dependency (runtime) | NTP status "not synced - no network" | Partial |
-| D-29 | Sky calibration (dark offsets, Calibrate) | TSL2591 detected | Dependency (hardware) | Calibrate disabled: "TSL2591 not detected" | OK |
+| D-29 | Sky calibration (dark offsets, Calibrate) | TSL2591 detected | Dependency (hardware) | Calibrate disabled: "Light sensor not detected" | OK |
 | D-30 | Bluetooth settings (on, passkey, phone alarm) | Bluetooth firmware build | Dependency (build) | "Needs the Bluetooth firmware build" | OK |
 | D-31 | Phone alarm | Bluetooth on and passkey set | Dependency (chain) | "Set a passkey to turn on the phone alarm" | OK |
 | D-32 | Command-line (ArduinoOTA) uploads | OTA on and an OTA password set | Dependency or Constraint (decide in plan) | Today the device silently disables OTA with no password | **Broken**: shown as on, never active, no message |

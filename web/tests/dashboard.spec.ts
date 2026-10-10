@@ -226,6 +226,24 @@ for (const [state, query, patch] of [
   });
 }
 
+// A tile value is one line (DS-03): long values such as a dark sky's
+// illuminance step down a size instead of wrapping.
+for (const width of [1280, 390]) {
+  test(`tile values stay on one line at ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, '?scenario=night');
+    await page.waitForTimeout(2500);
+    for (const value of await page.locator('.masonry-item .metric-value').all()) {
+      const lines = await value.evaluate((el) => {
+        const style = getComputedStyle(el);
+        const line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
+        return Math.round(el.getBoundingClientRect().height / line);
+      });
+      expect(lines, `"${await value.innerText()}" wraps`).toBeLessThanOrEqual(1);
+    }
+  });
+}
+
 test('update available from this session’s check', async ({ page }) => {
   // inventory: update-available
   await open(page);
