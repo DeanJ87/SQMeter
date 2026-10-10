@@ -1238,6 +1238,8 @@
     "updates.uploadFailedErrormsg": "a241e920cb",
     "updates.uploadFilename": "4cb9bd8c33",
     "updates.uploadProgress": "c1a402b305",
+    "updates.uploadStalled": "f409a67f5e",
+    "updates.uploadStalledRetrying": "433683c5af",
     "updates.uploadingProgress": "ce54b897b4",
     "updates.uploadingRounded": "133f0da964",
     "updates.usbFlashGuide": "bd51810472",

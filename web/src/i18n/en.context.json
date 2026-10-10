@@ -1237,6 +1237,8 @@
   "updates.uploadFailedErrormsg": "Updates page (firmware updates). Keep every {placeholder} exactly; values are filled in by the UI.",
   "updates.uploadFilename": "Updates page (firmware updates). Keep every {placeholder} exactly; values are filled in by the UI.",
   "updates.uploadProgress": "Updates page (firmware updates): a field or control label; max 24 chars.",
+  "updates.uploadStalled": "Updates page (firmware updates): status line when a manual upload stopped sending twice; the user should check WiFi and retry.",
+  "updates.uploadStalledRetrying": "Updates page (firmware updates): status line while a manual upload that stopped sending is retried automatically.",
   "updates.uploadingProgress": "Updates page (firmware updates). Keep every {placeholder} exactly; values are filled in by the UI.",
   "updates.uploadingRounded": "Updates page (firmware updates). Keep every {placeholder} exactly; values are filled in by the UI.",
   "updates.usbFlashGuide": "Link after updates.needsUsbFlash to the step-by-step guide on the docs site. One or two words.",

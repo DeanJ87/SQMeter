@@ -31,20 +31,43 @@ export type UploadHandlers = {
   onProgress: (percent: number) => void;
   onLoad: (status: number, responseText: string) => void;
   onError: () => void;
+  /** No upload progress for UPLOAD_STALL_MS: the request was aborted. */
+  onStall: () => void;
 };
+
+/** An upload that sends nothing for this long has stalled (spec 012). */
+export const UPLOAD_STALL_MS = 20_000;
 
 /** POST `file` as the `update` form field with upload progress (fetch can't report it). */
 export const uploadImage = (endpoint: string, file: File, handlers: UploadHandlers) => {
   const formData = new FormData();
   formData.append('update', file);
   const xhr = new XMLHttpRequest();
+  let stallTimer: ReturnType<typeof setTimeout> | undefined;
+  const watch = () => {
+    clearTimeout(stallTimer);
+    stallTimer = setTimeout(() => {
+      xhr.abort();
+      handlers.onStall();
+    }, UPLOAD_STALL_MS);
+  };
   xhr.upload.addEventListener('progress', (e) => {
+    watch();
     if (e.lengthComputable) handlers.onProgress(Math.round((e.loaded / e.total) * 100));
   });
-  xhr.addEventListener('load', () => handlers.onLoad(xhr.status, xhr.responseText));
-  xhr.addEventListener('error', handlers.onError);
+  // Sent in full: the device's reply (or its restart) can take a while.
+  xhr.upload.addEventListener('load', () => clearTimeout(stallTimer));
+  xhr.addEventListener('load', () => {
+    clearTimeout(stallTimer);
+    handlers.onLoad(xhr.status, xhr.responseText);
+  });
+  xhr.addEventListener('error', () => {
+    clearTimeout(stallTimer);
+    handlers.onError();
+  });
   xhr.open('POST', endpoint);
   xhr.send(formData);
+  watch();
 };
 
 /**

@@ -43,6 +43,8 @@ Progress and errors are pushed to the page over the status WebSocket; if the con
 
 If switching the device to the new firmware fails once after a complete upload ("Could not activate partition"), it checks the image again and retries the switch before answering; the API reply then includes `"retried": true`.
 
+If an upload stops sending for 20 seconds, usually a weak WiFi link, the Updates page cancels it and tries once more by itself ("Upload stalled, trying again"). The device drops the half-sent image straight away, so the retry starts clean; nothing was written to the running firmware. If it stalls again, move the device or the access point closer, or upload from a computer on the same network, then try again.
+
 !!! note "Files the device refuses"
     Every firmware file carries the partition layout and build it's made for. The device checks it
     before switching to the new firmware and refuses, with `400` and a reason, a file that isn't for

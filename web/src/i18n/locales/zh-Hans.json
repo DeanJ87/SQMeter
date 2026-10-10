@@ -1257,6 +1257,8 @@
   "updates.uploadFailedErrormsg": "上传失败：{errorMsg}",
   "updates.uploadFilename": "上传{fileName}",
   "updates.uploadProgress": "上传进度",
+  "updates.uploadStalled": "上传卡住了。请检查 WiFi 信号，然后重试。",
+  "updates.uploadStalledRetrying": "上传卡住了，正在重试",
   "updates.uploadingProgress": "正在上传... {progress}%",
   "updates.uploadingRounded": "正在上传... {rounded}%",
   "updates.usbFlashGuide": "操作方法",
