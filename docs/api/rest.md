@@ -11,6 +11,9 @@ All endpoints are on port 80. Base URL: `http://<device-ip>/api`
 - **Failure** is a 4xx or 5xx status with `{"error": "message"}`: 400 bad request, 401 unauthorised, 404 not found, 409 conflict, 500 device failure, 502 a sensor or broker didn't answer.
 - Endpoints that change something need the password when [protection](../user-guide/security.md) is on.
 
+!!! note "The same in every language"
+    The UI language never changes the API. Numbers are JSON numbers with `.` as the decimal point and no thousands separators (`12.1`, never `"12,1"`). Units (°C, %, hPa, lux, mag/arcsec², m/s, mm, mm/h), field names and values such as `status`, `event` and `reason` are never translated, and timestamps are Unix seconds or ISO 8601. Text for people to read - `reasons`, `rulesNotInEffect`, alert `title` and `message`, `description`, `error` - is English and may be reworded between releases: key on `reasonFlags`, `safe` and the alert `event` instead.
+
 ---
 
 ## Endpoints

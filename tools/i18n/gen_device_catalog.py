@@ -38,7 +38,9 @@ SOURCES = {
     "src/OtaUpdater.cpp": ("ota", {"errorCb": [0]}),
     # Why an update file is refused (spec 027 FR-020).
     "lib/FirmwareImage/src/FirmwareImage.cpp": ("ota", {}),
-    "tools/demo-core/bridge.cpp": ("api", {"errorJson": [0]}),
+    "tools/demo-core/emulated_device.h": ("api", {"errorJson": [0]}),
+    "tools/demo-core/emulated_device.cpp": ("api", {"errorJson": [0]}),
+    "tools/demo-core/emulated_device_documents.cpp": ("api", {"errorJson": [0]}),
     "lib/LanguageLogic/src/LanguageLogic.cpp": ("language", {}),
     "src/LanguagePack.cpp": ("language", {"fail": [0], "sendError": [2]}),
     "lib/SkyLogic/src/CloudDetection.cpp": ("sky", {}),
@@ -59,7 +61,9 @@ ASSIGN = {
     "src/WebServerStatus.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "src/WebServerUpdates.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "src/OtaUpdater.cpp": re.compile(r"(?<![\w.>])error\s*=\s*(?!=)"),
-    "tools/demo-core/bridge.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*|\bDEMO_DETAIL\s*=\s*'),
+    "tools/demo-core/emulated_device.h": re.compile(r"\bDEMO_DETAIL\s*=\s*"),
+    "tools/demo-core/emulated_device.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
+    "tools/demo-core/emulated_device_documents.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "src/LanguagePack.cpp": re.compile(r"(?<![\w.>])error\s*=\s*(?=\")"),
     "lib/LanguageLogic/src/LanguageLogic.cpp": re.compile(r"(?<![\w.>])(?:error\s*=|return)\s*(?=\")"),
     # The cloud condition and Bortle descriptions (/api/sensors).
