@@ -175,6 +175,9 @@ flowchart TB
 
 Every failing rule is listed as a reason with the measured value and the limit, e.g. `SQM 18.70 < 19.50` or `Cloud 96% >= 90%`. The reasons are shown on the Dashboard's **Safety Monitor** card, returned by `GET /api/safety`, published to MQTT `<base>/safety`, and used in alert messages (`{reasons}`).
 
+!!! note "The same in every language"
+    Alpaca answers never change with the UI language: `IsSafe` and the ObservingConditions values are numbers with `.` decimals in fixed units, whatever language the web interface uses. The reasons are English text for people to read, written with a `.` decimal point; scripts should use `reasonFlags` from `/api/safety` instead.
+
 The Safety Monitor card's **History** lists recent safe/unsafe changes, restarts and the safety alerts that were sent - kept across restarts (not power cuts) - which answers "it went unsafe and I got no alert: why?".
 
 ### Safe delay
