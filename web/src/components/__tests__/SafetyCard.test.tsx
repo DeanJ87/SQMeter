@@ -32,9 +32,12 @@ describe('SafetyCard', () => {
     expect(screen.getByText('Safe in 42s')).toBeInTheDocument();
   });
 
-  it('warns when Alpaca is disabled', () => {
-    render(<SafetyCard safety={{ ...base, alpacaEnabled: false }} />);
-    expect(screen.getByText('Imaging apps')).toBeInTheDocument();
-    expect(screen.getByText('Not shared')).toBeInTheDocument();
+  // Alpaca off is the Status card's Imaging app tile, and rules not in effect are
+  // in Settings → Safety: the card shows only the verdict (DS-08).
+  it('shows only the verdict, not Alpaca or rules not in effect', () => {
+    render(<SafetyCard safety={{ ...base, alpacaEnabled: false, rulesNotInEffect: ['Unsafe while raining'] }} />);
+    expect(screen.queryByText('Imaging apps')).toBeNull();
+    expect(screen.queryByText('Unsafe while raining')).toBeNull();
+    expect(screen.queryByText('Not in effect')).toBeNull();
   });
 });
