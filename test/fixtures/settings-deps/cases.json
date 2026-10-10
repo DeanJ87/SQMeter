@@ -322,14 +322,14 @@
           "state": "inactive",
           "id": "D-06",
           "reason": "environment-missing",
-          "text": "BME280 not detected",
+          "text": "Environment sensor not detected",
           "fix": "sensors#sky-sensors"
         },
         "alerts.events.clear_sky.level": {
           "state": "inactive",
           "id": "D-07",
           "reason": "infrared-missing",
-          "text": "MLX90614 not detected"
+          "text": "IR sky sensor not detected"
         },
         "alerts.events.clouded_over.level": {
           "state": "inactive",
@@ -875,7 +875,7 @@
           "state": "inactive",
           "id": "D-18",
           "reason": "light-missing",
-          "text": "TSL2591 not detected",
+          "text": "Light sensor not detected",
           "unmet": "fail-safe"
         },
         "alpaca.humidityMaxEnabled": {
