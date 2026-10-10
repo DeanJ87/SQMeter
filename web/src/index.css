@@ -633,6 +633,11 @@ a.status-row-main:focus-visible .status-row-label {
   font-size: 0.78rem;
 }
 
+.metric-value.is-long {
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
 .metric-sub {
   margin-top: 0.35rem;
   color: var(--muted);

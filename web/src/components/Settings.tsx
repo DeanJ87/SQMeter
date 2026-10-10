@@ -35,6 +35,7 @@ import { t } from '../i18n';
 import { deviceError } from '../i18n/deviceMessage';
 import { applyLanguage } from '../hooks/useLanguage';
 import { fetchConfig, fetchStatus, restartDevice, saveConfig } from '../lib/settingsApi';
+import { useTabFromUrl } from '../hooks/useTabFromUrl';
 
 const STATUS_REFRESH_MS = 10000;
 
@@ -104,6 +105,8 @@ const Settings: FunctionalComponent = () => {
     const timer = setInterval(loadStatus, STATUS_REFRESH_MS);
     return () => clearInterval(timer);
   }, []);
+
+  useTabFromUrl(tab, setTab, pendingAnchor);
 
   // Scroll to a requested section once its tab has rendered.
   const loaded = config !== null;
