@@ -132,8 +132,11 @@ mismatches; the audit's drift list is resolved.
   action (e.g. Retry). Not in the header, not on other pages.
 - **DS-07**: Transient confirmations ("Saved") use the existing toast; persistent problems use a
   `Note` in the relevant card and, if they affect observing, a row in the Status card.
-- **DS-08**: Problems are listed once in the Status card; other cards show their own state (e.g. a
-  sensor card's fault) but don't repeat global problems.
+- **DS-08**: Each fact appears in exactly one place on the dashboard. A card shows its own state (a
+  sensor card its fault, the Safety Monitor card the verdict, the Sky Quality card data freshness);
+  the Status card shows only what no other card shows - the imaging app and whether alerts go out,
+  plus problems nothing else shows. Settings and rules not in effect belong in Settings, not on
+  the dashboard. A test fails if the Status card repeats another card's state.
 - **DS-09**: Phone (≤ 599 px): cards stack in one column; tiles stay two per row; nothing overlaps
   or hides a control (with spec 022).
 - **DS-10**: Spacing, colour and type come from the existing tokens in `index.css`; no new colours,
@@ -161,9 +164,10 @@ mismatches; the audit's drift list is resolved.
   other cards) replacing the glance strip; it supersedes spec 025 FR-005, FR-006 (placement),
   FR-014 (placement), FR-020 and SC-004. The content requirements of spec 025 (what must be visible
   without a click, priority order, inventory) still apply, delivered through this card.
-- **FR-002**: The Status card MUST show tiles for Safety, Alerts and Data, and an Imaging app tile
-  when spec 025's relevance rule says so; every other problem as a row with a "?" (detail) and at
-  most one action.
+- **FR-002**: The Status card MUST show an Imaging app tile per Alpaca device (or one "Alpaca off"
+  tile) and an Alerts tile, and every problem no other card shows as a row with a "?" (detail) and
+  at most one action. *(Amended October 2026: no Safety or Data tile, no sensor or
+  settings-not-in-effect rows - DS-08.)*
 - **FR-003**: The card's pill MUST read *All good* or *N to check* (tone by worst severity).
 - **FR-004**: The Language card MUST show the download's progress and outcome per DS-06; the header
   banner and the page-wide language notice MUST be removed. Supersedes spec 023 FR-024's "on every

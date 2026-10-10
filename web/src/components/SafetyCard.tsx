@@ -2,13 +2,12 @@ import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import type { SafetyStatus } from '../types';
-import { Button, Card, InfoTip, Note, Pill } from './ui';
+import { Button, Card, Note, Pill } from './ui';
 import { t } from '../i18n';
 import { request } from '../lib/api';
 import { formatDateTime, formatTime } from '../i18n/format';
 import { deviceText } from '../i18n/deviceMessage';
 import { formatDuration } from '../lib/astro';
-import { appHref } from '../lib/appHref';
 
 const verdict = (safety: SafetyStatus) => {
   if (safety.safe) return { text: t('safetyCard.safe'), tone: 'pill-green' };
@@ -110,39 +109,12 @@ const SafetyHistoryList: FunctionalComponent = () => {
 };
 
 // Rain that has stopped but still holds the verdict, and when it lets go (specs/025 FR-012).
+// Rules that aren't in effect are shown in Settings → Safety, not here (spec 025 amended).
 const RainHold: FunctionalComponent<{ seconds?: number }> = ({ seconds }) =>
   seconds ? (
     <div data-inventory="rain-hold">
       <Note tone="warn">{t('glance.rainHeld', { duration: formatDuration(seconds * 1000) })}</Note>
     </div>
-  ) : null;
-
-// What the verdict doesn't cover, one row each (DS-05, DS-24): rules switched
-// on whose sensor is off (spec 020, 025 FR-012) - the device lists them only
-// while the rain sensor is off - and, with Alpaca off, imaging apps that
-// can't see the verdict (spec 007).
-const Limits: FunctionalComponent<{ rules?: string[]; alpacaEnabled: boolean }> = ({ rules = [], alpacaEnabled }) =>
-  rules.length || !alpacaEnabled ? (
-    <ul class="status-rows" aria-label={t('glance.rulesNotInEffect')}>
-      {rules.map((rule) => (
-        <li key={rule} class="status-row" data-inventory="rules-not-in-effect">
-          <a class="status-row-main" href={appHref('/settings?tab=sensors')} title={t('glance.openSettings')}>
-            <span class="status-row-label">{deviceText(rule)}</span>
-            <Pill tone="pill-amber">{t('status.notInEffect')}</Pill>
-          </a>
-          <InfoTip text={t('settingsDeps.rainSensorIsOff')} />
-        </li>
-      ))}
-      {!alpacaEnabled && (
-        <li class="status-row" data-inventory="safety-not-shared">
-          <a class="status-row-main" href={appHref('/settings?tab=safety&section=alpaca')} title={t('glance.openSettings')}>
-            <span class="status-row-label">{t('safetyCard.imagingApps')}</span>
-            <Pill tone="pill-amber">{t('safetyCard.notShared')}</Pill>
-          </a>
-          <InfoTip text={t('safetyCard.notSharedHint')} />
-        </li>
-      )}
-    </ul>
   ) : null;
 
 const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null; showRulesLink?: boolean; rainClearInSeconds?: number }> = ({
@@ -174,7 +146,6 @@ const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null; showRulesL
           <Note tone="warn">{t('safetyCard.waitingOutTheSafeDelay')}</Note>
         )}
         <RainHold seconds={rainClearInSeconds} />
-        <Limits rules={safety.rulesNotInEffect} alpacaEnabled={safety.alpacaEnabled} />
         <Note action={showRulesLink ? { label: t('safetyCard.rules'), onClick: () => route('/settings?tab=safety') } : undefined}>
           {t(safety.safe ? 'safetyCard.safeFor' : 'safetyCard.unsafeFor', { duration: formatSince(safety.changedAgeMs) })}
         </Note>

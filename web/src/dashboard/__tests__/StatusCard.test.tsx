@@ -14,39 +14,40 @@ const item = (id: string, label: string, state: string, extra: Partial<GlanceIte
   ...extra,
 });
 
-const healthy = [item('freshness', 'Data', 'Live'), item('safety-verdict', 'Safety', 'Safe'), item('alerts-state', 'Alerts', 'Sending')];
+const healthy = [
+  item('imaging-app', 'Imaging app', 'Connected', { sub: 'Safety monitor' }),
+  item('imaging-app', 'Imaging app', 'Waiting', { severity: 'idle', sub: 'Weather device' }),
+  item('alerts-state', 'Alerts', 'Sending'),
+];
 
 describe('StatusCard', () => {
   it('is a card with tiles and an "All good" pill when nothing is wrong', () => {
     render(<StatusCard items={healthy} onAction={() => undefined} />);
     expect(screen.getByRole('heading', { name: 'Status' })).toBeTruthy();
     expect(screen.getByText('All good')).toBeTruthy();
-    for (const [label, state] of [
-      ['Data', 'Live'],
-      ['Safety', 'Safe'],
-      ['Alerts', 'Sending'],
-    ]) {
-      const tile = screen.getByText(label).closest('.status-tile') as HTMLElement;
-      expect(within(tile).getByText(state)).toBeTruthy();
-    }
+    // A resting imaging app (nothing connected, alerts don't need one) isn't counted.
+    expect(screen.getAllByText('Imaging app')).toHaveLength(2);
+    const alerts = screen.getByText('Alerts').closest('.status-tile') as HTMLElement;
+    expect(within(alerts).getByText('Sending')).toBeTruthy();
+    expect(screen.getByText('Waiting').className).toContain('pill-dim');
     expect(screen.queryByRole('listitem')).toBeNull();
   });
 
   it('lists each problem once: name, pill, "?" - the row links to the fix', () => {
     const items = [
       ...healthy,
-      item('sensor-faults', 'IR sky sensor', 'Error', {
+      item('no-channel', 'Alert channels', "Can't send", {
         severity: 'problem',
-        detail: "Cloud cover and the cloud safety rule can't be measured.",
-        fix: { label: 'Open settings', href: '/settings?tab=sensors' },
+        detail: 'MQTT is off',
+        fix: { label: 'Open settings', href: '/settings?tab=alerts' },
       }),
-      item('settings-not-in-effect', 'Settings', '1 inactive', { severity: 'note', fix: { label: 'Open settings', href: '#/settings' } }),
+      item('clock-location', 'Clock', 'Not set', { severity: 'note', fix: { label: 'Open settings', href: '#/settings' } }),
     ];
     render(<StatusCard items={items} onAction={() => undefined} />);
     expect(screen.getByText('2 to check')).toBeTruthy();
-    const row = screen.getByText('IR sky sensor').closest('li') as HTMLElement;
-    expect(within(row).getByText('Error')).toBeTruthy();
-    expect(within(row).getByRole('link').getAttribute('href')).toBe('/settings?tab=sensors');
+    const row = screen.getByText('Alert channels').closest('li') as HTMLElement;
+    expect(within(row).getByText("Can't send")).toBeTruthy();
+    expect(within(row).getByRole('link').getAttribute('href')).toBe('/settings?tab=alerts');
     // One link per row, no repeated "Open settings" text on the page.
     expect(screen.queryAllByText('Open settings')).toHaveLength(0);
     // The detail is behind "?", not a paragraph.
