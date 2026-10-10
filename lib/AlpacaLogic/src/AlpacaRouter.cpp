@@ -3,6 +3,7 @@
 #include "AlpacaProtocol.h"
 
 #include <ArduinoJson.h>
+#include <cstdio>
 #include <optional>
 
 namespace SQM
@@ -370,6 +371,13 @@ namespace SQM
             }
         } // namespace
 
+        std::string formatLocation(double latitude, double longitude)
+        {
+            char text[48];
+            snprintf(text, sizeof(text), "%.4f, %.4f", latitude, longitude);
+            return text;
+        }
+
         Router::Router(Backend &backend, ServerIdentity identity)
             : backend(backend),
               identity(std::move(identity))
@@ -396,7 +404,10 @@ namespace SQM
             {
                 Envelope reply(request, serverTransactionId);
                 JsonObject value = reply.valueObject();
-                value["ServerName"] = identity.serverName;
+                // ServerName is this server's name - the device's (Alpaca
+                // management API); Manufacturer stays the product.
+                const std::string name = backend.serverName();
+                value["ServerName"] = name.empty() ? identity.serverName : name;
                 value["Manufacturer"] = identity.manufacturer;
                 value["ManufacturerVersion"] = identity.version;
                 value["Location"] = backend.location();

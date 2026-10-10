@@ -76,9 +76,13 @@ namespace SQM
     {
         return owner.buildAlpacaObservingConditionsSnapshot();
     }
-    std::string WebServer::AlpacaBackend::location() const
+    std::string WebServer::AlpacaBackend::serverName() const
     {
         return owner.getConfigCallback().deviceName;
+    }
+    std::string WebServer::AlpacaBackend::location() const
+    {
+        return Core::alpacaLocation(owner.getSensorSnapshot(), owner.getConfigCallback());
     }
 
     // ISO 8601 UTC for DeviceState, or empty if the clock has never been set
