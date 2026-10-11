@@ -4,7 +4,11 @@
 Acts like N.I.N.A. (polls the SafetyMonitor and ObservingConditions every few
 seconds) while it opens "stuck" live-update sockets the way a browser tab in a
 sleeping laptop or phone does: the socket stays open but nothing reads it.
-Every failed or slow Alpaca request is counted. Spec 011 FR-008, 013 FR-012.
+Every failed or slow Alpaca request is counted: a timeout, a refused or reset
+connection, an HTTP error, or an Alpaca error. NotImplemented (ErrorNumber
+0x400, e.g. cloudcover on a device without an IR sensor) is not a failure: the
+device answered, it just has no such value. Those properties are listed once,
+separately. Spec 011 FR-008, 013 FR-012.
 
     python3 tools/soak/connection_soak.py --host 192.168.1.50 --minutes 30
 
@@ -37,6 +41,8 @@ NINA_PATHS = (
     "/api/v1/observingconditions/0/humidity",
 )
 LIVE_PATHS = ("/ws/sensors", "/ws/status")
+# Alpaca NotImplemented: the property doesn't exist on this device.
+NOT_IMPLEMENTED = 0x400
 
 
 @dataclass
@@ -45,6 +51,7 @@ class Stats:
     failures: int = 0
     slowest_ms: float = 0.0
     errors: dict[str, int] = field(default_factory=dict)
+    not_implemented: set[str] = field(default_factory=set)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def record(self, elapsed_ms: float, error: str | None) -> None:
@@ -54,6 +61,14 @@ class Stats:
             if error:
                 self.failures += 1
                 self.errors[error] = self.errors.get(error, 0) + 1
+
+    def not_implemented_once(self, path: str) -> bool:
+        """Notes a NotImplemented property; True the first time it's seen."""
+        with self.lock:
+            if path in self.not_implemented:
+                return False
+            self.not_implemented.add(path)
+            return True
 
 
 def alpaca_url(host: str, path: str, transaction: int) -> str:
@@ -72,6 +87,10 @@ def new_websocket_key() -> str:
 
 
 def classify(exc: BaseException) -> str:
+    if isinstance(exc, urllib.error.HTTPError):
+        return f"http-{exc.code}"
+    if isinstance(exc, urllib.error.URLError):
+        exc = exc.reason if isinstance(exc.reason, BaseException) else OSError(str(exc.reason))
     text = str(exc).lower()
     if "timed out" in text or isinstance(exc, TimeoutError | socket.timeout):
         return "timeout"
@@ -82,17 +101,30 @@ def classify(exc: BaseException) -> str:
     return type(exc).__name__
 
 
-def poll_once(host: str, transaction: int, timeout: float) -> tuple[float, str | None]:
+def alpaca_result(body: dict) -> str | None:
+    """None for a value, "not-implemented", or the failure ("alpaca-1025")."""
+    number = body.get("ErrorNumber", 0)
+    if number == 0:
+        return None
+    if number == NOT_IMPLEMENTED:
+        return "not-implemented"
+    return f"alpaca-{number}"
+
+
+def poll_once(host: str, transaction: int, timeout: float, stats: Stats | None = None) -> tuple[float, str | None]:
+    """One N.I.N.A.-style poll; returns its time and the first failure, if any."""
     started = time.monotonic()
     error = None
     for path in NINA_PATHS:
         try:
             with urllib.request.urlopen(alpaca_url(host, path, transaction), timeout=timeout) as reply:
-                body = json.loads(reply.read())
-                if body.get("ErrorNumber", 0) != 0:
-                    error = f"alpaca-{body['ErrorNumber']}"
+                error = alpaca_result(json.loads(reply.read()))
         except (urllib.error.URLError, OSError, ValueError) as exc:
-            error = classify(exc.reason if isinstance(exc, urllib.error.URLError) else exc)
+            error = classify(exc)
+        if error == "not-implemented":
+            error = None
+            if stats is not None and stats.not_implemented_once(path):
+                print(f"{time.strftime('%H:%M:%S')} not implemented on this device (not a failure): {path}", flush=True)
         if error:
             break
     return (time.monotonic() - started) * 1000, error
@@ -102,7 +134,7 @@ def imaging_app(host: str, every: float, timeout: float, stats: Stats, stop: thr
     transaction = 0
     while not stop.is_set():
         transaction += 1
-        elapsed, error = poll_once(host, transaction, timeout)
+        elapsed, error = poll_once(host, transaction, timeout, stats)
         stats.record(elapsed, error)
         if error:
             print(f"{time.strftime('%H:%M:%S')} imaging app request failed: {error}", flush=True)
@@ -189,6 +221,7 @@ def main(argv: list[str]) -> int:
         "requests": stats.requests,
         "failures": stats.failures,
         "errors": stats.errors,
+        "notImplemented": sorted(stats.not_implemented),
         "slowestMs": round(stats.slowest_ms),
         "before": before,
         "after": device_connections(args.host),

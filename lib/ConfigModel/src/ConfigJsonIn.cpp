@@ -5,7 +5,8 @@
 #include <cstring>
 
 // Settings as JSON, in: applyJson(). One function per section; a key that's
-// missing leaves the setting as it was.
+// missing leaves the setting as it was, and a value of the wrong type is
+// never swapped for a default (JsonReader in ConfigInternal.h).
 
 namespace SQM
 {
@@ -18,9 +19,10 @@ namespace SQM
             return value == nullptr || value[0] == '\0' || std::strcmp(value, SECRET_MASK) == 0 || std::strcmp(value, "***") == 0;
         }
 
-        void assignSecret(JsonObject obj, const char *key, std::string &target, bool preservePlaceholders)
+        // A secret: null clears it; from the UI/API the mask (or "") keeps it.
+        void assignSecret(const Section &obj, const char *key, std::string &target, bool preservePlaceholders)
         {
-            if (!obj.containsKey(key))
+            if (!obj.has(key))
                 return;
             JsonVariant value = obj[key];
             if (value.isNull())
@@ -28,10 +30,17 @@ namespace SQM
                 target.clear();
                 return;
             }
-            const char *secret = value | "";
+            if (!obj.check<std::string>(key))
+                return;
+            const char *secret = value.as<const char *>();
             if (preservePlaceholders && isPlaceholderSecret(secret))
                 return;
             target = secret;
+        }
+
+        bool isBlank(const std::string &value)
+        {
+            return value.find_first_not_of(" \t\r\n") == std::string::npos;
         }
 
         void trimInPlace(std::string &value)
@@ -82,6 +91,25 @@ namespace SQM
             return true;
         }
 
+        bool typeError(const JsonReader &reader, std::string *error)
+        {
+            const std::string &field = reader.field();
+            switch (reader.expected())
+            {
+            case Expected::String:
+                return setError(error, "Settings: " + field + " must be a string");
+            case Expected::Boolean:
+                return setError(error, "Settings: " + field + " must be true or false");
+            case Expected::Number:
+                return setError(error, "Settings: " + field + " must be a number");
+            case Expected::WholeNumber:
+                return setError(error, "Settings: " + field + " must be a whole number in range");
+            case Expected::Object:
+                break;
+            }
+            return setError(error, "Settings: " + field + " must be an object");
+        }
+
         void normalizeTimeSources(Config &cfg)
         {
             if (!cfg.ntp.enabled && !cfg.gps.enabled)
@@ -96,180 +124,184 @@ namespace SQM
                 cfg.secondaryTimeSource = cfg.primaryTimeSource;
         }
 
-        bool applyRoot(JsonObject doc, Config &cfg, std::string *error)
+        void takeTimeSource(const Section &doc, const char *key, TimeSource &target)
         {
-            take(doc, "deviceName", cfg.deviceName, "SQM-ESP32");
-            if (doc.containsKey("language"))
+            if (doc.check<int>(key))
+                target = static_cast<TimeSource>(doc[key].as<int>()); // 0 = NTP, 1 = GPS; validate() checks the range
+        }
+
+        bool applyRoot(const Section &doc, Config &cfg, std::string *error)
+        {
+            doc.take("deviceName", cfg.deviceName);
+            if (doc.check<std::string>("language"))
             {
-                const char *language = doc["language"] | "";
+                const char *language = doc["language"].as<const char *>();
                 if (std::strlen(language) >= sizeof(cfg.language))
                     return setError(error, "Language: not a supported language");
                 std::strncpy(cfg.language, language, sizeof(cfg.language) - 1);
                 cfg.language[sizeof(cfg.language) - 1] = '\0';
             }
-            if (doc.containsKey("primaryTimeSource"))
-                cfg.primaryTimeSource = static_cast<TimeSource>(doc["primaryTimeSource"] | 0); // 0 = NTP
-            if (doc.containsKey("secondaryTimeSource"))
-                cfg.secondaryTimeSource = static_cast<TimeSource>(doc["secondaryTimeSource"] | 1); // 1 = GPS
+            takeTimeSource(doc, "primaryTimeSource", cfg.primaryTimeSource);
+            takeTimeSource(doc, "secondaryTimeSource", cfg.secondaryTimeSource);
             return true;
         }
 
-        void applyWifi(JsonObject wifi, WiFiConfig &w, bool keepSecrets)
+        void applyWifi(const Section &wifi, WiFiConfig &w, bool keepSecrets)
         {
-            take(wifi, "ssid", w.ssid, "");
+            wifi.take("ssid", w.ssid);
             assignSecret(wifi, "password", w.password, keepSecrets);
-            take(wifi, "hostname", w.hostname, "sqmeter");
-            take(wifi, "mdns", w.mdns, true);
-            take(wifi, "ipv6", w.ipv6, true);
-            take(wifi, "autoReconnect", w.autoReconnect, true);
-            take(wifi, "reconnectDelayMs", w.reconnectDelayMs, 1000);
-            take(wifi, "maxReconnectDelayMs", w.maxReconnectDelayMs, 300000);
+            wifi.take("hostname", w.hostname);
+            wifi.take("mdns", w.mdns);
+            wifi.take("ipv6", w.ipv6);
+            wifi.take("autoReconnect", w.autoReconnect);
+            wifi.take("reconnectDelayMs", w.reconnectDelayMs);
+            wifi.take("maxReconnectDelayMs", w.maxReconnectDelayMs);
         }
 
-        void applyMqtt(JsonObject mqtt, MQTTConfig &m, bool keepSecrets)
+        void applyMqtt(const Section &mqtt, MQTTConfig &m, bool keepSecrets)
         {
-            take(mqtt, "enabled", m.enabled, false);
-            take(mqtt, "broker", m.broker, "");
-            take(mqtt, "port", m.port, 1883);
-            take(mqtt, "username", m.username, "");
+            mqtt.take("enabled", m.enabled);
+            mqtt.take("broker", m.broker);
+            mqtt.take("port", m.port);
+            mqtt.take("username", m.username);
             assignSecret(mqtt, "password", m.password, keepSecrets);
-            take(mqtt, "topic", m.topic, "sqmeter");
-            JsonObject publish = mqtt["publish"];
-            take(publish, "sky", m.publish.sky, m.publish.sky);
-            take(publish, "environment", m.publish.environment, m.publish.environment);
-            take(publish, "clouds", m.publish.clouds, m.publish.clouds);
-            take(publish, "gps", m.publish.gps, m.publish.gps);
-            take(publish, "rain", m.publish.rain, m.publish.rain);
-            take(publish, "wind", m.publish.wind, m.publish.wind);
-            take(publish, "safety", m.publish.safety, m.publish.safety);
-            take(publish, "diagnostics", m.publish.diagnostics, m.publish.diagnostics);
-            JsonObject homeAssistant = mqtt["homeAssistant"];
-            take(homeAssistant, "enabled", m.homeAssistant, false);
-            take(homeAssistant, "discoveryPrefix", m.discoveryPrefix, "homeassistant");
-            take(mqtt, "publishIntervalMs", m.publishIntervalMs, 60000);
+            mqtt.take("topic", m.topic);
+            const Section publish = mqtt.child("publish");
+            publish.take("sky", m.publish.sky);
+            publish.take("environment", m.publish.environment);
+            publish.take("clouds", m.publish.clouds);
+            publish.take("gps", m.publish.gps);
+            publish.take("rain", m.publish.rain);
+            publish.take("wind", m.publish.wind);
+            publish.take("safety", m.publish.safety);
+            publish.take("diagnostics", m.publish.diagnostics);
+            const Section homeAssistant = mqtt.child("homeAssistant");
+            homeAssistant.take("enabled", m.homeAssistant);
+            homeAssistant.take("discoveryPrefix", m.discoveryPrefix);
+            mqtt.take("publishIntervalMs", m.publishIntervalMs);
         }
 
-        void applyAccess(JsonObject doc, Config &cfg, bool keepSecrets)
+        void applyAccess(const Section &doc, Config &cfg, bool keepSecrets)
         {
-            JsonObject ota = doc["ota"];
-            take(ota, "enabled", cfg.ota.enabled, false);
+            const Section ota = doc.child("ota");
+            ota.take("enabled", cfg.ota.enabled);
             assignSecret(ota, "password", cfg.ota.password, keepSecrets);
 
-            JsonObject auth = doc["auth"];
-            take(auth, "enabled", cfg.auth.enabled, false);
-            take(auth, "username", cfg.auth.username, "admin");
+            const Section auth = doc.child("auth");
+            auth.take("enabled", cfg.auth.enabled);
+            auth.take("username", cfg.auth.username);
             assignSecret(auth, "password", cfg.auth.password, keepSecrets);
         }
 
-        void applyTime(JsonObject doc, Config &cfg)
+        void applyTime(const Section &doc, Config &cfg)
         {
-            JsonObject ntp = doc["ntp"];
-            take(ntp, "enabled", cfg.ntp.enabled, true);
-            take(ntp, "server1", cfg.ntp.server1, "pool.ntp.org");
-            take(ntp, "server2", cfg.ntp.server2, "time.nist.gov");
-            take(ntp, "timezone", cfg.ntp.timezone, "UTC0");
-            take(ntp, "syncIntervalMs", cfg.ntp.syncIntervalMs, 3600000);
+            const Section ntp = doc.child("ntp");
+            ntp.take("enabled", cfg.ntp.enabled);
+            ntp.take("server1", cfg.ntp.server1);
+            ntp.take("server2", cfg.ntp.server2);
+            ntp.take("timezone", cfg.ntp.timezone);
+            ntp.take("syncIntervalMs", cfg.ntp.syncIntervalMs);
 
-            JsonObject gps = doc["gps"];
-            take(gps, "enabled", cfg.gps.enabled, false);
-            take(gps, "rxPin", cfg.gps.rxPin, 17);
-            take(gps, "txPin", cfg.gps.txPin, 16);
-            take(gps, "baudRate", cfg.gps.baudRate, 9600);
+            const Section gps = doc.child("gps");
+            gps.take("enabled", cfg.gps.enabled);
+            gps.take("rxPin", cfg.gps.rxPin);
+            gps.take("txPin", cfg.gps.txPin);
+            gps.take("baudRate", cfg.gps.baudRate);
 
-            JsonObject location = doc["location"];
-            take(location, "set", cfg.location.set, false);
-            take(location, "latitude", cfg.location.latitude, 0.0);
-            take(location, "longitude", cfg.location.longitude, 0.0);
-            take(location, "showSunMoon", cfg.location.showSunMoon, true);
+            const Section location = doc.child("location");
+            location.take("set", cfg.location.set);
+            location.take("latitude", cfg.location.latitude);
+            location.take("longitude", cfg.location.longitude);
+            location.take("showSunMoon", cfg.location.showSunMoon);
         }
 
-        void applyRain(JsonObject rain, RainConfig &r)
+        void applyRain(const Section &rain, RainConfig &r)
         {
             if (rain.isNull())
                 return;
-            take(rain, "enabled", r.enabled, false);
-            take(rain, "rxPin", r.rxPin, 18);
-            take(rain, "txPin", r.txPin, 19);
-            take(rain, "baudRate", r.baudRate, 9600);
-            take(rain, "debugUart", r.debugUart, false);
-            take(rain, "mode", r.mode, "polling");
+            rain.take("enabled", r.enabled);
+            rain.take("rxPin", r.rxPin);
+            rain.take("txPin", r.txPin);
+            rain.take("baudRate", r.baudRate);
+            rain.take("debugUart", r.debugUart);
+            rain.take("mode", r.mode);
             if (r.mode != "polling")
                 r.mode = "polling";
-            take(rain, "resolution", r.resolution, "high");
-            take(rain, "units", r.units, "metric");
-            take(rain, "pollIntervalMs", r.pollIntervalMs, 5000);
-            take(rain, "rainClearDelayMs", r.rainClearDelayMs, 15UL * 60UL * 1000UL);
-            take(rain, "dailyResetEnabled", r.dailyResetEnabled, false);
-            take(rain, "dailyResetHour", r.dailyResetHour, 0);
-            take(rain, "dailyResetMinute", r.dailyResetMinute, 0);
+            rain.take("resolution", r.resolution);
+            rain.take("units", r.units);
+            rain.take("pollIntervalMs", r.pollIntervalMs);
+            rain.take("rainClearDelayMs", r.rainClearDelayMs);
+            rain.take("dailyResetEnabled", r.dailyResetEnabled);
+            rain.take("dailyResetHour", r.dailyResetHour);
+            rain.take("dailyResetMinute", r.dailyResetMinute);
         }
 
-        void applySky(JsonObject doc, Config &cfg)
+        void applySky(const Section &doc, Config &cfg)
         {
-            JsonObject sensor = doc["sensor"];
-            take(sensor, "readIntervalMs", cfg.sensor.readIntervalMs, 5000);
-            take(sensor, "i2cSDA", cfg.sensor.i2cSDA, 21);
-            take(sensor, "i2cSCL", cfg.sensor.i2cSCL, 22);
-            take(sensor, "i2cFrequency", cfg.sensor.i2cFrequency, 100000);
+            const Section sensor = doc.child("sensor");
+            sensor.take("readIntervalMs", cfg.sensor.readIntervalMs);
+            sensor.take("i2cSDA", cfg.sensor.i2cSDA);
+            sensor.take("i2cSCL", cfg.sensor.i2cSCL);
+            sensor.take("i2cFrequency", cfg.sensor.i2cFrequency);
 
-            take(doc["skyAveraging"].as<JsonObject>(), "windowSeconds", cfg.skyAveraging.windowSeconds, 90);
+            doc.child("skyAveraging").take("windowSeconds", cfg.skyAveraging.windowSeconds);
 
-            JsonObject cal = doc["skyCalibration"];
-            take(cal, "enabled", cfg.skyCalibration.enabled, false);
-            take(cal, "sqmOffset", cfg.skyCalibration.sqmOffset, 0.0F);
-            take(cal, "darkVisibleOffset", cfg.skyCalibration.darkVisibleOffset, 0.0F);
-            take(cal, "darkFullOffset", cfg.skyCalibration.darkFullOffset, 0.0F);
-            take(cal, "darkIrOffset", cfg.skyCalibration.darkIrOffset, 0.0F);
-            take(cal, "darkSampleCount", cfg.skyCalibration.darkSampleCount, 0);
-            take(cal, "darkCalibratedAt", cfg.skyCalibration.darkCalibratedAt, 0);
+            const Section cal = doc.child("skyCalibration");
+            cal.take("enabled", cfg.skyCalibration.enabled);
+            cal.take("sqmOffset", cfg.skyCalibration.sqmOffset);
+            cal.take("darkVisibleOffset", cfg.skyCalibration.darkVisibleOffset);
+            cal.take("darkFullOffset", cfg.skyCalibration.darkFullOffset);
+            cal.take("darkIrOffset", cfg.skyCalibration.darkIrOffset);
+            cal.take("darkSampleCount", cfg.skyCalibration.darkSampleCount);
+            cal.take("darkCalibratedAt", cfg.skyCalibration.darkCalibratedAt);
 
-            JsonObject cloud = doc["cloudDetection"];
-            take(cloud, "clearSkyThreshold", cfg.cloudDetection.clearSkyThreshold, -13.0f);
-            take(cloud, "cloudyThreshold", cfg.cloudDetection.cloudyThreshold, -3.0f);
-            take(cloud, "humidityCorrection", cfg.cloudDetection.humidityCorrection, 0.75f);
+            const Section cloud = doc.child("cloudDetection");
+            cloud.take("clearSkyThreshold", cfg.cloudDetection.clearSkyThreshold);
+            cloud.take("cloudyThreshold", cfg.cloudDetection.cloudyThreshold);
+            cloud.take("humidityCorrection", cfg.cloudDetection.humidityCorrection);
         }
 
-        void applyAlpaca(JsonObject alpaca, AlpacaConfig &a)
+        void applyAlpaca(const Section &alpaca, AlpacaConfig &a)
         {
-            take(alpaca, "enabled", a.enabled, false);
-            take(alpaca, "manualOverrideUnsafe", a.manualOverrideUnsafe, false);
-            take(alpaca, "staleAfterSeconds", a.staleAfterSeconds, 30);
-            take(alpaca, "cloudCoverEnabled", a.cloudCoverEnabled, true);
-            take(alpaca, "cloudCoverUnsafePercent", a.cloudCoverUnsafePercent, 90.0f);
-            take(alpaca, "sqmMinEnabled", a.sqmMinEnabled, false);
-            take(alpaca, "sqmMinSafe", a.sqmMinSafe, 0.0f);
-            take(alpaca, "humidityMaxEnabled", a.humidityMaxEnabled, false);
-            take(alpaca, "humidityMaxSafe", a.humidityMaxSafe, 100.0f);
-            take(alpaca, "dewpointMarginEnabled", a.dewpointMarginEnabled, false);
-            take(alpaca, "dewpointMarginMinC", a.dewpointMarginMinC, 0.0f);
-            take(alpaca, "rainUnsafeEnabled", a.rainUnsafeEnabled, true);
-            take(alpaca, "rainSensorRequired", a.rainSensorRequired, true);
-            take(alpaca, "safeDelaySeconds", a.safeDelaySeconds, 0U);
-            take(alpaca, "windSpeedUnsafeEnabled", a.windSpeedUnsafeEnabled, false);
-            take(alpaca, "windSpeedUnsafeMs", a.windSpeedUnsafeMs, 10.0f);
-            take(alpaca, "windGustUnsafeEnabled", a.windGustUnsafeEnabled, false);
-            take(alpaca, "windGustUnsafeMs", a.windGustUnsafeMs, 15.0f);
+            alpaca.take("enabled", a.enabled);
+            alpaca.take("manualOverrideUnsafe", a.manualOverrideUnsafe);
+            alpaca.take("staleAfterSeconds", a.staleAfterSeconds);
+            alpaca.take("cloudCoverEnabled", a.cloudCoverEnabled);
+            alpaca.take("cloudCoverUnsafePercent", a.cloudCoverUnsafePercent);
+            alpaca.take("sqmMinEnabled", a.sqmMinEnabled);
+            alpaca.take("sqmMinSafe", a.sqmMinSafe);
+            alpaca.take("humidityMaxEnabled", a.humidityMaxEnabled);
+            alpaca.take("humidityMaxSafe", a.humidityMaxSafe);
+            alpaca.take("dewpointMarginEnabled", a.dewpointMarginEnabled);
+            alpaca.take("dewpointMarginMinC", a.dewpointMarginMinC);
+            alpaca.take("rainUnsafeEnabled", a.rainUnsafeEnabled);
+            alpaca.take("rainSensorRequired", a.rainSensorRequired);
+            alpaca.take("safeDelaySeconds", a.safeDelaySeconds);
+            alpaca.take("windSpeedUnsafeEnabled", a.windSpeedUnsafeEnabled);
+            alpaca.take("windSpeedUnsafeMs", a.windSpeedUnsafeMs);
+            alpaca.take("windGustUnsafeEnabled", a.windGustUnsafeEnabled);
+            alpaca.take("windGustUnsafeMs", a.windGustUnsafeMs);
         }
 
         // Applies an "events" object ({"rain_started": {"level": 4, ...}, ...}).
-        void applyEvents(JsonObject events, AlertsConfig &a)
+        void applyEvents(const Section &events, AlertsConfig &a)
         {
             for (const auto &entry : eventSettings(a))
             {
-                JsonObject event = events[entry.first];
+                const Section event = events.child(entry.first);
                 AlertsConfig::EventSetting &target = *entry.second;
-                take(event, "level", target.level, target.level);
-                take(event, "sound", target.sound, "");
-                take(event, "title", target.title, "");
-                take(event, "message", target.message, "");
+                event.take("level", target.level);
+                event.take("sound", target.sound);
+                event.take("title", target.title);
+                event.take("message", target.message);
             }
         }
 
         // Settings saved before per-event levels: on/off toggles.
-        void applyLegacyToggles(JsonObject alerts, AlertsConfig &a)
+        void applyLegacyToggles(const Section &alerts, AlertsConfig &a)
         {
-            auto off = [&alerts](const char *key) { return alerts.containsKey(key) && !(alerts[key] | true); };
-            auto on = [&alerts](const char *key) { return alerts[key] | false; };
+            auto on = [&alerts](const char *key) { return alerts.check<bool>(key) && alerts[key].as<bool>(); };
+            auto off = [&alerts](const char *key) { return alerts.check<bool>(key) && !alerts[key].as<bool>(); };
             if (off("onSafetyChange"))
                 a.unsafe.level = a.safe.level = 0;
             if (off("onRain"))
@@ -285,11 +317,11 @@ namespace SQM
         }
 
         // "sendMode", or the older "armWithAlpaca" when there's no sendMode.
-        bool applySendMode(JsonObject obj, AlertsConfig &a, std::string *error)
+        bool applySendMode(const Section &obj, AlertsConfig &a, std::string *error)
         {
-            if (obj.containsKey("sendMode"))
+            if (obj.has("sendMode"))
             {
-                const std::string mode = obj["sendMode"] | "";
+                const std::string mode = obj["sendMode"].is<const char *>() ? obj["sendMode"].as<const char *>() : "";
                 if (mode == "any")
                     a.sendMode = AlertsConfig::SendMode::Any;
                 else if (mode == "whileConnected")
@@ -297,81 +329,81 @@ namespace SQM
                 else
                     return setError(error, "Alerts: when to send must be any or whileConnected");
             }
-            else if (obj.containsKey("armWithAlpaca"))
+            else if (obj.check<bool>("armWithAlpaca"))
             {
                 // Settings and scripts from before sendMode.
-                a.sendMode = (obj["armWithAlpaca"] | false) ? AlertsConfig::SendMode::WhileConnected : AlertsConfig::SendMode::Any;
+                a.sendMode = obj["armWithAlpaca"].as<bool>() ? AlertsConfig::SendMode::WhileConnected : AlertsConfig::SendMode::Any;
             }
             return true;
         }
 
-        void applyClientSilence(JsonObject obj, AlertsConfig &a)
+        void applyClientSilence(const Section &obj, AlertsConfig &a)
         {
-            take(obj, "clientSilentSafetySeconds", a.clientSilentSafetySeconds, 120U);
-            take(obj, "clientSilentWeatherSeconds", a.clientSilentWeatherSeconds, 600U);
+            obj.take("clientSilentSafetySeconds", a.clientSilentSafetySeconds);
+            obj.take("clientSilentWeatherSeconds", a.clientSilentWeatherSeconds);
         }
 
-        void applyAlertChannels(JsonObject alerts, AlertsConfig &a, bool keepSecrets)
+        void applyAlertChannels(const Section &alerts, AlertsConfig &a, bool keepSecrets)
         {
-            JsonObject pushover = alerts["pushover"];
+            const Section pushover = alerts.child("pushover");
             if (!pushover.isNull())
             {
-                take(pushover, "enabled", a.pushoverEnabled, false);
+                pushover.take("enabled", a.pushoverEnabled);
                 assignSecret(pushover, "userKey", a.pushoverUserKey, keepSecrets);
                 assignSecret(pushover, "appToken", a.pushoverAppToken, keepSecrets);
                 // Pasted keys often carry a stray space or newline, which
                 // Pushover rejects as "not a valid user".
                 trimInPlace(a.pushoverUserKey);
                 trimInPlace(a.pushoverAppToken);
-                take(pushover, "sound", a.pushoverSound, "");
+                pushover.take("sound", a.pushoverSound);
             }
 
-            JsonObject ntfy = alerts["ntfy"];
-            take(ntfy, "enabled", a.ntfyEnabled, false);
-            take(ntfy, "server", a.ntfyServer, "https://ntfy.sh");
-            take(ntfy, "topic", a.ntfyTopic, "");
+            const Section ntfy = alerts.child("ntfy");
+            ntfy.take("enabled", a.ntfyEnabled);
+            ntfy.take("server", a.ntfyServer);
+            ntfy.take("topic", a.ntfyTopic);
             assignSecret(ntfy, "token", a.ntfyToken, keepSecrets);
 
-            JsonObject webhook = alerts["webhook"];
-            take(webhook, "enabled", a.webhookEnabled, false);
-            take(webhook, "url", a.webhookUrl, "");
+            const Section webhook = alerts.child("webhook");
+            webhook.take("enabled", a.webhookEnabled);
+            webhook.take("url", a.webhookUrl);
             assignSecret(webhook, "authHeader", a.webhookAuthHeader, keepSecrets);
-            take(webhook, "insecureTls", a.webhookInsecureTls, false);
+            webhook.take("insecureTls", a.webhookInsecureTls);
 
-            take(alerts["mqtt"].as<JsonObject>(), "enabled", a.mqttEnabled, false);
+            alerts.child("mqtt").take("enabled", a.mqttEnabled);
         }
 
-        bool applyAlerts(JsonObject alerts, AlertsConfig &a, bool keepSecrets, std::string *error)
+        bool applyAlerts(const Section &alerts, AlertsConfig &a, bool keepSecrets, std::string *error)
         {
             if (alerts.isNull())
                 return true;
-            take(alerts, "enabled", a.enabled, false);
-            JsonObject events = alerts["events"];
+            alerts.take("enabled", a.enabled);
+            const Section events = alerts.child("events");
             if (!events.isNull())
                 applyEvents(events, a);
             else
                 applyLegacyToggles(alerts, a);
-            take(alerts, "dewRiskMarginC", a.dewRiskMarginC, 2.0f);
-            take(alerts, "clearSkyCloudPercent", a.clearSkyCloudPercent, 20.0f);
-            take(alerts, "cloudedOverCloudPercent", a.cloudedOverCloudPercent, 70.0f);
-            take(alerts, "skyNightOnly", a.skyNightOnly, true);
-            take(alerts, "safetyNightOnly", a.safetyNightOnly, true);
+            alerts.take("dewRiskMarginC", a.dewRiskMarginC);
+            alerts.take("clearSkyCloudPercent", a.clearSkyCloudPercent);
+            alerts.take("cloudedOverCloudPercent", a.cloudedOverCloudPercent);
+            alerts.take("skyNightOnly", a.skyNightOnly);
+            alerts.take("safetyNightOnly", a.safetyNightOnly);
             if (!applySendMode(alerts, a, error))
                 return false;
             applyClientSilence(alerts, a);
-            take(alerts, "nightSunAltitudeDeg", a.nightSunAltitudeDeg, -12.0f);
-            take(alerts, "cooldownSeconds", a.cooldownSeconds, 300U);
+            alerts.take("nightSunAltitudeDeg", a.nightSunAltitudeDeg);
+            alerts.take("cooldownSeconds", a.cooldownSeconds);
             applyAlertChannels(alerts, a, keepSecrets);
             return true;
         }
 
         // The imaging-app alert settings as stored under their own NVS key
         // (ConfigStore splices them in as "alertsClient").
-        bool applyAlertsClient(JsonObject client, AlertsConfig &a, std::string *error)
+        bool applyAlertsClient(const Section &client, AlertsConfig &a, std::string *error)
         {
             if (client.isNull())
                 return true;
-            JsonObject events = client["events"];
+            const Section events = client.child("events");
             if (!events.isNull())
                 applyEvents(events, a);
             if (!applySendMode(client, a, error))
@@ -380,19 +412,19 @@ namespace SQM
             return true;
         }
 
-        void applyHardware(JsonObject doc, Config &cfg, bool keepSecrets)
+        void applyHardware(const Section &doc, Config &cfg, bool keepSecrets)
         {
-            JsonObject wind = doc["wind"];
-            take(wind, "enabled", cfg.wind.enabled, false);
-            take(wind, "speedPin", cfg.wind.speedPin, 27);
-            take(wind, "directionEnabled", cfg.wind.directionEnabled, false);
-            take(wind, "directionPin", cfg.wind.directionPin, 35);
-            take(wind, "kmhPerHz", cfg.wind.kmhPerHz, 2.4f);
-            take(wind, "directionOffsetDeg", cfg.wind.directionOffsetDeg, 0.0f);
-            take(wind, "vanePullupOhms", cfg.wind.vanePullupOhms, 10000.0f);
+            const Section wind = doc.child("wind");
+            wind.take("enabled", cfg.wind.enabled);
+            wind.take("speedPin", cfg.wind.speedPin);
+            wind.take("directionEnabled", cfg.wind.directionEnabled);
+            wind.take("directionPin", cfg.wind.directionPin);
+            wind.take("kmhPerHz", cfg.wind.kmhPerHz);
+            wind.take("directionOffsetDeg", cfg.wind.directionOffsetDeg);
+            wind.take("vanePullupOhms", cfg.wind.vanePullupOhms);
 
-            JsonObject ble = doc["ble"];
-            take(ble, "enabled", cfg.ble.enabled, false);
+            const Section ble = doc.child("ble");
+            ble.take("enabled", cfg.ble.enabled);
             assignSecret(ble, "passkey", cfg.ble.passkey, keepSecrets);
         }
 
@@ -434,21 +466,34 @@ namespace SQM
         if (!checkWholeNumbers(doc, errorOut))
             return false;
 
-        JsonObject root = doc.as<JsonObject>();
         const bool keep = preserveSecretPlaceholders;
+        // Changes from the UI/API are strict about types; stored settings
+        // keep going (see JsonReader).
+        JsonReader reader(preserveSecretPlaceholders);
+        if (reader.strict() && !doc.is<JsonObject>())
+            return setError(errorOut, "Settings must be a JSON object");
+        const Section root(reader, doc.as<JsonVariant>(), "");
+        const std::string previousSsid = cfg.wifi.ssid;
         if (!applyRoot(root, cfg, errorOut))
             return false;
-        applyWifi(root["wifi"], cfg.wifi, keep);
-        applyMqtt(root["mqtt"], cfg.mqtt, keep);
+        applyWifi(root.child("wifi"), cfg.wifi, keep);
+        applyMqtt(root.child("mqtt"), cfg.mqtt, keep);
         applyAccess(root, cfg, keep);
         applyTime(root, cfg);
-        applyRain(root["rain"], cfg.rain);
+        applyRain(root.child("rain"), cfg.rain);
         applySky(root, cfg);
-        applyAlpaca(root["alpaca"], cfg.alpaca);
-        if (!applyAlerts(root["alerts"], cfg.alerts, keep, errorOut) || !applyAlertsClient(root["alertsClient"], cfg.alerts, errorOut))
+        applyAlpaca(root.child("alpaca"), cfg.alpaca);
+        if (!applyAlerts(root.child("alerts"), cfg.alerts, keep, errorOut) ||
+            !applyAlertsClient(root.child("alertsClient"), cfg.alerts, errorOut))
             return false;
         cfg.alerts.armWithAlpaca = cfg.alerts.sendMode == AlertsConfig::SendMode::WhileConnected;
         applyHardware(root, cfg, keep);
+        if (reader.failed())
+            return typeError(reader, errorOut);
+        // Saving settings never takes the device off its network: changing
+        // networks is WiFi setup's job (POST /api/wifi/connect).
+        if (reader.strict() && isBlank(cfg.wifi.ssid) && !isBlank(previousSsid))
+            return setError(errorOut, "WiFi network can't be blank; use WiFi setup to change networks");
 
         normalizeTimeSources(cfg);
         if (!cfg.validate(errorOut))

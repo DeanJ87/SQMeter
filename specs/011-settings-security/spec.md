@@ -34,6 +34,14 @@ older saved settings are migrated.
    same ranges, and the browser shows the error on the right tab.
 2. **Given** settings saved by an older release, **When** the device boots, **Then** they load and
    are migrated without a factory reset.
+3. **Given** a device on its WiFi network, **When** a settings save (`POST`/`PUT /api/config`) sends
+   an empty `wifi.ssid`, **Then** it is rejected with "WiFi network can't be blank; use WiFi setup
+   to change networks" and the saved network is unchanged.
+4. **Given** a settings save with a value of the wrong type (`null`, a number for a string, text
+   for a number or switch), **When** it reaches the device, **Then** it is rejected with
+   "Settings: <field> must be <type>" naming the field, and nothing is saved.
+5. **Given** a settings save without a key (e.g. no `wifi.ssid`), **When** it is applied, **Then**
+   that setting keeps its current value.
 
 ---
 
@@ -96,6 +104,20 @@ readings need the password; secrets are never shown back.
   leaves `GET …/safetymonitor/0/connected` `true` after the restart. *(Decisions:
   [research-connections.md](research-connections.md); see spec 013 FR-012.)*
 - **FR-007**: The configuration and security documentation MUST match the device.
+- **FR-009** *(added 2026-10-11)*: A settings save MUST NEVER take the device off its network or
+  silently replace a value:
+  - A value of the wrong type for any setting (including `null`, except `null` for a secret, which
+    clears it) MUST be rejected with "Settings: <field> must be <type>"; it MUST NOT become a
+    default. A missing key keeps the current value.
+  - While a WiFi network is saved, `/api/config` MUST reject an empty (or blank) `wifi.ssid`.
+    Networks are changed through WiFi setup (`POST /api/wifi/connect`) or by picking another
+    network in Settings → Network; there is no "forget network" endpoint. The web UI MUST NOT send
+    an empty SSID (the network field is required).
+  - Settings already stored on the device are not rejected for a wrong-typed value on boot: that
+    value keeps the current (default) value, so the rest of the settings, WiFi included, still load.
+
+  *Why: `take()` turned a `null` or wrong-typed `wifi.ssid` into `""`, so one bad save sent the
+  device to its setup hotspot at the next boot and a remote device dropped off the network.*
 
 ### Key Entities
 
