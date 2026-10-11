@@ -2,6 +2,7 @@
 
 import copy
 import sys
+import json
 import unittest
 from pathlib import Path
 
@@ -78,9 +79,13 @@ class Drift(unittest.TestCase):
 
 class RealDocument(unittest.TestCase):
     def test_repository_document_is_current(self):
-        document, found = openapi.build()
+        # Compare everything but info.version: release builds stamp the tag into
+        # include/version.h before this runs, while the committed document keeps
+        # the "+dev" version it was generated with.
+        committed = openapi.OUTPUT.read_text()
+        document, found = openapi.build(json.loads(committed)["info"]["version"])
         self.assertEqual(found, [])
-        self.assertEqual(openapi.OUTPUT.read_text(), openapi.render(document), "run: python3 tools/api/openapi.py")
+        self.assertEqual(committed, openapi.render(document), "run: python3 tools/api/openapi.py")
 
     def test_every_registry_api_route_is_an_operation(self):
         document, _ = openapi.build()
