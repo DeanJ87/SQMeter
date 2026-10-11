@@ -300,6 +300,10 @@ def main(argv=None):
         issues = validate(document)
     if not issues and args.check:
         current = OUTPUT.read_text() if OUTPUT.exists() else ""
+        # Release builds stamp the tag into version.h first; the committed document
+        # keeps its "+dev" version, so compare with that version.
+        if current and not args.version:
+            document, _ = build(json.loads(current)["info"]["version"])
         if current != render(document):
             issues = ["docs/api/openapi.json is out of date - run: python3 tools/api/openapi.py"]
     if args.json:
