@@ -74,6 +74,7 @@ HINTS = {
     "or record a reason in tools/ui/copy-exceptions.json",
     "DS-LABEL": "use the one name in tools/i18n/glossary/en.json (DS-27): python3 tools/ui/label_check.py",
     "DS-PATH": "name the tab, card and control as the UI does (web/src/i18n/en.json): python3 tools/docs/ui_paths.py",
+    "API-01": "describe the route in tools/api/operations.json (and its schema), then run python3 tools/api/openapi.py",
     "I18N-05": "format with web/src/i18n/format.ts and read typed numbers with web/src/i18n/parse.ts "
     "(SVG geometry: web/src/lib/svg.ts; option values: Number(value))",
     "I18N-01": "move the text to web/src/i18n/en.json and use t() (or `// i18n-ignore: <reason>`)",
@@ -211,12 +212,14 @@ def json_tool(rule: str, script: str) -> list[Finding]:
 
 def check_dashboard() -> list[Finding]:
     """DASH-02 dashboard inventory (spec 025); DS-COPY English copy, DS-LABEL one name per thing and
-    DS-PATH docs paths that name the UI as it is (spec 026)."""
+    DS-PATH docs paths that name the UI as it is (spec 026); API-01 the OpenAPI description matches the
+    route registry and schemas (spec 028)."""
     return (
         json_tool("DASH-02", "tools/dashboard/check.py")
         + json_tool("DS-COPY", "tools/ui/copy_check.py")
         + json_tool("DS-LABEL", "tools/ui/label_check.py")
         + json_tool("DS-PATH", "tools/docs/ui_paths.py")
+        + json_tool("API-01", "tools/api/openapi.py")
     )
 
 

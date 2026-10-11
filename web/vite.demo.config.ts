@@ -40,6 +40,12 @@ export default defineConfig({
       compress: { drop_console: false }, // keep logs in demo for transparency
     },
     rollupOptions: {
+      // The API explorer (specs/028-openapi FR-010) is a second page of the
+      // demo site only; the device UI build (vite.config.ts) never has it.
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        explorer: resolve(__dirname, 'explorer/index.html'),
+      },
       output: { manualChunks: undefined },
     },
   },

@@ -1,0 +1,84 @@
+{
+  "timestamp": 1791716745,
+  "timeValid": true,
+  "dataAgeMs": 0,
+  "dataStale": false,
+  "light": {
+    "status": "ok",
+    "ageMs": 0,
+    "lux": 52499.44922,
+    "visible": 56360,
+    "infrared": 9175,
+    "full": 65535,
+    "gain": "HIGH",
+    "gainFactor": 428,
+    "integrationMs": 600,
+    "saturated": false,
+    "nightMode": false
+  },
+  "sky": {
+    "status": "ok",
+    "sqm": 0.8,
+    "rawSqm": 0.8,
+    "nelm": 0,
+    "bortle": 9,
+    "description": "Inner-city sky",
+    "calibrated": false,
+    "averagingWindowSeconds": 90
+  },
+  "environment": {
+    "status": "ok",
+    "ageMs": 0,
+    "temperature": 11,
+    "humidity": 62,
+    "pressure": 1013,
+    "dewpoint": 4
+  },
+  "infrared": {
+    "status": "ok",
+    "ageMs": 0,
+    "skyTemperature": -9.9,
+    "ambientTemperature": 11.4
+  },
+  "clouds": {
+    "status": "ok",
+    "coverPercent": 0,
+    "condition": "clear",
+    "description": "Clear",
+    "temperatureDelta": -21.3,
+    "correctedDelta": -21.8,
+    "humidity": 62,
+    "humiditySource": "measured"
+  },
+  "rain": {
+    "status": "ok",
+    "ageMs": 0,
+    "raining": false,
+    "rainingNow": false,
+    "intensity": 0,
+    "eventAccumulation": 0,
+    "sensorEventAccumulation": 0,
+    "totalAccumulation": 0,
+    "lensFault": false,
+    "emitterSaturated": false
+  },
+  "wind": {
+    "status": "ok",
+    "ageMs": 0,
+    "speed": 3.2,
+    "gust": 6.1,
+    "direction": 242,
+    "vaneFault": false
+  },
+  "safety": {
+    "safe": true,
+    "rawSafe": true,
+    "alpacaEnabled": true,
+    "reasonFlags": 0,
+    "reasons": [],
+    "secondsUntilSafe": 0,
+    "rulesNotInEffect": [],
+    "evaluatedAgeMs": 0,
+    "changedAgeMs": 2005
+  }
+}

@@ -1,0 +1,238 @@
+{
+  "alerts": {
+    "armed": true,
+    "armWithAlpaca": false,
+    "mode": "any",
+    "reason": "none",
+    "since": null,
+    "sinceAgeMs": null,
+    "recentRevision": 0
+  },
+  "alpaca": {
+    "enabled": true,
+    "clients": {
+      "safetymonitor": {
+        "connected": false,
+        "watching": false,
+        "silent": false,
+        "lastCheckedAgeMs": null,
+        "clientId": null
+      },
+      "observingconditions": {
+        "connected": false,
+        "watching": false,
+        "silent": false,
+        "lastCheckedAgeMs": null,
+        "clientId": null
+      }
+    }
+  },
+  "sky": {
+    "locationSource": "manual",
+    "nightKnown": true,
+    "latitude": 51.5074,
+    "longitude": -0.1278,
+    "isNight": false,
+    "sunAltitudeDeg": 30.7
+  },
+  "firmware": {
+    "name": "SQMeter",
+    "version": "0.3.0-beta.1",
+    "buildDate": "Apr 24 2026",
+    "buildTime": "12:00:00",
+    "variant": "standard",
+    "layout": "l2"
+  },
+  "ble": {
+    "available": false,
+    "active": false,
+    "clients": 0,
+    "alarm": {
+      "serviceActive": false,
+      "active": false,
+      "sequence": 0,
+      "acknowledgedSequence": 0,
+      "bondedPhones": 0
+    }
+  },
+  "uptime": 2,
+  "bootCount": 3,
+  "resetReason": 3,
+  "connections": {
+    "tcpLimit": 16,
+    "liveUpdates": {
+      "sensors": 1,
+      "status": 1,
+      "limitPerEndpoint": 3,
+      "replaced": 0,
+      "stalledClosed": 0
+    },
+    "alpacaRestoredAfterRestart": false
+  },
+  "freeHeap": 214320,
+  "minFreeHeap": 156056,
+  "maxAllocHeap": 110580,
+  "heapSize": 327680,
+  "stackFree": {
+    "asyncTcp": 3360,
+    "loop": 3612
+  },
+  "sensorSnapshotBytes": 808,
+  "heapStages": [
+    {
+      "stage": "boot",
+      "free": 279836,
+      "largest": 110580
+    },
+    {
+      "stage": "sensors",
+      "free": 271484,
+      "largest": 110580
+    },
+    {
+      "stage": "wifi",
+      "free": 214276,
+      "largest": 110580
+    },
+    {
+      "stage": "setup complete",
+      "free": 190660,
+      "largest": 110580
+    }
+  ],
+  "cpuFreqMHz": 240,
+  "flashSize": 4194304,
+  "sketchSize": 1529280,
+  "freeSketchSpace": 305728,
+  "fsTotal": 458752,
+  "fsUsed": 184320,
+  "partitions": {
+    "runningSlot": "app0",
+    "runningAddress": 65536,
+    "runningSize": 1835008,
+    "bootSlot": "app0",
+    "nextSlot": "app1",
+    "nextSize": 1835008,
+    "nvs": {
+      "usedEntries": 12,
+      "freeEntries": 488,
+      "totalEntries": 500,
+      "namespaceCount": 1
+    },
+    "fsAddress": 3735552,
+    "fsSize": 458752
+  },
+  "time": {
+    "epoch": 1791716745,
+    "iso": "2026-10-11T12:05:45+0100",
+    "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
+  },
+  "ntp": {
+    "enabled": true,
+    "synced": true,
+    "status": 1,
+    "lastSync": 1791713143305,
+    "nextSync": 1791720343305,
+    "drift": 0.003,
+    "server": "pool.ntp.org",
+    "activeSource": 1,
+    "gpsEnabled": true,
+    "gpsHasFix": true,
+    "gpsTimeUTC": "2026-10-11T11:05:43.305Z",
+    "gpsSatellites": 9
+  },
+  "wifi": {
+    "connected": true,
+    "ssid": "DarkSkyLab",
+    "ip": "192.168.1.42",
+    "rssi": -58,
+    "mac": "AA:BB:CC:DD:EE:FF",
+    "connectPending": false,
+    "apMode": false,
+    "hostname": "sqmeter",
+    "mdns": true,
+    "ipv6": {
+      "enabled": true,
+      "addresses": [
+        {
+          "address": "fe80::a3b2:c3ff:fed4:e5f6",
+          "scope": "link-local"
+        },
+        {
+          "address": "2001:db8:4a2c:1:a3b2:c3ff:fed4:e5f6",
+          "scope": "global"
+        }
+      ]
+    }
+  },
+  "mqtt": {
+    "enabled": true,
+    "connected": true,
+    "state": 0,
+    "lastPublish": 1791716683305,
+    "lastReconnectAttempt": 0,
+    "broker": "192.168.1.10",
+    "port": 1883,
+    "topic": "sqmeter",
+    "availabilityTopic": "sqmeter/availability",
+    "clientId": "SQMeter-D4E5F6"
+  },
+  "sensors": {
+    "light": {
+      "status": "ok",
+      "ageMs": 0
+    },
+    "environment": {
+      "status": "ok",
+      "ageMs": 0
+    },
+    "infrared": {
+      "status": "ok",
+      "ageMs": 0
+    },
+    "rain": {
+      "status": "ok",
+      "ageMs": 0
+    },
+    "wind": {
+      "status": "ok",
+      "ageMs": 0,
+      "vaneStatus": "ok"
+    }
+  },
+  "diagnostics": {
+    "light": {
+      "rollingVisible": 56360,
+      "correctedVisible": 56360,
+      "darkVisibleOffset": 0,
+      "sampleCount": 3,
+      "windowSamples": 150,
+      "nightMode": false,
+      "rejectedSamples": 0,
+      "consecutiveSaturatedSamples": 0,
+      "consecutiveLowSamples": 0
+    },
+    "rain": {
+      "state": "online",
+      "uartOpened": true,
+      "rxPin": 18,
+      "txPin": 19,
+      "baudRate": 9600,
+      "uartPort": 1,
+      "lastCommand": "R",
+      "lastAck": null,
+      "lastResponse": "Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 0.00 mm, RInt 0.00 mmph",
+      "lastError": null,
+      "timeouts": 0,
+      "parseErrors": 0,
+      "successfulReads": 3,
+      "lastPollAgeMs": 0,
+      "lastResponseAgeMs": 0,
+      "lastSuccessfulReadAgeMs": 0,
+      "softwareVersion": null,
+      "softwareBuildDate": null,
+      "resetReason": null
+    }
+  },
+  "configRevision": 3470718486
+}

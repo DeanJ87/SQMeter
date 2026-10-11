@@ -15,6 +15,8 @@ All notable changes to SQMeter are documented here.
 
 - `/api/status` → `connections`: live-update clients per endpoint and how many were closed, and whether connections were kept across the last restart.
 - `tools/soak/connection_soak.py`: polls a device like N.I.N.A. while opening sockets nobody reads, and reports any failed request.
+- **OpenAPI description of the REST API** (spec 028): `openapi.json` (OpenAPI 3.1) for every `/api/*` route, generated from the firmware's route registry and contract schemas and checked in CI, so it can't drift. Published on the docs site ([API Reference](https://sqmeter.dev/api/reference/)) and with each release (`sqmeter-openapi-<version>.json`). Nothing on the device changes.
+- **API explorer** on the demo site (https://demo.sqmeter.dev/explorer/): browse every operation and "Try it" against the demo's emulated SQMeter in your browser, with a `curl` line for your own device.
 
 ### Planned
 

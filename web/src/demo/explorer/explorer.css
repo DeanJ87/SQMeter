@@ -1,0 +1,63 @@
+/* The API explorer's page around Scalar: the docs site's and the device UI's
+   dark palette and fonts (docs/stylesheets/sqmeter.css, src/index.css). */
+
+@font-face {
+  font-family: 'Inter SQM';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../../assets/fonts/inter-sqm.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono SQM';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../../assets/fonts/jetbrains-mono-sqm.woff2') format('woff2');
+}
+
+html,
+body {
+  margin: 0;
+  background: #080d14;
+  color: #e7edf3;
+  font-family: 'Inter SQM', ui-sans-serif, system-ui, sans-serif;
+}
+
+.explorer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  padding: 0.6rem 1rem;
+  background: rgba(8, 13, 20, 0.92);
+  border-bottom: 1px solid #142130;
+}
+
+.explorer-brand {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.explorer-note {
+  flex: 1 1 18rem;
+  color: #8b9baa;
+  font-size: 0.85rem;
+}
+
+.explorer-links {
+  display: flex;
+  gap: 1rem;
+}
+
+.explorer-links a {
+  color: #55c7f2;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.explorer-links a:hover,
+.explorer-links a:focus-visible {
+  text-decoration: underline;
+}

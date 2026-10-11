@@ -4,6 +4,7 @@ import Ajv from 'ajv';
 import { demoDevice } from '../device';
 import { statusDocument } from '../handlers';
 import { i18nDocument } from '../i18n';
+import { mockGithubReleases, mockWifiNetworks } from '../../mocks/data';
 
 // Every document the demo answers must match the device's contract
 // (specs/016-demo-device-emulation/contracts/schemas, generated from a real
@@ -42,6 +43,10 @@ describe('demo documents match the device contract', () => {
   it('recent alerts', () => check('alerts-recent', JSON.parse(demoDevice.recentAlerts())));
   it('alerts sending or paused (/api/alerts/armed)', () => check('alerts-armed', JSON.parse(demoDevice.armedDocument())));
   it('safety history', () => check('safety-history', JSON.parse(demoDevice.safetyHistory())));
+  it('WiFi scan and update releases (specs/028-openapi FR-002)', () => {
+    check('wifi-scan', { success: true, scanning: false, networks: mockWifiNetworks });
+    check('releases', mockGithubReleases);
+  });
   it('Alpaca management and device state', () => {
     check('alpaca-description', alpaca('/management/v1/description'));
     check('alpaca-configured-devices', alpaca('/management/v1/configureddevices'));

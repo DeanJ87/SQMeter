@@ -123,6 +123,14 @@ test('nothing leaves the browser (US3, SC-004)', async ({ page, baseURL }) => {
   for (const hash of ['#/settings?tab=alerts', '#/updates', '#/wifi', '#/system']) await ready(page, hash);
   const recent = JSON.parse((await api(page, '/api/alerts/recent')).body);
   expect(recent.alerts[0].channels.pushover.detail).toBe('Demo: nothing was sent');
+  // The API explorer (specs/028-openapi) too: loading it and trying a request.
+  await page.goto('./explorer/');
+  await page
+    .getByRole('button', { name: /Test Request.*get \/api\/sensors/i })
+    .first()
+    .click();
+  await page.getByRole('button', { name: /^Send get request to .*\/api\/sensors$/ }).click();
+  await page.waitForTimeout(1000);
   expect(outside).toEqual([]);
 });
 

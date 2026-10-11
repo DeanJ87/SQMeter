@@ -136,6 +136,7 @@ Test files are exempt from LIMIT-01 (a `describe` block is long by nature) but n
 | ID | Rule | Check |
 |---|---|---|
 | DOC-01 | A change to behaviour shown in a docs diagram updates the diagram, its caption and its "Diagram in words" in the same PR, then re-confirms it with `python3 tools/docs/diagrams.py --confirm DIA-NN` (spec 024). | auto (stale diagrams warn; safety diagrams fail) |
+| API-01 | A new or changed `/api/*` route, method, auth or response document updates `tools/api/routes.json`, `tools/api/operations.json` and the contract schema, then regenerates `docs/api/openapi.json` with `python3 tools/api/openapi.py` (spec 028). The document is never edited by hand. | auto (`tools/api/openapi.py --check`) |
 
 ---
 

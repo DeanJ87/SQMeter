@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Releases",
+  "description": "GET /api/updates/check (src/WebServerUpdates.cpp, lib/ReleaseLogic): GitHub releases on the chosen track that have both a firmware file for this build and a web UI file for this partition layout, newest first. Hand-written, not generated.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "tag": { "type": "string" },
+      "name": { "type": "string" },
+      "prerelease": { "type": "boolean" },
+      "publishedAt": { "type": "string" },
+      "firmwareAssetUrl": { "type": "string" },
+      "firmwareAssetSize": { "type": "integer" },
+      "fsAssetUrl": { "type": "string" },
+      "fsAssetSize": { "type": "integer" }
+    },
+    "required": ["tag", "name", "prerelease", "publishedAt", "firmwareAssetUrl", "firmwareAssetSize", "fsAssetUrl", "fsAssetSize"],
+    "additionalProperties": false
+  }
+}

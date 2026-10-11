@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WiFi scan",
+  "description": "GET /api/wifi/scan (src/WebServerApi.cpp handleWiFiScan). The scan runs in the background: 202 with scanning true and no networks while it runs, then 200 with the list. Hand-written, not generated.",
+  "type": "object",
+  "properties": {
+    "success": { "const": true },
+    "scanning": { "type": "boolean" },
+    "networks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ssid": { "type": "string" },
+          "rssi": { "type": "integer" },
+          "encryption": { "type": "string", "enum": ["open", "secured"] }
+        },
+        "required": ["ssid", "rssi", "encryption"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["success", "scanning", "networks"],
+  "additionalProperties": false
+}
