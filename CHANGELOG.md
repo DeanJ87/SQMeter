@@ -4,6 +4,13 @@ All notable changes to SQMeter are documented here.
 
 ## [Unreleased]
 
+### Planned
+
+- Hardware PCB design (planned — SQMeter-Hardware repo)
+- 3D-printed enclosure (planned — Printables)
+
+## [0.3.2-beta.1] — 2026-10-11
+
 ### Fixed
 
 - **N.I.N.A. losing the Safety Monitor**: browser tabs left open on a laptop or phone that went to sleep could hold the device's connections until N.I.N.A. couldn't connect. Live updates now take at most 3 clients per endpoint (a new one replaces the oldest), a client that stops reading is closed after 10 seconds, quiet ones are pinged, and one stuck tab no longer freezes live updates for the others.
@@ -17,11 +24,6 @@ All notable changes to SQMeter are documented here.
 - `tools/soak/connection_soak.py`: polls a device like N.I.N.A. while opening sockets nobody reads, and reports any failed request.
 - **OpenAPI description of the REST API** (spec 028): `openapi.json` (OpenAPI 3.1) for every `/api/*` route, generated from the firmware's route registry and contract schemas and checked in CI, so it can't drift. Published on the docs site ([API Reference](https://sqmeter.dev/api/reference/)) and with each release (`sqmeter-openapi-<version>.json`). Nothing on the device changes.
 - **API explorer** on the demo site (https://demo.sqmeter.dev/explorer/): browse every operation and "Try it" against the demo's emulated SQMeter in your browser, with a `curl` line for your own device.
-
-### Planned
-
-- Hardware PCB design (planned — SQMeter-Hardware repo)
-- 3D-printed enclosure (planned — Printables)
 
 ## [0.3.1-beta.1] — 2026-10-10
 
