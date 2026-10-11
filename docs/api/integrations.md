@@ -43,7 +43,7 @@ flowchart LR
 
 ### REST API
 
-Pull sensor data, status, and configuration over plain HTTP. See [REST API](rest.md) for full endpoint reference.
+Pull sensor data, status, and configuration over plain HTTP. See [REST API](rest.md) for behaviour and the password, and the [API Reference](reference.md) for every route's parameters and schemas - also as [`openapi.json`](openapi.json) for Postman and client generators.
 
 ```bash
 # Current sensor readings

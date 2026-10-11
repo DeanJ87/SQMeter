@@ -2,6 +2,11 @@
 
 All endpoints are on port 80. Base URL: `http://<device-ip>/api`
 
+The [API Reference](reference.md) lists every route with its parameters and response schemas, from
+the machine-readable [`openapi.json`](openapi.json) (OpenAPI 3.1). Try any request in the
+[API explorer](https://demo.sqmeter.dev/explorer/), where the demo answers it in your browser. This
+page covers what the reference can't: behaviour, the password and limits.
+
 ---
 
 ## Conventions
