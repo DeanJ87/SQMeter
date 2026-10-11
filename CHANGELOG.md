@@ -8,6 +8,8 @@ All notable changes to SQMeter are documented here.
 
 - **N.I.N.A. losing the Safety Monitor**: browser tabs left open on a laptop or phone that went to sleep could hold the device's connections until N.I.N.A. couldn't connect. Live updates now take at most 3 clients per endpoint (a new one replaces the oldest), a client that stops reading is closed after 10 seconds, quiet ones are pinged, and one stuck tab no longer freezes live updates for the others.
 - After a restart the device causes itself (a crash, the watchdog, an update), an imaging app's Alpaca connection is kept, so N.I.N.A. doesn't see a disconnect.
+- **A settings save could take the device off its network**: a save with an empty, `null` or wrong-typed WiFi network name cleared the saved network, so at the next restart the device started its setup hotspot and a remote device dropped off the network. While a network is saved, `/api/config` now refuses a blank `wifi.ssid` ("WiFi network can't be blank; use WiFi setup to change networks"); networks change only through WiFi setup. Any setting sent with the wrong type (`null`, a number for text, text for a switch) is refused with an error naming it ("Settings: wifi.ssid must be a string") instead of silently becoming a default; a setting left out keeps its value. `null` still clears a password.
+- `tools/soak/connection_soak.py` no longer counts Alpaca NotImplemented (`0x400`, e.g. `cloudcover` on a device without an IR sensor) as a failure; such properties are listed once under `notImplemented`.
 
 ### Added
 

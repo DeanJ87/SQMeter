@@ -60,6 +60,8 @@ from Settings.
    exponential back-off up to the configured maximum.
 2. **Given** Settings → Network, **When** the user scans and picks another network, **Then** the
    new network is saved and applied with a restart prompt.
+3. **Given** a saved network, **When** a settings save sends an empty network name, **Then** it is
+   rejected and the device stays on its network (spec 011 FR-009).
 
 ### Edge Cases
 
@@ -90,6 +92,10 @@ from Settings.
   over the home network MUST NOT be redirected, even while the hotspot is open; an unknown file
   (e.g. `/lang.json`) gets a plain 404, an unknown page the app. *Why: with the hotspot open,
   `/lang.json` fetched over the home network sent the browser to `http://192.168.4.1/wifi`.*
+- **FR-009** *(added 2026-10-11)*: A settings save MUST NOT clear the saved network: with WiFi
+  saved, `/api/config` rejects an empty or wrong-typed `wifi.ssid` (spec 011 FR-009). The network
+  changes only through WiFi setup (`POST /api/wifi/connect`) or by picking another network in
+  Settings → Network.
 
 ### Key Entities
 

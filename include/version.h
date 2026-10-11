@@ -1,10 +1,10 @@
 #pragma once
 
 // Firmware version information
-// Local builds: the latest release plus "+dev", so update checks order them
+// Local builds: the next release plus "+dev", so update checks order them
 // correctly. CI stamps the tag (without "v") on release builds; bump this
 // after each release.
-#define FIRMWARE_VERSION "0.3.0-beta.1+dev"
+#define FIRMWARE_VERSION "0.3.2-beta.1+dev"
 #define FIRMWARE_BUILD_DATE __DATE__
 #define FIRMWARE_BUILD_TIME __TIME__
 #define FIRMWARE_NAME "SQMeter"

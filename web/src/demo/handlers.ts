@@ -1,5 +1,5 @@
 import { http, HttpResponse, ws } from 'msw';
-import { demoDevice, type Reply } from './device';
+import { DEMO_VERSION, demoDevice, type Reply } from './device';
 import { existingRealSender, withRealResults } from './realSend';
 import { mockGithubReleases, mockStatus, mockWifiNetworks } from '../mocks/data';
 
@@ -75,7 +75,7 @@ export function statusDocument() {
     ...parts,
     alerts: { ...parts.alerts, recentRevision: recentRevision() },
     configRevision: configRevision(),
-    firmware: { ...mockStatus.firmware, version: '0.3.0-beta.1' },
+    firmware: { ...mockStatus.firmware, version: DEMO_VERSION },
     time: { epoch: Math.floor(demoDevice.now.getTime() / 1000), iso: demoDevice.isoTime, timezone: cfg.ntp?.timezone ?? 'UTC0' },
     wifi: {
       ...mockStatus.wifi,

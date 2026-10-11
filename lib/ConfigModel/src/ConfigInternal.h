@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 namespace SQM::ConfigDetail
@@ -91,11 +92,127 @@ namespace SQM::ConfigDetail
     // web/src/validation/configSchema.ts applies the same rules.
     bool validateAddresses(const Config &cfg, std::string *error);
 
-    // Sets `target` from obj[key] when the key is present. `fallback` is used
-    // for a value of the wrong type, exactly as `obj[key] | fallback` does.
-    template <typename T, typename D> void take(JsonObject obj, const char *key, T &target, D fallback)
+    // What a setting must be; the messages are in ConfigJsonIn.cpp.
+    enum class Expected
     {
-        if (obj.containsKey(key))
-            target = obj[key] | fallback;
+        String,
+        Boolean,
+        Number,
+        WholeNumber,
+        Object,
+    };
+
+    template <typename T> constexpr Expected expectedType()
+    {
+        if constexpr (std::is_same_v<T, std::string>)
+            return Expected::String;
+        else if constexpr (std::is_same_v<T, bool>)
+            return Expected::Boolean;
+        else if constexpr (std::is_floating_point_v<T>)
+            return Expected::Number;
+        else
+            return Expected::WholeNumber;
     }
+
+    // Whether a JSON value can be stored in a setting of type T without
+    // being changed (ArduinoJson's `value | fallback` uses the fallback
+    // whenever this is false).
+    template <typename T> bool fits(JsonVariantConst value)
+    {
+        if constexpr (std::is_same_v<T, std::string>)
+            return value.is<const char *>();
+        else
+            return value.is<T>();
+    }
+
+    // Reads settings out of the JSON. A key that's missing keeps the current
+    // value. A value of the wrong type (null included) never becomes a
+    // default: settings from the UI/API (`strict`) are rejected, naming the
+    // field ("Settings: wifi.ssid must be a string"); settings stored by older firmware
+    // keep the current value, so one odd stored value can't stop the device
+    // loading its settings and dropping off the network.
+    class JsonReader
+    {
+    public:
+        explicit JsonReader(bool strict)
+            : strictMode(strict)
+        {
+        }
+
+        bool strict() const { return strictMode; }
+        bool failed() const { return !errorField.empty(); }
+        // The first wrong-typed field ("wifi.ssid") and what it must be.
+        const std::string &field() const { return errorField; }
+        Expected expected() const { return errorExpected; }
+
+        // Records the first wrong-typed field (strict only).
+        void typeError(const std::string &field, Expected expected)
+        {
+            if (strictMode && errorField.empty())
+            {
+                errorField = field;
+                errorExpected = expected;
+            }
+        }
+
+    private:
+        bool strictMode;
+        std::string errorField;
+        Expected errorExpected = Expected::String;
+    };
+
+    // One object in the settings JSON ("wifi", "alerts.events.unsafe", ...).
+    class Section
+    {
+    public:
+        Section(JsonReader &reader, JsonVariant value, std::string path)
+            : readerRef(&reader),
+              sectionPath(std::move(path))
+        {
+            if (value.is<JsonObject>())
+                object = value.as<JsonObject>();
+            else if (!value.isUnbound() && !sectionPath.empty())
+                reader.typeError(sectionPath, Expected::Object);
+        }
+
+        Section child(const char *key) const
+        {
+            if (object.isNull() || !object.containsKey(key))
+                return Section(*readerRef, JsonVariant(), field(key));
+            return Section(*readerRef, object[key], field(key));
+        }
+
+        bool isNull() const { return object.isNull(); }
+        bool has(const char *key) const { return !object.isNull() && object.containsKey(key); }
+        JsonVariant operator[](const char *key) const { return object[key]; }
+        JsonReader &reader() const { return *readerRef; }
+        std::string field(const char *key) const { return sectionPath.empty() ? std::string(key) : sectionPath + "." + key; }
+
+        // Whether obj[key] is present and fits T; reports the type error if not.
+        template <typename T> bool check(const char *key) const
+        {
+            if (!has(key))
+                return false;
+            if (fits<T>(object[key]))
+                return true;
+            readerRef->typeError(field(key), expectedType<T>());
+            return false;
+        }
+
+        // Sets `target` from obj[key] when the key is present with the right type.
+        template <typename T> void take(const char *key, T &target) const
+        {
+            if (!check<T>(key))
+                return;
+            if constexpr (std::is_same_v<T, std::string>)
+                target = object[key].as<const char *>();
+            else
+                target = object[key].as<T>();
+        }
+
+    private:
+        JsonReader *readerRef;
+        JsonObject object;
+        std::string sectionPath;
+    };
 } // namespace SQM::ConfigDetail

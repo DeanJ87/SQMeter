@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { isLanguageCode } from '../i18n/languages';
-import { demoDevice } from './device';
+import { DEMO_VERSION, demoDevice } from './device';
 
 // The demo's language files (specs/023-i18n FR-018): the same flow as a
 // device - the language is a device setting, the file is "downloaded" and
@@ -8,7 +8,7 @@ import { demoDevice } from './device';
 // locale is its own chunk), so nothing leaves the browser.
 
 const LOCALES = import.meta.glob('../i18n/locales/*.json', { import: 'default' });
-const VERSION = '0.3.0-beta.1';
+const VERSION = DEMO_VERSION;
 
 const language = (): string => demoDevice.rawConfig().language ?? 'en';
 

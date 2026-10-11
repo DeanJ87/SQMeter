@@ -7,7 +7,8 @@ import { isIpv6Literal, ntpIpv6Text, parseHost } from '../lib/netAddress';
 const validGPIOs = [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39];
 
 export const wifiConfigSchema = z.object({
-  ssid: z.string().min(1, t('validation.configSchema.wifiSsidIsRequired')),
+  // The device refuses a blank network while one is saved (spec 011 FR-009).
+  ssid: z.string().refine((v) => v.trim() !== '', t('validation.configSchema.wifiSsidIsRequired')),
   password: z.string(),
   hostname: z
     .string()
