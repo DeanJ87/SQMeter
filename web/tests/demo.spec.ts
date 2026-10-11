@@ -39,7 +39,10 @@ test.describe('demo links (US1, SC-001)', () => {
 
   test("device URLs opened directly show the device's answer", async ({ page }) => {
     await page.goto('./management/v1/description');
-    await expect(page.getByText('"ServerName": "SQMeter"')).toBeVisible();
+    // ServerName is the device's name, Location where it is (spec 007 FR-008).
+    await expect(page.getByText('"ServerName": "SQMeter Demo"')).toBeVisible();
+    await expect(page.getByText('"Manufacturer": "SQMeter"')).toBeVisible();
+    await expect(page.getByText(/"Location": "51\.5074, -0\.1278"/)).toBeVisible();
     await page.goto('./api/v1/safetymonitor/0/issafe');
     await expect(page.getByText('"Value"')).toBeVisible();
     await page.goto('./setup/v1/safetymonitor/0/setup');

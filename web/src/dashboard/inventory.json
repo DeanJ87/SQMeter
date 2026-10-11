@@ -578,6 +578,51 @@
       "shownOn": "System"
     },
     {
+      "match": "status.connections",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.tcpLimit",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.sensors",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.status",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.limitPerEndpoint",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.replaced",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.stalledClosed",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.alpacaRestoredAfterRestart",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
       "match": "status.sensorSnapshotBytes",
       "reason": "Device internals for troubleshooting",
       "shownOn": "System"

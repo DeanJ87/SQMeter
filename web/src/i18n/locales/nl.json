@@ -1266,6 +1266,8 @@
   "updates.uploadFailedErrormsg": "Uploaden mislukt: {errorMsg}",
   "updates.uploadFilename": "{fileName} uploaden",
   "updates.uploadProgress": "Voortgang van het uploaden",
+  "updates.uploadStalled": "Uploaden loopt vast. Controleer het WiFi-signaal en probeer het opnieuw.",
+  "updates.uploadStalledRetrying": "Uploaden loopt vast, nieuwe poging",
   "updates.uploadingProgress": "Uploaden... {progress}%",
   "updates.uploadingRounded": "Uploaden... {rounded}%",
   "updates.usbFlashGuide": "Zo werkt het",

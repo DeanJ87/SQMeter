@@ -1266,6 +1266,8 @@
   "updates.uploadFailedErrormsg": "Hochladen fehlgeschlagen: {errorMsg}",
   "updates.uploadFilename": "{fileName} hochladen",
   "updates.uploadProgress": "Upload-Fortschritt",
+  "updates.uploadStalled": "Hochladen hängt. Prüfen Sie das WiFi-Signal und versuchen Sie es erneut.",
+  "updates.uploadStalledRetrying": "Hochladen hängt, neuer Versuch",
   "updates.uploadingProgress": "Lade hoch... {progress} %",
   "updates.uploadingRounded": "Lade hoch... {rounded} %",
   "updates.usbFlashGuide": "Anleitung",

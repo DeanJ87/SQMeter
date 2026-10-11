@@ -45,6 +45,9 @@ A sensor that isn't reporting (status not `ok`) is skipped, so its topic keeps i
 
 For the safety verdict, indi-allsky can read SQMeter's own `<base>/safe` topic directly: `1` safe, `0` unsafe.
 
+!!! note "The same in every language"
+    The readings don't change with SQMeter's UI language. Numbers are JSON numbers with `.` as the decimal point and no thousands separators (`12.1`, never `"12,1"`), so the flow works unchanged whichever language the web interface uses.
+
 ## Logging to InfluxDB
 
 Point an MQTT-in node at `<base>/state` and flatten one level: you get fields such as `sky_sqm`, `environment_temperature` and `clouds_coverPercent`. Each group carries a `status` (`ok`, `missing`, `error`, `stale`) - skip groups that aren't `ok`.

@@ -553,6 +553,12 @@ namespace SQM
             return n;
         }
 
+        std::string alpacaLocation(const SensorSnapshot &snapshot, const Config &cfg)
+        {
+            const NightState n = night(snapshot, cfg, 0); // the source, whatever the clock
+            return n.source != nullptr ? Alpaca::formatLocation(n.latitude, n.longitude) : "";
+        }
+
         void writeSky(JsonObject sky, const NightState &n)
         {
             sky["locationSource"] = n.source != nullptr ? n.source : "none";

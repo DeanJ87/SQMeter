@@ -62,5 +62,17 @@ namespace SQM
             WaitAfterCrash, // last attempt never finished: don't retry by itself
         };
         BootAction bootAction(const std::string &code, bool installedMatches, bool unfinishedAttempt);
+
+        // What to do when the language setting changes. While a download is
+        // running (a boot restore, or the previous choice) the change waits
+        // for it to end: refusing it would leave the old language installed.
+        enum class ChangeAction
+        {
+            RemoveFile,   // English: no file needed
+            UseInstalled, // the stored file is this language and firmware
+            Download,     // fetch this language's file
+            AfterRunning, // apply the change once the running download ends
+        };
+        ChangeAction changeAction(const std::string &code, bool installedMatches, bool downloadRunning);
     } // namespace Language
 } // namespace SQM

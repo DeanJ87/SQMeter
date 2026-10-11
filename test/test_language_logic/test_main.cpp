@@ -73,11 +73,30 @@ void test_unfinished_download_is_not_retried_at_boot()
     TEST_ASSERT_EQUAL(Language::BootAction::WaitAfterCrash, Language::bootAction("es", false, true));
 }
 
+void test_change_action()
+{
+    using Language::ChangeAction;
+    TEST_ASSERT_EQUAL(ChangeAction::RemoveFile, Language::changeAction("en", false, false));
+    TEST_ASSERT_EQUAL(ChangeAction::UseInstalled, Language::changeAction("es", true, false));
+    TEST_ASSERT_EQUAL(ChangeAction::Download, Language::changeAction("es", false, false));
+}
+
+// Choosing a language while another download runs (a boot restore of the old
+// one) must not be refused: it waits, then fetches the new choice.
+void test_change_during_a_download_waits_for_it()
+{
+    using Language::ChangeAction;
+    TEST_ASSERT_EQUAL(ChangeAction::AfterRunning, Language::changeAction("es", false, true));
+    TEST_ASSERT_EQUAL(ChangeAction::AfterRunning, Language::changeAction("en", false, true));
+}
+
 int main()
 {
     UNITY_BEGIN();
     RUN_TEST(test_boot_action);
     RUN_TEST(test_unfinished_download_is_not_retried_at_boot);
+    RUN_TEST(test_change_action);
+    RUN_TEST(test_change_during_a_download_waits_for_it);
     RUN_TEST(test_supported_codes);
     RUN_TEST(test_asset_urls_follow_the_release);
     RUN_TEST(test_checksum_file);

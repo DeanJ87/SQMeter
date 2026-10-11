@@ -1300,6 +1300,8 @@
   "updates.uploadFailedErrormsg": "فشل الرفع: {errorMsg}",
   "updates.uploadFilename": "رفع {fileName}",
   "updates.uploadProgress": "تقدّم الرفع",
+  "updates.uploadStalled": "توقف الرفع. تحقق من إشارة WiFi، ثم حاول مرة أخرى.",
+  "updates.uploadStalledRetrying": "توقف الرفع، جارٍ المحاولة مرة أخرى",
   "updates.uploadingProgress": "جارٍ الرفع... {progress}%",
   "updates.uploadingRounded": "جارٍ الرفع... {rounded}%",
   "updates.usbFlashGuide": "الطريقة",

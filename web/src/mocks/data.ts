@@ -146,6 +146,11 @@ export const mockStatus: SystemStatus = {
   uptime: 7200,
   bootCount: 3,
   resetReason: 3,
+  connections: {
+    tcpLimit: 16,
+    liveUpdates: { sensors: 1, status: 1, limitPerEndpoint: 3, replaced: 0, stalledClosed: 0 },
+    alpacaRestoredAfterRestart: false,
+  },
   freeHeap: 214320,
   minFreeHeap: 156056,
   maxAllocHeap: 110580,

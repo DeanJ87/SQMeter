@@ -35,7 +35,7 @@ namespace SQM
         void registerRoutes(AsyncWebServer &server);
 
         // Call when the language setting changes: English deletes the file,
-        // another language downloads it.
+        // another language downloads it (after any download already running).
         void onLanguageChanged(const std::string &code);
 
         // Call from the loop: after a firmware or filesystem update, fetch the
@@ -55,6 +55,7 @@ namespace SQM
         void handleUploadDone(AsyncWebServerRequest *request);
         void sendStatus(AsyncWebServerRequest *request) const;
         bool installedMatches(const std::string &code) const;
+        bool downloadRunning() const;
         void fail(const std::string &message);
         void remove();
         std::string language() const;
@@ -63,5 +64,7 @@ namespace SQM
         volatile State state = State::Idle;
         std::string lastError;
         bool restoreChecked = false;
+        // The language changed while a download ran: apply it when that ends.
+        volatile bool changePending = false;
     };
 } // namespace SQM

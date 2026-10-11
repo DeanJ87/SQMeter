@@ -1,8 +1,4 @@
 {
   "about": "Existing coding-standard findings per rule per file (spec 017). New findings fail CI; burn these down and run `python3 tools/quality/check.py --update-baseline`.",
-  "counts": {
-    "LIMIT-04": {
-      "tools/demo-core/bridge.cpp": 1
-    }
-  }
+  "counts": {}
 }

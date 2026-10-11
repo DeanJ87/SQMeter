@@ -1266,6 +1266,8 @@
   "updates.uploadFailedErrormsg": "Échec de l'envoi : {errorMsg}",
   "updates.uploadFilename": "Envoyer {fileName}",
   "updates.uploadProgress": "Progression de l'envoi",
+  "updates.uploadStalled": "L'envoi est bloqué. Vérifiez le signal WiFi, puis réessayez.",
+  "updates.uploadStalledRetrying": "L'envoi est bloqué, nouvelle tentative",
   "updates.uploadingProgress": "Envoi... {progress} %",
   "updates.uploadingRounded": "Envoi... {rounded} %",
   "updates.usbFlashGuide": "Comment faire",

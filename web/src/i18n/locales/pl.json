@@ -1284,6 +1284,8 @@
   "updates.uploadFailedErrormsg": "Przesyłanie nie powiodło się: {errorMsg}",
   "updates.uploadFilename": "Prześlij {fileName}",
   "updates.uploadProgress": "Postęp przesyłania",
+  "updates.uploadStalled": "Przesyłanie utknęło. Sprawdź sygnał WiFi i spróbuj ponownie.",
+  "updates.uploadStalledRetrying": "Przesyłanie utknęło, ponawiam próbę",
   "updates.uploadingProgress": "Przesyłanie... {progress}%",
   "updates.uploadingRounded": "Przesyłanie... {rounded}%",
   "updates.usbFlashGuide": "Jak to zrobić",

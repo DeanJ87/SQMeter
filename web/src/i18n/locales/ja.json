@@ -1257,6 +1257,8 @@
   "updates.uploadFailedErrormsg": "アップロードに失敗しました：{errorMsg}",
   "updates.uploadFilename": "{fileName}をアップロード",
   "updates.uploadProgress": "アップロードの進行状況",
+  "updates.uploadStalled": "アップロードが止まりました。WiFiの電波を確認してから、もう一度お試しください。",
+  "updates.uploadStalledRetrying": "アップロードが止まりました。再試行しています",
   "updates.uploadingProgress": "アップロード中... {progress}%",
   "updates.uploadingRounded": "アップロード中... {rounded}%",
   "updates.usbFlashGuide": "手順",

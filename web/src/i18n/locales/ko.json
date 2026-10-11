@@ -1257,6 +1257,8 @@
   "updates.uploadFailedErrormsg": "업로드 실패: {errorMsg}",
   "updates.uploadFilename": "{fileName} 업로드",
   "updates.uploadProgress": "업로드 진행률",
+  "updates.uploadStalled": "업로드가 멈췄습니다. WiFi 신호를 확인한 후 다시 시도하세요.",
+  "updates.uploadStalledRetrying": "업로드가 멈췄습니다. 다시 시도하는 중",
   "updates.uploadingProgress": "업로드 중... {progress}%",
   "updates.uploadingRounded": "업로드 중... {rounded}%",
   "updates.usbFlashGuide": "방법",

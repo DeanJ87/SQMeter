@@ -75,7 +75,9 @@ export const handlers = [
   // ASCOM Alpaca — management + device state
   http.get('/management/v1/configureddevices', () => HttpResponse.json(alpacaEnvelope(mockAlpacaDevices))),
   http.get('/management/v1/description', () =>
-    HttpResponse.json(alpacaEnvelope({ ServerName: 'SQMeter', Manufacturer: 'SQMeter', ManufacturerVersion: 'demo', Location: 'Demo' })),
+    HttpResponse.json(
+      alpacaEnvelope({ ServerName: 'SQMeter Demo', Manufacturer: 'SQMeter', ManufacturerVersion: 'demo', Location: '51.5074, -0.1278' }),
+    ),
   ),
   http.get('/api/v1/safetymonitor/0/devicestate', () =>
     HttpResponse.json(

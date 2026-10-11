@@ -26,7 +26,7 @@ Alpaca support is disabled by default. With it off, every Alpaca endpoint still 
 <!-- diagram: DIA-10
 sources: lib/AlpacaLogic/src/AlpacaDiscovery.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp src/WebServerAlpaca.cpp#WebServer::setupAlpacaRoutes
 blocking: false
-fingerprint: 39c02b39edaa7210
+fingerprint: 3240e9c6c60fc2ab
 -->
 <figure class="diagram" markdown>
 
@@ -48,6 +48,7 @@ sequenceDiagram
         N->>S: GET observingconditions/0/cloudcover, skyquality, temperature, ...
         S-->>N: Each value, or an error if its sensor isn't reporting
     end
+    Note over S: A restart SQMeter causes itself (crash, watchdog, update) keeps "connected"
     N->>S: Setup button: GET /setup/v1/safetymonitor/0/setup
     S-->>N: Redirect to Settings, Safety
     N->>S: PUT connected = false
@@ -63,10 +64,22 @@ sequenceDiagram
     2. N.I.N.A. asks the management API (`/management/apiversions`, `/management/v1/configureddevices`) and gets **SafetyMonitor 0** and **ObservingConditions 0**.
     3. Connecting sends `PUT .../connected` with `Connected=true`.
     4. While connected, N.I.N.A. polls `safetymonitor/0/issafe` (the reported verdict, after the safe delay) and the ObservingConditions properties; a property whose sensor isn't reporting returns an error instead of a value.
-    5. The Setup button opens `/setup/v1/<device>/0/setup`, which redirects to **Settings → Safety** in the web UI.
-    6. Disconnecting sends `Connected=false`.
-    7. SQMeter notes every request: with **When to send** set to *Only while an imaging app is connected*, a connect resumes alerts and the last disconnect pauses them; if requests stop without a disconnect, the "imaging app stopped checking" alert fires (see [Alerts](alerts.md#the-imaging-app)).
-    8. With Alpaca switched off, every endpoint still answers but reports not connected, and `IsSafe` returns false with a NotConnected error.
+    5. If SQMeter restarts on its own (a crash, the watchdog, an update) while N.I.N.A. is connected, it still reports `Connected=true` afterwards, so N.I.N.A. carries on. After a power cut it starts with nothing connected. See [N.I.N.A. loses the Safety Monitor](../reference/troubleshooting.md#nina-loses-the-safety-monitor).
+    6. The Setup button opens `/setup/v1/<device>/0/setup`, which redirects to **Settings → Safety** in the web UI.
+    7. Disconnecting sends `Connected=false`.
+    8. SQMeter notes every request: with **When to send** set to *Only while an imaging app is connected*, a connect resumes alerts and the last disconnect pauses them; if requests stop without a disconnect, the "imaging app stopped checking" alert fires (see [Alerts](alerts.md#the-imaging-app)).
+    9. With Alpaca switched off, every endpoint still answers but reports not connected, and `IsSafe` returns false with a NotConnected error.
+
+### What clients show
+
+The management API's description is how N.I.N.A. and other clients name the server:
+
+| Field | Value |
+|---|---|
+| `ServerName` | The device's name (**Settings → Device → Name**) |
+| `Manufacturer` | `SQMeter` |
+| `ManufacturerVersion` | The firmware version |
+| `Location` | Where the device is: the location in use as `lat, lon` (a GPS fix, otherwise **Settings → Time & Location → Location**), e.g. `51.4779, -0.0015`; empty when no location is set |
 
 ### SafetyMonitor
 
@@ -123,7 +136,7 @@ Each threshold has its own enable/disable toggle - a disabled threshold never co
 <!-- diagram: DIA-02
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceCore.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: true
-fingerprint: 24c64556e2707937
+fingerprint: 8083e8f460d5ad85
 -->
 <figure class="diagram" markdown>
 
@@ -174,6 +187,9 @@ flowchart TB
 ### Reasons
 
 Every failing rule is listed as a reason with the measured value and the limit, e.g. `SQM 18.70 < 19.50` or `Cloud 96% >= 90%`. The reasons are shown on the Dashboard's **Safety Monitor** card, returned by `GET /api/safety`, published to MQTT `<base>/safety`, and used in alert messages (`{reasons}`).
+
+!!! note "The same in every language"
+    Alpaca answers never change with the UI language: `IsSafe` and the ObservingConditions values are numbers with `.` decimals in fixed units, whatever language the web interface uses. The reasons are English text for people to read, written with a `.` decimal point; scripts should use `reasonFlags` from `/api/safety` instead.
 
 The Safety Monitor card's **History** lists recent safe/unsafe changes, restarts and the safety alerts that were sent - kept across restarts (not power cuts) - which answers "it went unsafe and I got no alert: why?".
 

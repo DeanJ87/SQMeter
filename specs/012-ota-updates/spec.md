@@ -68,6 +68,15 @@ Every release reports its own version, and a local build is distinguishable from
   for a valid image over a normal link. If switching the boot slot fails once after a complete,
   valid write, the device MUST verify and retry the switch itself, and report `retried` so the
   first-attempt rate can be measured.
+- **FR-003a**: An upload whose connection drops before the image is complete (a stalled WiFi
+  transfer, a closed tab) MUST be abandoned at once, so the next upload starts clean without a
+  restart; a drop noticed after the next upload has started MUST NOT abandon that one. The Updates
+  page MUST treat 20 s without upload progress as a stall, retry once by itself, and then say the
+  upload stalled and to check the WiFi signal. *(Measured on Arduino-ESP32 3.x, 2026-10-10:
+  "Could not activate partition" did not occur in about 60 uploads to the spare, so the slot-switch
+  retry stays as a safety net. What did occur was a transfer that slowed to ~12 KB/s and stopped,
+  mostly on the first boot after an update over a weak link (RSSI −68 to −72); before this fix every
+  upload after one stalled until a restart.)*
 - **FR-004**: Upload and update failures MUST return a non-2xx status with an error message.
 - **FR-005**: Each build MUST report a version that orders correctly against releases (tags inject
   their version; local builds carry a dev version ≥ the last release).

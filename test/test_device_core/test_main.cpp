@@ -321,6 +321,24 @@ void test_night_from_location_and_clock()
     TEST_ASSERT_FALSE(doc.containsKey("sunAltitudeDeg"));
 }
 
+// Alpaca's Location (spec 007): the location in use, whatever the clock.
+void test_alpaca_location()
+{
+    SensorSnapshot s;
+    Config cfg = defaults();
+    cfg.location.set = true;
+    cfg.location.latitude = 51.47789;
+    cfg.location.longitude = -0.00149;
+    TEST_ASSERT_EQUAL_STRING("51.4779, -0.0015", Core::alpacaLocation(s, cfg).c_str());
+    s.gps.hasFix = true; // a GPS fix wins over settings
+    s.gps.latitude = -33.86;
+    s.gps.longitude = 151.21;
+    TEST_ASSERT_EQUAL_STRING("-33.8600, 151.2100", Core::alpacaLocation(s, cfg).c_str());
+    s.gps.hasFix = false;
+    cfg.location.set = false;
+    TEST_ASSERT_EQUAL_STRING("", Core::alpacaLocation(s, cfg).c_str());
+}
+
 void test_alert_wording_and_levels()
 {
     const uint32_t now = 100000;
@@ -433,6 +451,7 @@ int main()
     RUN_TEST(test_missing_sensor_is_a_fault_not_stale);
     RUN_TEST(test_rain_sensor_lens_fault_and_stale_are_unsafe);
     RUN_TEST(test_night_from_location_and_clock);
+    RUN_TEST(test_alpaca_location);
     RUN_TEST(test_alert_wording_and_levels);
     RUN_TEST(test_observing_conditions_missing_vs_failed_sensors);
     RUN_TEST(test_alert_vars_match_the_shared_list);

@@ -46,6 +46,9 @@ Each message on `/ws/sensors` is the readings document - the same as [`GET /api/
 
 See [MQTT → Readings](../user-guide/mqtt.md#readings-basestate) for every field and the rules: units, `status` values (`ok`, `missing`, `error`, `stale`), and groups for disabled hardware being left out.
 
+!!! note "The same in every language"
+    Messages never change with the UI language. Numbers are JSON numbers with `.` as the decimal point and no thousands separators (`12.1`, never `"12,1"`); units and field names are never translated. `safety.reasons` is English text for people to read: key on `safety.reasonFlags` and `safety.safe`.
+
 ---
 
 ## Python Example

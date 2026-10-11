@@ -1266,6 +1266,8 @@
   "updates.uploadFailedErrormsg": "Falha no envio: {errorMsg}",
   "updates.uploadFilename": "Enviar {fileName}",
   "updates.uploadProgress": "Progresso do envio",
+  "updates.uploadStalled": "O envio travou. Verifique o sinal do WiFi e tente de novo.",
+  "updates.uploadStalledRetrying": "O envio travou, tentando de novo",
   "updates.uploadingProgress": "Enviando... {progress}%",
   "updates.uploadingRounded": "Enviando... {rounded}%",
   "updates.usbFlashGuide": "Como fazer",

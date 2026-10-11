@@ -129,6 +129,9 @@ The same document as [`GET /api/sensors`](../api/rest.md#get-apisensors) and `/w
 - **`rain.raining`** is held for the rain clear delay after the last drop; `rainingNow` is instantaneous; while held, `clearInSeconds` says how long is left. `eventAccumulation` is cleared by the clear delay; `sensorEventAccumulation` is the RG-15's own event total.
 - **`clouds.humiditySource`** is `assumed` when there's no humidity sensor (53% is used).
 
+!!! note "The same in every language"
+    Topics and payloads never change with the UI language, including Home Assistant discovery. Numbers are JSON numbers with `.` as the decimal point and no thousands separators (`12.1`, never `"12,1"`); units, topic names, field names and values such as `status` and `condition` are never translated. `<base>/safety` reasons and `<base>/alerts` titles and messages are English (or your own alert wording) for people to read: automate on `<base>/safe`, `reasonFlags` and the alert `event`.
+
 ---
 
 ## Home Assistant

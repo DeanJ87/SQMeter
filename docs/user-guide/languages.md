@@ -31,6 +31,9 @@ A file made for a different firmware version still works: any text it lacks show
 - The demo's own controls (the Demo panel and the tour).
 - Names and units: SQMeter, N.I.N.A., Alpaca, MQTT, mag/arcsec², °C and so on.
 
+!!! note "Integrations aren't affected"
+    The language only changes what the web interface shows. The REST API, WebSocket, MQTT (including Home Assistant), Alpaca, logs and saved settings are the same in every language: numbers are JSON numbers with `.` as the decimal point and no thousands separators (`12.1`, never `"12,1"`), units and field names are never translated, and timestamps are Unix seconds or ISO 8601. A number typed with a decimal comma is saved as an ordinary number (`21,5` is stored as `21.5`).
+
 ## Improving a translation
 
 The translations were written for SQMeter by an AI acting as a native-speaker UI writer for each language, with a glossary per language and a review pass. If something reads oddly in your language, a pull request or an issue is very welcome; see [Translations](../development/translations.md).

@@ -1,4 +1,5 @@
 #include "WebServer.h"
+#include "ConnectionBudget.h"
 #include "WebServerShared.h"
 #include "Logger.h"
 #include "version.h"
@@ -370,6 +371,20 @@ namespace SQM
         mqtt["clientId"] = mqttStatus.clientId;
     }
 
+    void WebServer::appendConnections(JsonDocument &doc) const
+    {
+        // Who holds the device's connections (spec 011 FR-008, 013 FR-012).
+        JsonObject connections = doc.createNestedObject("connections");
+        connections["tcpLimit"] = ConnectionBudget::TCP_CONNECTIONS;
+        JsonObject live = connections.createNestedObject("liveUpdates");
+        live["sensors"] = wsSensors.count();
+        live["status"] = wsStatus.count();
+        live["limitPerEndpoint"] = ConnectionBudget::WEBSOCKETS_PER_ENDPOINT;
+        live["replaced"] = wsReplaced;
+        live["stalledClosed"] = wsStalled;
+        connections["alpacaRestoredAfterRestart"] = alpacaConnectionsRestored;
+    }
+
     std::string WebServer::createStatusJson() const
     {
         DynamicJsonDocument doc(7168); // Includes MQTT, partition, boot, sensor, BLE and alert-schedule diagnostics
@@ -393,6 +408,7 @@ namespace SQM
         JsonObject diagnostics = doc.createNestedObject("diagnostics");
         appendDiagnostics(diagnostics, snapshot);
         appendMqttStatus(doc);
+        appendConnections(doc);
 
         std::string json;
         serializeJson(doc, json);

@@ -1266,6 +1266,8 @@
   "updates.uploadFailedErrormsg": "La subida falló: {errorMsg}",
   "updates.uploadFilename": "Subir {fileName}",
   "updates.uploadProgress": "Progreso de la subida",
+  "updates.uploadStalled": "La subida se ha detenido. Comprueba la señal WiFi y vuelve a intentarlo.",
+  "updates.uploadStalledRetrying": "La subida se ha detenido, reintentando",
   "updates.uploadingProgress": "Subiendo... {progress}%",
   "updates.uploadingRounded": "Subiendo... {rounded}%",
   "updates.usbFlashGuide": "Cómo hacerlo",

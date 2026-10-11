@@ -1266,6 +1266,8 @@
   "updates.uploadFailedErrormsg": "Yükleme başarısız: {errorMsg}",
   "updates.uploadFilename": "Yükle: {fileName}",
   "updates.uploadProgress": "Yükleme ilerlemesi",
+  "updates.uploadStalled": "Yükleme takıldı. WiFi sinyalini kontrol edip yeniden deneyin.",
+  "updates.uploadStalledRetrying": "Yükleme takıldı, yeniden deneniyor",
   "updates.uploadingProgress": "Yükleniyor... %{progress}",
   "updates.uploadingRounded": "Yükleniyor... %{rounded}",
   "updates.usbFlashGuide": "Nasıl yapılır",

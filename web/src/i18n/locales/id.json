@@ -1257,6 +1257,8 @@
   "updates.uploadFailedErrormsg": "Unggahan gagal: {errorMsg}",
   "updates.uploadFilename": "Unggah {fileName}",
   "updates.uploadProgress": "Kemajuan unggahan",
+  "updates.uploadStalled": "Unggahan macet. Periksa sinyal WiFi, lalu coba lagi.",
+  "updates.uploadStalledRetrying": "Unggahan macet, mencoba lagi",
   "updates.uploadingProgress": "Mengunggah... {progress}%",
   "updates.uploadingRounded": "Mengunggah... {rounded}%",
   "updates.usbFlashGuide": "Caranya",

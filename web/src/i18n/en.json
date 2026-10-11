@@ -1266,6 +1266,8 @@
   "updates.uploadFailedErrormsg": "Upload failed: {errorMsg}",
   "updates.uploadFilename": "Upload {fileName}",
   "updates.uploadProgress": "Upload progress",
+  "updates.uploadStalled": "Upload stalled. Check the WiFi signal, then try again.",
+  "updates.uploadStalledRetrying": "Upload stalled, trying again",
   "updates.uploadingProgress": "Uploading... {progress}%",
   "updates.uploadingRounded": "Uploading... {rounded}%",
   "updates.usbFlashGuide": "How to",

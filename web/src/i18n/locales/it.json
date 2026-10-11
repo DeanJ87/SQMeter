@@ -1266,6 +1266,8 @@
   "updates.uploadFailedErrormsg": "Caricamento non riuscito: {errorMsg}",
   "updates.uploadFilename": "Carica {fileName}",
   "updates.uploadProgress": "Avanzamento del caricamento",
+  "updates.uploadStalled": "Caricamento bloccato. Controlla il segnale WiFi e riprova.",
+  "updates.uploadStalledRetrying": "Caricamento bloccato, nuovo tentativo",
   "updates.uploadingProgress": "Caricamento... {progress}%",
   "updates.uploadingRounded": "Caricamento... {rounded}%",
   "updates.usbFlashGuide": "Come fare",

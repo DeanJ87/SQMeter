@@ -7,7 +7,7 @@ The web UI is translated into 13 languages besides English (spec 023). This page
 <!-- diagram: DIA-17
 sources: tools/i18n/gen_device_catalog.py tools/i18n/translate.py tools/i18n/build_packs.py src/LanguagePack.cpp web/src/i18n/loader.ts
 blocking: false
-fingerprint: 2d76cf33b3342048
+fingerprint: 4b1719d61ca13c8d
 -->
 <figure class="diagram" markdown>
 
@@ -37,7 +37,7 @@ flowchart LR
 
 - **English is built in**: `web/src/i18n/en.json` is bundled with the UI and is the fallback for every key.
 - **Other languages are files**: a release publishes `sqmeter-i18n-<code>.json.gz` (gzip of `{lang, version, messages}`, at most 64 KB) with a `.sha256` sidecar (`"<hash> <size>"`) and `sqmeter-i18n-manifest.json`.
-- **The device downloads one file**: when `language` changes, `src/LanguagePack` fetches the sidecar and the file over the same TLS path as firmware updates (never during one), checks size, gzip header and SHA-256, and renames it into place. English deletes it. Manual upload: `POST /api/i18n/upload`. See the [REST API](../api/rest.md#language).
+- **The device downloads one file**: when `language` changes, `src/LanguagePack` fetches the sidecar and the file over the same TLS path as firmware updates (never during one), checks size, gzip header and SHA-256, and renames it into place. English deletes it. A change made while a download runs (such as the restore after an update) waits for it, then applies; until then `/api/i18n` reports `downloading`, never `installed` for the previous language. Manual upload: `POST /api/i18n/upload`. See the [REST API](../api/rest.md#language).
 - **The UI loads it before the app**: `web/src/main.tsx` asks `/api/i18n`, fetches `/lang.json`, then imports the app. A missing or damaged file, or one from another version, leaves English (per key) and a notice.
 - **Device text** (settings errors, safety reasons, alert history, API errors) stays English on the wire. `tools/i18n/gen_device_catalog.py` turns each firmware message into a `device.*` template in `en.json`; the UI matches device text against the templates (`deviceText()`, `deviceError()`) and shows the translation.
 
@@ -49,7 +49,10 @@ flowchart LR
 - Add a context note for every new key in `web/src/i18n/en.context.json`: where it appears and any length limit (`max 16 chars`). `python3 tools/i18n/context.py` adds a generated note you can improve.
 - Layout: logical CSS properties only, so Arabic mirrors (I18N-03).
 
-The rules are I18N-01..04 in the [coding standard](coding-standards.md#translations-i18n).
+The rules are I18N-01..06 in the [coding standard](coding-standards.md#translations-i18n).
+
+!!! warning "Never localise machine output"
+    Only the browser formats numbers and dates for display. Never format numbers in firmware or API code for a language: the REST API, WebSocket, MQTT, Home Assistant discovery, Alpaca, contract schemas, logs and stored settings always use JSON numbers with `.` decimals, no grouping, fixed units and untranslated names and values (spec 023 FR-015, rule I18N-06). Typed numbers are parsed with `parseNumber` and sent as numbers, never as the text the user typed. Device text such as safety reasons stays English on the wire; the UI translates it.
 
 ## Adding or changing a string
 

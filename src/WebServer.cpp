@@ -156,6 +156,7 @@ namespace SQM
 
         // CRITICAL: Register API routes BEFORE static file serving
         // Otherwise /api/* requests get treated as filesystem paths
+        restoreAlpacaConnections();
         setupAPIRoutes();
         setupWebSocket();
         setupOTA();
@@ -295,8 +296,9 @@ namespace SQM
 
     void WebServer::handle()
     {
-        wsSensors.cleanupClients();
-        wsStatus.cleanupClients();
+        capWebSocketClients(wsSensors);
+        capWebSocketClients(wsStatus);
+        rememberAlpacaConnections();
         pollWiFiConnect();
         languagePack->loop();
 
@@ -433,89 +435,6 @@ namespace SQM
 
         // Serve files from LittleFS
         server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html").setCacheControl("no-cache, no-store, must-revalidate");
-    }
-
-    void WebServer::setupWebSocket()
-    {
-        // Sensor WebSocket for Dashboard (/ws/sensors)
-        wsSensors.onEvent(
-            [this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
-            { onSensorWebSocketEvent(client, type); });
-
-        // Status WebSocket for System page (/ws/status)
-        wsStatus.onEvent(
-            [this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
-            { onStatusWebSocketEvent(client, type); });
-
-        server.addHandler(&wsSensors);
-        server.addHandler(&wsStatus);
-    }
-
-    void WebServer::broadcastSensorData()
-    {
-        // Skip a beat rather than queue more behind a slow client.
-        if (wsSensors.count() == 0 || !wsSensors.availableForWriteAll())
-            return;
-
-        // Send only sensor data to Dashboard clients
-        std::string json = createSensorDataJson();
-        wsSensors.textAll(json.c_str());
-    }
-
-    void WebServer::broadcastStatusData()
-    {
-        if (wsStatus.count() == 0 || !wsStatus.availableForWriteAll())
-            return;
-
-        // Send only status data to System page clients
-        std::string json = createStatusJson();
-        wsStatus.textAll(json.c_str());
-    }
-
-    void WebServer::onSensorWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type)
-    {
-        switch (type)
-        {
-        case WS_EVT_CONNECT:
-            Logger::info(TAG, "Sensor WebSocket client connected: %u", client->id());
-            // Send initial sensor data
-            client->text(createSensorDataJson().c_str());
-            break;
-
-        case WS_EVT_DISCONNECT:
-            Logger::info(TAG, "Sensor WebSocket client disconnected: %u", client->id());
-            break;
-
-        default:
-            break;
-        }
-    }
-
-    void WebServer::onStatusWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type)
-    {
-        switch (type)
-        {
-        case WS_EVT_CONNECT:
-            Logger::info(TAG, "Status WebSocket client connected: %u", client->id());
-            // Send initial status data
-            client->text(createStatusJson().c_str());
-            break;
-
-        case WS_EVT_DISCONNECT:
-            Logger::info(TAG, "Status WebSocket client disconnected: %u", client->id());
-            break;
-
-        case WS_EVT_ERROR:
-            Logger::error(TAG, "WebSocket error: %u", client->id());
-            break;
-
-        case WS_EVT_DATA:
-            // Handle incoming WebSocket messages if needed
-            break;
-
-        default:
-            break;
-        }
     }
 
     SensorSnapshot WebServer::getSensorSnapshot() const
