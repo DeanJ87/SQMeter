@@ -286,6 +286,84 @@ void test_ipv6_broker_and_webhook_forms()
     TEST_ASSERT_TRUE(stored.has_value());
 }
 
+// A settings save never takes the device off its network (spec 011 FR-009):
+// an empty WiFi network is refused while one is set; WiFi setup changes it.
+void test_settings_save_cannot_blank_the_wifi_network()
+{
+    Config base = Config::createDefault();
+    base.wifi.ssid = "HomeNet";
+    base.wifi.password = "secret-wifi";
+    std::string error;
+    TEST_ASSERT_FALSE(Config::fromJson("{\"wifi\":{\"ssid\":\"\"}}", &base, &error).has_value());
+    TEST_ASSERT_EQUAL_STRING("WiFi network can't be blank; use WiFi setup to change networks", error.c_str());
+    TEST_ASSERT_FALSE(Config::fromJson("{\"wifi\":{\"ssid\":\"  \"}}", &base, &error).has_value());
+
+    // A missing ssid keeps the network; another network is still allowed.
+    const auto kept = Config::fromJson("{\"wifi\":{\"hostname\":\"garden\"}}", &base, &error);
+    TEST_ASSERT_TRUE_MESSAGE(kept.has_value(), error.c_str());
+    TEST_ASSERT_EQUAL_STRING("HomeNet", kept->wifi.ssid.c_str());
+    TEST_ASSERT_EQUAL_STRING("secret-wifi", kept->wifi.password.c_str());
+    const auto moved = Config::fromJson("{\"wifi\":{\"ssid\":\"Observatory\"}}", &base, &error);
+    TEST_ASSERT_TRUE_MESSAGE(moved.has_value(), error.c_str());
+    TEST_ASSERT_EQUAL_STRING("Observatory", moved->wifi.ssid.c_str());
+
+    // With no network yet (setup hotspot) other settings still save.
+    const Config fresh = Config::createDefault();
+    TEST_ASSERT_TRUE(Config::fromJson("{\"wifi\":{\"ssid\":\"\"},\"deviceName\":\"Roof\"}", &fresh).has_value());
+}
+
+// A wrong-typed value is refused, naming the field, never swapped for a
+// default (the old `value | fallback` turned a null ssid into "").
+void test_wrong_types_are_rejected_not_defaulted()
+{
+    Config base = Config::createDefault();
+    base.wifi.ssid = "HomeNet";
+    base.deviceName = "Observatory";
+    std::string error;
+    auto reason = [&](const char *json)
+    {
+        error.clear();
+        return Config::fromJson(json, &base, &error).has_value() ? std::string("accepted") : error;
+    };
+    TEST_ASSERT_EQUAL_STRING("Settings: wifi.ssid must be a string", reason("{\"wifi\":{\"ssid\":null}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: wifi.ssid must be a string", reason("{\"wifi\":{\"ssid\":42}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: deviceName must be a string", reason("{\"deviceName\":7}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: deviceName must be a string", reason("{\"deviceName\":null}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: wifi.mdns must be true or false", reason("{\"wifi\":{\"mdns\":\"yes\"}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: gps.rxPin must be a whole number in range", reason("{\"gps\":{\"rxPin\":300}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: location.latitude must be a number", reason("{\"location\":{\"latitude\":\"51\"}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: mqtt.publish.sky must be true or false", reason("{\"mqtt\":{\"publish\":{\"sky\":1}}}").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "Settings: alerts.events.unsafe.level must be a whole number in range",
+        reason("{\"alerts\":{\"events\":{\"unsafe\":{\"level\":\"4\"}}}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: mqtt.password must be a string", reason("{\"mqtt\":{\"password\":123}}").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "Settings: primaryTimeSource must be a whole number in range", reason("{\"primaryTimeSource\":\"gps\"}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: wifi must be an object", reason("{\"wifi\":\"HomeNet\"}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: wifi must be an object", reason("{\"wifi\":null}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings must be a JSON object", reason("[]").c_str());
+
+    // Null still clears a secret, as documented.
+    base.mqtt.password = "broker-secret";
+    const auto cleared = Config::fromJson("{\"mqtt\":{\"password\":null}}", &base, &error);
+    TEST_ASSERT_TRUE_MESSAGE(cleared.has_value(), error.c_str());
+    TEST_ASSERT_EQUAL_STRING("", cleared->mqtt.password.c_str());
+}
+
+// Stored settings keep loading: a wrong-typed stored value keeps the current
+// value rather than failing the whole load (which would drop the device into
+// its setup hotspot) or turning into a hard-coded default.
+void test_stored_wrong_type_keeps_current_value()
+{
+    Config cfg = Config::createDefault();
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(
+        Config::applyJson("{\"deviceName\":5,\"wifi\":{\"ssid\":\"HomeNet\",\"hostname\":null}}", cfg, false, &error), error.c_str());
+    TEST_ASSERT_EQUAL_STRING("HomeNet", cfg.wifi.ssid.c_str());
+    TEST_ASSERT_EQUAL_STRING(Config::createDefault().deviceName.c_str(), cfg.deviceName.c_str());
+    TEST_ASSERT_EQUAL_STRING("sqmeter", cfg.wifi.hostname.c_str());
+}
+
 int main()
 {
     UNITY_BEGIN();
@@ -305,5 +383,8 @@ int main()
     RUN_TEST(test_alert_wording_limits_count_characters_not_bytes);
     RUN_TEST(test_ipv6_setting_defaults_on_and_round_trips);
     RUN_TEST(test_ipv6_broker_and_webhook_forms);
+    RUN_TEST(test_settings_save_cannot_blank_the_wifi_network);
+    RUN_TEST(test_wrong_types_are_rejected_not_defaulted);
+    RUN_TEST(test_stored_wrong_type_keeps_current_value);
     return UNITY_END();
 }

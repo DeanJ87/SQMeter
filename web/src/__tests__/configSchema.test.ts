@@ -201,6 +201,14 @@ describe('frontend settings validation', () => {
     expect(hasConfigValidationErrors(errors)).toBe(true);
   });
 
+  it('never sends a blank WiFi network (spec 011 FR-009)', () => {
+    for (const ssid of ['', '   ']) {
+      const errors = getConfigValidationErrors(setPath(mockConfig, 'wifi.ssid', ssid));
+      expect(errors['wifi.ssid']).toBe('WiFi SSID is required');
+      expect(hasConfigValidationErrors(errors)).toBe(true);
+    }
+  });
+
   it('reports one actionable error when both NTP and GPS are disabled', () => {
     const candidate = structuredClone(mockConfig);
     candidate.ntp.enabled = false;

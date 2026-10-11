@@ -163,6 +163,10 @@ curl -X POST http://sqmeter.local/api/config \
 
 Masked or empty password fields preserve the existing stored password. Send `null` for `wifi.password`, `mqtt.password`, or `ota.password` only when you intentionally want to clear that password.
 
+Every value must have the setting's type: text for names and addresses, `true`/`false` for switches, numbers for numbers. A value of the wrong type, `null` included (other than `null` to clear a password), is rejected with `400` and an error naming the setting, e.g. `{"error": "Settings: wifi.ssid must be a string"}`; it is never replaced by a default. A setting you leave out keeps its current value.
+
+While the device has a WiFi network saved, `wifi.ssid` can't be set to `""`: the save is rejected with `"WiFi network can't be blank; use WiFi setup to change networks"`, so a settings save never takes the device off its network. Join a different network with [`POST /api/wifi/connect`](#post-apiwificonnect) (or pick it in Settings → Network); there is no endpoint that forgets the network.
+
 Successful saves return:
 
 ```json

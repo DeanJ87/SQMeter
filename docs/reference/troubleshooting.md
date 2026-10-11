@@ -104,7 +104,7 @@ That leaves at least 8 for imaging apps and page loads.
 
 A conformance checker such as ASCOM ConformU fires hundreds of requests in quick succession; running it while other clients poll the device can briefly exhaust the connections, and one request is refused. The device doesn't restart and the next request works. Imaging apps retry on their own.
 
-`tools/soak/connection_soak.py --host <device-ip>` reproduces the worst case: it polls like N.I.N.A. while opening live-update sockets nobody reads, and reports every imaging-app request that failed.
+`tools/soak/connection_soak.py --host <device-ip>` reproduces the worst case: it polls like N.I.N.A. while opening live-update sockets nobody reads, and reports every imaging-app request that failed (a timeout, a refused or reset connection, an HTTP error, or an Alpaca error). A property the device doesn't have, such as `cloudcover` without an IR sensor, answers NotImplemented (`0x400`): that is listed once under `notImplemented`, not counted as a failure.
 
 ---
 
