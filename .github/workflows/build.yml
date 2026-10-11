@@ -45,6 +45,9 @@ jobs:
             tools/api/**
             tools/dashboard/**
             docs/api/rest.md
+            docs/api/openapi.json
+            web/explorer/**
+            web/vite.demo.config.ts
             docs/reference/settings-dependencies.md
             web/src/**
             web/package.json
@@ -212,11 +215,15 @@ jobs:
           python3 tools/dashboard/check.py
 
       # Every HTTP route is declared with its auth and documented
-      # (specs 011 FR-006, 014 FR-005).
+      # (specs 011 FR-006, 014 FR-005), and the OpenAPI description
+      # (docs/api/openapi.json) matches the registry and schemas (spec 028).
       - name: API routes registry
         run: |
           python3 tools/api/test_routes.py
           python3 tools/api/routes.py
+          pip install openapi-spec-validator==0.9.0
+          python3 tools/api/test_openapi.py
+          python3 tools/api/openapi.py --check
           python3 tools/test_contract_check.py
           python3 tools/soak/test_connection_soak.py
 
@@ -333,6 +340,13 @@ jobs:
           VERSION="${GITHUB_REF#refs/tags/v}"
           python3 tools/i18n/build_packs.py --version "${VERSION}" --out i18n
 
+      # The REST API description for this release (spec 028), version stamped.
+      - name: Build the OpenAPI description
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          pip install openapi-spec-validator==0.9.0
+          python3 tools/api/openapi.py --version "${VERSION}" --out "sqmeter-openapi-v${VERSION}.json"
+
       # "l2" names for the whole-chip layout (spec 027): v0.2.x firmware looks
       # for sqmeter-firmware-*, so it never offers a release it can't install.
       - name: Rename binaries with version tag
@@ -370,3 +384,4 @@ jobs:
             sqmeter-l2-ble-firmware-*.bin
             sqmeter-l2-usb-*.zip
             i18n/sqmeter-i18n-*
+            sqmeter-openapi-*.json

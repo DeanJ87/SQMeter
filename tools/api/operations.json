@@ -1,0 +1,272 @@
+{
+  "about": "Details of every /api/* route in routes.json, used by openapi.py to build docs/api/openapi.json (spec 028). Routes, methods and auth come from routes.json; response documents reference the contract schemas in specs/016-demo-device-emulation/contracts/schemas by file name. 'action' means the shared action-result schema.",
+  "tags": [
+    { "name": "Readings", "description": "Sensor readings and device status." },
+    { "name": "Safety", "description": "The SafetyMonitor verdict and its history." },
+    { "name": "Settings", "description": "Read and change the device's settings." },
+    { "name": "Alerts", "description": "Alerts: whether they're sent, recent ones, tests." },
+    { "name": "Sensors", "description": "Sensor maintenance actions." },
+    { "name": "Network", "description": "WiFi and MQTT." },
+    { "name": "Updates", "description": "Firmware and web UI updates." },
+    { "name": "Language", "description": "The device-wide UI language." },
+    { "name": "Bluetooth", "description": "Phone alarm (Bluetooth firmware build only)." },
+    { "name": "Device", "description": "Restart." }
+  ],
+  "operations": {
+    "GET /api/status": {
+      "tag": "Readings",
+      "summary": "Device status",
+      "description": "Firmware, memory, flash, time, WiFi (with IPv6 addresses), MQTT, Bluetooth, darkness, alerts, Alpaca clients, connections, sensor health and diagnostics. Also pushed over `/ws/status`.",
+      "responses": { "200": "status" },
+      "example": "status"
+    },
+    "GET /api/sensors": {
+      "tag": "Readings",
+      "summary": "Readings",
+      "description": "Every reading, with each group's `status` (`ok`, `stale`, `missing`, `error`). The same document as `/ws/sensors` and MQTT `<base>/state`. Groups for switched-off sensors are left out.",
+      "responses": { "200": "readings" },
+      "example": "readings"
+    },
+    "GET /api/safe": {
+      "tag": "Safety",
+      "summary": "Safe or unsafe, as text",
+      "description": "Plain text `1` (safe) or `0` (unsafe): the SafetyMonitor verdict, for scripts and loggers.",
+      "responses": { "200": { "text": "1 or 0", "enum": ["0", "1"] } }
+    },
+    "GET /api/safety": {
+      "tag": "Safety",
+      "summary": "Safety verdict",
+      "description": "The verdict served to Alpaca clients as `IsSafe`, with the reasons and the safe-delay countdown. Key on `safe` and `reasonFlags`; `reasons` is English text that may be reworded.",
+      "responses": { "200": "safety" },
+      "example": "safety"
+    },
+    "GET /api/safety/history": {
+      "tag": "Safety",
+      "summary": "Safety history",
+      "description": "The last 32 safety changes, device restarts and safe/unsafe alerts, newest first. Survives software restarts, crashes and updates, not power cuts.",
+      "responses": { "200": "safety-history" }
+    },
+    "GET /api/settings/effective": {
+      "tag": "Settings",
+      "summary": "Settings in effect",
+      "description": "Each setting that depends on another, and whether it's in effect or inactive, with the reason (spec 020).",
+      "responses": { "200": "settings-effective" }
+    },
+    "GET /api/config": {
+      "tag": "Settings",
+      "summary": "Settings",
+      "description": "Every setting. Passwords and keys are masked.",
+      "responses": { "200": "config" }
+    },
+    "POST /api/config": {
+      "tag": "Settings",
+      "summary": "Change settings",
+      "description": "Partial update: only the fields sent change. A masked or empty password keeps the stored one; `null` clears it. A wrong value is refused with `error` naming it; a setting whose dependency is off is saved and reported inactive by `/api/settings/effective`.",
+      "requestBody": { "schema": "config-update", "example": { "deviceName": "backyard-sqm", "sensor": { "readIntervalMs": 10000 } } },
+      "responses": { "200": "action", "400": "error" },
+      "example": "config-change"
+    },
+    "PUT /api/config": {
+      "tag": "Settings",
+      "summary": "Change settings (PUT)",
+      "description": "The same as `POST /api/config`, for clients that use PUT.",
+      "requestBody": { "schema": "config-update" },
+      "responses": { "200": "action", "400": "error" }
+    },
+    "POST /api/restart": {
+      "tag": "Device",
+      "summary": "Restart",
+      "description": "Restarts the device after answering.",
+      "responses": { "200": "action" }
+    },
+    "POST /api/sensors/tsl2591/calibrate-dark": {
+      "tag": "Sensors",
+      "summary": "Calibrate the light sensor's dark offset",
+      "description": "Stores the current rolling visible count as the dark offset. Cover the sensor first and wait for the averaging window to fill. 409 while it can't give a good offset (no readings yet, not in night mode, window not full).",
+      "responses": { "200": "action", "409": "error" }
+    },
+    "POST /api/sensors/rg15/test": {
+      "tag": "Sensors",
+      "summary": "Test the rain sensor",
+      "description": "Reads the RG-15 now and returns serial diagnostics. 409 when the rain sensor is switched off; 502 with a wiring `hint` when it doesn't answer.",
+      "responses": { "200": "action", "409": "error", "502": "error" }
+    },
+    "POST /api/sensors/rg15/reset-total": {
+      "tag": "Sensors",
+      "summary": "Reset the rain total",
+      "description": "Sends the RG-15 its `O` command (reset total accumulation).",
+      "responses": { "200": "action", "502": "error" }
+    },
+    "POST /api/sensors/rg15/reboot": {
+      "tag": "Sensors",
+      "summary": "Reboot the rain sensor",
+      "description": "Sends the RG-15 its `K` command (reboot).",
+      "responses": { "200": "action", "502": "error" }
+    },
+    "GET /api/wifi/scan": {
+      "tag": "Network",
+      "summary": "Scan for WiFi networks",
+      "description": "The first call starts a background scan and answers 202 with `scanning: true`; call again about once a second until `scanning` is false and the list arrives.",
+      "responses": { "200": "wifi-scan", "202": "wifi-scan", "500": "error" }
+    },
+    "POST /api/wifi/connect": {
+      "tag": "Network",
+      "summary": "Join a WiFi network",
+      "description": "What the WiFi setup screen uses. Answers 202 at once; poll `/api/status` (`wifi.connectPending`, then `wifi.connected`). On success the network is saved and the device restarts onto it 15 s later. Send `\"\"` as the password for an open network.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": { "ssid": { "type": "string" }, "password": { "type": "string" } },
+          "required": ["ssid", "password"],
+          "additionalProperties": false
+        },
+        "example": { "ssid": "MyNetwork", "password": "hunter2" }
+      },
+      "responses": { "202": "action", "400": "error" }
+    },
+    "POST /api/mqtt/test": {
+      "tag": "Network",
+      "summary": "Test an MQTT broker",
+      "description": "Tries to connect with the given details without saving them.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "broker": { "type": "string" },
+            "port": { "type": "integer" },
+            "username": { "type": "string" },
+            "password": { "type": "string" },
+            "clientId": { "type": "string" }
+          },
+          "required": ["broker"]
+        },
+        "example": { "broker": "192.168.1.10", "port": 1883, "username": "", "password": "", "clientId": "SQM-Test" }
+      },
+      "responses": { "200": "action", "502": "error" }
+    },
+    "POST /api/update": {
+      "tag": "Updates",
+      "summary": "Upload firmware",
+      "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout or build (nothing changed); 500 keeps the running firmware. The device restarts on success.",
+      "upload": { "field": "firmware", "about": "sqmeter-l2-firmware-<version>.bin (sqmeter-l2-ble-firmware-... on the Bluetooth build)" },
+      "responses": { "200": "action", "400": "error", "500": "error" }
+    },
+    "POST /api/update/fs": {
+      "tag": "Updates",
+      "summary": "Upload the web UI",
+      "description": "A LittleFS image that fills the web UI partition exactly. A file for another layout is refused before anything is erased. Settings are kept.",
+      "upload": { "field": "filesystem", "about": "sqmeter-l2-littlefs-<version>.bin" },
+      "responses": { "200": "action", "400": "error", "500": "error" }
+    },
+    "GET /api/updates/check": {
+      "tag": "Updates",
+      "summary": "Check for updates",
+      "description": "GitHub releases on the chosen track that have both files this device needs. 502 when GitHub can't be reached (a dropped connection is retried once); 409 while another check runs.",
+      "parameters": [
+        { "name": "track", "in": "query", "description": "`stable` (default) or `beta`.", "schema": { "type": "string", "enum": ["stable", "beta"], "default": "stable" } }
+      ],
+      "responses": { "200": "releases", "409": "error", "502": "error" }
+    },
+    "POST /api/updates/apply": {
+      "tag": "Updates",
+      "summary": "Install a release",
+      "description": "Downloads and flashes a release from `check` in the background. Progress is pushed over `/ws/status` as `{\"type\":\"ota_progress\",\"progress\":N}`; the device restarts when both files are flashed.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "firmwareAssetUrl": { "type": "string" },
+            "firmwareAssetSize": { "type": "integer" },
+            "fsAssetUrl": { "type": "string" },
+            "fsAssetSize": { "type": "integer" }
+          },
+          "required": ["firmwareAssetUrl", "firmwareAssetSize", "fsAssetUrl", "fsAssetSize"]
+        }
+      },
+      "responses": { "200": "action", "400": "error", "409": "error" }
+    },
+    "GET /api/alerts/armed": {
+      "tag": "Alerts",
+      "summary": "Sending or paused",
+      "description": "Whether alerts are being sent, the send mode and why it's sending or paused.",
+      "responses": { "200": "alerts-armed" },
+      "example": "alerts-armed"
+    },
+    "POST /api/alerts/arm": {
+      "tag": "Alerts",
+      "summary": "Resume alerts",
+      "description": "Takes effect at once and survives restarts.",
+      "parameters": [{ "$ref": "#/components/parameters/source" }],
+      "responses": { "202": "action" }
+    },
+    "POST /api/alerts/disarm": {
+      "tag": "Alerts",
+      "summary": "Pause alerts",
+      "description": "While paused nothing is sent and paired phones don't ring. Takes effect at once and survives restarts.",
+      "parameters": [{ "$ref": "#/components/parameters/source" }],
+      "responses": { "202": "action" }
+    },
+    "GET /api/alerts/recent": {
+      "tag": "Alerts",
+      "summary": "Recent alerts",
+      "description": "Whether alerts are on, and the last 20 since boot, newest first, with each channel's delivery result (`pending`, `sent`, `failed`, `skipped`).",
+      "responses": { "200": "alerts-recent" }
+    },
+    "POST /api/alerts/test": {
+      "tag": "Alerts",
+      "summary": "Send a test alert",
+      "description": "Queues a test on the given saved, switched-on channel(s); see `/api/alerts/recent` for the result. A channel that can't deliver right now is recorded as `skipped`. Add `event`, `level` and `sound` for a sample of that event, or `title`/`message` to try custom wording with `{variables}`.",
+      "parameters": [
+        { "name": "channel", "in": "query", "required": true, "schema": { "type": "string", "enum": ["mqtt", "pushover", "ntfy", "webhook", "all"] } },
+        { "name": "event", "in": "query", "schema": { "type": "string", "enum": ["unsafe", "safe", "rain_started", "rain_stopped", "sensor_fault", "sensor_recovered", "dew_risk", "clear_sky", "clouded_over", "client_lost", "client_back", "client_disconnected"] } },
+        { "name": "level", "in": "query", "description": "1 quiet, 2 normal, 3 urgent, 4 wake me (also rings paired phones).", "schema": { "type": "integer", "minimum": 1, "maximum": 4 } },
+        { "name": "sound", "in": "query", "description": "Pushover sound.", "schema": { "type": "string" } },
+        { "name": "title", "in": "query", "description": "Custom title, up to 80 characters.", "schema": { "type": "string", "maxLength": 80 } },
+        { "name": "message", "in": "query", "description": "Custom message, up to 240 characters.", "schema": { "type": "string", "maxLength": 240 } }
+      ],
+      "responses": { "202": "action", "400": "error" },
+      "example": "alert-test"
+    },
+    "POST /api/alerts/clear": {
+      "tag": "Alerts",
+      "summary": "Clear recent alerts",
+      "description": "Empties the recent-alerts list.",
+      "responses": { "200": "action" }
+    },
+    "GET /api/i18n": {
+      "tag": "Language",
+      "summary": "Language status",
+      "description": "The chosen language and whether its file is installed, downloading, restoring or failed.",
+      "responses": { "200": "i18n" }
+    },
+    "POST /api/i18n/install": {
+      "tag": "Language",
+      "summary": "Download the language again",
+      "description": "Downloads the chosen language's file for this firmware from GitHub. 409 when the language is English, or an update or another download is running.",
+      "responses": { "202": { "inline": { "type": "object", "properties": { "started": { "const": true } }, "required": ["started"] } }, "409": "error" }
+    },
+    "POST /api/i18n/upload": {
+      "tag": "Language",
+      "summary": "Upload a language file",
+      "description": "Stores a language file by hand, for devices without internet. Answers with the `/api/i18n` document; 400 for a file that isn't gzip, is over 64 KB or doesn't fit.",
+      "parameters": [
+        { "name": "lang", "in": "query", "required": true, "schema": { "type": "string" } },
+        { "name": "version", "in": "query", "required": true, "schema": { "type": "string" } }
+      ],
+      "upload": { "field": "file", "about": "sqmeter-i18n-<code>.json.gz from the release" },
+      "responses": { "200": "i18n", "400": "error" }
+    },
+    "POST /api/ble/ack": {
+      "tag": "Bluetooth",
+      "summary": "Acknowledge the phone alarm",
+      "description": "As if a phone had. 409 if no alarm is ringing.",
+      "responses": { "200": "action", "409": "error" }
+    },
+    "POST /api/ble/forget-bonds": {
+      "tag": "Bluetooth",
+      "summary": "Unpair every phone",
+      "description": "Phones need to pair again (with the passkey) to get alarms. 409 if Bluetooth is off.",
+      "responses": { "200": "action", "409": "error" }
+    }
+  }
+}
