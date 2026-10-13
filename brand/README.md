@@ -17,8 +17,8 @@ The SQMeter mark is a figure on a dark horizon pointing a cyan beam at the sky: 
 
 | Size or use | File |
 |---|---|
-| 40 px and larger | `sqmeter-mark.svg` (detailed: gradient sky, beam glow) |
-| 17 to 39 px (UI headers, the docs header) | `sqmeter-mark-flat.svg` |
+| 40 px and larger (UI headers at 44 px, 40 px on phones; the docs header) | `sqmeter-mark.svg` (detailed: gradient sky, beam glow) |
+| 17 to 39 px (favicons, small icons) | `sqmeter-mark-flat.svg` |
 | 16 px | `favicon/favicon-16.svg` (simplified for 16 px) |
 | Red night-vision screens | `sqmeter-mark-night.svg`, or `sqmeter-mark-night-mono.svg` for one colour |
 | One colour on screen | `sqmeter-mark-mono.svg` (uses `currentColor`), `-mono-light`, `-mono-dark` |

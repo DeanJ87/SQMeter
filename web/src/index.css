@@ -175,8 +175,8 @@ button {
 }
 
 .brand-mark {
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
   flex: none;
 }
 
@@ -1116,6 +1116,11 @@ a.status-row-main:focus-visible .status-row-label {
 
   .brand {
     padding: 0.65rem 0;
+  }
+
+  .brand-mark {
+    width: 2.5rem;
+    height: 2.5rem;
   }
 
   .top-nav {
