@@ -1,3 +1,7 @@
+---
+description: "SQMeter WebSocket API: live sensor readings from /ws/sensors every second and device status from /ws/status, with no polling."
+---
+
 # WebSocket
 
 Connect to `/ws/sensors` for a live stream of sensor readings. The device currently pushes messages every second.

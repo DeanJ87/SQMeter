@@ -1,3 +1,7 @@
+---
+description: "Try the SQMeter web UI in your browser: an emulated sky quality meter and safety monitor running the real firmware logic. No hardware needed."
+---
+
 # Live Demo
 
 [Try the Live Demo :material-arrow-right:](https://demo.sqmeter.dev/){ .md-button .md-button--primary }

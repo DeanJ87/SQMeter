@@ -1,3 +1,7 @@
+---
+description: "Show SQMeter's sky quality, temperature and cloud cover on indi-allsky all-sky camera images with a small Node-RED flow."
+---
+
 # indi-allsky
 
 [indi-allsky](https://github.com/aaronwmorris/indi-allsky) can overlay SQMeter's readings on your all-sky images and use them in its settings. Its MQTT sensor reads **one number per topic**, while SQMeter publishes all its readings as one JSON document on `<base>/state` ([MQTT](mqtt.md)). A small [Node-RED](https://nodered.org/) flow republishes the readings as separate topics.

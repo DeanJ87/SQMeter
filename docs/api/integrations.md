@@ -1,3 +1,7 @@
+---
+description: "Every way to get data out of SQMeter: REST, WebSocket, MQTT with Home Assistant, ASCOM Alpaca, alerts and Bluetooth."
+---
+
 # Integrations
 
 SQMeter exposes device data through these integration paths. The legacy raw TCP server that previously ran on port 2020 has been removed.

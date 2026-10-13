@@ -1,3 +1,7 @@
+---
+description: "SQMeter on IPv6: dual-stack addresses, reaching the web UI, API and Alpaca over IPv6, and which requests the device accepts."
+---
+
 # IPv6
 
 SQMeter works on IPv6 alongside IPv4 ("dual stack"). On a network that offers IPv6 - most home
