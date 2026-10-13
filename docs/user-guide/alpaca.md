@@ -1,3 +1,7 @@
+---
+description: "Use SQMeter as a native ASCOM Alpaca SafetyMonitor and ObservingConditions device in N.I.N.A., with safety rules. Passes ConformU."
+---
+
 # ASCOM Alpaca
 
 SQMeter can act as an ASCOM Alpaca **SafetyMonitor** and **ObservingConditions** device directly - no separate bridge/service needed. N.I.N.A. and other ASCOM Alpaca clients connect straight to the device's IP address.

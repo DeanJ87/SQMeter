@@ -1,3 +1,7 @@
+---
+description: "SQMeter alerts for rain and safety changes via ntfy, Pushover, webhook or MQTT, even when N.I.N.A. and the observatory PC are off."
+---
+
 # Alerts
 
 SQMeter can send push notifications itself - over Pushover, ntfy, a webhook, or MQTT - so you hear about rain or a safety change even when N.I.N.A. and the observatory PC aren't running.

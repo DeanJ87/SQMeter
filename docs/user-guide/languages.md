@@ -1,3 +1,7 @@
+---
+description: "The SQMeter web UI in 14 languages, including Arabic right-to-left: how to choose one and how language files are installed."
+---
+
 # Languages
 
 The device's web interface is available in 14 languages: English, Bahasa Indonesia, Deutsch, Español, Français, Italiano, Nederlands, Polski, Português (Brasil), Türkçe, العربية (Arabic, right-to-left), 日本語, 한국어 and 简体中文.

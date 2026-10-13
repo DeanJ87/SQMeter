@@ -1,3 +1,7 @@
+---
+description: "Flash SQMeter firmware onto an ESP32 with esptool: the release files, standard or Bluetooth build, and the flash memory map."
+---
+
 # Flashing Your Device
 
 Flash your ESP32 over USB once; after that it updates over WiFi from its Updates page.

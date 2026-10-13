@@ -1,3 +1,7 @@
+---
+description: "Update SQMeter firmware over WiFi: upload a file in the browser or let the device install a release straight from GitHub."
+---
+
 # OTA Updates
 
 Update firmware over WiFi without a USB cable.

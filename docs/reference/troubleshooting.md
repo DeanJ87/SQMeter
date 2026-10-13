@@ -1,3 +1,7 @@
+---
+description: "Fix common SQMeter problems: sensors not found, WiFi, OTA updates, N.I.N.A. connections, alerts, MQTT and Bluetooth slowdowns."
+---
+
 # Troubleshooting
 
 ---
