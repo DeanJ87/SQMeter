@@ -87,9 +87,20 @@
   font-weight: 650;
 }
 
+.md-header__button.md-logo {
+  margin-block: 0;
+}
+
 .md-header__button.md-logo img {
-  height: 1.6rem;
-  width: 1.6rem;
+  height: 2.75rem;
+  width: 2.75rem;
+}
+
+@media screen and (max-width: 76.234375em) {
+  .md-header__button.md-logo img {
+    height: 2.5rem;
+    width: 2.5rem;
+  }
 }
 
 .md-tabs {
