@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { bannerUrl, findSection, formatDate, highlights, releaseBody, versionOf } from './changelog.mjs';
+import { bannerOverride, bannerUrl, findSection, formatDate, highlights, publishedBody, releaseBody, versionOf } from './changelog.mjs';
 
 const CHANGELOG = `# Changelog
 
@@ -68,18 +68,37 @@ test('formatDate writes the date the way the banner shows it', () => {
   assert.throws(() => formatDate('11/10/2026'), /Not an ISO date/);
 });
 
-test('highlights takes bold titles first, in order, skipping Internal and Planned', () => {
+test('highlights: bold titles first, Added before Fixed, fixes marked, Internal and Planned skipped', () => {
   const section = findSection(CHANGELOG, '0.4.0-beta.2');
-  assert.deepEqual(highlights(section.body), ['Restart history', 'N.I.N.A. losing the Safety Monitor', 'A soak test for connections']);
+  assert.deepEqual(highlights(section.body), ['Restart history', 'Fixed: N.I.N.A. losing the Safety Monitor', 'A soak test for connections']);
+});
+
+test('highlights puts Added before other subsections, and those before Fixed, whatever the written order', () => {
+  const body = '### Fixed\n\n- **A fix**: x.\n\n### Changed\n\n- **A change**: y.\n\n### Added\n\n- **A feature**: z.';
+  assert.deepEqual(highlights(body), ['A feature', 'A change', 'Fixed: A fix']);
 });
 
 test('highlights falls back to a bullet’s first clause and strips markdown', () => {
-  const body = '### Fixed\n\n- `Settings` switches tab when the address changes (an in-app link).\n- Long tile values: step down.';
+  const body = '### Changed\n\n- `Settings` switches tab when the address changes (an in-app link).\n- Long tile values: step down.';
   assert.deepEqual(highlights(body), ['Settings switches tab when the address changes', 'Long tile values']);
 });
 
 test('highlights returns fewer than three when the section is short', () => {
-  assert.deepEqual(highlights('### Fixed\n\n- **One fix**: done.'), ['One fix']);
+  assert.deepEqual(highlights('### Fixed\n\n- **One fix**: done.'), ['Fixed: One fix']);
+});
+
+test('a banner comment chooses the highlights and is left out of the published notes', () => {
+  const body = 'Intro.\n\n<!-- banner: Restart history | Fixed: N.I.N.A. disconnects | API explorer | ignored -->\n\n### Added\n\n- **Something else**: x.';
+  assert.deepEqual(bannerOverride(body), ['Restart history', 'Fixed: N.I.N.A. disconnects', 'API explorer', 'ignored']);
+  assert.deepEqual(highlights(body), ['Restart history', 'Fixed: N.I.N.A. disconnects', 'API explorer']);
+  assert.equal(publishedBody(body), 'Intro.\n\n### Added\n\n- **Something else**: x.');
+  const notes = releaseBody({ tag: 'v1.0.0-beta.1', section: { body }, bannerUrl: 'x', docsBase: 'https://d/' });
+  assert.doesNotMatch(notes, /banner:/);
+});
+
+test('an empty banner comment falls back to the automatic choice', () => {
+  assert.equal(bannerOverride('<!-- banner: | -->\n- **A**: b'), null);
+  assert.deepEqual(highlights('<!-- banner: -->\n\n### Added\n\n- **A**: b'), ['A']);
 });
 
 test('the real changelog has highlights for every released 0.3 version', () => {

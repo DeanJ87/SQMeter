@@ -15,7 +15,14 @@ Move the entries under `## [Unreleased]` in `CHANGELOG.md` into a new section:
 ```
 
 - The heading needs the version in brackets and an ISO date.
-- Start the most important bullets with a **bold title**. The release banner shows the first three bold titles, in the order they're written (anything under *Planned* or *Internal* is skipped).
+- Start the most important bullets with a **bold title**. The release banner shows three of them: *Added* first, then other subsections such as *Changed*, then *Fixed* (shown as "Fixed: …"). Anything under *Planned* or *Internal* is skipped.
+- To choose the banner's highlights yourself, add a comment anywhere in the section. It's removed from the published notes:
+
+  ```markdown
+  <!-- banner: Restart history | Fixed: N.I.N.A. disconnects | API explorer -->
+  ```
+
+  Keep each one short: a highlight too wide for the banner is cut at a word with "…".
 
 The pull request runs the **Release notes** check, which renders the notes and banner for the newest version in the changelog. Download the `release-notes-preview` artifact from the check to see them.
 
