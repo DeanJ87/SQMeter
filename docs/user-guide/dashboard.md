@@ -1,3 +1,7 @@
+---
+description: "The SQMeter dashboard: live SQM, Bortle, NELM, cloud, rain and wind, the safety verdict and tonight's darkness, updated every second."
+---
+
 # Dashboard
 
 The dashboard is the web UI's home page: live readings, the safety verdict and tonight's darkness, updated every second over a WebSocket. Try it without hardware in the [live demo](../live-demo.md).

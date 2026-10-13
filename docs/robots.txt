@@ -1,0 +1,7 @@
+# SQMeter documentation: every crawler is welcome, AI crawlers included.
+# A summary for language models is at https://sqmeter.dev/llms.txt
+
+User-agent: *
+Allow: /
+
+Sitemap: https://sqmeter.dev/sitemap.xml

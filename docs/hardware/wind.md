@@ -1,3 +1,7 @@
+---
+description: "Connect a cup anemometer and wind vane to SQMeter for wind speed, gusts and direction in the safety rules and ASCOM Alpaca."
+---
+
 # Wind (anemometer and vane)
 
 SQMeter can read a standard reed-switch cup anemometer and an optional resistor-ladder wind vane - the type sold as the Misol WH-SP-WS01/WD, Argent 80422, SparkFun SEN-15901 weather meter, or the Davis 6410. Wind feeds ObservingConditions `windspeed`, `windgust` and `winddirection`, the Dashboard, and optional wind limits in the SafetyMonitor.

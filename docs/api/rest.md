@@ -1,3 +1,7 @@
+---
+description: "SQMeter REST API: conventions, errors, the password, limits and behaviour of every endpoint on the device."
+---
+
 # REST API
 
 All endpoints are on port 80. Base URL: `http://<device-ip>/api`

@@ -1,3 +1,7 @@
+---
+description: "Wire an SQMeter: ESP32 dev board, TSL2591, MLX90614 and BME280 on I²C, plus optional GPS, RG-15 rain gauge and wind sensors."
+---
+
 # Hardware Setup
 
 SQMeter runs on any standard ESP32 dev board. The three core sensors share the I²C bus; the optional GPS, RG-15 rain gauge and anemometer/vane have their own pins.

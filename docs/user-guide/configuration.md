@@ -1,3 +1,7 @@
+---
+description: "Configure SQMeter from the web UI or REST API: network, sensors, calibration, safety rules and alerts. Settings live in NVS."
+---
+
 # Configuration
 
 All settings are stored in NVS (Non-Volatile Storage) and survive firmware and filesystem updates. Configure via the web UI (**Settings**) or the REST API.

@@ -18,6 +18,39 @@
   <meta property="og:image:height" content="640">
   <meta property="og:image:alt" content="SQMeter: open-hardware sky quality meter for the ESP32">
   <meta name="twitter:card" content="summary_large_image">
+  {#- What SQMeter is, for search engines (schema.org), on the home page only.
+      Data, not script: the docs CSP and no-third-party rules are unaffected. -#}
+  {%- if page and page.is_homepage %}
+  {%- set software = {
+    "name": "SQMeter",
+    "description": "Open-source ESP32 firmware for a DIY sky quality meter and observatory safety monitor: SQM, Bortle and NELM from a TSL2591, cloud cover from an MLX90614, native ASCOM Alpaca SafetyMonitor and ObservingConditions for N.I.N.A., alerts, MQTT with Home Assistant discovery and a REST API. Public beta.",
+    "url": config.site_url,
+    "image": config.site_url ~ "assets/social-card.png",
+    "license": "https://opensource.org/licenses/MIT"
+  } %}
+  <script type="application/ld+json">{{ {
+    "@context": "https://schema.org",
+    "@graph": [
+      dict(software, **{
+        "@type": "SoftwareApplication",
+        "@id": config.site_url ~ "#software",
+        "applicationCategory": "UtilitiesApplication",
+        "applicationSubCategory": "Astronomy: sky quality meter and observatory safety monitor",
+        "operatingSystem": "ESP32 firmware",
+        "downloadUrl": config.repo_url ~ "/releases",
+        "isAccessibleForFree": true,
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+      }),
+      dict(software, **{
+        "@type": "SoftwareSourceCode",
+        "codeRepository": config.repo_url,
+        "programmingLanguage": ["C++", "TypeScript"],
+        "runtimePlatform": "ESP32",
+        "targetProduct": {"@id": config.site_url ~ "#software"}
+      })
+    ]
+  } | tojson }}</script>
+  {%- endif %}
   {{ super() }}
 {% endblock %}
 
