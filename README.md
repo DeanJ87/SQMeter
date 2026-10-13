@@ -1,6 +1,6 @@
-# SQMeter
+<img src="brand/png/sqmeter-readme-banner@2x.png" width="100%" alt="SQMeter: open-hardware dark-sky quality monitor for the ESP32. SQM, Bortle, NELM, cloud, ASCOM Alpaca and MQTT.">
 
-**ESP32 Dark Sky Quality Monitor**
+# SQMeter
 
 [![Build](https://github.com/DeanJ87/SQMeter/actions/workflows/build.yml/badge.svg)](https://github.com/DeanJ87/SQMeter/actions/workflows/build.yml)
 [![Docs](https://github.com/DeanJ87/SQMeter/actions/workflows/docs.yml/badge.svg)](https://github.com/DeanJ87/SQMeter/actions/workflows/docs.yml)

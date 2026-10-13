@@ -1,0 +1,40 @@
+/* SQMeter design tokens. Dark only. Shared grammar with SubStation (--sst-*). */
+:root {
+  --sqm-bg: #080d14;
+  --sqm-panel: #0d141d;
+  --sqm-panel-2: #111b27;
+  --sqm-panel-3: #0a1018;
+  --sqm-card-end: #0a1119;
+  --sqm-line: #1b2a38;
+  --sqm-line-2: #142130;
+  --sqm-text: #e7edf3;
+  --sqm-muted: #8b9baa;
+  --sqm-dim: #768798;
+  --sqm-accent: #55c7f2;          /* Cyan: SQMeter signature */
+  --sqm-accent-tint: rgba(85, 199, 242, 0.12);
+  --sqm-accent-line: rgba(85, 199, 242, 0.45);
+  --sqm-violet: #a78bfa;
+  --sqm-ok: #5ee0a0;
+  --sqm-warn: #f4c15d;
+  --sqm-bad: #f26b62;
+
+  --sqm-font-sans: "Inter", system-ui, sans-serif;
+  --sqm-font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Logo colours */
+  --sqm-logo-sky-top: #0d1724;
+  --sqm-logo-sky-horizon: #25394d;
+  --sqm-logo-ground: #13212f;
+  --sqm-logo-figure: #060b11;
+  --sqm-logo-beam: #55c7f2;
+  --sqm-logo-beam-core: #d6f3ff;
+  --sqm-logo-flat-tile: #1d2f41;
+  --sqm-logo-print-ink: #0d141d;
+  --sqm-logo-print-beam: #0b78a6;
+  --sqm-logo-night: #ff4a3a;
+}
+/* Logo: 24-unit grid shared with SubStation. Tile inset 2.25 u, radius 2.75 u.
+   Detailed mark >= 40 px. Flat mark 17-39 px. favicon-16.svg at 16 px.
+   One-colour mark (frame 1.5 u, rx 2) for silkscreen, emboss, engraving, single-ink print.
+   Clear space: 1/4 mark height. Lockup gap: 1/3 mark height.
+   Minimums: horizontal lockup 120 px wide; silkscreen 6 mm; emboss 20 mm. */
