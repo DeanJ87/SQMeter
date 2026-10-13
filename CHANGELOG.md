@@ -9,6 +9,21 @@ All notable changes to SQMeter are documented here.
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
 
+## [0.3.3-beta.1] — 2026-10-13
+
+<!-- banner: New SQMeter logo and brand kit | Branded release notes | Clearer docs for search and AI -->
+
+### Added
+
+- **New SQMeter logo** in the device's web UI, the demo and the docs: the detailed mark in the header (44 px, 40 px on phones), new favicons, a home-screen icon for the demo, and social cards so shared links show the SQMeter card.
+- **Brand kit** in `brand/`: the logo in every variant (colour, flat, mono, night red, print, silkscreen, emboss), lockups, social and forum cards, stickers and enclosure labels, the colour tokens and usage rules, with `tools/brand/render.mjs` to render PNGs and print files with SQMeter's own fonts. Print-ready labels and the sticker are in the SQMeter-Hardware repo.
+- **Branded release notes**: each release gets a banner with its version, date and highlights, and its notes come from this changelog.
+- **Docs for search engines and AI assistants**: `llms.txt` and `llms-full.txt`, `robots.txt`, structured data, page descriptions, a FAQ and a comparison with other open-source sky quality meters.
+
+### Fixed
+
+- The README's security section said there was no authentication; optional HTTP Basic auth protects changes (reads and Alpaca stay open on the LAN, and there's no TLS).
+
 ## [0.3.2-beta.1] — 2026-10-11
 
 ### Fixed
