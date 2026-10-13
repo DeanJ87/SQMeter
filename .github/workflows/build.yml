@@ -347,6 +347,21 @@ jobs:
           pip install openapi-spec-validator==0.9.0
           python3 tools/api/openapi.py --version "${VERSION}" --out "sqmeter-openapi-v${VERSION}.json"
 
+      # The release body and banner from this version's CHANGELOG.md section
+      # (tools/release/notes.mjs): fails here, before anything is published, if
+      # the changelog PR hasn't been merged. The banner is rendered with the
+      # project's own fonts in Chromium (Playwright, already a web dependency).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Release notes and banner
+        run: |
+          (cd web && npm ci && npx playwright install --with-deps chromium)
+          node tools/release/notes.mjs --tag "${GITHUB_REF#refs/tags/}" --out release-notes
+
       # "l2" names for the whole-chip layout (spec 027): v0.2.x firmware looks
       # for sqmeter-firmware-*, so it never offers a release it can't install.
       - name: Rename binaries with version tag
@@ -376,9 +391,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: SQMeter ${{ github.ref_name }}
+          # The banner and changelog section first; GitHub's list of merged
+          # pull requests is appended after it.
+          body_path: release-notes/release-notes.md
           generate_release_notes: true
           prerelease: ${{ steps.prerelease.outputs.value }}
           files: |
+            release-notes/sqmeter-release-${{ github.ref_name }}.png
+            release-notes/sqmeter-release-${{ github.ref_name }}@2x.png
             sqmeter-l2-firmware-*.bin
             sqmeter-l2-littlefs-*.bin
             sqmeter-l2-ble-firmware-*.bin

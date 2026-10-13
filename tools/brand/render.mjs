@@ -9,13 +9,16 @@
 //        --change "Connections" --change "WiFi" --change "API explorer"
 //                                                a release banner (brand/render/release/)
 //
+// tools/release/notes.mjs uses renderReleaseBanner() to make the banner from
+// CHANGELOG.md when a release is tagged.
+//
 // Needs the web dev dependencies (Playwright + Chromium): cd web && npm ci &&
 // npx playwright install chromium. No network access at render time.
 
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(join(ROOT, 'web/package.json'));
@@ -46,12 +49,13 @@ function page(svg) {
   return `<!doctype html><html><head><meta charset="utf-8"><style>${fontFaces()}html,body{margin:0;padding:0;background:transparent}svg{display:block}</style></head><body>${svg}</body></html>`;
 }
 
-async function renderPng(browser, svg, file, scale) {
+async function renderPng(browser, svg, file, scale, prepare) {
   const { width, height } = svgSize(svg);
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scale });
   const tab = await context.newPage();
   await tab.setContent(page(svg));
   await tab.evaluate(() => document.fonts.ready);
+  if (prepare) await tab.evaluate(prepare);
   await tab.locator('svg').first().screenshot({ path: file, omitBackground: true });
   await context.close();
 }
@@ -75,35 +79,74 @@ function args(name) {
   return process.argv.flatMap((value, at) => (process.argv[at - 1] === name ? [value] : []));
 }
 
+// Space for each text on the release banner, in SVG units: the version and the
+// date sit left of the divider (x 720), the highlights right of it.
+const RELEASE_FIT = { 'rel-tag': 618, 'rel-date': 618, 'rel-c0': 432, 'rel-c1': 432, 'rel-c2': 432 };
+
 function releaseSvg(tag, date, changes) {
   let svg = readFileSync(join(SRC, 'social/sqmeter-release-banner-template.svg'), 'utf8');
   const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  // The template is sized for "v1.4.0": shrink longer tags (e.g. v0.3.2-beta.1)
-  // to fit left of the divider (x 720). JetBrains Mono advances 0.6 em, and the
-  // template tightens each glyph by 3 units.
-  const fontSize = Math.min(96, Math.floor((618 / tag.length + 3) / 0.6));
-  svg = svg.replace(/font-size="96"([^>]*)>v1\.4\.0</, `font-size="${fontSize}"$1>${escape(tag)}<`);
-  svg = svg.replace(/>Released [^<]*</, `>Released ${escape(date)}<`);
+  svg = svg.replace(/<text([^>]*)>v1\.4\.0</, `<text id="rel-tag"$1>${escape(tag)}<`);
+  svg = svg.replace(/<text([^>]*)>Released [^<]*</, `<text id="rel-date"$1>Released ${escape(date)}<`);
   ['Change one', 'Change two', 'Change three'].forEach((placeholder, at) => {
-    svg = svg.replace(`>${placeholder}<`, `>${escape(changes[at] ?? '')}<`);
+    svg = svg.replace(new RegExp(`<text([^>]*)>${placeholder}<`), `<text id="rel-c${at}"$1>${escape(changes[at] ?? '')}<`);
   });
   return svg;
+}
+
+// Runs in the page: shrinks the version until it fits, and shortens any other
+// text that doesn't at a word boundary with an ellipsis. Measured with the real
+// fonts, so nothing overflows whatever the tag or the highlights are.
+function fitReleaseText(limits) {
+  for (const [id, limit] of Object.entries(limits)) {
+    const text = document.getElementById(id);
+    if (!text || text.getComputedTextLength() <= limit) continue;
+    if (id === 'rel-tag') {
+      let size = Number(text.getAttribute('font-size'));
+      while (size > 24 && text.getComputedTextLength() > limit) text.setAttribute('font-size', String(--size));
+      continue;
+    }
+    let words = text.textContent.split(' ');
+    while (words.length > 1 && text.getComputedTextLength() > limit) {
+      words = words.slice(0, -1);
+      text.textContent = `${words.join(' ').replace(/[,;:.-]+$/, '')}…`;
+    }
+    while (text.textContent.length > 1 && text.getComputedTextLength() > limit) {
+      text.textContent = `${text.textContent.slice(0, -2)}…`;
+    }
+  }
+}
+
+/**
+ * Renders the release banner for `tag` into `dir` as sqmeter-release-<tag>.png
+ * (1280×320) and @2x. Returns the two file paths.
+ */
+export async function renderReleaseBanner({ tag, date, changes, dir }) {
+  mkdirSync(dir, { recursive: true });
+  const svg = releaseSvg(tag, date, changes);
+  const files = [join(dir, `sqmeter-release-${tag}.png`), join(dir, `sqmeter-release-${tag}@2x.png`)];
+  const prepare = `(${fitReleaseText.toString()})(${JSON.stringify(RELEASE_FIT)})`;
+  const browser = await chromium.launch();
+  try {
+    await renderPng(browser, svg, files[0], 1, prepare);
+    await renderPng(browser, svg, files[1], 2, prepare);
+  } finally {
+    await browser.close();
+  }
+  return files;
 }
 
 async function main() {
   const only = arg('--only');
   const release = arg('--release');
+  if (release) {
+    const date = arg('--date') ?? new Date().toISOString().slice(0, 10);
+    await renderReleaseBanner({ tag: release, date, changes: args('--change'), dir: join(OUT, 'release') });
+    console.log(`rendered release banner for ${release}`);
+    return;
+  }
   const browser = await chromium.launch();
   try {
-    if (release) {
-      const dir = join(OUT, 'release');
-      mkdirSync(dir, { recursive: true });
-      const svg = releaseSvg(release, arg('--date') ?? new Date().toISOString().slice(0, 10), args('--change'));
-      await renderPng(browser, svg, join(dir, `sqmeter-release-${release}.png`), 1);
-      await renderPng(browser, svg, join(dir, `sqmeter-release-${release}@2x.png`), 2);
-      console.log(`rendered release banner for ${release}`);
-      return;
-    }
     if (!only || only === 'social') {
       const dir = join(OUT, 'social');
       mkdirSync(dir, { recursive: true });
@@ -145,7 +188,9 @@ async function main() {
   writeFileSync(join(OUT, 'README.md'), '# Rendered brand files\n\nGenerated by `node tools/brand/render.mjs` from `brand/src/`. Do not edit by hand.\n');
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

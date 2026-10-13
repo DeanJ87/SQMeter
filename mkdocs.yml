@@ -112,6 +112,7 @@ nav:
     - Accessibility: development/accessibility.md
     - Translations: development/translations.md
     - Brand: development/brand.md
+    - Releasing: development/releasing.md
   - Reference:
     - Sky Quality Calculations: reference/sky-quality.md
     - Settings Dependencies: reference/settings-dependencies.md
