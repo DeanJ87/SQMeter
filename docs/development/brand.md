@@ -29,4 +29,4 @@ The social cards, banners and stickers contain text in Inter and JetBrains Mono.
 node tools/brand/render.mjs
 ```
 
-See the [brand README](https://github.com/DeanJ87/SQMeter/blob/main/brand/README.md#png-and-print-files) for the options, including a release banner for a given version.
+See the [brand README](https://github.com/DeanJ87/SQMeter/blob/main/brand/README.md#png-and-print-files) for the options, including a release banner for a given version. Releases get their banner automatically from the changelog: see [Releasing](releasing.md).
