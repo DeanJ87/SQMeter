@@ -4,6 +4,7 @@ import { Toaster } from './toast';
 import AlertsBell from './AlertsBell';
 import { LIVE_REGION_ID } from '../lib/a11y';
 import { t } from '../i18n';
+import BrandMark from './BrandMark';
 
 interface LayoutProps {
   path?: string;
@@ -83,9 +84,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
       <header class="app-header">
         <div class="app-header-inner">
           <div class="brand">
-            <div class="brand-mark" aria-hidden="true">
-              ✦
-            </div>
+            <BrandMark />
             <div>
               <h1>SQMeter</h1>
               <p>{t('layout.darkSkyMonitor')}</p>

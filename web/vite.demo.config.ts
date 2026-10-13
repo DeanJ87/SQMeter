@@ -20,9 +20,41 @@ export default defineConfig({
       },
     },
     {
+      // Link previews and home-screen icon for demo.sqmeter.dev (brand/README.md).
+      // Open Graph needs absolute URLs; DEMO_SITE overrides the host.
+      name: 'sqm-demo-meta',
+      transformIndexHtml(html: string) {
+        const site = (process.env.DEMO_SITE ?? 'https://demo.sqmeter.dev').replace(/\/$/, '');
+        const description = 'Try SQMeter in your browser: the real firmware logic on an emulated device, no hardware needed.';
+        return html
+          .replace(/<title>[^<]*<\/title>/, '<title>SQMeter Demo</title>')
+          .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`)
+          .replace(
+            '</head>',
+            [
+              '  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />',
+              '    <meta property="og:type" content="website" />',
+              '    <meta property="og:site_name" content="SQMeter" />',
+              '    <meta property="og:title" content="SQMeter Demo" />',
+              `    <meta property="og:description" content="${description}" />`,
+              `    <meta property="og:url" content="${site}/" />`,
+              `    <meta property="og:image" content="${site}/og-card.png" />`,
+              '    <meta property="og:image:width" content="1280" />',
+              '    <meta property="og:image:height" content="640" />',
+              '    <meta property="og:image:alt" content="SQMeter: open-hardware sky quality meter for the ESP32" />',
+              '    <meta name="twitter:card" content="summary_large_image" />',
+              '  </head>',
+            ].join('\n'),
+          );
+      },
+    },
+    {
       name: 'sqm-demo-404',
       closeBundle() {
         copyFileSync(resolve(__dirname, 'dist-demo/index.html'), resolve(__dirname, 'dist-demo/404.html'));
+        // Demo-only brand files, kept off the device to save its flash.
+        copyFileSync(resolve(__dirname, '../brand/png/apple-touch-icon-180.png'), resolve(__dirname, 'dist-demo/apple-touch-icon.png'));
+        copyFileSync(resolve(__dirname, '../brand/png/sqmeter-social-1280x640.png'), resolve(__dirname, 'dist-demo/og-card.png'));
       },
     },
   ],

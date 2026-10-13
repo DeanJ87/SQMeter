@@ -177,12 +177,7 @@ button {
 .brand-mark {
   width: 2rem;
   height: 2rem;
-  border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  display: grid;
-  place-items: center;
-  color: var(--cyan);
-  background: var(--panel-2);
+  flex: none;
 }
 
 .brand h1 {

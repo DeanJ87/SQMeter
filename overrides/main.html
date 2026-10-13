@@ -1,5 +1,26 @@
 {% extends "base.html" %}
 
+{#- Link previews (brand/README.md): the social card is a file the site serves
+    itself; absolute URLs come from site_url so a move to another host is one
+    setting. -#}
+{% block extrahead %}
+  {%- set title = (page.title ~ ' - ' ~ config.site_name) if page and page.title and not page.is_homepage else config.site_name %}
+  {%- set description = (page.meta.description if page and page.meta and page.meta.description else config.site_description) %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  {%- if page and page.canonical_url %}
+  <meta property="og:url" content="{{ page.canonical_url }}">
+  {%- endif %}
+  <meta property="og:image" content="{{ config.site_url }}assets/social-card.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="SQMeter: open-hardware sky quality meter for the ESP32">
+  <meta name="twitter:card" content="summary_large_image">
+  {{ super() }}
+{% endblock %}
+
 {#- Diagrams (spec 024): Material fetches mermaid from unpkg unless a global
     `mermaid` already exists when its bundle runs, so load the pinned copy the
     site serves itself (web/scripts/vendor-mermaid.mjs) just before the
