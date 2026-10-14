@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: As-built (backfill)
+**Status**: Implemented - written from the as-built firmware, converged 2026-10-15
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -75,8 +75,8 @@ timeout; plug it in and see a successful response.
 ### Functional Requirements
 
 - **FR-001**: The device MUST poll the RG-15 at a configurable interval and report intensity,
-  accumulation since last read, event accumulation, total accumulation, lens-fault and
-  emitter-saturation flags, online/stale state and age.
+  event accumulation (the device's, cleared by the clear delay, and the sensor's own), total
+  accumulation, lens-fault and emitter-saturation flags, online/stale state and age.
 - **FR-002**: The device MUST keep a latched `raining` state that stays true for
   `rainClearDelayMs` (default 900000 ms) after the last reading with non-zero intensity or
   non-zero accumulation (either means rain was seen).

@@ -122,7 +122,7 @@
   "dashboard.gpsLocation": "Pozycja GPS",
   "dashboard.gust": "Poryw",
   "dashboard.humidity": "Wilgotność",
-  "dashboard.humidityAssumedNumberNoHumidity": "Przyjęto wilgotność {number}% – brak odczytu z czujnika wilgotności.",
+  "dashboard.humidityAssumedNumberNoHumidity": "Przyjęto wilgotność {number}%: brak odczytu z czujnika wilgotności.",
   "dashboard.illuminance": "Natężenie oświetlenia",
   "dashboard.infrared": "Podczerwień",
   "dashboard.intensity": "Natężenie",

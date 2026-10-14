@@ -116,7 +116,7 @@
   "dashboard.gpsLocation": "GPS Location",
   "dashboard.gust": "Gust",
   "dashboard.humidity": "Humidity",
-  "dashboard.humidityAssumedNumberNoHumidity": "Humidity assumed {number}% - no humidity sensor reading.",
+  "dashboard.humidityAssumedNumberNoHumidity": "Humidity assumed {number}%: no humidity sensor reading.",
   "dashboard.illuminance": "Illuminance",
   "dashboard.infrared": "Infrared",
   "dashboard.intensity": "Intensity",

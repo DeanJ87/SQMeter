@@ -13,7 +13,10 @@
 - Q: A global IPv6 address can make the device reachable from the internet if the router allows it - refuse requests from outside the LAN, or rely on the router? → A: Accept IPv6 connections only from the local network (link-local and the device's own on-link prefixes); remote access stays a VPN/proxy job.
 - Q: Must the device work on IPv6-only networks? → A: No - dual stack only (IPv6 alongside working IPv4). IPv6-only networks are a later spec.
 
-### Amendment 2026-10-09 (planning)
+### Amendment 2026-10-09 (planning) - superseded by the spec 027 amendment below
+
+> The two points below describe the Arduino-ESP32 2.x platform. Since spec 027 (Arduino-ESP32 3.x) TLS and NTP reach IPv6-only names, and the web server has a single dual-stack listener; see "Amendment 2026-10-09 (spec 027)" at the end.
+
 
 - Arduino-ESP32 2.0.17's TLS client and SNTP only open IPv4 sockets (research R6). TLS and NTP over IPv6 need
   the Arduino-ESP32 3.x / ESP-IDF 5 platform upgrade, which is its own spec (it changes the constitution's
@@ -158,11 +161,11 @@ effect after restart.
   advertised service doesn't accept connections.
 - **FR-005**: The device MUST answer Alpaca discovery requests sent to the Alpaca IPv6 discovery group,
   in addition to IPv4 broadcast.
-- **FR-006**: Plain-TCP outbound connections (MQTT and `http://` webhooks) MUST work to IPv6 addresses and to
-  names that resolve only to IPv6. TLS clients (Pushover, ntfy over https, https webhooks, GitHub update
-  checks and downloads) and NTP stay IPv4 until the platform-upgrade spec (amendment 2026-10-09); settings
-  MUST say so where they'd otherwise accept an IPv6 address that can't work (an https URL with an IPv6
-  literal).
+- **FR-006**: Outbound connections MUST work to names that resolve only to IPv6: plain TCP (MQTT and
+  `http://` webhooks, also to IPv6 literals) and, since the Arduino-ESP32 3.x platform (spec 027), TLS
+  clients (Pushover, ntfy over https, https webhooks, GitHub update checks and downloads, language
+  downloads) and NTP. A name with both families still prefers IPv4 (FR-008). IPv6 *literals* in an https
+  URL or the NTP server field stay refused, with a message saying so, until verified on hardware.
 - **FR-007**: Settings MUST accept IPv6 literals wherever a host or URL is entered, and validate them
   in the browser and on the device with the same rules.
 - **FR-008**: Broken upstream IPv6 MUST never stop alerts, MQTT or updates. Names with both IPv4 and IPv6
@@ -202,12 +205,16 @@ effect after restart.
 - **SC-006**: Both firmware images still fit their update slots and the device keeps at least the
   current free-memory headroom with IPv6 on.
 
+*Needs hardware (open):* SC-001, SC-002, SC-004, SC-005 and SC-007 on the 3.x firmware are not yet
+measured on a device on a dual-stack LAN; SC-006 is checked by every build.
+
 ## Assumptions
 
 - The device stays on WiFi; Ethernet is out of scope.
 - The setup hotspot stays IPv4-only (it's only used to enter WiFi details).
 - DHCPv6 (stateful addressing) is not required; stateless autoconfiguration is what home routers use.
-- Investigation 2026-10-08: the current platform (Arduino-ESP32 2.0.17 / ESP-IDF 4.4) already
+- *(Superseded by spec 027: the firmware is on Arduino-ESP32 3.x, see the amendment at the end.)*
+  Investigation 2026-10-08: the then platform (Arduino-ESP32 2.0.17 / ESP-IDF 4.4) already
   autoconfigures IPv6 and its mDNS answers AAAA once a link-local address exists; the web server
   listens on all address families. The outbound clients (MQTT, HTTP/TLS) in this platform version
   connect by IPv4 address only, so FR-006/FR-008 may need a platform upgrade (Arduino-ESP32 3.x /

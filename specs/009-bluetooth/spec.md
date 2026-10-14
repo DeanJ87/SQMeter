@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: As-built (backfill)
+**Status**: Implemented - written from the as-built firmware, converged 2026-10-15
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -69,7 +69,8 @@ characteristics.
 
 ### Measurable Outcomes
 
-- **SC-001**: A paired phone is alerted within 5 s of a wake-me event.
+- **SC-001**: A paired phone is alerted within 5 s of a wake-me event. *(Needs hardware: not yet
+  measured with a paired phone.)*
 - **SC-002**: Every settings path in the Bluetooth documentation exists in the UI.
 
 ## Assumptions

@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: As-built (backfill)
+**Status**: Implemented - written from the as-built firmware, converged 2026-10-15
 
 ## User Scenarios & Testing *(mandatory)*
 
