@@ -50,7 +50,8 @@ The tag starts the **Build Firmware & LittleFS** workflow. Its release job:
 1. builds both firmware variants and the web UI with the version stamped in, and the USB flash packages;
 2. builds the language files and the OpenAPI description for this version;
 3. writes the release notes and banner from the changelog section (`tools/release/notes.mjs`). If `CHANGELOG.md` has no section for the tag, the job stops here and nothing is published;
-4. publishes the release with the banner at the top, the changelog section, how to upgrade, and GitHub's list of merged pull requests.
+4. publishes the release with the banner at the top, the changelog section, how to upgrade, and GitHub's list of merged pull requests;
+5. starts **Deploy Docs & Demo** on `main`, so the browser flasher on sqmeter.dev serves the new release's USB packages. The demo reports the newest version in `CHANGELOG.md`, so it changes when the changelog PR merges. To redeploy by hand: `gh workflow run docs.yml --ref main`.
 
 The banner is attached as `sqmeter-release-<tag>.png` (and `@2x`). The docs address in the upgrade note comes from `site_url` in `mkdocs.yml`.
 

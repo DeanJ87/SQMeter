@@ -1,7 +1,11 @@
 import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
-import { copyFileSync } from 'fs';
+import { copyFileSync, readFileSync } from 'fs';
 import { resolve } from 'path';
+import { latestReleasedVersion } from './src/lib/releaseVersion';
+
+// The demo device reports the newest release in CHANGELOG.md.
+const demoVersion = latestReleasedVersion(readFileSync(resolve(__dirname, '../CHANGELOG.md'), 'utf8'));
 
 export default defineConfig({
   plugins: [
@@ -63,6 +67,7 @@ export default defineConfig({
   base: process.env.DEMO_BASE ?? '/',
   define: {
     'import.meta.env.VITE_DEMO_MODE': '"true"',
+    'import.meta.env.VITE_DEMO_VERSION': JSON.stringify(demoVersion),
   },
   build: {
     outDir: 'dist-demo',

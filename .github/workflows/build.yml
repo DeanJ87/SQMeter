@@ -326,6 +326,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
+      # To start the docs deploy (below).
+      actions: write
 
     steps:
       - uses: actions/checkout@v4
@@ -405,3 +407,13 @@ jobs:
             sqmeter-l2-usb-*.zip
             i18n/sqmeter-i18n-*
             sqmeter-openapi-*.json
+
+      # The docs site serves the newest release's browser-flasher files
+      # (tools/docs/flash_assets.py reads them from the releases API at build
+      # time), so redeploy it now. Started on main, not this tag: the site is
+      # built from main and only main may deploy to the github-pages
+      # environment. A dispatch is the one event GITHUB_TOKEN may start.
+      - name: Redeploy docs and flasher
+        run: gh workflow run docs.yml --ref main --repo "${GITHUB_REPOSITORY}"
+        env:
+          GH_TOKEN: ${{ github.token }}

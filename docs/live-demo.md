@@ -35,7 +35,7 @@ On your first visit the demo offers a short tour (about two minutes): live readi
 
 ## Things to try
 
-Open the **✦ Demo** button (bottom right) for weather and fault scenarios:
+Open the **Demo** button (bottom right, with the SQMeter logo) for weather and fault scenarios:
 
 | Scenario | What you'll see |
 |---|---|
@@ -103,7 +103,7 @@ Unless you turn on real notifications, the demo only talks to itself: there is n
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/demo/simulator.ts web/src/main.tsx tools/demo-core/bridge.cpp tools/demo-core/sensor_feed.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: 1357035c012ed65f
+fingerprint: d119f315b4ff7e76
 -->
 <figure class="diagram" markdown>
 

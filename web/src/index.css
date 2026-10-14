@@ -2404,6 +2404,11 @@ input[type='file'].input::file-selector-button {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
+.demo-panel-mark {
+  vertical-align: -0.25em;
+  margin-inline-end: 0.3rem;
+}
+
 .demo-clock-moved {
   margin-inline-start: 0.5rem;
   padding: 0.05rem 0.45rem;
