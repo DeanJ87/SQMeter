@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-09
 
-**Status**: Implementing (`feat/027-arduino3`). Clarified 2026-10-09.
+**Status**: Implemented (PR #122); Bluetooth build hardware check open (FR-006, FR-014). Clarified 2026-10-09.
 
 ## Context
 
