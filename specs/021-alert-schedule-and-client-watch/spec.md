@@ -189,6 +189,12 @@ misunderstand without seeing it.
     watching. Some clients poll without re-sending `connected=true`.
   - Silence after a restart is only alerted if a request has arrived since the restart.
   - "Is back" is not sent after a restart.
+- **A restart the device causes itself, with a client connected** (amended by #136).
+  - The device keeps answering `Connected = true` for the devices that were connected (#136), so
+    they are watched straight after boot without a new connect.
+  - Their silence clock starts at boot, as if the client had checked then. If the client went
+    away during the restart, "stops checking" is sent once the silence time has passed with no
+    request; a request after that sends "is back". A power-on keeps the rule above.
 - **Several clients at once** (N.I.N.A. plus a weather dashboard):
   - Silence is judged per device, from the newest request from any client.
   - One client still polling means that device is being watched.
@@ -251,6 +257,8 @@ misunderstand without seeing it.
 - **FR-008**: The device MUST raise **"Imaging app stopped checking"** (`client_lost`) when a device
   has a client watching but no request has arrived for longer than that device's **"Silent for"**
   time. "Watching" means connected, or polled since the last restart.
+  - Amended by #136: a connection kept across a restart the device caused itself counts as a
+    request at boot, so its silence clock starts then (see Edge Cases).
   - Defaults: SafetyMonitor 2 minutes, ObservingConditions 10 minutes.
   - Allowed range: 30 seconds to 60 minutes.
   - It fires once per loss.

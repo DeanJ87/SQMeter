@@ -4,6 +4,15 @@ All notable changes to SQMeter are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- After a restart the device causes itself (a crash, the watchdog, an update) with an imaging app connected, an app that went away during the restart is now noticed: "Imaging app stopped checking" is sent once its **Silent for** time passes with no request, and "is back" when it checks again.
+
+### Added
+
+- Settings show when a language other than English can't be loaded: no file stored and no WiFi to download it (settings dependency D-38); a hand upload works offline.
+- The demo tour shows the Status card with the pretend imaging app connected, then gone quiet.
+
 ### Planned
 
 - Hardware PCB design (planned — SQMeter-Hardware repo)

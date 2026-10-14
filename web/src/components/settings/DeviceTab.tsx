@@ -180,7 +180,7 @@ const BluetoothCard: FunctionalComponent<WithActions> = (props) => {
 };
 
 const DeviceTab: FunctionalComponent<SettingsTabProps> = (props) => {
-  const { config, update, error } = props;
+  const { config, update, error, deps, fix } = props;
   const actions = useDeviceActions();
   return (
     <>
@@ -190,7 +190,12 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = (props) => {
         </Field>
       </SettingsCard>
 
-      <LanguageCard language={config.language ?? 'en'} onChange={(code) => update(['language'], code)} />
+      <LanguageCard
+        language={config.language ?? 'en'}
+        onChange={(code) => update(['language'], code)}
+        dep={deps.get('language')}
+        onFix={fix}
+      />
 
       <SecurityCard {...props} />
 

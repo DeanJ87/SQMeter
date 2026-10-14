@@ -266,6 +266,7 @@ Deps::Facts EmulatedDevice::facts() const
     f.wifiConnected = true;
     f.mqttConnected = cfg.mqtt.enabled;
     f.clockSet = epoch >= Core::CLOCK_VALID_EPOCH;
+    f.languageInstalled = true; // the demo bundles every language
     return f;
 }
 

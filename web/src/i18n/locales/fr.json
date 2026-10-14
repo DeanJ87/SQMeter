@@ -1054,6 +1054,7 @@
   "settingsDeps.mqttIsOff": "MQTT est désactivé",
   "settingsDeps.mqttSettings": "Paramètres MQTT",
   "settingsDeps.needsTheBluetoothFirmwareBuild": "Nécessite le micrologiciel avec Bluetooth",
+  "settingsDeps.needsWifiToDownloadOr": "Le WiFi est nécessaire pour le téléchargement - ou envoyez le fichier",
   "settingsDeps.needsYourLocation": "Nécessite votre position",
   "settingsDeps.noGpsFixUsingThe": "Pas de fix GPS : la position des paramètres est utilisée",
   "settingsDeps.noPairingPasskeySet": "Aucune clé d'appairage définie",

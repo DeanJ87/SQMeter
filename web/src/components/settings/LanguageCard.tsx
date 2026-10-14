@@ -6,7 +6,8 @@ import { deviceText } from '../../i18n/deviceMessage';
 import { languageProblem } from '../../i18n/loader';
 import { retryLanguage, useLanguage, useLanguageProgress, type LanguageProgress } from '../../hooks/useLanguage';
 import { InfoTip, Note, Pill, ProgressMeter } from '../ui';
-import { ActionButton, Field, SelectInput, SettingsCard } from './controls';
+import type { DepEntry } from '../../lib/settingsDeps';
+import { ActionButton, DepNote, Field, SelectInput, SettingsCard } from './controls';
 
 // Settings → Device → Language (specs/023-i18n, 026 FR-004): the device-wide
 // language and its stored file. A change reports here, like a firmware
@@ -105,7 +106,13 @@ const FileActions: FunctionalComponent<{ busy: boolean; retry: () => void; uploa
   );
 };
 
-const LanguageCard: FunctionalComponent<{ language: string; onChange: (code: string) => void }> = ({ language, onChange }) => {
+const LanguageCard: FunctionalComponent<{
+  language: string;
+  onChange: (code: string) => void;
+  // D-38: no stored file and no WiFi to download it (specs/020-settings-dependencies).
+  dep?: DepEntry;
+  onFix?: (entry: DepEntry) => void;
+}> = ({ language, onChange, dep, onFix }) => {
   const { status, busy, message, retry, upload } = useLanguage();
   const progress = useLanguageProgress();
   const savedOther = Boolean(status && status.language !== 'en');
@@ -120,6 +127,7 @@ const LanguageCard: FunctionalComponent<{ language: string; onChange: (code: str
           options={LANGUAGES.map((option) => ({ value: option.code, label: option.name }))}
         />
       </Field>
+      {dep?.state === 'inactive' && onFix && <DepNote entry={dep} onFix={onFix} />}
       {progress ? <Progress value={progress} /> : <Problem onRetry={savedOther ? () => void retry() : undefined} />}
       {message && <Note tone={message.tone === 'ok' ? 'ok' : 'bad'}>{message.text}</Note>}
       {savedOther && !progress && <FileActions busy={busy} retry={() => void retry()} upload={(file) => void upload(file)} />}

@@ -1046,6 +1046,7 @@
   "settingsDeps.mqttIsOff": "MQTTはオフです",
   "settingsDeps.mqttSettings": "MQTTの設定",
   "settingsDeps.needsTheBluetoothFirmwareBuild": "Bluetooth版ファームウェアが必要です",
+  "settingsDeps.needsWifiToDownloadOr": "ダウンロードにはWi-Fiが必要です（またはファイルをアップロード）",
   "settingsDeps.needsYourLocation": "位置情報が必要です",
   "settingsDeps.noGpsFixUsingThe": "GPSの測位なし：設定の位置を使用中",
   "settingsDeps.noPairingPasskeySet": "ペアリングパスキーが未設定です",

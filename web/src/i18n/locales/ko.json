@@ -1046,6 +1046,7 @@
   "settingsDeps.mqttIsOff": "MQTT가 꺼져 있음",
   "settingsDeps.mqttSettings": "MQTT 설정",
   "settingsDeps.needsTheBluetoothFirmwareBuild": "블루투스용 펌웨어 빌드 필요",
+  "settingsDeps.needsWifiToDownloadOr": "다운로드하려면 Wi-Fi가 필요합니다 - 또는 파일을 업로드하세요",
   "settingsDeps.needsYourLocation": "위치 정보 필요",
   "settingsDeps.noGpsFixUsingThe": "GPS 측위 없음 - 설정의 위치 사용 중",
   "settingsDeps.noPairingPasskeySet": "페어링 암호가 설정되지 않음",
