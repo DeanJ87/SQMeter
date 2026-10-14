@@ -25,8 +25,9 @@ import { simulatorLocation, sunLux } from './simulator';
 
 const STORAGE_KEY = 'sqm.demo.v2';
 const OLD_STORAGE_KEY = 'sqm.demo.v1';
-// The latest release: what the demo device reports.
-export const DEMO_VERSION = '0.3.1-beta.1';
+// The latest release: what the demo device reports. Set at build time from
+// CHANGELOG.md's newest released section (../lib/releaseVersion.ts).
+export const DEMO_VERSION: string = import.meta.env.VITE_DEMO_VERSION ?? 'dev';
 const LONDON_TZ = 'GMT0BST,M3.5.0/1,M10.5.0';
 // Cloud shortcuts roll in over this long unless another ramp is chosen (FR-010).
 export const CLOUD_RAMP_MS = 40_000;

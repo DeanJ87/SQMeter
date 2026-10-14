@@ -21,9 +21,12 @@ on:
       - 'tools/docs/**'
       - 'web/**'
       - '.github/workflows/docs.yml'
-  # A new release brings new browser-flasher files (spec 027).
-  release:
-    types: [ published ]
+  # A new release brings new browser-flasher files (spec 027): build.yml's
+  # release job starts this on main once the release is published. (A
+  # `release: published` trigger never fires: the release is created with
+  # GITHUB_TOKEN, whose events start no workflows; workflow_dispatch is the
+  # exception.) Also for redeploying by hand: gh workflow run docs.yml --ref main
+  workflow_dispatch:
 
 # Cancel an in-progress docs deploy when a newer push lands on main.
 concurrency:
