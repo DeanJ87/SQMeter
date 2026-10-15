@@ -1,3 +1,7 @@
+---
+description: "SQMeter's security model: built for a trusted LAN, optional HTTP Basic Auth on changes, no TLS, and how to deploy it safely."
+---
+
 # Security
 
 SQMeter is an observatory instrument designed to run on a trusted LAN. This page describes the security model, what HTTP auth protects, and recommended deployment.

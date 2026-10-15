@@ -31,6 +31,12 @@ WiFi network confirmed in the saved settings.
 | 18 | Heap and stack (`/api/status`) | Idle free heap about 183-188 KB (largest block 110 KB), against 170 KB on 2.x; stack left: async_tcp about 6.8 KB, loop about 6.3 KB |
 | 19 | Browser flasher (ESP Web Tools) | Not run by hand: it needs a person at a Web Serial browser. The docs page builds with the self-hosted flasher, and its manifest has the same five parts and offsets as the esptool command in check 1, with "erase" off by default |
 
+## Open
+
+- **Bluetooth build on 3.x** (FR-006, FR-014): no hardware result recorded. Every check above was on the
+  standard build; the Bluetooth build compiles and passes the budget in CI only. Tasks T018.
+- **Browser flasher by hand** (FR-019): check 19, needs a person at a Web Serial browser. Tasks T019.
+
 ## Found and fixed during these checks
 
 - **Update check failed on 3.x.** `NetworkClient::readBytes()` gives up as soon as the TLS client

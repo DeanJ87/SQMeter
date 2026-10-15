@@ -11,7 +11,10 @@ Checks that lib/SettingsDeps/catalogue.json, the code and the tests agree:
   5. device code that makes one setting's effect depend on another section's
      switch carries a `dep: D-NN` marker naming a catalogue entry, and every
      marker names one (FR-014);
-  6. docs/reference/settings-dependencies.md matches the catalogue.
+  6. docs/reference/settings-dependencies.md matches the catalogue;
+  7. every setting the device has (the settings model's defaults and the range
+     fixture) is in an entry or in the catalogue's noDependency list, so a new
+     setting can't skip the question; every noDependency item names a setting.
 
   python3 tools/settings-deps/check.py              # check (CI)
   python3 tools/settings-deps/check.py --write-docs # regenerate the docs page
@@ -32,6 +35,10 @@ DEVICE_IMPL = "lib/SettingsDeps/src/SettingsDeps.cpp"
 WEB_IMPL = "web/src/lib/settingsDeps.ts"
 FIXTURES = "test/fixtures/settings-deps/cases.json"
 DOCS = "docs/reference/settings-dependencies.md"
+# Every setting the device has: its defaults as JSON (kept current by
+# test/test_settings_deps) and the numeric ranges (test/test_config_ranges).
+DEFAULT_CONFIG = "test/fixtures/settings-deps/default-config.json"
+RANGES = "test/fixtures/config-ranges.json"
 CONSTRAINT_SOURCES = ["lib/ConfigModel/src/ConfigValidate.cpp", "web/src/validation/configSchema.ts"]
 
 # Device code scanned for undeclared dependencies and markers.
@@ -228,9 +235,49 @@ def check_docs(root, catalogue, write_docs):
     return []
 
 
+def setting_keys(root):
+    """Every setting's JSON path: the leaves of the default config, plus the ranged ones."""
+    keys = set()
+
+    def walk(value, path):
+        if isinstance(value, dict) and value:
+            for key, child in value.items():
+                walk(child, f"{path}.{key}" if path else key)
+        else:
+            keys.add(path)
+
+    walk(json.loads(read(root, DEFAULT_CONFIG)), "")
+    keys.update(r["path"] for r in json.loads(read(root, RANGES))["ranges"])
+    return keys
+
+
+def matches(pattern, key):
+    """`*` stands for one path segment."""
+    parts, segments = pattern.split("."), key.split(".")
+    return len(parts) == len(segments) and all(p in ("*", s) for p, s in zip(parts, segments))
+
+
+def check_coverage(root, catalogue):
+    """Each setting is catalogued or marked as having no dependency - not both, not neither."""
+    keys = setting_keys(root)
+    catalogued = {s for e in catalogue["entries"] for s in e["settings"]}
+    patterns = catalogue.get("noDependency", [])
+    problems = [f"{CATALOGUE}: noDependency item {p!r} matches no setting" for p in patterns if not any(matches(p, k) for k in keys)]
+    for key in sorted(keys):
+        marked = any(matches(p, key) for p in patterns)
+        if key in catalogued and marked:
+            problems.append(f"{CATALOGUE}: {key} is in an entry and in noDependency")
+        elif key not in catalogued and not marked:
+            problems.append(
+                f"{key}: a setting that is neither in a catalogue entry nor in noDependency ({CATALOGUE}) - "
+                "declare what it depends on, or that it depends on nothing"
+            )
+    return problems
+
+
 def check(root, write_docs=False):
     catalogue = json.loads(read(root, CATALOGUE))
-    problems = check_structure(catalogue)
+    problems = check_structure(catalogue) + check_coverage(root, catalogue)
     sources = load_sources(root)
     code_problems, marked = check_code(root, {e["id"] for e in catalogue["entries"]})
     problems += code_problems

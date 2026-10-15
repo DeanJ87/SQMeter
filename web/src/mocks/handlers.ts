@@ -24,6 +24,7 @@ const mockFacts: DepFacts = {
   lightDetected: true,
   infraredDetected: true,
   environmentDetected: true,
+  languageInstalled: true,
 };
 
 // Demo-only: alerts switched on/off.

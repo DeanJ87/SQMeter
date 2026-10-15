@@ -1046,6 +1046,7 @@
   "settingsDeps.mqttIsOff": "MQTT nonaktif",
   "settingsDeps.mqttSettings": "Pengaturan MQTT",
   "settingsDeps.needsTheBluetoothFirmwareBuild": "Memerlukan build firmware Bluetooth",
+  "settingsDeps.needsWifiToDownloadOr": "Perlu Wi-Fi untuk mengunduh - atau unggah file-nya",
   "settingsDeps.needsYourLocation": "Memerlukan lokasi Anda",
   "settingsDeps.noGpsFixUsingThe": "Tidak ada fix GPS: menggunakan lokasi di Pengaturan",
   "settingsDeps.noPairingPasskeySet": "Kode pemasangan belum diatur",

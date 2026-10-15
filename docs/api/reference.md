@@ -1,3 +1,7 @@
+---
+description: "SQMeter API reference: every REST route with parameters and schemas, from the OpenAPI 3.1 description. Try it in the API explorer."
+---
+
 # API Reference
 
 Every `/api/*` route, generated from the firmware's route registry and its contract schemas, so it

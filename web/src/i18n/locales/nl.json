@@ -1054,6 +1054,7 @@
   "settingsDeps.mqttIsOff": "MQTT staat uit",
   "settingsDeps.mqttSettings": "MQTT-instellingen",
   "settingsDeps.needsTheBluetoothFirmwareBuild": "Vereist de Bluetooth-firmware",
+  "settingsDeps.needsWifiToDownloadOr": "Wifi nodig om te downloaden - of upload het bestand",
   "settingsDeps.needsYourLocation": "Vereist je locatie",
   "settingsDeps.noGpsFixUsingThe": "Geen GPS-fix: de locatie uit de instellingen wordt gebruikt",
   "settingsDeps.noPairingPasskeySet": "Geen koppelcode ingesteld",

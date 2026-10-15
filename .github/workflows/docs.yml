@@ -21,9 +21,12 @@ on:
       - 'tools/docs/**'
       - 'web/**'
       - '.github/workflows/docs.yml'
-  # A new release brings new browser-flasher files (spec 027).
-  release:
-    types: [ published ]
+  # A new release brings new browser-flasher files (spec 027): build.yml's
+  # release job starts this on main once the release is published. (A
+  # `release: published` trigger never fires: the release is created with
+  # GITHUB_TOKEN, whose events start no workflows; workflow_dispatch is the
+  # exception.) Also for redeploying by hand: gh workflow run docs.yml --ref main
+  workflow_dispatch:
 
 # Cancel an in-progress docs deploy when a newer push lands on main.
 concurrency:
@@ -37,21 +40,21 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
 
       - name: Cache node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: web/node_modules
           key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
@@ -95,7 +98,7 @@ jobs:
 
       - name: Language screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: i18n-screenshots
           path: web/test-results/i18n-*/*.png
@@ -146,13 +149,13 @@ jobs:
           commit_message: "Demo from DeanJ87/SQMeter@${{ github.sha }}"
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./site
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name != 'pull_request'
     environment:
       name: github-pages
@@ -164,4 +167,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

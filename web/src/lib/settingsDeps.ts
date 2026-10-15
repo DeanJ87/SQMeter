@@ -24,6 +24,7 @@ export interface DepFacts {
   lightDetected: boolean;
   infraredDetected: boolean;
   environmentDetected: boolean;
+  languageInstalled?: boolean; // older firmware doesn't report it
 }
 
 export interface DepEntry {
@@ -69,6 +70,7 @@ export const REASONS: Record<string, { text: string; fix: string }> = {
   'no-phones': { text: t('settingsDeps.noPhonePaired'), fix: 'device#ble' },
   'clock-unset': { text: t('settingsDeps.theDeviceDoesnTKnow'), fix: 'time#time-sources' },
   'ota-no-password': { text: t('settingsDeps.setAnUploadPassword'), fix: 'device#security' },
+  'language-offline': { text: t('settingsDeps.needsWifiToDownloadOr'), fix: 'network#wifi' },
 };
 
 // Label for the one-click fix of each reason.
@@ -94,6 +96,7 @@ export const FIX_LABEL: Record<string, string> = {
   'no-phones': t('settingsDeps.pairAPhone'),
   'clock-unset': t('settingsDeps.timeSources'),
   'ota-no-password': t('settingsDeps.setPassword'),
+  'language-offline': t('settingsDeps.wifiSettings'),
 };
 
 // One link of a dependency chain: met, or the catalogue ID and reason that
@@ -320,6 +323,10 @@ const addDevice = (c: Context) => {
   c.add('ota.enabled', 'D-32', on(c.config, 'ota.enabled'), [['D-32', 'ota-no-password', read(c.config, 'ota.password', '') !== '']]);
   c.add('wifi.mdns', 'D-36', on(c.config, 'wifi.mdns', true), [['D-36', 'wifi-disconnected', c.fact('wifiConnected')]]);
   c.add('wifi.ipv6', 'D-36', on(c.config, 'wifi.ipv6', true), [['D-36', 'wifi-disconnected', c.fact('wifiConnected')]]);
+  // A non-English language needs its file: stored, or downloadable over WiFi (a hand upload works offline).
+  c.add('language', 'D-38', read(c.config, 'language', 'en') !== 'en', [
+    ['D-38', 'language-offline', or(c.fact('languageInstalled') ?? null, c.fact('wifiConnected'))],
+  ]);
 };
 
 /**
@@ -413,6 +420,7 @@ const NON_BLOCKING = new Set([
   'ota-no-password',
   'no-passkey',
   'no-phones',
+  'language-offline',
 ]);
 export const blocksSwitchingOn = (reason: string | undefined) => reason !== undefined && !NON_BLOCKING.has(reason);
 

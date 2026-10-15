@@ -1,3 +1,7 @@
+---
+description: "The SQMeter web UI in 14 languages, including Arabic right-to-left: how to choose one and how language files are installed."
+---
+
 # Languages
 
 The device's web interface is available in 14 languages: English, Bahasa Indonesia, Deutsch, Español, Français, Italiano, Nederlands, Polski, Português (Brasil), Türkçe, العربية (Arabic, right-to-left), 日本語, 한국어 and 简体中文.
@@ -17,7 +21,7 @@ When you type a number in Settings, use your language's decimal separator (`21,5
 
 ## Without internet
 
-If the device can't reach GitHub (no internet, or a firewall), the interface stays in English and the Language card says why. You can install the file by hand:
+If the device can't reach GitHub (no internet, or a firewall), the interface stays in English and the Language card says why. Without WiFi at all (the setup hotspot) and no file stored yet, the card shows *Inactive: Needs WiFi to download - or upload the file* ([settings dependencies](../reference/settings-dependencies.md), D-38). A file already stored keeps working offline. You can install the file by hand:
 
 1. On a computer with internet, open the [release page](https://github.com/DeanJ87/SQMeter/releases) for the firmware version shown under **Updates**.
 2. Download `sqmeter-i18n-<code>.json.gz` for your language, for example `sqmeter-i18n-es.json.gz`.

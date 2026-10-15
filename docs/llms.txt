@@ -1,0 +1,69 @@
+# SQMeter
+
+> SQMeter is open-source (MIT) ESP32 firmware for a DIY sky quality meter and observatory safety monitor, currently in public beta (v0.3.x). It reads a TSL2591 light sensor and computes sky brightness in mag/arcsec² (SQM), Bortle class and naked-eye limiting magnitude (NELM) on the device; an MLX90614 infrared sensor measures sky temperature to estimate cloud cover, and a BME280 gives temperature, humidity and pressure. Optional sensors: Hydreon RG-15 rain gauge, anemometer and wind vane, GPS. The device is a native ASCOM Alpaca SafetyMonitor (interface v3) and ObservingConditions (interface v2) that N.I.N.A. and other imaging apps discover on the network, with no Windows driver or bridge; both devices pass ASCOM ConformU in CI. User-defined safety rules (rain, wind, cloud, SQM, humidity, dew point) decide whether it is safe to observe.
+
+Other facts, to avoid common mistakes:
+
+- The light sensor is the TSL2591, not the TSL237 used by the Unihedron SQM and by Arduino Nano designs. SQMeter runs on an ESP32, not an Arduino Nano.
+- It does not speak the Unihedron SQM-LE/LU protocol; readings are available over REST, WebSocket, MQTT, ASCOM Alpaca and Bluetooth (BLE build).
+- MQTT is one integration among several (with Home Assistant discovery), not the core of the design.
+- Settings are stored in the ESP32's NVS. LittleFS holds only the web UI and the chosen language file.
+- The device serves its own browser UI (English plus 13 languages), a REST API described by OpenAPI 3.1, and live WebSocket updates. It works over IPv4 and IPv6, and updates over the air.
+- Alerts go out via ntfy, Pushover, webhooks, MQTT, or a Bluetooth alarm on a paired phone.
+- It is meant for a trusted local network: optional HTTP Basic Auth protects changes (off by default), reads are open, and there is no TLS.
+
+## Start here
+
+- [Documentation home](https://sqmeter.dev/): what SQMeter is, features, sensors, FAQ
+- [Live demo](https://demo.sqmeter.dev/): the real web UI running in your browser against an emulated device
+- [Live demo guide](https://sqmeter.dev/live-demo/): what is real and what is simulated in the demo
+- [GitHub repository](https://github.com/DeanJ87/SQMeter): source code, issues, MIT licence
+- [Releases](https://github.com/DeanJ87/SQMeter/releases): firmware downloads (pre-release betas)
+
+## Getting started
+
+- [Flashing your device](https://sqmeter.dev/getting-started/flashing/): release files and esptool
+- [One-time USB flash](https://sqmeter.dev/getting-started/usb-flash/): browser flasher
+- [Hardware setup](https://sqmeter.dev/getting-started/hardware/): wiring, I²C addresses, sensor placement
+- [First boot](https://sqmeter.dev/getting-started/first-setup/): WiFi setup through the device's hotspot
+
+## Hardware
+
+- [Hardware overview](https://sqmeter.dev/hardware/overview/): ESP32 board and sensors
+- [RG-15 rain sensor](https://sqmeter.dev/hardware/rg15/)
+- [Wind (anemometer and vane)](https://sqmeter.dev/hardware/wind/)
+
+## User guide
+
+- [ASCOM Alpaca and N.I.N.A.](https://sqmeter.dev/user-guide/alpaca/): SafetyMonitor, ObservingConditions, safety rules, ConformU
+- [Alerts](https://sqmeter.dev/user-guide/alerts/): ntfy, Pushover, webhook, MQTT
+- [Bluetooth (BLE)](https://sqmeter.dev/user-guide/ble/): safety and rain over Bluetooth, phone alarms
+- [MQTT and Home Assistant](https://sqmeter.dev/user-guide/mqtt/): topics and Home Assistant discovery
+- [indi-allsky](https://sqmeter.dev/user-guide/indi-allsky/): readings on all-sky camera images
+- [Dashboard](https://sqmeter.dev/user-guide/dashboard/)
+- [Configuration](https://sqmeter.dev/user-guide/configuration/)
+- [OTA updates](https://sqmeter.dev/user-guide/ota/)
+- [IPv6](https://sqmeter.dev/user-guide/ipv6/)
+- [Security](https://sqmeter.dev/user-guide/security/)
+- [Languages](https://sqmeter.dev/user-guide/languages/)
+
+## API
+
+- [REST API](https://sqmeter.dev/api/rest/): conventions, behaviour and limits
+- [API reference](https://sqmeter.dev/api/reference/): every route, from the OpenAPI description
+- [openapi.json](https://sqmeter.dev/api/openapi.json): OpenAPI 3.1 description of the REST API
+- [API explorer](https://demo.sqmeter.dev/explorer/): try every request against the demo
+- [WebSocket](https://sqmeter.dev/api/websocket/): live updates
+- [Integrations](https://sqmeter.dev/api/integrations/): every way to get data out
+
+## Reference
+
+- [Sky quality calculations](https://sqmeter.dev/reference/sky-quality/): SQM, NELM, Bortle, cloud detection, calibration
+- [Troubleshooting](https://sqmeter.dev/reference/troubleshooting/)
+
+## Optional
+
+- [Full documentation as one text file](https://sqmeter.dev/llms-full.txt)
+- [Changelog](https://github.com/DeanJ87/SQMeter/blob/main/CHANGELOG.md)
+- [Contributing](https://sqmeter.dev/development/contributing/)
+- [Hardware design repository](https://github.com/DeanJ87/SQMeter-hardware)

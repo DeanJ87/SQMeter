@@ -1,3 +1,7 @@
+---
+description: "Flash SQMeter onto an ESP32 from your browser, or move a v0.2 device to the v0.3 partition layout with one USB flash."
+---
+
 # One-time USB flash
 
 SQMeter v0.3 moves to a new partition layout that uses the whole 4 MB flash: two 1.75 MB firmware slots instead of 1.5 MB, so there's room for new features. A partition layout can only be changed over USB, so each device needs **one** USB flash to get onto v0.3. After that it updates over WiFi again, as before.

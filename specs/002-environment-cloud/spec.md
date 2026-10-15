@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: As-built (backfill)
+**Status**: Implemented - written from the as-built firmware, converged 2026-10-15
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -83,8 +83,9 @@ The user adjusts the clear/overcast thresholds and the humidity correction for t
   report that the humidity is assumed; the dashboard MUST show this.
 - **FR-006**: The thresholds and correction factor MUST be configurable (defaults −13 °C, −3 °C,
   0.75) with validation.
-- **FR-007**: The dashboard MUST show environment, cloud and IR cards only for sensors that are
-  working, with the cloud label taken from the device's condition, and units shown consistently
+- **FR-007** *(partly superseded by spec 025 FR-013: a sensor that is enabled but failed keeps its
+  card, in a fault state; only switched-off sensors are hidden)*: The dashboard MUST show environment,
+  cloud and IR cards only for sensors that are working, with the cloud label taken from the device's condition, and units shown consistently
   (°C, %, hPa).
 - **FR-008**: These values MUST feed Alpaca ObservingConditions, MQTT, safety rules and alerts,
   and Alpaca MUST NOT report the assumed humidity as a measurement.

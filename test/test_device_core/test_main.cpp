@@ -246,6 +246,34 @@ void test_stale_when_a_required_sensor_stops_refreshing()
     TEST_ASSERT_TRUE(verdict(fresh, cfg, now).isSafe);
 }
 
+// specs/006 SC-002: the readings' stale flag follows the same per-sensor age
+// as the verdict, so the dashboard never reads "Live" while the verdict is
+// unsafe because a sensor stopped refreshing.
+void test_readings_stale_matches_the_verdict()
+{
+    const uint32_t now = 1000000;
+    const Config cfg = defaults();
+
+    SensorSnapshot fresh = healthy(now);
+    Core::derive(fresh, cfg);
+    TEST_ASSERT_FALSE(Core::buildReadings(fresh, cfg, now, NIGHT_EPOCH).dataStale);
+
+    SensorSnapshot s = healthy(now);
+    s.dataTimestamp = now - 100;    // the loop is running
+    s.tslLastUpdate = now - 600000; // but the TSL2591 hasn't read for 10 min
+    Core::derive(s, cfg);
+    TEST_ASSERT_TRUE(Core::buildReadings(s, cfg, now, NIGHT_EPOCH).dataStale);
+    TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UnsafeStaleData);
+
+    // A sensor that isn't fitted doesn't make the data stale.
+    SensorSnapshot noIr = healthy(now);
+    noIr.mlxInitialized = false;
+    noIr.mlx.status = SensorStatus::NotInitialized;
+    noIr.mlxLastUpdate = 0;
+    Core::derive(noIr, cfg);
+    TEST_ASSERT_FALSE(Core::buildReadings(noIr, cfg, now, NIGHT_EPOCH).dataStale);
+}
+
 // A sensor that never answered is a fault, not "no data" or "stale".
 void test_missing_sensor_is_a_fault_not_stale()
 {
@@ -448,6 +476,7 @@ int main()
     RUN_TEST(test_safety_lists_rules_not_in_effect);
     RUN_TEST(test_rain_makes_unsafe_even_when_stale);
     RUN_TEST(test_stale_when_a_required_sensor_stops_refreshing);
+    RUN_TEST(test_readings_stale_matches_the_verdict);
     RUN_TEST(test_missing_sensor_is_a_fault_not_stale);
     RUN_TEST(test_rain_sensor_lens_fault_and_stale_are_unsafe);
     RUN_TEST(test_night_from_location_and_clock);

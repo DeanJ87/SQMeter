@@ -1,3 +1,7 @@
+---
+description: "Try the SQMeter web UI in your browser: an emulated sky quality meter and safety monitor running the real firmware logic. No hardware needed."
+---
+
 # Live Demo
 
 [Try the Live Demo :material-arrow-right:](https://demo.sqmeter.dev/){ .md-button .md-button--primary }
@@ -25,13 +29,13 @@ Because the dashboard, the Alpaca page and the Alpaca API all come from one emul
 
 ## The tour
 
-On your first visit the demo offers a short tour (about two minutes): live readings, the safety verdict, making it unsafe and watching the verdict, the bell and Alpaca agree, changing a rule, and the Demo panel. Steps that ask you to do something wait for the device to react - or press **Do it for me**. **Skip tour** or Esc ends it; **Take the tour** in the Demo panel starts it again. It works with the keyboard alone, on phones, and without animation.
+On your first visit the demo offers a short tour (about two minutes): live readings, the safety verdict, making it unsafe and watching the verdict, the bell, the Status card with the pretend imaging app connected and then gone quiet (**Go silent for me** also switches the clock to 10×, so the **Silent for** time passes in seconds), Alpaca agreeing, changing a rule, and the Demo panel. Steps that ask you to do something wait for the device to react - or press **Do it for me**. **Skip tour** or Esc ends it; **Take the tour** in the Demo panel starts it again. It works with the keyboard alone, on phones, and without animation.
 
 ---
 
 ## Things to try
 
-Open the **✦ Demo** button (bottom right) for weather and fault scenarios:
+Open the **Demo** button (bottom right, with the SQMeter logo) for weather and fault scenarios:
 
 | Scenario | What you'll see |
 |---|---|
@@ -99,7 +103,7 @@ Unless you turn on real notifications, the demo only talks to itself: there is n
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/demo/simulator.ts web/src/main.tsx tools/demo-core/bridge.cpp tools/demo-core/sensor_feed.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: 68e52cfa805be0f8
+fingerprint: d119f315b4ff7e76
 -->
 <figure class="diagram" markdown>
 

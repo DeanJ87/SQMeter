@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: As-built (backfill)
+**Status**: Implemented - written from the as-built firmware, converged 2026-10-15
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -81,6 +81,7 @@ readings need the password; secrets are never shown back.
   WiFi scan, which starts a radio scan); secrets MUST be masked and preserved. Every route MUST be
   declared with its auth in `tools/api/routes.json`, checked in CI. ASCOM Alpaca routes are open by
   the Alpaca design.
+- **FR-007**: The configuration and security documentation MUST match the device.
 - **FR-008**: The device MUST serve several clients at once (at least two browsers, an imaging app
   and MQTT) and, past its connection limit, refuse new connections cleanly: no restart, and
   existing clients keep working. The limit and behaviour MUST be documented. An imaging app MUST
@@ -103,7 +104,6 @@ readings need the password; secrets are never shown back.
   30 minutes (`tools/soak/connection_soak.py`). (2) A software restart while N.I.N.A. is connected
   leaves `GET …/safetymonitor/0/connected` `true` after the restart. *(Decisions:
   [research-connections.md](research-connections.md); see spec 013 FR-012.)*
-- **FR-007**: The configuration and security documentation MUST match the device.
 - **FR-009** *(added 2026-10-11)*: A settings save MUST NEVER take the device off its network or
   silently replace a value:
   - A value of the wrong type for any setting (including `null`, except `null` for a secret, which

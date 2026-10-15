@@ -19,7 +19,10 @@ on:
       - 'lib/AlertLogic/**'
       - 'lib/ConfigModel/**'
       - 'src/WebServer.cpp'
+      - 'src/WebServerAlpaca.cpp'
+      - 'src/WebServerLive.cpp'
       - 'include/WebServer.h'
+      - 'lib/ConnectionBudget/**'
       - 'tools/alpaca-sim/**'
       - 'platformio.ini'
       - '.github/workflows/alpaca-conformance.yml'
@@ -32,7 +35,10 @@ on:
       - 'lib/AlertLogic/**'
       - 'lib/ConfigModel/**'
       - 'src/WebServer.cpp'
+      - 'src/WebServerAlpaca.cpp'
+      - 'src/WebServerLive.cpp'
       - 'include/WebServer.h'
+      - 'lib/ConnectionBudget/**'
       - 'tools/alpaca-sim/**'
       - 'platformio.ini'
       - '.github/workflows/alpaca-conformance.yml'
@@ -50,17 +56,17 @@ env:
 
 jobs:
   conformu:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
       - name: Cache PlatformIO packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.platformio
           key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
@@ -112,7 +118,7 @@ jobs:
 
       - name: Upload ConformU logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: conformu-results
           path: conformu-results/

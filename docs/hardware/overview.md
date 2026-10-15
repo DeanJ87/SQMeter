@@ -1,3 +1,7 @@
+---
+description: "SQMeter hardware: an ESP32 dev board and I²C sensors (TSL2591, MLX90614, BME280), on a breadboard or perfboard today."
+---
+
 # Hardware Overview
 
 SQMeter is built around an ESP32 development board and a small set of I2C sensors. The electronics are straightforward and can be assembled on a breadboard or perfboard today, with a custom PCB coming in a future hardware release.

@@ -1,3 +1,8 @@
+---
+title: Open-source sky quality meter for ESP32
+description: "Open-source ESP32 sky quality meter and observatory safety monitor: SQM, Bortle, cloud and rain, native ASCOM Alpaca for N.I.N.A., alerts and MQTT."
+---
+
 # SQMeter
 
 <div class="sqm-hero" markdown>
@@ -7,7 +12,7 @@
 ESP32 dark sky quality monitor - sky brightness, cloud, rain and wind, an observatory safety monitor for N.I.N.A., and alerts that wake you when it matters.
 </div>
 
-SQMeter is an open-source sky quality meter built on the ESP32. It measures light pollution in real time and gives you Bortle class, SQM magnitude, and naked-eye limiting magnitude — accessible from any browser on your local network.
+SQMeter is open-source (MIT) firmware that makes an ESP32 and a few I²C sensors into a sky quality meter and observatory safety monitor. It measures sky brightness (SQM in mag/arcsec², Bortle class, NELM), cloud cover, rain and wind, and is a native ASCOM Alpaca SafetyMonitor and ObservingConditions device for N.I.N.A. and other imaging apps. Everything is in a dashboard the device serves to any browser on your network. SQMeter is in public beta (v0.3.x).
 
 [Try the Live Demo :material-arrow-right:](https://demo.sqmeter.dev/){ .md-button .md-button--primary }
 [View on GitHub :fontawesome-brands-github:](https://github.com/DeanJ87/SQMeter){ .md-button }
@@ -121,6 +126,37 @@ flowchart LR
 | MLX90614 | IR cloud temperature | I2C `0x5A` |
 | GPS (optional) | Location & time | UART |
 | RG-15 (optional) | Rain detection | UART |
+
+---
+
+## FAQ
+
+### Is SQMeter an SQM-LE/LU replacement?
+
+Not a drop-in one. It reports the same quantity (sky brightness in mag/arcsec²), but it doesn't speak the Unihedron SQM-LE/LU protocol, so software written for those meters can't read it directly. Its readings come over the REST API, WebSocket, MQTT, ASCOM Alpaca (`skyquality`) and Bluetooth. A bare TSL2591 also sees a much wider patch of sky than a commercial SQM; fit a lens or baffle and use the SQM offset to match a reference meter ([Sky Quality Calculations](reference/sky-quality.md)).
+
+### Does it work with N.I.N.A.?
+
+Yes. The device is a native ASCOM Alpaca SafetyMonitor (interface v3) and ObservingConditions (interface v2), so N.I.N.A. finds it with Alpaca discovery: no Windows driver, no bridge. Both devices pass ASCOM ConformU on every change. Alpaca is off until you turn on **Serve Alpaca devices** in **Settings → Safety**; see [ASCOM Alpaca](user-guide/alpaca.md).
+
+### What sensor does it use?
+
+A TSL2591 light sensor for sky brightness (not the TSL237 in the Unihedron SQM), an MLX90614 infrared thermometer for sky temperature and cloud cover, and a BME280 for temperature, humidity and pressure. A Hydreon RG-15 rain gauge, an anemometer and wind vane, and GPS are optional. See [Hardware Setup](getting-started/hardware.md).
+
+### Does it need Home Assistant or MQTT?
+
+No. The device works on its own from the browser. MQTT, with Home Assistant discovery, is one of several optional outputs ([MQTT Integration](user-guide/mqtt.md)).
+
+### How does it compare with other open-source SQM projects?
+
+| Project | What it is | Good at |
+|---|---|---|
+| [mySQM+](https://sourceforge.net/projects/mysqmproesp32/) by Robert Brown | ESP32 sky quality meter and weather station, successor to the Arduino Nano + TSL237 [mySQM](https://sourceforge.net/projects/arduinomysqmskyqualitymeter/) | A long-running, feature-rich DIY build with its own web server, MQTT, a Windows application, Windows ASCOM ObservingConditions and SafetyMonitor drivers, and published PCB files |
+| [SimpleSQM](https://github.com/marcocipriani01/SimpleSQM) | Arduino Nano + TSL237 with an ASCOM ObservingConditions driver | The simplest possible build: one sensor, three wires, the same sensor as the Unihedron SQM |
+| [SQM_TSL2591](https://github.com/gshau/SQM_TSL2591) by gshau | Arduino library for SQM readings from a TSL2591 | Adaptive gain and exposure, noise estimates, and SQM-LE / SQM-LU emulator examples |
+| [PySQM](https://github.com/mireianievas/PySQM) | Python client for Unihedron SQM-LE and SQM-LU meters | Logging and plotting in the IDA NSBM community-standard format; it reads meters, it isn't one |
+
+SQMeter's Alpaca devices run on the ESP32 itself, so any Alpaca client on any OS connects directly. It adds a safety monitor with your own rules and the reasons shown, alerts it sends itself (ntfy, Pushover, webhook, MQTT, a Bluetooth phone alarm), Home Assistant discovery, and an OpenAPI-described REST API.
 
 ---
 

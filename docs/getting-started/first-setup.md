@@ -1,3 +1,7 @@
+---
+description: "First boot of an SQMeter: join its setup hotspot, connect it to your WiFi and open the dashboard."
+---
+
 # First Boot
 
 SQMeter ships with no WiFi credentials. On first power-on it starts in **hotspot mode** — it broadcasts its own open WiFi network so you can configure it from any phone or laptop.

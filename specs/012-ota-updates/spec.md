@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: As-built (backfill)
+**Status**: Implemented - written from the as-built firmware, converged 2026-10-15
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -50,7 +50,7 @@ Every release reports its own version, and a local build is distinguishable from
 
 - GitHub unreachable: clear error, nothing changes.
 - Low heap during TLS: the check still works (document allocated before TLS).
-- Partition layout change (standard ↔ Bluetooth): requires USB.
+- Partition layout change: needs a one-time USB flash (the v0.2 → v0.3 move to layout l2, spec 027). Both builds share layout l2, so switching between the standard and Bluetooth builds is an upload of the other build's file; the device refuses a file for the wrong build or the wrong layout before installing it ("Wrong build: this device needs the standard build.", spec 027 FR-020/FR-021).
 
 ## Requirements *(mandatory)*
 
@@ -92,7 +92,7 @@ Every release reports its own version, and a local build is distinguishable from
 
 ### Measurable Outcomes
 
-- **SC-001**: ≥ 99% of manual uploads of valid images succeed on the first attempt on a normal link.
+- **SC-001**: Manual uploads of valid images succeed within the Updates page's one automatic retry. Measured 2026-10-10 (#134): 19 of 20 consecutive uploads succeeded first try at RSSI −68 to −72 dBm; the one that stalled was recovered by the page's retry. A stalled upload no longer blocks later ones (FR-003a).
 - **SC-002**: The update check never offers a release older than the running build as newer.
 
 ## Assumptions

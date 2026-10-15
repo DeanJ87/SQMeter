@@ -355,4 +355,15 @@ export const CASES: Case[] = [
     control: 'Advertise on the network (mDNS)',
     control_state: 'unlocked',
   },
+  {
+    id: 'D-38',
+    tab: 'device',
+    config: { language: 'fr' },
+    facts: { wifiConnected: false, languageInstalled: false },
+    note: 'Inactive: Needs WiFi to download - or upload the file',
+    control: 'Language',
+    control_state: 'unlocked',
+    fixLabel: 'WiFi settings',
+    fixTab: 'Network',
+  },
 ];

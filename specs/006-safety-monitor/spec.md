@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: As-built (backfill)
+**Status**: Implemented - written from the as-built firmware, converged 2026-10-15
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -100,7 +100,8 @@ and MQTT.
 - **FR-005**: A safe delay (0–3600 s) MUST hold back "safe", run from boot, and report seconds
   remaining; unsafe MUST be immediate.
 - **FR-006**: The verdict MUST be published to Alpaca `IsSafe`, `GET /api/safety`, `GET /api/safe`
-  (1/0), the live stream and MQTT (`<topic>/safe`, `<topic>/safety`, `safe` in readings).
+  (1/0), the live stream and MQTT (`<topic>/safe` and `<topic>/safety`; the MQTT readings in
+  `<topic>/state` leave the safety object out because it has its own topics).
 - **FR-007**: The device MUST keep the last 32 safety changes, restarts (with reason) and
   safe/unsafe alerts sent, surviving software restarts and crashes.
 - **FR-008**: The Settings must offer all rules on one Safety tab; the documentation MUST name

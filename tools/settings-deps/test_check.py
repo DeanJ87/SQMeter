@@ -83,6 +83,35 @@ class WholeRepository(unittest.TestCase):
         self.assertIn("D-99: no web test names it (web/src)", problems)
         self.assertIn("D-99: a feature dependency needs a `dep: D-99` marker where the device enforces it", problems)
 
+    def _edit_json(self, rel, change):
+        path = os.path.join(self.root, rel)
+        with open(path) as f:
+            data = json.load(f)
+        change(data)
+        with open(path, "w") as f:
+            json.dump(data, f)
+
+    def test_a_new_setting_must_be_catalogued_or_marked(self):
+        self._edit_json(check.DEFAULT_CONFIG, lambda config: config["wifi"].update({"newThing": True}))
+        problems = check.check(self.root)
+        self.assertTrue(any(p.startswith("wifi.newThing: a setting that is neither") for p in problems), problems)
+        self._edit_json(check.CATALOGUE, lambda catalogue: catalogue["noDependency"].append("wifi.newThing"))
+        self.assertEqual([], check.check(self.root))
+
+    def test_a_ranged_setting_counts_too(self):
+        self._edit_json(check.RANGES, lambda ranges: ranges["ranges"].append({"path": "gps.newRate", "int": True, "min": 1, "max": 2}))
+        self.assertTrue(any(p.startswith("gps.newRate:") for p in check.check(self.root)))
+
+    def test_no_dependency_items_must_name_settings_and_not_overlap(self):
+        self._edit_json(check.CATALOGUE, lambda catalogue: catalogue["noDependency"].extend(["gone.setting", "language"]))
+        problems = check.check(self.root)
+        self.assertIn(f"{check.CATALOGUE}: noDependency item 'gone.setting' matches no setting", problems)
+        self.assertIn(f"{check.CATALOGUE}: language is in an entry and in noDependency", problems)
+
+    def test_patterns_match_one_segment(self):
+        self.assertTrue(check.matches("alerts.events.*.sound", "alerts.events.unsafe.sound"))
+        self.assertFalse(check.matches("alerts.*", "alerts.events.unsafe.sound"))
+
     def test_a_marker_for_an_unknown_entry_fails(self):
         with open(os.path.join(self.root, "src", "Other.cpp"), "w") as f:
             f.write("void f() {} // dep: D-98\n")

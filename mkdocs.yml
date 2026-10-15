@@ -1,11 +1,16 @@
 site_name: SQMeter
-site_description: ESP32 Dark Sky Quality Monitor
+site_description: "Open-source ESP32 sky quality meter and observatory safety monitor: SQM, Bortle, cloud, rain, ASCOM Alpaca for N.I.N.A., MQTT and Home Assistant."
 site_url: https://sqmeter.dev/
 repo_url: https://github.com/DeanJ87/SQMeter
 repo_name: DeanJ87/SQMeter
 edit_uri: edit/main/docs/
 # Every page's footer links the accessibility statement (spec 022 FR-016).
 copyright: '<a href="/accessibility/">Accessibility</a>'
+
+# site/llms-full.txt: every page's Markdown as one file for language models
+# (docs/llms.txt is the short summary).
+hooks:
+  - tools/docs/llms_full.py
 
 extra:
   social:
@@ -111,6 +116,8 @@ nav:
     - Coding Standards: development/coding-standards.md
     - Accessibility: development/accessibility.md
     - Translations: development/translations.md
+    - Brand: development/brand.md
+    - Releasing: development/releasing.md
   - Reference:
     - Sky Quality Calculations: reference/sky-quality.md
     - Settings Dependencies: reference/settings-dependencies.md

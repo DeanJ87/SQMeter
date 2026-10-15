@@ -1,0 +1,54 @@
+name: Release notes
+
+# Previews the release notes and banner for the newest version in CHANGELOG.md,
+# so a changelog PR can be checked before the tag is pushed. The PNG and the
+# notes are uploaded as the "release-notes-preview" artifact. Nothing is
+# published: the real release is made by the release job in build.yml.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'CHANGELOG.md'
+      - 'brand/**'
+      - 'tools/brand/**'
+      - 'tools/release/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/release-notes.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Unit tests
+        run: node --test 'tools/release/*.test.mjs'
+
+      - name: Install web dependencies and Chromium
+        run: |
+          cd web
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Notes and banner for the newest version
+        run: node tools/release/notes.mjs --latest --out release-notes --dry-run
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: release-notes-preview
+          path: release-notes/
+          retention-days: 5

@@ -27,6 +27,7 @@
 | `bluetoothRunning` | Bluetooth started at boot (it only starts at boot). |
 | `pairedPhones` | Bonded phones. |
 | `lightDetected` / `infraredDetected` / `environmentDetected` | TSL2591 / MLX90614 / BME280 found and responding (status ok or stale). |
+| `languageInstalled` | The chosen language's file is stored for this firmware (D-38; added at convergence). |
 
 Rain and wind apply live when saved, so they need no "running" fact.
 

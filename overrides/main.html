@@ -1,5 +1,59 @@
 {% extends "base.html" %}
 
+{#- Link previews (brand/README.md): the social card is a file the site serves
+    itself; absolute URLs come from site_url so a move to another host is one
+    setting. -#}
+{% block extrahead %}
+  {%- set title = (page.title ~ ' - ' ~ config.site_name) if page and page.title and not page.is_homepage else config.site_name %}
+  {%- set description = (page.meta.description if page and page.meta and page.meta.description else config.site_description) %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  {%- if page and page.canonical_url %}
+  <meta property="og:url" content="{{ page.canonical_url }}">
+  {%- endif %}
+  <meta property="og:image" content="{{ config.site_url }}assets/social-card.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="SQMeter: open-hardware sky quality meter for the ESP32">
+  <meta name="twitter:card" content="summary_large_image">
+  {#- What SQMeter is, for search engines (schema.org), on the home page only.
+      Data, not script: the docs CSP and no-third-party rules are unaffected. -#}
+  {%- if page and page.is_homepage %}
+  {%- set software = {
+    "name": "SQMeter",
+    "description": "Open-source ESP32 firmware for a DIY sky quality meter and observatory safety monitor: SQM, Bortle and NELM from a TSL2591, cloud cover from an MLX90614, native ASCOM Alpaca SafetyMonitor and ObservingConditions for N.I.N.A., alerts, MQTT with Home Assistant discovery and a REST API. Public beta.",
+    "url": config.site_url,
+    "image": config.site_url ~ "assets/social-card.png",
+    "license": "https://opensource.org/licenses/MIT"
+  } %}
+  <script type="application/ld+json">{{ {
+    "@context": "https://schema.org",
+    "@graph": [
+      dict(software, **{
+        "@type": "SoftwareApplication",
+        "@id": config.site_url ~ "#software",
+        "applicationCategory": "UtilitiesApplication",
+        "applicationSubCategory": "Astronomy: sky quality meter and observatory safety monitor",
+        "operatingSystem": "ESP32 firmware",
+        "downloadUrl": config.repo_url ~ "/releases",
+        "isAccessibleForFree": true,
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+      }),
+      dict(software, **{
+        "@type": "SoftwareSourceCode",
+        "codeRepository": config.repo_url,
+        "programmingLanguage": ["C++", "TypeScript"],
+        "runtimePlatform": "ESP32",
+        "targetProduct": {"@id": config.site_url ~ "#software"}
+      })
+    ]
+  } | tojson }}</script>
+  {%- endif %}
+  {{ super() }}
+{% endblock %}
+
 {#- Diagrams (spec 024): Material fetches mermaid from unpkg unless a global
     `mermaid` already exists when its bundle runs, so load the pinned copy the
     site serves itself (web/scripts/vendor-mermaid.mjs) just before the

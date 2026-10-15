@@ -175,14 +175,9 @@ button {
 }
 
 .brand-mark {
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  display: grid;
-  place-items: center;
-  color: var(--cyan);
-  background: var(--panel-2);
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
 }
 
 .brand h1 {
@@ -1121,6 +1116,11 @@ a.status-row-main:focus-visible .status-row-label {
 
   .brand {
     padding: 0.65rem 0;
+  }
+
+  .brand-mark {
+    width: 2.5rem;
+    height: 2.5rem;
   }
 
   .top-nav {
@@ -2402,6 +2402,11 @@ input[type='file'].input::file-selector-button {
   font: 600 0.82rem var(--font-ui);
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.demo-panel-mark {
+  vertical-align: -0.25em;
+  margin-inline-end: 0.3rem;
 }
 
 .demo-clock-moved {

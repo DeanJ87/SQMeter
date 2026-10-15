@@ -1,3 +1,7 @@
+---
+description: "Publish SQMeter readings, the safety verdict and alerts to any MQTT broker, with Home Assistant discovery and an alerts pause switch."
+---
+
 # MQTT Integration
 
 SQMeter publishes its readings, the safety verdict and alerts to any MQTT broker, and can announce itself to Home Assistant automatically.

@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: As-built (backfill)
+**Status**: Implemented - written from the as-built firmware, converged 2026-10-15
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -101,7 +101,7 @@ delivery results appear under the bell and can be cleared.
 - **FR-006**: Templates MUST support every variable the device provides; the UI MUST offer exactly
   that set and show the device's actual default wording.
 - **FR-007**: Channel and event tests MUST report each channel's real result.
-- **FR-008**: The recent-alerts list (20, since boot) MUST show per-channel results and be clearable.
+- **FR-008**: The recent-alerts list (20, since boot) MUST show per-channel results and be clearable. New alerts MUST reach an open page within seconds (pushed over the status WebSocket, `alerts.recentRevision`), with a 60 s poll only as a fallback (spec 023/#119).
 - **FR-009**: The alerts documentation MUST use the UI's labels and describe behaviour as implemented.
 
 ### Key Entities
@@ -115,7 +115,8 @@ delivery results appear under the bell and can be cleared.
 ### Measurable Outcomes
 
 - **SC-001**: 0 alerts sent for start-up states, daylight changes (when limited) or while switched off.
-- **SC-002**: Test results reflect real delivery for 100% of channels.
+- **SC-002**: Test results reflect real delivery for 100% of channels. *(Needs hardware: not yet
+  checked on a device against every channel.)*
 - **SC-003**: Every variable the device supports is offered in the editor and documented.
 - **SC-004**: Every UI label quoted in the alerts documentation exists in the UI.
 

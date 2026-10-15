@@ -1,3 +1,7 @@
+---
+description: "SQMeter alerts for rain and safety changes via ntfy, Pushover, webhook or MQTT, even when N.I.N.A. and the observatory PC are off."
+---
+
 # Alerts
 
 SQMeter can send push notifications itself - over Pushover, ntfy, a webhook, or MQTT - so you hear about rain or a safety change even when N.I.N.A. and the observatory PC aren't running.
@@ -46,7 +50,7 @@ flowchart TB
 ??? info "Diagram in words"
 
     1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, each sensor, dew risk, the sky, whether the imaging app is still checking) with what you were last told, every second.
-    2. **Tracked silently, never announced**: changes in the first minute after boot (imaging-app events excepted), changes while that event's rule is switched off, anything from a sensor that is switched off, and imaging-app events for a device no app has used since boot.
+    2. **Tracked silently, never announced**: changes in the first minute after boot (imaging-app events excepted), changes while that event's rule is switched off, anything from a sensor that is switched off, and imaging-app events for a device no app has used since boot (a connection kept across a restart the device caused itself counts as used).
     3. **Held back for now, sent later if still true**:
         - safe/unsafe while it's light (with "Safety alerts only when it's dark"), or while the verdict is still settling (no data yet, or waiting out the safe delay);
         - sky changes while it's light (with sky alerts limited to darkness): at nightfall a clear sky is announced once;
@@ -181,7 +185,7 @@ The device notices when an imaging app - anything that talks to its Alpaca devic
 
 **Silent for** is set per device: **safety monitor** (default 2 min - imaging apps check it every few seconds) and **weather device** (default 10 min - keep it longer than your app's weather interval). 30 seconds to 60 minutes.
 
-Nothing is sent about a device no app has used since the device restarted. Requests from the device's own web page (the Alpaca page's live state) don't count. Alpaca requests don't name the application, so alerts name the device, not the app. The Alpaca page shows each device's state ("Connected, last checked 3 s ago"). These events need Alpaca switched on, and are sent at any hour (the "only when it's dark" limits don't apply).
+Nothing is sent about a device no app has used since the device restarted. The exception is a restart the device causes itself (a crash, the watchdog, an update) while an app had a device connected: the device still reports it connected, so if the app doesn't check it again within its **Silent for** time after boot, you're told it stopped checking. Requests from the device's own web page (the Alpaca page's live state) don't count. Alpaca requests don't name the application, so alerts name the device, not the app. The Alpaca page shows each device's state ("Connected, last checked 3 s ago"). These events need Alpaca switched on, and are sent at any hour (the "only when it's dark" limits don't apply).
 
 ### Automating pause and resume
 

@@ -1,3 +1,7 @@
+---
+description: "SQMeter's Bluetooth build: safety and rain state over BLE, a GATT service, and alarms on a paired phone when there's no WiFi."
+---
+
 # Bluetooth (BLE)
 
 The optional **BLE firmware build** broadcasts SQMeter's safety verdict and rain state over Bluetooth Low Energy, and serves a read-only GATT service with notifications. It's useful when there's no WiFi at the pier, or for a Bluetooth proxy (e.g. Home Assistant's) to pick up rain/safety without any network setup.

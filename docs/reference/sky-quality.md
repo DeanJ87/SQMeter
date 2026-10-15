@@ -1,3 +1,7 @@
+---
+description: "How SQMeter computes SQM (mag/arcsec²), NELM and Bortle class from TSL2591 readings, estimates cloud cover, and is calibrated."
+---
+
 # Sky Quality Calculations
 
 SQMeter converts TSL2591 light readings into three astronomical metrics. The conversion is only as good as the optical build and calibration: a bare TSL2591 is not a calibrated SQM instrument because it has a very wide angular response and can collect stray light from the horizon, ground, buildings, vehicles, and the enclosure.
@@ -5,7 +9,7 @@ SQMeter converts TSL2591 light readings into three astronomical metrics. The con
 <!-- diagram: DIA-05
 sources: src/sensors/TSL2591Sensor.cpp#TSL2591Sensor::updateRollingReading lib/SkyLogic/src/ lib/DeviceCore/src/DeviceCore.cpp#derive lib/DeviceCore/src/DeviceCore.cpp#buildReadings lib/DeviceCore/src/DeviceCore.cpp#readSkyGroups src/sensors/BME280Sensor.cpp#BME280Sensor::calculateDewpoint
 blocking: false
-fingerprint: 8f378d1e56c15412
+fingerprint: 7cdcdfd44b4bc6be
 -->
 <figure class="diagram" markdown>
 
