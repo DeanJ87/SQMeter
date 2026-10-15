@@ -1,4 +1,4 @@
-// node --test tools/release/
+// node --test 'tools/release/*.test.mjs'
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';

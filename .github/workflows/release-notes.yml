@@ -36,7 +36,7 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Unit tests
-        run: node --test tools/release/
+        run: node --test 'tools/release/*.test.mjs'
 
       - name: Install web dependencies and Chromium
         run: |
