@@ -25,18 +25,18 @@ permissions:
 
 jobs:
   preview:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
           cache-dependency-path: web/package-lock.json
 
       - name: Unit tests
-        run: node --test tools/release/
+        run: node --test 'tools/release/*.test.mjs'
 
       - name: Install web dependencies and Chromium
         run: |
@@ -47,7 +47,7 @@ jobs:
       - name: Notes and banner for the newest version
         run: node tools/release/notes.mjs --latest --out release-notes --dry-run
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: release-notes-preview
           path: release-notes/
