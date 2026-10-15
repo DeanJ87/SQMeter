@@ -1,6 +1,7 @@
 #include <unity.h>
 
 #include "AlertEngine.h"
+#include "ClientWatch.h"
 
 #include <cstring>
 
@@ -217,6 +218,82 @@ void test_client_default_wording_names_no_product(void)
     TEST_ASSERT_EQUAL_STRING("client_disconnected", alertTypeName(AlertType::ClientDisconnected));
 }
 
+// --- Connections kept across a self-caused restart (#136) ---
+
+namespace
+{
+    namespace Alpaca = SQM::Alpaca;
+
+    // The device side: ClientWatch on the Router's counters, feeding the
+    // engine the safety monitor's state the way the firmware does.
+    struct Restarted
+    {
+        Alpaca::DeviceActivity activity[Alpaca::DEVICE_COUNT];
+        uint32_t silence[Alpaca::DEVICE_COUNT] = {120000, 600000};
+        Alpaca::ClientWatch watch;
+        AlertEngine engine;
+        AlertRules rules = clientRules();
+
+        explicit Restarted(bool restored)
+        {
+            if (restored)
+            {
+                activity[0].connected = true;
+                const bool connected[Alpaca::DEVICE_COUNT] = {true, false};
+                watch.restoreConnections(connected, 0);
+            }
+        }
+
+        std::vector<Alert> at(uint32_t seconds)
+        {
+            watch.update(activity, silence, true, seconds * 1000);
+            const Alpaca::ClientState &sm = watch.state(Alpaca::Device::SafetyMonitor);
+            return engine.update(clientInputs(seconds, sm.watching, sm.silent, sm.disconnectedNow), rules);
+        }
+    };
+} // namespace
+
+void test_restored_connection_silent_after_restart_is_lost(void)
+{
+    Restarted device(true);
+    TEST_ASSERT_TRUE(device.watch.state(Alpaca::Device::SafetyMonitor).everRequested);
+    for (uint32_t t = 0; t <= 120; t += 10)
+        TEST_ASSERT_FALSE(hasType(device.at(t), AlertType::ClientLost));
+    TEST_ASSERT_TRUE(hasType(device.at(130), AlertType::ClientLost));
+    // The app comes back: one request answers the loss.
+    device.activity[0].requests++;
+    TEST_ASSERT_TRUE(hasType(device.at(140), AlertType::ClientBack));
+    TEST_ASSERT_FALSE(device.watch.state(Alpaca::Device::SafetyMonitor).silent);
+}
+
+void test_restored_connection_still_polled_is_not_lost(void)
+{
+    Restarted device(true);
+    for (uint32_t t = 0; t < 600; t += 10)
+    {
+        device.activity[0].requests++;
+        TEST_ASSERT_EQUAL(0, device.at(t).size());
+    }
+}
+
+void test_normal_boot_without_restore_is_unchanged(void)
+{
+    Restarted device(false);
+    const Alpaca::ClientState &sm = device.watch.state(Alpaca::Device::SafetyMonitor);
+    for (uint32_t t = 0; t < 600; t += 10)
+        TEST_ASSERT_EQUAL(0, device.at(t).size());
+    TEST_ASSERT_FALSE(sm.watching);
+    TEST_ASSERT_FALSE(sm.everRequested);
+    // Only a request after boot starts the clock, as before.
+    device.activity[0].requests++;
+    device.at(600);
+    TEST_ASSERT_TRUE(sm.watching);
+    TEST_ASSERT_FALSE(hasType(device.at(700), AlertType::ClientLost));
+    TEST_ASSERT_TRUE(hasType(device.at(730), AlertType::ClientLost));
+    // The restore only touches the devices that were connected.
+    TEST_ASSERT_FALSE(device.watch.state(Alpaca::Device::ObservingConditions).everRequested);
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -229,5 +306,8 @@ int main(int argc, char **argv)
     RUN_TEST(test_client_events_ignore_grace_and_darkness);
     RUN_TEST(test_client_events_off);
     RUN_TEST(test_client_default_wording_names_no_product);
+    RUN_TEST(test_restored_connection_silent_after_restart_is_lost);
+    RUN_TEST(test_restored_connection_still_polled_is_not_lost);
+    RUN_TEST(test_normal_boot_without_restore_is_unchanged);
     return UNITY_END();
 }

@@ -1084,6 +1084,7 @@
   "settingsDeps.mqttIsOff": "MQTT متوقف",
   "settingsDeps.mqttSettings": "إعدادات MQTT",
   "settingsDeps.needsTheBluetoothFirmwareBuild": "يتطلب إصدار البرنامج الثابت الداعم للبلوتوث",
+  "settingsDeps.needsWifiToDownloadOr": "يحتاج إلى Wi-Fi للتنزيل - أو ارفع الملف",
   "settingsDeps.needsYourLocation": "يتطلب موقعك",
   "settingsDeps.noGpsFixUsingThe": "لا يوجد تثبيت GPS: يُستخدم الموقع من الإعدادات",
   "settingsDeps.noPairingPasskeySet": "لم يُضبط رمز اقتران",

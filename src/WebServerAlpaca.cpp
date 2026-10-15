@@ -79,6 +79,8 @@ namespace SQM
             // N.I.N.A. had the device connected and the device restarted on its
             // own: keep answering Connected = true so it doesn't see a drop.
             alpacaRouter.restoreConnections(connected);
+            // ...but still notice if it went away during the restart.
+            clientWatch.restoreConnections(connected, millis());
             alpacaConnectionsRestored = true;
             Logger::info(TAG, "Kept imaging-app connections across the restart");
         }

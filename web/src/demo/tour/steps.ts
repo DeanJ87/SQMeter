@@ -1,4 +1,5 @@
 import { demoDevice } from '../device';
+import { imagingApp } from '../imagingApp';
 
 // The demo tour's steps (specs/018 FR-001). Action steps finish when the
 // emulated device reacts (FR-002), never on a timer, and offer "Do it for me".
@@ -24,6 +25,8 @@ interface Safety {
 
 const safety = (): Safety => JSON.parse(demoDevice.safety());
 const rainOn = () => demoDevice.rawConfig().rain?.enabled === true;
+// The safety monitor as the device sees the pretend imaging app (its Status card tile).
+const safetyClient = (): { connected?: boolean; silent?: boolean } => demoDevice.statusParts().alpaca?.clients?.safetymonitor ?? {};
 const hasAlerts = () => (JSON.parse(demoDevice.recentAlerts()).alerts as unknown[]).length > 0;
 
 // Settings the "change a rule" step compares against, captured when it starts.
@@ -76,6 +79,32 @@ export const TOUR_STEPS: TourStep[] = [
       `${hasAlerts() ? 'The device raised an alert - open the bell to read it.' : "The alert lands under the bell. For its first minute after starting, the device doesn't alert, so a restart doesn't announce the start-up weather - give it a moment."} A real SQMeter sends alerts to your phone (Pushover, ntfy, MQTT); turn on Real notifications in the Demo panel to try that here.`,
   },
   {
+    id: 'imaging-app',
+    title: 'Is the imaging app checking?',
+    route: '/',
+    target: '[data-masonry-id="status"]',
+    body: () =>
+      'The Status card shows whether your imaging app is checking the device, and whether alerts go out. Connect the pretend imaging app in the Demo panel - or let me.',
+    done: () => safetyClient().connected === true,
+    doIt: () => imagingApp.connect(),
+    doItLabel: 'Connect it for me',
+  },
+  {
+    id: 'imaging-silent',
+    title: 'When it stops checking',
+    route: '/',
+    target: '[data-masonry-id="status"]',
+    body: () =>
+      'If the PC sleeps or the app crashes, it stops asking without disconnecting. After the Silent for time (2 min) the tile turns Gone quiet and you get an alert. Press Go silent in the Demo panel - or let me, at 10x speed.',
+    done: () => safetyClient().silent === true,
+    doIt: () => {
+      if (imagingApp.state === 'off') imagingApp.connect();
+      imagingApp.goSilent();
+      demoDevice.setTimeMultiplier(10);
+    },
+    doItLabel: 'Go silent for me',
+  },
+  {
     id: 'alpaca',
     title: 'Your imaging software agrees',
     route: '/alpaca',
@@ -97,7 +126,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: 'The Demo panel',
     target: '.demo-panel-toggle',
     body: () =>
-      'Set what every sensor reports, jump to tonight or dawn, move the device anywhere on Earth, connect a pretend imaging app - and take this tour again.',
+      'Set what every sensor reports, jump to tonight or dawn, move the device anywhere on Earth, connect or silence the pretend imaging app - and take this tour again.',
   },
   {
     id: 'next',

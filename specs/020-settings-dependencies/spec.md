@@ -183,6 +183,7 @@ Some combinations aren't a dependency that can wait: they can't work at all. Exa
   - (a) the device logic: inactive when unmet, active again when met, the value kept
   - (b) the UI: the note, the fix action, and that the setting can't be switched on but can be switched off
 - **FR-014**: The project's checks MUST fail when the device code makes a setting's effect depend on another setting or on hardware state that has no catalogue entry, or when a catalogue entry lacks either kind of test. Convergence MUST be able to compare the catalogue with the code and list the differences.
+  - Amended (converge): the checks MUST also fail when a setting (any key of the settings model's JSON, or of the range fixture) is in no catalogue entry and not explicitly marked as having no dependency (the catalogue's `noDependency` list), so a new setting can't skip the question.
 
 ### Dependency catalogue
 
@@ -231,6 +232,7 @@ Notation:
 | D-33 | MQTT broker and topic | MQTT on | **Constraint** | Rejected: "MQTT broker and topic are required…" | OK |
 | D-34 | HTTP auth username/password | Auth on | **Constraint** | Rejected with the device's message | OK |
 | D-35 | Settings that need a restart (GPS, Bluetooth, rain, wind pins) | A restart since saving | Dependency (restart) | "Takes effect after a restart"; dependents "inactive until restart" | Partial (restart prompt only) |
+| D-38 | Language (other than English) | Its file stored, or WiFi to download it from the GitHub release (needs internet); a hand upload works offline | Dependency (runtime) | "Needs WiFi to download - or upload the file" | Added at convergence (spec 023) |
 
 Summary of the audit:
 - 35 entries: 31 dependencies, 3 constraints (D-27, D-33, D-34), and D-32 to be classified in the plan.

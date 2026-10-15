@@ -1028,6 +1028,7 @@
   "settingsDeps.mqttIsOff": "Settings: why a setting is inactive, and the button that fixes it: a sentence shown under or beside a control. MQTT = home-automation messaging protocol - keep 'MQTT'.",
   "settingsDeps.mqttSettings": "Settings: why a setting is inactive, and the button that fixes it. MQTT = home-automation messaging protocol - keep 'MQTT'.",
   "settingsDeps.needsTheBluetoothFirmwareBuild": "Settings: why a setting is inactive, and the button that fixes it: a sentence shown under or beside a control.",
+  "settingsDeps.needsWifiToDownloadOr": "Settings → Device → Language: why the chosen language isn't in effect - its file isn't stored and the device isn't on WiFi to download it; the file can also be uploaded by hand.",
   "settingsDeps.needsYourLocation": "Settings: why a setting is inactive, and the button that fixes it: a sentence shown under or beside a control.",
   "settingsDeps.noGpsFixUsingThe": "Settings: why a setting is inactive, and the button that fixes it: a sentence shown under or beside a control.",
   "settingsDeps.noPairingPasskeySet": "Settings: why a setting is inactive, and the button that fixes it: a sentence shown under or beside a control.",

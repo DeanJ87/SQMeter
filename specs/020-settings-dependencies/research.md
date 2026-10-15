@@ -93,3 +93,8 @@ Confirmed from `lib/AlpacaLogic/src/SafetyEvaluator.cpp` and `lib/DeviceCore` (c
   - The web Zod schema used different wording for all three, and also required an auth *username* the device doesn't. FR-010 needs the same message, so the UI now uses the device's texts and drops the username rule.
   - "Time sources must be different" can't be reached through the API: `Config::applyJson` normalises the secondary source before validating. The UI keeps the check (with the device's wording) so the form can't show an impossible combination.
   - D-32 (OTA without a password) was a UI-only rejection; per R5 it's now a dependency on both sides.
+
+## R15 - Convergence: language and full coverage
+
+- **Added D-38**: a language other than English needs its file (spec 023). The device reports it inactive only when no file for the chosen language is stored for this firmware and it isn't on WiFi (`languageInstalled` fact); WiFi without internet shows as the Language card's own download error. A hand upload works offline, so the reason names both ways. Runtime: never blocks choosing a language.
+- **Full coverage**: `tools/settings-deps/check.py` now lists every setting key (the default config fixture plus `config-ranges.json`) and fails for one that is neither in an entry nor in `noDependency`. The list holds per-section parameters (pins, intervals, thresholds, credentials, templates) whose effect needs nothing outside their own section; patterns use `*` for one path segment.

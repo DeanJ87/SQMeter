@@ -29,7 +29,7 @@ Because the dashboard, the Alpaca page and the Alpaca API all come from one emul
 
 ## The tour
 
-On your first visit the demo offers a short tour (about two minutes): live readings, the safety verdict, making it unsafe and watching the verdict, the bell and Alpaca agree, changing a rule, and the Demo panel. Steps that ask you to do something wait for the device to react - or press **Do it for me**. **Skip tour** or Esc ends it; **Take the tour** in the Demo panel starts it again. It works with the keyboard alone, on phones, and without animation.
+On your first visit the demo offers a short tour (about two minutes): live readings, the safety verdict, making it unsafe and watching the verdict, the bell, the Status card with the pretend imaging app connected and then gone quiet (**Go silent for me** also switches the clock to 10×, so the **Silent for** time passes in seconds), Alpaca agreeing, changing a rule, and the Demo panel. Steps that ask you to do something wait for the device to react - or press **Do it for me**. **Skip tour** or Esc ends it; **Take the tour** in the Demo panel starts it again. It works with the keyboard alone, on phones, and without animation.
 
 ---
 

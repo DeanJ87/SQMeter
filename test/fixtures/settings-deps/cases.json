@@ -11,7 +11,8 @@
     "pairedPhones": 1,
     "lightDetected": true,
     "infraredDetected": true,
-    "environmentDetected": true
+    "environmentDetected": true,
+    "languageInstalled": true
   },
   "cases": [
     {
@@ -1331,6 +1332,71 @@
         "alerts.events.client_lost.level": {
           "state": "active",
           "id": "D-37"
+        }
+      }
+    },
+    {
+      "name": "D-38 a language other than English with no file and no WiFi (setup hotspot)",
+      "config": {
+        "language": "fr"
+      },
+      "facts": {
+        "wifiConnected": false,
+        "languageInstalled": false
+      },
+      "expect": {
+        "language": {
+          "state": "inactive",
+          "id": "D-38",
+          "reason": "language-offline",
+          "text": "Needs WiFi to download - or upload the file",
+          "fix": "network#wifi"
+        }
+      }
+    },
+    {
+      "name": "D-38 the language file is stored: works offline",
+      "config": {
+        "language": "fr"
+      },
+      "facts": {
+        "wifiConnected": false
+      },
+      "expect": {
+        "language": {
+          "state": "active",
+          "id": "D-38"
+        }
+      }
+    },
+    {
+      "name": "D-38 no file yet but WiFi: the device downloads it",
+      "config": {
+        "language": "de"
+      },
+      "facts": {
+        "languageInstalled": false
+      },
+      "expect": {
+        "language": {
+          "state": "active",
+          "id": "D-38"
+        }
+      }
+    },
+    {
+      "name": "D-38 English is built in",
+      "config": {
+        "language": "en"
+      },
+      "facts": {
+        "wifiConnected": false,
+        "languageInstalled": false
+      },
+      "expect": {
+        "language": {
+          "state": "off",
+          "id": "D-38"
         }
       }
     }

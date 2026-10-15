@@ -1054,6 +1054,7 @@
   "settingsDeps.mqttIsOff": "MQTT kapalı",
   "settingsDeps.mqttSettings": "MQTT ayarları",
   "settingsDeps.needsTheBluetoothFirmwareBuild": "Bluetooth üretici yazılımı derlemesi gerekir",
+  "settingsDeps.needsWifiToDownloadOr": "İndirmek için Wi-Fi gerekli - ya da dosyayı yükleyin",
   "settingsDeps.needsYourLocation": "Konumunuz gerekir",
   "settingsDeps.noGpsFixUsingThe": "GPS konumu yok: Ayarlar'daki konum kullanılıyor",
   "settingsDeps.noPairingPasskeySet": "Eşleştirme kodu belirlenmedi",

@@ -44,6 +44,10 @@ namespace SQM
 
         void writeStatus(JsonObject target) const;
 
+        // The chosen language's file is stored for this firmware (settings
+        // dependency D-38: then it works without WiFi).
+        bool installed() const { return installedMatches(language()); }
+
     private:
         bool startDownload(const std::string &code, State whileRunning, std::string &error);
         void runDownload(const std::string &code);

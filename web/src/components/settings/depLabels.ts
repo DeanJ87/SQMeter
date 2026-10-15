@@ -46,4 +46,5 @@ export const DEP_LABELS: Record<string, string> = {
   'ble.phoneAlarm': t('settings.depLabels.phoneAlarm'),
   'ota.enabled': t('settings.depLabels.commandLineUploads'),
   'wifi.mdns': 'mDNS',
+  language: t('language.label'),
 };

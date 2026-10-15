@@ -53,6 +53,7 @@ namespace SQM
             bool lightDetected = false;       // TSL2591
             bool infraredDetected = false;    // MLX90614
             bool environmentDetected = false; // BME280
+            bool languageInstalled = false;   // the chosen language's file is stored for this firmware
         };
 
         struct Reason

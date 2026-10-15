@@ -130,6 +130,7 @@ namespace SQM
         facts.bluetoothRunning = ble.isActive();
         const uint32_t phones = ble.alarmStatus().bondedPhones;
         facts.pairedPhones = static_cast<uint8_t>(phones > 255 ? 255 : phones);
+        facts.languageInstalled = languagePack != nullptr && languagePack->installed();
         return facts;
     }
 

@@ -56,6 +56,17 @@ namespace SQM
             }
         }
 
+        void ClientWatch::restoreConnections(const bool (&connected)[DEVICE_COUNT], uint32_t nowMs)
+        {
+            for (size_t i = 0; i < DEVICE_COUNT; ++i)
+            {
+                if (!connected[i])
+                    continue;
+                states[i].everRequested = true;
+                states[i].lastRequestMs = nowMs;
+            }
+        }
+
         void ClientWatch::reset()
         {
             for (size_t i = 0; i < DEVICE_COUNT; ++i)

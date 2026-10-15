@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "SQMeter REST API",
-    "version": "0.3.2-beta.1+dev",
+    "version": "0.3.4-beta.1+dev",
     "summary": "The REST API of an SQMeter sky-quality and safety monitor.",
     "description": "Every `/api/*` route an SQMeter serves on port 80. Generated from the firmware's route registry and its contract schemas, so it matches the device.\n\n**The same in every language**: numbers are JSON numbers with `.` as the decimal point, units and field names are never translated, and timestamps are Unix seconds or ISO 8601. Text for people (`reasons`, alert `title` and `message`, `error`) may be reworded between releases: key on `safe`, `reasonFlags` and the alert `event`.\n\n**Password**: when protection is on, routes that change something need HTTP Basic auth with the device's username and password.\n\n**ASCOM Alpaca** (`/api/v1/*`, `/management/*`) follows the ASCOM Alpaca standard and isn't repeated here: the device is a SafetyMonitor and an ObservingConditions device. See https://ascom-standards.org/api/.",
     "license": {
@@ -4563,6 +4563,9 @@
               "infraredDetected": {
                 "type": "boolean"
               },
+              "languageInstalled": {
+                "type": "boolean"
+              },
               "lightDetected": {
                 "type": "boolean"
               },
@@ -4584,6 +4587,7 @@
               "gpsFix",
               "gpsRunning",
               "infraredDetected",
+              "languageInstalled",
               "lightDetected",
               "mqttConnected",
               "pairedPhones",

@@ -987,6 +987,11 @@
       "shownOn": "Settings"
     },
     {
+      "match": "deps.D-38",
+      "reason": "Doesn't affect safety or alerts; shown on the Language card in Settings, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
       "match": "status.sky.nightKnown",
       "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
       "shownOn": "Settings → Time & Location; Sun & Moon card"

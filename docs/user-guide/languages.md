@@ -21,7 +21,7 @@ When you type a number in Settings, use your language's decimal separator (`21,5
 
 ## Without internet
 
-If the device can't reach GitHub (no internet, or a firewall), the interface stays in English and the Language card says why. You can install the file by hand:
+If the device can't reach GitHub (no internet, or a firewall), the interface stays in English and the Language card says why. Without WiFi at all (the setup hotspot) and no file stored yet, the card shows *Inactive: Needs WiFi to download - or upload the file* ([settings dependencies](../reference/settings-dependencies.md), D-38). A file already stored keeps working offline. You can install the file by hand:
 
 1. On a computer with internet, open the [release page](https://github.com/DeanJ87/SQMeter/releases) for the firmware version shown under **Updates**.
 2. Download `sqmeter-i18n-<code>.json.gz` for your language, for example `sqmeter-i18n-es.json.gz`.

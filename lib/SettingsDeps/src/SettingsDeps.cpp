@@ -33,6 +33,7 @@ namespace SQM
                 {"no-phones", "No phone paired", "device#ble"},
                 {"clock-unset", "The device doesn't know the time yet", "time#time-sources"},
                 {"ota-no-password", "Set an upload password", "device#security"},
+                {"language-offline", "Needs WiFi to download - or upload the file", "network#wifi"},
             };
 
             const Reason *reason(const char *code)
@@ -256,6 +257,13 @@ namespace SQM
                 c.add("ota.enabled", "D-32", cfg.ota.enabled, {{"D-32", "ota-no-password", !cfg.ota.password.empty()}});
                 c.add("wifi.mdns", "D-36", cfg.wifi.mdns, {{"D-36", "wifi-disconnected", c.f.wifiConnected}});
                 c.add("wifi.ipv6", "D-36", cfg.wifi.ipv6, {{"D-36", "wifi-disconnected", c.f.wifiConnected}});
+                // A non-English language needs its file: stored already, or
+                // downloadable (WiFi; a hand upload works offline).
+                c.add(
+                    "language",
+                    "D-38",
+                    std::strcmp(cfg.language, "en") != 0,
+                    {{"D-38", "language-offline", c.f.languageInstalled || c.f.wifiConnected}});
             }
         } // namespace
 
@@ -355,11 +363,12 @@ namespace SQM
             target["lightDetected"] = f.lightDetected;
             target["infraredDetected"] = f.infraredDetected;
             target["environmentDetected"] = f.environmentDetected;
+            target["languageInstalled"] = f.languageInstalled;
         }
 
         size_t reportCapacity(const std::vector<Entry> &entries)
         {
-            return JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(11) + JSON_ARRAY_SIZE(entries.size()) + entries.size() * JSON_OBJECT_SIZE(8);
+            return JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(12) + JSON_ARRAY_SIZE(entries.size()) + entries.size() * JSON_OBJECT_SIZE(8);
         }
 
         void writeReport(JsonObject root, const std::vector<Entry> &entries, const Facts &facts)

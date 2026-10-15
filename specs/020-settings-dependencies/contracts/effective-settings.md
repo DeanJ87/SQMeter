@@ -14,7 +14,8 @@ All additions are additive; no existing field changes (constitution: compatible 
     "wifiConnected": true, "mqttConnected": false, "clockSet": true,
     "gpsRunning": false, "gpsFix": false,
     "bluetoothBuild": false, "bluetoothRunning": false, "pairedPhones": 0,
-    "lightDetected": true, "infraredDetected": true, "environmentDetected": true
+    "lightDetected": true, "infraredDetected": true, "environmentDetected": true,
+    "languageInstalled": false
   },
   "settings": [
     { "id": "D-01", "setting": "alerts.mqtt.enabled", "state": "inactive", "reason": "mqtt-off", "text": "MQTT is off", "fix": "network#mqtt" },

@@ -27,6 +27,9 @@
         "infraredDetected": {
           "type": "boolean"
         },
+        "languageInstalled": {
+          "type": "boolean"
+        },
         "lightDetected": {
           "type": "boolean"
         },
@@ -48,6 +51,7 @@
         "gpsFix",
         "gpsRunning",
         "infraredDetected",
+        "languageInstalled",
         "lightDetected",
         "mqttConnected",
         "pairedPhones",

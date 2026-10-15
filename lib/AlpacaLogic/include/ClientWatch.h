@@ -39,6 +39,13 @@ namespace SQM
 
             const ClientState &state(Device device) const { return states[static_cast<size_t>(device)]; }
 
+            // Connections kept across a self-caused restart (#136): the device
+            // still says Connected, so start each restored device's silence
+            // clock now, as if the app had checked at boot. If the app went
+            // away during the restart, it is reported silent after the
+            // silence time instead of being watched forever.
+            void restoreConnections(const bool (&connected)[DEVICE_COUNT], uint32_t nowMs);
+
             // As after a restart (the demo's restart).
             void reset();
 
