@@ -111,9 +111,12 @@ own browser.
 
 **Tour**
 
-- **FR-001**: The demo MUST offer a guided tour of 6-10 steps covering: what SQMeter is; live readings;
+- **FR-001**: The demo MUST offer a guided tour of 6-12 steps covering: what SQMeter is; live readings;
   the safety verdict and its reasons; triggering Rain and seeing the verdict, the alert bell and Alpaca
-  agree; changing a setting and seeing the effect; the Demo panel; where to go next.
+  agree; the Status card with the pretend imaging app connected, then gone quiet (spec 021); changing a
+  setting and seeing the effect; the Demo panel; where to go next.
+  - Amended at convergence: the Status card steps were added (two action steps); the range grew from
+    6-10 to 6-12.
 - **FR-002**: Steps that ask for an action MUST wait for the emulated device's reaction, not a timer.
 - **FR-003**: The tour MUST be skippable at any step, restartable from the Demo panel, shown
   automatically only on a visitor's first visit, and usable by keyboard, on phones and with reduced motion.

@@ -1070,6 +1070,7 @@
   "settingsDeps.mqttIsOff": "MQTT jest wyłączone",
   "settingsDeps.mqttSettings": "Ustawienia MQTT",
   "settingsDeps.needsTheBluetoothFirmwareBuild": "Wymaga oprogramowania z Bluetooth",
+  "settingsDeps.needsWifiToDownloadOr": "Do pobrania potrzebne jest Wi-Fi – albo prześlij plik",
   "settingsDeps.needsYourLocation": "Wymaga Twojej lokalizacji",
   "settingsDeps.noGpsFixUsingThe": "Brak pozycji GPS – używana jest lokalizacja z ustawień",
   "settingsDeps.noPairingPasskeySet": "Nie ustawiono kodu parowania",

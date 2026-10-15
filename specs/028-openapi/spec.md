@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-10
 
-**Status**: Implemented (feat/028-openapi). AsyncAPI (US3, P3) deferred: tasks.md T020.
+**Status**: Implemented (PR #138); AsyncAPI (T020) deferred.
 
 ## Context
 

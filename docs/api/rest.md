@@ -192,7 +192,7 @@ Whether each setting that depends on another setting, on hardware or on the netw
 {
   "facts": { "wifiConnected": true, "mqttConnected": false, "clockSet": true, "gpsRunning": false, "gpsFix": false,
              "bluetoothBuild": false, "bluetoothRunning": false, "pairedPhones": 0,
-             "lightDetected": true, "infraredDetected": true, "environmentDetected": true },
+             "lightDetected": true, "infraredDetected": true, "environmentDetected": true, "languageInstalled": false },
   "settings": [
     { "id": "D-01", "setting": "alerts.mqtt.enabled", "state": "inactive", "reason": "mqtt-off", "text": "MQTT is off", "fix": "network#mqtt" },
     { "id": "D-15", "setting": "alpaca.rainUnsafeEnabled", "state": "inactive", "reason": "rain-off", "text": "Rain sensor is off", "fix": "sensors#rain", "unmet": "inactive" },

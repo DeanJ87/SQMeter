@@ -17,6 +17,7 @@ export const healthyFacts: DepFacts = {
   lightDetected: true,
   infraredDetected: true,
   environmentDetected: true,
+  languageInstalled: true,
 };
 
 /**

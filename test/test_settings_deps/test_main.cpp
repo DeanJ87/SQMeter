@@ -19,7 +19,7 @@ using namespace SQM;
 // are shared with web/src/lib/__tests__/settingsDeps.test.ts, so the device
 // and the web UI's preview give the same answers. Catalogue IDs covered here:
 // D-01 D-02 D-03 D-04 D-05 D-06 D-07 D-08 D-09 D-10 D-11 D-12 D-13 D-14 D-15
-// D-16 D-17 D-18 D-19 D-23 D-24 D-25 D-26 D-28 D-29 D-30 D-31 D-32 D-35 D-36 D-37.
+// D-16 D-17 D-18 D-19 D-23 D-24 D-25 D-26 D-28 D-29 D-30 D-31 D-32 D-35 D-36 D-37 D-38.
 
 namespace
 {
@@ -47,6 +47,7 @@ namespace
         f.lightDetected = flag("lightDetected");
         f.infraredDetected = flag("infraredDetected");
         f.environmentDetected = flag("environmentDetected");
+        f.languageInstalled = flag("languageInstalled");
         return f;
     }
 
@@ -57,6 +58,7 @@ namespace
         f.gpsRunning = f.gpsFix = f.bluetoothBuild = f.bluetoothRunning = true;
         f.pairedPhones = 1;
         f.lightDetected = f.infraredDetected = f.environmentDetected = true;
+        f.languageInstalled = true;
         return f;
     }
 
@@ -299,10 +301,29 @@ void test_send_mode_needs_alpaca()
     TEST_ASSERT_EQUAL(static_cast<int>(Alerts::SendMode::WhileConnected), static_cast<int>(Core::effectiveSendMode(cfg)));
 }
 
+// D-38: a non-English language with no stored file and no WiFi is kept as
+// saved and reported inactive; a stored file or WiFi puts it in effect.
+void test_language_needs_its_file()
+{
+    Config cfg = saveAndRestart(Config::createDefault(), R"({"language":"fr"})");
+    TEST_ASSERT_EQUAL_STRING("fr", cfg.language);
+    Deps::Facts f = healthy();
+    f.wifiConnected = false;
+    f.languageInstalled = false;
+    TEST_ASSERT_EQUAL_STRING("inactive:language-offline", stateOf(cfg, f, "language").c_str());
+    f.languageInstalled = true;
+    TEST_ASSERT_EQUAL_STRING("active", stateOf(cfg, f, "language").c_str());
+    f.languageInstalled = false;
+    f.wifiConnected = true;
+    TEST_ASSERT_EQUAL_STRING("active", stateOf(cfg, f, "language").c_str());
+    TEST_ASSERT_EQUAL_STRING("off", stateOf(Config::createDefault(), f, "language").c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_send_mode_needs_alpaca);
+    RUN_TEST(test_language_needs_its_file);
     RUN_TEST(test_fixture_cases);
     RUN_TEST(test_reasons_and_settings_match_catalogue);
     RUN_TEST(test_default_config_fixture_is_current);

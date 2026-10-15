@@ -1046,6 +1046,7 @@
   "settingsDeps.mqttIsOff": "MQTT已关闭",
   "settingsDeps.mqttSettings": "MQTT设置",
   "settingsDeps.needsTheBluetoothFirmwareBuild": "需要蓝牙版固件",
+  "settingsDeps.needsWifiToDownloadOr": "需要Wi-Fi才能下载，或上传文件",
   "settingsDeps.needsYourLocation": "需要你的位置",
   "settingsDeps.noGpsFixUsingThe": "GPS未定位：正在使用设置中的位置",
   "settingsDeps.noPairingPasskeySet": "未设置配对密码",

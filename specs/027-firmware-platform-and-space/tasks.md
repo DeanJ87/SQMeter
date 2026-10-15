@@ -33,3 +33,8 @@
 
 - [x] T016 All gates: native tests, both builds, budget, quality, web, Playwright, docs, diagrams, demo core
 - [x] T017 Spare device: USB flash keeping NVS, pages, contract check, ConformU, update check, NTP, language, OTA, rollback, refusals, heap; record in device-results.md (FR-006, SC-002..SC-005)
+
+## Open (needs hardware and a person)
+
+- [ ] T018 Bluetooth build on 3.x on a device: advertising, pairing and settings over BLE, OTA, heap; record in device-results.md (FR-006, FR-014). The spare runs the standard build, so checks 1-18 cover only that build
+- [ ] T019 Browser flasher by hand: flash a device from https://sqmeter.dev/flash/ in a Web Serial browser, settings kept with "erase" off (FR-019); device-results.md check 19
