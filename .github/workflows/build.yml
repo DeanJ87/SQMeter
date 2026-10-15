@@ -19,13 +19,13 @@ jobs:
   # nothing it covers changed (docs, changelog), `build` is skipped, and a
   # skipped required check counts as passed. Tag builds always run.
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     outputs:
       code: ${{ steps.diff.outputs.code }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - id: diff
@@ -83,21 +83,21 @@ jobs:
   build:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       actions: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
 
@@ -106,13 +106,13 @@ jobs:
       # cached .pio/build, and an exact-key package cache (a different
       # platformio.ini never restores another configuration's framework).
       - name: Cache PlatformIO packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.platformio
           key: ${{ runner.os }}-pio3-${{ hashFiles('platformio.ini') }}
 
       - name: Cache node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: web/node_modules
           key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
@@ -143,7 +143,7 @@ jobs:
         working-directory: web
 
       - name: Upload web coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: web-coverage
           path: web/coverage/
@@ -289,7 +289,7 @@ jobs:
 
       # PR builds: keep 5 days (inspection only). Tag builds go into GitHub Releases permanently.
       - name: Upload firmware artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: firmware
           path: .pio/build/esp32dev/firmware.bin
@@ -297,7 +297,7 @@ jobs:
           retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
       - name: Upload LittleFS artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: littlefs
           path: .pio/build/esp32dev/littlefs.bin
@@ -305,7 +305,7 @@ jobs:
           retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
       - name: Upload USB flash packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: usb-flash
           path: .pio/build/usb-*.zip
@@ -313,7 +313,7 @@ jobs:
           retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
       - name: Upload BLE firmware artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: firmware-ble
           path: .pio/build/esp32dev-ble/firmware.bin
@@ -322,7 +322,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
@@ -330,10 +330,10 @@ jobs:
       actions: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
 
       # The language files the device downloads for this firmware version
       # (specs/023-i18n): sqmeter-i18n-<code>.json.gz, its .sha256 and the manifest.
@@ -353,9 +353,9 @@ jobs:
       # (tools/release/notes.mjs): fails here, before anything is published, if
       # the changelog PR hasn't been merged. The banner is rendered with the
       # project's own fonts in Chromium (Playwright, already a web dependency).
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
           cache-dependency-path: web/package-lock.json
 
@@ -390,7 +390,7 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: SQMeter ${{ github.ref_name }}
           # The banner and changelog section first; GitHub's list of merged
