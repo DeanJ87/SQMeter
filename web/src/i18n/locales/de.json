@@ -116,7 +116,7 @@
   "dashboard.gpsLocation": "GPS-Position",
   "dashboard.gust": "Böe",
   "dashboard.humidity": "Luftfeuchte",
-  "dashboard.humidityAssumedNumberNoHumidity": "Luftfeuchte mit {number} % angenommen – kein Messwert des Feuchtesensors.",
+  "dashboard.humidityAssumedNumberNoHumidity": "Luftfeuchte mit {number} % angenommen: kein Messwert des Feuchtesensors.",
   "dashboard.illuminance": "Beleuchtungsstärke",
   "dashboard.infrared": "Infrarot",
   "dashboard.intensity": "Intensität",
