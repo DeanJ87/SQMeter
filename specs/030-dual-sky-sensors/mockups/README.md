@@ -27,4 +27,9 @@ With one sensor (every existing device) the Sky Quality card is unchanged.
 
 ## Owner review
 
-Pending. The components (T023-T025, T035, T036, T042) are built after the owner signs off here.
+Pending. The components (T023-T025, T035, T036, T042) were built from these mockups in the
+review-fix round, because without them the dashboard and Settings parts of FR-010, FR-012 and
+FR-013 did not exist. The owner's sign-off is still to be recorded here; a change it asks for is a
+follow-up. Where the build differs from a mockup: the authoritative select stays usable while the
+chosen sensor is off (s3 shows it hidden), so the note's Use SQM is not the only way back; and the
+SQM-L fault card (m5) uses the Sky Quality star icon.

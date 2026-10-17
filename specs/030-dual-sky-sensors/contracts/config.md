@@ -49,4 +49,4 @@ Worst-case main JSON (long strings in every text field, both sensors configured)
 ## Effective settings / dependencies
 
 `GET /api/settings/effective` reports the new entries D-39, D-40, D-41 (research D13) with the
-existing shape.
+existing shape; D-42 is the save-time constraint whose messages are the I2C-2 rules above.

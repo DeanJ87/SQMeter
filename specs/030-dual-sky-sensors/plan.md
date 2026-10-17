@@ -89,7 +89,7 @@ lib/DeviceCore/                              SensorSnapshot::skySensors[], autho
 lib/Readings/                                sky.source, skySensors, HA entities sqm_wide/sqm_l/sqm_delta, DOC_CAPACITY
 lib/AlpacaLogic/                             role-literal safety reasons, SensorDescription per role
 lib/AlertLogic/                              SENSOR_COUNT 6, template-variables.json
-lib/SettingsDeps/                            D-39..D-41, facts
+lib/SettingsDeps/                            D-39..D-42, facts
 include/sensors/TSL2591Sensor.h, src/sensors/TSL2591Sensor.cpp   bus + role, start/collect, fault detection
 src/main.cpp                                 Wire1, two sensors, overlapped cycle
 include/WebServer.h, src/WebServer*.cpp      snapshot of both, calibrate-dark ?sensor, BLE summary, doc sizes

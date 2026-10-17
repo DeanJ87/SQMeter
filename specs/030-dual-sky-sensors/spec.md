@@ -48,7 +48,8 @@ only that sensor's reading.
    beside it with the difference between them (SQM-L − SQM, in mag/arcsec²).
 3. **Given** SQM-L is enabled but no sensor answers on the second port, **When** Settings → Sensors loads,
    **Then** the SQM-L shows as not detected, its card is absent from the dashboard, and its status in the
-   API is a fault, not a reading.
+   API is a fault, not a reading: `missing` with no reading values, as a single TSL2591 that never answered
+   reports today (`error` is for a sensor that answered and then failed).
 
 ---
 

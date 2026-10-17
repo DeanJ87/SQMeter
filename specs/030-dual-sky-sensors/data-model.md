@@ -103,8 +103,9 @@ path).
 
 ## Settings dependency facts (lib/SettingsDeps)
 
-`Deps::Facts` + `i2c2Configured`, `sqmEnabled`, `sqmlEnabled`, `sqmDetected`, `sqmlDetected`;
-`lightDetected` = authoritative sensor detected (D13).
+`Deps::Facts` + `sqmDetected`, `sqmlDetected`; `lightDetected` = authoritative sensor detected
+(D13). The I2C-2 pins (D-39) and which sensors are on (D-18, D-29, D-40 naming) come from the config,
+so no `i2c2Configured`, `sqmEnabled` or `sqmlEnabled` fact is needed.
 
 ## Web types (web/src/types)
 

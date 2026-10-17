@@ -216,17 +216,22 @@ sensor: `status`, `ageMs`, `detected`, `gain`, `integrationMs`, `saturated`, `ni
 
 **Decision**: catalogue entries:
 
-- `D-39` (constraint, feature): `sky.sqmlEnabled`, `sensor.i2c2SDA/SCL`. Implementation note: the
-  saved config can never hold the SQM-L on without pins (contracts/config.md rejects it), so this
-  is a constraint with the device's messages rather than a dependency with a reason; no
-  `i2c2-unset` reason or `i2c2Configured` fact is needed.
+- `D-39` (dependency, setting): `sky.sqmlEnabled` depends on "the second I2C bus pins set",
+  reason `i2c2-unset` ("Second I2C bus pins not set"), so Settings shows the switch blocked with a
+  reason and a fix (FR-013). The saved config can never hold the SQM-L on without pins, so the
+  device never reports it inactive; the fixture case that does is a draft (`draft: true`) the
+  device refuses to save. The pin check is config-only (no `i2c2Configured` fact).
+- `D-42` (constraint, feature): `sensor.i2c2SDA/SCL`, `sky.sqmlEnabled`: the pin rules and "the
+  SQM-L needs the pins", with the device's messages (contracts/config.md). (Review fix: D-39 was
+  first built as this constraint, which left the switch no way to show why it can't be used.)
 - `D-40` (dependency, setting): `sky.authoritative`, `sky.showOther` depend on "SQM and SQM-L both
   on", reason `sky-single`.
 - `D-41` (dependency, setting, runtime): `skyCalibrationL.enabled` depends on "SQM-L detected",
   reason `sqml-missing`.
-- D-18 / D-29 keep `light-missing`, now meaning the authoritative sensor (fact `lightDetected` is
-  the authoritative copy); D-29 stays on `skyCalibration.enabled` (the SQM's, fact
-  `sqmDetected`).
+- D-18 / D-29 keep `light-missing` with one sensor, meaning the authoritative sensor (fact
+  `lightDetected` is the authoritative copy); D-29 stays on `skyCalibration.enabled` (the SQM's,
+  fact `sqmDetected`). With both sensors on the reason names the sensor (FR-010): `sqm-missing`
+  ("SQM not detected") or `sqml-missing` ("SQM-L not detected").
 - `noDependency` gains `sensor.i2c2SDA`, `sensor.i2c2SCL`, `sky.sqmEnabled`,
   `skyAveragingL.windowSeconds`, `skyCalibrationL.<offsets>`.
 `Deps::Facts` gains `i2c2Configured`, `sqmEnabled`, `sqmlEnabled`, `sqmDetected`, `sqmlDetected`.
