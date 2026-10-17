@@ -234,6 +234,7 @@
   "device.api.theRainSensorIsSwitchedOff": "雨量传感器已关闭（设置 → 传感器 → 雨量传感器）",
   "device.api.theSensorIsSeeingLightCover": "传感器检测到光线。请完全遮盖并等待平均窗口填满。",
   "device.api.titleIsUpTo80Characters": "标题最多80个字符，消息最多240个字符",
+  "device.api.typeTheMqttPasswordToTest": "要测试已保存代理以外的代理，请输入 MQTT 密码",
   "device.api.unauthorized": "未授权",
   "device.api.unavailable": "不可用",
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "未知渠道（应为mqtt、pushover、ntfy、webhook或all）",

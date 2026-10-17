@@ -335,6 +335,19 @@ namespace SQM
         // Applies JSON on top of `cfg` in place and validates. On failure
         // `cfg` may be partially updated.
         static bool applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *error = nullptr);
+        // Settings > Network "Test connection" sends the form as shown, so an unchanged password
+        // arrives as the mask. Returns the password to try: what was typed; or the saved one when
+        // the form still shows the mask (or is blank) and names the saved broker, port and user.
+        // A masked password for any other broker returns nothing (refused): the saved secret is
+        // never sent to a host it wasn't saved for.
+        struct MqttTestTarget
+        {
+            std::string broker;
+            uint16_t port = 0;
+            std::string username;
+            std::string password;
+        };
+        static std::optional<std::string> mqttTestPassword(const MQTTConfig &saved, const MqttTestTarget &target);
     };
 
 } // namespace SQM

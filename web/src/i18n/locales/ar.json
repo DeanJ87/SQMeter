@@ -247,6 +247,7 @@
   "device.api.theRainSensorIsSwitchedOff": "مستشعر المطر متوقف (الإعدادات ← المستشعرات ← مستشعر المطر)",
   "device.api.theSensorIsSeeingLightCover": "المستشعر يلتقط ضوءًا. غطّه بالكامل وانتظر حتى تمتلئ نافذة المتوسط.",
   "device.api.titleIsUpTo80Characters": "العنوان حتى 80 حرفًا والرسالة حتى 240",
+  "device.api.typeTheMqttPasswordToTest": "اكتب كلمة مرور MQTT لاختبار وسيط غير الوسيط المحفوظ",
   "device.api.unauthorized": "غير مصرّح",
   "device.api.unavailable": "غير متاح",
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "قناة غير معروفة (المتوقع mqtt أو pushover أو ntfy أو webhook أو all)",

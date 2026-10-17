@@ -280,7 +280,12 @@ export const TextInput: FunctionalComponent<{
     value={value}
     placeholder={placeholder}
     disabled={disabled}
-    autocomplete={type === 'password' ? 'off' : undefined}
+    // Browsers and password managers ignore "off" on password fields and fill in the password saved
+    // for this page (the device's own), replacing the mask; the next save then stores it (an MQTT or
+    // WiFi password "poisoned" by an unrelated save). "new-password" stops the autofill.
+    autocomplete={type === 'password' ? 'new-password' : undefined}
+    data-1p-ignore={type === 'password' ? '' : undefined}
+    data-lpignore={type === 'password' ? 'true' : undefined}
     onInput={(e) => onInput((e.target as HTMLInputElement).value)}
   />
 );
