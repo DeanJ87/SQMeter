@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -33,4 +33,4 @@
 
 - The gauge and charger parts are named because they are the hardware the travel board carries; field
   names are the external contract, as in specs 013 and 028.
-- One open question (Q1, FR-010: final step at critical charge) awaits the owner.
+- Q1 answered 2026-10-17 (deep sleep after warning; alert channels + BLE phone alarm options); US3, FR-007, FR-008, FR-010 and edge cases updated.

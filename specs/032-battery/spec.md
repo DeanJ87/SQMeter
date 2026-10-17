@@ -84,10 +84,14 @@ the configured power-saving steps and recovers when charging resumes.
 **Acceptance Scenarios**:
 
 1. **Given** power saving enabled and charge below the critical threshold (default 10 %), **When** it is
-   reached, **Then** the device applies the chosen steps (slower sensor reads, display off, and the action
-   in Clarifications Q1), announces it in status, and fires one critical alert first.
-2. **Given** power-saving active, **When** USB-C is connected, **Then** normal operation resumes within one
-   read interval.
+   reached, **Then** the device fires the critical alert, slows sensor reads and turns the display off,
+   and reports power saving in status.
+2. **Given** charge keeps falling to the shutdown level (default 5 %), **When** it is reached, **Then** the
+   device sends a "going to sleep" alert through the alert channels, rings paired phones when that option
+   is on (BLE build), reports unsafe for at least one safety poll, and then deep-sleeps until USB power
+   returns.
+3. **Given** the device asleep or power saving, **When** USB-C is connected, **Then** it wakes (or resumes
+   normal operation) and a "power restored" alert is sent.
 
 ---
 
@@ -118,15 +122,18 @@ charge, voltage and charging state; an alert template using `{battery}` renders 
 - Rate near zero: time estimates show "--" rather than enormous numbers; estimates over 99 h show "> 99 h".
 - Charge stuck at 99 %: the charger's "charged" status is authoritative for "full", not the percentage.
 - Imaging software polling during critical power saving: Alpaca and REST keep answering; only the reading
-  rate drops.
+  rate drops. Once the device deep-sleeps it stops answering: imaging software sees it disconnect, which is
+  why the battery rule and going-to-sleep alert come first.
+- No alert channel reachable (no WiFi in the field) at shutdown: the BLE phone alarm still rings on the BLE
+  build; the device doesn't wait indefinitely for delivery before sleeping.
 
 ## Clarifications
 
-### Open questions (owner, 2026-10-17)
+### Session 2026-10-17 (owner)
 
-- **Q1 (FR-010)**: what is the last step at critical charge? [NEEDS CLARIFICATION: deep sleep until USB
-  power returns (device stops answering, cells protected); keep running with WiFi on until the cell
-  protection cuts out; or turn WiFi off but keep the display and readings running?]
+- Q: What is the last step at critical charge? → A: Deep sleep until USB power returns, after warning.
+- Q (follow-up): How is the owner warned? → A: Through the normal alert channels and, on the BLE build,
+  a Bluetooth phone alarm; both are options of the battery safety rule and of the battery alert events.
 
 ## Requirements *(mandatory)*
 
@@ -150,21 +157,28 @@ charge, voltage and charging state; an alert template using `{battery}` renders 
 
 - **FR-006**: The owner MUST be able to set a low threshold (5–50 %, default 20 %) and a critical
   threshold (2–25 %, default 10 %, below the low threshold).
-- **FR-007**: The alert system MUST offer battery rules: low, critical, charge complete, and charge fault,
-  each firing once per crossing with hysteresis (5 % for the thresholds), through the existing alert
-  channels and schedule (spec 021).
+- **FR-007**: The alert system MUST offer battery events: low, critical, going to sleep, power restored,
+  charge complete, and charge fault, each firing once per crossing with hysteresis (5 % for the
+  thresholds), through the existing alert channels, levels and schedule (spec 021). Each event's level is
+  settable like other events; at the **Wake me** level it rings paired phones on the BLE build. Defaults:
+  critical and going to sleep at Wake me, low and charge fault at a normal level, the rest silent.
 - **FR-008**: The SafetyMonitor MUST offer an optional battery rule (off by default) that is unsafe below
   its own threshold (default the critical threshold) and unsafe when the rule is enabled but battery data
-  is missing or stale (constitution I), with reasons giving value and limit.
+  is missing or stale (constitution I), with reasons giving value and limit. The rule MUST have two
+  options for when it turns unsafe: send an alert through the alert channels (default on) and ring paired
+  phones over Bluetooth on the BLE build (default on).
 - **FR-009**: Alert template variables MUST include `{battery}`, `{battery_voltage}`, `{battery_state}`
   and `{battery_time_left}`.
 
 **Power saving**
 
 - **FR-010**: The owner MUST be able to enable power saving (on by default on battery-capable boards). At
-  critical charge it MUST: fire the critical alert first, slow sensor reads to a set interval, turn the
-  display off (spec 031), and then take the final step chosen in Clarifications Q1. It MUST reverse when
-  USB power returns or charge rises above the critical threshold plus hysteresis.
+  the critical threshold it MUST fire the critical alert, slow sensor reads to a set interval and turn the
+  display off (spec 031). At the shutdown level (2–10 %, default 5 %, below critical) it MUST send the
+  going-to-sleep alert through the alert channels and, when enabled, the Bluetooth phone alarm; keep
+  answering as unsafe for at least one safety poll interval (default 30 s) so imaging software can park;
+  then deep-sleep until USB power returns. On wake (or when charge rises above critical plus hysteresis)
+  it MUST resume normally and send a power-restored alert.
 
 **What is emitted**
 
