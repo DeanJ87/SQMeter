@@ -88,6 +88,14 @@ describe('Display card (spec 031)', () => {
     expect(c.getByText('Uses light at night')).toBeInTheDocument();
   });
 
+  it('needs a location to stay on at night (D-44)', async () => {
+    displayStatus({ enabled: true, detected: true });
+    open({}, { location: { set: false, latitude: 0, longitude: 0, showSunMoon: true } }, { gpsFix: false });
+    const c = await card();
+    await waitFor(() => expect(c.getByRole('switch', { name: 'Stay on at night' })).toBeDisabled());
+    expect(c.getByText(/Needs your location/)).toBeInTheDocument();
+  });
+
   it('has nothing to cycle with one page', async () => {
     displayStatus({ enabled: true, detected: true });
     open({ pages: ['sky'] });

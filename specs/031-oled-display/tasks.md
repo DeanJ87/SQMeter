@@ -146,7 +146,7 @@ on at a known night.
 - [X] T052 Measure after: firmware size both builds (SIZE-04), static RAM, UI gzip delta ≤ 10 KB (SIZE-02), config and status worst cases (tests); update specs/031-oled-display/budgets.md; device heap and loop `stackFree` with and without a display on the spare device only, noted for the PR (round 2: sizes and UI measured; device heap and stack open for the PR)
 - [X] T053 Full gate: `pio test -e native`, both firmware builds, `tools/quality/check.py` (no new findings), `tools/api/openapi.py --check`, web `vitest run`, `tsc --noEmit`, `eslint src`, i18n checks, settings-deps and dashboard checks; ConformU unchanged (no Alpaca change; CI runs it)
 - [X] T054 Run quickstart.md sections 1 and 2 and record results; sections 3-6 on the spare device only, with the owner's permission (never the main device), or recorded as open for the PR; changelog entry in CHANGELOG.md
-- [ ] T055 Converge (`speckit-converge`) until it reports converged
+- [X] T055 Converge (`speckit-converge`) until it reports converged (round 2: converged after adding the D-44 Display card test; device scenarios, heap/stack and the owner's mockup sign-off are open for the PR)
 
 ## Dependencies
 
