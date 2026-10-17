@@ -33,10 +33,10 @@ dependency on an unfinished task.
 
 ### Display logic core (research D1, D2, D4, data-model)
 
-- [ ] T012 [P] Native tests first in test/test_display_logic/test_frame.cpp: `Frame` clear/set pixel, 5×7 text with 6 px advance, 10×16 digits, ellipsis when text exceeds the width, dirty bits only on changed pages, pixel shift offsets for positions 0..3
-- [ ] T013 `Frame` (1,024-byte buffer in SSD1306 page layout, dirty mask), fonts (5×7 ASCII 0x20-0x7E plus `°` and `…`; 10×16 digits, `.`, `-`, `%`) in lib/DisplayLogic/include/DisplayFrame.h, lib/DisplayLogic/src/DisplayFrame.cpp and lib/DisplayLogic/src/DisplayFonts.cpp (fonts `const` in flash); T012 passes
-- [ ] T014 [P] Native tests first in test/test_display_logic/test_link.cpp: `Link` probe when enabled, re-probe every 5 s while not detected, 3 consecutive write failures → not detected, `needsInit` after (re)detection, nothing while disabled
-- [ ] T015 `Link` and `Button` (30 ms debounce, one press per press) in lib/DisplayLogic/include/DisplayController.h and lib/DisplayLogic/src/DisplayLink.cpp; T014 passes
+- [X] T012 [P] Native tests first in test/test_display_logic/test_frame.cpp: `Frame` clear/set pixel, 5×7 text with 6 px advance, 10×16 digits, ellipsis when text exceeds the width, dirty bits only on changed pages, pixel shift offsets for positions 0..3
+- [X] T013 `Frame` (1,024-byte buffer in SSD1306 page layout, dirty mask), fonts (5×7 ASCII 0x20-0x7E plus `°` and `…`; 10×16 digits, `.`, `-`, `%`) in lib/DisplayLogic/include/DisplayFrame.h, lib/DisplayLogic/src/DisplayFrame.cpp and lib/DisplayLogic/src/DisplayFonts.cpp (fonts `const` in flash); T012 passes
+- [X] T014 [P] Native tests first in test/test_display_logic/test_link.cpp: `Link` probe when enabled, re-probe every 5 s while not detected, 3 consecutive write failures → not detected, `needsInit` after (re)detection, nothing while disabled
+- [X] T015 `Link` and `Button` (30 ms debounce, one press per press) in lib/DisplayLogic/include/DisplayController.h and lib/DisplayLogic/src/DisplayLink.cpp; T014 passes
 
 **Checkpoint**: config, deps and display logic compile natively; existing native tests unchanged and green.
 
