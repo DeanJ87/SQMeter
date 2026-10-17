@@ -11,29 +11,29 @@ dependency on an unfinished task.
 
 ## Phase 1: Setup
 
-- [ ] T001 Record the baselines in `specs/030-dual-sky-sensors/budgets.md`: firmware size of `pio run -e esp32dev` and `-e esp32dev-ble`, gzipped UI JS+CSS (`web` build), default and long-string main config JSON size, worst-case readings document size (research "What exists today")
-- [ ] T002 [P] Add `SkyRole { Sqm = 0, Sqml = 1 }`, `SKY_ROLE_COUNT = 2`, `skyRoleName()` (`"sqm"`/`"sqml"`), `skyRoleLabel()` (`"SQM"`/`"SQM-L"`) and `parseSkyRole()` (false on anything else) in lib/SensorTypes/include/SensorTypes.h, with tests in test/test_sky_logic/test_sky_role.cpp
+- [X] T001 Record the baselines in `specs/030-dual-sky-sensors/budgets.md`: firmware size of `pio run -e esp32dev` and `-e esp32dev-ble`, gzipped UI JS+CSS (`web` build), default and long-string main config JSON size, worst-case readings document size (research "What exists today")
+- [X] T002 [P] Add `SkyRole { Sqm = 0, Sqml = 1 }`, `SKY_ROLE_COUNT = 2`, `skyRoleName()` (`"sqm"`/`"sqml"`), `skyRoleLabel()` (`"SQM"`/`"SQM-L"`) and `parseSkyRole()` (false on anything else) in lib/SensorTypes/include/SensorTypes.h, with tests in test/test_sky_logic/test_sky_role.cpp
 
 ## Phase 2: Foundational (blocks every story)
 
 ### Config model (research D5, contracts/config.md)
 
-- [ ] T003 [P] Native tests first in test/test_config_model/: defaults (`sensor.i2c2SDA`/`i2c2SCL` = 255 "unset", `sky.sqmEnabled` true, `sky.sqmlEnabled` false, `sky.authoritative` `"sqm"`, `sky.showOther` true, `skyAveragingL.windowSeconds` 90, `skyCalibrationL` like `skyCalibration`); JSON round trip; validation messages from contracts/config.md (`i2c2` "both 255, or both valid GPIOs and different"; not used by I2C-1, GPS, rain or wind; `sqmlEnabled` needs I2C-2 pins; `authoritative` must be `sqm` or `sqml`; `skyAveragingL.windowSeconds` 10..300; `skyCalibrationL.sqmOffset` -5..5; dark offsets >= 0 and finite); worst-case main JSON (long strings, both sensors configured) < `Config::MAX_PERSISTED_JSON_BYTES` (5100)
-- [ ] T004 [P] Migration test first in test/test_config_migration/: a pre-030 saved config fixture (test/fixtures/config-releases/) loads with every existing value kept and the new keys at their defaults (FR-014)
-- [ ] T005 Add `SkyConfig sky`, `skyAveragingL`, `skyCalibrationL`, `sensor.i2c2SDA/i2c2SCL` and the helpers `averaging(SkyRole)`, `calibration(SkyRole)`, `skyEnabled(SkyRole)` in lib/ConfigModel/include/Config.h; defaults in lib/ConfigModel/src/ConfigModel.cpp
-- [ ] T006 JSON in/out for the new keys in lib/ConfigModel/src/ConfigJsonIn.cpp and lib/ConfigModel/src/ConfigJsonOut.cpp (`authoritative` read with `parseSkyRole`, rejected when unknown)
-- [ ] T007 Validation in lib/ConfigModel/src/ConfigValidate.cpp: I2C-2 pair rule, I2C-2 in the pin-conflict checks (255 = unused) including `validateWindPins`, `sqmlEnabled` needs pins, SQM-L averaging/calibration ranges, messages exactly as contracts/config.md; T003/T004 pass
-- [ ] T008 [P] Range fixture entries for the new keys in test/fixtures/config-ranges.json and test/fixtures/settings-deps/default-config.json (checked by test/test_config_ranges)
+- [X] T003 [P] Native tests first in test/test_config_model/: defaults (`sensor.i2c2SDA`/`i2c2SCL` = 255 "unset", `sky.sqmEnabled` true, `sky.sqmlEnabled` false, `sky.authoritative` `"sqm"`, `sky.showOther` true, `skyAveragingL.windowSeconds` 90, `skyCalibrationL` like `skyCalibration`); JSON round trip; validation messages from contracts/config.md (`i2c2` "both 255, or both valid GPIOs and different"; not used by I2C-1, GPS, rain or wind; `sqmlEnabled` needs I2C-2 pins; `authoritative` must be `sqm` or `sqml`; `skyAveragingL.windowSeconds` 10..300; `skyCalibrationL.sqmOffset` -5..5; dark offsets >= 0 and finite); worst-case main JSON (long strings, both sensors configured) < `Config::MAX_PERSISTED_JSON_BYTES` (5100)
+- [X] T004 [P] Migration test first in test/test_config_migration/: a pre-030 saved config fixture (test/fixtures/config-releases/) loads with every existing value kept and the new keys at their defaults (FR-014)
+- [X] T005 Add `SkyConfig sky`, `skyAveragingL`, `skyCalibrationL`, `sensor.i2c2SDA/i2c2SCL` and the helpers `averaging(SkyRole)`, `calibration(SkyRole)`, `skyEnabled(SkyRole)` in lib/ConfigModel/include/Config.h; defaults in lib/ConfigModel/src/ConfigModel.cpp
+- [X] T006 JSON in/out for the new keys in lib/ConfigModel/src/ConfigJsonIn.cpp and lib/ConfigModel/src/ConfigJsonOut.cpp (`authoritative` read with `parseSkyRole`, rejected when unknown)
+- [X] T007 Validation in lib/ConfigModel/src/ConfigValidate.cpp: I2C-2 pair rule, I2C-2 in the pin-conflict checks (255 = unused) including `validateWindPins`, `sqmlEnabled` needs pins, SQM-L averaging/calibration ranges, messages exactly as contracts/config.md; T003/T004 pass
+- [X] T008 [P] Range fixture entries for the new keys in test/fixtures/config-ranges.json and test/fixtures/settings-deps/default-config.json (checked by test/test_config_ranges)
 
 ### Read cycle (research D2, data-model SkyReadCycle)
 
-- [ ] T009 [P] Native tests first in test/test_sky_logic/test_sky_read_cycle.cpp: start when due; collect only after `integrationMs + MARGIN_MS`; success resets failures; 3 consecutive failures -> Absent with 5 s back-off doubling to a 60 s cap; never-begun starts Absent with retry at once; replug (begin ok) -> Idle; millis wrap
-- [ ] T010 `SkyReadCycle` in lib/SkyLogic/include/calculations/SkyReadCycle.h and lib/SkyLogic/src/SkyReadCycle.cpp (no Arduino headers); T009 passes
+- [X] T009 [P] Native tests first in test/test_sky_logic/test_sky_read_cycle.cpp: start when due; collect only after `integrationMs + MARGIN_MS`; success resets failures; 3 consecutive failures -> Absent with 5 s back-off doubling to a 60 s cap; never-begun starts Absent with retry at once; replug (begin ok) -> Idle; millis wrap
+- [X] T010 `SkyReadCycle` in lib/SkyLogic/include/calculations/SkyReadCycle.h and lib/SkyLogic/src/SkyReadCycle.cpp (no Arduino headers); T009 passes
 
 ### Per-sensor snapshot and authoritative copy (research D3)
 
-- [ ] T011 Native tests first in test/test_device_core/: with `sky.authoritative` = sqm/sqml and each role enabled/disabled/faulted, `Core::derive` sets `tsl`, `tslDiagnostics`, `tslInitialized`, `tslLastUpdate`, `sky` and `skySource` from the authoritative role only; a disabled or faulted authoritative role gives the empty not-ok copy and never the other role's values (FR-010); one-sensor config gives exactly today's copy
-- [ ] T012 Add `SkySensorSnapshot skySensors[SKY_ROLE_COUNT]` and `SkyRole skySource` to `SensorSnapshot` and fill the authoritative copy and per-role `metrics` in `Core::derive` in lib/DeviceCore/include/DeviceCore.h and lib/DeviceCore/src/DeviceCore.cpp; T011 passes
+- [X] T011 Native tests first in test/test_device_core/: with `sky.authoritative` = sqm/sqml and each role enabled/disabled/faulted, `Core::derive` sets `tsl`, `tslDiagnostics`, `tslInitialized`, `tslLastUpdate`, `sky` and `skySource` from the authoritative role only; a disabled or faulted authoritative role gives the empty not-ok copy and never the other role's values (FR-010); one-sensor config gives exactly today's copy
+- [X] T012 Add `SkySensorSnapshot skySensors[SKY_ROLE_COUNT]` and `SkyRole skySource` to `SensorSnapshot` and fill the authoritative copy and per-role `metrics` in `Core::derive` in lib/DeviceCore/include/DeviceCore.h and lib/DeviceCore/src/DeviceCore.cpp; T011 passes
 
 **Checkpoint**: config and core compile natively; existing native tests unchanged and green.
 

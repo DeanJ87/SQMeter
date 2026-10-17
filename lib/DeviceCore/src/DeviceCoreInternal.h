@@ -1,0 +1,23 @@
+#pragma once
+
+// Helpers shared by the DeviceCore sources (DeviceCore.cpp, DeviceSky.cpp).
+
+#include "DeviceCore.h"
+
+namespace SQM::Core::Detail
+{
+    // ok unless the driver reports a problem or the last good reading is too old.
+    inline Readings::Status readingStatus(SensorStatus status, bool initialized, uint32_t lastUpdate, uint32_t now, uint32_t staleAfter)
+    {
+        if (!initialized || status == SensorStatus::NotInitialized)
+            return Readings::Status::Missing;
+        if (status != SensorStatus::Ok)
+            return Readings::Status::Error;
+        if (lastUpdate == 0 || now - lastUpdate > staleAfter)
+            return Readings::Status::Stale;
+        return Readings::Status::Ok;
+    }
+
+    // Each sky sensor's metrics and the authoritative copy (spec 030 research D3).
+    void deriveSky(SensorSnapshot &snapshot, const Config &cfg);
+} // namespace SQM::Core::Detail

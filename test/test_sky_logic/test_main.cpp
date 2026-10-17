@@ -137,6 +137,14 @@ void test_calibration_offset()
     TEST_ASSERT_FLOAT_WITHIN(0.000001f, rawLux, off.lux);
 }
 
+void test_sky_role_names();
+void test_sky_role_parse();
+void test_read_cycle_never_begun_starts_absent_and_tries_at_once();
+void test_read_cycle_starts_when_due_and_collects_after_integration();
+void test_read_cycle_failures_go_absent_with_backoff();
+void test_read_cycle_success_resets_failures();
+void test_read_cycle_millis_wrap();
+
 int main()
 {
     UNITY_BEGIN();
@@ -149,5 +157,12 @@ int main()
     RUN_TEST(test_cloud_calculate);
     RUN_TEST(test_dewpoint);
     RUN_TEST(test_calibration_offset);
+    RUN_TEST(test_sky_role_names);
+    RUN_TEST(test_sky_role_parse);
+    RUN_TEST(test_read_cycle_never_begun_starts_absent_and_tries_at_once);
+    RUN_TEST(test_read_cycle_starts_when_due_and_collects_after_integration);
+    RUN_TEST(test_read_cycle_failures_go_absent_with_backoff);
+    RUN_TEST(test_read_cycle_success_resets_failures);
+    RUN_TEST(test_read_cycle_millis_wrap);
     return UNITY_END();
 }

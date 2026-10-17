@@ -3,6 +3,8 @@
 #include "ConfigInternal.h"
 #include "LanguageLogic.h"
 #include "NetAddress.h"
+#include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <initializer_list>
@@ -156,6 +158,69 @@ namespace SQM
             return true;
         }
 
+        bool validDarkOffsets(const SkyCalibrationConfig &cal)
+        {
+            return inRange(cal.darkVisibleOffset, 0.0F, INFINITY) && inRange(cal.darkFullOffset, 0.0F, INFINITY) &&
+                   inRange(cal.darkIrOffset, 0.0F, INFINITY);
+        }
+
+        // Pins of the sensor buses that are in use; -1 = not in use. The
+        // I2C-2 pair only when asked for (and wired).
+        std::array<int, 8> busPins(const Config &c, bool withI2c2)
+        {
+            const bool i2c2 = withI2c2 && c.sensor.i2c2Configured();
+            const bool gps = c.gps.enabled;
+            const bool rain = c.rain.enabled;
+            return {
+                c.sensor.i2cSDA,
+                c.sensor.i2cSCL,
+                i2c2 ? c.sensor.i2c2SDA : -1,
+                i2c2 ? c.sensor.i2c2SCL : -1,
+                gps ? c.gps.rxPin : -1,
+                gps ? c.gps.txPin : -1,
+                rain ? c.rain.rxPin : -1,
+                rain ? c.rain.txPin : -1};
+        }
+
+        bool pinIn(const std::array<int, 8> &pins, int pin)
+        {
+            return std::find(pins.begin(), pins.end(), pin) != pins.end();
+        }
+
+        // The second I2C bus pins: both unset, or two different valid GPIOs
+        // no other bus uses (spec 030, contracts/config.md). The anemometer's
+        // own check reports a clash with these pins.
+        bool validateI2c2Pins(const Config &c, std::string *error)
+        {
+            const SensorConfig &s = c.sensor;
+            if (s.i2c2SDA == SensorConfig::PIN_UNSET && s.i2c2SCL == SensorConfig::PIN_UNSET)
+                return true;
+            if (!isValidGpio(s.i2c2SDA) || !isValidGpio(s.i2c2SCL) || s.i2c2SDA == s.i2c2SCL)
+                return setError(error, "Second I2C bus pins are invalid");
+            const std::array<int, 8> others = busPins(c, false);
+            if (pinIn(others, s.i2c2SDA) || pinIn(others, s.i2c2SCL))
+                return setError(error, "Second I2C bus pins are already in use");
+            return true;
+        }
+
+        // The SQM-L and the authoritative choice.
+        bool validateSecondSky(const Config &c, std::string *error)
+        {
+            if (!validateI2c2Pins(c, error))
+                return false;
+            if (c.sky.sqmlEnabled && !c.sensor.i2c2Configured())
+                return setError(error, "SQM-L needs the second I2C bus pins");
+            if (c.sky.authoritative != SkyRole::Sqm && c.sky.authoritative != SkyRole::Sqml)
+                return setError(error, "Authoritative sky reading must be sqm or sqml");
+            if (c.skyAveragingL.windowSeconds < 10 || c.skyAveragingL.windowSeconds > 300)
+                return setError(error, "SQM-L averaging window is invalid");
+            if (!inRange(c.skyCalibrationL.sqmOffset, -5.0F, 5.0F))
+                return setError(error, "SQM-L calibration offset is invalid");
+            if (!validDarkOffsets(c.skyCalibrationL))
+                return setError(error, "SQM-L dark calibration offsets are invalid");
+            return true;
+        }
+
         bool validateSky(const Config &c, std::string *error)
         {
             const SensorConfig &s = c.sensor;
@@ -170,10 +235,9 @@ namespace SQM
             const SkyCalibrationConfig &cal = c.skyCalibration;
             if (!inRange(cal.sqmOffset, -5.0F, 5.0F))
                 return setError(error, "Sky SQM calibration offset is invalid");
-            if (!inRange(cal.darkVisibleOffset, 0.0F, INFINITY) || !inRange(cal.darkFullOffset, 0.0F, INFINITY) ||
-                !inRange(cal.darkIrOffset, 0.0F, INFINITY))
+            if (!validDarkOffsets(cal))
                 return setError(error, "Sky dark calibration offsets are invalid");
-            return true;
+            return validateSecondSky(c, error);
         }
 
         bool validateCloudDetection(const CloudDetectionConfig &d, std::string *error)
@@ -223,14 +287,7 @@ namespace SQM
                 return setError(error, "Wind: anemometer pin is not a valid GPIO");
             if (w.directionEnabled && (w.directionPin < 32 || w.directionPin > 39))
                 return setError(error, "Wind: vane pin must be an ADC1 pin (GPIO 32-39)");
-            const int used[] = {
-                c.sensor.i2cSDA,
-                c.sensor.i2cSCL,
-                c.gps.enabled ? c.gps.rxPin : -1,
-                c.gps.enabled ? c.gps.txPin : -1,
-                c.rain.enabled ? c.rain.rxPin : -1,
-                c.rain.enabled ? c.rain.txPin : -1};
-            for (int pin : used)
+            for (int pin : busPins(c, true))
             {
                 if (pin == w.speedPin || (w.directionEnabled && pin == w.directionPin))
                     return setError(error, "Wind: pin is already used by I2C, GPS or the rain sensor");

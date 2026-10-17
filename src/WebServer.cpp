@@ -364,19 +364,20 @@ namespace SQM
     void WebServer::refreshSensorSnapshot(uint32_t dataTimestampMs)
     {
         SensorSnapshot next;
-        next.tsl = tslSensor.getReading();
-        next.tslDiagnostics = tslSensor.getDiagnostics();
+        SkySensorSnapshot &sqm = next.skySensors[skyRoleIndex(SkyRole::Sqm)];
+        sqm.reading = tslSensor.getReading();
+        sqm.diagnostics = tslSensor.getDiagnostics();
+        sqm.initialized = tslSensor.isInitialized();
+        sqm.lastUpdate = tslSensor.getLastUpdateTime();
         next.bme = bmeSensor.getReading();
         next.mlx = mlxSensor.getReading();
         next.gps = gpsSensor.getReading();
         next.rg15 = rg15Sensor.copyReading();
         next.rg15Diagnostics = rg15Sensor.getDiagnostics();
-        next.tslInitialized = tslSensor.isInitialized();
         next.bmeInitialized = bmeSensor.isInitialized();
         next.mlxInitialized = mlxSensor.isInitialized();
         next.gpsInitialized = gpsSensor.isInitialized();
         next.rg15Initialized = rg15Sensor.isInitialized();
-        next.tslLastUpdate = tslSensor.getLastUpdateTime();
         next.bmeLastUpdate = bmeSensor.getLastUpdateTime();
         next.mlxLastUpdate = mlxSensor.getLastUpdateTime();
         next.gpsLastUpdate = gpsSensor.getLastUpdateTime();

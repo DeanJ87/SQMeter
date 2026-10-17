@@ -58,13 +58,13 @@ namespace SQM
         const uint32_t now = nowMs;
         // TSL2591: detected at boot unless the demo says it's missing.
         JsonObjectConst light = in["light"];
-        snapshot.tslInitialized = light["present"] | true;
-        TSL2591Reading &tsl = snapshot.tsl;
-        if (snapshot.tslInitialized && !(light["failed"] | false))
+        snapshot.skySensors[0].initialized = light["present"] | true;
+        TSL2591Reading &tsl = snapshot.skySensors[0].reading;
+        if (snapshot.skySensors[0].initialized && !(light["failed"] | false))
         {
             tsl.status = SensorStatus::Ok;
             tsl.timestamp = now;
-            snapshot.tslLastUpdate = now;
+            snapshot.skySensors[0].lastUpdate = now;
             tsl.rawLux = averagedLux(light["lux"] | 0.001f, light["nightMode"] | false, now);
             const CalibratedLight calibrated = SkyQuality::calibrate(tsl.rawLux, cfg.skyCalibration.enabled, cfg.skyCalibration.sqmOffset);
             tsl.rawSqm = calibrated.rawSqm;
@@ -76,7 +76,7 @@ namespace SQM
             tsl.full = light["full"] | 0;
             tsl.nightMode = light["nightMode"] | false;
         }
-        else if (snapshot.tslInitialized)
+        else if (snapshot.skySensors[0].initialized)
         {
             tsl.status = SensorStatus::Timeout;
         }
@@ -85,8 +85,8 @@ namespace SQM
     void SensorFeed::lightDiagnostics()
     {
         const uint32_t now = nowMs;
-        const TSL2591Reading &tsl = snapshot.tsl;
-        TSL2591Diagnostics &d = snapshot.tslDiagnostics;
+        const TSL2591Reading &tsl = snapshot.skySensors[0].reading;
+        TSL2591Diagnostics &d = snapshot.skySensors[0].diagnostics;
         d.gainName = tsl.nightMode ? "MAX" : "HIGH";
         d.gainFactor = tsl.nightMode ? 9876.0f : 428.0f;
         d.integrationMs = 600;

@@ -28,9 +28,29 @@
 
 namespace SQM
 {
+    // One sky sensor (TSL2591) as read by its driver (spec 030). `enabled`
+    // and `metrics` are filled by Core::derive.
+    struct SkySensorSnapshot
+    {
+        bool enabled = false;
+        bool initialized = false; // begun and answering
+        TSL2591Reading reading;
+        TSL2591Diagnostics diagnostics{};
+        uint32_t lastUpdate = 0; // millis() of the last good read, 0 = never
+        SkyQualityMetrics metrics;
+    };
+
     // One consistent copy of every sensor's latest reading.
     struct SensorSnapshot
     {
+        // Both sky sensors, indexed by SkyRole. The drivers fill these.
+        SkySensorSnapshot skySensors[SKY_ROLE_COUNT];
+        // The authoritative sky sensor (cfg.sky.authoritative); set by Core::derive.
+        SkyRole skySource = SkyRole::Sqm;
+        // The authoritative copy (Core::derive): every single-value consumer
+        // (readings light/sky, safety, Alpaca, BLE, alerts, status) reads these.
+        // Empty and not initialised when the authoritative sensor is off - never
+        // the other sensor's values (FR-010).
         TSL2591Reading tsl;
         TSL2591Diagnostics tslDiagnostics;
         BME280Reading bme;
@@ -72,7 +92,8 @@ namespace SQM
             return timestamp == 0 ? 0 : now - timestamp;
         }
 
-        // Fills the derived fields (sky quality, cloud model) from the raw readings.
+        // Fills the derived fields (each sky sensor's metrics, the
+        // authoritative sky copy, cloud model) from the raw readings.
         void derive(SensorSnapshot &snapshot, const Config &cfg);
 
         // The readings document's content (lib/Readings writes it).

@@ -1,4 +1,5 @@
 #include "DeviceCore.h"
+#include "DeviceCoreInternal.h"
 
 #include "SunPosition.h"
 #include "RainLogic.h"
@@ -20,18 +21,6 @@ namespace SQM
             {
                 const double scale = std::pow(10.0, decimals);
                 return std::round(value * scale) / scale;
-            }
-
-            // ok unless the driver reports a problem or the last good reading is too old.
-            Readings::Status readingStatus(SensorStatus status, bool initialized, uint32_t lastUpdate, uint32_t now, uint32_t staleAfter)
-            {
-                if (!initialized || status == SensorStatus::NotInitialized)
-                    return Readings::Status::Missing;
-                if (status != SensorStatus::Ok)
-                    return Readings::Status::Error;
-                if (lastUpdate == 0 || now - lastUpdate > staleAfter)
-                    return Readings::Status::Stale;
-                return Readings::Status::Ok;
             }
 
             const char *cloudConditionName(CloudCondition condition)
@@ -159,7 +148,7 @@ namespace SQM
 
         void derive(SensorSnapshot &snapshot, const Config &cfg)
         {
-            snapshot.sky = SkyQuality::calculate(snapshot.tsl.lux);
+            Detail::deriveSky(snapshot, cfg);
             snapshot.humidityMeasured = snapshot.bmeInitialized && snapshot.bme.status == SensorStatus::Ok;
             snapshot.cloudHumidity = snapshot.humidityMeasured ? snapshot.bme.humidity : ASSUMED_HUMIDITY_PERCENT;
             snapshot.cloud = CloudDetection::calculate(
@@ -176,7 +165,7 @@ namespace SQM
             {
                 // Light sensor + sky quality. The TSL2591 samples on its own ~600 ms cadence.
                 const TSL2591Reading &tsl = snapshot.tsl;
-                r.light.status = readingStatus(tsl.status, snapshot.tslInitialized, snapshot.tslLastUpdate, now, staleAfter);
+                r.light.status = Detail::readingStatus(tsl.status, snapshot.tslInitialized, snapshot.tslLastUpdate, now, staleAfter);
                 r.light.ageMs = ageMs(now, tsl.timestamp);
                 r.light.lux = tsl.lux;
                 r.light.visible = tsl.visible;
@@ -197,7 +186,7 @@ namespace SQM
                 r.sky.averagingWindowSeconds = snapshot.tslDiagnostics.averagingWindowSeconds;
 
                 const BME280Reading &bme = snapshot.bme;
-                r.environment.status = readingStatus(bme.status, snapshot.bmeInitialized, snapshot.bmeLastUpdate, now, staleAfter);
+                r.environment.status = Detail::readingStatus(bme.status, snapshot.bmeInitialized, snapshot.bmeLastUpdate, now, staleAfter);
                 r.environment.ageMs = ageMs(now, bme.timestamp);
                 r.environment.temperature = bme.temperature;
                 r.environment.humidity = bme.humidity;
@@ -205,7 +194,7 @@ namespace SQM
                 r.environment.dewpoint = bme.dewpoint;
 
                 const MLX90614Reading &mlx = snapshot.mlx;
-                r.infrared.status = readingStatus(mlx.status, snapshot.mlxInitialized, snapshot.mlxLastUpdate, now, staleAfter);
+                r.infrared.status = Detail::readingStatus(mlx.status, snapshot.mlxInitialized, snapshot.mlxLastUpdate, now, staleAfter);
                 r.infrared.ageMs = ageMs(now, mlx.timestamp);
                 r.infrared.skyTemperature = mlx.objectTemp;
                 r.infrared.ambientTemperature = mlx.ambientTemp;

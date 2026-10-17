@@ -65,6 +65,19 @@ export interface SensorConfig {
   i2cSDA: number;
   i2cSCL: number;
   i2cFrequency: number;
+  // Second I2C bus for the SQM-L (spec 030); 255 = not wired. Older firmware has none.
+  i2c2SDA?: number;
+  i2c2SCL?: number;
+}
+
+export type SkyRole = 'sqm' | 'sqml';
+
+// Which sky sensors run and whose reading counts (spec 030).
+export interface SkyConfig {
+  sqmEnabled: boolean;
+  sqmlEnabled: boolean;
+  authoritative: SkyRole;
+  showOther: boolean;
 }
 
 export interface SkyAveragingConfig {
@@ -137,6 +150,9 @@ export interface Config {
   sensor: SensorConfig;
   skyAveraging?: SkyAveragingConfig;
   skyCalibration?: SkyCalibrationConfig;
+  sky?: SkyConfig;
+  skyAveragingL?: SkyAveragingConfig;
+  skyCalibrationL?: SkyCalibrationConfig;
   cloudDetection: CloudDetectionConfig;
   rain?: RainSensorConfig;
   alpaca?: AlpacaConfig;

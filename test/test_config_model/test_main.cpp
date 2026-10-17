@@ -364,6 +364,11 @@ void test_stored_wrong_type_keeps_current_value()
     TEST_ASSERT_EQUAL_STRING("sqmeter", cfg.wifi.hostname.c_str());
 }
 
+void test_sky_defaults();
+void test_sky_json_round_trip();
+void test_sky_validation_messages();
+void test_sky_worst_case_config_fits();
+
 int main()
 {
     UNITY_BEGIN();
@@ -386,5 +391,9 @@ int main()
     RUN_TEST(test_settings_save_cannot_blank_the_wifi_network);
     RUN_TEST(test_wrong_types_are_rejected_not_defaulted);
     RUN_TEST(test_stored_wrong_type_keeps_current_value);
+    RUN_TEST(test_sky_defaults);
+    RUN_TEST(test_sky_json_round_trip);
+    RUN_TEST(test_sky_validation_messages);
+    RUN_TEST(test_sky_worst_case_config_fits);
     return UNITY_END();
 }

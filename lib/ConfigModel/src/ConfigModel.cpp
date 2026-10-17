@@ -85,16 +85,22 @@ namespace SQM
             cfg.sensor.i2cSDA = 21;
             cfg.sensor.i2cSCL = 22;
             cfg.sensor.i2cFrequency = 100000; // 100kHz
+            cfg.sensor.i2c2SDA = SensorConfig::PIN_UNSET;
+            cfg.sensor.i2c2SCL = SensorConfig::PIN_UNSET;
 
-            cfg.skyAveraging.windowSeconds = 90;
-
-            cfg.skyCalibration.enabled = false;
-            cfg.skyCalibration.sqmOffset = 0.0F;
-            cfg.skyCalibration.darkVisibleOffset = 0.0F;
-            cfg.skyCalibration.darkFullOffset = 0.0F;
-            cfg.skyCalibration.darkIrOffset = 0.0F;
-            cfg.skyCalibration.darkSampleCount = 0;
-            cfg.skyCalibration.darkCalibratedAt = 0;
+            cfg.sky = SkyConfig{};
+            for (SkyRole role : {SkyRole::Sqm, SkyRole::Sqml})
+            {
+                cfg.averaging(role).windowSeconds = 90;
+                SkyCalibrationConfig &cal = cfg.calibration(role);
+                cal.enabled = false;
+                cal.sqmOffset = 0.0F;
+                cal.darkVisibleOffset = 0.0F;
+                cal.darkFullOffset = 0.0F;
+                cal.darkIrOffset = 0.0F;
+                cal.darkSampleCount = 0;
+                cal.darkCalibratedAt = 0;
+            }
 
             cfg.cloudDetection.clearSkyThreshold = -13.0f;
             cfg.cloudDetection.cloudyThreshold = -3.0f;

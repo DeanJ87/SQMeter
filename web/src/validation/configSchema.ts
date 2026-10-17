@@ -161,6 +161,8 @@ export const sensorConfigSchema = z
       .int()
       .min(10000, t('validation.configSchema.i2cFrequencyMustBeAt'))
       .max(400000, t('validation.configSchema.i2cFrequencyMustBeAt2')),
+    i2c2SDA: z.number().int().min(0).max(255).optional(),
+    i2c2SCL: z.number().int().min(0).max(255).optional(),
   })
   .refine((data) => data.i2cSDA !== data.i2cSCL, {
     message: t('validation.configSchema.sdaAndSclPinsMust'),
@@ -308,6 +310,16 @@ export const configSchema = z
     sensor: sensorConfigSchema,
     skyAveraging: skyAveragingConfigSchema.optional(),
     skyCalibration: skyCalibrationConfigSchema.optional(),
+    sky: z
+      .object({
+        sqmEnabled: z.boolean(),
+        sqmlEnabled: z.boolean(),
+        authoritative: z.enum(['sqm', 'sqml']),
+        showOther: z.boolean(),
+      })
+      .optional(),
+    skyAveragingL: skyAveragingConfigSchema.optional(),
+    skyCalibrationL: skyCalibrationConfigSchema.optional(),
     rain: rainSensorConfigSchema.optional(),
     cloudDetection: cloudDetectionConfigSchema,
     alpaca: alpacaConfigSchema.optional(),
