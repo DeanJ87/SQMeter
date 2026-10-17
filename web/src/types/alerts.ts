@@ -13,7 +13,14 @@ export type AlertEventKey =
   | 'clouded_over'
   | 'client_lost'
   | 'client_back'
-  | 'client_disconnected';
+  | 'client_disconnected'
+  // The battery (spec 032); older firmware has none.
+  | 'battery_low'
+  | 'battery_critical'
+  | 'battery_shutdown'
+  | 'power_restored'
+  | 'charge_complete'
+  | 'charge_fault';
 
 // sound: Pushover sound name; empty uses the Pushover default.
 export interface AlertEventSetting {

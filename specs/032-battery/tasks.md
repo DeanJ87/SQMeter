@@ -92,8 +92,8 @@ phone alarm options.
 - [X] T037 [US2] DeviceCore: safety mapping, alert inputs/rules, event settings, Wake flags, rule alert and phone-alarm request, sample alerts in lib/DeviceCore/src/DeviceCore.cpp, lib/DeviceCore/src/DeviceAlerts.cpp and lib/DeviceCore/include/DeviceCore.h; T034 passes
 - [X] T038 [US2] Firmware: raise the BLE alarm for the rule's phone-alarm request in src/WebServerAlerts.cpp (`sendAlerts`/`updateBle`), through the existing schedule
 - [X] T039 [US2] ConformU against tools/alpaca-sim (CI, or Docker locally) with zero errors, issues and configuration alerts, with the battery rule off and on (round 1: ConformU v4.5.0 in Docker, `one` and the new `battery` simulator mode, both devices, conformance and Alpaca protocol: no errors, issues or information alerts; CI runs the `battery` mode too)
-- [ ] T040 [US2] Vitest first, then the Safety tab battery rule row (toggle with D-47 fail-safe note, limit, "Send an alert", "Ring paired phones" with D-50) in web/src/components/settings/SafetyTab.tsx and web/src/components/settings/__tests__/
-- [ ] T041 [US2] Vitest first, then the six battery events in a "Battery" group of web/src/components/settings/AlertsEventsCard.tsx (rows via `AlertEventRow`, D-48 disabled state), event keys/defaults in web/src/components/settings/alertsShared.ts and web/src/validation/alertsSchema.ts
+- [X] T040 [US2] Vitest first, then the Safety tab battery rule row (toggle with D-47 fail-safe note, limit, "Send an alert", "Ring paired phones" with D-50) in web/src/components/settings/SafetyTab.tsx and web/src/components/settings/__tests__/
+- [X] T041 [US2] Vitest first, then the six battery events in a "Battery" group of web/src/components/settings/AlertsEventsCard.tsx (rows via `AlertEventRow`, D-48 disabled state), event keys/defaults in web/src/components/settings/alertsShared.ts and web/src/validation/alertsSchema.ts
 
 ## Phase 5: User Story 3 - Stretch the battery (P2)
 

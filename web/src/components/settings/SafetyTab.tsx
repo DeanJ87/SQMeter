@@ -9,6 +9,7 @@ import { Button } from '../ui';
 import { DepToggle, Field, Group, NumberInput, SettingsCard, StatusBadge, Toggle } from './controls';
 import { t } from '../../i18n';
 import { getJson } from '../../lib/api';
+import SafetyBatteryGroup from './SafetyBatteryGroup';
 
 type NumericKey = {
   [K in keyof AlpacaConfig]-?: AlpacaConfig[K] extends number ? K : never;
@@ -17,7 +18,7 @@ type BoolKey = {
   [K in keyof AlpacaConfig]-?: AlpacaConfig[K] extends boolean ? K : never;
 }[keyof AlpacaConfig];
 
-const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, deps, fix }) => {
+const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, status, deps, fix }) => {
   const alpaca = { ...defaultAlpacaConfig, ...config.alpaca };
   const set = (key: keyof AlpacaConfig, value: unknown) => update(['alpaca', key], value);
   const [safety, setSafety] = useState<SafetyStatus | null>(null);
@@ -87,6 +88,8 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
     );
   };
 
+  // The battery rule (spec 032): on a board with a gauge, or while it is on (it then reports unsafe, D-47).
+  const showBattery = config.alpaca?.batteryEnabled !== undefined && (Boolean(status?.battery?.present) || alpaca.batteryEnabled);
   const clearDelay = Math.round((config.rain ?? defaultRainConfig).rainClearDelayMs / 60000);
 
   return (
@@ -186,6 +189,8 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
             hint: t('settings.safety.highest3SecondMeanIn'),
           })}
         </Group>
+
+        {showBattery && <SafetyBatteryGroup alpaca={alpaca} set={set} error={error} deps={deps} fix={fix} />}
 
         <Group title={t('settings.safety.sky')}>
           {rule({
