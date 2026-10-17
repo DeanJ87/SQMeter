@@ -2,6 +2,8 @@
 
 #include <ArduinoJson.h>
 
+#include <cstdio>
+
 #include "DeviceCore.h"
 
 // The battery through DeviceCore (specs/032-battery, contracts/readings.md):
@@ -373,4 +375,88 @@ void test_power_saving_interval_keeps_readings_fresh()
     TEST_ASSERT_TRUE(readingsOf(s, cfg).environment.status == Readings::Status::Ok);
     s.readIntervalMs = 0;
     TEST_ASSERT_TRUE(readingsOf(s, cfg).environment.status == Readings::Status::Stale);
+}
+
+// {battery*} alert variables (spec 032 US4).
+void test_battery_alert_variables()
+{
+    const Config cfg = Config::createDefault();
+    SensorSnapshot s = withGauge(82.4F, -6.2F);
+    Core::derive(s, cfg);
+    const auto obs = Core::observingConditions(s, cfg, NOW);
+    const Core::NightState night;
+    const SafetyStatus status;
+    auto value = [](const std::vector<std::pair<std::string, std::string>> &vars, const char *name)
+    {
+        for (const auto &v : vars)
+            if (v.first == name)
+                return v.second;
+        return std::string("(missing)");
+    };
+    Alerts::Alert alert;
+    auto vars = Core::alertVars(Core::AlertSources{cfg, obs, night, status, {}, Core::batteryReadings(s, cfg, NOW)}, alert, {});
+    TEST_ASSERT_EQUAL_STRING("82%", value(vars, "battery").c_str());
+    TEST_ASSERT_EQUAL_STRING("3.91 V", value(vars, "battery_voltage").c_str());
+    TEST_ASSERT_EQUAL_STRING("discharging", value(vars, "battery_state").c_str());
+    TEST_ASSERT_EQUAL_STRING("13 h 17 min", value(vars, "battery_time_left").c_str());
+
+    s.battery.reading.chargeState = Battery::ChargeState::NoBattery;
+    Core::derive(s, cfg);
+    vars = Core::alertVars(Core::AlertSources{cfg, obs, night, status, {}, Core::batteryReadings(s, cfg, NOW)}, alert, {});
+    TEST_ASSERT_EQUAL_STRING("no battery", value(vars, "battery_state").c_str());
+    TEST_ASSERT_EQUAL_STRING("--", value(vars, "battery_time_left").c_str());
+
+    // No gauge: every one "--".
+    vars = Core::alertVars(Core::AlertSources{cfg, obs, night, status}, alert, {});
+    for (const char *name : {"battery", "battery_voltage", "battery_state", "battery_time_left"})
+        TEST_ASSERT_EQUAL_STRING_MESSAGE("--", value(vars, name).c_str(), name);
+}
+
+// The Bluetooth summary: battery and batteryState, within 384 B (spec 032 US4).
+void test_ble_summary_battery_fields_fit()
+{
+    Alpaca::ObservingConditionsSnapshot obs;
+    const Alpaca::SourceState fresh{true, true, 1.0};
+    obs.skyLight = obs.irSky = obs.environment = obs.wind = fresh;
+    obs.skyQualityMagArcsec2 = -21.4444F;
+    obs.cloudCoverPercent = -100.0F;
+    obs.skyTemperatureC = -40.0F;
+    obs.temperatureC = -40.0F;
+    obs.humidityPercent = 100.0F;
+    obs.dewpointC = -40.0F;
+    obs.pressureHPa = 1100.0F;
+    obs.windSpeedMs = 60.0F;
+    obs.windGustMs = 80.0F;
+    obs.skyRole = SkyRole::Sqml;
+    Readings::Battery battery;
+    battery.present = true;
+    battery.status = Readings::Status::Ok;
+    battery.percent = 99.6;
+    battery.state = "no-battery";
+    // Measured on the host, where slots are bigger: the device's use is
+    // the same strings in 16-byte slots.
+    DynamicJsonDocument doc(2048);
+    Core::writeBleSummary(doc.to<JsonObject>(), obs, battery);
+    const size_t members = doc.as<JsonObject>().size();
+    const size_t onDevice = doc.memoryUsage() - members * (JSON_OBJECT_SIZE(1) - 16);
+    char detail[48];
+    snprintf(detail, sizeof detail, "summary %u bytes on the device", static_cast<unsigned>(onDevice));
+    TEST_ASSERT_TRUE_MESSAGE(onDevice <= Core::BLE_SUMMARY_CAPACITY, detail);
+    TEST_ASSERT_EQUAL(100, doc["battery"].as<int>());
+    TEST_ASSERT_EQUAL_STRING("no-battery", doc["batteryState"]);
+    TEST_ASSERT_EQUAL_STRING("sqml", doc["sqmSource"]);
+    std::string json;
+    serializeJson(doc, json);
+    TEST_ASSERT_TRUE(json.find("\"sqm\":-21.44") != std::string::npos);
+
+    // Estimating: no percent, state only. No gauge: neither.
+    battery.percent.reset();
+    DynamicJsonDocument est(2048);
+    Core::writeBleSummary(est.to<JsonObject>(), obs, battery);
+    TEST_ASSERT_FALSE(est.containsKey("battery"));
+    TEST_ASSERT_TRUE(est.containsKey("batteryState"));
+    DynamicJsonDocument none(2048);
+    Core::writeBleSummary(none.to<JsonObject>(), obs, Readings::Battery{});
+    TEST_ASSERT_FALSE(none.containsKey("battery"));
+    TEST_ASSERT_FALSE(none.containsKey("batteryState"));
 }

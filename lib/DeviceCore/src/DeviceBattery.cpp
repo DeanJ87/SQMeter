@@ -108,6 +108,11 @@ namespace SQM::Core
         }
     } // namespace Detail
 
+    Readings::Battery batteryReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs)
+    {
+        return Detail::readBattery(snapshot, cfg, nowMs);
+    }
+
     void writeBatteryStatus(JsonObject root, const SensorSnapshot &snapshot, const Readings::Snapshot &readings)
     {
         JsonObject battery = Readings::writeBattery(root, readings.battery);

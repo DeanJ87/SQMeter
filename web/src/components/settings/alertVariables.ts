@@ -32,6 +32,11 @@ export const COMMON_VARS = [
   'wind',
   'gust',
   'sun_alt',
+  // The battery (spec 032): "--" without a gauge.
+  'battery',
+  'battery_voltage',
+  'battery_state',
+  'battery_time_left',
 ];
 
 // The extra values an event adds.

@@ -102,7 +102,7 @@ namespace SQM
         const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
         seedAlertEngine();
         const Core::NightState night = computeNight(snapshot, cfg);
-        const Core::AlertSources sources{cfg, obs, night, status, Core::skyReadings(snapshot, cfg, millis())};
+        const Core::AlertSources sources{cfg, obs, night, status, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
         Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, millis());
         if (powerManager != nullptr)
         {
@@ -173,23 +173,8 @@ namespace SQM
         bleState.sqmValid = obs.skyLight.valid;
         bleState.sqm = obs.skyQualityMagArcsec2;
 
-        StaticJsonDocument<320> summary; // + sqmSource (spec 030)
-        auto put = [&summary](const char *key, bool valid, float value)
-        {
-            if (valid)
-                summary[key] = serialized(String(value, 2));
-        };
-        put("sqm", obs.skyLight.valid, obs.skyQualityMagArcsec2);
-        if (obs.skyLight.valid)
-            summary["sqmSource"] = skyRoleName(obs.skyRole); // which sky sensor `sqm` is
-        put("cloud", obs.irSky.valid, obs.cloudCoverPercent);
-        put("skyT", obs.irSky.valid, obs.skyTemperatureC);
-        put("temp", obs.environment.valid, obs.temperatureC);
-        put("hum", obs.environment.valid, obs.humidityPercent);
-        put("dew", obs.environment.valid, obs.dewpointC);
-        put("press", obs.environment.valid, obs.pressureHPa);
-        put("wind", obs.wind.valid, obs.windSpeedMs);
-        put("gust", obs.wind.valid, obs.windGustMs);
+        StaticJsonDocument<Core::BLE_SUMMARY_CAPACITY> summary; // + sqmSource (spec 030), battery (spec 032)
+        Core::writeBleSummary(summary.to<JsonObject>(), obs, sources.battery);
         std::string summaryJson;
         serializeJson(summary, summaryJson);
         ble.update(bleState, summaryJson);

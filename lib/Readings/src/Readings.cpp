@@ -275,6 +275,7 @@ namespace SQM
                 Clouds,
                 Rain,
                 Wind,
+                Battery,
                 Safety,
                 AlertsSwitch,
             };
@@ -401,6 +402,27 @@ namespace SQM
                  "°",
                  nullptr,
                  "mdi:compass"},
+                // The battery (spec 032, contracts/integrations.md).
+                {"sensor", "battery", "Battery", Group::Battery, "battery", "value_json.battery.percent", "%", "battery", nullptr},
+                {"sensor",
+                 "battery_voltage",
+                 "Battery voltage",
+                 Group::Battery,
+                 "battery",
+                 "value_json.battery.voltage",
+                 "V",
+                 "voltage",
+                 nullptr},
+                {"sensor", "battery_state", "Charging state", Group::Battery, "battery", "value_json.battery.state", nullptr, "enum", nullptr},
+                {"sensor",
+                 "battery_time_to_empty",
+                 "Battery time to empty",
+                 Group::Battery,
+                 "battery",
+                 "value_json.battery.timeToEmptyMinutes",
+                 "min",
+                 "duration",
+                 nullptr},
                 {"binary_sensor", "safety", "Observatory", Group::Safety, nullptr, nullptr, nullptr, "safety", nullptr},
                 {"switch", "alerts", "Alerts", Group::AlertsSwitch, nullptr, nullptr, nullptr, nullptr, "mdi:bell-ring"},
             };
@@ -425,6 +447,8 @@ namespace SQM
                     return groups.rain;
                 case Group::Wind:
                     return groups.wind;
+                case Group::Battery:
+                    return groups.battery && groups.batteryEntities;
                 case Group::Safety:
                     return safety;
                 case Group::AlertsSwitch:
@@ -466,7 +490,16 @@ namespace SQM
                     doc["state_topic"] = base + "/state";
                     // Values can be absent (e.g. wind direction when calm): report unknown, not an error.
                     doc["value_template"] = std::string("{{ ") + entity.value + " if " + entity.value + " is defined else none }}";
-                    doc["state_class"] = "measurement";
+                    // An enum has no state class; its options are listed instead.
+                    const bool isEnum = entity.deviceClass != nullptr && std::string(entity.deviceClass) == "enum";
+                    if (isEnum)
+                    {
+                        JsonArray options = doc.createNestedArray("options");
+                        for (const char *state : {"discharging", "charging", "charged", "fault", "no-battery"})
+                            options.add(state);
+                    }
+                    else
+                        doc["state_class"] = "measurement";
                 }
             }
 

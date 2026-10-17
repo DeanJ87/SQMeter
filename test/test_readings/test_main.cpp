@@ -234,7 +234,7 @@ void test_discovery_messages(void)
     forEachDiscovery(
         device, groups, true, [&](const std::string &topic, const std::string &payload) { messages.emplace_back(topic, payload); });
 
-    TEST_ASSERT_EQUAL(20, messages.size()); // + the sky sensors' three (spec 030), removed here
+    TEST_ASSERT_EQUAL(24, messages.size()); // + the sky sensors' three (spec 030) and the battery's four (spec 032), removed here
     bool sawSqm = false, sawWindRemoval = false, sawSafety = false, sawSwitch = false;
     for (const auto &m : messages)
     {
@@ -320,6 +320,7 @@ void test_battery_full_object();
 void test_battery_nulls_while_estimating_and_without_charger();
 void test_battery_not_ok_carries_status_and_charger_only();
 void test_battery_group_off_for_mqtt();
+void test_battery_home_assistant_entities();
 
 int main(int argc, char **argv)
 {
@@ -348,5 +349,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_battery_nulls_while_estimating_and_without_charger);
     RUN_TEST(test_battery_not_ok_carries_status_and_charger_only);
     RUN_TEST(test_battery_group_off_for_mqtt);
+    RUN_TEST(test_battery_home_assistant_entities);
     return UNITY_END();
 }

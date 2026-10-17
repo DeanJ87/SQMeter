@@ -867,6 +867,7 @@
   "settings.network.alsoReachableOverIpv6": "Settings -> Network (WiFi, MQTT, Home Assistant): a help text shown with a '?' tip.",
   "settings.network.announcesTheReadingsTheSafe": "Settings -> Network (WiFi, MQTT, Home Assistant): a help text shown with a '?' tip.",
   "settings.network.baseTopic": "Settings -> Network (WiFi, MQTT, Home Assistant): a field or control label; max 16 chars.",
+  "settings.network.battery": "Settings → Network → MQTT → Publish: toggle label for publishing the battery group (charge, voltage, charging state) in the MQTT state message.",
   "settings.network.broker": "Settings -> Network (WiFi, MQTT, Home Assistant): a field or control label; max 12 chars.",
   "settings.network.connected": "Settings -> Network (WiFi, MQTT, Home Assistant).",
   "settings.network.connectionFailed": "Settings -> Network (WiFi, MQTT, Home Assistant).",

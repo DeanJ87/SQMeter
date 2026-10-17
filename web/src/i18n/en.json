@@ -890,6 +890,7 @@
   "settings.network.alsoReachableOverIpv6": "Also reachable over IPv6 on networks that offer it, from your local network only. Applies after a restart.",
   "settings.network.announcesTheReadingsTheSafe": "Announces the readings, the safe flag and an alerts on/off switch, so they appear in Home Assistant without YAML.",
   "settings.network.baseTopic": "Base topic",
+  "settings.network.battery": "Battery",
   "settings.network.broker": "Broker",
   "settings.network.connected": "Connected",
   "settings.network.connectionFailed": "Connection failed",

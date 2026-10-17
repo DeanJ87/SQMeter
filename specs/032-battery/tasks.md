@@ -121,13 +121,13 @@ phone alarm options.
 
 ### Tests
 
-- [ ] T050 [P] [US4] Native tests first in test/test_readings/: HA entities `battery`, `battery_voltage`, `battery_state` (enum options), `battery_time_to_empty` published with `Groups.battery`, removed with an empty payload otherwise; no battery entities for a gauge-less device
-- [ ] T051 [P] [US4] Native tests first in test/test_alert_variables/ and test/test_device_core/: `{battery}`, `{battery_voltage}`, `{battery_state}`, `{battery_time_left}` values and `--` without data; template-variables.json, `alertVars` and web alertVariables.ts stay in step; BLE summary contains `battery` and `batteryState` and fits 384 B (test/test_ble_logic or test_device_core, wherever the summary builder is tested)
+- [X] T050 [P] [US4] Native tests first in test/test_readings/: HA entities `battery`, `battery_voltage`, `battery_state` (enum options), `battery_time_to_empty` published with `Groups.battery`, removed with an empty payload otherwise; no battery entities for a gauge-less device
+- [X] T051 [P] [US4] Native tests first in test/test_alert_variables/ and test/test_device_core/: `{battery}`, `{battery_voltage}`, `{battery_state}`, `{battery_time_left}` values and `--` without data; template-variables.json, `alertVars` and web alertVariables.ts stay in step; BLE summary contains `battery` and `batteryState` and fits 384 B (test/test_ble_logic or test_device_core, wherever the summary builder is tested)
 
 ### Implementation
 
-- [ ] T052 [US4] HA entities in lib/Readings/src/Readings.cpp; `Groups.battery` from presence and `mqtt.publish.battery` in src/WebServer.cpp (discovery republish on presence change); T050 passes
-- [ ] T053 [US4] Template variables in lib/AlertLogic/template-variables.json, lib/DeviceCore/src/DeviceAlerts.cpp and web/src/components/settings/alertVariables.ts; BLE summary `battery`/`batteryState` (`StaticJsonDocument<384>`) in src/WebServerAlerts.cpp; MQTT publish toggle "Battery" in the MQTT settings (web/src/components/settings/NetworkTab.tsx, D-49); T051 passes
+- [X] T052 [US4] HA entities in lib/Readings/src/Readings.cpp; `Groups.battery` from presence and `mqtt.publish.battery` in src/WebServer.cpp (discovery republish on presence change); T050 passes
+- [X] T053 [US4] Template variables in lib/AlertLogic/template-variables.json, lib/DeviceCore/src/DeviceAlerts.cpp and web/src/components/settings/alertVariables.ts; BLE summary `battery`/`batteryState` (`StaticJsonDocument<384>`) in src/WebServerAlerts.cpp; MQTT publish toggle "Battery" in the MQTT settings (web/src/components/settings/NetworkTab.tsx, D-49); T051 passes
 
 ## Phase 7: Settings UI (US1-US3)
 

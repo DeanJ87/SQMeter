@@ -31,6 +31,7 @@ const PUBLISH_GROUPS: {
   { key: 'gps', label: 'GPS' },
   { key: 'rain', label: t('settings.network.rain') },
   { key: 'wind', label: t('settings.network.wind') },
+  { key: 'battery', label: t('settings.network.battery') }, // spec 032; D-49 without a gauge
   { key: 'safety', label: t('settings.network.safeUnsafe'), hint: t('settings.network.retainedBaseSafe10') },
   {
     key: 'diagnostics',

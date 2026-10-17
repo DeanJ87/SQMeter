@@ -185,7 +185,7 @@ std::string EmulatedDevice::testAlert(const std::string &paramsJson)
     const Alerts::Alert test = Core::buildTestAlert(
         sample,
         Core::TestWording{level, sound, title, message},
-        Core::AlertSources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs)},
+        Core::AlertSources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)},
         Core::LocalClock{clockTime, clockDate});
     record(test, mask);
     return response(202, "{\"success\":true,\"message\":\"Test notification queued\",\"demo\":true}");
@@ -198,7 +198,7 @@ void EmulatedDevice::realTestAlert()
     const Alerts::Alert test = Core::buildTestAlert(
         nullptr,
         Core::TestWording{2, "", "", ""},
-        Core::AlertSources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs)},
+        Core::AlertSources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)},
         Core::LocalClock{clockTime, clockDate});
     record(test, 0x0F);
 }
@@ -369,7 +369,7 @@ void EmulatedDevice::runAlerts()
     }
     const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
     const Core::NightState night = Core::night(snapshot, cfg, epoch);
-    const Core::AlertSources sources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs)};
+    const Core::AlertSources sources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)};
     Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, nowMs);
     in.nowSeconds = uptimeSeconds();
 

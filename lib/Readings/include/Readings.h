@@ -200,6 +200,9 @@ namespace SQM
             bool rain = true;
             bool wind = true;
             bool battery = true; // MQTT: mqtt.publish.battery
+            // Home Assistant's battery entities (spec 032): a gauge present
+            // and mqtt.publish.battery on. Off by default, like skySqm.
+            bool batteryEntities = false;
             // Home Assistant's Alerts switch: only while alerts can go out
             // (specs/020-settings-dependencies D-13).
             bool alertsSwitch = true;

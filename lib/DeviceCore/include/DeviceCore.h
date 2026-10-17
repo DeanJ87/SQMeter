@@ -210,7 +210,12 @@ namespace SQM
             const NightState &night;
             const SafetyStatus &status;
             SkyReadings sky{}; // none given: every per-sensor value reads "--"
+            // {battery}, {battery_voltage}, {battery_state}, {battery_time_left}
+            // (spec 032); none given: "--".
+            Readings::Battery battery{};
         };
+        // The battery as readings report it (for AlertSources::battery).
+        Readings::Battery batteryReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
         // The device's local time ("HH:MM") and date for {time} and {date}.
         struct LocalClock
         {
@@ -285,6 +290,11 @@ namespace SQM
         };
         Alerts::Alert buildTestAlert(
             const SampleAlert *sample, const TestWording &wording, const AlertSources &sources, const LocalClock &clock);
+
+        // The Bluetooth summary JSON (fits BLE_SUMMARY_CAPACITY): valid
+        // readings, plus battery (integer %) and batteryState (spec 032).
+        constexpr size_t BLE_SUMMARY_CAPACITY = 384;
+        void writeBleSummary(JsonObject out, const Alpaca::ObservingConditionsSnapshot &obs, const Readings::Battery &battery);
 
         // ISO 8601 UTC, or "" before the clock is set.
         std::string isoUtc(int64_t epoch);

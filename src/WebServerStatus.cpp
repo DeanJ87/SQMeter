@@ -65,6 +65,8 @@ namespace SQM
         // Home Assistant's per-sensor sky entities follow the sensors switched on (spec 030).
         groups.skySqm = cfg.sky.sqmEnabled;
         groups.skySqml = cfg.sky.sqmlEnabled;
+        // The battery's entities while a gauge is present (spec 032); republished when that changes.
+        groups.batteryEntities = getSensorSnapshot().battery.present; // dep: D-49
 
         publishDiscovery(mqtt, groups);
 
@@ -109,6 +111,7 @@ namespace SQM
               groups.clouds,
               groups.rain,
               groups.wind,
+              groups.battery && groups.batteryEntities,
               mqtt.publish.safety,
               groups.alertsSwitch})
             key += on ? '1' : '0';

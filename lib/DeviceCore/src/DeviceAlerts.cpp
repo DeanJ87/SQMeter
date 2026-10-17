@@ -154,6 +154,26 @@ namespace SQM
                 vars.emplace_back("sqm_delta", fmt(wide.valid && narrow.valid, "%+.2f", narrow.sqm - wide.sqm));
                 vars.emplace_back("sqm_source", skyRoleLabel(sky.source));
             }
+
+            // {battery} "82%", {battery_voltage} "3.91 V", {battery_state}
+            // "discharging" .. "no battery", {battery_time_left} "13 h 17 min"
+            // (spec 032, contracts/integrations.md); "--" without a value.
+            void appendBatteryVars(std::vector<std::pair<std::string, std::string>> &vars, const Readings::Battery &b)
+            {
+                const bool ok = b.present && b.status == Readings::Status::Ok;
+                char buffer[24] = "--";
+                if (ok && b.percent)
+                    std::snprintf(buffer, sizeof(buffer), "%.0f%%", *b.percent);
+                vars.emplace_back("battery", buffer);
+                std::snprintf(buffer, sizeof(buffer), ok ? "%.2f V" : "--", b.voltage);
+                vars.emplace_back("battery_voltage", buffer);
+                std::string state = b.present && b.state != nullptr ? b.state : "--";
+                if (state == "no-battery")
+                    state = "no battery";
+                vars.emplace_back("battery_state", state);
+                const std::optional<uint32_t> &minutes = b.timeToEmptyMinutes ? b.timeToEmptyMinutes : b.timeToFullMinutes;
+                vars.emplace_back("battery_time_left", ok && minutes ? formatDuration(*minutes * 60) : std::string("--"));
+            }
         } // namespace
 
         std::vector<std::pair<std::string, std::string>> alertVars(
@@ -200,6 +220,7 @@ namespace SQM
                 {"sun_alt", num(n.known, n.sunAltitudeDeg, 1)},
             };
             appendSkyVars(vars, sources.sky);
+            appendBatteryVars(vars, sources.battery);
             vars.insert(vars.end(), alert.vars.begin(), alert.vars.end());
             return vars;
         }
