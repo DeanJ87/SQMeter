@@ -242,6 +242,7 @@
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "Bilinmeyen kanal (beklenen: mqtt, pushover, ntfy, webhook veya all)",
   "device.api.unknownError": "Bilinmeyen hata",
   "device.api.unknownEvent": "Bilinmeyen olay",
+  "device.api.unknownSkySensor": "Bilinmeyen gökyüzü sensörü",
   "device.api.updateAlreadyInProgress": "Bir güncelleme zaten sürüyor",
   "device.api.webUiFileIsForA": "Web arayüzü dosyası farklı bir bölüm düzeni için. Bu sürümün littlefs dosyasını kullanın.",
   "device.language.aFirmwareUpdateIsRunningTry": "Üretici yazılımı güncellemesi sürüyor: bittikten sonra yeniden deneyin",

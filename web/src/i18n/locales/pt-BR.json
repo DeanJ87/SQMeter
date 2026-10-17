@@ -242,6 +242,7 @@
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "Canal desconhecido (esperado: mqtt, pushover, ntfy, webhook ou all)",
   "device.api.unknownError": "Erro desconhecido",
   "device.api.unknownEvent": "Evento desconhecido",
+  "device.api.unknownSkySensor": "Sensor de céu desconhecido",
   "device.api.updateAlreadyInProgress": "Já há uma atualização em andamento",
   "device.api.webUiFileIsForA": "O arquivo da interface web é para outra divisão. Use o arquivo littlefs desta versão.",
   "device.language.aFirmwareUpdateIsRunningTry": "Há uma atualização de firmware em andamento: tente novamente depois",

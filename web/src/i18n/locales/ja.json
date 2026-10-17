@@ -239,6 +239,7 @@
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "不明なチャネルです（mqtt、pushover、ntfy、webhook、allのいずれか）",
   "device.api.unknownError": "不明なエラー",
   "device.api.unknownEvent": "不明なイベント",
+  "device.api.unknownSkySensor": "不明な空センサーです",
   "device.api.updateAlreadyInProgress": "更新はすでに実行中です",
   "device.api.webUiFileIsForA": "このWeb UIファイルは別の領域構成用です。このリリースのlittlefsファイルを使ってください。",
   "device.language.aFirmwareUpdateIsRunningTry": "ファームウェアを更新中です。完了後にもう一度お試しください",

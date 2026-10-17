@@ -239,6 +239,7 @@
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "Saluran tidak dikenal (seharusnya mqtt, pushover, ntfy, webhook, atau all)",
   "device.api.unknownError": "Kesalahan tidak diketahui",
   "device.api.unknownEvent": "Kejadian tidak dikenal",
+  "device.api.unknownSkySensor": "Sensor langit tidak dikenal",
   "device.api.updateAlreadyInProgress": "Pembaruan sedang berlangsung",
   "device.api.webUiFileIsForA": "Berkas antarmuka web ini untuk tata letak lain. Gunakan berkas littlefs dari rilis ini.",
   "device.language.aFirmwareUpdateIsRunningTry": "Pembaruan firmware sedang berjalan: coba lagi setelah selesai",

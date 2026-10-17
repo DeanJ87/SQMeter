@@ -239,6 +239,7 @@
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "未知渠道（应为mqtt、pushover、ntfy、webhook或all）",
   "device.api.unknownError": "未知错误",
   "device.api.unknownEvent": "未知事件",
+  "device.api.unknownSkySensor": "未知的天空传感器",
   "device.api.updateAlreadyInProgress": "已有更新正在进行",
   "device.api.webUiFileIsForA": "此网页界面文件用于其他分区布局。请使用此版本的 littlefs 文件。",
   "device.language.aFirmwareUpdateIsRunningTry": "固件正在更新：请在更新完成后重试",

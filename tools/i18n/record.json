@@ -232,6 +232,7 @@
     "device.api.unknownChannelExpectedMqttPushoverNtfy": "9424a11573",
     "device.api.unknownError": "0016804b56",
     "device.api.unknownEvent": "a5563cf5ed",
+    "device.api.unknownSkySensor": "bcc6a76ddd",
     "device.api.updateAlreadyInProgress": "7fdbf26c63",
     "device.api.webUiFileIsForA": "df96c2082a",
     "device.language.aFirmwareUpdateIsRunningTry": "a4372aee30",

@@ -252,6 +252,7 @@
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "قناة غير معروفة (المتوقع mqtt أو pushover أو ntfy أو webhook أو all)",
   "device.api.unknownError": "خطأ غير معروف",
   "device.api.unknownEvent": "حدث غير معروف",
+  "device.api.unknownSkySensor": "مستشعر سماء غير معروف",
   "device.api.updateAlreadyInProgress": "يوجد تحديث قيد التنفيذ بالفعل",
   "device.api.webUiFileIsForA": "ملف واجهة الويب مخصّص لتقسيم مختلف. استخدم ملف littlefs من هذا الإصدار.",
   "device.language.aFirmwareUpdateIsRunningTry": "يجري تحديث البرنامج الثابت: حاول مجددًا بعد انتهائه",

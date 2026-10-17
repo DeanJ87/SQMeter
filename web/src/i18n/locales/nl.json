@@ -242,6 +242,7 @@
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "Onbekend kanaal (verwacht mqtt, pushover, ntfy, webhook of all)",
   "device.api.unknownError": "Onbekende fout",
   "device.api.unknownEvent": "Onbekende gebeurtenis",
+  "device.api.unknownSkySensor": "Onbekende hemelsensor",
   "device.api.updateAlreadyInProgress": "Er loopt al een update",
   "device.api.webUiFileIsForA": "Het webinterfacebestand is voor een andere indeling. Gebruik het littlefs-bestand van deze release.",
   "device.language.aFirmwareUpdateIsRunningTry": "Er loopt een firmware-update: probeer het daarna opnieuw",
