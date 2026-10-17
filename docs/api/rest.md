@@ -88,6 +88,14 @@ curl http://sqmeter.local/api/status
 
 `detected` means found and answering (`ok` or `stale`); the gain and calibration fields are only there while it is. `ageMs` is left out while `missing`.
 
+`display` is the optional [OLED display](../user-guide/display.md), always present:
+
+```json
+"display": { "enabled": true, "detected": true, "on": true, "page": "sky", "nightMode": false }
+```
+
+`enabled` is the setting; `detected` means a display answered at `0x3C` (always `false` while it is off in settings, since it isn't probed then); `on` means it is lit now; `page` is the page shown (`sky`, `environment`, `cloud`, `safety`, `gps`, `battery`, `network`), `null` while it is off; `nightMode` means the night layout and minimum brightness are in use (at night, or while night can't be worked out).
+
 ---
 
 ### `GET /api/sensors`
@@ -278,6 +286,18 @@ Restart the device.
 
 ```bash
 curl -X POST http://sqmeter.local/api/restart
+```
+
+---
+
+### `POST /api/display/wake`, `POST /api/display/blank`
+
+Wake the [OLED display](../user-guide/display.md) for its switch-off time, or blank it until the next wake (a restart, a wake request or the wake button). No body; answers `200 {"ok": true}` and the display follows within one loop pass. Requires HTTP auth when enabled.
+
+`409 {"error": "Display is off in settings"}`, `409 {"error": "Display not detected"}`, or (wake only, with power saving from spec 032) `409 {"error": "Display is off to save power"}`.
+
+```bash
+curl -X POST http://sqmeter.local/api/display/wake
 ```
 
 ---

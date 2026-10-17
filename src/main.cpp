@@ -20,6 +20,7 @@
 #include "sensors/RG15Sensor.h"
 #include "sensors/WindSensor.h"
 #include "FirmwareMarker.h"
+#include "OledDisplay.h"
 
 using namespace SQM;
 
@@ -37,6 +38,7 @@ static std::unique_ptr<WindSensor> windSensor;
 static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
+static std::unique_ptr<OledDisplay> oled; // spec 031; framebuffer and bus traffic only while enabled
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 
@@ -111,6 +113,9 @@ bool saveConfigCallback(const Config &newConfig)
         {
             windSensor->configure(toWindSettings(config.wind));
         }
+
+        if (oled)
+            oled->requestReconfigure(); // applied by the loop task, no restart
     }
 
     return saved;
@@ -324,6 +329,25 @@ void startArduinoOta()
     Logger::info("Main", "ArduinoOTA enabled with password authentication");
 }
 
+// The OLED on the main I2C bus (spec 031). Always created (it's small), but
+// it only allocates its framebuffer and touches the bus while enabled.
+void setupDisplay()
+{
+    oled = std::make_unique<OledDisplay>(Wire);
+    oled->configure(config.display);
+}
+
+// The display's view: the readings, the verdict and the network, after each refresh.
+static void feedDisplay()
+{
+    Core::DisplayNetwork network;
+    network.connected = wifiManager->isConnected();
+    network.apMode = wifiManager->isInAPMode();
+    network.ip = wifiManager->getIPAddress();
+    network.apName = WiFiManager::apName();
+    webServer->feedDisplay(network);
+}
+
 // Time (GPS/NTP priority), MQTT, then the web server, which needs them all.
 void startServices()
 {
@@ -339,8 +363,10 @@ void startServices()
 
     const WebServer::Sensors sensors{*tslSensor, *tslSensorL, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor, *windSensor};
     webServer = std::make_unique<WebServer>(sensors, timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
+    webServer->setDisplay(oled.get());
     webServer->begin();
     webServer->refreshSensorSnapshot(lastSensorUpdate);
+    feedDisplay();
     HeapTrace::mark("setup complete");
 }
 
@@ -366,6 +392,7 @@ void setup()
     mountFilesystem();
     setupI2C();
     setupSensors();
+    setupDisplay();
     HeapTrace::mark("sensors");
     startWifi();
     startArduinoOta();
@@ -447,7 +474,11 @@ void loop()
         rg15Sensor->update();
         lastSensorUpdate = now;
         webServer->refreshSensorSnapshot(lastSensorUpdate); // also feeds MQTT <base>/state
+        feedDisplay();
     }
+
+    // At most one framebuffer page per pass (spec 031): the loop never waits on the display.
+    oled->tick(now, config.display);
 
     // Small delay to prevent tight loop
     delay(10);

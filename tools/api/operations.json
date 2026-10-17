@@ -10,7 +10,7 @@
     { "name": "Updates", "description": "Firmware and web UI updates." },
     { "name": "Language", "description": "The device-wide UI language." },
     { "name": "Bluetooth", "description": "Phone alarm (Bluetooth firmware build only)." },
-    { "name": "Device", "description": "Restart." }
+    { "name": "Device", "description": "Restart, and the optional OLED display." }
   ],
   "operations": {
     "GET /api/status": {
@@ -78,6 +78,18 @@
       "summary": "Restart",
       "description": "Restarts the device after answering.",
       "responses": { "200": "action" }
+    },
+    "POST /api/display/wake": {
+      "tag": "Device",
+      "summary": "Wake the display",
+      "description": "Turns the OLED display on for its switch-off time (applied within one loop pass). 409 when the display is off in settings, not detected, or off to save power.",
+      "responses": { "200": "action", "409": "error" }
+    },
+    "POST /api/display/blank": {
+      "tag": "Device",
+      "summary": "Blank the display",
+      "description": "Turns the OLED display off now, until the next wake (a restart, a wake request or the wake button). 409 when the display is off in settings or not detected.",
+      "responses": { "200": "action", "409": "error" }
     },
     "POST /api/sensors/tsl2591/calibrate-dark": {
       "tag": "Sensors",

@@ -8,23 +8,20 @@ namespace SQM::Display
 {
     namespace
     {
+        constexpr uint64_t FNV_OFFSET = 0xCBF29CE484222325ULL;
+        constexpr uint64_t FNV_PRIME = 0x100000001B3ULL;
+
         // FNV-1a over one 128-byte page: a changed page is resent, an
-        // unchanged one isn't (research D2).
+        // unchanged one isn't (research D2). `data` null: a blank page.
         uint64_t hashPage(const uint8_t *data)
         {
-            uint64_t hash = 0xCBF29CE484222325ULL;
+            uint64_t hash = FNV_OFFSET;
             for (int i = 0; i < WIDTH; ++i)
             {
-                hash ^= data[i];
-                hash *= 0x100000001B3ULL;
+                hash ^= data != nullptr ? data[i] : 0U;
+                hash *= FNV_PRIME;
             }
             return hash;
-        }
-
-        uint64_t blankHash()
-        {
-            static const uint8_t BLANK[WIDTH] = {};
-            return hashPage(BLANK);
         }
 
         int glyphCount(const char *text)
@@ -50,7 +47,7 @@ namespace SQM::Display
     Frame::Frame(uint8_t *buffer)
         : buf(buffer)
     {
-        const uint64_t blank = blankHash();
+        const uint64_t blank = hashPage(nullptr);
         for (uint64_t &h : pageHash)
             h = blank;
     }

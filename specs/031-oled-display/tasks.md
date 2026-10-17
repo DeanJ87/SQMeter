@@ -55,10 +55,10 @@ is missing or stale; without an OLED nothing changes.
 
 - [X] T018 [US1] `Display::View` and `render(Page::Sky, ...)` in lib/DisplayLogic/include/DisplayFrame.h and lib/DisplayLogic/src/DisplayPages.cpp; T016 passes
 - [X] T019 [US1] `Core::displayView`, `Core::writeDisplayStatus` and `Facts.displayDetected` filling in lib/DeviceCore/include/DeviceCore.h and lib/DeviceCore/src/DeviceDisplay.cpp; T017 passes
-- [ ] T020 [US1] SSD1306 transport: probe (ACK + one-byte status read), init sequence, contrast, display on/off, segment/COM remap for 180°, page write (129-byte transaction), in include/OledDisplay.h and src/OledDisplay.cpp (Arduino `Wire` only)
-- [ ] T021 [US1] src/main.cpp: create the display after `setupSensors()` only when `display.enabled` (framebuffer `std::unique_ptr` allocated then, none otherwise); in `loop()` tick `Link`/`Controller`, render on each `refreshSensorSnapshot` and page change, send at most one dirty page per pass; reconfigure on settings save in `saveConfigCallback` (enable/disable, rotation, brightness) with no restart
-- [ ] T022 [US1] WebServer: hand the display a view after each `refreshSensorSnapshot` (`WebServer::displayView()` under the snapshot mutex), add `display` to `/api/status` and `/ws/status`, `displayDetected` to `settingsFacts`, in include/WebServer.h, src/WebServer.cpp and src/WebServerStatus.cpp
-- [ ] T023 [US1] Both firmware builds pass with `-Werror` (`pio run -e esp32dev`, `-e esp32dev-ble`); record sizes in specs/031-oled-display/budgets.md (target ≤ 9 KB growth on the BLE build)
+- [X] T020 [US1] SSD1306 transport: probe (ACK + one-byte status read), init sequence, contrast, display on/off, segment/COM remap for 180°, page write (129-byte transaction), in include/OledDisplay.h and src/OledDisplay.cpp (Arduino `Wire` only)
+- [X] T021 [US1] src/main.cpp: create the display after `setupSensors()` only when `display.enabled` (framebuffer `std::unique_ptr` allocated then, none otherwise); in `loop()` tick `Link`/`Controller`, render on each `refreshSensorSnapshot` and page change, send at most one dirty page per pass; reconfigure on settings save in `saveConfigCallback` (enable/disable, rotation, brightness) with no restart
+- [X] T022 [US1] WebServer: hand the display a view after each `refreshSensorSnapshot` (`WebServer::displayView()` under the snapshot mutex), add `display` to `/api/status` and `/ws/status`, `displayDetected` to `settingsFacts`, in include/WebServer.h, src/WebServer.cpp and src/WebServerStatus.cpp
+- [X] T023 [US1] Both firmware builds pass with `-Werror` (`pio run -e esp32dev`, `-e esp32dev-ble`); record sizes in specs/031-oled-display/budgets.md (target ≤ 9 KB growth on the BLE build)
 
 **Checkpoint**: US1 works on the device with the default single Sky page; a device without a display
 reports `display.detected: false` and is otherwise unchanged.
@@ -78,7 +78,7 @@ on at a known night.
 
 - [X] T026 [US3] `Controller` (on/off, effective timeout, night mode, contrast, rotation pass-through) in lib/DisplayLogic/include/DisplayController.h and lib/DisplayLogic/src/DisplayController.cpp; T024 passes
 - [X] T027 [US3] Night layouts in lib/DisplayLogic/src/DisplayPages.cpp; T025 passes
-- [ ] T028 [US3] Feed `Core::night(...)` (via `WebServer::computeNight`) into the controller each tick and apply contrast/VCOMH and on/off through the transport in src/main.cpp and src/OledDisplay.cpp
+- [X] T028 [US3] Feed `Core::night(...)` (via `WebServer::computeNight`) into the controller each tick and apply contrast/VCOMH and on/off through the transport in src/main.cpp and src/OledDisplay.cpp
 
 **Checkpoint**: with default settings the display emits no light after dusk beyond the timeout (SC-002).
 
@@ -97,7 +97,7 @@ on at a known night.
 
 - [X] T032 [US2] Page renderers for Environment, Cloud, Safety, GPS, Battery, Network in lib/DisplayLogic/src/DisplayPages.cpp; T029 passes
 - [X] T033 [US2] Page cycling and shift in lib/DisplayLogic/src/DisplayController.cpp; T030 passes
-- [ ] T034 [US2] View groups in lib/DeviceCore/src/DeviceDisplay.cpp; network facts (`isConnected`, `isInAPMode`, IP, AP name) passed from `WiFiManager` by src/main.cpp / src/WebServer.cpp; T031 passes
+- [X] T034 [US2] View groups in lib/DeviceCore/src/DeviceDisplay.cpp; network facts (`isConnected`, `isInAPMode`, IP, AP name) passed from `WiFiManager` by src/main.cpp / src/WebServer.cpp; T031 passes
 
 ## Phase 6: User Story 4 - Wake without a button (P3)
 
@@ -112,8 +112,8 @@ on at a known night.
 ### Implementation
 
 - [X] T037 [US4] Wake/blank/button handling in lib/DisplayLogic/src/DisplayController.cpp; T035 passes
-- [ ] T038 [US4] Routes `POST /api/display/wake` and `/api/display/blank` with `requireAuth`, atomic request flags applied by the loop task, 409 messages from contracts/status-and-routes.md, registered before broader routes, in src/WebServerApi.cpp and include/WebServer.h; entries in tools/api/routes.json and tools/api/operations.json
-- [ ] T039 [US4] Wake button: `pinMode(INPUT_PULLUP)` when `buttonPin` != 255, sampled every loop into `Button`, in src/main.cpp
+- [X] T038 [US4] Routes `POST /api/display/wake` and `/api/display/blank` with `requireAuth`, atomic request flags applied by the loop task, 409 messages from contracts/status-and-routes.md, registered before broader routes, in src/WebServerApi.cpp and include/WebServer.h; entries in tools/api/routes.json and tools/api/operations.json
+- [X] T039 [US4] Wake button: `pinMode(INPUT_PULLUP)` when `buttonPin` != 255, sampled every loop into `Button`, in src/main.cpp
 
 ## Phase 7: UI (US1-US4 settings)
 

@@ -29,6 +29,8 @@ namespace SQM
 
         bool isConnected() const;
         bool isInAPMode() const;
+        // The setup hotspot's name (spec 014), shown on the OLED (spec 031).
+        static const char *apName() { return AP_SSID; }
         std::string getIPAddress() const;
         std::string getMACAddress() const;
         int32_t getRSSI() const;

@@ -1,4 +1,5 @@
 #include "WebServer.h"
+#include "OledDisplay.h"
 #include "ConnectionBudget.h"
 #include "WebServerShared.h"
 #include "Logger.h"
@@ -143,6 +144,7 @@ namespace SQM
         const uint32_t phones = ble.alarmStatus().bondedPhones;
         facts.pairedPhones = static_cast<uint8_t>(phones > 255 ? 255 : phones);
         facts.languageInstalled = languagePack != nullptr && languagePack->installed();
+        Core::displayFacts(facts, getConfigCallback(), display != nullptr && display->detected());
         return facts;
     }
 
@@ -425,6 +427,7 @@ namespace SQM
         appendDiagnostics(diagnostics, snapshot);
         appendMqttStatus(doc);
         appendConnections(doc);
+        appendDisplayStatus(doc);
         // A full pool drops the trailing sections silently: say so.
         if (doc.overflowed())
             Logger::warn(TAG, "/api/status document overflowed %u bytes", static_cast<unsigned>(doc.capacity()));

@@ -65,7 +65,7 @@
     },
     {
       "name": "Device",
-      "description": "Restart."
+      "description": "Restart, and the optional OLED display."
     },
     {
       "name": "Alpaca",
@@ -941,6 +941,86 @@
           },
           "502": {
             "description": "A sensor, broker or GitHub didn't answer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      }
+    },
+    "/api/display/wake": {
+      "post": {
+        "operationId": "post_display_wake",
+        "tags": [
+          "Device"
+        ],
+        "summary": "Wake the display",
+        "description": "Turns the OLED display on for its switch-off time (applied within one loop pass). 409 when the display is off in settings, not detected, or off to save power.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      }
+    },
+    "/api/display/blank": {
+      "post": {
+        "operationId": "post_display_blank",
+        "tags": [
+          "Device"
+        ],
+        "summary": "Blank the display",
+        "description": "Turns the OLED display off now, until the next wake (a restart, a wake request or the wake button). 409 when the display is off in settings or not detected.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
             "content": {
               "application/json": {
                 "schema": {

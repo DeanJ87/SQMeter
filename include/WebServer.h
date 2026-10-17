@@ -37,6 +37,7 @@
 
 namespace SQM
 {
+    class OledDisplay;
 
     class WebServer
     {
@@ -82,6 +83,11 @@ namespace SQM
         // OTA update status
         void setOTAProgress(int progress);
         void setOTAError(const char *error);
+
+        // The optional OLED (spec 031): status, routes and its view.
+        void setDisplay(OledDisplay *oled) { display = oled; }
+        // Hands the display the latest readings and night (after each refresh).
+        void feedDisplay(const Core::DisplayNetwork &network);
 
         // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
         bool isWifiConnectPending() const { return wifiConnectActive; }
@@ -321,6 +327,12 @@ namespace SQM
         void rememberAlpacaConnections();
         void onSensorWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
         void onStatusWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
+
+        // The OLED (src/WebServerDisplay.cpp).
+        OledDisplay *display = nullptr;
+        void setupDisplayRoutes();
+        void handleDisplayRequest(AsyncWebServerRequest *request, bool wake);
+        void appendDisplayStatus(JsonDocument &doc) const;
 
         // Helper functions
         bool requireAuth(AsyncWebServerRequest *request) const;

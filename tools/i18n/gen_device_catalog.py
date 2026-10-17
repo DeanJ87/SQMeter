@@ -34,6 +34,7 @@ SOURCES = {
     "src/WebServerAlerts.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerAlpaca.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerStatus.cpp": ("api", {"createErrorJson": [0]}),
+    "src/WebServerDisplay.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerUpdates.cpp": ("api", {"createErrorJson": [0], "fail": [0]}),
     "src/OtaUpdater.cpp": ("ota", {"errorCb": [0]}),
     # Why an update file is refused (spec 027 FR-020).

@@ -41,6 +41,7 @@ namespace SQM
         setupReadingRoutes();
         setupSettingsRoutes();
         setupNetworkRoutes();
+        setupDisplayRoutes();
     }
 
     void WebServer::setupReadingRoutes()
