@@ -23,8 +23,10 @@ the authoritative reading; it restarts when the source changes.
 ## At-a-glance (spec 025)
 
 Expected sensors: `light` (the authoritative sensor, labelled with its name when both are
-enabled) and `infrared`, plus a tile for the other sky sensor when it is enabled. A disabled sensor
-has no tile. Fault text uses the sensor's name ("SQM-L not responding").
+enabled) and `infrared`, plus a tile for the other sky sensor when it is enabled and has answered
+since boot. A disabled sensor, or a non-authoritative one that has never answered (`missing` since
+boot, "not detected", US1 AC3), has no tile; one that answered and then failed keeps a fault tile
+(spec 025 D6). Fault text uses the sensor's name ("SQM-L not responding").
 
 ## Settings → Sensors
 

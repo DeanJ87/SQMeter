@@ -244,8 +244,9 @@ sensor: `status`, `ageMs`, `detected`, `gain`, `integrationMs`, `saturated`, `ni
   `sky.authoritative`) (FR-010, DS-06/07).
 - `LightCard` follows the authoritative sensor (unchanged). At-a-glance (spec 025): the expected
   sensor list becomes `light` (authoritative) + `sqml` when SQM-L is enabled and not authoritative
-  (or `sqm` when SQM-L is authoritative and SQM enabled), so each enabled sensor has a tile and a
-  disabled one has none (constitution V).
+  (or `sqm` when SQM-L is authoritative and SQM enabled) once it has answered since boot, so each
+  working or failed sensor has a tile and a disabled or never-detected one has none (constitution V,
+  US1 AC3); contracts/ui.md has the full rule.
 - Settings → Sensors: the Sky sensors card lists "SQM" and "SQM-L" rows with detected state and an
   enable `DepToggle` each, the I2C-2 SDA/SCL fields, then "Authoritative reading" (`SelectInput`)
   and "Show other reading" (`DepToggle`), both through settings dependencies (DS-04: reasons behind
