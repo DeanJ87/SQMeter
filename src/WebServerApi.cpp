@@ -334,8 +334,16 @@ namespace SQM
         if (!requireAuth(request))
             return;
 
-        const TSL2591Diagnostics diagnostics = tslSensor.getDiagnostics();
-        if (!tslSensor.isInitialized() || diagnostics.sampleCount == 0)
+        // ?sensor=sqm|sqml (spec 030); none = the SQM, as before.
+        SkyRole role = SkyRole::Sqm;
+        if (request->hasParam("sensor") && !parseSkyRole(request->getParam("sensor")->value().c_str(), role))
+        {
+            request->send(400, "application/json", createErrorJson("Unknown sky sensor").c_str());
+            return;
+        }
+        TSL2591Sensor &sensor = skySensor(role);
+        const TSL2591Diagnostics diagnostics = sensor.getDiagnostics();
+        if (!getConfigCallback().skyEnabled(role) || !sensor.isInitialized() || diagnostics.sampleCount == 0)
         {
             request->send(409, "application/json", createErrorJson("No light-sensor readings to calibrate from").c_str());
             return;
@@ -367,13 +375,12 @@ namespace SQM
         }
 
         Config updated = getConfigCallback();
-        updated.skyCalibration.darkVisibleOffset = diagnostics.rollingVisible;
-        updated.skyCalibration.darkFullOffset = 0.0F;
-        updated.skyCalibration.darkIrOffset = 0.0F;
-        updated.skyCalibration.darkSampleCount = diagnostics.sampleCount;
         const time_t epochSeconds = time(nullptr);
-        updated.skyCalibration.darkCalibratedAt =
-            epochSeconds >= 1704067200 ? static_cast<int64_t>(epochSeconds) : static_cast<int64_t>(millis());
+        Core::applyDarkCalibration(
+            updated,
+            role,
+            diagnostics,
+            epochSeconds >= Core::CLOCK_VALID_EPOCH ? static_cast<int64_t>(epochSeconds) : static_cast<int64_t>(millis()));
 
         if (!saveConfigCallback(updated))
         {
@@ -381,13 +388,15 @@ namespace SQM
             return;
         }
 
-        tslSensor.configureSkyMeasurement(updated.skyAveraging, updated.skyCalibration);
+        sensor.configureSkyMeasurement(updated.averaging(role), updated.calibration(role));
 
+        const SkyCalibrationConfig &cal = updated.calibration(role);
         StaticJsonDocument<384> response;
         response["success"] = true;
-        response["darkVisibleOffset"] = updated.skyCalibration.darkVisibleOffset;
-        response["sampleCount"] = updated.skyCalibration.darkSampleCount;
-        response["darkCalibratedAt"] = updated.skyCalibration.darkCalibratedAt;
+        response["sensor"] = skyRoleName(role);
+        response["darkVisibleOffset"] = cal.darkVisibleOffset;
+        response["sampleCount"] = cal.darkSampleCount;
+        response["darkCalibratedAt"] = cal.darkCalibratedAt;
 
         String responseStr;
         serializeJson(response, responseStr);

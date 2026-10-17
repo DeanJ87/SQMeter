@@ -95,12 +95,12 @@ their own status; covering one changes only that entry (SC-002).
 **Goal**: averaging, offset and dark calibration per sensor.
 **Independent test**: dark-calibrate SQM-L; only `skyCalibrationL` changes (US3 AC2).
 
-- [ ] T038 [P] [US3] Native test first in test/test_device_core/: a pure helper `Core::applyDarkCalibration(Config &, SkyRole, const TSL2591Diagnostics &, int64_t at)` writes only that role's calibration section and leaves the other byte-identical
-- [ ] T039 [US3] `applyDarkCalibration` in lib/DeviceCore/src/DeviceCore.cpp (declared in lib/DeviceCore/include/DeviceCore.h); T038 passes
-- [ ] T040 [US3] Route `POST /api/sensors/tsl2591/calibrate-dark?sensor=sqm|sqml` in src/WebServerApi.cpp: no parameter = SQM; unknown = 400 "Unknown sky sensor"; disabled/undetected/no samples = 409 (existing message); success body adds `"sensor"`; reconfigures only that driver; `requireAuth` kept
-- [ ] T041 [P] [US3] `useDarkCalibration(sensor)` posting `?sensor=` in web/src/hooks/useSensorActions.ts with a Vitest case
+- [X] T038 [P] [US3] Native test first in test/test_device_core/: a pure helper `Core::applyDarkCalibration(Config &, SkyRole, const TSL2591Diagnostics &, int64_t at)` writes only that role's calibration section and leaves the other byte-identical
+- [X] T039 [US3] `applyDarkCalibration` in lib/DeviceCore/src/DeviceCore.cpp (declared in lib/DeviceCore/include/DeviceCore.h); T038 passes
+- [X] T040 [US3] Route `POST /api/sensors/tsl2591/calibrate-dark?sensor=sqm|sqml` in src/WebServerApi.cpp: no parameter = SQM; unknown = 400 "Unknown sky sensor"; disabled/undetected/no samples = 409 (existing message); success body adds `"sensor"`; reconfigures only that driver; `requireAuth` kept
+- [X] T041 [P] [US3] `useDarkCalibration(sensor)` posting `?sensor=` in web/src/hooks/useSensorActions.ts with a Vitest case
 - [ ] T042 [US3] `SkyQualityCard` parameterised by role (config sections `skyAveraging`/`skyCalibration` or `skyAveragingL`/`skyCalibrationL`, status `skySensors.<role>`, calibration call), rendered per enabled sensor with titles "SQM"/"SQM-L" (single "Sky quality" card when only SQM is enabled), in web/src/components/settings/SensorsSkyCards.tsx and web/src/components/settings/SensorsTab.tsx; Vitest
-- [ ] T043 [P] [US3] OpenAPI: optional `sensor` query parameter (enum `sqm`, `sqml`) and the 400 in tools/api/operations.json; regenerate docs/api/openapi.json (`tools/api/openapi.py`, then `--check`)
+- [X] T043 [P] [US3] OpenAPI: optional `sensor` query parameter (enum `sqm`, `sqml`) and the 400 in tools/api/operations.json; regenerate docs/api/openapi.json (`tools/api/openapi.py`, then `--check`)
 
 ## Phase 6: User Story 4 - Integrations see both (P2)
 

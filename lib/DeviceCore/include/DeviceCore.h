@@ -105,6 +105,11 @@ namespace SQM
         // /api/status "skySensors": health and diagnostics of each enabled sky
         // sensor (spec 030); nothing when neither is enabled.
         void writeSkySensorStatus(JsonObject root, const SensorSnapshot &snapshot, const Readings::Snapshot &readings);
+        // Dark calibration (POST /api/sensors/tsl2591/calibrate-dark): stores
+        // the covered window's average as `role`'s dark offset and touches no
+        // other setting (spec 030 US3). `at` is Unix seconds, or millis()
+        // before the clock is set.
+        void applyDarkCalibration(Config &cfg, SkyRole role, const TSL2591Diagnostics &diagnostics, int64_t at);
         // Per-sensor health (/api/status "sensors").
         void writeSensorHealth(JsonObject sensors, const Readings::Snapshot &readings, const Config &cfg);
 

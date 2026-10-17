@@ -68,6 +68,16 @@ namespace SQM::Core::Detail
 
 namespace SQM::Core
 {
+    void applyDarkCalibration(Config &cfg, SkyRole role, const TSL2591Diagnostics &diagnostics, int64_t at)
+    {
+        SkyCalibrationConfig &cal = cfg.calibration(role);
+        cal.darkVisibleOffset = diagnostics.rollingVisible;
+        cal.darkFullOffset = 0.0F;
+        cal.darkIrOffset = 0.0F;
+        cal.darkSampleCount = diagnostics.sampleCount;
+        cal.darkCalibratedAt = at;
+    }
+
     void writeSkySensorStatus(JsonObject root, const SensorSnapshot &snapshot, const Readings::Snapshot &readings)
     {
         JsonObject sensors;

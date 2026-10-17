@@ -81,9 +81,12 @@
     },
     "POST /api/sensors/tsl2591/calibrate-dark": {
       "tag": "Sensors",
-      "summary": "Calibrate the light sensor's dark offset",
-      "description": "Stores the current rolling visible count as the dark offset. Cover the sensor first and wait for the averaging window to fill. 409 while it can't give a good offset (no readings yet, not in night mode, window not full).",
-      "responses": { "200": "action", "409": "error" }
+      "summary": "Calibrate a sky sensor's dark offset",
+      "description": "Stores the current rolling visible count as the dark offset of one sky sensor (`sensor`, default the SQM) and writes only that sensor's calibration (`skyCalibration` or `skyCalibrationL`). Cover the sensor first and wait for the averaging window to fill. The answer names the `sensor`. 400 for an unknown `sensor`; 409 while it can't give a good offset (sensor off or not found, no readings yet, not in night mode, window not full).",
+      "parameters": [
+        { "name": "sensor", "in": "query", "description": "`sqm` (default, the wide sensor on I2C-1) or `sqml` (the narrow SQM-L on I2C-2).", "schema": { "type": "string", "enum": ["sqm", "sqml"], "default": "sqm" } }
+      ],
+      "responses": { "200": "action", "400": "error", "409": "error" }
     },
     "POST /api/sensors/rg15/test": {
       "tag": "Sensors",

@@ -393,3 +393,34 @@ void test_sky_alpaca_follows_the_authoritative_sensor()
     obs = Core::observingConditions(s, cfg, now);
     TEST_ASSERT_EQUAL_STRING("TSL2591 light sensor", getSensorDescription("skybrightness", obs).value.c_str());
 }
+
+// US3 AC2: dark-calibrating one sky sensor writes only its own section.
+void test_sky_dark_calibration_writes_one_role()
+{
+    TSL2591Diagnostics diag{};
+    diag.rollingVisible = 3.25F;
+    diag.sampleCount = 150;
+
+    Config cfg = dual(SkyRole::Sqm);
+    cfg.skyCalibration.darkVisibleOffset = 1.0F;
+    cfg.skyCalibration.darkFullOffset = 0.5F;
+    const Config before = cfg;
+    Core::applyDarkCalibration(cfg, SkyRole::Sqml, diag, 1790000000);
+    TEST_ASSERT_EQUAL_FLOAT(3.25F, cfg.skyCalibrationL.darkVisibleOffset);
+    TEST_ASSERT_EQUAL_FLOAT(0.0F, cfg.skyCalibrationL.darkFullOffset);
+    TEST_ASSERT_EQUAL_FLOAT(0.0F, cfg.skyCalibrationL.darkIrOffset);
+    TEST_ASSERT_EQUAL_UINT32(150, cfg.skyCalibrationL.darkSampleCount);
+    TEST_ASSERT_TRUE(cfg.skyCalibrationL.darkCalibratedAt == 1790000000);
+    // The SQM's section (and everything else) byte-identical.
+    Config expect = cfg;
+    expect.skyCalibrationL = before.skyCalibrationL;
+    TEST_ASSERT_EQUAL_STRING(before.toJson().c_str(), expect.toJson().c_str());
+
+    cfg = before;
+    Core::applyDarkCalibration(cfg, SkyRole::Sqm, diag, 1790000001);
+    TEST_ASSERT_EQUAL_FLOAT(3.25F, cfg.skyCalibration.darkVisibleOffset);
+    TEST_ASSERT_EQUAL_FLOAT(0.0F, cfg.skyCalibration.darkFullOffset);
+    expect = cfg;
+    expect.skyCalibration = before.skyCalibration;
+    TEST_ASSERT_EQUAL_STRING(before.toJson().c_str(), expect.toJson().c_str());
+}

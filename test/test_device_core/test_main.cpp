@@ -474,6 +474,7 @@ void test_sky_readings_per_role_status();
 void test_sky_status_documents();
 void test_sky_safety_uses_the_authoritative_sensor_only();
 void test_sky_alpaca_follows_the_authoritative_sensor();
+void test_sky_dark_calibration_writes_one_role();
 
 int main()
 {
@@ -501,5 +502,6 @@ int main()
     RUN_TEST(test_sky_status_documents);
     RUN_TEST(test_sky_safety_uses_the_authoritative_sensor_only);
     RUN_TEST(test_sky_alpaca_follows_the_authoritative_sensor);
+    RUN_TEST(test_sky_dark_calibration_writes_one_role);
     return UNITY_END();
 }
