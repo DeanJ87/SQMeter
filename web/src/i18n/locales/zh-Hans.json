@@ -1305,7 +1305,7 @@
   "sunMoonCard.timesInBrowserZone": "时间为此浏览器的时区。",
   "sunMoonCard.timesInZone": "时间为此浏览器的时区（{zone}）。",
   "system.actions": "操作",
-  "system.batteryDetected": "已检测到 · v{version}",
+  "system.batteryDetected": "已检测到",
   "system.batteryGauge": "电量计",
   "system.batteryVoltage": "电池电压",
   "system.baudRate": "波特率",

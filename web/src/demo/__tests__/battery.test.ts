@@ -58,4 +58,11 @@ describe('emulated device battery', () => {
     await tick();
     expect(battery()).toMatchObject({ state: 'discharging', powerSaving: true });
   });
+
+  it('the battery rule turns the verdict unsafe below its limit', async () => {
+    demoDevice.applyConfig(JSON.stringify({ alpaca: { batteryEnabled: true, batteryMinPercent: 10 } }));
+    demoDevice.setInput('battery.percent', 8);
+    await tick();
+    expect(JSON.parse(demoDevice.safety()).reasons.join()).toMatch(/Battery [78]% < 10%/); // it drains as it ticks
+  });
 });

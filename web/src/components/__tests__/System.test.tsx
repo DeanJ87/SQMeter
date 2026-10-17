@@ -95,7 +95,8 @@ describe('System - battery rows (spec 032)', () => {
 
   it('shows the gauge, voltage and charger pins', () => {
     show({});
-    expect(row('Battery gauge').textContent).toContain('Detected · v0x0012');
+    expect(row('Battery gauge').textContent).toContain('MAX17048 v0x0012');
+    expect(row('Battery gauge').textContent).toContain('Detected');
     expect(row('Battery voltage').textContent).toContain('3.91 V');
     expect(row('Charger pins').textContent).toContain('STAT1 H · STAT2 H · PG H');
   });

@@ -1314,7 +1314,7 @@
   "sunMoonCard.timesInBrowserZone": "Saatler bu tarayıcının saat diliminde.",
   "sunMoonCard.timesInZone": "Saatler {zone} saat diliminde, yani bu tarayıcınınkinde.",
   "system.actions": "İşlemler",
-  "system.batteryDetected": "Algılandı · v{version}",
+  "system.batteryDetected": "Algılandı",
   "system.batteryGauge": "Pil göstergesi",
   "system.batteryVoltage": "Pil gerilimi",
   "system.baudRate": "Baud hızı",

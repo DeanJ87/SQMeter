@@ -1332,7 +1332,7 @@
   "sunMoonCard.timesInBrowserZone": "Godziny w strefie czasowej tej przeglądarki.",
   "sunMoonCard.timesInZone": "Godziny w strefie {zone}, strefie czasowej tej przeglądarki.",
   "system.actions": "Akcje",
-  "system.batteryDetected": "Wykryto · v{version}",
+  "system.batteryDetected": "Wykryto",
   "system.batteryGauge": "Wskaźnik baterii",
   "system.batteryVoltage": "Napięcie baterii",
   "system.baudRate": "Prędkość transmisji",

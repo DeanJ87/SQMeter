@@ -1305,7 +1305,7 @@
   "sunMoonCard.timesInBrowserZone": "時刻はこのブラウザーのタイムゾーンです。",
   "sunMoonCard.timesInZone": "時刻はこのブラウザーのタイムゾーン（{zone}）です。",
   "system.actions": "操作",
-  "system.batteryDetected": "検出済み · v{version}",
+  "system.batteryDetected": "検出済み",
   "system.batteryGauge": "バッテリー残量計",
   "system.batteryVoltage": "バッテリー電圧",
   "system.baudRate": "ボーレート",

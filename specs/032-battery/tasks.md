@@ -154,9 +154,9 @@ phone alarm options.
 
 ### Budgets and gates (FR-016, constitution IV, VIII)
 
-- [ ] T063 Measure after: firmware size both builds (SIZE-04; combined 031+032 growth recorded against the 95% line), static RAM, UI gzip delta ≤ 10 KB (SIZE-02), config/alerts parts/readings/status worst cases (tests); update specs/032-battery/budgets.md; device heap and loop `stackFree` on the spare device only, noted for the PR
-- [ ] T064 Full gate: `pio test -e native`, both firmware builds, ConformU (T039), `tools/quality/check.py` (no new findings), `tools/api/openapi.py --check`, web `vitest run`, `tsc --noEmit`, `eslint src`, i18n, settings-deps and dashboard checks
-- [ ] T065 Run quickstart.md sections 1 and 2 and record results; sections 3-6 on the spare device / a travel board with the owner's permission (never the main device), or recorded as open for the PR; changelog entry in CHANGELOG.md
+- [X] T063 Measure after: firmware size both builds (SIZE-04; combined 031+032 growth recorded against the 95% line), static RAM, UI gzip delta ≤ 10 KB (SIZE-02), config/alerts parts/readings/status worst cases (tests); update specs/032-battery/budgets.md; device heap and loop `stackFree` on the spare device only, noted for the PR
+- [X] T064 Full gate: `pio test -e native`, both firmware builds, ConformU (T039), `tools/quality/check.py` (no new findings), `tools/api/openapi.py --check`, web `vitest run`, `tsc --noEmit`, `eslint src`, i18n, settings-deps and dashboard checks
+- [X] T065 Run quickstart.md sections 1 and 2 and record results; sections 3-6 on the spare device / a travel board with the owner's permission (never the main device), or recorded as open for the PR; changelog entry in CHANGELOG.md
 - [ ] T066 Converge (`speckit-converge`) until it reports converged
 
 ## Dependencies

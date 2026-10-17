@@ -14,8 +14,7 @@ const level = (high: boolean) => (high ? 'H' : 'L');
 const gaugeBadge = (status: SystemStatus) => {
   const diagnostics = status.diagnostics?.battery;
   const health = status.sensors.battery?.status;
-  if (diagnostics && (!health || health === 'ok'))
-    return { text: t('system.batteryDetected', { version: diagnostics.version }), tone: 'pill-green' };
+  if (diagnostics && (!health || health === 'ok')) return { text: t('system.batteryDetected'), tone: 'pill-green' };
   if (health === 'stale') return { text: t('system.stale'), tone: 'pill-amber' };
   if (health === 'error') return { text: t('system.error'), tone: 'pill-red' };
   return { text: t('system.notDetected'), tone: 'pill-red' };
@@ -26,11 +25,16 @@ const BatteryRows: FunctionalComponent<{ status: SystemStatus }> = ({ status }) 
   const badge = gaugeBadge(status);
   const charger = status.diagnostics?.battery?.charger;
   const voltage = status.battery.voltage;
+  const version = status.diagnostics?.battery?.version;
   return (
     <>
       <div class="reading-row">
         <span class="reading-label">
-          {t('system.batteryGauge')} <span class="system-subtle mono">{GAUGE_MODEL}</span>
+          {t('system.batteryGauge')}{' '}
+          <span class="system-subtle mono">
+            {GAUGE_MODEL}
+            {version ? ` v${version}` : ''}
+          </span>
         </span>
         <Pill tone={badge.tone}>{badge.text}</Pill>
       </div>

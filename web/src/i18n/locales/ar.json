@@ -1348,7 +1348,7 @@
   "sunMoonCard.timesInBrowserZone": "الأوقات بالمنطقة الزمنية لهذا المتصفح.",
   "sunMoonCard.timesInZone": "الأوقات بتوقيت {zone}، المنطقة الزمنية لهذا المتصفح.",
   "system.actions": "الإجراءات",
-  "system.batteryDetected": "مكتشف · v{version}",
+  "system.batteryDetected": "مكتشف",
   "system.batteryGauge": "مقياس البطارية",
   "system.batteryVoltage": "جهد البطارية",
   "system.baudRate": "معدل الباود",

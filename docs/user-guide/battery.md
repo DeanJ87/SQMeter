@@ -6,7 +6,7 @@ description: "Running SQMeter from a Li-ion pack: the charge and time left from 
 
 The [travel board](../hardware/overview.md#travel-board-battery) runs SQMeter from a single-cell
 Li-ion pack, charged over USB-C. SQMeter reads the pack's **MAX17048 fuel gauge** and the charger's
-status lines, shows how much is left, warns you before it runs out, can tell your imaging software
+status lines, shows how much is left, warns you before it runs out, can tell your imaging app
 the night is over, and puts itself to sleep before the cells cut out. Without a fuel gauge nothing
 here appears and nothing changes.
 
@@ -121,7 +121,7 @@ With **Save power when low** on:
 2. **At the shutdown level** (two readings in a row, not charging): the device sends *Going to
    sleep*, reports unsafe, and waits the warning time (30 s) for the alert to go out, 15 s more at
    most, then goes into **deep sleep**. Plugging in USB during the warning cancels it.
-3. **Asleep** it draws almost nothing and doesn't answer: imaging software sees it disconnect, which
+3. **Asleep** it draws almost nothing and doesn't answer: an imaging app sees it disconnect, which
    is why the warning and the unsafe verdict come first. It wakes:
     - **on USB power**, at once, when the charger's PG pin is set (it must be a pin that can wake the
       ESP32); it starts up normally and sends *Power restored* once WiFi is back, or after 2 minutes;

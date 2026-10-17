@@ -1285,7 +1285,7 @@
   "sunMoonCard.timesInBrowserZone": "Dashboard Sun & Moon card: a help text shown with a '?' tip.",
   "sunMoonCard.timesInZone": "Dashboard Sun & Moon card: a help text shown with a '?' tip; {zone} is a time zone name such as Europe/London.",
   "system.actions": "System page (device diagnostics): a card or section title; max 12 chars.",
-  "system.batteryDetected": "System page pill for the battery fuel gauge: found, with its chip version (e.g. 0x0012). Keep {version} exactly.",
+  "system.batteryDetected": "System page pill for the battery fuel gauge: found and answering.",
   "system.batteryGauge": "System page, Sensors card row: the battery fuel gauge chip.",
   "system.batteryVoltage": "System page, Sensors card row: the battery cell voltage.",
   "system.baudRate": "System page (device diagnostics): a field or control label; max 14 chars.",

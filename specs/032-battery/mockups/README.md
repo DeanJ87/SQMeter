@@ -125,6 +125,16 @@ level, sound and the template editor like every event; disabled with D-48 (muted
 
 ## Review
 
-Owner review of these wireframes: still to be recorded here before the dashboard card, glance tile,
-System rows, Settings card, Safety row and Alerts group are built (tasks T028-T030, T040, T041,
-T054).
+Pending. The dashboard card, glance tile, System rows, Settings card, Safety row and Alerts group
+(T028-T030, T040, T041, T054) were built from these wireframes in round 2, as specs 030 and 031 did,
+because without them the battery had no UI. The owner's sign-off is still to be recorded here; a change
+it asks for is a follow-up. Where the build differs from a wireframe:
+
+- Safety → Battery group: shown on a board with a gauge, or while the rule is on (it then carries the
+  D-47 "Reports unsafe" note); hidden otherwise, so boards without a battery gain no rows.
+- Alerts → Battery group: shown only on a board with a gauge (six muted D-48 rows on every other board
+  would be noise); D-48 still applies to the rows when alerts are off.
+- Settings → Battery card: the D-46 note is said once, under **Monitor battery**, rather than on every
+  muted row; the card is left out on firmware without a `battery` section.
+- Glance tile: no "Open settings" link (a low pack isn't fixed in Settings).
+- Times use the UI's existing duration format (`13h 17m`), not `13 h 17 min`.

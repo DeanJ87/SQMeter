@@ -5,13 +5,13 @@ implemented, before any 032 code); after values filled in by T025, T049 and T063
 
 | Budget | Limit | Before (3bc6f6a) | After | Delta |
 |---|---|---|---|---|
-| Firmware `esp32dev` (PlatformIO "Flash used") | OTA slot 1,835,008 B (SIZE-04) | 1,512,047 B (82.4%) | 1,527,423 B (83.2%) after US1 (T025); 1,538,739 B (83.9%) after US2-US3 (T049); 1,540,911 B (84.0%) at the end of round 1 (US4) | +28,864 B |
-| Firmware `esp32dev-ble` (PlatformIO "Flash used") | OTA slot 1,835,008 B; 95% line 1,743,257 B | 1,704,271 B (92.9%) | 1,719,643 B (93.7%) after US1 (T025); 1,731,207 B (94.3%) after US2-US3 (T049); 1,733,531 B (94.5%, 9,726 B to the 95% line) at the end of round 1 (US4) | +29,260 B: well over the 10 KB target |
+| Firmware `esp32dev` (PlatformIO "Flash used") | OTA slot 1,835,008 B (SIZE-04) | 1,512,047 B (82.4%) | 1,527,423 B (83.2%) after US1 (T025); 1,538,739 B (83.9%) after US2-US3 (T049); 1,540,911 B (84.0%) at the end of round 1 (US4); unchanged after round 2 (T063: web, demo and docs only) | +28,864 B |
+| Firmware `esp32dev-ble` (PlatformIO "Flash used") | OTA slot 1,835,008 B; 95% line 1,743,257 B | 1,704,271 B (92.9%) | 1,719,643 B (93.7%) after US1 (T025); 1,731,207 B (94.3%) after US2-US3 (T049); 1,733,531 B (94.5%, 9,726 B to the 95% line) at the end of round 1 (US4); unchanged after round 2 (T063) | +29,260 B: well over the 10 KB target; specs 031+032 together +43,260 B over the spec 030 figure (1,690,667 B), leaving 9,726 B under the 95% line |
 | `firmware.bin` `esp32dev` (`tools/firmware/flash_budget.py`) | 95% of the slot | 1,562,032 B (85.1%) | 1,577,856 B (86.0%) (T025); 1,589,552 B (86.6%) (T049); 1,591,952 B (86.8%) end of round 1 | +29,920 B |
 | `firmware.bin` `esp32dev-ble` (`tools/firmware/flash_budget.py`) | 95% of the slot | 1,757,136 B (95.8%) | 1,772,960 B (96.6%) (T025); 1,784,896 B (97.3%) (T049); 1,787,440 B (97.4%) end of round 1 | +30,304 B |
-| Static RAM `esp32dev` | | 52,812 B | 53,300 B (T025); 53,356 B (T049) | +544 B |
-| Static RAM `esp32dev-ble` | | 63,084 B | 63,572 B (T025); 63,644 B (T049) | +560 B |
-| UI gzip JS+CSS | growth <= 10 KB (SIZE-02, `tools/ui/size_check.py`) | 122,631 B (`tools/ui/size-baseline.json`) | | |
+| Static RAM `esp32dev` | | 52,812 B | 53,300 B (T025); 53,356 B (T049); 53,356 B (T063) | +544 B |
+| Static RAM `esp32dev-ble` | | 63,084 B | 63,572 B (T025); 63,644 B (T049); 63,644 B (T063) | +560 B |
+| UI gzip JS+CSS | growth <= 10 KB (SIZE-02, `tools/ui/size_check.py`) | 122,631 B (`tools/ui/size-baseline.json`) | 127,916 B (T063, recorded in `tools/ui/size-baseline.json`): Battery card and glance tile, System rows, Settings Battery card, Safety and Alerts groups, their strings | +5,285 B (limit 10 KB) |
 | Main config JSON, defaults (`toJson(false, false)`) | 5,100 B | 2,615 B | 2,952 B (T006-T008) | +337 B |
 | Main config JSON, worst case (long strings, both sky sensors, display with 7 pages) | 5,100 B | 3,529 B | 3,869 B with the battery section, every pin set (`test_battery_worst_cases_fit`) | +340 B |
 | Alerts Main part, defaults | 3,900 B | 995 B | 995 B, byte for byte (`test_battery_alerts_part`) | 0 |
@@ -48,3 +48,9 @@ and leaves the Bluetooth build 12,050 B under CI's 95% line by PlatformIO's meas
 Home Assistant entities, template variables and BLE summary fields (US4) land. Trimming before
 the PR is required (candidates: table-driven range checks and messages in `ConfigValidate.cpp`,
 shared formatting in the alert wording, the rate average without `exp`).
+
+Round 2 (T063) changed no firmware: the web UI, the demo core (`tools/demo-core`, rebuilt to
+WebAssembly) and the docs. The config, alerts part, readings and status worst cases are the round 1
+figures above, still pinned by their native tests (442 passing). Device heap and loop `stackFree`
+are to be measured on the spare device for the PR (not done here: no device contacted). The firmware
+trimming listed above is still open before the PR.

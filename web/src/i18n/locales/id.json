@@ -1305,7 +1305,7 @@
   "sunMoonCard.timesInBrowserZone": "Waktu dalam zona waktu peramban ini.",
   "sunMoonCard.timesInZone": "Waktu dalam {zone}, zona waktu peramban ini.",
   "system.actions": "Tindakan",
-  "system.batteryDetected": "Terdeteksi · v{version}",
+  "system.batteryDetected": "Terdeteksi",
   "system.batteryGauge": "Pengukur baterai",
   "system.batteryVoltage": "Tegangan baterai",
   "system.baudRate": "Baud rate",

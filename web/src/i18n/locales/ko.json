@@ -1305,7 +1305,7 @@
   "sunMoonCard.timesInBrowserZone": "시간은 이 브라우저의 시간대 기준입니다.",
   "sunMoonCard.timesInZone": "시간은 이 브라우저의 시간대({zone}) 기준입니다.",
   "system.actions": "작업",
-  "system.batteryDetected": "감지됨 · v{version}",
+  "system.batteryDetected": "감지됨",
   "system.batteryGauge": "배터리 게이지",
   "system.batteryVoltage": "배터리 전압",
   "system.baudRate": "전송 속도",

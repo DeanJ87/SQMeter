@@ -1314,7 +1314,7 @@
   "sunMoonCard.timesInBrowserZone": "Zeiten in der Zeitzone dieses Browsers.",
   "sunMoonCard.timesInZone": "Zeiten in {zone}, der Zeitzone dieses Browsers.",
   "system.actions": "Aktionen",
-  "system.batteryDetected": "Erkannt · v{version}",
+  "system.batteryDetected": "Erkannt",
   "system.batteryGauge": "Akkuanzeige",
   "system.batteryVoltage": "Akkuspannung",
   "system.baudRate": "Baudrate",
