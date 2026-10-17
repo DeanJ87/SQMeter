@@ -30,7 +30,10 @@ namespace
     class SimBackend : public Backend
     {
     public:
-        explicit SimBackend(bool twoSkySensors) : twoSkySensors(twoSkySensors) {}
+        explicit SimBackend(bool twoSkySensors)
+            : twoSkySensors(twoSkySensors)
+        {
+        }
         bool alpacaEnabled() const override { return true; }
         bool isSafe() const override { return true; }
         ObservingConditionsSnapshot observingConditions() const override
