@@ -13,7 +13,7 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
 Some settings only work when something else is on - MQTT alerts need MQTT, rain alerts need the rain sensor, night-only alerts need your location. Such a setting can't be switched on while what it needs is off, and if you switch the other thing off later the setting is kept exactly as it was but marked **Inactive** with the reason and a button that takes you to the fix. The device doesn't act on it until then, and nothing has to be set up again when you switch the other thing back on. Before you save, a note lists anything the change would make inactive. Every such setting is listed in [Settings dependencies](../reference/settings-dependencies.md).
 
 === "Device"
-    Name, password protection, command-line uploads (ArduinoOTA), Bluetooth.
+    Name, password protection, command-line uploads (ArduinoOTA), Bluetooth, the OLED display.
 
     ![Device settings](../assets/screenshots/settings-device.png)
 
@@ -224,11 +224,22 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "kmhPerHz": 2.4,
     "directionOffsetDeg": 0,
     "vanePullupOhms": 10000
+  },
+  "display": {
+    "enabled": false,
+    "pages": ["sky"],
+    "cycleSeconds": 5,
+    "brightness": "medium",
+    "timeoutSeconds": 60,
+    "wakeOnBoot": true,
+    "stayOnAtNight": false,
+    "rotate180": false,
+    "buttonPin": 255
   }
 }
 ```
 
-In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth), Network (WiFi, MQTT), Time & Location, Sensors (sensors, rain, wind, calibration), Safety (`alpaca`) and Alerts.
+In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth, display), Network (WiFi, MQTT), Time & Location, Sensors (sensors, rain, wind, calibration), Safety (`alpaca`) and Alerts.
 
 ---
 
@@ -481,6 +492,28 @@ See [Wind (anemometer)](../hardware/wind.md).
 | `kmhPerHz` | float | `2.4` | Anemometer calibration (2.4 km/h per Hz for the common Misol/Davis-style cups) |
 | `directionOffsetDeg` | float | `0` | Rotate the vane reading to true north |
 | `vanePullupOhms` | float | `10000` | Pull-up resistor in the vane divider |
+
+### Display
+
+The optional OLED display. See [OLED display](display.md). Settings saved before the display
+existed load with it off.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Use the display (**Show on display**); never probed while off |
+| `pages` | array | `["sky"]` | 1 to 7 different pages, in display order: `sky`, `environment`, `cloud`, `safety`, `gps`, `battery`, `network`. An unknown name is refused |
+| `cycleSeconds` | int | `5` | Seconds per page, 2 to 60 |
+| `brightness` | string | `"medium"` | `low`, `medium` or `high` by day; night always uses the lowest |
+| `timeoutSeconds` | int | `60` | Switch-off time, 10 to 1800, or `0` for never (by day only: at night never becomes 60 s) |
+| `wakeOnBoot` | bool | `true` | Light up after a restart |
+| `stayOnAtNight` | bool | `false` | Stay lit at night; needs a location or a GPS fix (D-44) |
+| `rotate180` | bool | `false` | Turn the picture upside down |
+| `buttonPin` | int | `255` | Wake button GPIO, `255` for none. While the display is on it can't be an I2C, I2C-2, GPS, rain sensor, anemometer or vane pin |
+
+Messages when a value is refused: `Display: choose 1 to 7 different pages`, `Display: cycle interval
+must be 2 to 60 seconds`, `Display: brightness must be low, medium or high`, `Display: timeout must be
+10 seconds to 30 minutes, or never`, `Display: wake button pin is not a valid GPIO`, `Display: wake
+button pin is already in use`.
 
 ---
 

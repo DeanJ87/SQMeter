@@ -133,13 +133,13 @@ on at a known night.
 
 ### Strings (FR-019)
 
-- [ ] T048 Every new UI string in web/src/i18n/en.json with a context note in web/src/i18n/en.context.json; translations written for all 13 locales in web/src/i18n/locales/*.json in each file's register; device-built messages (validation, route errors, `display-missing`) via `python3 tools/i18n/gen_device_catalog.py`; `python3 tools/i18n/translate.py --all --record`, `node tools/i18n/check.mjs`, `gen_device_catalog.py --check` pass (no paid API)
+- [X] T048 Every new UI string in web/src/i18n/en.json with a context note in web/src/i18n/en.context.json; translations written for all 13 locales in web/src/i18n/locales/*.json in each file's register; device-built messages (validation, route errors, `display-missing`) via `python3 tools/i18n/gen_device_catalog.py`; `python3 tools/i18n/translate.py --all --record`, `node tools/i18n/check.mjs`, `gen_device_catalog.py --check` pass (no paid API)
 
 ### Docs (FR-018, constitution VII)
 
-- [ ] T049 [P] New docs/user-guide/display.md: fitting, enabling, pages, the full on-screen label list (contracts/screen.md), night behaviour incl. unknown night, wake (web, API, button), 0x3C clash note; nav entry in mkdocs.yml
-- [ ] T050 [P] Hardware: the OLED port (J6) and wiring on any board's spare I2C port, AUX pins for the button, in docs/getting-started/hardware.md and docs/hardware/overview.md
-- [ ] T051 [P] docs/user-guide/configuration.md (`display` keys, defaults, validation), docs/api/rest.md (status `display`, wake/blank routes), docs/api/websocket.md (status), docs/reference/settings-dependencies.md (D-43..D-45, regenerated where generated); Settings paths match en.json labels; `python3 -m mkdocs build --strict` where mkdocs is installed
+- [X] T049 [P] New docs/user-guide/display.md: fitting, enabling, pages, the full on-screen label list (contracts/screen.md), night behaviour incl. unknown night, wake (web, API, button), 0x3C clash note; nav entry in mkdocs.yml
+- [X] T050 [P] Hardware: the OLED port (J6) and wiring on any board's spare I2C port, AUX pins for the button, in docs/getting-started/hardware.md and docs/hardware/overview.md
+- [X] T051 [P] docs/user-guide/configuration.md (`display` keys, defaults, validation), docs/api/rest.md (status `display`, wake/blank routes), docs/api/websocket.md (status), docs/reference/settings-dependencies.md (D-43..D-45, regenerated where generated); Settings paths match en.json labels; `python3 -m mkdocs build --strict` where mkdocs is installed
 
 ### Budgets and gates (FR-016, constitution IV, VIII)
 

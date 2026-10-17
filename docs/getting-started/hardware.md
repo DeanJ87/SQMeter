@@ -70,6 +70,14 @@ ESP32          TSL2591     BME280      MLX90614
  G22  ─────────  SCL ──────  SCL ──────  SCL
 ```
 
+### OLED display (optional)
+
+A 0.96" **SSD1306 128 × 64 I2C OLED** at `0x3C` goes on the same bus, in parallel with the
+sensors: VCC to 3.3 V, GND, SDA to GPIO 21 and SCL to GPIO 22. On the Rev A boards it plugs into the
+OLED port (J6). An optional **wake button** goes from any free GPIO to GND (the internal pull-up is
+used); the AUX pins on Rev A are free for it. Then turn it on in **Settings → Device → Display**; see
+[OLED display](../user-guide/display.md).
+
 ---
 
 ## I2C Addresses
@@ -79,6 +87,7 @@ ESP32          TSL2591     BME280      MLX90614
 | TSL2591 | `0x29` | Fixed |
 | BME280 | `0x76` | `0x77` if SDO pulled high |
 | MLX90614 | `0x5A` | Fixed |
+| SSD1306 OLED (optional) | `0x3C` | The common 128 × 64 modules; some are `0x3D` and aren't supported |
 
 !!! warning "Address conflict"
     If you have multiple BME280s on the same bus, one must be wired with SDO to 3.3V to use address `0x77`.

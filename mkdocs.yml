@@ -93,6 +93,7 @@ nav:
     - ASCOM Alpaca: user-guide/alpaca.md
     - Alerts: user-guide/alerts.md
     - Bluetooth (BLE): user-guide/ble.md
+    - OLED Display: user-guide/display.md
     - Languages: user-guide/languages.md
   - Hardware:
     - Overview: hardware/overview.md
