@@ -120,11 +120,10 @@ page.
 
 ## Clarifications
 
-### Open questions (owner, 2026-10-17)
+### Session 2026-10-17 (owner)
 
-- **Q1 (FR-011)**: what language does the screen use? [NEEDS CLARIFICATION: always English short labels
-  and numerals; or follow the device language for languages the built-in font can draw (Latin script),
-  with English for the rest; or full translation including Arabic, Japanese, Korean and Chinese?]
+- Q: What language does the screen use? → A: English short labels and numerals, always, whatever the
+  device language. The web UI's display settings are translated as usual.
 
 ## Requirements *(mandatory)*
 
@@ -161,8 +160,10 @@ page.
 
 **Text**
 
-- **FR-011**: On-screen text MUST use short labels and numerals that fit 128 × 64, in the language chosen
-  in Clarifications Q1. Units follow the device's unit settings.
+- **FR-011**: On-screen text MUST be English short labels and numerals that fit 128 × 64 (for example
+  "SQM", "NELM", "Temp", "Dew", "Safe"), in every device language; no translated text or extra fonts on
+  the device. Units follow the device's unit settings. The docs list every on-screen label and its
+  meaning.
 
 **Wake and control**
 
@@ -188,7 +189,8 @@ page.
   night behaviour, wake), wiring and the port on the hardware pages, configuration, REST and settings
   dependencies references.
 - **FR-019**: Every new web UI string MUST be added to the English catalogue with its context note and
-  translated into all 13 other UI languages through the existing translation workflow.
+  translated into all 13 other UI languages through the existing translation workflow. On-screen OLED
+  labels are not translated (FR-011).
 
 ### Key Entities
 

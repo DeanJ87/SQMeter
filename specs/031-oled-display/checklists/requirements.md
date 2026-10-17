@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -33,4 +33,4 @@
 
 - The display part (SSD1306-class, 128 × 64, 0x3C) is named because it is the hardware the boards carry,
   as earlier specs name the TSL2591.
-- One open question (Q1, FR-011: on-screen language) awaits the owner.
+- Q1 answered 2026-10-17 (English on screen); FR-011 and FR-019 updated.
