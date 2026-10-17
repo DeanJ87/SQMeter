@@ -367,7 +367,7 @@ The `auth.password` field is masked in `GET /api/config` responses. Send the mas
 | `i2c2SDA` | int | `255` | Second I2C bus SDA GPIO pin, for the SQM-L; `255` = not wired |
 | `i2c2SCL` | int | `255` | Second I2C bus SCL GPIO pin; `255` = not wired |
 
-The second bus pins are both `255`, or two different valid GPIOs that no other bus uses (I2C, GPS and the rain sensor when they are on; the anemometer's own check covers its pins). Changing the I2C pins or turning the SQM-L on or off takes effect after a restart.
+The second bus pins are both `255`, or two different valid GPIOs that no other bus uses (I2C, GPS and the rain sensor when they are on; the anemometer's own check covers its pins, and Settings shows that clash on **I2C-2 SDA** before you save). Changing the I2C pins or turning the SQM-L on or off takes effect after a restart.
 
 The TSL2591 sky sensors are sampled separately at approximately 650 ms cadence, side by side, so dark-sky rolling averages are not limited by `readIntervalMs`; a read never makes the device wait for an integration.
 
@@ -382,7 +382,7 @@ Two TSL2591 sky sensors, the wide **SQM** (first I2C bus) and the narrow-lens **
 | `authoritative` | string | `"sqm"` | Whose reading counts: `"sqm"` or `"sqml"`. Only matters with both on. No fallback: if it is off or not answering there is no sky reading |
 | `showOther` | bool | `true` | The dashboard also shows the other sensor's reading and the difference (both on) |
 
-Settings saved before these keys existed load with the defaults above: one sensor, the SQM, exactly as before.
+Settings saved before these keys existed load with the defaults above: one sensor, the SQM, exactly as before. In Settings these are **Use SQM**, **Use SQM-L**, **Authoritative reading** and **Show other reading** in **Settings → Sensors → Sky sensors**.
 
 ### Sky Averaging
 

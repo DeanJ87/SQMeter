@@ -97,8 +97,10 @@ ESP32          SQM-L (TSL2591)
  SCL2 ─────────  SCL     (second-bus SCL pin, e.g. GPIO 26)
 ```
 
-Then set the second bus pins (`sensor.i2c2SDA`, `sensor.i2c2SCL`), switch the SQM-L on
-(`sky.sqmlEnabled`) and restart. Choose which sensor's reading counts with `sky.authoritative`;
+Then, in **Settings → Sensors → Sky sensors**, type the pins into **I2C-2 SDA** and **I2C-2 SCL**
+(`sensor.i2c2SDA`, `sensor.i2c2SCL`), switch on **Use SQM-L** (`sky.sqmlEnabled`), save and
+restart. **Use SQM-L** stays blocked until both pins are set. Choose which sensor's reading counts
+with **Authoritative reading** (`sky.authoritative`);
 see [Two sky sensors](../reference/sky-quality.md#two-sky-sensors-sqm-and-sqm-l) and
 [Configuration → Sky sensors](../user-guide/configuration.md#sky-sensors).
 

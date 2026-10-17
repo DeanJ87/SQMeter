@@ -60,7 +60,7 @@ Light below 0.0001 lux is treated as 0.0001 lux (SQM 22.6), the darkest the form
 
 Firmware averages raw TSL2591 counts before this conversion, in every measurement mode: it applies a rolling average (restarted on each gain or integration change), subtracts the saved dark visible offset, then applies the optional SQM calibration offset. `sky.sqm` is the calibrated value and `sky.rawSqm` the uncalibrated one, so `sqm − rawSqm` equals the offset whenever calibration is on. Night mode (MAX gain, 600 ms integration) is when the reading is most sensitive.
 
-To calibrate in **Settings → Sensors → Sky quality**: cover the sensor completely (lens cap or foil), wait until **Averaging window** shows the window full, then press **Calibrate dark**. The device refuses while the sensor still sees light or the window holds readings from before it was covered. **Averaging window** (10-300 s, default 90) and **Apply SQM offset** (±5 mag/arcsec², e.g. to match a reference SQM-L) are in the same card.
+To calibrate in **Settings → Sensors → Sky quality** (with two sky sensors there is one card per sensor, titled **SQM** and **SQM-L**): cover the sensor completely (lens cap or foil), wait until **Averaging window** shows the window full, then press **Calibrate dark**. The device refuses while the sensor still sees light or the window holds readings from before it was covered. **Averaging window** (10-300 s, default 90) and **Apply SQM offset** (±5 mag/arcsec², e.g. to match a reference SQM-L) are in the same card.
 
 Dark calibration should be repeated whenever the lens, baffle, aperture, lens-to-sensor distance, or internal finish changes.
 
@@ -98,8 +98,19 @@ alerts, Home Assistant's SQM (wide), SQM-L (narrow) and SQM-L − SQM entities).
 **No fallback.** If the authoritative sensor is switched off, not found or stops answering, the
 sky reading is missing: the safety verdict is unsafe with a reason naming it ("Sensor fault:
 SQM-L sensor"), Alpaca reports no data, and the other sensor's value is **not** used in its
-place. Pick the other sensor as authoritative to use it. The sensor that isn't authoritative
-never changes the safety verdict.
+place. Pick the other sensor as authoritative to use it: the dashboard's Sky Quality card names
+the missing sensor with a **Use SQM** (or **Use SQM-L**) button, and Settings shows the same note.
+The sensor that isn't authoritative never changes the safety verdict.
+
+**In Settings.** **Settings → Sensors → Sky sensors** lists the SQM and the SQM-L, each with its
+state and a **Use SQM** / **Use SQM-L** switch, the **I2C-2 SDA** and **I2C-2 SCL** pins (empty
+when not wired), **Authoritative reading** and **Show other reading** (both only matter with the
+two sensors on). Each sensor then has its own Sky quality card.
+
+**On the dashboard.** With both on, the Sky Quality card's big value is the authoritative
+reading with a pill naming it; with **Show other reading** on and the other sensor reporting,
+two more tiles show the other reading and the **Difference** (SQM-L − SQM), amber above
+1.5 mag/arcsec².
 
 An unplugged sensor is reported as a read error, never as a dark sky, and is found again
 without a restart when it is plugged back in (the device retries every 5 s, backing off to once
