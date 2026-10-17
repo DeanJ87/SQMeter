@@ -144,6 +144,30 @@ test('a failed sensor is its own card, not a Status row', async ({ page }) => {
   for (const title of ['Cloud Conditions', 'IR Sky Sensor']) await expect(card(page, title)).not.toContainText("can't be measured");
 });
 
+test('two sky sensors: the name pill, the other reading and the difference (spec 030)', async ({ page }) => {
+  // inventory: sky-source  inventory: sky-sensors
+  await open(page); // the demo has the SQM and the SQM-L on, SQM authoritative
+  const sky = card(page, 'Sky Quality');
+  await expect(sky.locator('.hero-pills .pill').first()).toHaveText('SQM');
+  await expect(sky.locator('.metric-tile', { hasText: 'SQM-L' })).toBeVisible();
+  await expect(sky.locator('.metric-tile', { hasText: 'Difference' })).toContainText('+');
+  await setConfig(page, { 'sky.showOther': false });
+  await expect(sky.locator('.metric-tile', { hasText: 'Difference' })).toHaveCount(0);
+  await setConfig(page, { 'sky.sqmlEnabled': false });
+  await expect(sky.locator('.hero-pills .pill', { hasText: /^SQM$/ })).toHaveCount(0);
+});
+
+test('a failed SQM-L: its own fault card, or a named Sky Quality card with a switch (spec 030 FR-010)', async ({ page }) => {
+  // inventory: sky-other-fault  inventory: sky-authoritative-missing
+  await open(page, '?scenario=fail-sqml');
+  await expect(card(page, 'SQM-L').locator('.pill')).toHaveText(/Error|Stale/, { timeout: 15_000 });
+  await setConfig(page, { 'sky.authoritative': 'sqml' });
+  const sky = card(page, 'Sky Quality');
+  await expect(sky).toContainText('SQM-L', { timeout: 15_000 });
+  await sky.getByRole('button', { name: 'Use SQM' }).click();
+  await expect(sky.locator('.hero-pills .pill').first()).toHaveText('SQM', { timeout: 15_000 });
+});
+
 test('a language that could not load is one row', async ({ page }) => {
   // inventory: language
   test.setTimeout(60_000);

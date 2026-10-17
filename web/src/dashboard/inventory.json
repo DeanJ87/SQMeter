@@ -16,10 +16,7 @@
     {
       "id": "freshness",
       "label": "dashboard.live",
-      "sources": [
-        "readings.dataStale",
-        "readings.dataAgeMs"
-      ],
+      "sources": ["readings.dataStale", "readings.dataAgeMs"],
       "requiredBy": "025 FR-014, 010, 026 FR-002 (amended: Status card shows only what no other card does)",
       "visibility": {
         "rule": "always"
@@ -56,10 +53,7 @@
     {
       "id": "rain-hold",
       "label": "glance.rainHeld",
-      "sources": [
-        "readings.rain.clearInSeconds",
-        "readings.rain.rainingNow"
-      ],
+      "sources": ["readings.rain.clearInSeconds", "readings.rain.rainingNow"],
       "requiredBy": "025 FR-012, 003",
       "visibility": {
         "rule": "when",
@@ -98,11 +92,7 @@
     {
       "id": "alerts-mode-not-in-effect",
       "label": "status.sendMode",
-      "sources": [
-        "deps.D-12",
-        "status.alpaca.enabled",
-        "status.alpaca"
-      ],
+      "sources": ["deps.D-12", "status.alpaca.enabled", "status.alpaca"],
       "requiredBy": "025 FR-010, 020 D-12, 026 FR-002",
       "visibility": {
         "rule": "when",
@@ -115,12 +105,7 @@
     {
       "id": "no-channel",
       "label": "status.channels",
-      "sources": [
-        "deps.D-01",
-        "deps.D-02",
-        "deps.D-03",
-        "deps.D-04"
-      ],
+      "sources": ["deps.D-01", "deps.D-02", "deps.D-03", "deps.D-04"],
       "requiredBy": "025 FR-011, US1-6, 026 FR-002",
       "visibility": {
         "rule": "when",
@@ -284,13 +269,7 @@
     {
       "id": "sky-card",
       "label": "dashboard.skyQuality",
-      "sources": [
-        "readings.sky.sqm",
-        "readings.sky.bortle",
-        "readings.sky.nelm",
-        "readings.sky.description",
-        "readings.sky"
-      ],
+      "sources": ["readings.sky.sqm", "readings.sky.bortle", "readings.sky.nelm", "readings.sky.description", "readings.sky"],
       "requiredBy": "001, 010",
       "visibility": {
         "rule": "always"
@@ -300,15 +279,82 @@
       "test": "sky-card"
     },
     {
+      "id": "sky-source",
+      "label": "sensor.sqml",
+      "sources": ["readings.sky.source"],
+      "requiredBy": "030 FR-007, FR-012",
+      "visibility": {
+        "rule": "when",
+        "when": "both sky sensors are on"
+      },
+      "priority": 10,
+      "location": "card:sky",
+      "test": "sky-source",
+      "note": "The authoritative sensor's name pill (SQM or SQM-L) on the Sky Quality card; none with one sensor."
+    },
+    {
+      "id": "sky-sensors",
+      "label": "dashboard.skyDifference",
+      "sources": [
+        "readings.skySensors",
+        "readings.skySensors.deltaSqm",
+        "readings.skySensors.sqm",
+        "readings.skySensors.sqml",
+        "readings.skySensors.sqm.sqm",
+        "readings.skySensors.sqm.status",
+        "readings.skySensors.sqml.sqm",
+        "readings.skySensors.sqml.status"
+      ],
+      "requiredBy": "030 FR-006, FR-008, FR-012",
+      "visibility": {
+        "rule": "when",
+        "when": "both sky sensors are on, Show other reading is on and the other sensor is ok"
+      },
+      "priority": 10,
+      "location": "card:sky",
+      "test": "sky-sensors",
+      "note": "The other sensor's reading and the Difference (SQM-L - SQM) as two more tiles on the Sky Quality card; the Difference is amber above 1.5 mag/arcsec²."
+    },
+    {
+      "id": "sky-authoritative-missing",
+      "label": "dashboard.useSkySensor",
+      "sources": [],
+      "requiredBy": "030 FR-010",
+      "visibility": {
+        "rule": "when",
+        "when": "the SQM-L is on or chosen and the authoritative sensor is off or not ok"
+      },
+      "priority": 10,
+      "location": "card:sky",
+      "test": "sky-authoritative-missing",
+      "note": "The Sky Quality card names the missing authoritative sensor and offers Use <other>; the device never falls back on its own."
+    },
+    {
+      "id": "sky-other-fault",
+      "label": "sensor.sqml",
+      "sources": [
+        "status.skySensors",
+        "status.skySensors.sqm",
+        "status.skySensors.sqml",
+        "status.skySensors.sqm.status",
+        "status.skySensors.sqm.ageMs",
+        "status.skySensors.sqml.status",
+        "status.skySensors.sqml.ageMs"
+      ],
+      "requiredBy": "030 FR-012, 025 D6",
+      "visibility": {
+        "rule": "when",
+        "when": "both sky sensors are on and the non-authoritative one answered and then failed"
+      },
+      "priority": 5,
+      "location": "card:sensor",
+      "test": "sky-other-fault",
+      "note": "A fault card titled with the sensor's name; none for a sensor that hasn't answered since boot."
+    },
+    {
       "id": "light-card",
       "label": "dashboard.lightSensor",
-      "sources": [
-        "readings.light.lux",
-        "readings.light.visible",
-        "readings.light.infrared",
-        "readings.light.full",
-        "readings.light"
-      ],
+      "sources": ["readings.light.lux", "readings.light.visible", "readings.light.infrared", "readings.light.full", "readings.light"],
       "requiredBy": "001, 010",
       "visibility": {
         "rule": "always"
@@ -384,13 +430,7 @@
     {
       "id": "wind-card",
       "label": "dashboard.wind",
-      "sources": [
-        "readings.wind.speed",
-        "readings.wind.gust",
-        "readings.wind.direction",
-        "readings.wind.vaneFault",
-        "readings.wind"
-      ],
+      "sources": ["readings.wind.speed", "readings.wind.gust", "readings.wind.direction", "readings.wind.vaneFault", "readings.wind"],
       "requiredBy": "004, 010",
       "visibility": {
         "rule": "when",
@@ -464,10 +504,7 @@
     {
       "id": "mdns",
       "label": "glance.localName",
-      "sources": [
-        "status.wifi.hostname",
-        "status.wifi.mdns"
-      ],
+      "sources": ["status.wifi.hostname", "status.wifi.mdns"],
       "requiredBy": "025 FR-015, 013",
       "visibility": {
         "rule": "when",
@@ -480,12 +517,7 @@
     {
       "id": "mqtt-state",
       "label": "glance.mqtt",
-      "sources": [
-        "status.mqtt.enabled",
-        "status.mqtt.connected",
-        "status.mqtt.state",
-        "status.mqtt"
-      ],
+      "sources": ["status.mqtt.enabled", "status.mqtt.connected", "status.mqtt.state", "status.mqtt"],
       "requiredBy": "025 FR-015, 013",
       "visibility": {
         "rule": "when",
@@ -1027,53 +1059,212 @@
       "shownOn": "Settings → Time & Location; Sun & Moon card"
     },
     {
-      "match": "status.skySensors.sqm.sampleCount",
-      "reason": "Sky sensor averaging-window progress, for dark calibration",
-      "shownOn": "Settings → Sensors"
+      "match": "readings.skySensors.sqm.ageMs",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
     },
     {
-      "match": "status.skySensors.sqml.sampleCount",
+      "match": "readings.skySensors.sqm.averagingWindowSeconds",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.bortle",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.calibrated",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.description",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.gain",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.integrationMs",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.lux",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.nelm",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.nightMode",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.rawSqm",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.saturated",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.ageMs",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.averagingWindowSeconds",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.bortle",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.calibrated",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.description",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.gain",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.integrationMs",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.lux",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.nelm",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.nightMode",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.rawSqm",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.saturated",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.skySensors.sqm.detected",
+      "reason": "Whether the sky sensor answered (spec 030)",
+      "shownOn": "Settings → Sensors (Sky sensors row)"
+    },
+    {
+      "match": "status.skySensors.sqm.sampleCount",
       "reason": "Sky sensor averaging-window progress, for dark calibration",
-      "shownOn": "Settings → Sensors"
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
     },
     {
       "match": "status.skySensors.sqm.windowSamples",
       "reason": "Sky sensor averaging-window size, for dark calibration",
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
+    },
+    {
+      "match": "status.skySensors.sqm.nightMode",
+      "reason": "Whether the sky sensor sees light; shown beside the averaging window",
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
+    },
+    {
+      "match": "status.skySensors.sqm.darkVisibleOffset",
+      "reason": "The same value as the saved skyCalibration(L).darkVisibleOffset, which the sensor's Sky quality card shows",
       "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "status.skySensors.sqm.gain",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.skySensors.sqm.integrationMs",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.skySensors.sqm.saturated",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.skySensors.sqml.detected",
+      "reason": "Whether the sky sensor answered (spec 030)",
+      "shownOn": "Settings → Sensors (Sky sensors row)"
+    },
+    {
+      "match": "status.skySensors.sqml.sampleCount",
+      "reason": "Sky sensor averaging-window progress, for dark calibration",
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
     },
     {
       "match": "status.skySensors.sqml.windowSamples",
       "reason": "Sky sensor averaging-window size, for dark calibration",
-      "shownOn": "Settings → Sensors"
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
     },
     {
-      "match": "status.skySensors.sqm.darkVisibleOffset",
-      "reason": "Sky sensor dark calibration offset",
-      "shownOn": "Settings → Sensors"
+      "match": "status.skySensors.sqml.nightMode",
+      "reason": "Whether the sky sensor sees light; shown beside the averaging window",
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
     },
     {
       "match": "status.skySensors.sqml.darkVisibleOffset",
-      "reason": "Sky sensor dark calibration offset",
+      "reason": "The same value as the saved skyCalibration(L).darkVisibleOffset, which the sensor's Sky quality card shows",
       "shownOn": "Settings → Sensors"
     },
     {
-      "match": "readings.sky.source",
-      "reason": "Which sky sensor counts (spec 030); the Sky card's name pill is pending the T022 mockup review",
+      "match": "status.skySensors.sqml.gain",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
       "shownOn": "API (docs: troubleshooting)"
     },
     {
-      "match": "readings.skySensors.**",
-      "reason": "Each sky sensor's own reading (spec 030); the Sky card tiles are pending the T022 mockup review",
+      "match": "status.skySensors.sqml.integrationMs",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
       "shownOn": "API (docs: troubleshooting)"
     },
     {
-      "match": "status.skySensors.**",
-      "reason": "Each sky sensor's health (spec 030); glance tiles and Settings rows are pending the T022 mockup review",
+      "match": "status.skySensors.sqml.saturated",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
       "shownOn": "API (docs: troubleshooting)"
     },
     {
       "match": "deps.D-39",
-      "reason": "A save the device refuses; shown on its Settings row"
+      "reason": "Doesn't affect safety or alerts; the SQM-L switch is blocked with its reason on its Settings row"
+    },
+    {
+      "match": "deps.D-42",
+      "reason": "A save the device refuses; shown inline on the I2C-2 pin fields in Settings"
     },
     {
       "match": "deps.D-40",
