@@ -280,6 +280,13 @@
         "rawSqm": {
           "type": "number"
         },
+        "source": {
+          "type": "string",
+          "enum": [
+            "sqm",
+            "sqml"
+          ]
+        },
         "sqm": {
           "type": "number"
         },
@@ -290,6 +297,117 @@
       "required": [
         "status"
       ],
+      "additionalProperties": false
+    },
+    "skySensors": {
+      "type": "object",
+      "properties": {
+        "deltaSqm": {
+          "type": "number"
+        },
+        "sqm": {
+          "type": "object",
+          "properties": {
+            "ageMs": {
+              "type": "number"
+            },
+            "averagingWindowSeconds": {
+              "type": "number"
+            },
+            "bortle": {
+              "type": "number"
+            },
+            "calibrated": {
+              "type": "boolean"
+            },
+            "description": {
+              "type": "string"
+            },
+            "gain": {
+              "type": "string"
+            },
+            "integrationMs": {
+              "type": "number"
+            },
+            "lux": {
+              "type": "number"
+            },
+            "nelm": {
+              "type": "number"
+            },
+            "nightMode": {
+              "type": "boolean"
+            },
+            "rawSqm": {
+              "type": "number"
+            },
+            "saturated": {
+              "type": "boolean"
+            },
+            "sqm": {
+              "type": "number"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "sqml": {
+          "type": "object",
+          "properties": {
+            "ageMs": {
+              "type": "number"
+            },
+            "averagingWindowSeconds": {
+              "type": "number"
+            },
+            "bortle": {
+              "type": "number"
+            },
+            "calibrated": {
+              "type": "boolean"
+            },
+            "description": {
+              "type": "string"
+            },
+            "gain": {
+              "type": "string"
+            },
+            "integrationMs": {
+              "type": "number"
+            },
+            "lux": {
+              "type": "number"
+            },
+            "nelm": {
+              "type": "number"
+            },
+            "nightMode": {
+              "type": "boolean"
+            },
+            "rawSqm": {
+              "type": "number"
+            },
+            "saturated": {
+              "type": "boolean"
+            },
+            "sqm": {
+              "type": "number"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        }
+      },
       "additionalProperties": false
     },
     "timeValid": {

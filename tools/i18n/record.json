@@ -519,6 +519,8 @@
     "sensor.infrared": "333dd3d9c5",
     "sensor.light": "f2c1a5b443",
     "sensor.rain": "f9335b7be4",
+    "sensor.sqm": "37a505099c",
+    "sensor.sqml": "81c7e5a983",
     "sensor.wind": "7a31d0c802",
     "settings.alertSchedule.alertsGoOutWheneverSomething": "a3f86e938b",
     "settings.alertSchedule.alertsResumeWhenAnImaging": "9567eb24d4",

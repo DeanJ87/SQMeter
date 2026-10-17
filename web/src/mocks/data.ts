@@ -24,6 +24,7 @@ const lightReadings = (sqm: number): Pick<SensorData, 'light' | 'sky'> => {
     },
     sky: {
       status: 'ok',
+      source: 'sqm',
       sqm: round(sqm, 2),
       rawSqm: round(sqm - 0.07, 2),
       nelm: round(jitter(6.18, 0.05), 1),
@@ -33,6 +34,27 @@ const lightReadings = (sqm: number): Pick<SensorData, 'light' | 'sky'> => {
       averagingWindowSeconds: 90,
     },
   };
+};
+
+// Both sky sensors (spec 030): the SQM-L reads ~0.25 darker through its narrow lens.
+const skySensorReadings = (sqm: number): Pick<SensorData, 'skySensors'> => {
+  const entry = (value: number, gain: string) => ({
+    status: 'ok' as const,
+    ageMs: 400,
+    sqm: round(value, 2),
+    rawSqm: round(value - 0.07, 2),
+    nelm: round(jitter(6.18, 0.05), 1),
+    bortle: 2,
+    description: 'Typical truly dark site',
+    calibrated: false,
+    averagingWindowSeconds: 90,
+    lux: round(Math.pow(10, (12.6 - value) / 2.5), 6),
+    gain,
+    integrationMs: 600,
+    saturated: false,
+    nightMode: true,
+  });
+  return { skySensors: { sqm: entry(sqm, 'MAX'), sqml: entry(sqm + 0.25, 'MAX'), deltaSqm: 0.25 } };
 };
 
 const climateReadings = (): Pick<SensorData, 'environment' | 'infrared' | 'clouds'> => ({
@@ -114,6 +136,7 @@ export function generateSensorData(): SensorData {
     dataAgeMs: 400,
     dataStale: false,
     ...lightReadings(sqm),
+    ...skySensorReadings(sqm),
     ...climateReadings(),
     ...fieldReadings(),
   };
@@ -242,6 +265,32 @@ export const mockStatus: SystemStatus = {
     gps: { status: 'ok', ageMs: 800 },
     rain: { status: 'ok', ageMs: 40 },
     wind: { status: 'ok', ageMs: 900, vaneStatus: 'ok' },
+  },
+  skySensors: {
+    sqm: {
+      status: 'ok',
+      ageMs: 400,
+      detected: true,
+      gain: 'MAX',
+      integrationMs: 600,
+      saturated: false,
+      nightMode: true,
+      sampleCount: 150,
+      windowSamples: 150,
+      darkVisibleOffset: 0,
+    },
+    sqml: {
+      status: 'ok',
+      ageMs: 380,
+      detected: true,
+      gain: 'MAX',
+      integrationMs: 600,
+      saturated: false,
+      nightMode: true,
+      sampleCount: 150,
+      windowSamples: 150,
+      darkVisibleOffset: 0,
+    },
   },
   diagnostics: {
     light: {

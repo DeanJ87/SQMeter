@@ -526,6 +526,8 @@
   "sensor.infrared": "红外天空传感器",
   "sensor.light": "光传感器",
   "sensor.rain": "雨量传感器",
+  "sensor.sqm": "SQM",
+  "sensor.sqml": "SQM-L",
   "sensor.wind": "风速计",
   "settings.alertSchedule.alertsGoOutWheneverSomething": "除非暂停，否则每次有情况发生都会发送警报。",
   "settings.alertSchedule.alertsResumeWhenAnImaging": "拍摄软件连接或手动恢复后，警报将恢复。",

@@ -526,6 +526,8 @@
   "sensor.infrared": "IR 하늘 센서",
   "sensor.light": "광 센서",
   "sensor.rain": "강우 센서",
+  "sensor.sqm": "SQM",
+  "sensor.sqml": "SQM-L",
   "sensor.wind": "풍속계",
   "settings.alertSchedule.alertsGoOutWheneverSomething": "일시 중지하지 않는 한, 무슨 일이 생길 때마다 알림을 보냅니다.",
   "settings.alertSchedule.alertsResumeWhenAnImaging": " 촬영 앱이 연결되거나 직접 재개하면 알림이 다시 시작됩니다.",

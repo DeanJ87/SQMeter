@@ -46,6 +46,21 @@ export interface SensorStatusEntry {
   ageMs?: number; // absent when missing
 }
 
+// /api/status skySensors: one entry per enabled sky sensor (spec 030).
+export interface SkySensorHealth {
+  status: SensorHealth;
+  ageMs?: number; // absent when missing
+  detected: boolean;
+  // Only when detected:
+  gain?: string;
+  integrationMs?: number;
+  saturated?: boolean;
+  nightMode?: boolean;
+  sampleCount?: number;
+  windowSamples?: number;
+  darkVisibleOffset?: number;
+}
+
 export interface SystemStatus {
   firmware?: {
     name: string;
@@ -170,6 +185,7 @@ export interface SystemStatus {
     rain?: SensorStatusEntry;
     wind?: SensorStatusEntry & { vaneStatus: 'ok' | 'fault' | 'off' };
   };
+  skySensors?: { sqm?: SkySensorHealth; sqml?: SkySensorHealth };
   diagnostics?: {
     light?: LightDiagnostics;
     rain?: RainDiagnostics;

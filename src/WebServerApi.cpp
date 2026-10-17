@@ -170,7 +170,8 @@ namespace SQM
             request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
             return;
         }
-        tslSensor.configureSkyMeasurement(configOpt->skyAveraging, configOpt->skyCalibration);
+        for (SkyRole role : {SkyRole::Sqm, SkyRole::Sqml})
+            skySensor(role).configureSkyMeasurement(configOpt->averaging(role), configOpt->calibration(role));
         if (previousLanguage != configOpt->language)
             languagePack->onLanguageChanged(configOpt->language);
         request->send(200, "application/json", "{\"success\":true}");

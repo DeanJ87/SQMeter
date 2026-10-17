@@ -470,6 +470,8 @@ void test_rainrate_not_implemented_when_rain_disabled()
 void test_sky_copy_follows_the_authoritative_role();
 void test_sky_copy_never_falls_back();
 void test_sky_copy_one_sensor_is_unchanged();
+void test_sky_readings_per_role_status();
+void test_sky_status_documents();
 
 int main()
 {
@@ -493,5 +495,7 @@ int main()
     RUN_TEST(test_sky_copy_follows_the_authoritative_role);
     RUN_TEST(test_sky_copy_never_falls_back);
     RUN_TEST(test_sky_copy_one_sensor_is_unchanged);
+    RUN_TEST(test_sky_readings_per_role_status);
+    RUN_TEST(test_sky_status_documents);
     return UNITY_END();
 }

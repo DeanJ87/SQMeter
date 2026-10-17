@@ -50,6 +50,7 @@ namespace SQM
                 JsonObject light = group(root, "light", s.light.status, s.light.ageMs);
                 JsonObject sky = root.createNestedObject("sky");
                 sky["status"] = statusName(s.light.status);
+                sky["source"] = skyRoleName(s.source);
                 if (s.light.status == Status::Ok)
                 {
                     light["lux"] = rounded(s.light.lux, 6);
@@ -70,6 +71,42 @@ namespace SQM
                     sky["calibrated"] = s.sky.calibrated;
                     sky["averagingWindowSeconds"] = s.sky.averagingWindowSeconds;
                 }
+            }
+
+            void writeSkySensor(JsonObject parent, const char *name, const SkySensorEntry &e)
+            {
+                JsonObject out = group(parent, name, e.status, e.ageMs);
+                if (e.status != Status::Ok)
+                    return;
+                out["sqm"] = rounded(e.sqm, 2);
+                out["rawSqm"] = rounded(e.rawSqm, 2);
+                out["nelm"] = rounded(e.nelm, 1);
+                out["bortle"] = e.bortle;
+                out["description"] = e.description;
+                out["calibrated"] = e.calibrated;
+                out["averagingWindowSeconds"] = e.averagingWindowSeconds;
+                out["lux"] = rounded(e.lux, 6);
+                out["gain"] = e.gain;
+                out["integrationMs"] = e.integrationMs;
+                out["saturated"] = e.saturated;
+                out["nightMode"] = e.nightMode;
+            }
+
+            // Each enabled sky sensor under its own name (spec 030 FR-008).
+            void writeSkySensors(JsonObject root, const Snapshot &s)
+            {
+                const SkySensorEntry &sqm = s.skySensors[skyRoleIndex(SkyRole::Sqm)];
+                const SkySensorEntry &sqml = s.skySensors[skyRoleIndex(SkyRole::Sqml)];
+                if (!sqm.present && !sqml.present)
+                    return;
+                JsonObject sensors = root.createNestedObject("skySensors");
+                if (sqm.present)
+                    writeSkySensor(sensors, skyRoleName(SkyRole::Sqm), sqm);
+                if (sqml.present)
+                    writeSkySensor(sensors, skyRoleName(SkyRole::Sqml), sqml);
+                const bool bothOk = sqm.present && sqml.present && sqm.status == Status::Ok && sqml.status == Status::Ok;
+                if (bothOk)
+                    sensors["deltaSqm"] = rounded(sqml.sqm - sqm.sqm, 2);
             }
 
             void writeEnvironment(JsonObject root, const Snapshot &s)
@@ -161,7 +198,10 @@ namespace SQM
             root["dataAgeMs"] = s.dataAgeMs;
             root["dataStale"] = s.dataStale;
             if (groups.sky)
+            {
                 writeSky(root, s);
+                writeSkySensors(root, s);
+            }
             if (groups.environment)
                 writeEnvironment(root, s);
             if (groups.clouds)

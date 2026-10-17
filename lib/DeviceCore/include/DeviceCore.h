@@ -102,6 +102,9 @@ namespace SQM
         uint16_t windowSamples(const TSL2591Diagnostics &diag);
         // Bring-up diagnostics (/api/status "diagnostics", MQTT <base>/diagnostics).
         void writeDiagnostics(JsonObject root, const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
+        // /api/status "skySensors": health and diagnostics of each enabled sky
+        // sensor (spec 030); nothing when neither is enabled.
+        void writeSkySensorStatus(JsonObject root, const SensorSnapshot &snapshot, const Readings::Snapshot &readings);
         // Per-sensor health (/api/status "sensors").
         void writeSensorHealth(JsonObject sensors, const Readings::Snapshot &readings, const Config &cfg);
 

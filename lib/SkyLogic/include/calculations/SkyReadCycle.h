@@ -32,6 +32,10 @@ namespace SQM
         };
 
         static constexpr uint32_t MARGIN_MS = 20;
+        // How long after the start the counts are ready: the integration
+        // plus 20% (the TSL2591's internal clock tolerance, as the Adafruit
+        // library allows) and a margin.
+        static constexpr uint32_t collectDelayMs(uint16_t integrationMs) { return integrationMs + integrationMs / 5 + MARGIN_MS; }
         static constexpr uint8_t REBEGIN_AFTER = 3;
         static constexpr uint32_t BACKOFF_FIRST_MS = 5000;
         static constexpr uint32_t BACKOFF_MAX_MS = 60000;

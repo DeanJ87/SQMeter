@@ -857,6 +857,12 @@
     "sensor": {
       "type": "object",
       "properties": {
+        "i2c2SCL": {
+          "type": "number"
+        },
+        "i2c2SDA": {
+          "type": "number"
+        },
         "i2cFrequency": {
           "type": "number"
         },
@@ -878,6 +884,34 @@
       ],
       "additionalProperties": false
     },
+    "sky": {
+      "type": "object",
+      "properties": {
+        "authoritative": {
+          "type": "string",
+          "enum": [
+            "sqm",
+            "sqml"
+          ]
+        },
+        "showOther": {
+          "type": "boolean"
+        },
+        "sqmEnabled": {
+          "type": "boolean"
+        },
+        "sqmlEnabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "authoritative",
+        "showOther",
+        "sqmEnabled",
+        "sqmlEnabled"
+      ],
+      "additionalProperties": false
+    },
     "skyAveraging": {
       "type": "object",
       "properties": {
@@ -890,7 +924,55 @@
       ],
       "additionalProperties": false
     },
+    "skyAveragingL": {
+      "type": "object",
+      "properties": {
+        "windowSeconds": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "windowSeconds"
+      ],
+      "additionalProperties": false
+    },
     "skyCalibration": {
+      "type": "object",
+      "properties": {
+        "darkCalibratedAt": {
+          "type": "number"
+        },
+        "darkFullOffset": {
+          "type": "number"
+        },
+        "darkIrOffset": {
+          "type": "number"
+        },
+        "darkSampleCount": {
+          "type": "number"
+        },
+        "darkVisibleOffset": {
+          "type": "number"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "sqmOffset": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "darkCalibratedAt",
+        "darkFullOffset",
+        "darkIrOffset",
+        "darkSampleCount",
+        "darkVisibleOffset",
+        "enabled",
+        "sqmOffset"
+      ],
+      "additionalProperties": false
+    },
+    "skyCalibrationL": {
       "type": "object",
       "properties": {
         "darkCalibratedAt": {

@@ -20,4 +20,7 @@ namespace SQM::Core::Detail
 
     // Each sky sensor's metrics and the authoritative copy (spec 030 research D3).
     void deriveSky(SensorSnapshot &snapshot, const Config &cfg);
+
+    // readings sky.source and skySensors (spec 030 FR-008).
+    void readSkySensors(Readings::Snapshot &r, const SensorSnapshot &snapshot, uint32_t now, uint32_t staleAfter);
 } // namespace SQM::Core::Detail

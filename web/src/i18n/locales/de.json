@@ -529,6 +529,8 @@
   "sensor.infrared": "IR-Himmelssensor",
   "sensor.light": "Lichtsensor",
   "sensor.rain": "Regensensor",
+  "sensor.sqm": "SQM",
+  "sensor.sqml": "SQM-L",
   "sensor.wind": "Anemometer",
   "settings.alertSchedule.alertsGoOutWheneverSomething": "Warnungen werden gesendet, sobald etwas passiert – außer Sie pausieren sie.",
   "settings.alertSchedule.alertsResumeWhenAnImaging": " Warnungen laufen weiter, sobald sich eine Aufnahme-App verbindet oder Sie sie fortsetzen.",

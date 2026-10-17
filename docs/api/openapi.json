@@ -3059,6 +3059,12 @@
           "sensor": {
             "type": "object",
             "properties": {
+              "i2c2SCL": {
+                "type": "number"
+              },
+              "i2c2SDA": {
+                "type": "number"
+              },
               "i2cFrequency": {
                 "type": "number"
               },
@@ -3080,6 +3086,34 @@
             ],
             "additionalProperties": false
           },
+          "sky": {
+            "type": "object",
+            "properties": {
+              "authoritative": {
+                "type": "string",
+                "enum": [
+                  "sqm",
+                  "sqml"
+                ]
+              },
+              "showOther": {
+                "type": "boolean"
+              },
+              "sqmEnabled": {
+                "type": "boolean"
+              },
+              "sqmlEnabled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "authoritative",
+              "showOther",
+              "sqmEnabled",
+              "sqmlEnabled"
+            ],
+            "additionalProperties": false
+          },
           "skyAveraging": {
             "type": "object",
             "properties": {
@@ -3092,7 +3126,55 @@
             ],
             "additionalProperties": false
           },
+          "skyAveragingL": {
+            "type": "object",
+            "properties": {
+              "windowSeconds": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "windowSeconds"
+            ],
+            "additionalProperties": false
+          },
           "skyCalibration": {
+            "type": "object",
+            "properties": {
+              "darkCalibratedAt": {
+                "type": "number"
+              },
+              "darkFullOffset": {
+                "type": "number"
+              },
+              "darkIrOffset": {
+                "type": "number"
+              },
+              "darkSampleCount": {
+                "type": "number"
+              },
+              "darkVisibleOffset": {
+                "type": "number"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "sqmOffset": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "darkCalibratedAt",
+              "darkFullOffset",
+              "darkIrOffset",
+              "darkSampleCount",
+              "darkVisibleOffset",
+              "enabled",
+              "sqmOffset"
+            ],
+            "additionalProperties": false
+          },
+          "skyCalibrationL": {
             "type": "object",
             "properties": {
               "darkCalibratedAt": {
@@ -3863,6 +3945,12 @@
           "sensor": {
             "type": "object",
             "properties": {
+              "i2c2SCL": {
+                "type": "number"
+              },
+              "i2c2SDA": {
+                "type": "number"
+              },
               "i2cFrequency": {
                 "type": "number"
               },
@@ -3878,6 +3966,28 @@
             },
             "additionalProperties": false
           },
+          "sky": {
+            "type": "object",
+            "properties": {
+              "authoritative": {
+                "type": "string",
+                "enum": [
+                  "sqm",
+                  "sqml"
+                ]
+              },
+              "showOther": {
+                "type": "boolean"
+              },
+              "sqmEnabled": {
+                "type": "boolean"
+              },
+              "sqmlEnabled": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
           "skyAveraging": {
             "type": "object",
             "properties": {
@@ -3887,7 +3997,43 @@
             },
             "additionalProperties": false
           },
+          "skyAveragingL": {
+            "type": "object",
+            "properties": {
+              "windowSeconds": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
           "skyCalibration": {
+            "type": "object",
+            "properties": {
+              "darkCalibratedAt": {
+                "type": "number"
+              },
+              "darkFullOffset": {
+                "type": "number"
+              },
+              "darkIrOffset": {
+                "type": "number"
+              },
+              "darkSampleCount": {
+                "type": "number"
+              },
+              "darkVisibleOffset": {
+                "type": "number"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "sqmOffset": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          "skyCalibrationL": {
             "type": "object",
             "properties": {
               "darkCalibratedAt": {
@@ -4323,6 +4469,13 @@
               "rawSqm": {
                 "type": "number"
               },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "sqm",
+                  "sqml"
+                ]
+              },
               "sqm": {
                 "type": "number"
               },
@@ -4333,6 +4486,117 @@
             "required": [
               "status"
             ],
+            "additionalProperties": false
+          },
+          "skySensors": {
+            "type": "object",
+            "properties": {
+              "deltaSqm": {
+                "type": "number"
+              },
+              "sqm": {
+                "type": "object",
+                "properties": {
+                  "ageMs": {
+                    "type": "number"
+                  },
+                  "averagingWindowSeconds": {
+                    "type": "number"
+                  },
+                  "bortle": {
+                    "type": "number"
+                  },
+                  "calibrated": {
+                    "type": "boolean"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "gain": {
+                    "type": "string"
+                  },
+                  "integrationMs": {
+                    "type": "number"
+                  },
+                  "lux": {
+                    "type": "number"
+                  },
+                  "nelm": {
+                    "type": "number"
+                  },
+                  "nightMode": {
+                    "type": "boolean"
+                  },
+                  "rawSqm": {
+                    "type": "number"
+                  },
+                  "saturated": {
+                    "type": "boolean"
+                  },
+                  "sqm": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              "sqml": {
+                "type": "object",
+                "properties": {
+                  "ageMs": {
+                    "type": "number"
+                  },
+                  "averagingWindowSeconds": {
+                    "type": "number"
+                  },
+                  "bortle": {
+                    "type": "number"
+                  },
+                  "calibrated": {
+                    "type": "boolean"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "gain": {
+                    "type": "string"
+                  },
+                  "integrationMs": {
+                    "type": "number"
+                  },
+                  "lux": {
+                    "type": "number"
+                  },
+                  "nelm": {
+                    "type": "number"
+                  },
+                  "nightMode": {
+                    "type": "boolean"
+                  },
+                  "rawSqm": {
+                    "type": "number"
+                  },
+                  "saturated": {
+                    "type": "boolean"
+                  },
+                  "sqm": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            },
             "additionalProperties": false
           },
           "timeValid": {
@@ -5388,6 +5652,92 @@
               "locationSource",
               "nightKnown"
             ],
+            "additionalProperties": false
+          },
+          "skySensors": {
+            "type": "object",
+            "properties": {
+              "sqm": {
+                "type": "object",
+                "properties": {
+                  "ageMs": {
+                    "type": "number"
+                  },
+                  "darkVisibleOffset": {
+                    "type": "number"
+                  },
+                  "detected": {
+                    "type": "boolean"
+                  },
+                  "gain": {
+                    "type": "string"
+                  },
+                  "integrationMs": {
+                    "type": "number"
+                  },
+                  "nightMode": {
+                    "type": "boolean"
+                  },
+                  "sampleCount": {
+                    "type": "number"
+                  },
+                  "saturated": {
+                    "type": "boolean"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "windowSamples": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "detected",
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              "sqml": {
+                "type": "object",
+                "properties": {
+                  "ageMs": {
+                    "type": "number"
+                  },
+                  "darkVisibleOffset": {
+                    "type": "number"
+                  },
+                  "detected": {
+                    "type": "boolean"
+                  },
+                  "gain": {
+                    "type": "string"
+                  },
+                  "integrationMs": {
+                    "type": "number"
+                  },
+                  "nightMode": {
+                    "type": "boolean"
+                  },
+                  "sampleCount": {
+                    "type": "number"
+                  },
+                  "saturated": {
+                    "type": "boolean"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "windowSamples": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "detected",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            },
             "additionalProperties": false
           },
           "stackFree": {

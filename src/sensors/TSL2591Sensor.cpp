@@ -3,6 +3,7 @@
 #include "Logger.h"
 #include <ArduinoJson.h>
 #include <algorithm>
+#include <new>
 
 namespace SQM
 {
@@ -51,57 +52,144 @@ namespace SQM
             500,
             600,
         };
+
+        // Registers (TSL2591 datasheet): command bit + normal transaction.
+        constexpr uint8_t I2C_ADDRESS = TSL2591_ADDR;
+        constexpr uint8_t COMMAND = 0xA0;
+        constexpr uint8_t REG_ENABLE = 0x00;
+        constexpr uint8_t REG_CHAN0_LOW = 0x14; // C0DATAL, C0DATAH, C1DATAL, C1DATAH
+        constexpr uint8_t ENABLE_ADC = 0x03;    // PON | AEN
+        constexpr uint8_t ENABLE_OFF = 0x00;
     } // namespace
 
-    TSL2591Sensor::TSL2591Sensor()
-        : sensor(std::make_unique<Adafruit_TSL2591>(2591))
+    TSL2591Sensor::TSL2591Sensor(TwoWire &bus, SkyRole role)
+        : bus(bus),
+          skyRole(role),
+          sensor(std::make_unique<Adafruit_TSL2591>(2591))
     {
     }
 
     bool TSL2591Sensor::begin()
     {
-        Logger::info(TAG, "Initializing TSL2591 sensor");
-
-        if (!sensor->begin())
+        const uint32_t now = millis();
+        if (!sensor->begin(&bus))
         {
-            Logger::error(TAG, "Failed to initialize TSL2591");
-            initialized = false;
+            if (!beginFailureLogged)
+                Logger::error(tag(), "Not found on its I2C bus; retrying in the background");
+            beginFailureLogged = true;
+            cycle.beginDone(now, false);
             return false;
         }
+        if (!samples)
+        {
+            samples.reset(new (std::nothrow) SampleBuffers());
+            if (!samples)
+            {
+                Logger::error(tag(), "No memory for the averaging window");
+                cycle.beginDone(now, false);
+                return false;
+            }
+        }
 
-        // MAX gain (9876x) and longest integration time for dark sky monitoring
-        // This gives maximum sensitivity for detecting very low light levels
+        // MAX gain (9876x) and the longest integration for dark skies.
         gainIndex = 3;
         integrationIndex = 5;
         applyRangeSettings();
+        resetRollingSamples();
 
         initialized = true;
-        Logger::info(TAG, "TSL2591 initialized successfully (MAX gain 9876x, 600ms integration)");
+        beginFailureLogged = false;
+        cycle.beginDone(now, true);
+        Logger::info(tag(), "Initialized (MAX gain 9876x, 600ms integration)");
         return true;
     }
 
-    void TSL2591Sensor::update()
+    void TSL2591Sensor::tick(uint32_t nowMs)
     {
-        if (!initialized)
+        switch (cycle.next(nowMs, currentIntegrationMs()))
         {
+        case SkyReadCycle::Action::Begin:
+            rebegin(nowMs);
+            break;
+        case SkyReadCycle::Action::Start:
+            startIntegration(nowMs);
+            break;
+        case SkyReadCycle::Action::Collect:
+            collect(nowMs);
+            break;
+        case SkyReadCycle::Action::None:
+            break;
+        }
+    }
+
+    void TSL2591Sensor::rebegin(uint32_t nowMs)
+    {
+        (void)nowMs;
+        if (!begin() && !initialized)
             reading.status = SensorStatus::NotInitialized;
+    }
+
+    bool TSL2591Sensor::writeEnable(uint8_t value)
+    {
+        bus.beginTransmission(I2C_ADDRESS);
+        bus.write(static_cast<uint8_t>(COMMAND | REG_ENABLE));
+        bus.write(value);
+        return bus.endTransmission() == 0;
+    }
+
+    // CHAN0 then CHAN1 in one read: reading C0DATAL latches all four bytes.
+    bool TSL2591Sensor::readChannels(uint16_t &full, uint16_t &ir)
+    {
+        bus.beginTransmission(I2C_ADDRESS);
+        bus.write(static_cast<uint8_t>(COMMAND | REG_CHAN0_LOW));
+        if (bus.endTransmission(false) != 0)
+            return false;
+        if (bus.requestFrom(I2C_ADDRESS, static_cast<uint8_t>(4)) != 4)
+            return false;
+        uint8_t bytes[4];
+        for (uint8_t &b : bytes)
+            b = static_cast<uint8_t>(bus.read());
+        full = static_cast<uint16_t>(bytes[1] << 8 | bytes[0]);
+        ir = static_cast<uint16_t>(bytes[3] << 8 | bytes[2]);
+        return true;
+    }
+
+    void TSL2591Sensor::startIntegration(uint32_t nowMs)
+    {
+        if (writeEnable(ENABLE_ADC))
+        {
+            cycle.started(nowMs);
             return;
         }
+        reading.status = SensorStatus::ReadError;
+        cycle.startFailed(nowMs);
+        if (cycle.state() == SkyReadCycle::State::Absent)
+            Logger::warn(tag(), "Not responding; retrying in the background");
+    }
 
-        if (readSensor())
-        {
-            reading.status = SensorStatus::Ok;
-            lastUpdateTime = millis();
-        }
-        else
+    void TSL2591Sensor::collect(uint32_t nowMs)
+    {
+        uint16_t full = 0;
+        uint16_t ir = 0;
+        const bool ok = readChannels(full, ir);
+        writeEnable(ENABLE_OFF); // power down until the next start; a failure shows on the next read
+        cycle.collected(nowMs, ok);
+        if (!ok)
         {
             reading.status = SensorStatus::ReadError;
+            if (cycle.state() == SkyReadCycle::State::Absent)
+                Logger::warn(tag(), "Not responding; retrying in the background");
+            return;
         }
+        processCounts(full, ir);
+        reading.status = SensorStatus::Ok;
+        lastUpdateTime = millis();
     }
 
     void TSL2591Sensor::setGain(tsl2591Gain_t gain)
     {
-        if (sensor)
+        // Never before a successful begin(): the library would begin() itself on Wire.
+        if (sensor && initialized)
         {
             sensor->setGain(gain);
         }
@@ -109,7 +197,7 @@ namespace SQM
 
     void TSL2591Sensor::setIntegrationTime(tsl2591IntegrationTime_t time)
     {
-        if (sensor)
+        if (sensor && initialized)
         {
             sensor->setTiming(time);
         }
@@ -139,7 +227,7 @@ namespace SQM
         {
             // Sensor saturated - clamp to bright daylight value (~100,000 lux)
             Logger::debug(
-                TAG,
+                tag(),
                 "Sensor saturated (bright daylight) - Full: %u, IR: %u, Lux clamped to %.0f",
                 reading.full,
                 reading.infrared,
@@ -156,11 +244,10 @@ namespace SQM
         return lux < 0.0F ? 0.0F : lux;
     }
 
-    bool TSL2591Sensor::readSensor()
+    void TSL2591Sensor::processCounts(uint16_t full, uint16_t ir)
     {
-        uint32_t lum = sensor->getFullLuminosity();
-        reading.infrared = lum >> 16;
-        reading.full = lum & 0xFFFF;
+        reading.infrared = ir;
+        reading.full = full;
         reading.visible = reading.full >= reading.infrared ? reading.full - reading.infrared : 0;
 
         const float cpl = currentCpl();
@@ -184,11 +271,11 @@ namespace SQM
         {
             reading.lux = 0.0; // Report as 0 lux in complete darkness
             Logger::debug(
-                TAG, "Complete darkness - Lux: 0.00, Visible: %u, IR: %u, Full: %u", reading.visible, reading.infrared, reading.full);
+                tag(), "Complete darkness - Lux: 0.00, Visible: %u, IR: %u, Full: %u", reading.visible, reading.infrared, reading.full);
         }
         else if (!saturated)
         {
-            Logger::debug(TAG, "Lux: %.6f, Visible: %u, IR: %u, Full: %u", reading.lux, reading.visible, reading.infrared, reading.full);
+            Logger::debug(tag(), "Lux: %.6f, Visible: %u, IR: %u, Full: %u", reading.lux, reading.visible, reading.infrared, reading.full);
         }
 
         if (!reading.saturated)
@@ -202,8 +289,6 @@ namespace SQM
         }
 
         autoRange(static_cast<uint16_t>(reading.full), reading.infrared);
-
-        return true;
     }
 
     void TSL2591Sensor::resetRollingSamples()
@@ -221,9 +306,11 @@ namespace SQM
         const size_t maxSamplesForWindow = std::max<size_t>(
             1, std::min<size_t>(MAX_ROLLING_SAMPLES, (static_cast<size_t>(averagingWindowSeconds) * 1000UL) / currentIntegrationMs()));
 
-        fullSamples[sampleHead] = full;
-        irSamples[sampleHead] = ir;
-        visibleSamples[sampleHead] = visible;
+        if (!samples)
+            return;
+        samples->full[sampleHead] = full;
+        samples->ir[sampleHead] = ir;
+        samples->visible[sampleHead] = visible;
         sampleHead = (sampleHead + 1) % maxSamplesForWindow;
         if (sampleCount < maxSamplesForWindow)
         {
@@ -233,7 +320,7 @@ namespace SQM
 
     void TSL2591Sensor::updateRollingReading()
     {
-        if (sampleCount == 0)
+        if (sampleCount == 0 || !samples)
         {
             return;
         }
@@ -243,9 +330,9 @@ namespace SQM
         uint32_t visibleTotal = 0;
         for (size_t i = 0; i < sampleCount; i++)
         {
-            fullTotal += fullSamples[i];
-            irTotal += irSamples[i];
-            visibleTotal += visibleSamples[i];
+            fullTotal += samples->full[i];
+            irTotal += samples->ir[i];
+            visibleTotal += samples->visible[i];
         }
 
         const float rollingFull = static_cast<float>(fullTotal) / static_cast<float>(sampleCount);
@@ -326,6 +413,7 @@ namespace SQM
 
     void TSL2591Sensor::applyRangeSettings()
     {
+        // Called after a successful library begin() (begin) or on a begun sensor (autoRange).
         if (!sensor)
         {
             return;
@@ -335,7 +423,8 @@ namespace SQM
         reading.gainIndex = gainIndex;
         reading.gainFactor = currentGainFactor();
         reading.integrationMs = currentIntegrationMs();
-        Logger::info(TAG, "Range set to gain %s (%.0fx), integration %ums", currentGainName(), currentGainFactor(), currentIntegrationMs());
+        Logger::info(
+            tag(), "Range set to gain %s (%.0fx), integration %ums", currentGainName(), currentGainFactor(), currentIntegrationMs());
     }
 
     float TSL2591Sensor::currentCpl() const

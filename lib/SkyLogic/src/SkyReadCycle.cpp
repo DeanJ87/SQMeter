@@ -11,7 +11,7 @@ namespace SQM
         case State::Idle:
             return !startedOnce || reached(nowMs, lastStartMs + interval) ? Action::Start : Action::None;
         case State::Integrating:
-            return reached(nowMs, lastStartMs + integrationMs + MARGIN_MS) ? Action::Collect : Action::None;
+            return reached(nowMs, lastStartMs + collectDelayMs(integrationMs)) ? Action::Collect : Action::None;
         }
         return Action::None;
     }

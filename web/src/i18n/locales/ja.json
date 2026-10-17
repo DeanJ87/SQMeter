@@ -526,6 +526,8 @@
   "sensor.infrared": "赤外線スカイセンサー",
   "sensor.light": "光センサー",
   "sensor.rain": "雨センサー",
+  "sensor.sqm": "SQM",
+  "sensor.sqml": "SQM-L",
   "sensor.wind": "風速計",
   "settings.alertSchedule.alertsGoOutWheneverSomething": "一時停止しない限り、何か起きるたびにアラートを送信します。",
   "settings.alertSchedule.alertsResumeWhenAnImaging": "撮影アプリが接続するか、手動で再開するとアラートが再開されます。",

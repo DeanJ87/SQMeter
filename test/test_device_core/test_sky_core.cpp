@@ -150,3 +150,130 @@ void test_sky_copy_one_sensor_is_unchanged()
     TEST_ASSERT_TRUE(missing.tsl.status == SensorStatus::NotInitialized);
     TEST_ASSERT_FALSE(missing.tslInitialized);
 }
+
+namespace
+{
+    Readings::Snapshot readingsFor(SensorSnapshot &s, const Config &cfg, uint32_t now)
+    {
+        Core::derive(s, cfg);
+        return Core::buildReadings(s, cfg, now, 1791417600);
+    }
+} // namespace
+
+// Each enabled sensor's own status; the light/sky groups follow the authoritative one.
+void test_sky_readings_per_role_status()
+{
+    const uint32_t now = 100000;
+    const Config cfg = dual(SkyRole::Sqm);
+    const uint32_t staleAfter = cfg.sensor.readIntervalMs + Core::SENSOR_STALE_GRACE_MS;
+
+    SensorSnapshot s = twoSensors(now);
+    Readings::Snapshot r = readingsFor(s, cfg, now);
+    TEST_ASSERT_TRUE(r.source == SkyRole::Sqm);
+    for (size_t i = 0; i < SKY_ROLE_COUNT; ++i)
+    {
+        TEST_ASSERT_TRUE(r.skySensors[i].present);
+        TEST_ASSERT_TRUE(r.skySensors[i].status == Readings::Status::Ok);
+        TEST_ASSERT_EQUAL_UINT32(400, r.skySensors[i].ageMs);
+        TEST_ASSERT_FLOAT_WITHIN(1e-6F, s.skySensors[i].metrics.sqm, static_cast<float>(r.skySensors[i].sqm));
+    }
+    TEST_ASSERT_EQUAL_STRING("max", r.skySensors[SQM_I].gain);
+    TEST_ASSERT_EQUAL_STRING("high", r.skySensors[SQML_I].gain);
+    TEST_ASSERT_EQUAL_UINT32(600, r.skySensors[SQML_I].integrationMs);
+
+    // SQM-L missing (never answered), error, stale; SQM unaffected.
+    s = twoSensors(now);
+    s.skySensors[SQML_I].initialized = false;
+    s.skySensors[SQML_I].reading.status = SensorStatus::NotInitialized;
+    r = readingsFor(s, cfg, now);
+    TEST_ASSERT_TRUE(r.skySensors[SQML_I].status == Readings::Status::Missing);
+    TEST_ASSERT_TRUE(r.skySensors[SQM_I].status == Readings::Status::Ok);
+    TEST_ASSERT_TRUE(r.light.status == Readings::Status::Ok);
+
+    s = twoSensors(now);
+    s.skySensors[SQML_I].reading.status = SensorStatus::ReadError;
+    r = readingsFor(s, cfg, now);
+    TEST_ASSERT_TRUE(r.skySensors[SQML_I].status == Readings::Status::Error);
+
+    s = twoSensors(now);
+    s.skySensors[SQML_I].lastUpdate = now - staleAfter - 1;
+    r = readingsFor(s, cfg, now);
+    TEST_ASSERT_TRUE(r.skySensors[SQML_I].status == Readings::Status::Stale);
+    s.skySensors[SQML_I].lastUpdate = now - staleAfter;
+    r = readingsFor(s, cfg, now);
+    TEST_ASSERT_TRUE(r.skySensors[SQML_I].status == Readings::Status::Ok);
+
+    // SQM-L authoritative and stale: light/sky stale too, SQM still ok.
+    const Config cfgL = dual(SkyRole::Sqml);
+    s = twoSensors(now);
+    s.skySensors[SQML_I].lastUpdate = now - staleAfter - 1;
+    r = readingsFor(s, cfgL, now);
+    TEST_ASSERT_TRUE(r.source == SkyRole::Sqml);
+    TEST_ASSERT_TRUE(r.light.status == Readings::Status::Stale);
+    TEST_ASSERT_TRUE(r.skySensors[SQM_I].status == Readings::Status::Ok);
+
+    // Disabled sensor: no entry.
+    s = twoSensors(now);
+    r = readingsFor(s, Config::createDefault(), now);
+    TEST_ASSERT_TRUE(r.skySensors[SQM_I].present);
+    TEST_ASSERT_FALSE(r.skySensors[SQML_I].present);
+}
+
+// /api/status: skySensors per enabled sensor (contracts/status-and-routes.md);
+// sensors.light and diagnostics.light follow the authoritative sensor.
+void test_sky_status_documents()
+{
+    const uint32_t now = 100000;
+    Config cfg = dual(SkyRole::Sqml);
+    SensorSnapshot s = twoSensors(now);
+    s.skySensors[SQM_I].initialized = false;
+    s.skySensors[SQM_I].reading.status = SensorStatus::NotInitialized;
+    s.skySensors[SQML_I].diagnostics.sampleCount = 150;
+    s.skySensors[SQML_I].diagnostics.darkVisibleOffset = 1.5F;
+    s.skySensors[SQML_I].diagnostics.nightMode = true;
+    const Readings::Snapshot r = readingsFor(s, cfg, now);
+
+    DynamicJsonDocument doc(4096);
+    JsonObject root = doc.to<JsonObject>();
+    Core::writeSkySensorStatus(root, s, r);
+    Core::writeSensorHealth(root.createNestedObject("sensors"), r, cfg);
+    Core::writeDiagnostics(root.createNestedObject("diagnostics"), s, cfg, now);
+
+    JsonObject sqm = root["skySensors"]["sqm"];
+    TEST_ASSERT_EQUAL_STRING("missing", sqm["status"]);
+    TEST_ASSERT_FALSE(sqm["detected"].as<bool>());
+    TEST_ASSERT_FALSE(sqm.containsKey("ageMs"));
+    TEST_ASSERT_FALSE(sqm.containsKey("gain"));
+    JsonObject sqml = root["skySensors"]["sqml"];
+    TEST_ASSERT_EQUAL_STRING("ok", sqml["status"]);
+    TEST_ASSERT_EQUAL(400, sqml["ageMs"].as<int>());
+    TEST_ASSERT_TRUE(sqml["detected"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("high", sqml["gain"]);
+    TEST_ASSERT_EQUAL(600, sqml["integrationMs"].as<int>());
+    TEST_ASSERT_FALSE(sqml["saturated"].as<bool>());
+    TEST_ASSERT_TRUE(sqml["nightMode"].as<bool>());
+    TEST_ASSERT_EQUAL(150, sqml["sampleCount"].as<int>());
+    TEST_ASSERT_EQUAL(Core::windowSamples(s.skySensors[SQML_I].diagnostics), sqml["windowSamples"].as<int>());
+    TEST_ASSERT_FLOAT_WITHIN(1e-6F, 1.5F, sqml["darkVisibleOffset"].as<float>());
+
+    // The authoritative sensor (SQM-L) in sensors.light / diagnostics.light.
+    TEST_ASSERT_EQUAL_STRING("ok", root["sensors"]["light"]["status"]);
+    TEST_ASSERT_EQUAL(150, root["diagnostics"]["light"]["sampleCount"].as<int>());
+
+    // One sensor enabled: only its entry; none enabled: no skySensors.
+    cfg = Config::createDefault();
+    s = twoSensors(now);
+    Readings::Snapshot one = readingsFor(s, cfg, now);
+    doc.clear();
+    root = doc.to<JsonObject>();
+    Core::writeSkySensorStatus(root, s, one);
+    TEST_ASSERT_TRUE(root["skySensors"].containsKey("sqm"));
+    TEST_ASSERT_FALSE(root["skySensors"].containsKey("sqml"));
+
+    cfg.sky.sqmEnabled = false;
+    one = readingsFor(s, cfg, now);
+    doc.clear();
+    root = doc.to<JsonObject>();
+    Core::writeSkySensorStatus(root, s, one);
+    TEST_ASSERT_FALSE(root.containsKey("skySensors"));
+}

@@ -6,6 +6,8 @@
 #include <functional>
 #include <string>
 
+#include "SensorTypes.h"
+
 namespace SQM
 {
     // The readings document served by GET /api/sensors, /ws/sensors and MQTT
@@ -48,6 +50,26 @@ namespace SQM
             const char *description = "";
             bool calibrated = false;
             uint32_t averagingWindowSeconds = 0;
+        };
+
+        // One sky sensor's own reading (spec 030 FR-008): `skySensors.sqm` / `.sqml`.
+        struct SkySensorEntry
+        {
+            bool present = false; // sensor enabled
+            Status status = Status::Missing;
+            uint32_t ageMs = 0;
+            double sqm = 0.0;
+            double rawSqm = 0.0;
+            double nelm = 0.0;
+            int bortle = 0;
+            const char *description = "";
+            bool calibrated = false;
+            uint32_t averagingWindowSeconds = 0;
+            double lux = 0.0;
+            const char *gain = "";
+            uint32_t integrationMs = 0;
+            bool saturated = false;
+            bool nightMode = false;
         };
 
         struct Environment
@@ -127,8 +149,12 @@ namespace SQM
             bool timeValid = false;
             uint32_t dataAgeMs = 0;
             bool dataStale = true;
-            Light light;
-            Sky sky;
+            Light light;                   // the authoritative sky sensor
+            Sky sky;                       // the authoritative sky sensor
+            SkyRole source = SkyRole::Sqm; // sky.source
+            // Each enabled sky sensor, indexed by SkyRole; skySensors.deltaSqm
+            // (SQM-L - SQM) is written when both are ok.
+            SkySensorEntry skySensors[SKY_ROLE_COUNT];
             Environment environment;
             Infrared infrared;
             Clouds clouds;
@@ -150,6 +176,15 @@ namespace SQM
             // (specs/020-settings-dependencies D-13).
             bool alertsSwitch = true;
         };
+
+        // ArduinoJson pool for the readings document (REST, WebSocket, MQTT
+        // state): the worst case (every group ok, both sky sensors) with 20%
+        // headroom, pinned by test/test_readings. REST and WebSocket add the
+        // safety document on top (SAFETY_CAPACITY).
+        constexpr size_t DOC_CAPACITY = 4608;
+        constexpr size_t SAFETY_CAPACITY = 2048;
+        // The MQTT client's buffer: the serialised state must stay below it.
+        constexpr size_t MQTT_PAYLOAD_LIMIT = 3072;
 
         // Writes the document's fields into `root`. Groups of a sensor that isn't
         // ok carry only status (and ageMs) - never zeros that look like readings.

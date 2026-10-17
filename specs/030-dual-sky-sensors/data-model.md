@@ -28,7 +28,7 @@ States: `Idle -> Integrating(startedMs) -> (collect) -> Idle`; `Absent(retryAtMs
 | Input | Transition |
 |---|---|
 | `due(now)` in Idle, cadence elapsed | start: enable ADC, -> Integrating |
-| `ready(now)` in Integrating, `now - startedMs >= integrationMs(idx) + MARGIN_MS` | collect |
+| `ready(now)` in Integrating, `now - startedMs >= collectDelayMs(integrationMs)` (integration + 20% clock tolerance + `MARGIN_MS`, 740 ms at 600 ms) | collect |
 | collect ok | -> Idle, `consecutiveFailures = 0` |
 | collect fails | status ReadError; `++consecutiveFailures`; at `REBEGIN_AFTER` (3) -> Absent(backoff 5 s) |
 | Absent, `now >= retryAtMs` | try `begin()`: ok -> Idle; fail -> backoff x2, cap 60 s |

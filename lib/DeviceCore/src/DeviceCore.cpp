@@ -334,6 +334,7 @@ namespace SQM
             const bool loopStale = snapshot.dataTimestamp == 0 || r.dataAgeMs > staleAfter;
             r.dataStale = loopStale || !required.everRead || required.ageMs > staleAfter;
             readSkyGroups(r, snapshot, now, staleAfter);
+            Detail::readSkySensors(r, snapshot, now, staleAfter);
             readGps(r, snapshot, cfg);
             readRain(r, snapshot, cfg, now);
             readWind(r, snapshot, cfg, now);

@@ -89,6 +89,7 @@ namespace SQM
           wsSensors("/ws/sensors"),
           wsStatus("/ws/status"),
           tslSensor(sensors.tsl),
+          tslSensorL(sensors.tslL),
           bmeSensor(sensors.bme),
           mlxSensor(sensors.mlx),
           gpsSensor(sensors.gps),
@@ -364,11 +365,16 @@ namespace SQM
     void WebServer::refreshSensorSnapshot(uint32_t dataTimestampMs)
     {
         SensorSnapshot next;
-        SkySensorSnapshot &sqm = next.skySensors[skyRoleIndex(SkyRole::Sqm)];
-        sqm.reading = tslSensor.getReading();
-        sqm.diagnostics = tslSensor.getDiagnostics();
-        sqm.initialized = tslSensor.isInitialized();
-        sqm.lastUpdate = tslSensor.getLastUpdateTime();
+        // Both sky sensors; Core::derive picks the authoritative copy.
+        for (size_t i = 0; i < SKY_ROLE_COUNT; ++i)
+        {
+            const TSL2591Sensor &driver = skySensor(static_cast<SkyRole>(i));
+            SkySensorSnapshot &sky = next.skySensors[i];
+            sky.reading = driver.getReading();
+            sky.diagnostics = driver.getDiagnostics();
+            sky.initialized = driver.isInitialized();
+            sky.lastUpdate = driver.getLastUpdateTime();
+        }
         next.bme = bmeSensor.getReading();
         next.mlx = mlxSensor.getReading();
         next.gps = gpsSensor.getReading();

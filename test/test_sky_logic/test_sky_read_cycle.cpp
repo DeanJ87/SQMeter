@@ -9,7 +9,7 @@ namespace
     using Action = SkyReadCycle::Action;
     using State = SkyReadCycle::State;
     constexpr uint16_t INTEGRATION = 600;
-    constexpr uint32_t READY = INTEGRATION + SkyReadCycle::MARGIN_MS;
+    constexpr uint32_t READY = SkyReadCycle::collectDelayMs(INTEGRATION);
 
     // A cycle that has been begun successfully at `now`.
     SkyReadCycle begun(uint32_t now)
@@ -56,14 +56,15 @@ void test_read_cycle_starts_when_due_and_collects_after_integration()
     cycle.collected(1000 + READY, true);
     TEST_ASSERT_TRUE(cycle.state() == State::Idle);
 
-    // Next start on the cadence (650 ms after the previous start).
-    TEST_ASSERT_TRUE(cycle.next(1000 + 649, INTEGRATION) == Action::None);
-    TEST_ASSERT_TRUE(cycle.next(1000 + 650, INTEGRATION) == Action::Start);
+    // Next start at once: the cadence (650 ms) has passed while integrating.
+    TEST_ASSERT_TRUE(cycle.next(1000 + READY, INTEGRATION) == Action::Start);
 
-    // A longer integration (auto-ranging) waits longer before collecting.
+    // The wait follows the integration time (auto-ranging): 600 ms -> 740 ms, 300 ms -> 380 ms.
+    TEST_ASSERT_EQUAL_UINT32(740, READY);
+    TEST_ASSERT_EQUAL_UINT32(380, SkyReadCycle::collectDelayMs(300));
     cycle.started(2000);
-    TEST_ASSERT_TRUE(cycle.next(2000 + READY, 300) == Action::Collect);
-    TEST_ASSERT_TRUE(cycle.next(2000 + 300 + SkyReadCycle::MARGIN_MS - 1, 300) == Action::None);
+    TEST_ASSERT_TRUE(cycle.next(2000 + 379, 300) == Action::None);
+    TEST_ASSERT_TRUE(cycle.next(2000 + 380, 300) == Action::Collect);
 }
 
 void test_read_cycle_failures_go_absent_with_backoff()
@@ -143,8 +144,12 @@ void test_read_cycle_millis_wrap()
     TEST_ASSERT_TRUE(cycle.next(ready - 1, INTEGRATION) == Action::None);
     TEST_ASSERT_TRUE(cycle.next(ready, INTEGRATION) == Action::Collect);
     cycle.collected(ready, true);
-    TEST_ASSERT_TRUE(cycle.next(nearWrap + 649, INTEGRATION) == Action::None);
-    TEST_ASSERT_TRUE(cycle.next(nearWrap + 650, INTEGRATION) == Action::Start);
+    TEST_ASSERT_TRUE(cycle.next(ready, INTEGRATION) == Action::Start);
+    // With a short integration the cadence holds the next start back.
+    cycle.started(ready);
+    cycle.collected(ready + SkyReadCycle::collectDelayMs(100), true);
+    TEST_ASSERT_TRUE(cycle.next(ready + 649, 100) == Action::None);
+    TEST_ASSERT_TRUE(cycle.next(ready + 650, 100) == Action::Start);
 
     // Back-off across the wrap.
     SkyReadCycle absent(650);

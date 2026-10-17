@@ -529,6 +529,8 @@
   "sensor.infrared": "IR gökyüzü sensörü",
   "sensor.light": "Işık sensörü",
   "sensor.rain": "Yağmur sensörü",
+  "sensor.sqm": "SQM",
+  "sensor.sqml": "SQM-L",
   "sensor.wind": "Anemometre",
   "settings.alertSchedule.alertsGoOutWheneverSomething": "Siz duraklatmadığınız sürece bir şey olduğunda uyarı gönderilir.",
   "settings.alertSchedule.alertsResumeWhenAnImaging": " Uyarılar, bir görüntüleme uygulaması bağlandığında veya siz sürdürdüğünüzde yeniden başlar.",

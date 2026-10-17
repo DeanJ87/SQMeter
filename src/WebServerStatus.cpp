@@ -66,7 +66,7 @@ namespace SQM
         const bool reconnected = mqttClient->connectionCount() != mqttStateConnection;
         if (!reconnected && mqttStatePublishedAt != 0 && now - mqttStatePublishedAt < mqtt.publishIntervalMs)
             return;
-        DynamicJsonDocument doc(3072);
+        DynamicJsonDocument doc(Readings::DOC_CAPACITY);
         Readings::write(doc.to<JsonObject>(), buildReadings(), groups);
         std::string payload;
         serializeJson(doc, payload);
@@ -162,7 +162,7 @@ namespace SQM
 
     std::string WebServer::createSensorDataJson() const
     {
-        DynamicJsonDocument doc(4096);
+        DynamicJsonDocument doc(Readings::DOC_CAPACITY + Readings::SAFETY_CAPACITY);
         Readings::write(doc.to<JsonObject>(), buildReadings());
         appendSafetyStatus(doc.createNestedObject("safety"));
         std::string json;
@@ -388,7 +388,7 @@ namespace SQM
 
     std::string WebServer::createStatusJson() const
     {
-        DynamicJsonDocument doc(7168); // Includes MQTT, partition, boot, sensor, BLE and alert-schedule diagnostics
+        DynamicJsonDocument doc(7680); // Includes MQTT, partition, boot, sensor (both sky sensors), BLE and alert-schedule diagnostics
         const SensorSnapshot snapshot = getSensorSnapshot();
         appendFirmware(doc);
         appendRuntime(doc);
@@ -406,6 +406,7 @@ namespace SQM
         // Readings themselves are in /api/sensors.
         const Readings::Snapshot readings = buildReadings();
         Core::writeSensorHealth(doc.createNestedObject("sensors"), readings, getConfigCallback());
+        Core::writeSkySensorStatus(doc.as<JsonObject>(), snapshot, readings);
         JsonObject diagnostics = doc.createNestedObject("diagnostics");
         appendDiagnostics(diagnostics, snapshot);
         appendMqttStatus(doc);

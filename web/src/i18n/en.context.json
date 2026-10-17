@@ -518,6 +518,8 @@
   "sensor.infrared": "The infrared sky thermometer (MLX90614) used for cloud cover: its name everywhere in the UI; a label; max 24 chars.",
   "sensor.light": "The light sensor (TSL2591) that measures sky brightness: its name everywhere in the UI; a label; max 24 chars.",
   "sensor.rain": "The rain sensor (RG-15): its name everywhere in the UI; a label; max 24 chars.",
+  "sensor.sqm": "The wide sky quality sensor's name (spec 030): shown on its glance tile, Settings row and calibration card when two sky sensors are fitted. SQM = sky quality in mag/arcsec² - keep 'SQM'.",
+  "sensor.sqml": "The narrow-lens sky quality sensor's name (spec 030): shown on its glance tile, Settings row and calibration card. SQM-L = the second, narrow-lens sky quality sensor - keep 'SQM-L'.",
   "sensor.wind": "The cup anemometer: its name everywhere in the UI; a label; max 24 chars.",
   "settings.alertSchedule.alertsGoOutWheneverSomething": "Settings -> Alerts, option help: a short note under a value.",
   "settings.alertSchedule.alertsResumeWhenAnImaging": "Settings -> Alerts: when alerts are sent, paused and resumed. imaging app = astrophotography software such as N.I.N.A. that controls the telescope and camera.",

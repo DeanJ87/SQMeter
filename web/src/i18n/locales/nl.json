@@ -529,6 +529,8 @@
   "sensor.infrared": "IR-hemelsensor",
   "sensor.light": "Lichtsensor",
   "sensor.rain": "Regensensor",
+  "sensor.sqm": "SQM",
+  "sensor.sqml": "SQM-L",
   "sensor.wind": "Windmeter",
   "settings.alertSchedule.alertsGoOutWheneverSomething": "Meldingen gaan uit zodra er iets gebeurt, tenzij je ze pauzeert.",
   "settings.alertSchedule.alertsResumeWhenAnImaging": " Meldingen gaan verder zodra een opname-app verbinding maakt of jij ze hervat.",

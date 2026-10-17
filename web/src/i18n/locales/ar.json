@@ -539,6 +539,8 @@
   "sensor.infrared": "مستشعر السماء بالأشعة تحت الحمراء",
   "sensor.light": "مستشعر الضوء",
   "sensor.rain": "مستشعر المطر",
+  "sensor.sqm": "SQM",
+  "sensor.sqml": "SQM-L",
   "sensor.wind": "مقياس شدة الرياح",
   "settings.alertSchedule.alertsGoOutWheneverSomething": "تُرسل التنبيهات كلما حدث شيء، ما لم توقفها مؤقتًا.",
   "settings.alertSchedule.alertsResumeWhenAnImaging": " تُستأنف التنبيهات عند اتصال تطبيق تصوير، أو عندما تستأنفها أنت.",

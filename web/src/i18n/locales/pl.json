@@ -535,6 +535,8 @@
   "sensor.infrared": "Czujnik IR nieba",
   "sensor.light": "Czujnik światła",
   "sensor.rain": "Czujnik deszczu",
+  "sensor.sqm": "SQM",
+  "sensor.sqml": "SQM-L",
   "sensor.wind": "Wiatromierz",
   "settings.alertSchedule.alertsGoOutWheneverSomething": "Powiadomienia są wysyłane zawsze, gdy coś się dzieje, chyba że je wstrzymasz.",
   "settings.alertSchedule.alertsResumeWhenAnImaging": " Powiadomienia zostaną wznowione, gdy połączy się aplikacja do astrofotografii lub gdy je wznowisz.",

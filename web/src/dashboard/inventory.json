@@ -1025,6 +1025,51 @@
       "match": "status.sky",
       "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
       "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.skySensors.sqm.sampleCount",
+      "reason": "Sky sensor averaging-window progress, for dark calibration",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "status.skySensors.sqml.sampleCount",
+      "reason": "Sky sensor averaging-window progress, for dark calibration",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "status.skySensors.sqm.windowSamples",
+      "reason": "Sky sensor averaging-window size, for dark calibration",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "status.skySensors.sqml.windowSamples",
+      "reason": "Sky sensor averaging-window size, for dark calibration",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "status.skySensors.sqm.darkVisibleOffset",
+      "reason": "Sky sensor dark calibration offset",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "status.skySensors.sqml.darkVisibleOffset",
+      "reason": "Sky sensor dark calibration offset",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "readings.sky.source",
+      "reason": "Which sky sensor counts (spec 030); the Sky card's name pill is pending the T022 mockup review",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.**",
+      "reason": "Each sky sensor's own reading (spec 030); the Sky card tiles are pending the T022 mockup review",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.skySensors.**",
+      "reason": "Each sky sensor's health (spec 030); glance tiles and Settings rows are pending the T022 mockup review",
+      "shownOn": "API (docs: troubleshooting)"
     }
   ]
 }

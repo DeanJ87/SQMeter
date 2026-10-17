@@ -26,7 +26,9 @@ using namespace SQM;
 // Global objects
 static Config config;
 static std::unique_ptr<WiFiManager> wifiManager;
-static std::unique_ptr<TSL2591Sensor> tslSensor;
+static std::unique_ptr<TSL2591Sensor> tslSensor;  // SQM, I2C-1 (Wire)
+static std::unique_ptr<TSL2591Sensor> tslSensorL; // SQM-L, I2C-2 (Wire1), spec 030
+static bool i2c2Started = false;
 static std::unique_ptr<BME280Sensor> bmeSensor;
 static std::unique_ptr<MLX90614Sensor> mlxSensor;
 static std::unique_ptr<GPSSensor> gpsSensor;
@@ -44,8 +46,6 @@ SET_LOOP_TASK_STACK_SIZE(12 * 1024);
 
 // Timing
 static uint32_t lastSensorUpdate = 0;
-static uint32_t lastTslUpdate = 0;
-static constexpr uint32_t TSL_SAMPLE_INTERVAL_MS = 650;
 
 static WindSensorSettings toWindSettings(const WindConfig &wind)
 {
@@ -138,6 +138,23 @@ void setupI2C()
 
     Wire.begin(config.sensor.i2cSDA, config.sensor.i2cSCL);
     Wire.setClock(config.sensor.i2cFrequency);
+
+    // The second bus only carries the SQM-L: started when it is on and wired.
+    if (config.sky.sqmlEnabled && config.sensor.i2c2Configured())
+    {
+        Logger::info("Main", "Initializing I2C-2 (SDA:%d, SCL:%d)", config.sensor.i2c2SDA, config.sensor.i2c2SCL);
+        i2c2Started = Wire1.begin(config.sensor.i2c2SDA, config.sensor.i2c2SCL);
+        if (i2c2Started)
+            Wire1.setClock(config.sensor.i2cFrequency);
+        else
+            Logger::error("Main", "I2C-2 failed to start");
+    }
+}
+
+// Whether a sky sensor is read: on in the settings and its bus running.
+static bool skySensorActive(SkyRole role)
+{
+    return config.skyEnabled(role) && (role == SkyRole::Sqm || i2c2Started);
 }
 
 // GPS and the RG-15 (UART, not I2C): created switched off when disabled,
@@ -173,13 +190,19 @@ void setupSensors()
 {
     Logger::info("Main", "Initializing sensors");
 
-    tslSensor = std::make_unique<TSL2591Sensor>();
+    // Both sky sensors always exist (the web server reports on both); one
+    // that is off is never begun or read.
+    tslSensor = std::make_unique<TSL2591Sensor>(Wire, SkyRole::Sqm);
+    tslSensorL = std::make_unique<TSL2591Sensor>(Wire1, SkyRole::Sqml);
     bmeSensor = std::make_unique<BME280Sensor>();
     mlxSensor = std::make_unique<MLX90614Sensor>();
 
-    if (!tslSensor->begin())
-        Logger::error("Main", "Failed to initialize TSL2591");
-    tslSensor->configureSkyMeasurement(config.skyAveraging, config.skyCalibration);
+    for (TSL2591Sensor *sky : {tslSensor.get(), tslSensorL.get()})
+    {
+        sky->configureSkyMeasurement(config.averaging(sky->role()), config.calibration(sky->role()));
+        if (skySensorActive(sky->role()) && !sky->begin())
+            Logger::error("Main", "Failed to initialize %s", skyRoleLabel(sky->role()));
+    }
     if (!bmeSensor->begin())
         Logger::warn("Main", "BME280 not detected (optional sensor)");
     if (!mlxSensor->begin())
@@ -314,7 +337,7 @@ void startServices()
     mqttClient->begin();
     HeapTrace::mark("mqtt");
 
-    const WebServer::Sensors sensors{*tslSensor, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor, *windSensor};
+    const WebServer::Sensors sensors{*tslSensor, *tslSensorL, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor, *windSensor};
     webServer = std::make_unique<WebServer>(sensors, timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
     webServer->begin();
     webServer->refreshSensorSnapshot(lastSensorUpdate);
@@ -405,12 +428,14 @@ void loop()
     // Anemometer samples itself once a second.
     windSensor->update();
 
-    // Update TSL2591 on its own cadence so dark-sky rolling averages are based on 600ms samples.
+    // Both sky sensors integrate side by side on their own ~650 ms cadence
+    // (dark-sky rolling averages are based on 600 ms samples); tick() never
+    // waits for an integration.
     const uint32_t now = millis();
-    if (now - lastTslUpdate >= TSL_SAMPLE_INTERVAL_MS)
+    for (TSL2591Sensor *sky : {tslSensor.get(), tslSensorL.get()})
     {
-        tslSensor->update();
-        lastTslUpdate = now;
+        if (skySensorActive(sky->role()))
+            sky->tick(now);
     }
 
     // Update slower sensors and publish periodically.

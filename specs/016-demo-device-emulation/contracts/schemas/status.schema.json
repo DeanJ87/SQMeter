@@ -749,6 +749,92 @@
       ],
       "additionalProperties": false
     },
+    "skySensors": {
+      "type": "object",
+      "properties": {
+        "sqm": {
+          "type": "object",
+          "properties": {
+            "ageMs": {
+              "type": "number"
+            },
+            "darkVisibleOffset": {
+              "type": "number"
+            },
+            "detected": {
+              "type": "boolean"
+            },
+            "gain": {
+              "type": "string"
+            },
+            "integrationMs": {
+              "type": "number"
+            },
+            "nightMode": {
+              "type": "boolean"
+            },
+            "sampleCount": {
+              "type": "number"
+            },
+            "saturated": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": "string"
+            },
+            "windowSamples": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "detected",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "sqml": {
+          "type": "object",
+          "properties": {
+            "ageMs": {
+              "type": "number"
+            },
+            "darkVisibleOffset": {
+              "type": "number"
+            },
+            "detected": {
+              "type": "boolean"
+            },
+            "gain": {
+              "type": "string"
+            },
+            "integrationMs": {
+              "type": "number"
+            },
+            "nightMode": {
+              "type": "boolean"
+            },
+            "sampleCount": {
+              "type": "number"
+            },
+            "saturated": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": "string"
+            },
+            "windowSamples": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "detected",
+            "status"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "stackFree": {
       "type": "object",
       "properties": {

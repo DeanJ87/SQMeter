@@ -49,7 +49,8 @@ namespace SQM
         // The sensors the server reads and acts on (calibration, RG-15 commands).
         struct Sensors
         {
-            TSL2591Sensor &tsl;
+            TSL2591Sensor &tsl;  // SQM (I2C-1)
+            TSL2591Sensor &tslL; // SQM-L (I2C-2), spec 030
             BME280Sensor &bme;
             MLX90614Sensor &mlx;
             GPSSensor &gps;
@@ -68,6 +69,8 @@ namespace SQM
         void begin();
         void handle();
         void refreshSensorSnapshot(uint32_t dataTimestampMs);
+        // The driver of a sky sensor (spec 030).
+        TSL2591Sensor &skySensor(SkyRole role) const { return role == SkyRole::Sqml ? tslSensorL : tslSensor; }
         SafetyStatus getSafetyStatus() const;
 
         // Broadcast sensor data to Dashboard WebSocket clients
@@ -108,6 +111,7 @@ namespace SQM
         bool alpacaConnectionsRestored = false;
 
         TSL2591Sensor &tslSensor;
+        TSL2591Sensor &tslSensorL;
         BME280Sensor &bmeSensor;
         MLX90614Sensor &mlxSensor;
         GPSSensor &gpsSensor;

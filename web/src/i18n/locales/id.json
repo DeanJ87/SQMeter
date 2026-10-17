@@ -526,6 +526,8 @@
   "sensor.infrared": "Sensor IR langit",
   "sensor.light": "Sensor cahaya",
   "sensor.rain": "Sensor hujan",
+  "sensor.sqm": "SQM",
+  "sensor.sqml": "SQM-L",
   "sensor.wind": "Anemometer",
   "settings.alertSchedule.alertsGoOutWheneverSomething": "Peringatan dikirim setiap kali sesuatu terjadi, kecuali Anda menjedanya.",
   "settings.alertSchedule.alertsResumeWhenAnImaging": " Peringatan dilanjutkan saat aplikasi pencitraan terhubung, atau saat Anda melanjutkannya.",

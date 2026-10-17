@@ -529,6 +529,8 @@
   "sensor.infrared": "IR sky sensor",
   "sensor.light": "Light sensor",
   "sensor.rain": "Rain sensor",
+  "sensor.sqm": "SQM",
+  "sensor.sqml": "SQM-L",
   "sensor.wind": "Anemometer",
   "settings.alertSchedule.alertsGoOutWheneverSomething": "Alerts go out whenever something happens, unless you pause them.",
   "settings.alertSchedule.alertsResumeWhenAnImaging": " Alerts resume when an imaging app connects, or when you resume them.",
