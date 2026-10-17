@@ -94,6 +94,7 @@ nav:
     - Alerts: user-guide/alerts.md
     - Bluetooth (BLE): user-guide/ble.md
     - OLED Display: user-guide/display.md
+    - Battery: user-guide/battery.md
     - Languages: user-guide/languages.md
   - Hardware:
     - Overview: hardware/overview.md

@@ -147,10 +147,10 @@ phone alarm options.
 
 ### Docs (FR-017, constitution VII)
 
-- [ ] T059 [P] New docs/user-guide/battery.md: charging and power path, reading the gauge (estimating, accuracy), states, time estimates, alerts and their defaults, the safety rule and its options, power saving and deep sleep (wake on USB, hourly check without a PG pin), matched cells and polarity; nav entry in mkdocs.yml
-- [ ] T060 [P] Hardware: the travel board (charger, gauge, protection, pins, power switch) in docs/hardware/overview.md and docs/getting-started/hardware.md
-- [ ] T061 [P] docs/user-guide/configuration.md (battery keys, alpaca battery keys, mqtt.publish.battery, alert events), docs/reference/settings-dependencies.md (D-46..D-51, regenerated where generated)
-- [ ] T062 [P] docs/api/rest.md and docs/api/websocket.md (`battery` in readings and status), docs/user-guide/mqtt.md (state `battery`, HA entities), docs/user-guide/ble.md (summary fields, alarm bits 14-16), docs/user-guide/alerts.md (six events, rule alert, variables), docs/user-guide/alpaca.md (battery rule, shutdown reason); Settings paths match en.json labels; `python3 -m mkdocs build --strict` where mkdocs is installed
+- [X] T059 [P] New docs/user-guide/battery.md: charging and power path, reading the gauge (estimating, accuracy), states, time estimates, alerts and their defaults, the safety rule and its options, power saving and deep sleep (wake on USB, hourly check without a PG pin), matched cells and polarity; nav entry in mkdocs.yml
+- [X] T060 [P] Hardware: the travel board (charger, gauge, protection, pins, power switch) in docs/hardware/overview.md and docs/getting-started/hardware.md
+- [X] T061 [P] docs/user-guide/configuration.md (battery keys, alpaca battery keys, mqtt.publish.battery, alert events), docs/reference/settings-dependencies.md (D-46..D-51, regenerated where generated)
+- [X] T062 [P] docs/api/rest.md and docs/api/websocket.md (`battery` in readings and status), docs/user-guide/mqtt.md (state `battery`, HA entities), docs/user-guide/ble.md (summary fields, alarm bits 14-16), docs/user-guide/alerts.md (six events, rule alert, variables), docs/user-guide/alpaca.md (battery rule, shutdown reason); Settings paths match en.json labels; `python3 -m mkdocs build --strict` where mkdocs is installed
 
 ### Budgets and gates (FR-016, constitution IV, VIII)
 

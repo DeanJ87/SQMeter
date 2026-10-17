@@ -13,7 +13,7 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
 Some settings only work when something else is on - MQTT alerts need MQTT, rain alerts need the rain sensor, night-only alerts need your location. Such a setting can't be switched on while what it needs is off, and if you switch the other thing off later the setting is kept exactly as it was but marked **Inactive** with the reason and a button that takes you to the fix. The device doesn't act on it until then, and nothing has to be set up again when you switch the other thing back on. Before you save, a note lists anything the change would make inactive. Every such setting is listed in [Settings dependencies](../reference/settings-dependencies.md).
 
 === "Device"
-    Name, password protection, command-line uploads (ArduinoOTA), Bluetooth, the OLED display.
+    Name, password protection, command-line uploads (ArduinoOTA), Bluetooth, the OLED display, the battery.
 
     ![Device settings](../assets/screenshots/settings-device.png)
 
@@ -235,11 +235,25 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "stayOnAtNight": false,
     "rotate180": false,
     "buttonPin": 255
+  },
+  "battery": {
+    "enabled": true,
+    "lowPercent": 20,
+    "criticalPercent": 10,
+    "shutdownPercent": 5,
+    "capacityMah": 0,
+    "powerSaving": true,
+    "saveReadIntervalSeconds": 30,
+    "shutdownGraceSeconds": 30,
+    "alertPin": 255,
+    "stat1Pin": 255,
+    "stat2Pin": 255,
+    "pgPin": 255
   }
 }
 ```
 
-In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth, display), Network (WiFi, MQTT), Time & Location, Sensors (sensors, rain, wind, calibration), Safety (`alpaca`) and Alerts.
+In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth, display, battery), Network (WiFi, MQTT), Time & Location, Sensors (sensors, rain, wind, calibration), Safety (`alpaca`) and Alerts.
 
 ---
 
@@ -310,7 +324,7 @@ When GPS is enabled and has a fix, it can serve as the primary time source for a
 | `password` | string | `""` | Auth password |
 | `topic` | string | `"sqmeter"` | Base topic: letters, numbers, `_`, `-`, with `/` between levels. See [MQTT](mqtt.md#topics) |
 | `publishIntervalMs` | int | `60000` | How often `<topic>/state` is published (1 s – 24 h) |
-| `publish.sky`, `.environment`, `.clouds`, `.gps`, `.rain`, `.wind` | bool | `true` | Groups included in `<topic>/state` |
+| `publish.sky`, `.environment`, `.clouds`, `.gps`, `.rain`, `.wind`, `.battery` | bool | `true` | Groups included in `<topic>/state` (`battery` only does anything with a fuel gauge, D-49) |
 | `publish.safety` | bool | `true` | Publish `<topic>/safe` and `<topic>/safety` |
 | `publish.diagnostics` | bool | `false` | Publish `<topic>/diagnostics` |
 | `homeAssistant.enabled` | bool | `false` | Home Assistant MQTT discovery |
@@ -445,6 +459,9 @@ The SafetyMonitor verdict served to N.I.N.A., shown on the dashboard and used fo
 | `rainSensorRequired` | bool | `true` | Unsafe if the enabled RG-15 is offline, stale or reports a lens fault |
 | `windSpeedUnsafeEnabled` / `windSpeedUnsafeMs` | bool / float | `false` / `10` | Unsafe at or above this wind speed (m/s, up to 60) |
 | `windGustUnsafeEnabled` / `windGustUnsafeMs` | bool / float | `false` / `15` | Unsafe at or above this gust (m/s, up to 80) |
+| `batteryEnabled` / `batteryMinPercent` | bool / int | `false` / `10` | Unsafe below this battery charge (2-50 %); without a fuel gauge, or with stale or estimating data, unsafe with *Battery data missing* (D-47). See [Battery](battery.md#the-safety-rule) |
+| `batteryAlert` | bool | `true` | Send an Urgent alert when the battery rule trips |
+| `batteryPhoneAlarm` | bool | `true` | Ring paired phones when the battery rule trips (Bluetooth build, D-50) |
 
 ### Alerts
 
@@ -466,7 +483,7 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
 | `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
 
-Events: `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `dew_risk`, `clear_sky`, `clouded_over`, `client_lost`, `client_back`, `client_disconnected`. The imaging-app events and the silence times are stored under their own NVS key, so they don't count towards the 3900-byte limit on the rest of the alert settings.
+Events: `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `dew_risk`, `clear_sky`, `clouded_over`, `client_lost`, `client_back`, `client_disconnected`, and the battery events `battery_low`, `battery_critical`, `battery_shutdown`, `power_restored`, `charge_complete`, `charge_fault` (see [Battery](battery.md#alerts)). The imaging-app events and the silence times are stored under their own NVS key, and the battery events under a third, so neither counts towards the 3900-byte limit on the rest of the alert settings.
 
 Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
 
@@ -514,6 +531,34 @@ Messages when a value is refused: `Display: choose 1 to 7 different pages`, `Dis
 must be 2 to 60 seconds`, `Display: brightness must be low, medium or high`, `Display: timeout must be
 10 seconds to 30 minutes, or never`, `Display: wake button pin is not a valid GPIO`, `Display: wake
 button pin is already in use`.
+
+### Battery
+
+The Li-ion pack and its MAX17048 fuel gauge (travel board). See [Battery](battery.md). Settings saved
+before the battery existed load with these defaults; every behaviour needs a detected gauge, so a board
+without one behaves as before. Every field but the pins is muted without a gauge (D-46).
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Read the gauge and act on it (**Monitor battery**). Off: reported as if no gauge were fitted |
+| `lowPercent` | int | `20` | **Low level** (5-50 %): the Battery low alert |
+| `criticalPercent` | int | `10` | **Critical level** (2-25 %, below the low level): power saving and the Battery critical alert |
+| `shutdownPercent` | int | `5` | **Shutdown level** (2-10 %, below the critical level): warn, then sleep until USB power returns |
+| `capacityMah` | int | `0` | **Pack capacity**, 500-50000 mAh, or `0` if unknown; refines the time to full and shows the current |
+| `powerSaving` | bool | `true` | **Save power when low**: below the critical level, slower readings and the display off; at the shutdown level, deep sleep |
+| `saveReadIntervalSeconds` | int | `30` | **Read sensors every** while saving power (10-300 s) |
+| `shutdownGraceSeconds` | int | `30` | **Warn before sleeping** (10-300 s) |
+| `alertPin` | int | `255` | Gauge ALRT GPIO (diagnostics only), `255` for none |
+| `stat1Pin`, `stat2Pin`, `pgPin` | int | `255` | Charger STAT1, STAT2 and PG (USB power) GPIOs: all three or none. PG must be able to wake the device |
+
+Messages when a value is refused: `Battery: low level must be 5 to 50%`, `Battery: critical level must
+be 2 to 25% and below the low level`, `Battery: shutdown level must be 2 to 10% and below the critical
+level`, `Battery: capacity must be 500 to 50000 mAh, or 0 if unknown`, `Battery: power-saving read
+interval must be 10 to 300 seconds`, `Battery: warning time before sleep must be 10 to 300 seconds`,
+`Battery: pins must be valid and different`, `Battery: set all three charger pins or none`, `Battery:
+pin is already in use` (I2C, I2C-2, GPS, rain sensor, anemometer, vane or display button), `Battery: the
+USB power pin must be able to wake the device`, and for the safety rule `Safety: battery limit must be 2
+to 50%` (D-51).
 
 ---
 
