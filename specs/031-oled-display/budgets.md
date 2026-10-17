@@ -5,11 +5,11 @@ implemented, before any 031 code); after values filled in by T023 and T052.
 
 | Budget | Limit | Before (e089b8f) | After | Delta |
 |---|---|---|---|---|
-| Firmware `esp32dev` (app image) | OTA slot 1,835,008 B (SIZE-04) | 1,498,403 B (81.7%) | 1,512,199 B (82.4%) after US1-US4 firmware (T023); 1,512,047 B (82.4%) at the end of implementation round 1 | +13,644 B |
-| Firmware `esp32dev-ble` (app image) | OTA slot 1,835,008 B; CI fails above 95% (1,743,257 B) | 1,690,667 B (92.1%) | 1,704,279 B (92.9%) after US1-US4 firmware (T023); 1,704,271 B (92.9%, 38,986 B to the fail line) at the end of round 1 | +13,604 B: over the 9 KB target |
+| Firmware `esp32dev` (app image) | OTA slot 1,835,008 B (SIZE-04) | 1,498,403 B (81.7%) | 1,512,199 B (82.4%) after US1-US4 firmware (T023); 1,512,047 B (82.4%) at the end of implementation round 1, unchanged in round 2 (UI only) | +13,644 B |
+| Firmware `esp32dev-ble` (app image) | OTA slot 1,835,008 B; CI fails above 95% (1,743,257 B) | 1,690,667 B (92.1%) | 1,704,279 B (92.9%) after US1-US4 firmware (T023); 1,704,271 B (92.9%, 38,986 B to the fail line) at the end of round 1, unchanged in round 2 | +13,604 B: over the 9 KB target |
 | Static RAM `esp32dev` | | 52,796 B | 52,812 B (T023) | +16 B |
 | Static RAM `esp32dev-ble` | | 63,068 B | 63,084 B (T023) | +16 B |
-| UI gzip JS+CSS | growth <= 10 KB (SIZE-01/02, `tools/ui/size_check.py`) | size record 120,001 B (`tools/ui/size-baseline.json`, unchanged since spec 030 T057) | 118.2 KB vite JS+CSS, +1.0 KB over the record (round 1: types, schema, settings dependencies; the Display card is not built yet) | +1.0 KB |
+| UI gzip JS+CSS | growth <= 10 KB (SIZE-01/02, `tools/ui/size_check.py`) | size record 120,001 B (`tools/ui/size-baseline.json`, unchanged since spec 030 T057) | 122,631 B packed JS+CSS with the Display card, System row and strings (round 2, T052); record updated with `--update-baseline`; LittleFS 65% of 75% | +2,630 B (+2.6 KB) |
 | Main config JSON, defaults (`toJson(false, false)`) | 5,100 B | 2,438 B | 2,615 B (T006-T008) | +177 B |
 | Main config JSON, worst case (long strings, both sky sensors; + display with 7 pages after) | 5,100 B | 3,295 B | 3,530 B (T006-T008, `test_display_worst_case_config_fits`) | +235 B |
 | `/api/settings/effective` report (`test_report_document`) | < 5 KB in spec 020's plan; now < 6 KB | under 5,000 B | 5,256 B with the eight display entries (T011) | about +0.3 KB; transient, per request; test bound raised to 6,000 B |
@@ -31,5 +31,5 @@ The framebuffer (1,024 B) is heap, allocated only when the display is enabled, s
 in static RAM; a device without a display allocates none.
 
 Device heap and loop `stackFree` with and without a display: not measured (no device contacted in
-implementation round 1); to be measured on the spare device only, with the owner's permission, and
-noted for the PR.
+implementation rounds 1 and 2); open for the PR, to be measured on the spare device only, with the
+owner's permission.

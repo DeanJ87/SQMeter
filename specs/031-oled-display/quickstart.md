@@ -56,3 +56,18 @@ location: night mode applies at all hours and "Stay on at night" is disabled wit
 Display off → Settings Wake → on for the timeout. Configure a button on a free GPIO (AUX): press
 wakes; press again shows the next page. A pin used by I2C/GPS/rain/wind is rejected with "Display:
 wake button pin is already in use".
+
+## Results (implementation round 2, 2026-10-17)
+
+1. **Logic and contracts**: pass. `pio test -e native` 373/373; `esp32dev` and `esp32dev-ble` build
+   with -Werror (sizes in budgets.md); `openapi.py --check` OK (34 operations); `quality/check.py`
+   0 findings; web `vitest run` 57 files / 687 tests, `tsc --noEmit` and `eslint src` clean; i18n
+   `check.mjs` and `gen_device_catalog.py --check` OK; `dashboard/check.py` OK. `mkdocs build --strict`
+   not run (mkdocs not installed here; CI runs it).
+2. **Demo device**: pass, driven through the demo core in Node (no browser): settings report
+   `displayDetected: true`; Blank → 200 `{"success":true}`, `display.on` false, `page` null; Wake → 200,
+   `on` true and `page` stepping sky → environment → safety every 5 s (the demo's pages and interval);
+   the API explorer's OpenAPI lists both routes. The Display card's states are covered by Vitest
+   (`DisplayCard.test.tsx`, MSW).
+3. to 6. **Device**: open for the PR; spare device only, with the owner's permission (no device
+   contacted in this round).
