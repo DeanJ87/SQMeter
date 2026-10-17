@@ -67,6 +67,11 @@ public:
         : router(*this, identity(identityJson))
     {
         cfg = Config::createDefault();
+        // The demo board has the second I2C bus wired and both sky sensors
+        // fitted, so the explorer shows the SQM and the SQM-L (spec 030).
+        cfg.sensor.i2c2SDA = 25;
+        cfg.sensor.i2c2SCL = 26;
+        cfg.sky.sqmlEnabled = true;
         bootConfig = cfg;
         history.magic = 0; // garbage -> cleared on the first boot
         SafetyHistory::startBoot(history, false);
@@ -151,7 +156,7 @@ public:
     std::string deliveryRequests(uint32_t id, const std::string &credentialsJson) const;
 
     // POST /api/sensors/tsl2591/calibrate-dark - the device's checks.
-    std::string calibrateDark();
+    std::string calibrateDark(const std::string &sensor);
 
     // --- Alpaca --------------------------------------------------------------
     // method "GET"/"PUT", path, params as [[name, value], ...].

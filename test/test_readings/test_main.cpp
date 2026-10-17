@@ -234,7 +234,7 @@ void test_discovery_messages(void)
     forEachDiscovery(
         device, groups, true, [&](const std::string &topic, const std::string &payload) { messages.emplace_back(topic, payload); });
 
-    TEST_ASSERT_EQUAL(17, messages.size());
+    TEST_ASSERT_EQUAL(20, messages.size()); // + the sky sensors' three (spec 030), removed here
     bool sawSqm = false, sawWindRemoval = false, sawSafety = false, sawSwitch = false;
     for (const auto &m : messages)
     {
@@ -314,6 +314,7 @@ void test_one_sensor_document_unchanged_but_source();
 void test_sky_sensor_entries_and_rounding();
 void test_sky_sensor_not_ok_carries_status_only();
 void test_worst_case_document_fits();
+void test_discovery_sky_sensor_entities();
 
 int main(int argc, char **argv)
 {
@@ -336,5 +337,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_sky_sensor_entries_and_rounding);
     RUN_TEST(test_sky_sensor_not_ok_carries_status_only);
     RUN_TEST(test_worst_case_document_fits);
+    RUN_TEST(test_discovery_sky_sensor_entities);
     return UNITY_END();
 }

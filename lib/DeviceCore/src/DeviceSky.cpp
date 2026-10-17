@@ -68,6 +68,21 @@ namespace SQM::Core::Detail
 
 namespace SQM::Core
 {
+    SkyReadings skyReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs)
+    {
+        const uint32_t staleAfter = cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
+        SkyReadings out;
+        out.source = cfg.sky.authoritative;
+        for (size_t i = 0; i < SKY_ROLE_COUNT; ++i)
+        {
+            const SkySensorSnapshot &sky = snapshot.skySensors[i];
+            const bool fresh = sky.lastUpdate != 0 && ageMs(nowMs, sky.lastUpdate) <= staleAfter;
+            out.roles[i].valid = cfg.skyEnabled(static_cast<SkyRole>(i)) && sky.reading.status == SensorStatus::Ok && fresh;
+            out.roles[i].sqm = SkyQuality::calculate(sky.reading.lux).sqm;
+        }
+        return out;
+    }
+
     void applyDarkCalibration(Config &cfg, SkyRole role, const TSL2591Diagnostics &diagnostics, int64_t at)
     {
         SkyCalibrationConfig &cal = cfg.calibration(role);

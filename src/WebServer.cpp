@@ -330,9 +330,11 @@ namespace SQM
             localClock(clock.time, clock.date);
             const SafetyStatus safety = getSafetyStatus();
             const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
-            const Core::NightState night = computeNight(getSensorSnapshot(), cfg);
+            const SensorSnapshot snapshot = getSensorSnapshot();
+            const Core::NightState night = computeNight(snapshot, cfg);
             const Core::TestWording wording{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
-            const Alerts::Alert test = Core::buildTestAlert(sample, wording, Core::AlertSources{cfg, obs, night, safety}, clock);
+            const Core::AlertSources sources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, millis())};
+            const Alerts::Alert test = Core::buildTestAlert(sample, wording, sources, clock);
             if (sample != nullptr && test.level == Alerts::AlertLevel::Wake)
             {
                 const time_t wallClock = time(nullptr);

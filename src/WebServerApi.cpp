@@ -331,36 +331,32 @@ namespace SQM
 
     namespace
     {
-        // A dark offset is only good from a covered sensor with a full window;
-        // sends the 409 that says why not and returns true otherwise.
-        bool darkCalibrationRefused(AsyncWebServerRequest *request, const TSL2591Diagnostics &diagnostics)
+        // A dark offset is only good from a covered sensor with a full window:
+        // the 409 body that says why not, or "" when it is.
+        std::string darkCalibrationRefusal(const TSL2591Diagnostics &diagnostics)
         {
+            DynamicJsonDocument error(256);
             // A covered sensor reads near zero at maximum gain. Out of night mode
             // it's seeing light, and the offset would wipe out real readings.
             if (!diagnostics.nightMode)
             {
-                request->send(
-                    409,
-                    "application/json",
-                    createErrorJson("The sensor is seeing light. Cover it completely and wait for the averaging window to fill.").c_str());
-                return true;
+                error["error"] = "The sensor is seeing light. Cover it completely and wait for the averaging window to fill.";
             }
-            // The offset is the window's average: wait until the window holds only
-            // covered readings, not a mix from before it was covered.
-            const uint16_t needed = Core::windowSamples(diagnostics);
-            if (diagnostics.sampleCount < needed)
+            else
             {
-                DynamicJsonDocument error(256);
+                // The offset is the window's average: wait until the window holds
+                // only covered readings, not a mix from before it was covered.
+                const uint16_t needed = Core::windowSamples(diagnostics);
+                if (diagnostics.sampleCount >= needed)
+                    return "";
                 error["error"] = "The averaging window isn't full yet (" + std::to_string(diagnostics.sampleCount) + " of " +
                                  std::to_string(needed) + " samples). Keep the sensor covered and try again.";
                 error["sampleCount"] = diagnostics.sampleCount;
                 error["windowSamples"] = needed;
-                std::string body;
-                serializeJson(error, body);
-                request->send(409, "application/json", body.c_str());
-                return true;
             }
-            return false;
+            std::string body;
+            serializeJson(error, body);
+            return body;
         }
     } // namespace
 
@@ -383,8 +379,12 @@ namespace SQM
             request->send(409, "application/json", createErrorJson("No light-sensor readings to calibrate from").c_str());
             return;
         }
-        if (darkCalibrationRefused(request, diagnostics))
+        const std::string refusal = darkCalibrationRefusal(diagnostics);
+        if (!refusal.empty())
+        {
+            request->send(409, "application/json", refusal.c_str());
             return;
+        }
 
         Config updated = getConfigCallback();
         const time_t epochSeconds = time(nullptr);

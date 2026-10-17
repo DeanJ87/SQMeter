@@ -475,6 +475,8 @@ void test_sky_status_documents();
 void test_sky_safety_uses_the_authoritative_sensor_only();
 void test_sky_alpaca_follows_the_authoritative_sensor();
 void test_sky_dark_calibration_writes_one_role();
+void test_sky_alert_variables();
+void test_sky_alert_sensor_slots();
 
 int main()
 {
@@ -503,5 +505,7 @@ int main()
     RUN_TEST(test_sky_safety_uses_the_authoritative_sensor_only);
     RUN_TEST(test_sky_alpaca_follows_the_authoritative_sensor);
     RUN_TEST(test_sky_dark_calibration_writes_one_role);
+    RUN_TEST(test_sky_alert_variables);
+    RUN_TEST(test_sky_alert_sensor_slots);
     return UNITY_END();
 }

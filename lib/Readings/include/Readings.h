@@ -166,7 +166,12 @@ namespace SQM
         // Which groups to include (MQTT publish settings). REST/WebSocket use all.
         struct Groups
         {
-            bool sky = true; // light + sky
+            bool sky = true; // light + sky (+ skySensors)
+            // Home Assistant's per-sensor entities (spec 030): that sky
+            // sensor is on. Off by default so a caller that doesn't know the
+            // settings announces only what it always did.
+            bool skySqm = false;
+            bool skySqml = false;
             bool environment = true;
             bool clouds = true; // infrared + clouds
             bool gps = true;

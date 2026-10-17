@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <map>
 #include <string>
 
 // Two sky sensors in the readings document (spec 030, contracts/readings.md).
@@ -217,4 +218,87 @@ void test_worst_case_document_fits()
     serializeJson(doc, payload);
     snprintf(detail, sizeof detail, "payload %u bytes", static_cast<unsigned>(payload.size()));
     TEST_ASSERT_LESS_THAN_MESSAGE(MQTT_PAYLOAD_LIMIT, payload.size(), detail);
+}
+
+namespace
+{
+    std::map<std::string, std::string> discovery(bool sqm, bool sqml, bool sky = true)
+    {
+        DiscoveryDevice device{"sqmeter_aabbccddeeff", "Roof SQM", "0.4.0", "sqmeter", "homeassistant"};
+        Groups groups;
+        groups.sky = sky;
+        groups.skySqm = sqm;
+        groups.skySqml = sqml;
+        std::map<std::string, std::string> out;
+        forEachDiscovery(device, groups, true, [&](const std::string &topic, const std::string &payload) { out[topic] = payload; });
+        return out;
+    }
+
+    const std::string TOPIC = "homeassistant/sensor/sqmeter_aabbccddeeff/";
+} // namespace
+
+// Spec 030 D7: an entity per sky sensor and their difference.
+void test_discovery_sky_sensor_entities()
+{
+    auto both = discovery(true, true);
+    struct
+    {
+        const char *object;
+        const char *name;
+        const char *value;
+        const char *availability;
+    } const expected[] = {
+        {"sqm_wide",
+         "SQM (wide)",
+         "{{ value_json.skySensors.sqm.sqm if value_json.skySensors.sqm.sqm is defined else none }}",
+         "{{ 'online' if value_json.skySensors.sqm.status == 'ok' else 'offline' }}"},
+        {"sqm_l",
+         "SQM-L (narrow)",
+         "{{ value_json.skySensors.sqml.sqm if value_json.skySensors.sqml.sqm is defined else none }}",
+         "{{ 'online' if value_json.skySensors.sqml.status == 'ok' else 'offline' }}"},
+        {"sqm_delta",
+         "SQM-L − SQM",
+         "{{ value_json.skySensors.deltaSqm if value_json.skySensors.deltaSqm is defined else none }}",
+         "{{ 'online' if value_json.skySensors.deltaSqm is defined else 'offline' }}"},
+    };
+    for (const auto &e : expected)
+    {
+        const std::string payload = both[TOPIC + e.object + "/config"];
+        TEST_ASSERT_FALSE_MESSAGE(payload.empty(), e.object);
+        DynamicJsonDocument doc(2048);
+        TEST_ASSERT_FALSE(deserializeJson(doc, payload));
+        TEST_ASSERT_EQUAL_STRING(e.name, doc["name"]);
+        TEST_ASSERT_EQUAL_STRING((std::string("sqmeter_aabbccddeeff_") + e.object).c_str(), doc["unique_id"]);
+        TEST_ASSERT_EQUAL_STRING("sqmeter/state", doc["state_topic"]);
+        TEST_ASSERT_EQUAL_STRING(e.value, doc["value_template"]);
+        TEST_ASSERT_EQUAL_STRING("mag/arcsec²", doc["unit_of_measurement"]);
+        TEST_ASSERT_EQUAL_STRING("sqmeter/availability", doc["availability"][0]["topic"]);
+        TEST_ASSERT_EQUAL_STRING(e.availability, doc["availability"][1]["value_template"]);
+        TEST_ASSERT_EQUAL_STRING("all", doc["availability_mode"]);
+    }
+
+    // Only the SQM: its entity; the SQM-L's and the difference removed.
+    auto sqmOnly = discovery(true, false);
+    TEST_ASSERT_FALSE(sqmOnly[TOPIC + "sqm_wide/config"].empty());
+    TEST_ASSERT_TRUE(sqmOnly[TOPIC + "sqm_l/config"].empty());
+    TEST_ASSERT_TRUE(sqmOnly[TOPIC + "sqm_delta/config"].empty());
+    TEST_ASSERT_EQUAL(1, sqmOnly.count(TOPIC + "sqm_l/config")); // published empty: removed
+    auto sqmlOnly = discovery(false, true);
+    TEST_ASSERT_TRUE(sqmlOnly[TOPIC + "sqm_wide/config"].empty());
+    TEST_ASSERT_FALSE(sqmlOnly[TOPIC + "sqm_l/config"].empty());
+    TEST_ASSERT_TRUE(sqmlOnly[TOPIC + "sqm_delta/config"].empty());
+    // The sky group off removes all three.
+    auto noSky = discovery(true, true, false);
+    for (const char *object : {"sqm_wide", "sqm_l", "sqm_delta"})
+        TEST_ASSERT_TRUE(noSky[TOPIC + object + "/config"].empty());
+
+    // The existing sky entities are the same whatever the sky sensors.
+    auto none = discovery(false, false);
+    for (const char *object : {"sqm", "nelm", "bortle", "illuminance"})
+    {
+        const std::string topic = TOPIC + object + "/config";
+        TEST_ASSERT_EQUAL_STRING(none[topic].c_str(), both[topic].c_str());
+        TEST_ASSERT_TRUE(both[topic].find("skySensors") == std::string::npos);
+    }
+    TEST_ASSERT_EQUAL_size_t(none.size(), both.size());
 }

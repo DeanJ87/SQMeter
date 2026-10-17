@@ -60,6 +60,9 @@ namespace SQM
         const Config &cfg = getConfigCallback();
         const BleAlarmStatus alarm = ble.alarmStatus();
         groups.alertsSwitch = cfg.alerts.enabled || (cfg.ble.enabled && alarm.serviceActive && alarm.bondedPhones > 0); // dep: D-13
+        // Home Assistant's per-sensor sky entities follow the sensors switched on (spec 030).
+        groups.skySqm = cfg.sky.sqmEnabled;
+        groups.skySqml = cfg.sky.sqmlEnabled;
 
         publishDiscovery(mqtt, groups);
 
@@ -96,7 +99,16 @@ namespace SQM
         Readings::DiscoveryDevice device{
             std::string("sqmeter_") + mac, getConfigCallback().deviceName, FIRMWARE_VERSION, mqtt.topic, mqtt.discoveryPrefix};
         std::string key = std::to_string(mqtt.homeAssistant) + device.name + device.baseTopic + device.prefix;
-        for (bool on : {groups.sky, groups.environment, groups.clouds, groups.rain, groups.wind, mqtt.publish.safety, groups.alertsSwitch})
+        for (bool on :
+             {groups.sky,
+              groups.skySqm,
+              groups.skySqml,
+              groups.environment,
+              groups.clouds,
+              groups.rain,
+              groups.wind,
+              mqtt.publish.safety,
+              groups.alertsSwitch})
             key += on ? '1' : '0';
         if (key == discoveryKey && mqttClient->connectionCount() == discoveryConnection)
             return;

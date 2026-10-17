@@ -29,7 +29,14 @@ namespace SQM
             in.rainRateMmPerHour = obs.rainRateMmPerHour;
             in.lensFault = snapshot.rg15.lensBad;
 
-            in.sensors[0] = {"Light sensor", true, obs.skyLight.valid};
+            // Spec 030: slot 0 is the SQM ("Light sensor" while it is the
+            // only sky sensor), slot 5 the SQM-L.
+            // The authoritative one is judged as Alpaca judges it (obs).
+            const SkyReadings sky = skyReadings(snapshot, cfg, now);
+            auto skyValid = [&](SkyRole role)
+            { return role == snapshot.skySource ? obs.skyLight.valid : sky.roles[skyRoleIndex(role)].valid; };
+            in.sensors[0] = {cfg.sky.sqmlEnabled ? "SQM sensor" : "Light sensor", cfg.sky.sqmEnabled, skyValid(SkyRole::Sqm)};
+            in.sensors[5] = {"SQM-L sensor", cfg.sky.sqmlEnabled, skyValid(SkyRole::Sqml)};
             in.sensors[1] = {"IR sky sensor", true, obs.irSky.valid};
             in.sensors[2] = {"Environment sensor", true, obs.environment.valid};
             in.sensors[3] = {"Rain sensor", cfg.rain.enabled, obs.rain.valid};
@@ -101,6 +108,28 @@ namespace SQM
             }
         }
 
+        namespace
+        {
+            // {sqm_wide}, {sqm_l}, {sqm_delta} (SQM-L - SQM, signed), {sqm_source} (spec 030).
+            void appendSkyVars(std::vector<std::pair<std::string, std::string>> &vars, const SkyReadings &sky)
+            {
+                const SkyReadings::Role &wide = sky.roles[skyRoleIndex(SkyRole::Sqm)];
+                const SkyReadings::Role &narrow = sky.roles[skyRoleIndex(SkyRole::Sqml)];
+                auto fmt = [](bool valid, const char *format, double value) -> std::string
+                {
+                    if (!valid)
+                        return "--";
+                    char buffer[24];
+                    std::snprintf(buffer, sizeof(buffer), format, value);
+                    return buffer;
+                };
+                vars.emplace_back("sqm_wide", fmt(wide.valid, "%.2f", wide.sqm));
+                vars.emplace_back("sqm_l", fmt(narrow.valid, "%.2f", narrow.sqm));
+                vars.emplace_back("sqm_delta", fmt(wide.valid && narrow.valid, "%+.2f", narrow.sqm - wide.sqm));
+                vars.emplace_back("sqm_source", skyRoleLabel(sky.source));
+            }
+        } // namespace
+
         std::vector<std::pair<std::string, std::string>> alertVars(
             const AlertSources &sources, const Alerts::Alert &alert, const LocalClock &clock)
         {
@@ -144,6 +173,7 @@ namespace SQM
                 {"gust", num(obs.wind.valid, obs.windGustMs, 1)},
                 {"sun_alt", num(n.known, n.sunAltitudeDeg, 1)},
             };
+            appendSkyVars(vars, sources.sky);
             vars.insert(vars.end(), alert.vars.begin(), alert.vars.end());
             return vars;
         }

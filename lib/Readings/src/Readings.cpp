@@ -219,6 +219,9 @@ namespace SQM
             enum class Group : uint8_t
             {
                 Sky,
+                SkySqm,
+                SkySqml,
+                SkyPair,
                 Environment,
                 Clouds,
                 Rain,
@@ -245,6 +248,35 @@ namespace SQM
                 {"sensor", "nelm", "Limiting magnitude", Group::Sky, "sky", "value_json.sky.nelm", "mag", nullptr, "mdi:eye"},
                 {"sensor", "bortle", "Bortle class", Group::Sky, "sky", "value_json.sky.bortle", nullptr, nullptr, "mdi:weather-night"},
                 {"sensor", "illuminance", "Illuminance", Group::Sky, "light", "value_json.light.lux", "lx", "illuminance", nullptr},
+                // Each sky sensor and their difference (spec 030 D7); the
+                // difference is there exactly while both are ok.
+                {"sensor",
+                 "sqm_wide",
+                 "SQM (wide)",
+                 Group::SkySqm,
+                 "skySensors.sqm",
+                 "value_json.skySensors.sqm.sqm",
+                 "mag/arcsec²",
+                 nullptr,
+                 "mdi:star-four-points"},
+                {"sensor",
+                 "sqm_l",
+                 "SQM-L (narrow)",
+                 Group::SkySqml,
+                 "skySensors.sqml",
+                 "value_json.skySensors.sqml.sqm",
+                 "mag/arcsec²",
+                 nullptr,
+                 "mdi:star-four-points-outline"},
+                {"sensor",
+                 "sqm_delta",
+                 "SQM-L − SQM",
+                 Group::SkyPair,
+                 nullptr,
+                 "value_json.skySensors.deltaSqm",
+                 "mag/arcsec²",
+                 nullptr,
+                 "mdi:delta"},
                 {"sensor",
                  "temperature",
                  "Temperature",
@@ -330,6 +362,12 @@ namespace SQM
                 {
                 case Group::Sky:
                     return groups.sky;
+                case Group::SkySqm:
+                    return groups.sky && groups.skySqm;
+                case Group::SkySqml:
+                    return groups.sky && groups.skySqml;
+                case Group::SkyPair:
+                    return groups.sky && groups.skySqm && groups.skySqml;
                 case Group::Environment:
                     return groups.environment;
                 case Group::Clouds:
@@ -394,12 +432,14 @@ namespace SQM
                 JsonArray availability = doc.createNestedArray("availability");
                 JsonObject online = availability.createNestedObject();
                 online["topic"] = base + "/availability";
-                if (entity.jsonGroup != nullptr)
+                if (entity.jsonGroup != nullptr || entity.group == Group::SkyPair)
                 {
                     JsonObject groupOk = availability.createNestedObject();
                     groupOk["topic"] = base + "/state";
                     groupOk["value_template"] =
-                        std::string("{{ 'online' if value_json.") + entity.jsonGroup + ".status == 'ok' else 'offline' }}";
+                        entity.jsonGroup != nullptr
+                            ? std::string("{{ 'online' if value_json.") + entity.jsonGroup + ".status == 'ok' else 'offline' }}"
+                            : std::string("{{ 'online' if value_json.skySensors.deltaSqm is defined else 'offline' }}");
                     doc["availability_mode"] = "all";
                 }
 

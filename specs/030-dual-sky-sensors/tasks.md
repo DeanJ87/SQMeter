@@ -108,18 +108,18 @@ their own status; covering one changes only that entry (SC-002).
 **Independent test**: HA creates SQM (wide), SQM-L (narrow), SQM-L − SQM beside `sqm`; `{sqm_l}`
 renders the SQM-L value.
 
-- [ ] T044 [P] [US4] Native tests first in test/test_readings/: discovery publishes `sqm_wide`, `sqm_l`, `sqm_delta` with names, templates, units and availability from contracts/integrations.md when enabled, empty retained payloads when disabled (`sqm_delta` needs both); existing `sqm`, `nelm`, `bortle`, `illuminance` payloads byte-identical
-- [ ] T045 [P] [US4] Native tests first in test/test_alert_variables/ and test/test_alert_logic/: `{sqm_wide}`, `{sqm_l}`, `{sqm_delta}` (signed, 2 decimals), `{sqm_source}` (`SQM`/`SQM-L`), missing values like `{sqm}`; sensor slots ("Light sensor" with SQM-L disabled, else "SQM sensor"; "SQM-L sensor" only when enabled) for `sensor_fault`/`sensor_recovered`
-- [ ] T046 [US4] `Groups::skySqm/skySqml`, group `SkyPair` and the three entities in lib/Readings/src/Readings.cpp; set the groups from config in src/WebServerStatus.cpp `publishDiscovery` path; T044 passes
-- [ ] T047 [US4] `Alerts::SENSOR_COUNT` 6 in lib/AlertLogic/include/AlertEngine.h; slot names and the new variables in lib/DeviceCore/src/DeviceAlerts.cpp; lib/AlertLogic/template-variables.json; web/src/components/settings/alertVariables.ts with descriptions; T045 passes
+- [X] T044 [P] [US4] Native tests first in test/test_readings/: discovery publishes `sqm_wide`, `sqm_l`, `sqm_delta` with names, templates, units and availability from contracts/integrations.md when enabled, empty retained payloads when disabled (`sqm_delta` needs both); existing `sqm`, `nelm`, `bortle`, `illuminance` payloads byte-identical
+- [X] T045 [P] [US4] Native tests first in test/test_alert_variables/ and test/test_alert_logic/: `{sqm_wide}`, `{sqm_l}`, `{sqm_delta}` (signed, 2 decimals), `{sqm_source}` (`SQM`/`SQM-L`), missing values like `{sqm}`; sensor slots ("Light sensor" with SQM-L disabled, else "SQM sensor"; "SQM-L sensor" only when enabled) for `sensor_fault`/`sensor_recovered`
+- [X] T046 [US4] `Groups::skySqm/skySqml`, group `SkyPair` and the three entities in lib/Readings/src/Readings.cpp; set the groups from config in src/WebServerStatus.cpp `publishDiscovery` path; T044 passes
+- [X] T047 [US4] `Alerts::SENSOR_COUNT` 6 in lib/AlertLogic/include/AlertEngine.h; slot names and the new variables in lib/DeviceCore/src/DeviceAlerts.cpp; lib/AlertLogic/template-variables.json; web/src/components/settings/alertVariables.ts with descriptions; T045 passes
 
 ## Phase 7: Polish and cross-cutting
 
 ### Demo and contracts (FR-011)
 
-- [ ] T048 [P] Contract schemas: `sky.source` (optional enum) and `skySensors` (optional) in specs/016-demo-device-emulation/contracts/schemas/readings.schema.json; `skySensors` in status.schema.json; new config keys in config.schema.json and settings-effective.schema.json; no existing property changed
-- [ ] T049 Demo: simulator `lightL` condition (present/failed, SQM-L ~0.25 mag/arcsec² darker), SQM-L enabled in the demo config, demo panel control to fail it, in web/src/demo/conditions.ts, web/src/demo/simulator.ts, web/src/demo/device.ts, web/src/demo/presets.ts; `sensor_feed.cpp` fills `skySensors[Sqml]` in tools/demo-core/sensor_feed.cpp
-- [ ] T050 Rebuild the WASM core with tools/demo-core/build.sh (updates web/src/demo/core/* and SOURCE_HASH); contract check (`tools/contract-check.py`) passes for device mocks and demo
+- [X] T048 [P] Contract schemas: `sky.source` (optional enum) and `skySensors` (optional) in specs/016-demo-device-emulation/contracts/schemas/readings.schema.json; `skySensors` in status.schema.json; new config keys in config.schema.json and settings-effective.schema.json; no existing property changed
+- [X] T049 Demo: simulator `lightL` condition (present/failed, SQM-L ~0.25 mag/arcsec² darker), SQM-L enabled in the demo config, demo panel control to fail it, in web/src/demo/conditions.ts, web/src/demo/simulator.ts, web/src/demo/device.ts, web/src/demo/presets.ts; `sensor_feed.cpp` fills `skySensors[Sqml]` in tools/demo-core/sensor_feed.cpp
+- [X] T050 Rebuild the WASM core with tools/demo-core/build.sh (updates web/src/demo/core/* and SOURCE_HASH); contract check (`tools/contract-check.py`) passes for device mocks and demo
 
 ### Strings (FR-017)
 

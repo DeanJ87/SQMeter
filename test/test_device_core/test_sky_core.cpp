@@ -2,6 +2,10 @@
 
 #include "DeviceCore.h"
 
+#include <cstdio>
+#include <string>
+#include <vector>
+
 // Two sky sensors (spec 030): the authoritative copy (research D3).
 
 using namespace SQM;
@@ -423,4 +427,99 @@ void test_sky_dark_calibration_writes_one_role()
     expect = cfg;
     expect.skyCalibration = before.skyCalibration;
     TEST_ASSERT_EQUAL_STRING(before.toJson().c_str(), expect.toJson().c_str());
+}
+
+namespace
+{
+    std::string var(const std::vector<std::pair<std::string, std::string>> &vars, const char *name)
+    {
+        for (const auto &v : vars)
+            if (v.first == name)
+                return v.second;
+        return "<none>";
+    }
+
+    std::vector<std::pair<std::string, std::string>> skyVars(SensorSnapshot &s, const Config &cfg, uint32_t now)
+    {
+        Core::derive(s, cfg);
+        const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(s, cfg, now);
+        const Core::NightState night = Core::night(s, cfg, 1791417600);
+        const SafetyStatus status{};
+        Alerts::Alert alert;
+        return Core::alertVars(
+            Core::AlertSources{cfg, obs, night, status, Core::skyReadings(s, cfg, now)}, alert, Core::LocalClock{"23:00", "2026-10-07"});
+    }
+} // namespace
+
+// Spec 030 D10: each sky sensor's value, their difference and the source.
+void test_sky_alert_variables()
+{
+    const uint32_t now = 100000;
+    SensorSnapshot s = twoSensors(now);
+    auto vars = skyVars(s, dual(SkyRole::Sqml), now);
+    char expected[16];
+    std::snprintf(expected, sizeof expected, "%.2f", SkyQuality::calculate(0.0004F).sqm);
+    TEST_ASSERT_EQUAL_STRING(expected, var(vars, "sqm_wide").c_str());
+    std::snprintf(expected, sizeof expected, "%.2f", SkyQuality::calculate(0.0002F).sqm);
+    TEST_ASSERT_EQUAL_STRING(expected, var(vars, "sqm_l").c_str());
+    TEST_ASSERT_EQUAL_STRING(expected, var(vars, "sqm").c_str()); // authoritative = SQM-L
+    std::snprintf(expected, sizeof expected, "%+.2f", SkyQuality::calculate(0.0002F).sqm - SkyQuality::calculate(0.0004F).sqm);
+    TEST_ASSERT_EQUAL_STRING(expected, var(vars, "sqm_delta").c_str());
+    TEST_ASSERT_EQUAL_STRING("+", var(vars, "sqm_delta").substr(0, 1).c_str());
+    TEST_ASSERT_EQUAL_STRING("SQM-L", var(vars, "sqm_source").c_str());
+
+    // A sensor without a reading reads like {sqm} without one; so does the difference.
+    s = twoSensors(now);
+    s.skySensors[SQML_I].reading.status = SensorStatus::ReadError;
+    vars = skyVars(s, dual(SkyRole::Sqm), now);
+    TEST_ASSERT_EQUAL_STRING("--", var(vars, "sqm_l").c_str());
+    TEST_ASSERT_EQUAL_STRING("--", var(vars, "sqm_delta").c_str());
+    TEST_ASSERT_TRUE(var(vars, "sqm_wide") != "--");
+    TEST_ASSERT_EQUAL_STRING("SQM", var(vars, "sqm_source").c_str());
+
+    // One sensor: the SQM-L's are empty.
+    s = twoSensors(now);
+    vars = skyVars(s, Config::createDefault(), now);
+    TEST_ASSERT_EQUAL_STRING("--", var(vars, "sqm_l").c_str());
+    TEST_ASSERT_EQUAL_STRING(var(vars, "sqm").c_str(), var(vars, "sqm_wide").c_str());
+}
+
+// Sensor fault/recovered names (D10): "Light sensor" with one sky sensor,
+// "SQM sensor" and "SQM-L sensor" with two.
+void test_sky_alert_sensor_slots()
+{
+    const uint32_t now = 100000;
+    auto slots = [now](SensorSnapshot &s, const Config &cfg)
+    {
+        Core::derive(s, cfg);
+        const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(s, cfg, now);
+        const Core::NightState night = Core::night(s, cfg, 1791417600);
+        const SafetyStatus status{};
+        return Core::alertInputs(Core::AlertSources{cfg, obs, night, status}, s, now);
+    };
+    TEST_ASSERT_EQUAL_size_t(6, Alerts::SENSOR_COUNT);
+
+    SensorSnapshot s = twoSensors(now);
+    Alerts::AlertInputs in = slots(s, Config::createDefault());
+    TEST_ASSERT_EQUAL_STRING("Light sensor", in.sensors[0].name);
+    TEST_ASSERT_TRUE(in.sensors[0].enabled);
+    TEST_ASSERT_TRUE(in.sensors[0].healthy);
+    TEST_ASSERT_FALSE(in.sensors[5].enabled);
+
+    s = twoSensors(now);
+    s.skySensors[SQML_I].reading.status = SensorStatus::ReadError;
+    in = slots(s, dual(SkyRole::Sqm));
+    TEST_ASSERT_EQUAL_STRING("SQM sensor", in.sensors[0].name);
+    TEST_ASSERT_TRUE(in.sensors[0].healthy);
+    TEST_ASSERT_EQUAL_STRING("SQM-L sensor", in.sensors[5].name);
+    TEST_ASSERT_TRUE(in.sensors[5].enabled);
+    TEST_ASSERT_FALSE(in.sensors[5].healthy);
+
+    // The SQM switched off: its slot is not watched.
+    Config noSqm = dual(SkyRole::Sqml);
+    noSqm.sky.sqmEnabled = false;
+    s = twoSensors(now);
+    in = slots(s, noSqm);
+    TEST_ASSERT_FALSE(in.sensors[0].enabled);
+    TEST_ASSERT_TRUE(in.sensors[5].healthy);
 }

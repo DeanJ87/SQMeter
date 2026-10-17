@@ -151,12 +151,26 @@ namespace SQM
         // Alerts.
         // The device state an alert pass reads: settings, readings, darkness
         // and the safety verdict.
+        // Each sky sensor's own reading for the alert wording (spec 030):
+        // {sqm_wide}, {sqm_l}, {sqm_delta}, {sqm_source}.
+        struct SkyReadings
+        {
+            struct Role
+            {
+                bool valid = false; // on, ok and fresh
+                float sqm = 0.0F;
+            } roles[SKY_ROLE_COUNT];
+            SkyRole source = SkyRole::Sqm;
+        };
+        SkyReadings skyReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
+
         struct AlertSources
         {
             const Config &cfg;
             const Alpaca::ObservingConditionsSnapshot &obs;
             const NightState &night;
             const SafetyStatus &status;
+            SkyReadings sky{}; // none given: every per-sensor value reads "--"
         };
         // The device's local time ("HH:MM") and date for {time} and {date}.
         struct LocalClock

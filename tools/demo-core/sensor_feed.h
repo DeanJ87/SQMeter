@@ -52,6 +52,9 @@ namespace SQM
 
         float averagedLux(float inputLux, bool nightMode, uint32_t now);
         void readLight(JsonObjectConst in);
+        void readSky(SkyRole role, JsonObjectConst sensor, JsonObjectConst light, float averagedRawLux);
+        // The SQM-L's narrow lens reads this much darker than the SQM (spec 030 D15).
+        static constexpr float SQML_DARKER_MAG = 0.25f;
         void lightDiagnostics();
         void readEnvironment(JsonObjectConst in);
         void readGps(JsonObjectConst in);

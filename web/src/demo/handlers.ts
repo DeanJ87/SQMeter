@@ -151,7 +151,9 @@ export const demoHandlers = [
   http.post('/api/ble/forget-bonds', () => HttpResponse.json({ error: 'Bluetooth is off' }, { status: 409 })),
 
   // Sensors
-  http.post('/api/sensors/tsl2591/calibrate-dark', () => reply(demoDevice.calibrateDark())),
+  http.post('/api/sensors/tsl2591/calibrate-dark', ({ request }) =>
+    reply(demoDevice.calibrateDark(new URL(request.url).searchParams.get('sensor') ?? '')),
+  ),
   http.post('/api/sensors/rg15/test', () => {
     if (!demoDevice.rawConfig().rain?.enabled)
       return HttpResponse.json({ error: 'The rain sensor is switched off (Settings → Sensors → Rain sensor)' }, { status: 409 });
