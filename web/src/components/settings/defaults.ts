@@ -1,4 +1,13 @@
-import type { AlertsConfig, AlpacaConfig, BleConfig, Config, DisplayConfig, LocationConfig, WindConfig, MQTTPublishGroups } from '../../types';
+import type {
+  AlertsConfig,
+  AlpacaConfig,
+  BleConfig,
+  Config,
+  DisplayConfig,
+  LocationConfig,
+  WindConfig,
+  MQTTPublishGroups,
+} from '../../types';
 
 // Defaults for every settings section - used to fill in fields that configs
 // from older firmware don't have yet.

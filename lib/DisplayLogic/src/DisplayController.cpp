@@ -93,6 +93,42 @@ namespace SQM::Display
         return in.nowMs - onSinceMs >= limitMs;
     }
 
+    // Boot, wake, blank and the button, in that order.
+    void Controller::handleRequests(const Settings &settings, const Inputs &in)
+    {
+        if (!booted)
+        {
+            booted = true;
+            if (settings.wakeOnBoot)
+                turnOn(settings, in);
+        }
+        if (in.blank)
+            lit = false;
+        if (in.wake)
+            turnOn(settings, in);
+        if (!in.button)
+            return;
+        if (!lit)
+        {
+            turnOn(settings, in);
+            return;
+        }
+        nextPage(settings, in);
+        onSinceMs = in.nowMs; // a press while lit also restarts the timeout
+    }
+
+    // A page that went away is replaced at the next change, or now when
+    // nothing cycles.
+    void Controller::cycle(const Settings &settings, const Inputs &in)
+    {
+        Page pages[PAGE_COUNT];
+        const uint8_t count = visiblePages(settings, in.availableMask, pages);
+        const bool shown = contains(pages, count, page);
+        const bool cycleDue = count > 1 && in.nowMs - pageSinceMs >= settings.cycleSeconds * 1000U;
+        if (cycleDue || (!shown && count == 1))
+            nextPage(settings, in);
+    }
+
     Output Controller::tick(const Settings &settings, const Inputs &in)
     {
         Output out;
@@ -107,42 +143,11 @@ namespace SQM::Display
             out.shift = shiftPos;
             return out;
         }
-
-        if (!booted)
-        {
-            booted = true;
-            if (settings.wakeOnBoot)
-                turnOn(settings, in);
-        }
-        if (in.blank)
-            lit = false;
-        if (in.wake)
-            turnOn(settings, in);
-        if (in.button)
-        {
-            if (lit)
-            {
-                nextPage(settings, in);
-                onSinceMs = in.nowMs;
-            }
-            else
-            {
-                turnOn(settings, in);
-            }
-        }
-
+        handleRequests(settings, in);
         if (lit && timedOut(settings, in, out.nightMode))
             lit = false;
         if (lit)
-        {
-            Page pages[PAGE_COUNT];
-            const uint8_t count = visiblePages(settings, in.availableMask, pages);
-            const bool shown = contains(pages, count, page);
-            const bool cycleDue = count > 1 && in.nowMs - pageSinceMs >= settings.cycleSeconds * 1000U;
-            // A page that went away is replaced at the next change, or now when nothing cycles.
-            if (cycleDue || (!shown && count == 1))
-                nextPage(settings, in);
-        }
+            cycle(settings, in);
         out.on = lit;
         out.page = page;
         out.shift = shiftPos;

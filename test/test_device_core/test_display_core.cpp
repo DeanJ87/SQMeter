@@ -55,8 +55,12 @@ namespace
         Readings::Snapshot readings;
     };
 
-    Built build(SensorSnapshot s, const Config &cfg, uint32_t now, const SafetyStatus &safety = SafetyStatus{},
-                const Core::DisplayNetwork &net = Core::DisplayNetwork{})
+    Built build(
+        SensorSnapshot s,
+        const Config &cfg,
+        uint32_t now,
+        const SafetyStatus &safety = SafetyStatus{},
+        const Core::DisplayNetwork &net = Core::DisplayNetwork{})
     {
         Core::derive(s, cfg);
         Built b;

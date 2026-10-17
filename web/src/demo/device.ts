@@ -1,4 +1,5 @@
 import createSqmCore from './core/sqm-core.mjs';
+import type { Core } from './coreApi';
 import {
   advanceRamps,
   cloneConditions,
@@ -31,33 +32,6 @@ export const DEMO_VERSION: string = import.meta.env.VITE_DEMO_VERSION ?? 'dev';
 const LONDON_TZ = 'GMT0BST,M3.5.0/1,M10.5.0';
 // Cloud shortcuts roll in over this long unless another ramp is chosen (FR-010).
 export const CLOUD_RAMP_MS = 40_000;
-
-interface Core {
-  getConfig(redacted: boolean): string;
-  applyConfig(json: string): string;
-  loadConfig(json: string): boolean;
-  restart(nowMs: number): void;
-  tick(nowMs: number, epoch: number, inputs: string, localTime: string, localDate: string): void;
-  readings(): string;
-  statusParts(): string;
-  safety(): string;
-  effective(): string;
-  safetyHistory(): string;
-  recentAlerts(): string;
-  clearAlerts(): void;
-  isArmed(): boolean;
-  armedDocument(): string;
-  setArmed(on: boolean, source: string): void;
-  testAlert(params: string): string;
-  realTestAlert(): void;
-  deliveryRequests(id: number, credentials: string): string;
-  calibrateDark(sensor: string): string;
-  displayRequest(wake: boolean): string;
-  alpaca(method: string, path: string, params: string): string;
-  saveState(): string;
-  loadState(json: string): boolean;
-  pending(): string;
-}
 
 interface SavedV1 {
   version: 1;

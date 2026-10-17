@@ -42,17 +42,24 @@ namespace SQM
     bool OledTransport::init(bool rotate180, uint8_t contrast, bool night)
     {
         static const uint8_t SEQUENCE[] = {
-            0xAE,       // display off
-            0xD5, 0x80, // clock divide
-            0xA8, 0x3F, // multiplex: 64 rows
-            0xD3, 0x00, // no offset
-            0x40,       // start line 0
-            0x8D, 0x14, // charge pump on
-            0x20, 0x02, // page addressing
-            0xDA, 0x12, // COM pins for 128 x 64
-            0xD9, 0xF1, // pre-charge
-            0xA4,       // show RAM
-            0xA6,       // not inverted
+            0xAE, // display off
+            0xD5,
+            0x80, // clock divide
+            0xA8,
+            0x3F, // multiplex: 64 rows
+            0xD3,
+            0x00, // no offset
+            0x40, // start line 0
+            0x8D,
+            0x14, // charge pump on
+            0x20,
+            0x02, // page addressing
+            0xDA,
+            0x12, // COM pins for 128 x 64
+            0xD9,
+            0xF1, // pre-charge
+            0xA4, // show RAM
+            0xA6, // not inverted
         };
         return commands(SEQUENCE, sizeof SEQUENCE) && setRotation(rotate180) && setContrast(contrast, night);
     }

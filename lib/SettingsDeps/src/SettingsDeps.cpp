@@ -316,7 +316,8 @@ namespace SQM
                 c.add("display.brightness", "D-43", d.enabled, {found});
                 c.add("display.timeoutSeconds", "D-43", d.enabled, {found});
                 c.add("display.wakeOnBoot", "D-43", d.enabled && d.wakeOnBoot, {found});
-                c.add("display.stayOnAtNight", "D-44", d.enabled && d.stayOnAtNight, {found, {"D-44", "location-unknown", c.locationKnown}});
+                c.add(
+                    "display.stayOnAtNight", "D-44", d.enabled && d.stayOnAtNight, {found, {"D-44", "location-unknown", c.locationKnown}});
                 c.add("display.rotate180", "D-43", d.enabled && d.rotate180, {found});
                 c.add("display.buttonPin", "D-43", d.enabled && d.buttonPin != DisplayConfig::BUTTON_UNSET, {found});
             }

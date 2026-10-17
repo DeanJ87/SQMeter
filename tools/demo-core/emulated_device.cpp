@@ -79,8 +79,7 @@ void EmulatedDevice::tickDisplay()
     Core::DisplayNetwork network;
     network.connected = true; // the demo's network is simulated
     network.ip = "192.168.1.42";
-    const Display::View view =
-        Core::displayView(snapshot, Core::buildReadings(snapshot, cfg, nowMs, epoch), safety, cfg, network);
+    const Display::View view = Core::displayView(snapshot, Core::buildReadings(snapshot, cfg, nowMs, epoch), safety, cfg, network);
     const Core::NightState night = Core::night(snapshot, cfg, epoch);
     Display::Inputs in;
     in.nowMs = nowMs;

@@ -103,6 +103,8 @@ namespace SQM::Display
         void turnOn(const Settings &settings, const Inputs &in);
         void nextPage(const Settings &settings, const Inputs &in);
         bool timedOut(const Settings &settings, const Inputs &in, bool nightMode) const;
+        void handleRequests(const Settings &settings, const Inputs &in);
+        void cycle(const Settings &settings, const Inputs &in);
 
         bool booted = false; // the boot wake happened (again after re-enabling)
         bool lit = false;

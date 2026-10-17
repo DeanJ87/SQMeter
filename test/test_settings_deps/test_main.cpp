@@ -339,8 +339,14 @@ void test_display_needs_a_display()
 {
     Config cfg = saveAndRestart(Config::createDefault(), R"({"display":{"enabled":true,"stayOnAtNight":true,"buttonPin":33}})");
     Deps::Facts f = healthy();
-    for (const char *setting : {"display.pages", "display.cycleSeconds", "display.brightness", "display.timeoutSeconds",
-                                "display.wakeOnBoot", "display.stayOnAtNight", "display.buttonPin"})
+    for (const char *setting :
+         {"display.pages",
+          "display.cycleSeconds",
+          "display.brightness",
+          "display.timeoutSeconds",
+          "display.wakeOnBoot",
+          "display.stayOnAtNight",
+          "display.buttonPin"})
         TEST_ASSERT_EQUAL_STRING_MESSAGE("active", stateOf(cfg, f, setting).c_str(), setting);
     TEST_ASSERT_EQUAL_STRING("off", stateOf(cfg, f, "display.rotate180").c_str());
 

@@ -18,13 +18,21 @@ namespace
 
     using Draw = std::function<void(Frame &, int dx, int dy)>;
 
-    void expectPage(const View &view, Page page, bool night, uint8_t shift, const Draw &draw, const char *what)
+    // Which page, day or night, at which burn-in shift.
+    struct Shot
+    {
+        Page page;
+        bool night;
+        uint8_t shift;
+    };
+
+    void expectPage(const View &view, Shot shot, const Draw &draw, const char *what)
     {
         Frame actual(actualBuf);
-        render(actual, page, view, night, shift);
+        render(actual, shot.page, view, shot.night, shot.shift);
         Frame expected(expectedBuf);
         expected.clear();
-        const Shift s = shiftOffset(shift);
+        const Shift s = shiftOffset(shot.shift);
         draw(expected, s.dx, s.dy);
         TEST_ASSERT_EQUAL_MEMORY_MESSAGE(expectedBuf, actualBuf, FRAME_BYTES, what);
     }
@@ -90,9 +98,7 @@ void test_sky_day_layout(void)
     const View v = skyView();
     expectPage(
         v,
-        Page::Sky,
-        false,
-        0,
+        {Page::Sky, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "SQM mag");
@@ -112,9 +118,7 @@ void test_sky_names_the_authoritative_sensor_and_shows_the_other(void)
     v.sky.other.label = "SQM";
     expectPage(
         v,
-        Page::Sky,
-        false,
-        2,
+        {Page::Sky, false, 2},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "SQM-L mag");
@@ -128,9 +132,7 @@ void test_sky_names_the_authoritative_sensor_and_shows_the_other(void)
     v.sky.other.valid = false;
     expectPage(
         v,
-        Page::Sky,
-        false,
-        0,
+        {Page::Sky, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "SQM-L mag");
@@ -146,9 +148,7 @@ void test_sky_invalid_shows_no_data_marker(void)
     v.sky.valid = false; // missing, faulted or stale
     expectPage(
         v,
-        Page::Sky,
-        false,
-        0,
+        {Page::Sky, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "SQM mag");
@@ -169,10 +169,12 @@ void test_night_layouts_one_large_value(void)
         const char *text;
     } cases[] = {
         {Page::Sky, "21.34"},
-        {Page::Environment, "12.4\xC2\xB0"
-                            "C"},
-        {Page::Cloud, "-18.2\xC2\xB0"
-                      "C"},
+        {Page::Environment,
+         "12.4\xC2\xB0"
+         "C"},
+        {Page::Cloud,
+         "-18.2\xC2\xB0"
+         "C"},
         {Page::Safety, "Safe"},
         {Page::Gps, "9"},
         {Page::Battery, "82%"},
@@ -181,8 +183,7 @@ void test_night_layouts_one_large_value(void)
     for (const auto &c : cases)
     {
         const char *text = c.text;
-        expectPage(
-            v, c.page, true, 1, [text](Frame &f, int dx, int dy) { drawNight(f, dx, dy, text); }, pageName(c.page));
+        expectPage(v, {c.page, true, 1}, [text](Frame &f, int dx, int dy) { drawNight(f, dx, dy, text); }, pageName(c.page));
     }
 }
 
@@ -191,17 +192,17 @@ void test_night_has_no_inverse_and_shows_no_data_marker(void)
     View v = fullView();
     v.safety.safe = false;
     std::strcpy(v.safety.firstReason, "SQM 18.21 < 19.50");
-    expectPage(v, Page::Safety, true, 0, [](Frame &f, int dx, int dy) { drawNight(f, dx, dy, "UNSAFE"); }, "unsafe at night");
+    expectPage(v, {Page::Safety, true, 0}, [](Frame &f, int dx, int dy) { drawNight(f, dx, dy, "UNSAFE"); }, "unsafe at night");
     TEST_ASSERT_FALSE(anyInverse(actualBuf));
 
     v.sky.valid = false;
-    expectPage(v, Page::Sky, true, 0, [](Frame &f, int dx, int dy) { drawNight(f, dx, dy, "--"); }, "sky invalid at night");
+    expectPage(v, {Page::Sky, true, 0}, [](Frame &f, int dx, int dy) { drawNight(f, dx, dy, "--"); }, "sky invalid at night");
     v.network.mode = View::NetMode::Ap;
     std::strcpy(v.network.ip, "192.168.4.1");
-    expectPage(v, Page::Network, true, 0, [](Frame &f, int dx, int dy) { drawNight(f, dx, dy, "AP"); }, "AP at night");
+    expectPage(v, {Page::Network, true, 0}, [](Frame &f, int dx, int dy) { drawNight(f, dx, dy, "AP"); }, "AP at night");
     v.network.mode = View::NetMode::None;
     v.network.ip[0] = '\0';
-    expectPage(v, Page::Network, true, 0, [](Frame &f, int dx, int dy) { drawNight(f, dx, dy, "--"); }, "no network at night");
+    expectPage(v, {Page::Network, true, 0}, [](Frame &f, int dx, int dy) { drawNight(f, dx, dy, "--"); }, "no network at night");
 }
 
 // --- US2: the other day layouts ---
@@ -211,28 +212,33 @@ void test_environment_and_cloud_day(void)
     View v = fullView();
     expectPage(
         v,
-        Page::Environment,
-        false,
-        0,
+        {Page::Environment, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "Temp");
-            f.drawLarge(dx, Layout::LARGE_Y + dy, "12.4\xC2\xB0"
-                                                  "C");
-            f.drawText(dx, Layout::LINE_A_Y + dy, "Hum 78%  Dew 8.6\xC2\xB0"
-                                                  "C");
+            f.drawLarge(
+                dx,
+                Layout::LARGE_Y + dy,
+                "12.4\xC2\xB0"
+                "C");
+            f.drawText(
+                dx,
+                Layout::LINE_A_Y + dy,
+                "Hum 78%  Dew 8.6\xC2\xB0"
+                "C");
         },
         "environment");
     expectPage(
         v,
-        Page::Cloud,
-        false,
-        0,
+        {Page::Cloud, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "Sky");
-            f.drawLarge(dx, Layout::LARGE_Y + dy, "-18.2\xC2\xB0"
-                                                  "C");
+            f.drawLarge(
+                dx,
+                Layout::LARGE_Y + dy,
+                "-18.2\xC2\xB0"
+                "C");
             f.drawText(dx, Layout::LINE_A_Y + dy, "Cloud clear");
         },
         "cloud");
@@ -240,9 +246,7 @@ void test_environment_and_cloud_day(void)
     v.cloud.valid = false;
     expectPage(
         v,
-        Page::Environment,
-        false,
-        0,
+        {Page::Environment, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "Temp");
@@ -252,9 +256,7 @@ void test_environment_and_cloud_day(void)
         "environment invalid");
     expectPage(
         v,
-        Page::Cloud,
-        false,
-        0,
+        {Page::Cloud, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "Sky");
@@ -267,16 +269,13 @@ void test_environment_and_cloud_day(void)
 void test_safety_day(void)
 {
     View v = fullView();
-    expectPage(
-        v, Page::Safety, false, 0, [](Frame &f, int dx, int dy) { f.drawLarge(dx, Layout::LARGE_Y + dy, "Safe"); }, "safe");
+    expectPage(v, {Page::Safety, false, 0}, [](Frame &f, int dx, int dy) { f.drawLarge(dx, Layout::LARGE_Y + dy, "Safe"); }, "safe");
 
     v.safety.safe = false;
     std::strcpy(v.safety.firstReason, "Raining (intensity 0.25 mm/h, limit any rain)");
     expectPage(
         v,
-        Page::Safety,
-        false,
-        0,
+        {Page::Safety, false, 0},
         [](Frame &f, int dx, int dy)
         {
             const int pad = Layout::INVERSE_PAD;
@@ -293,9 +292,7 @@ void test_safety_day(void)
     v.safety.known = false;
     expectPage(
         v,
-        Page::Safety,
-        false,
-        0,
+        {Page::Safety, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawLarge(dx, Layout::LARGE_Y + dy, "--");
@@ -309,9 +306,7 @@ void test_gps_and_battery_day(void)
     View v = fullView();
     expectPage(
         v,
-        Page::Gps,
-        false,
-        0,
+        {Page::Gps, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "GPS");
@@ -324,9 +319,7 @@ void test_gps_and_battery_day(void)
     v.gps.satellites = 2;
     expectPage(
         v,
-        Page::Gps,
-        false,
-        0,
+        {Page::Gps, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "GPS");
@@ -338,9 +331,7 @@ void test_gps_and_battery_day(void)
     v.gps.valid = false;
     expectPage(
         v,
-        Page::Gps,
-        false,
-        0,
+        {Page::Gps, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "GPS");
@@ -352,9 +343,7 @@ void test_gps_and_battery_day(void)
 
     expectPage(
         v,
-        Page::Battery,
-        false,
-        0,
+        {Page::Battery, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "Batt");
@@ -365,9 +354,7 @@ void test_gps_and_battery_day(void)
     v.battery.valid = false;
     expectPage(
         v,
-        Page::Battery,
-        false,
-        0,
+        {Page::Battery, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "Batt");
@@ -382,9 +369,7 @@ void test_network_day(void)
     View v = fullView();
     expectPage(
         v,
-        Page::Network,
-        false,
-        0,
+        {Page::Network, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "Observatory");
@@ -398,9 +383,7 @@ void test_network_day(void)
     std::strcpy(v.network.name, "A very long device name, longer");
     expectPage(
         v,
-        Page::Network,
-        false,
-        0,
+        {Page::Network, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "A very long device name, longer", WIDTH - dx);
@@ -412,9 +395,7 @@ void test_network_day(void)
     v.network.ip[0] = '\0';
     expectPage(
         v,
-        Page::Network,
-        false,
-        0,
+        {Page::Network, false, 0},
         [](Frame &f, int dx, int dy)
         {
             f.drawText(dx, Layout::TITLE_Y + dy, "A very long device name, longer", WIDTH - dx);

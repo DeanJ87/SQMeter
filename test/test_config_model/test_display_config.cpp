@@ -126,18 +126,22 @@ void test_display_partial_update_keeps_other_keys()
 
 void test_display_page_validation()
 {
-    TEST_ASSERT_EQUAL_STRING("", displayReject("{\"display\":{\"pages\":[\"sky\",\"environment\",\"cloud\",\"safety\",\"gps\","
-                                               "\"battery\",\"network\"]}}")
-                                     .c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "",
+        displayReject("{\"display\":{\"pages\":[\"sky\",\"environment\",\"cloud\",\"safety\",\"gps\","
+                      "\"battery\",\"network\"]}}")
+            .c_str());
     TEST_ASSERT_EQUAL_STRING(PAGES_MSG, displayReject("{\"display\":{\"pages\":[]}}").c_str());
     TEST_ASSERT_EQUAL_STRING(PAGES_MSG, displayReject("{\"display\":{\"pages\":[\"sky\",\"sky\"]}}").c_str());
     TEST_ASSERT_EQUAL_STRING(PAGES_MSG, displayReject("{\"display\":{\"pages\":[\"sky\",\"wind\"]}}").c_str());
     TEST_ASSERT_EQUAL_STRING(PAGES_MSG, displayReject("{\"display\":{\"pages\":[\"Sky\"]}}").c_str());
     TEST_ASSERT_EQUAL_STRING(PAGES_MSG, displayReject("{\"display\":{\"pages\":[1]}}").c_str());
     TEST_ASSERT_EQUAL_STRING(PAGES_MSG, displayReject("{\"display\":{\"pages\":\"sky\"}}").c_str());
-    TEST_ASSERT_EQUAL_STRING(PAGES_MSG, displayReject("{\"display\":{\"pages\":[\"sky\",\"environment\",\"cloud\",\"safety\","
-                                                      "\"gps\",\"battery\",\"network\",\"sky\"]}}")
-                                           .c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        PAGES_MSG,
+        displayReject("{\"display\":{\"pages\":[\"sky\",\"environment\",\"cloud\",\"safety\","
+                      "\"gps\",\"battery\",\"network\",\"sky\"]}}")
+            .c_str());
 
     // A config built in code is checked the same way.
     Config bad = Config::createDefault();
@@ -188,8 +192,8 @@ void test_display_button_pin_validation()
     TEST_ASSERT_EQUAL_STRING(PIN_USED_MSG, displayReject("{\"display\":{\"buttonPin\":22}}", on).c_str());
     // I2C-2 once wired.
     TEST_ASSERT_EQUAL_STRING("", displayReject("{\"display\":{\"buttonPin\":25}}", on).c_str());
-    TEST_ASSERT_EQUAL_STRING(PIN_USED_MSG,
-                             displayReject("{\"sensor\":{\"i2c2SDA\":25,\"i2c2SCL\":26},\"display\":{\"buttonPin\":26}}", on).c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        PIN_USED_MSG, displayReject("{\"sensor\":{\"i2c2SDA\":25,\"i2c2SCL\":26},\"display\":{\"buttonPin\":26}}", on).c_str());
     // GPS and rain only while enabled.
     TEST_ASSERT_EQUAL_STRING("", displayReject("{\"gps\":{\"enabled\":false},\"display\":{\"buttonPin\":17}}", on).c_str());
     TEST_ASSERT_EQUAL_STRING(PIN_USED_MSG, displayReject("{\"gps\":{\"enabled\":true},\"display\":{\"buttonPin\":17}}", on).c_str());

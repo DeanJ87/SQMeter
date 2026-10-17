@@ -314,37 +314,55 @@ namespace SQM
         }
 
         // The display settings and its optional wake button (spec 031,
-        // contracts/config.md). A pin clash only matters while the display is
-        // on: the button isn't set up otherwise.
+        // contracts/config.md).
+        bool displayPagesValid(const DisplayConfig &d)
+        {
+            if (d.pageCount < 1 || d.pageCount > Display::PAGE_COUNT)
+                return false;
+            uint8_t seen = 0;
+            for (uint8_t i = 0; i < d.pageCount; ++i)
+            {
+                const auto index = static_cast<size_t>(d.pages[i]);
+                if (index >= Display::PAGE_COUNT)
+                    return false;
+                const auto bit = static_cast<uint8_t>(1U << index);
+                if ((seen & bit) != 0)
+                    return false;
+                seen = static_cast<uint8_t>(seen | bit);
+            }
+            return true;
+        }
+
+        // A pin clash only matters while the display is on: the button isn't
+        // set up otherwise.
+        bool displayButtonClashes(const Config &c)
+        {
+            const DisplayConfig &d = c.display;
+            if (!d.enabled)
+                return false;
+            const bool windSpeed = c.wind.enabled && d.buttonPin == c.wind.speedPin;
+            const bool windVane = c.wind.enabled && c.wind.directionEnabled && d.buttonPin == c.wind.directionPin;
+            return pinIn(busPins(c, true), d.buttonPin) || windSpeed || windVane;
+        }
+
         bool validateDisplay(const Config &c, std::string *error)
         {
             const DisplayConfig &d = c.display;
-            bool pagesOk = d.pageCount >= 1 && d.pageCount <= Display::PAGE_COUNT;
-            for (uint8_t i = 0; pagesOk && i < d.pageCount; ++i)
-            {
-                pagesOk = static_cast<size_t>(d.pages[i]) < Display::PAGE_COUNT;
-                for (uint8_t j = 0; pagesOk && j < i; ++j)
-                    pagesOk = d.pages[j] != d.pages[i];
-            }
-            if (!pagesOk)
+            if (!displayPagesValid(d))
                 return setError(error, "Display: choose 1 to 7 different pages");
             if (d.cycleSeconds < DisplayConfig::MIN_CYCLE_SECONDS || d.cycleSeconds > DisplayConfig::MAX_CYCLE_SECONDS)
                 return setError(error, "Display: cycle interval must be 2 to 60 seconds");
-            if (d.brightness != Display::Brightness::Low && d.brightness != Display::Brightness::Medium &&
-                d.brightness != Display::Brightness::High)
+            if (static_cast<uint8_t>(d.brightness) > static_cast<uint8_t>(Display::Brightness::High))
                 return setError(error, "Display: brightness must be low, medium or high");
-            if (d.timeoutSeconds != 0 &&
-                (d.timeoutSeconds < DisplayConfig::MIN_TIMEOUT_SECONDS || d.timeoutSeconds > DisplayConfig::MAX_TIMEOUT_SECONDS))
+            const bool timeoutInRange =
+                d.timeoutSeconds >= DisplayConfig::MIN_TIMEOUT_SECONDS && d.timeoutSeconds <= DisplayConfig::MAX_TIMEOUT_SECONDS;
+            if (d.timeoutSeconds != 0 && !timeoutInRange)
                 return setError(error, "Display: timeout must be 10 seconds to 30 minutes, or never");
             if (d.buttonPin == DisplayConfig::BUTTON_UNSET)
                 return true;
             if (!isValidGpio(d.buttonPin))
                 return setError(error, "Display: wake button pin is not a valid GPIO");
-            if (!d.enabled)
-                return true;
-            const bool windSpeed = c.wind.enabled && d.buttonPin == c.wind.speedPin;
-            const bool windVane = c.wind.enabled && c.wind.directionEnabled && d.buttonPin == c.wind.directionPin;
-            if (pinIn(busPins(c, true), d.buttonPin) || windSpeed || windVane)
+            if (displayButtonClashes(c))
                 return setError(error, "Display: wake button pin is already in use");
             return true;
         }

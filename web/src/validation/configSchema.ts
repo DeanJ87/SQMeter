@@ -3,8 +3,8 @@ import { t } from '../i18n';
 import { alertsConfigSchema } from './alertsSchema';
 import { isIpv6Literal, ntpIpv6Text, parseHost } from '../lib/netAddress';
 
-// Valid ESP32 GPIO pins
-const validGPIOs = [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39];
+import { checkDisplayButton, displayConfigSchema } from './displaySchema';
+import { validGPIOs } from './gpio';
 
 export const wifiConfigSchema = z.object({
   // The device refuses a blank network while one is saved (spec 011 FR-009).
@@ -294,54 +294,6 @@ export const rainSensorConfigSchema = z
   });
 
 export { alertsConfigSchema };
-
-// The OLED display (spec 031, contracts/config.md); the wake button's pin
-// clash is checked on the whole config below (D-45).
-const DISPLAY_BUTTON_UNSET = 255;
-export const displayConfigSchema = z.object({
-  enabled: z.boolean(),
-  pages: z
-    .array(z.enum(['sky', 'environment', 'cloud', 'safety', 'gps', 'battery', 'network']))
-    .min(1, t('validation.configSchema.displayChoosePages'))
-    .max(7, t('validation.configSchema.displayChoosePages'))
-    .refine((pages) => new Set(pages).size === pages.length, t('validation.configSchema.displayChoosePages')),
-  cycleSeconds: z
-    .number()
-    .int()
-    .min(2, t('validation.configSchema.displayCycleRange'))
-    .max(60, t('validation.configSchema.displayCycleRange')),
-  brightness: z.enum(['low', 'medium', 'high']),
-  timeoutSeconds: z
-    .number()
-    .int()
-    .refine((s) => s === 0 || (s >= 10 && s <= 1800), t('validation.configSchema.displayTimeoutRange')),
-  wakeOnBoot: z.boolean(),
-  stayOnAtNight: z.boolean(),
-  rotate180: z.boolean(),
-  buttonPin: z
-    .number()
-    .int()
-    .refine((pin) => pin === DISPLAY_BUTTON_UNSET || validGPIOs.includes(pin), t('validation.configSchema.wakeButtonPinIsNotAValidGpio')),
-});
-
-// D-45: while the display is on, its wake button can't share a pin with
-// I2C-1, I2C-2, GPS, the rain sensor or the anemometer and vane.
-interface DisplayPinInput extends SecondI2cInput {
-  display?: { enabled: boolean; buttonPin: number };
-}
-const checkDisplayButton = (data: DisplayPinInput, ctx: z.RefinementCtx) => {
-  const pin = data.display?.buttonPin ?? DISPLAY_BUTTON_UNSET;
-  if (!data.display?.enabled || pin === DISPLAY_BUTTON_UNSET) return;
-  const used = [data.sensor.i2cSDA, data.sensor.i2cSCL];
-  const sda = data.sensor.i2c2SDA ?? I2C2_UNSET;
-  const scl = data.sensor.i2c2SCL ?? I2C2_UNSET;
-  if (sda !== I2C2_UNSET && scl !== I2C2_UNSET) used.push(sda, scl);
-  if (data.gps.enabled) used.push(data.gps.rxPin, data.gps.txPin);
-  if (data.rain?.enabled) used.push(data.rain.rxPin, data.rain.txPin);
-  if (data.wind?.enabled) used.push(data.wind.speedPin, ...(data.wind.directionEnabled ? [data.wind.directionPin] : []));
-  if (used.includes(pin))
-    ctx.addIssue({ code: 'custom', message: t('validation.configSchema.wakeButtonPinIsAlreadyInUse'), path: ['display', 'buttonPin'] });
-};
 
 // The second I2C bus and the SQM-L (spec 030, D-42): both pins unset (255),
 // or two different valid GPIOs no other bus uses; the SQM-L needs them. The

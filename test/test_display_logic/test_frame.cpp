@@ -65,8 +65,10 @@ void test_small_text_advance_and_glyphs(void)
     TEST_ASSERT_EQUAL(5, Frame::textWidth("A"));
     TEST_ASSERT_EQUAL(17, Frame::textWidth("SQM"));
     // UTF-8 degree and ellipsis are one glyph each.
-    TEST_ASSERT_EQUAL(17, Frame::textWidth("1\xC2\xB0"
-                                           "C"));
+    TEST_ASSERT_EQUAL(
+        17,
+        Frame::textWidth("1\xC2\xB0"
+                         "C"));
     TEST_ASSERT_EQUAL(5, Frame::textWidth("\xE2\x80\xA6"));
 
     const int drawn = f.drawText(0, 0, "II");
