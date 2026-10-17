@@ -215,11 +215,13 @@ void test_worst_case_document_fits()
     const size_t used = doc.memoryUsage();
     char detail[96];
     snprintf(detail, sizeof detail, "pool %u bytes of %u", static_cast<unsigned>(used), static_cast<unsigned>(DOC_CAPACITY));
+    printf("readings worst case: %s\n", detail);
     TEST_ASSERT_TRUE_MESSAGE(used * 12 / 10 <= DOC_CAPACITY, detail);
 
     std::string payload;
     serializeJson(doc, payload);
     snprintf(detail, sizeof detail, "payload %u bytes", static_cast<unsigned>(payload.size()));
+    printf("readings worst case: %s\n", detail);
     TEST_ASSERT_LESS_THAN_MESSAGE(MQTT_PAYLOAD_LIMIT, payload.size(), detail);
 }
 

@@ -14,9 +14,9 @@ dependency on an unfinished task.
 
 ## Phase 1: Setup
 
-- [ ] T001 Record the baselines (after spec 031) in specs/032-battery/budgets.md: firmware size of both builds, static RAM, gzipped UI JS+CSS, default and long-string main config JSON, alerts Main/Client part sizes, readings worst case (`test_worst_case_document_fits`), `/api/status` worst case
-- [ ] T002 Create lib/BatteryLogic/ (include/, src/, like lib/WindLogic); add `-Ilib/BatteryLogic/include` to `[env:native]` in platformio.ini and `lib/BatteryLogic/src/*.cpp` to SOURCES in tools/demo-core/build.sh
-- [ ] T003 [P] `ChargeState` (Discharging, Charging, Charged, Fault, NoBattery, Unknown) with `chargeStateName()` (`discharging`, `charging`, `charged`, `fault`, `no-battery`), `ChargeFault` (None, Temperature), `PowerState` (Normal, Saving, ShutdownPending) in lib/BatteryLogic/include/BatteryLogic.h; `BatteryReading` (raw registers + decoded values) in lib/SensorTypes/include/SensorTypes.h; tests first in test/test_battery_logic/test_types.cpp
+- [X] T001 Record the baselines (after spec 031) in specs/032-battery/budgets.md: firmware size of both builds, static RAM, gzipped UI JS+CSS, default and long-string main config JSON, alerts Main/Client part sizes, readings worst case (`test_worst_case_document_fits`), `/api/status` worst case
+- [X] T002 Create lib/BatteryLogic/ (include/, src/, like lib/WindLogic); add `-Ilib/BatteryLogic/include` to `[env:native]` in platformio.ini and `lib/BatteryLogic/src/*.cpp` to SOURCES in tools/demo-core/build.sh
+- [X] T003 [P] `ChargeState` (Discharging, Charging, Charged, Fault, NoBattery, Unknown) with `chargeStateName()` (`discharging`, `charging`, `charged`, `fault`, `no-battery`), `ChargeFault` (None, Temperature), `PowerState` (Normal, Saving, ShutdownPending) in lib/BatteryLogic/include/BatteryLogic.h; `BatteryReading` (raw registers + decoded values) in lib/SensorTypes/include/SensorTypes.h; tests first in test/test_battery_logic/test_types.cpp
 
 ## Phase 2: Foundational (blocks every story)
 
