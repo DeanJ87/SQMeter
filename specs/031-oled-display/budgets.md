@@ -12,6 +12,7 @@ implemented, before any 031 code); after values filled in by T023 and T052.
 | UI gzip JS+CSS | growth <= 10 KB (SIZE-01/02, `tools/ui/size_check.py`) | size record 120,001 B (`tools/ui/size-baseline.json`, unchanged since spec 030 T057) | | |
 | Main config JSON, defaults (`toJson(false, false)`) | 5,100 B | 2,438 B | 2,615 B (T006-T008) | +177 B |
 | Main config JSON, worst case (long strings, both sky sensors; + display with 7 pages after) | 5,100 B | 3,295 B | 3,530 B (T006-T008, `test_display_worst_case_config_fits`) | +235 B |
+| `/api/settings/effective` report (`test_report_document`) | < 5 KB in spec 020's plan; now < 6 KB | under 5,000 B | 5,256 B with the eight display entries (T011) | about +0.3 KB; transient, per request; test bound raised to 6,000 B |
 | `/api/status` document, worst case | pool `Core::STATUS_DOC_CAPACITY` 7,680 B with 20% headroom | 4,734 B on the device (`test_status_document_fits`) | | |
 
 Config sizes were measured by compiling `lib/ConfigModel` at e089b8f and at the change with the same

@@ -19,17 +19,17 @@ dependency on an unfinished task.
 
 ### Config model (research D8, contracts/config.md)
 
-- [ ] T004 [P] Native tests first in test/test_config_model/: `display` defaults (enabled false, pages `["sky"]`, cycleSeconds 5, brightness medium, timeoutSeconds 60, wakeOnBoot true, stayOnAtNight false, rotate180 false, buttonPin 255); JSON round trip incl. page order; every validation message in contracts/config.md (pages 1..7 unique known names, unknown name rejected; cycle 2..60; brightness names; timeout 0 or 10..1800; buttonPin 255 or valid GPIO; buttonPin clash with I2C-1, I2C-2, GPS, rain, wind speed/vane); partial update keeps other display keys; worst-case main JSON (long strings, both sky sensors, display with 7 pages) < `Config::MAX_PERSISTED_JSON_BYTES`
-- [ ] T005 [P] Migration test first in test/test_config_migration/: a pre-031 saved config fixture in test/fixtures/config-releases/ loads with every existing value kept and the display off with defaults (FR-017)
-- [ ] T006 Add `DisplayConfig display` (pages as `uint8_t pages[PAGE_COUNT]` + `pageCount`) to lib/ConfigModel/include/Config.h; defaults in lib/ConfigModel/src/ConfigModel.cpp
-- [ ] T007 JSON in/out for `display` in lib/ConfigModel/src/ConfigJsonIn.cpp and lib/ConfigModel/src/ConfigJsonOut.cpp (pages via `Display::parsePage`, rejected when unknown or duplicated)
-- [ ] T008 Validation in lib/ConfigModel/src/ConfigValidate.cpp: ranges and messages exactly as contracts/config.md; a `validateDisplayPins` that uses `busPins()` and the wind pins (and, once spec 032 lands, the battery pins); T004/T005 pass
-- [ ] T009 [P] Range and default fixture entries for `display.*` in test/fixtures/config-ranges.json and test/fixtures/settings-deps/default-config.json (test/test_config_ranges)
+- [X] T004 [P] Native tests first in test/test_config_model/: `display` defaults (enabled false, pages `["sky"]`, cycleSeconds 5, brightness medium, timeoutSeconds 60, wakeOnBoot true, stayOnAtNight false, rotate180 false, buttonPin 255); JSON round trip incl. page order; every validation message in contracts/config.md (pages 1..7 unique known names, unknown name rejected; cycle 2..60; brightness names; timeout 0 or 10..1800; buttonPin 255 or valid GPIO; buttonPin clash with I2C-1, I2C-2, GPS, rain, wind speed/vane); partial update keeps other display keys; worst-case main JSON (long strings, both sky sensors, display with 7 pages) < `Config::MAX_PERSISTED_JSON_BYTES`
+- [X] T005 [P] Migration test first in test/test_config_migration/: a pre-031 saved config fixture in test/fixtures/config-releases/ loads with every existing value kept and the display off with defaults (FR-017)
+- [X] T006 Add `DisplayConfig display` (pages as `uint8_t pages[PAGE_COUNT]` + `pageCount`) to lib/ConfigModel/include/Config.h; defaults in lib/ConfigModel/src/ConfigModel.cpp
+- [X] T007 JSON in/out for `display` in lib/ConfigModel/src/ConfigJsonIn.cpp and lib/ConfigModel/src/ConfigJsonOut.cpp (pages via `Display::parsePage`, rejected when unknown or duplicated)
+- [X] T008 Validation in lib/ConfigModel/src/ConfigValidate.cpp: ranges and messages exactly as contracts/config.md; a `validateDisplayPins` that uses `busPins()` and the wind pins (and, once spec 032 lands, the battery pins); T004/T005 pass
+- [X] T009 [P] Range and default fixture entries for `display.*` in test/fixtures/config-ranges.json and test/fixtures/settings-deps/default-config.json (test/test_config_ranges)
 
 ### Settings dependencies (research D11, contracts/config.md)
 
-- [ ] T010 Native tests first in test/test_settings_deps/ and cases in test/fixtures/settings-deps/cases.json: D-43 (display settings inactive with `display-missing` when `Facts.displayDetected` is false and the display is enabled; off when disabled), D-44 (`display.stayOnAtNight` inactive with `location-unknown`), D-45 constraint messages; `display.enabled` in `noDependency`
-- [ ] T011 Catalogue entries D-43..D-45 and reason `display-missing` ("No display detected", fix `device#display`) in lib/SettingsDeps/catalogue.json; `Facts.displayDetected` and the entries in lib/SettingsDeps/include/SettingsDeps.h and lib/SettingsDeps/src/SettingsDeps.cpp; mirror in web/src/lib/settingsDeps.ts; `tools/settings-deps/check.py` and T010 pass
+- [X] T010 Native tests first in test/test_settings_deps/ and cases in test/fixtures/settings-deps/cases.json: D-43 (display settings inactive with `display-missing` when `Facts.displayDetected` is false and the display is enabled; off when disabled), D-44 (`display.stayOnAtNight` inactive with `location-unknown`), D-45 constraint messages; `display.enabled` in `noDependency`
+- [X] T011 Catalogue entries D-43..D-45 and reason `display-missing` ("No display detected", fix `device#display`) in lib/SettingsDeps/catalogue.json; `Facts.displayDetected` and the entries in lib/SettingsDeps/include/SettingsDeps.h and lib/SettingsDeps/src/SettingsDeps.cpp; mirror in web/src/lib/settingsDeps.ts; `tools/settings-deps/check.py` and T010 pass
 
 ### Display logic core (research D1, D2, D4, data-model)
 

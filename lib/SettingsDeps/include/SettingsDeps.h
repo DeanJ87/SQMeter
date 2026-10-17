@@ -56,6 +56,7 @@ namespace SQM
             bool infraredDetected = false;    // MLX90614
             bool environmentDetected = false; // BME280
             bool languageInstalled = false;   // the chosen language's file is stored for this firmware
+            bool displayDetected = false;     // an OLED answered at 0x3C (spec 031; never probed while off)
         };
 
         struct Reason

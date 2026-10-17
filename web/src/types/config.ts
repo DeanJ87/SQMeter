@@ -136,6 +136,23 @@ export interface WindConfig {
   vanePullupOhms: number;
 }
 
+// Optional OLED display (spec 031, contracts/config.md).
+export type DisplayPage = 'sky' | 'environment' | 'cloud' | 'safety' | 'gps' | 'battery' | 'network';
+export const DISPLAY_PAGES: DisplayPage[] = ['sky', 'environment', 'cloud', 'safety', 'gps', 'battery', 'network'];
+export const DISPLAY_BUTTON_UNSET = 255;
+
+export interface DisplayConfig {
+  enabled: boolean;
+  pages: DisplayPage[]; // 1..7, unique, in display order
+  cycleSeconds: number; // 2..60
+  brightness: 'low' | 'medium' | 'high';
+  timeoutSeconds: number; // 0 = never, or 10..1800
+  wakeOnBoot: boolean;
+  stayOnAtNight: boolean;
+  rotate180: boolean;
+  buttonPin: number; // 255 = none
+}
+
 export interface Config {
   deviceName: string;
   language?: string; // "en" or a supported code (specs/023-i18n); older firmware has none
@@ -160,6 +177,7 @@ export interface Config {
   ble?: BleConfig;
   wind?: WindConfig;
   location?: LocationConfig;
+  display?: DisplayConfig; // older firmware has none
 }
 
 export interface LocationConfig {

@@ -134,6 +134,17 @@ export const mockConfig: Config = {
   },
   location: { set: false, latitude: 0, longitude: 0, showSunMoon: true },
   ble: { enabled: false, passkey: '' },
+  display: {
+    enabled: true,
+    pages: ['sky', 'environment', 'safety'],
+    cycleSeconds: 5,
+    brightness: 'medium',
+    timeoutSeconds: 60,
+    wakeOnBoot: true,
+    stayOnAtNight: false,
+    rotate180: false,
+    buttonPin: 255,
+  },
   wind: {
     enabled: true,
     speedPin: 27,

@@ -28,6 +28,7 @@ export interface DepFacts {
   infraredDetected: boolean;
   environmentDetected: boolean;
   languageInstalled?: boolean; // older firmware doesn't report it
+  displayDetected?: boolean; // spec 031; older firmware doesn't report it
 }
 
 export interface DepEntry {
@@ -315,6 +316,21 @@ const addDevice = (c: Context) => {
   ]);
 };
 
+// The OLED display (spec 031): every setting but its own switch needs a
+// display that answers; staying on at night needs a night the device can work out.
+const addDisplay = (c: Context) => {
+  const enabled = on(c.config, 'display.enabled');
+  const found: Link = ['D-43', 'display-missing', c.fact('displayDetected') ?? null];
+  for (const key of ['pages', 'cycleSeconds', 'brightness', 'timeoutSeconds']) c.add(`display.${key}`, 'D-43', enabled, [found]);
+  c.add('display.wakeOnBoot', 'D-43', enabled && on(c.config, 'display.wakeOnBoot', true), [found]);
+  c.add('display.stayOnAtNight', 'D-44', enabled && on(c.config, 'display.stayOnAtNight'), [
+    found,
+    ['D-44', 'location-unknown', c.locationKnown],
+  ]);
+  c.add('display.rotate180', 'D-43', enabled && on(c.config, 'display.rotate180'), [found]);
+  c.add('display.buttonPin', 'D-43', enabled && read(c.config, 'display.buttonPin', 255) !== 255, [found]);
+};
+
 /**
  * Every reported setting, in catalogue order. With `facts === null` (status
  * not loaded yet) runtime and hardware links are unknown: they never make a
@@ -341,8 +357,8 @@ export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
       out.push(entry);
     },
   };
-  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafetyRules, addSensorsAndTime, addDevice].forEach((section) =>
-    section(context),
+  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafetyRules, addSensorsAndTime, addDevice, addDisplay].forEach(
+    (section) => section(context),
   );
   return out;
 }

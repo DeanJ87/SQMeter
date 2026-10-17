@@ -53,3 +53,6 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-40 | `sky.authoritative`, `sky.showOther` | SQM and SQM-L both on (spec 030) | Dependency | SQM and SQM-L must both be on (sky-single) |
 | D-41 | `skyCalibrationL.enabled` | SQM-L (TSL2591 on I2C-2) detected (spec 030) | Dependency, runtime | SQM-L not detected (sqml-missing) |
 | D-42 | `sensor.i2c2SDA`, `sensor.i2c2SCL`, `sky.sqmlEnabled` | Second I2C bus pins: both unset, or two different valid GPIOs no other bus uses; the SQM-L can't be saved on without them (spec 030) | Constraint | - |
+| D-43 | `display.pages`, `display.cycleSeconds`, `display.brightness`, `display.timeoutSeconds`, `display.wakeOnBoot`, `display.stayOnAtNight`, `display.rotate180`, `display.buttonPin` | An OLED display answering at 0x3C on the main I2C bus; a display that's off in settings is never probed (spec 031) | Dependency, runtime | No display detected (display-missing) |
+| D-44 | `display.stayOnAtNight` | Location set or GPS fix, so the device can tell when it's night; until then the display always times out (spec 031) | Dependency | Needs your location (location-unknown) |
+| D-45 | `display.buttonPin` | Wake button pin: none (255), or a valid GPIO that I2C-1, I2C-2, GPS, the rain sensor and the anemometer and vane don't use while the display is on (spec 031) | Constraint | - |

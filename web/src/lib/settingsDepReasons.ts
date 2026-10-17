@@ -30,6 +30,7 @@ export const REASONS: Record<string, { text: string; fix: string }> = {
   'clock-unset': { text: t('settingsDeps.theDeviceDoesnTKnow'), fix: 'time#time-sources' },
   'ota-no-password': { text: t('settingsDeps.setAnUploadPassword'), fix: 'device#security' },
   'language-offline': { text: t('settingsDeps.needsWifiToDownloadOr'), fix: 'network#wifi' },
+  'display-missing': { text: t('settingsDeps.noDisplayDetected'), fix: 'device#display' },
 };
 
 // Label for the one-click fix of each reason.
@@ -60,4 +61,5 @@ export const FIX_LABEL: Record<string, string> = {
   'clock-unset': t('settingsDeps.timeSources'),
   'ota-no-password': t('settingsDeps.setPassword'),
   'language-offline': t('settingsDeps.wifiSettings'),
+  'display-missing': t('settingsDeps.display'),
 };

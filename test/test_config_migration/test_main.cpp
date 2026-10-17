@@ -154,6 +154,35 @@ void test_pre_030_config_gets_sky_defaults()
     }
 }
 
+void test_v0_3_3_beta_1()
+{
+    loadRelease("v0.3.3-beta.1");
+}
+
+// Spec 031 (FR-017): settings from before the display load with every value
+// kept (loadRelease) and the display off at its defaults.
+void test_pre_031_config_gets_display_defaults()
+{
+    for (const char *tag : {"v0.1.0", "v0.3.3-beta.1"})
+    {
+        const std::string stored = readFile(std::string("test/fixtures/config-releases/") + tag + ".json");
+        TEST_ASSERT_TRUE(stored.find("\"display\"") == std::string::npos);
+        Config loaded = Config::createDefault();
+        std::string reason;
+        TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(stored, loaded, false, &reason), reason.c_str());
+        TEST_ASSERT_FALSE(loaded.display.enabled);
+        TEST_ASSERT_EQUAL_UINT8(1, loaded.display.pageCount);
+        TEST_ASSERT_TRUE(loaded.display.pages[0] == Display::Page::Sky);
+        TEST_ASSERT_EQUAL_UINT8(5, loaded.display.cycleSeconds);
+        TEST_ASSERT_TRUE(loaded.display.brightness == Display::Brightness::Medium);
+        TEST_ASSERT_EQUAL_UINT16(60, loaded.display.timeoutSeconds);
+        TEST_ASSERT_TRUE(loaded.display.wakeOnBoot);
+        TEST_ASSERT_FALSE(loaded.display.stayOnAtNight);
+        TEST_ASSERT_FALSE(loaded.display.rotate180);
+        TEST_ASSERT_EQUAL_UINT8(255, loaded.display.buttonPin);
+    }
+}
+
 // Settings too big for their NVS entry are refused with a message that says
 // what to do, rather than saved and lost on the next boot.
 void test_oversized_alert_texts_are_refused_clearly()
@@ -188,6 +217,8 @@ int main(int, char **)
     RUN_TEST(test_v0_2_0_beta_1);
     RUN_TEST(test_v0_2_0_beta_2);
     RUN_TEST(test_v0_2_0_beta_3);
+    RUN_TEST(test_v0_3_3_beta_1);
     RUN_TEST(test_pre_030_config_gets_sky_defaults);
+    RUN_TEST(test_pre_031_config_gets_display_defaults);
     return UNITY_END();
 }

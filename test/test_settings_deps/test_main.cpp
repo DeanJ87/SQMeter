@@ -50,6 +50,7 @@ namespace
         f.infraredDetected = flag("infraredDetected");
         f.environmentDetected = flag("environmentDetected");
         f.languageInstalled = flag("languageInstalled");
+        f.displayDetected = flag("displayDetected");
         return f;
     }
 
@@ -62,6 +63,7 @@ namespace
         f.lightDetected = f.infraredDetected = f.environmentDetected = true;
         f.sqmDetected = f.sqmlDetected = true;
         f.languageInstalled = true;
+        f.displayDetected = true;
         return f;
     }
 
@@ -230,7 +232,8 @@ void test_report_document()
     TEST_ASSERT_FALSE(doc.overflowed());
     std::string json;
     serializeJson(doc, json);
-    TEST_ASSERT_LESS_THAN(5000, json.size());
+    // Was < 5 KB (spec 020); the display's eight entries (spec 031) add about 0.3 KB.
+    TEST_ASSERT_LESS_THAN(6000, json.size());
 
     TEST_ASSERT_FALSE(doc["facts"]["mqttConnected"].as<bool>());
     JsonObject mqtt;
@@ -329,11 +332,54 @@ void test_language_needs_its_file()
     TEST_ASSERT_EQUAL_STRING("off", stateOf(Config::createDefault(), f, "language").c_str());
 }
 
+// D-43..D-45 (spec 031): the display's settings need a display; staying on
+// at night needs a computable night; the wake button pin is a constraint
+// checked on save.
+void test_display_needs_a_display()
+{
+    Config cfg = saveAndRestart(Config::createDefault(), R"({"display":{"enabled":true,"stayOnAtNight":true,"buttonPin":33}})");
+    Deps::Facts f = healthy();
+    for (const char *setting : {"display.pages", "display.cycleSeconds", "display.brightness", "display.timeoutSeconds",
+                                "display.wakeOnBoot", "display.stayOnAtNight", "display.buttonPin"})
+        TEST_ASSERT_EQUAL_STRING_MESSAGE("active", stateOf(cfg, f, setting).c_str(), setting);
+    TEST_ASSERT_EQUAL_STRING("off", stateOf(cfg, f, "display.rotate180").c_str());
+
+    f.displayDetected = false;
+    TEST_ASSERT_EQUAL_STRING("inactive:display-missing", stateOf(cfg, f, "display.pages").c_str());
+    TEST_ASSERT_EQUAL_STRING("inactive:display-missing", stateOf(cfg, f, "display.stayOnAtNight").c_str());
+    TEST_ASSERT_EQUAL_STRING("inactive:display-missing", stateOf(cfg, f, "display.buttonPin").c_str());
+    const Deps::Reason *reason = Deps::reasonFor(Deps::evaluate(cfg, f), "display.cycleSeconds");
+    TEST_ASSERT_NOT_NULL(reason);
+    TEST_ASSERT_EQUAL_STRING("No display detected", reason->text);
+    TEST_ASSERT_EQUAL_STRING("device#display", reason->fix);
+    TEST_ASSERT_TRUE(Deps::find(Deps::evaluate(cfg, f), "display.enabled") == nullptr);
+
+    // D-44: with a display, staying on at night needs the location (or a GPS fix).
+    f.displayDetected = true;
+    f.gpsFix = false;
+    TEST_ASSERT_EQUAL_STRING("inactive:location-unknown", stateOf(cfg, f, "display.stayOnAtNight").c_str());
+    cfg.location.set = true;
+    TEST_ASSERT_EQUAL_STRING("active", stateOf(cfg, f, "display.stayOnAtNight").c_str());
+
+    // Off with the display off, whatever is detected.
+    Config off = saveAndRestart(cfg, R"({"display":{"enabled":false}})");
+    TEST_ASSERT_EQUAL_STRING("off", stateOf(off, f, "display.pages").c_str());
+    TEST_ASSERT_TRUE(off.display.stayOnAtNight);
+
+    // D-45: a clash is refused on save with the shared message.
+    std::string error;
+    TEST_ASSERT_FALSE(Config::fromJson(R"({"display":{"buttonPin":21}})", &cfg, &error).has_value());
+    TEST_ASSERT_EQUAL_STRING("Display: wake button pin is already in use", error.c_str());
+    TEST_ASSERT_FALSE(Config::fromJson(R"({"display":{"buttonPin":7}})", &cfg, &error).has_value());
+    TEST_ASSERT_EQUAL_STRING("Display: wake button pin is not a valid GPIO", error.c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_send_mode_needs_alpaca);
     RUN_TEST(test_language_needs_its_file);
+    RUN_TEST(test_display_needs_a_display);
     RUN_TEST(test_fixture_cases);
     RUN_TEST(test_reasons_and_settings_match_catalogue);
     RUN_TEST(test_default_config_fixture_is_current);

@@ -255,6 +255,21 @@ namespace SQM
             wind["vanePullupOhms"] = c.wind.vanePullupOhms;
         }
 
+        void appendDisplay(JsonDocument &doc, const DisplayConfig &d)
+        {
+            JsonObject display = doc.createNestedObject("display");
+            display["enabled"] = d.enabled;
+            JsonArray pages = display.createNestedArray("pages");
+            for (uint8_t i = 0; i < d.pageCount && i < Display::PAGE_COUNT; ++i)
+                pages.add(Display::pageName(d.pages[i])); // static strings, not copied
+            display["cycleSeconds"] = d.cycleSeconds;
+            display["brightness"] = Display::brightnessName(d.brightness);
+            display["timeoutSeconds"] = d.timeoutSeconds;
+            display["wakeOnBoot"] = d.wakeOnBoot;
+            display["stayOnAtNight"] = d.stayOnAtNight;
+            display["rotate180"] = d.rotate180;
+            display["buttonPin"] = d.buttonPin;
+        }
     } // namespace
 
     std::string Config::alertsToJson(bool redactSecrets, AlertsPart part) const
@@ -268,7 +283,8 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
     {
-        DynamicJsonDocument doc(8704); // +512 for the second sky sensor's sections (spec 030)
+        // +512 for the second sky sensor's sections (spec 030), +512 for the display (spec 031)
+        DynamicJsonDocument doc(9216);
         doc["deviceName"] = deviceName;
         doc["language"] = language;
         doc["primaryTimeSource"] = static_cast<int>(primaryTimeSource);
@@ -278,6 +294,7 @@ namespace SQM
         appendSky(doc, *this);
         appendAlpaca(doc, alpaca);
         appendPlace(doc, *this, redactSecrets);
+        appendDisplay(doc, display);
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
 

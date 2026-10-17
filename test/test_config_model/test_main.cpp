@@ -134,7 +134,7 @@ void test_alert_schedule_defaults()
     TEST_ASSERT_EQUAL_UINT8(3, cfg.alerts.clientLost.level);
     TEST_ASSERT_EQUAL_UINT8(1, cfg.alerts.clientBack.level);
     TEST_ASSERT_EQUAL_UINT8(0, cfg.alerts.clientDisconnected.level);
-    DynamicJsonDocument doc(8192);
+    DynamicJsonDocument doc(16384);
     deserializeJson(doc, cfg.toJson());
     TEST_ASSERT_EQUAL_STRING("any", doc["alerts"]["sendMode"]);
     TEST_ASSERT_FALSE(doc["alerts"]["armWithAlpaca"].as<bool>());
@@ -368,6 +368,13 @@ void test_sky_defaults();
 void test_sky_json_round_trip();
 void test_sky_validation_messages();
 void test_sky_worst_case_config_fits();
+void test_display_defaults();
+void test_display_json_round_trip();
+void test_display_partial_update_keeps_other_keys();
+void test_display_page_validation();
+void test_display_range_validation();
+void test_display_button_pin_validation();
+void test_display_worst_case_config_fits();
 
 int main()
 {
@@ -395,5 +402,12 @@ int main()
     RUN_TEST(test_sky_json_round_trip);
     RUN_TEST(test_sky_validation_messages);
     RUN_TEST(test_sky_worst_case_config_fits);
+    RUN_TEST(test_display_defaults);
+    RUN_TEST(test_display_json_round_trip);
+    RUN_TEST(test_display_partial_update_keeps_other_keys);
+    RUN_TEST(test_display_page_validation);
+    RUN_TEST(test_display_range_validation);
+    RUN_TEST(test_display_button_pin_validation);
+    RUN_TEST(test_display_worst_case_config_fits);
     return UNITY_END();
 }

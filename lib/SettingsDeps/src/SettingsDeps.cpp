@@ -38,6 +38,7 @@ namespace SQM
                 {"clock-unset", "The device doesn't know the time yet", "time#time-sources"},
                 {"ota-no-password", "Set an upload password", "device#security"},
                 {"language-offline", "Needs WiFi to download - or upload the file", "network#wifi"},
+                {"display-missing", "No display detected", "device#display"},
             };
 
             const Reason *reason(const char *code)
@@ -302,12 +303,29 @@ namespace SQM
                     std::strcmp(cfg.language, "en") != 0,
                     {{"D-38", "language-offline", c.f.languageInstalled || c.f.wifiConnected}});
             }
+
+            // The OLED display (spec 031): every setting but its own switch
+            // needs a display that answers; staying on at night needs a night
+            // the device can work out.
+            void addDisplay(const Context &c)
+            {
+                const DisplayConfig &d = c.cfg.display;
+                const Link found{"D-43", "display-missing", c.f.displayDetected};
+                c.add("display.pages", "D-43", d.enabled, {found});
+                c.add("display.cycleSeconds", "D-43", d.enabled, {found});
+                c.add("display.brightness", "D-43", d.enabled, {found});
+                c.add("display.timeoutSeconds", "D-43", d.enabled, {found});
+                c.add("display.wakeOnBoot", "D-43", d.enabled && d.wakeOnBoot, {found});
+                c.add("display.stayOnAtNight", "D-44", d.enabled && d.stayOnAtNight, {found, {"D-44", "location-unknown", c.locationKnown}});
+                c.add("display.rotate180", "D-43", d.enabled && d.rotate180, {found});
+                c.add("display.buttonPin", "D-43", d.enabled && d.buttonPin != DisplayConfig::BUTTON_UNSET, {found});
+            }
         } // namespace
 
         std::vector<Entry> evaluate(const Config &cfg, const Facts &f)
         {
             std::vector<Entry> out;
-            out.reserve(52);
+            out.reserve(60);
             // Paired phones ring for Wake-level events even with push alerts off
             // (WebServer::processAlerts), so events, arming and the night-only
             // options still matter to them.
@@ -321,6 +339,7 @@ namespace SQM
             addSafetyRules(c);
             addSensorsAndTime(c);
             addDevice(c);
+            addDisplay(c);
             return out;
         }
 
@@ -403,11 +422,12 @@ namespace SQM
             target["infraredDetected"] = f.infraredDetected;
             target["environmentDetected"] = f.environmentDetected;
             target["languageInstalled"] = f.languageInstalled;
+            target["displayDetected"] = f.displayDetected;
         }
 
         size_t reportCapacity(const std::vector<Entry> &entries)
         {
-            return JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(14) + JSON_ARRAY_SIZE(entries.size()) + entries.size() * JSON_OBJECT_SIZE(8);
+            return JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(15) + JSON_ARRAY_SIZE(entries.size()) + entries.size() * JSON_OBJECT_SIZE(8);
         }
 
         void writeReport(JsonObject root, const std::vector<Entry> &entries, const Facts &facts)

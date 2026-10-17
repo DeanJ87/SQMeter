@@ -26,6 +26,8 @@
     { "path": "wind.kmhPerHz", "gt": 0, "max": 20 },
     { "path": "wind.directionOffsetDeg", "min": -360, "max": 360 },
     { "path": "wind.vanePullupOhms", "min": 1000, "max": 100000 },
+    { "path": "display.cycleSeconds", "int": true, "min": 2, "max": 60 },
+    { "path": "display.timeoutSeconds", "int": true, "min": 10, "max": 1800 },
     { "path": "rain.pollIntervalMs", "int": true, "min": 1000, "max": 3600000 },
     { "path": "rain.rainClearDelayMs", "int": true, "min": 60000, "max": 86400000 },
     { "path": "rain.dailyResetHour", "int": true, "min": 0, "max": 23 },
