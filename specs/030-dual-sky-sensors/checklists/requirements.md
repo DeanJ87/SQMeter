@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -33,4 +33,4 @@
 
 - Field, route and entity names (`sky.source`, `skySensors`, `{sqm_l}`) are the externally visible
   contract, named as earlier specs do (013, 028); they are not internal implementation.
-- One open question (Q1, FR-010: fallback when the authoritative sensor is unavailable) awaits the owner.
+- Q1 answered 2026-10-17 (no fallback); FR-010, US2 scenario 3 and edge cases updated.

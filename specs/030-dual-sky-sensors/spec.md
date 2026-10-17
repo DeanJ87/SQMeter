@@ -72,9 +72,10 @@ single-value consumer listed in FR-008 changes source, and that each reports whi
 2. **Given** both sensors reporting and the authoritative reading set to SQM-L, **When** a client reads
    `sky.sqm`, Alpaca `skyquality` or the BLE summary, **Then** it gets the SQM-L value, and the source is
    reported as `sqml` (`sky.source`, Alpaca `SensorDescription`, BLE summary).
-3. **Given** the SafetyMonitor's minimum-SQM limit enabled and the authoritative sensor faulted, **When**
-   the verdict is evaluated, **Then** the device follows FR-010 and never reports safe on stale or missing
-   sky data.
+3. **Given** the SafetyMonitor's minimum-SQM limit enabled and the authoritative sensor faulted while the
+   other sensor still reports, **When** the verdict is evaluated, **Then** it is unsafe with a reason naming
+   the missing sensor, the single-value fields carry no reading (no silent switch to the other sensor),
+   and the dashboard offers to make the other sensor authoritative.
 
 ---
 
@@ -122,7 +123,7 @@ separate SQM and SQM-L entities next to the existing authoritative `sqm` entity;
 ### Edge Cases
 
 - Only the second port has a sensor: the SQM is not detected; if SQM-L is enabled and set authoritative
-  it fills the single-value fields, otherwise FR-010 applies.
+  it fills the single-value fields, otherwise there is no sky reading (FR-010) until the owner switches.
 - Both sensors fitted but the owner disables one: the disabled sensor is not read, has no card, no
   entities, and is absent from `skySensors`; if it was authoritative, FR-010 applies until the owner picks
   the other.
@@ -137,11 +138,11 @@ separate SQM and SQM-L entities next to the existing authoritative `sqm` entity;
 
 ## Clarifications
 
-### Open questions (owner, 2026-10-17)
+### Session 2026-10-17 (owner)
 
-- **Q1 (FR-010)**: when the authoritative sensor is faulted or disabled and the other sensor is
-  reporting, should the single-value fields fall back to the other sensor? [NEEDS CLARIFICATION:
-  fall back automatically (flagged as a fallback), or report no sky reading until the owner switches?]
+- Q: When the authoritative sensor is faulted or disabled and the other sensor is still reporting, do the
+  single-value fields fall back to the other sensor? → A: No. They report no sky reading until the owner
+  picks the other sensor; the other sensor's own reading stays available under its own name.
 
 ## Requirements *(mandatory)*
 
@@ -188,10 +189,12 @@ separate SQM and SQM-L entities next to the existing authoritative `sqm` entity;
   - `/api/status`: per-sensor health and diagnostics (detected, last update, gain, saturation).
 - **FR-009**: The dark-calibration route MUST take the sensor to calibrate (`sqm` or `sqml`); a request
   without it calibrates the SQM, as today.
-- **FR-010**: When the authoritative sensor is disabled, faulted or stale, the single-value fields MUST
-  follow the owner's decision in Clarifications Q1, and in every case the SafetyMonitor MUST treat a
-  missing authoritative reading as unsafe when the minimum-SQM rule is enabled (constitution I), with a
-  reason naming the sensor.
+- **FR-010**: When the authoritative sensor is disabled, faulted or stale, the single-value fields MUST NOT
+  fall back to the other sensor: they report no sky reading (status fault or missing, as for a single
+  sensor today) until the owner changes the authoritative choice. The other sensor's reading stays
+  published under its own name (FR-008). The SafetyMonitor MUST treat the missing authoritative reading as
+  unsafe when the minimum-SQM rule is enabled (constitution I), with a reason naming the sensor, and the
+  dashboard and Settings MUST say which sensor is missing and offer to switch.
 - **FR-011**: The OpenAPI description (`docs/api/openapi.json`, from `tools/api`), the JSON schemas the
   contract tests use, and the demo device MUST describe and emulate both sensors; the demo shows an SQM-L
   reading slightly darker than the SQM.
