@@ -242,7 +242,12 @@ namespace SQM
                     {{"D-17", "infrared-missing", c.f.infraredDetected}},
                     FAIL_SAFE);
                 // With both sky sensors on, the reason names the authoritative one (spec 030 FR-010).
-                c.add("alpaca.sqmMinEnabled", "D-18", s.sqmMinEnabled, {{"D-18", skyMissing(c.cfg, c.cfg.sky.authoritative), c.f.lightDetected}}, FAIL_SAFE);
+                c.add(
+                    "alpaca.sqmMinEnabled",
+                    "D-18",
+                    s.sqmMinEnabled,
+                    {{"D-18", skyMissing(c.cfg, c.cfg.sky.authoritative), c.f.lightDetected}},
+                    FAIL_SAFE);
                 const Link bme{"D-19", "environment-missing", c.f.environmentDetected};
                 c.add("alpaca.humidityMaxEnabled", "D-19", s.humidityMaxEnabled, {bme}, FAIL_SAFE);
                 c.add("alpaca.dewpointMarginEnabled", "D-19", s.dewpointMarginEnabled, {bme}, FAIL_SAFE);
@@ -271,7 +276,11 @@ namespace SQM
                 const Link gpsRunning{"D-35", "gps-restart", c.f.gpsRunning};
                 c.add("gps.enabled", "D-26", cfg.gps.enabled, {gpsRunning, {"D-26", "gps-no-fix", c.f.gpsFix}});
                 c.add("ntp.enabled", "D-28", cfg.ntp.enabled, {{"D-28", "wifi-disconnected", c.f.wifiConnected}});
-                c.add("skyCalibration.enabled", "D-29", cfg.skyCalibration.enabled, {{"D-29", skyMissing(cfg, SkyRole::Sqm), c.f.sqmDetected}});
+                c.add(
+                    "skyCalibration.enabled",
+                    "D-29",
+                    cfg.skyCalibration.enabled,
+                    {{"D-29", skyMissing(cfg, SkyRole::Sqm), c.f.sqmDetected}});
                 addSkySensors(c);
             }
 
