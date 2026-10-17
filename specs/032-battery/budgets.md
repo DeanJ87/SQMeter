@@ -7,8 +7,8 @@ implemented, before any 032 code); after values filled in by T025, T049 and T063
 |---|---|---|---|---|
 | Firmware `esp32dev` (PlatformIO "Flash used") | OTA slot 1,835,008 B (SIZE-04) | 1,512,047 B (82.4%) | 1,527,423 B (83.2%) after US1 (T025); 1,538,739 B (83.9%) after US2-US3 (T049); 1,540,911 B (84.0%) at the end of round 1 (US4); unchanged after round 2 (T063: web, demo and docs only) | +28,864 B |
 | Firmware `esp32dev-ble` (PlatformIO "Flash used") | OTA slot 1,835,008 B; 95% line 1,743,257 B | 1,704,271 B (92.9%) | 1,719,643 B (93.7%) after US1 (T025); 1,731,207 B (94.3%) after US2-US3 (T049); 1,733,531 B (94.5%, 9,726 B to the 95% line) at the end of round 1 (US4); unchanged after round 2 (T063) | +29,260 B: well over the 10 KB target; specs 031+032 together +43,260 B over the spec 030 figure (1,690,667 B), leaving 9,726 B under the 95% line |
-| `firmware.bin` `esp32dev` (`tools/firmware/flash_budget.py`) | 95% of the slot | 1,562,032 B (85.1%) | 1,577,856 B (86.0%) (T025); 1,589,552 B (86.6%) (T049); 1,591,952 B (86.8%) end of round 1 | +29,920 B |
-| `firmware.bin` `esp32dev-ble` (`tools/firmware/flash_budget.py`) | 95% of the slot | 1,757,136 B (95.8%) | 1,772,960 B (96.6%) (T025); 1,784,896 B (97.3%) (T049); 1,787,440 B (97.4%) end of round 1 | +30,304 B |
+| `firmware.bin` `esp32dev` (`tools/firmware/flash_budget.py`) | 95% of the slot | 1,562,032 B (85.1%) | 1,577,856 B (86.0%) (T025); 1,589,552 B (86.6%) (T049); 1,591,952 B (86.8%) end of round 1; 1,583,280 B (86.3%) after the review fixes (recorded) | +21,248 B |
+| `firmware.bin` `esp32dev-ble` (`tools/firmware/flash_budget.py`) | 95% of the slot | 1,757,136 B (95.8%) | 1,772,960 B (96.6%) (T025); 1,784,896 B (97.3%) (T049); 1,787,440 B (97.4%) end of round 1; 1,778,752 B (96.9%) after the review fixes (recorded with a reason) | +21,616 B |
 | Static RAM `esp32dev` | | 52,812 B | 53,300 B (T025); 53,356 B (T049); 53,356 B (T063) | +544 B |
 | Static RAM `esp32dev-ble` | | 63,084 B | 63,572 B (T025); 63,644 B (T049); 63,644 B (T063) | +560 B |
 | UI gzip JS+CSS | growth <= 10 KB (SIZE-02, `tools/ui/size_check.py`) | 122,631 B (`tools/ui/size-baseline.json`) | 127,916 B (T063, recorded in `tools/ui/size-baseline.json`): Battery card and glance tile, System rows, Settings Battery card, Safety and Alerts groups, their strings | +5,285 B (limit 10 KB) |
@@ -24,8 +24,9 @@ implemented, before any 032 code); after values filled in by T025, T049 and T063
 `flash_budget.py` measures `firmware.bin`, which is about 50 KB larger than PlatformIO's "Flash
 used" figure that the spec 030/031 budgets quote. By that measure the Bluetooth build is already
 at 95.8% of the slot before any 032 code (`tools/firmware/size-baseline.json` still records
-main's 1,724,848 B), so CI's SIZE-04 step fails on this branch independent of this feature; the
-growth of specs 030-032 needs either trimming or a recorded `--reason` before the PR.
+main's 1,724,848 B), so CI's SIZE-04 step failed on this branch independent of this feature; the
+growth of specs 030-032 needed either trimming or a recorded `--reason` before the PR (done at the
+review fixes, below).
 
 Config sizes were measured by compiling `lib/ConfigModel` with the same long-string set as
 `test_display_worst_case_config_fits`.
@@ -54,3 +55,14 @@ WebAssembly) and the docs. The config, alerts part, readings and status worst ca
 figures above, still pinned by their native tests (442 passing). Device heap and loop `stackFree`
 are to be measured on the spare device for the PR (not done here: no device contacted). The firmware
 trimming listed above is still open before the PR.
+
+Review fixes (after round 2): the firmware no longer links libc's scanf engine (`LanguagePack` and
+the RG-15 status lines parse with `strtol`), which saves 9,872 B per build; the fixes themselves
+(power-saving freshness, alerts at power-on, the wake check, the display resume, the recovered alert)
+add about 1.2 KB. `tools/firmware/size-baseline.json` now records both builds (esp32dev 1,583,280 B,
+esp32dev-ble 1,778,752 B) with an `overBudgetReason` for the Bluetooth build, so CI's SIZE-04 step
+passes with the waiver shown. Justification for the PR: specs 030-032 together put the Bluetooth
+build about 54 KB above main (96.9% of the slot, 54.9 KB free). Getting under 95% needs about
+35 KB more, and the remaining large items are framework code (WiFi, lwIP, mbedTLS, the Bluetooth
+controller) and the string literals of features the specs require. The standard build stays at
+86.3%. Whether to accept the waiver or drop features for it is the owner's call at the PR.
