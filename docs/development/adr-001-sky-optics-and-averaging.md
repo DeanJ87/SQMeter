@@ -94,3 +94,13 @@ calibrated_sqm = raw_sqm + sqmOffset
 ```
 
 Changing the lens, lens distance, baffle length, aperture, or internal finish requires a new dark calibration and a new SQM offset comparison.
+
+## Second sensor with a narrow lens (spec 030)
+
+A device may carry a second TSL2591, the **SQM-L**, on the second I2C bus, behind a narrower lens
+than the reference 20 degree build. It follows the same averaging and dark-calibration flow, with
+its own settings (`skyAveragingL`, `skyCalibrationL`), so each optical build is calibrated
+against its own dark offset and reference comparison. The narrow lens is closer to an SQM-L-style
+zenith reading and normally reads slightly darker than the wide sensor; the owner chooses which
+one is authoritative (`sky.authoritative`), and the device never substitutes one for the other.
+Changing either sensor's optics needs a new dark calibration for that sensor only.

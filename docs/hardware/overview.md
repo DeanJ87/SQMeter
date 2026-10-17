@@ -14,6 +14,7 @@ SQMeter is built around an ESP32 development board and a small set of I2C sensor
 |-----------|------|-----------|-------|
 | ESP32 dev board | Main MCU, WiFi, web server | — | — |
 | TSL2591 | Sky brightness (lux / SQM) | I2C `0x29` | — |
+| Second TSL2591, the SQM-L (optional) | Narrow-lens sky brightness | Second I2C bus, `0x29` | Optional — its own bus, as the address is fixed; see [Two sky sensors](../reference/sky-quality.md#two-sky-sensors-sqm-and-sqm-l) |
 | BME280 | Temperature, humidity, pressure | I2C `0x76` | — |
 | MLX90614 | IR cloud temperature | I2C `0x5A` | — |
 | GPS module (optional) | Location and precise time | UART | Optional |

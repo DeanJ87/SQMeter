@@ -75,6 +75,38 @@ Typical values:
 
 ---
 
+## Two sky sensors: SQM and SQM-L
+
+A device can carry two TSL2591s: the wide **SQM** on the first I2C bus, and the narrow-lens
+**SQM-L** on the second I2C bus (`sensor.i2c2SDA` / `sensor.i2c2SCL`). Both are read the same way
+(auto-ranging, averaging window, dark offset, SQM offset), each with its own averaging and
+calibration settings (`skyAveraging` / `skyCalibration` for the SQM, `skyAveragingL` /
+`skyCalibrationL` for the SQM-L), so one can be calibrated without touching the other.
+
+The SQM-L usually reads a little **darker** than the SQM. Its narrow lens sees only the sky
+around the zenith; the wide sensor also collects light from near the horizon, where skyglow,
+buildings and the enclosure add light. A difference of a few tenths of a mag/arcsec² is normal;
+a large one (more than about 1.5) usually means stray light reaching one of them.
+
+**The authoritative reading.** One sensor's reading counts: `sky.authoritative` (`sqm`, the
+default, or `sqml`). It is the `sky` and `light` reading in every interface, the minimum-SQM
+safety rule, Alpaca SkyQuality and SkyBrightness, Bluetooth, `{sqm}` in alerts and Home
+Assistant's Sky quality entity; `sky.source` says which one it is. Both readings are also
+published under their own names (`skySensors` in the readings, `{sqm_wide}` / `{sqm_l}` in
+alerts, Home Assistant's SQM (wide), SQM-L (narrow) and SQM-L − SQM entities).
+
+**No fallback.** If the authoritative sensor is switched off, not found or stops answering, the
+sky reading is missing: the safety verdict is unsafe with a reason naming it ("Sensor fault:
+SQM-L sensor"), Alpaca reports no data, and the other sensor's value is **not** used in its
+place. Pick the other sensor as authoritative to use it. The sensor that isn't authoritative
+never changes the safety verdict.
+
+An unplugged sensor is reported as a read error, never as a dark sky, and is found again
+without a restart when it is plugged back in (the device retries every 5 s, backing off to once
+a minute).
+
+---
+
 ## NELM — Naked Eye Limiting Magnitude
 
 The faintest star visible to the naked eye. SQMeter estimates it from SQM with Unihedron's formula:
@@ -134,4 +166,6 @@ The dew point is the Magnus formula (a = 17.27, b = 237.7 °C).
 
 ## Implementation
 
-`lib/SkyLogic` - `SkyQuality.cpp`, `CloudDetection.cpp` and `Dewpoint.cpp` - with native tests in `test/test_sky_logic`.
+`lib/SkyLogic` - `SkyQuality.cpp`, `CloudDetection.cpp`, `Dewpoint.cpp` and `SkyReadCycle.cpp`
+(when each sky sensor is started, read and re-found) - with native tests in `test/test_sky_logic`.
+The authoritative copy of the sky reading is chosen in `lib/DeviceCore` (`DeviceSky.cpp`).

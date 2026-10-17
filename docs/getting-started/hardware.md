@@ -83,6 +83,25 @@ ESP32          TSL2591     BME280      MLX90614
 !!! warning "Address conflict"
     If you have multiple BME280s on the same bus, one must be wired with SDO to 3.3V to use address `0x77`.
 
+## Second sky sensor (SQM-L, optional)
+
+A second TSL2591 behind a narrow lens, the **SQM-L**, can sit beside the wide one. Its address
+is fixed at `0x29` too, so it goes on the ESP32's **second I2C bus**, on two free GPIOs of your
+choice (not used by the first bus, the GPS, the rain sensor or the anemometer):
+
+```
+ESP32          SQM-L (TSL2591)
+ 3V3  ─────────  VIN
+ GND  ─────────  GND
+ SDA2 ─────────  SDA     (second-bus SDA pin, e.g. GPIO 25)
+ SCL2 ─────────  SCL     (second-bus SCL pin, e.g. GPIO 26)
+```
+
+Then set the second bus pins (`sensor.i2c2SDA`, `sensor.i2c2SCL`), switch the SQM-L on
+(`sky.sqmlEnabled`) and restart. Choose which sensor's reading counts with `sky.authoritative`;
+see [Two sky sensors](../reference/sky-quality.md#two-sky-sensors-sqm-and-sqm-l) and
+[Configuration → Sky sensors](../user-guide/configuration.md#sky-sensors).
+
 ---
 
 ## Sensor Placement

@@ -119,11 +119,14 @@ Alerts raised at the same moment - rain starting usually makes the observatory u
 | Variable | Value |
 |---|---|
 | `{reasons}`, `{reasons_inline}`, `{reason_count}` | Unsafe only: each failing rule with value and limit (one per line / on one line), and how many |
-| `{sensor}` | Sensor events: which sensor |
+| `{sensor}` | Sensor events: which sensor ("Light sensor", or "SQM sensor" and "SQM-L sensor" with two sky sensors) |
 | `{event}` | The event name, as in webhook payloads: `unsafe`, `rain_started`, ... |
 | `{device}`, `{time}`, `{date}`, `{level}` | Device name, local time and date, alert level |
 | `{sqm}`, `{cloud}`, `{sky_temp}`, `{temp}`, `{humidity}`, `{dewpoint}`, `{dew_margin}`, `{pressure}`, `{rain_rate}`, `{wind}`, `{gust}`, `{sun_alt}` | Current readings (`--` if that sensor isn't reporting) |
 | `{sqm_min}`, `{cloud_max}`, `{humidity_max}` | Your safety limits |
+| `{sqm_wide}`, `{sqm_l}` | Each sky sensor's own SQM, the SQM (wide) and the SQM-L (narrow) (`--` if it is off or not reporting); `{sqm}` is the authoritative one |
+| `{sqm_delta}` | SQM-L − SQM, signed (`+0.25`; `--` unless both report) |
+| `{sqm_source}` | Which sky sensor `{sqm}` comes from: `SQM` or `SQM-L` |
 | `{clear_below}`, `{cloudy_above}`, `{dew_margin_min}` | Your alert thresholds |
 | `{silent_for}`, `{last_checked}`, `{client_id}` | Imaging-app events: the **Silent for** time ("2 min"), when the app last checked ("21:04", or "3 min ago" without a clock) and the Alpaca ClientID it sent. For these events `{device}` is "safety monitor" or "weather device" |
 

@@ -127,10 +127,10 @@ renders the SQM-L value.
 
 ### Docs (FR-016, constitution VII)
 
-- [ ] T052 [P] docs/reference/sky-quality.md: what SQM and SQM-L measure, why SQM-L usually reads darker, the authoritative reading and no-fallback rule; docs/development/adr-001-sky-optics-and-averaging.md note on the narrow lens
-- [ ] T053 [P] docs/user-guide/configuration.md (new keys, defaults, validation), docs/reference/settings-dependencies.md (D-39..D-41, regenerated where generated)
-- [ ] T054 [P] docs/api/rest.md and docs/api/websocket.md (`sky.source`, `skySensors`, `/api/status` `skySensors`, calibrate-dark `?sensor=`)
-- [ ] T055 [P] docs/user-guide/mqtt.md (state `skySensors`, HA entities), docs/user-guide/alpaca.md (source, descriptions, safety reasons), docs/user-guide/ble.md (`sqmSource`), docs/user-guide/alerts.md (new variables, sensor names)
+- [X] T052 [P] docs/reference/sky-quality.md: what SQM and SQM-L measure, why SQM-L usually reads darker, the authoritative reading and no-fallback rule; docs/development/adr-001-sky-optics-and-averaging.md note on the narrow lens
+- [X] T053 [P] docs/user-guide/configuration.md (new keys, defaults, validation), docs/reference/settings-dependencies.md (D-39..D-41, regenerated where generated)
+- [X] T054 [P] docs/api/rest.md and docs/api/websocket.md (`sky.source`, `skySensors`, `/api/status` `skySensors`, calibrate-dark `?sensor=`)
+- [X] T055 [P] docs/user-guide/mqtt.md (state `skySensors`, HA entities), docs/user-guide/alpaca.md (source, descriptions, safety reasons), docs/user-guide/ble.md (`sqmSource`), docs/user-guide/alerts.md (new variables, sensor names)
 - [ ] T056 [P] Hardware: the I2C-2 port and second sensor in docs/hardware/overview.md, docs/hardware/assembly.md and docs/getting-started/hardware.md; Settings paths match en.json labels (DS-28); `python3 -m mkdocs build --strict` where mkdocs is installed
 
 ### Budgets and gates (FR-015, constitution IV, VIII)
