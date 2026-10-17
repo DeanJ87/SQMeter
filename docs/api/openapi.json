@@ -2627,6 +2627,150 @@
                       "title"
                     ],
                     "additionalProperties": false
+                  },
+                  "battery_low": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "battery_critical": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "battery_shutdown": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "power_restored": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "charge_complete": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "charge_fault": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -2823,6 +2967,18 @@
               },
               "windSpeedUnsafeMs": {
                 "type": "number"
+              },
+              "batteryEnabled": {
+                "type": "boolean"
+              },
+              "batteryAlert": {
+                "type": "boolean"
+              },
+              "batteryPhoneAlarm": {
+                "type": "boolean"
+              },
+              "batteryMinPercent": {
+                "type": "number"
               }
             },
             "required": [
@@ -3013,6 +3169,9 @@
                     "type": "boolean"
                   },
                   "wind": {
+                    "type": "boolean"
+                  },
+                  "battery": {
                     "type": "boolean"
                   }
                 },
@@ -3458,6 +3617,62 @@
               "buttonPin"
             ],
             "additionalProperties": false
+          },
+          "battery": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "lowPercent": {
+                "type": "number"
+              },
+              "criticalPercent": {
+                "type": "number"
+              },
+              "shutdownPercent": {
+                "type": "number"
+              },
+              "capacityMah": {
+                "type": "number"
+              },
+              "powerSaving": {
+                "type": "boolean"
+              },
+              "saveReadIntervalSeconds": {
+                "type": "number"
+              },
+              "shutdownGraceSeconds": {
+                "type": "number"
+              },
+              "alertPin": {
+                "type": "number"
+              },
+              "stat1Pin": {
+                "type": "number"
+              },
+              "stat2Pin": {
+                "type": "number"
+              },
+              "pgPin": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "enabled",
+              "lowPercent",
+              "criticalPercent",
+              "shutdownPercent",
+              "capacityMah",
+              "powerSaving",
+              "saveReadIntervalSeconds",
+              "shutdownGraceSeconds",
+              "alertPin",
+              "stat1Pin",
+              "stat2Pin",
+              "pgPin"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -3732,6 +3947,114 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "battery_low": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "battery_critical": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "battery_shutdown": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "power_restored": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "charge_complete": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "charge_fault": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false
@@ -3874,6 +4197,18 @@
               },
               "windSpeedUnsafeMs": {
                 "type": "number"
+              },
+              "batteryEnabled": {
+                "type": "boolean"
+              },
+              "batteryAlert": {
+                "type": "boolean"
+              },
+              "batteryPhoneAlarm": {
+                "type": "boolean"
+              },
+              "batteryMinPercent": {
+                "type": "number"
               }
             },
             "additionalProperties": false
@@ -4014,6 +4349,9 @@
                     "type": "boolean"
                   },
                   "wind": {
+                    "type": "boolean"
+                  },
+                  "battery": {
                     "type": "boolean"
                   }
                 },
@@ -4342,6 +4680,48 @@
                 "type": "boolean"
               },
               "buttonPin": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          "battery": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "lowPercent": {
+                "type": "number"
+              },
+              "criticalPercent": {
+                "type": "number"
+              },
+              "shutdownPercent": {
+                "type": "number"
+              },
+              "capacityMah": {
+                "type": "number"
+              },
+              "powerSaving": {
+                "type": "boolean"
+              },
+              "saveReadIntervalSeconds": {
+                "type": "number"
+              },
+              "shutdownGraceSeconds": {
+                "type": "number"
+              },
+              "alertPin": {
+                "type": "number"
+              },
+              "stat1Pin": {
+                "type": "number"
+              },
+              "stat2Pin": {
+                "type": "number"
+              },
+              "pgPin": {
                 "type": "number"
               }
             },
@@ -4861,6 +5241,87 @@
               "status"
             ],
             "additionalProperties": false
+          },
+          "battery": {
+            "type": "object",
+            "properties": {
+              "present": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string"
+              },
+              "ageMs": {
+                "type": "number"
+              },
+              "estimating": {
+                "type": "boolean"
+              },
+              "percent": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "voltage": {
+                "type": "number"
+              },
+              "ratePercentPerHour": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "state": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "discharging",
+                  "charging",
+                  "charged",
+                  "fault",
+                  "no-battery",
+                  null
+                ]
+              },
+              "usbPower": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "fault": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "temperature",
+                  null
+                ]
+              },
+              "timeToEmptyMinutes": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "timeToFullMinutes": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "powerSaving": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "present"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -5079,6 +5540,9 @@
                 "type": "boolean"
               },
               "displayDetected": {
+                "type": "boolean"
+              },
+              "batteryDetected": {
                 "type": "boolean"
               }
             },
@@ -5488,6 +5952,89 @@
                   "uartPort"
                 ],
                 "additionalProperties": false
+              },
+              "battery": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "string"
+                  },
+                  "vcellRaw": {
+                    "type": "number"
+                  },
+                  "socRaw": {
+                    "type": "number"
+                  },
+                  "crateRaw": {
+                    "type": "number"
+                  },
+                  "statusRaw": {
+                    "type": "number"
+                  },
+                  "resetSeen": {
+                    "type": "boolean"
+                  },
+                  "estimating": {
+                    "type": "boolean"
+                  },
+                  "charger": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "stat1": {
+                        "type": "boolean"
+                      },
+                      "stat2": {
+                        "type": "boolean"
+                      },
+                      "pg": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "stat1",
+                      "stat2",
+                      "pg"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "gaugeAlert": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "policy": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "saving",
+                      "shutdown"
+                    ]
+                  },
+                  "currentMa": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "version",
+                  "vcellRaw",
+                  "socRaw",
+                  "crateRaw",
+                  "statusRaw",
+                  "resetSeen",
+                  "estimating",
+                  "charger",
+                  "gaugeAlert",
+                  "policy",
+                  "currentMa"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -5853,6 +6400,21 @@
                   "vaneStatus"
                 ],
                 "additionalProperties": false
+              },
+              "battery": {
+                "type": "object",
+                "properties": {
+                  "ageMs": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -6187,6 +6749,90 @@
               "on",
               "page",
               "nightMode"
+            ],
+            "additionalProperties": false
+          },
+          "battery": {
+            "type": "object",
+            "properties": {
+              "present": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string"
+              },
+              "ageMs": {
+                "type": "number"
+              },
+              "estimating": {
+                "type": "boolean"
+              },
+              "percent": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "voltage": {
+                "type": "number"
+              },
+              "ratePercentPerHour": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "state": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "discharging",
+                  "charging",
+                  "charged",
+                  "fault",
+                  "no-battery",
+                  null
+                ]
+              },
+              "usbPower": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "fault": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "temperature",
+                  null
+                ]
+              },
+              "timeToEmptyMinutes": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "timeToFullMinutes": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "powerSaving": {
+                "type": "boolean"
+              },
+              "shutdownInSeconds": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "present"
             ],
             "additionalProperties": false
           }

@@ -137,9 +137,9 @@ phone alarm options.
 
 ### Demo and contracts (FR-013)
 
-- [ ] T055 [P] Contract schemas: `battery` in specs/016-demo-device-emulation/contracts/schemas/readings.schema.json and status.schema.json; config keys in config.schema.json; `batteryDetected` in settings-effective.schema.json; no existing property changed
+- [X] T055 [P] Contract schemas: `battery` in specs/016-demo-device-emulation/contracts/schemas/readings.schema.json and status.schema.json; config keys in config.schema.json; `batteryDetected` in settings-effective.schema.json; no existing property changed
 - [ ] T056 Demo: simulated 7 Ah pack (discharging, "USB power" panel switch → charging → charged), presets "Battery low" and "Charge fault", battery in the emulated device, in web/src/demo/conditions.ts, web/src/demo/simulator.ts, web/src/demo/device.ts, web/src/demo/presets.ts, web/src/demo/panel/SensorInputs.tsx, tools/demo-core/sensor_feed.cpp and tools/demo-core/emulated_device*.cpp; rebuild the WASM core with tools/demo-core/build.sh (or note emsdk unavailable); `tools/contract-check.py` passes
-- [ ] T057 Regenerate docs/api/openapi.json with `python tools/api/openapi.py` (schemas from the contract files, operations.json unchanged unless a new route appears); `--check` passes
+- [X] T057 Regenerate docs/api/openapi.json with `python tools/api/openapi.py` (schemas from the contract files, operations.json unchanged unless a new route appears); `--check` passes
 
 ### Strings (FR-018)
 
