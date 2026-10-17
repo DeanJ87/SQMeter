@@ -88,6 +88,7 @@ void EmulatedDevice::tickDisplay()
     for (size_t i = 0; i < Display::PAGE_COUNT; ++i)
         if (view.available(static_cast<Display::Page>(i)))
             in.availableMask = static_cast<uint8_t>(in.availableMask | (1U << i));
+    in.forcedOff = snapshot.battery.power != Battery::PowerState::Normal; // power saving (spec 032)
     in.wake = displayWake;
     in.blank = displayBlank;
     displayWake = displayBlank = false;
@@ -373,6 +374,8 @@ void EmulatedDevice::runAlerts()
         cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)};
     Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, nowMs);
     in.nowSeconds = uptimeSeconds();
+    in.battery.shutdownStarted = feed.takeShutdownStarted();
+    in.battery.powerRestored = feed.takePowerRestored();
 
     // The imaging app: is each Alpaca device still being checked?
     const Alpaca::DeviceActivity activity[Alpaca::DEVICE_COUNT] = {

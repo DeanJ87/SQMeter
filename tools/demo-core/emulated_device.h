@@ -79,6 +79,10 @@ public:
         cfg.display.pageCount = 4;
         for (uint8_t i = 0; i < cfg.display.pageCount; ++i)
             cfg.display.pages[i] = pages[i];
+        // ...and the travel board's battery with its charger pins wired (spec 032).
+        cfg.battery.stat1Pin = 13;
+        cfg.battery.stat2Pin = 14;
+        cfg.battery.pgPin = 32;
         bootConfig = cfg;
         history.magic = 0; // garbage -> cleared on the first boot
         SafetyHistory::startBoot(history, false);

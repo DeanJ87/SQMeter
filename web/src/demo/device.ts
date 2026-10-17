@@ -1,7 +1,9 @@
 import createSqmCore from './core/sqm-core.mjs';
 import type { Core } from './coreApi';
 import {
+  advanceBattery,
   advanceRamps,
+  batteryPreset,
   cloneConditions,
   DEFAULT_CONDITIONS,
   getInput,
@@ -9,6 +11,7 @@ import {
   toCoreInputs,
   withDifferential,
   withInput,
+  type BatteryPresetId,
   type Conditions,
   type NumericInput,
   type Ramp,
@@ -162,7 +165,7 @@ class DemoDevice {
       this.activeRamps = this.activeRamps.filter((ramp) => ramp.field !== 'rain.rate');
     }
     const advanced = advanceRamps(this.inputs, this.activeRamps, this.demoMs);
-    this.inputs = advanced.conditions;
+    this.inputs = advanceBattery(advanced.conditions, elapsed);
     this.activeRamps = advanced.ramps;
     const place = simulatorLocation(cfg.location);
     const inputs = toCoreInputs(this.inputs, this.demoMs, {
@@ -302,6 +305,19 @@ class DemoDevice {
 
   setGpsFix(on: boolean) {
     this.update({ ...this.inputs, gps: { fix: on } });
+  }
+
+  /** The travel board's USB power switch (spec 032): on, the pack charges; a charger fault clears with it. */
+  setUsbPower(on: boolean) {
+    this.update({ ...this.inputs, battery: { ...this.inputs.battery, usb: on, fault: on && this.inputs.battery.fault } });
+  }
+
+  setChargeFault(on: boolean) {
+    this.update({ ...this.inputs, battery: { ...this.inputs.battery, fault: on, usb: on || this.inputs.battery.usb } });
+  }
+
+  applyBatteryPreset(id: BatteryPresetId) {
+    this.update(batteryPreset(id, this.inputs, this.config().battery?.lowPercent), ['battery.percent']);
   }
 
   followSun() {

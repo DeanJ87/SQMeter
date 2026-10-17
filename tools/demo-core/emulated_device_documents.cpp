@@ -14,12 +14,13 @@ std::string EmulatedDevice::readings() const
 
 std::string EmulatedDevice::statusParts() const
 {
-    DynamicJsonDocument doc(4608);
+    DynamicJsonDocument doc(5120); // +512 for the battery (spec 032)
     doc["uptime"] = (nowMs - bootMs) / 1000;
     Core::writeSky(doc.createNestedObject("sky"), Core::night(snapshot, cfg, epoch));
     const Readings::Snapshot readings = Core::buildReadings(snapshot, cfg, nowMs, epoch);
     Core::writeSensorHealth(doc.createNestedObject("sensors"), readings, cfg);
     Core::writeSkySensorStatus(doc.as<JsonObject>(), snapshot, readings);
+    Core::writeBatteryStatus(doc.as<JsonObject>(), snapshot, readings);
     Core::writeDiagnostics(doc.createNestedObject("diagnostics"), snapshot, cfg, nowMs);
     Core::writeAlertSchedule(doc.createNestedObject("alerts"), schedule.state(), cfg, nowMs);
     Core::writeClientWatch(doc.createNestedObject("alpaca"), clientWatch, cfg, nowMs);
