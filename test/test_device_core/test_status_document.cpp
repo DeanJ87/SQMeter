@@ -201,6 +201,12 @@ namespace
         Core::writeSensorHealth(doc.createNestedObject("sensors"), readings, cfg);
         Core::writeSkySensorStatus(doc.as<JsonObject>(), s, readings);
         Core::writeDiagnostics(doc.createNestedObject("diagnostics"), s, cfg, now);
+        Config withDisplay = cfg;
+        withDisplay.display.enabled = true;
+        Core::DisplayStatus display;
+        display.detected = display.on = display.nightMode = true;
+        display.page = Display::Page::Environment;
+        Core::writeDisplayStatus(doc.as<JsonObject>(), withDisplay, display);
     }
 } // namespace
 
@@ -214,6 +220,7 @@ void test_status_document_fits()
     TEST_ASSERT_FALSE(doc.overflowed());
     TEST_ASSERT_TRUE(doc["skySensors"].containsKey("sqml"));
     TEST_ASSERT_TRUE(doc["diagnostics"].size() > 0);
+    TEST_ASSERT_EQUAL_STRING("environment", doc["display"]["page"]);
 
     // With 20% headroom, like the readings document.
     const size_t used = onDevice(doc);

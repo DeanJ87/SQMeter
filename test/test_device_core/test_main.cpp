@@ -480,6 +480,12 @@ void test_sky_alert_sensor_slots();
 void test_status_document_fits();
 void test_one_sensor_device_readings_document();
 
+void test_display_view_sky_follows_the_authoritative_reading(void);
+void test_display_view_stale_or_missing_sky_is_invalid(void);
+void test_display_view_groups_and_availability(void);
+void test_display_view_missing_sensors_and_network_modes(void);
+void test_display_status_document(void);
+
 int main()
 {
     UNITY_BEGIN();
@@ -511,5 +517,10 @@ int main()
     RUN_TEST(test_sky_alert_sensor_slots);
     RUN_TEST(test_status_document_fits);
     RUN_TEST(test_one_sensor_device_readings_document);
+    RUN_TEST(test_display_view_sky_follows_the_authoritative_reading);
+    RUN_TEST(test_display_view_stale_or_missing_sky_is_invalid);
+    RUN_TEST(test_display_view_groups_and_availability);
+    RUN_TEST(test_display_view_missing_sensors_and_network_modes);
+    RUN_TEST(test_display_status_document);
     return UNITY_END();
 }

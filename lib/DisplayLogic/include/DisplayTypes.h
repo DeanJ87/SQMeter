@@ -29,6 +29,29 @@ namespace SQM::Display
         High,
     };
 
+    // The display settings (Config::display, contracts/config.md). Defined
+    // here so the controller can read them without the config library.
+    struct Settings
+    {
+        static constexpr uint8_t BUTTON_UNSET = 255;
+        static constexpr uint8_t MIN_CYCLE_SECONDS = 2;
+        static constexpr uint8_t MAX_CYCLE_SECONDS = 60;
+        static constexpr uint16_t MIN_TIMEOUT_SECONDS = 10;
+        static constexpr uint16_t MAX_TIMEOUT_SECONDS = 1800;
+
+        bool enabled = false;
+        // A fixed array, not a vector: Config is copied in many places.
+        Page pages[PAGE_COUNT] = {Page::Sky};
+        uint8_t pageCount = 1;
+        uint8_t cycleSeconds = 5;
+        Brightness brightness = Brightness::Medium;
+        uint16_t timeoutSeconds = 60; // 0 = never (by day; night always times out)
+        bool wakeOnBoot = true;
+        bool stayOnAtNight = false; // only counts when night is known
+        bool rotate180 = false;
+        uint8_t buttonPin = BUTTON_UNSET; // wake button, active low; 255 = none
+    };
+
     inline const char *pageName(Page page)
     {
         static const char *const NAMES[PAGE_COUNT] = {"sky", "environment", "cloud", "safety", "gps", "battery", "network"};

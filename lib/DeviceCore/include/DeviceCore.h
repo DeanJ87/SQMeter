@@ -16,6 +16,7 @@
 #include "AlertSchedule.h"
 #include "ClientWatch.h"
 #include "Config.h"
+#include "DisplayFrame.h"
 #include "ObservingConditionsMapper.h"
 #include "Readings.h"
 #include "SafetyEvaluator.h"
@@ -252,5 +253,35 @@ namespace SQM
 
         // ISO 8601 UTC, or "" before the clock is set.
         std::string isoUtc(int64_t epoch);
+
+        // The OLED display (specs/031-oled-display, src/DeviceDisplay.cpp).
+        // The network as WiFiManager sees it.
+        struct DisplayNetwork
+        {
+            bool connected = false; // joined a network
+            bool apMode = false;    // the setup hotspot is up
+            std::string ip;         // the address in use
+            std::string apName;     // the hotspot's name
+        };
+        // What each page may show, from the readings snapshot every interface
+        // uses (research D4): a stale or faulted group is invalid, never a value.
+        Display::View displayView(
+            const SensorSnapshot &snapshot,
+            const Readings::Snapshot &readings,
+            const SafetyStatus &safety,
+            const Config &cfg,
+            const DisplayNetwork &network);
+        // The controller's state for /api/status.
+        struct DisplayStatus
+        {
+            bool detected = false;
+            bool on = false;
+            Display::Page page = Display::Page::Sky; // when on
+            bool nightMode = false;
+        };
+        // /api/status "display" (contracts/status-and-routes.md), always present.
+        void writeDisplayStatus(JsonObject root, const Config &cfg, const DisplayStatus &state);
+        // Deps::Facts.displayDetected: a display answered and it is on in settings.
+        void displayFacts(Deps::Facts &facts, const Config &cfg, bool detected);
     } // namespace Core
 } // namespace SQM

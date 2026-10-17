@@ -48,13 +48,13 @@ is missing or stale; without an OLED nothing changes.
 
 ### Tests
 
-- [ ] T016 [P] [US1] Native tests first in test/test_display_logic/test_pages.cpp: Sky page day layout per contracts/screen.md (name `SQM`/`SQM-L`, large value, Bortle, NELM, the other sky reading in small type only when present and valid); invalid sky → `--` in place of every value, never a number
-- [ ] T017 [P] [US1] Native tests first in test/test_device_core/: `Core::displayView` from a `SensorSnapshot` + `Readings::Snapshot`: sky group follows the authoritative role and `Readings` status (ok → values; missing/error/stale → invalid), other sky reading only when its entry is ok; page availability rules from research D4; `/api/status` `display` object for enabled/disabled/detected/not detected (contracts/status-and-routes.md); `test_status_document_fits` still passes
+- [X] T016 [P] [US1] Native tests first in test/test_display_logic/test_pages.cpp: Sky page day layout per contracts/screen.md (name `SQM`/`SQM-L`, large value, Bortle, NELM, the other sky reading in small type only when present and valid); invalid sky → `--` in place of every value, never a number
+- [X] T017 [P] [US1] Native tests first in test/test_device_core/: `Core::displayView` from a `SensorSnapshot` + `Readings::Snapshot`: sky group follows the authoritative role and `Readings` status (ok → values; missing/error/stale → invalid), other sky reading only when its entry is ok; page availability rules from research D4; `/api/status` `display` object for enabled/disabled/detected/not detected (contracts/status-and-routes.md); `test_status_document_fits` still passes
 
 ### Implementation
 
-- [ ] T018 [US1] `Display::View` and `render(Page::Sky, ...)` in lib/DisplayLogic/include/DisplayFrame.h and lib/DisplayLogic/src/DisplayPages.cpp; T016 passes
-- [ ] T019 [US1] `Core::displayView`, `Core::writeDisplayStatus` and `Facts.displayDetected` filling in lib/DeviceCore/include/DeviceCore.h and lib/DeviceCore/src/DeviceDisplay.cpp; T017 passes
+- [X] T018 [US1] `Display::View` and `render(Page::Sky, ...)` in lib/DisplayLogic/include/DisplayFrame.h and lib/DisplayLogic/src/DisplayPages.cpp; T016 passes
+- [X] T019 [US1] `Core::displayView`, `Core::writeDisplayStatus` and `Facts.displayDetected` filling in lib/DeviceCore/include/DeviceCore.h and lib/DeviceCore/src/DeviceDisplay.cpp; T017 passes
 - [ ] T020 [US1] SSD1306 transport: probe (ACK + one-byte status read), init sequence, contrast, display on/off, segment/COM remap for 180°, page write (129-byte transaction), in include/OledDisplay.h and src/OledDisplay.cpp (Arduino `Wire` only)
 - [ ] T021 [US1] src/main.cpp: create the display after `setupSensors()` only when `display.enabled` (framebuffer `std::unique_ptr` allocated then, none otherwise); in `loop()` tick `Link`/`Controller`, render on each `refreshSensorSnapshot` and page change, send at most one dirty page per pass; reconfigure on settings save in `saveConfigCallback` (enable/disable, rotation, brightness) with no restart
 - [ ] T022 [US1] WebServer: hand the display a view after each `refreshSensorSnapshot` (`WebServer::displayView()` under the snapshot mutex), add `display` to `/api/status` and `/ws/status`, `displayDetected` to `settingsFacts`, in include/WebServer.h, src/WebServer.cpp and src/WebServerStatus.cpp
@@ -71,13 +71,13 @@ on at a known night.
 
 ### Tests
 
-- [ ] T024 [P] [US3] Native tests first in test/test_display_logic/test_controller.cpp: wake on boot for the timeout; off at the timeout; timeout 0 by day stays on; at night timeout 0 → 60 s; unknown night behaves as night; `stayOnAtNight` keeps it on only when night is known; night mode → contrast 0x00 and `nightMode` true; day contrast low/medium/high = 0x10/0x7F/0xFF; disabled or not detected → off; millis wrap
-- [ ] T025 [P] [US3] Native tests first in test/test_display_logic/test_pages.cpp: night layout of every page (one large value, no inverse pixels or borders) per contracts/screen.md
+- [X] T024 [P] [US3] Native tests first in test/test_display_logic/test_controller.cpp: wake on boot for the timeout; off at the timeout; timeout 0 by day stays on; at night timeout 0 → 60 s; unknown night behaves as night; `stayOnAtNight` keeps it on only when night is known; night mode → contrast 0x00 and `nightMode` true; day contrast low/medium/high = 0x10/0x7F/0xFF; disabled or not detected → off; millis wrap
+- [X] T025 [P] [US3] Native tests first in test/test_display_logic/test_pages.cpp: night layout of every page (one large value, no inverse pixels or borders) per contracts/screen.md
 
 ### Implementation
 
-- [ ] T026 [US3] `Controller` (on/off, effective timeout, night mode, contrast, rotation pass-through) in lib/DisplayLogic/include/DisplayController.h and lib/DisplayLogic/src/DisplayController.cpp; T024 passes
-- [ ] T027 [US3] Night layouts in lib/DisplayLogic/src/DisplayPages.cpp; T025 passes
+- [X] T026 [US3] `Controller` (on/off, effective timeout, night mode, contrast, rotation pass-through) in lib/DisplayLogic/include/DisplayController.h and lib/DisplayLogic/src/DisplayController.cpp; T024 passes
+- [X] T027 [US3] Night layouts in lib/DisplayLogic/src/DisplayPages.cpp; T025 passes
 - [ ] T028 [US3] Feed `Core::night(...)` (via `WebServer::computeNight`) into the controller each tick and apply contrast/VCOMH and on/off through the transport in src/main.cpp and src/OledDisplay.cpp
 
 **Checkpoint**: with default settings the display emits no light after dusk beyond the timeout (SC-002).
@@ -89,14 +89,14 @@ on at a known night.
 
 ### Tests
 
-- [ ] T029 [P] [US2] Native tests first in test/test_display_logic/test_pages.cpp: day layouts for Environment, Cloud, Safety (first reason cut with `…`, inverse block when unsafe by day), GPS, Battery, Network (WiFi IP / AP name + address / no connection) per contracts/screen.md; invalid values → `--`
-- [ ] T030 [P] [US2] Native tests first in test/test_display_logic/test_controller.cpp: cycling through selected ∩ available pages in configured order every `cycleSeconds`; one visible page doesn't cycle; none visible → Network; pixel shift advances on each page change; a page becoming unavailable is skipped on the next change
-- [ ] T031 [P] [US2] Native tests first in test/test_device_core/: `displayView` groups environment, cloud, safety (verdict + first reason), gps, network (device name, mode, IP, AP name) and their availability; battery group unavailable (filled by spec 032)
+- [X] T029 [P] [US2] Native tests first in test/test_display_logic/test_pages.cpp: day layouts for Environment, Cloud, Safety (first reason cut with `…`, inverse block when unsafe by day), GPS, Battery, Network (WiFi IP / AP name + address / no connection) per contracts/screen.md; invalid values → `--`
+- [X] T030 [P] [US2] Native tests first in test/test_display_logic/test_controller.cpp: cycling through selected ∩ available pages in configured order every `cycleSeconds`; one visible page doesn't cycle; none visible → Network; pixel shift advances on each page change; a page becoming unavailable is skipped on the next change
+- [X] T031 [P] [US2] Native tests first in test/test_device_core/: `displayView` groups environment, cloud, safety (verdict + first reason), gps, network (device name, mode, IP, AP name) and their availability; battery group unavailable (filled by spec 032)
 
 ### Implementation
 
-- [ ] T032 [US2] Page renderers for Environment, Cloud, Safety, GPS, Battery, Network in lib/DisplayLogic/src/DisplayPages.cpp; T029 passes
-- [ ] T033 [US2] Page cycling and shift in lib/DisplayLogic/src/DisplayController.cpp; T030 passes
+- [X] T032 [US2] Page renderers for Environment, Cloud, Safety, GPS, Battery, Network in lib/DisplayLogic/src/DisplayPages.cpp; T029 passes
+- [X] T033 [US2] Page cycling and shift in lib/DisplayLogic/src/DisplayController.cpp; T030 passes
 - [ ] T034 [US2] View groups in lib/DeviceCore/src/DeviceDisplay.cpp; network facts (`isConnected`, `isInAPMode`, IP, AP name) passed from `WiFiManager` by src/main.cpp / src/WebServer.cpp; T031 passes
 
 ## Phase 6: User Story 4 - Wake without a button (P3)
@@ -106,12 +106,12 @@ on at a known night.
 
 ### Tests
 
-- [ ] T035 [P] [US4] Native tests first in test/test_display_logic/test_controller.cpp: wake request turns on for the timeout; blank turns off until the next wake; button press while off wakes, while on advances the page and restarts the timeout; requests ignored while disabled/not detected/forced off
+- [X] T035 [P] [US4] Native tests first in test/test_display_logic/test_controller.cpp: wake request turns on for the timeout; blank turns off until the next wake; button press while off wakes, while on advances the page and restarts the timeout; requests ignored while disabled/not detected/forced off
 - [ ] T036 [P] [US4] Vitest first for the wake action (`POST /api/display/wake`, success and each 409 message) in web/src/components/__tests__/DeviceTab.test.tsx
 
 ### Implementation
 
-- [ ] T037 [US4] Wake/blank/button handling in lib/DisplayLogic/src/DisplayController.cpp; T035 passes
+- [X] T037 [US4] Wake/blank/button handling in lib/DisplayLogic/src/DisplayController.cpp; T035 passes
 - [ ] T038 [US4] Routes `POST /api/display/wake` and `/api/display/blank` with `requireAuth`, atomic request flags applied by the loop task, 409 messages from contracts/status-and-routes.md, registered before broader routes, in src/WebServerApi.cpp and include/WebServer.h; entries in tools/api/routes.json and tools/api/operations.json
 - [ ] T039 [US4] Wake button: `pinMode(INPUT_PULLUP)` when `buttonPin` != 255, sampled every loop into `Button`, in src/main.cpp
 

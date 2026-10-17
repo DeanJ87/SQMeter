@@ -300,27 +300,9 @@ namespace SQM
         std::string passkey; // 6 digits, entered on the phone when pairing
     };
 
-    // Optional SSD1306 OLED on the main I2C bus (spec 031). Pages are a fixed
-    // array, not a vector: Config is copied in many places.
-    struct DisplayConfig
-    {
-        static constexpr uint8_t BUTTON_UNSET = 255;
-        static constexpr uint8_t MIN_CYCLE_SECONDS = 2;
-        static constexpr uint8_t MAX_CYCLE_SECONDS = 60;
-        static constexpr uint16_t MIN_TIMEOUT_SECONDS = 10;
-        static constexpr uint16_t MAX_TIMEOUT_SECONDS = 1800;
-
-        bool enabled = false;
-        Display::Page pages[Display::PAGE_COUNT] = {Display::Page::Sky};
-        uint8_t pageCount = 1;
-        uint8_t cycleSeconds = 5;
-        Display::Brightness brightness = Display::Brightness::Medium;
-        uint16_t timeoutSeconds = 60; // 0 = never (by day; night always times out)
-        bool wakeOnBoot = true;
-        bool stayOnAtNight = false; // only counts when night is known
-        bool rotate180 = false;
-        uint8_t buttonPin = BUTTON_UNSET; // wake button, active low; 255 = none
-    };
+    // Optional SSD1306 OLED on the main I2C bus (spec 031); the struct lives in
+    // lib/DisplayLogic so the display controller can read it.
+    using DisplayConfig = Display::Settings;
 
     struct Config
     {

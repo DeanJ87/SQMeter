@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "DisplayTypes.h"
+
 // The 128 x 64 monochrome framebuffer of an SSD1306 OLED and the two fonts
 // drawn into it (specs/031-oled-display, research D1/D2, contracts/screen.md).
 // Pure C++: the firmware (src/OledDisplay.cpp) only copies dirty pages to the
@@ -69,4 +71,98 @@ namespace SQM::Display
         uint8_t dirty = 0;
         uint64_t pageHash[PAGES] = {}; // of the last committed picture (a blank screen at first)
     };
+
+    // Where things go on a page (contracts/screen.md); the burn-in shift is
+    // added to every position.
+    namespace Layout
+    {
+        constexpr int TITLE_Y = 0;   // line 1, small
+        constexpr int LARGE_Y = 10;  // the primary value, large
+        constexpr int LINE_A_Y = 30; // lines below, small
+        constexpr int LINE_B_Y = 40;
+        constexpr int NET_A_Y = 20; // the Network page has no large value
+        constexpr int NET_B_Y = 32;
+        constexpr int NIGHT_Y = 24; // night: one large value, centred
+        constexpr int INVERSE_PAD = 2;
+    } // namespace Layout
+
+    // What the screen may show, already decided by Core::displayView from the
+    // readings snapshot (stale or faulted data is invalid, never a value).
+    // Fixed-size text so a view is cheap to copy.
+    struct View
+    {
+        struct Sky
+        {
+            bool available = false; // the authoritative sky sensor is on
+            bool valid = false;
+            float sqm = 0.0F;
+            int bortle = 0;
+            float nelm = 0.0F;
+            const char *label = "SQM"; // "SQM" or "SQM-L"
+            struct Other
+            {
+                bool present = false; // the other sky sensor is on
+                bool valid = false;
+                float sqm = 0.0F;
+                const char *label = "SQM-L";
+            } other;
+        } sky;
+        struct Environment
+        {
+            bool available = false; // BME280 detected
+            bool valid = false;
+            float temperatureC = 0.0F;
+            float humidity = 0.0F;
+            float dewpointC = 0.0F;
+        } environment;
+        struct Cloud
+        {
+            bool available = false; // MLX90614 detected
+            bool valid = false;
+            float skyTemperatureC = 0.0F;
+            const char *condition = ""; // clear | cloudy | overcast
+        } cloud;
+        struct Safety
+        {
+            bool known = false;
+            bool safe = false;
+            char firstReason[48] = ""; // cut to fit when drawn
+        } safety;
+        struct Gps
+        {
+            bool available = false; // GPS enabled
+            bool valid = false;
+            bool fix = false;
+            uint32_t satellites = 0;
+            double latitude = 0.0;
+            double longitude = 0.0;
+        } gps;
+        struct Battery
+        {
+            bool available = false; // spec 032: a battery fitted
+            bool valid = false;
+            uint8_t percent = 0;
+            const char *state = ""; // Chg | Full | Disch | Fault | No batt
+        } battery;
+        enum class NetMode : uint8_t
+        {
+            None,
+            Wifi,
+            Ap,
+        };
+        struct Network
+        {
+            char name[33] = "";
+            NetMode mode = NetMode::None;
+            char ip[40] = ""; // the address in use, "" when none
+            char apName[33] = "";
+        } network;
+
+        // Whether `page` has a data source (research D4).
+        bool available(Page page) const;
+    };
+
+    // Draws `page` (day or night layout) shifted by `shift`, then commits the
+    // frame so only changed pages are sent.
+    void render(Frame &frame, Page page, const View &view, bool nightMode, uint8_t shift);
 } // namespace SQM::Display
