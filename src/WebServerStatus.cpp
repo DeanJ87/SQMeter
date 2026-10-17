@@ -400,7 +400,9 @@ namespace SQM
 
     std::string WebServer::createStatusJson() const
     {
-        DynamicJsonDocument doc(7680); // Includes MQTT, partition, boot, sensor (both sky sensors), BLE and alert-schedule diagnostics
+        // Includes MQTT, partition, boot, sensor (both sky sensors), BLE and
+        // alert-schedule diagnostics; sized by test_status_document_fits.
+        DynamicJsonDocument doc(Core::STATUS_DOC_CAPACITY);
         const SensorSnapshot snapshot = getSensorSnapshot();
         appendFirmware(doc);
         appendRuntime(doc);
@@ -423,6 +425,9 @@ namespace SQM
         appendDiagnostics(diagnostics, snapshot);
         appendMqttStatus(doc);
         appendConnections(doc);
+        // A full pool drops the trailing sections silently: say so.
+        if (doc.overflowed())
+            Logger::warn(TAG, "/api/status document overflowed %u bytes", static_cast<unsigned>(doc.capacity()));
 
         std::string json;
         serializeJson(doc, json);

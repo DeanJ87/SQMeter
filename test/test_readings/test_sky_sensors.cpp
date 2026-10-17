@@ -131,8 +131,11 @@ void test_sky_source_always_written_with_the_sky_group()
     TEST_ASSERT_FALSE(doc.containsKey("skySensors"));
 }
 
-// SC-001: one sensor, the document is today's apart from sky.source.
-void test_one_sensor_document_unchanged_but_source()
+// SC-001: the sky group keeps every field, name and value and only gains
+// sky.source. What a whole one-sensor device emits (its enabled SQM adds
+// skySensors.sqm) is pinned by test_one_sensor_device_readings_document in
+// test/test_device_core.
+void test_sky_group_unchanged_but_source()
 {
     const Snapshot s = skyHealthy();
     std::string json;

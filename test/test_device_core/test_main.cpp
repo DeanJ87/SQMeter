@@ -477,6 +477,8 @@ void test_sky_alpaca_follows_the_authoritative_sensor();
 void test_sky_dark_calibration_writes_one_role();
 void test_sky_alert_variables();
 void test_sky_alert_sensor_slots();
+void test_status_document_fits();
+void test_one_sensor_device_readings_document();
 
 int main()
 {
@@ -507,5 +509,7 @@ int main()
     RUN_TEST(test_sky_dark_calibration_writes_one_role);
     RUN_TEST(test_sky_alert_variables);
     RUN_TEST(test_sky_alert_sensor_slots);
+    RUN_TEST(test_status_document_fits);
+    RUN_TEST(test_one_sensor_device_readings_document);
     return UNITY_END();
 }

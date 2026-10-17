@@ -86,6 +86,12 @@ namespace SQM
         constexpr int64_t CLOCK_VALID_EPOCH = 1704067200;
         // A reading is stale this long after the read interval.
         constexpr uint32_t SENSOR_STALE_GRACE_MS = 1000;
+        // ArduinoJson pool for /api/status (src/WebServerStatus.cpp): the
+        // sections this library writes plus the device's own (firmware,
+        // memory, partitions, time, WiFi, MQTT, connections), worst case with
+        // both sky sensors, pinned by test/test_device_core
+        // (test_status_document_fits).
+        constexpr size_t STATUS_DOC_CAPACITY = 7680;
 
         inline uint32_t ageMs(uint32_t now, uint32_t timestamp)
         {
