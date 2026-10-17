@@ -8,6 +8,7 @@ import { formatNumber } from '../i18n/format';
 // with a gauge or with the charger pins set; the Battery card on the
 // dashboard holds the charge itself.
 
+const GAUGE_MODEL = 'MAX17048';
 const level = (high: boolean) => (high ? 'H' : 'L');
 
 const gaugeBadge = (status: SystemStatus) => {
@@ -29,7 +30,7 @@ const BatteryRows: FunctionalComponent<{ status: SystemStatus }> = ({ status }) 
     <>
       <div class="reading-row">
         <span class="reading-label">
-          {t('system.batteryGauge')} <span class="system-subtle mono">MAX17048</span>
+          {t('system.batteryGauge')} <span class="system-subtle mono">{GAUGE_MODEL}</span>
         </span>
         <Pill tone={badge.tone}>{badge.text}</Pill>
       </div>
