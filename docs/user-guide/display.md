@@ -20,7 +20,7 @@ the OLED port (J6).
 
 ## Turning it on
 
-**Settings → Device → Display → Show on display**, then save. No restart is needed. SQMeter looks for
+Switch on **Show on display** on the **Display** card (Settings → Device; `display.enabled`), then save. No restart is needed. SQMeter looks for
 the display when it is on, and again every 5 seconds until it answers; it is never probed while it is
 off, so a device without one has no extra bus traffic. **System → Sensors** shows whether it was found.
 
@@ -76,7 +76,7 @@ location it is kept as saved but has no effect (Settings says *Needs your locati
 
 ## Waking it
 
-- **Settings → Device → Display → Wake** lights it for the switch-off time.
+- **Wake** on the **Display** card (Settings → Device) lights it for the switch-off time.
 - `POST /api/display/wake` does the same, and `POST /api/display/blank` turns it off until the next
   wake ([REST API](../api/rest.md#post-apidisplaywake-post-apidisplayblank)).
 - A **wake button**: a push button from a free GPIO to ground (internal pull-up), set as

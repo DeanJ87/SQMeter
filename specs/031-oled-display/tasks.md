@@ -133,7 +133,7 @@ on at a known night.
 
 ### Strings (FR-019)
 
-- [X] T048 Every new UI string in web/src/i18n/en.json with a context note in web/src/i18n/en.context.json; translations written for all 13 locales in web/src/i18n/locales/*.json in each file's register; device-built messages (validation, route errors, `display-missing`) via `python3 tools/i18n/gen_device_catalog.py`; `python3 tools/i18n/translate.py --all --record`, `node tools/i18n/check.mjs`, `gen_device_catalog.py --check` pass (no paid API)
+- [ ] T048 Every new UI string in web/src/i18n/en.json with a context note in web/src/i18n/en.context.json; translations written for all 13 locales in web/src/i18n/locales/*.json in each file's register; device-built messages (validation, route errors, `display-missing`) via `python3 tools/i18n/gen_device_catalog.py`; `python3 tools/i18n/translate.py --all --record`, `node tools/i18n/check.mjs`, `gen_device_catalog.py --check` pass (no paid API)
 
 ### Docs (FR-018, constitution VII)
 
