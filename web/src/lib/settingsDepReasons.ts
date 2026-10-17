@@ -31,6 +31,7 @@ export const REASONS: Record<string, { text: string; fix: string }> = {
   'ota-no-password': { text: t('settingsDeps.setAnUploadPassword'), fix: 'device#security' },
   'language-offline': { text: t('settingsDeps.needsWifiToDownloadOr'), fix: 'network#wifi' },
   'display-missing': { text: t('settingsDeps.noDisplayDetected'), fix: 'device#display' },
+  'battery-missing': { text: t('settingsDeps.noBatteryGaugeDetected'), fix: 'device#battery' },
 };
 
 // Label for the one-click fix of each reason.
@@ -62,4 +63,5 @@ export const FIX_LABEL: Record<string, string> = {
   'ota-no-password': t('settingsDeps.setPassword'),
   'language-offline': t('settingsDeps.wifiSettings'),
   'display-missing': t('settingsDeps.display'),
+  'battery-missing': t('settingsDeps.battery'),
 };

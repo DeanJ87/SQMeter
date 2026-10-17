@@ -63,12 +63,17 @@ namespace SQM
 
         void appendAlerts(JsonObject alerts, const AlertsConfig &a, bool redactSecrets, Config::AlertsPart part)
         {
+            if (part == Config::AlertsPart::Battery)
+            {
+                appendEvents(alerts, a, FIRST_BATTERY_EVENT, EVENT_COUNT);
+                return;
+            }
             if (part == Config::AlertsPart::Client)
             {
                 // sendMode is stored here too, so it adds nothing to the main
                 // part (which older firmware reads; it has armWithAlpaca).
                 alerts["sendMode"] = sendModeName(a.sendMode);
-                appendEvents(alerts, a, FIRST_CLIENT_EVENT, EVENT_COUNT);
+                appendEvents(alerts, a, FIRST_CLIENT_EVENT, FIRST_BATTERY_EVENT);
                 alerts["clientSilentSafetySeconds"] = a.clientSilentSafetySeconds;
                 alerts["clientSilentWeatherSeconds"] = a.clientSilentWeatherSeconds;
                 return;
@@ -117,6 +122,7 @@ namespace SQM
             publish["gps"] = c.mqtt.publish.gps;
             publish["rain"] = c.mqtt.publish.rain;
             publish["wind"] = c.mqtt.publish.wind;
+            publish["battery"] = c.mqtt.publish.battery;
             publish["safety"] = c.mqtt.publish.safety;
             publish["diagnostics"] = c.mqtt.publish.diagnostics;
             JsonObject homeAssistant = mqtt.createNestedObject("homeAssistant");
@@ -231,6 +237,10 @@ namespace SQM
             alpaca["windSpeedUnsafeMs"] = a.windSpeedUnsafeMs;
             alpaca["windGustUnsafeEnabled"] = a.windGustUnsafeEnabled;
             alpaca["windGustUnsafeMs"] = a.windGustUnsafeMs;
+            alpaca["batteryEnabled"] = a.batteryEnabled;
+            alpaca["batteryMinPercent"] = a.batteryMinPercent;
+            alpaca["batteryAlert"] = a.batteryAlert;
+            alpaca["batteryPhoneAlarm"] = a.batteryPhoneAlarm;
         }
 
         void appendPlace(JsonDocument &doc, const Config &c, bool redact)
@@ -270,11 +280,28 @@ namespace SQM
             display["rotate180"] = d.rotate180;
             display["buttonPin"] = d.buttonPin;
         }
+
+        void appendBattery(JsonDocument &doc, const BatteryConfig &b)
+        {
+            JsonObject battery = doc.createNestedObject("battery");
+            battery["enabled"] = b.enabled;
+            battery["lowPercent"] = b.lowPercent;
+            battery["criticalPercent"] = b.criticalPercent;
+            battery["shutdownPercent"] = b.shutdownPercent;
+            battery["capacityMah"] = b.capacityMah;
+            battery["powerSaving"] = b.powerSaving;
+            battery["saveReadIntervalSeconds"] = b.saveReadIntervalSeconds;
+            battery["shutdownGraceSeconds"] = b.shutdownGraceSeconds;
+            battery["alertPin"] = b.alertPin;
+            battery["stat1Pin"] = b.stat1Pin;
+            battery["stat2Pin"] = b.stat2Pin;
+            battery["pgPin"] = b.pgPin;
+        }
     } // namespace
 
     std::string Config::alertsToJson(bool redactSecrets, AlertsPart part) const
     {
-        DynamicJsonDocument doc(3072); // strings are referenced, not copied
+        DynamicJsonDocument doc(4096); // strings are referenced, not copied; +1 KB for the battery events (spec 032)
         appendAlerts(doc.to<JsonObject>(), alerts, redactSecrets, part);
         std::string json;
         serializeJson(doc, json);
@@ -283,8 +310,9 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
     {
-        // +512 for the second sky sensor's sections (spec 030), +512 for the display (spec 031)
-        DynamicJsonDocument doc(9216);
+        // +512 for the second sky sensor's sections (spec 030), +512 for the
+        // display (spec 031), +512 for the battery (spec 032)
+        DynamicJsonDocument doc(9728);
         doc["deviceName"] = deviceName;
         doc["language"] = language;
         doc["primaryTimeSource"] = static_cast<int>(primaryTimeSource);
@@ -295,6 +323,7 @@ namespace SQM
         appendAlpaca(doc, alpaca);
         appendPlace(doc, *this, redactSecrets);
         appendDisplay(doc, display);
+        appendBattery(doc, battery);
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
 

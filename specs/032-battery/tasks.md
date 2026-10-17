@@ -22,22 +22,22 @@ dependency on an unfinished task.
 
 ### Config model (research D6, D8, contracts/config.md)
 
-- [ ] T004 [P] Native tests first in test/test_config_model/: `battery.*`, `alpaca.battery*`, `mqtt.publish.battery` and the six battery event defaults; JSON round trip; every validation message in contracts/config.md (ranges, low > critical > shutdown ordering, capacity 0 or 500..50000, charger pins all-or-none, distinct pins, clash with I2C-1/I2C-2, GPS, rain, wind and `display.buttonPin`, PG RTC-capable); `alertsToJson(…, AlertsPart::Battery)` holds exactly the six events and Main/Client parts are unchanged byte for byte; worst cases: main JSON (long strings, both sky sensors, display, battery) < 5,100 B, battery part with every template at its limit ≤ 3,900 B
-- [ ] T005 [P] Migration test first in test/test_config_migration/: a pre-032 saved config (fixture in test/fixtures/config-releases/) loads with every value kept and battery defaults; a stored config without `alertsBatt` gets the six default events
-- [ ] T006 Add `BatteryConfig battery`, `AlpacaConfig` battery fields, `MQTTConfig::Publish::battery`, six `AlertsConfig::EventSetting`s and `AlertsPart::Battery` in lib/ConfigModel/include/Config.h; defaults in lib/ConfigModel/src/ConfigModel.cpp; `EVENT_COUNT`/part boundaries and `eventSettingsOf` in lib/ConfigModel/src/ConfigInternal.h
-- [ ] T007 JSON in/out in lib/ConfigModel/src/ConfigJsonIn.cpp and lib/ConfigModel/src/ConfigJsonOut.cpp (new section, alpaca/mqtt keys, Battery alerts part)
-- [ ] T008 Validation in lib/ConfigModel/src/ConfigValidate.cpp: messages exactly as contracts/config.md; battery pins join the pin-conflict set used by `validateWindPins` and the display button check (spec 031); all three alerts parts ≤ `MAX_ALERTS_JSON_BYTES`; T004 passes
-- [ ] T009 NVS key `alertsBatt`: save the Battery part and splice it in on load like the Client part in src/ConfigStore.cpp; T005 passes natively for the splice logic it shares
-- [ ] T010 [P] Range and default fixture entries in test/fixtures/config-ranges.json and test/fixtures/settings-deps/default-config.json (test/test_config_ranges)
+- [X] T004 [P] Native tests first in test/test_config_model/: `battery.*`, `alpaca.battery*`, `mqtt.publish.battery` and the six battery event defaults; JSON round trip; every validation message in contracts/config.md (ranges, low > critical > shutdown ordering, capacity 0 or 500..50000, charger pins all-or-none, distinct pins, clash with I2C-1/I2C-2, GPS, rain, wind and `display.buttonPin`, PG RTC-capable); `alertsToJson(…, AlertsPart::Battery)` holds exactly the six events and Main/Client parts are unchanged byte for byte; worst cases: main JSON (long strings, both sky sensors, display, battery) < 5,100 B, battery part with every template at its limit ≤ 3,900 B
+- [X] T005 [P] Migration test first in test/test_config_migration/: a pre-032 saved config (fixture in test/fixtures/config-releases/) loads with every value kept and battery defaults; a stored config without `alertsBatt` gets the six default events
+- [X] T006 Add `BatteryConfig battery`, `AlpacaConfig` battery fields, `MQTTConfig::Publish::battery`, six `AlertsConfig::EventSetting`s and `AlertsPart::Battery` in lib/ConfigModel/include/Config.h; defaults in lib/ConfigModel/src/ConfigModel.cpp; `EVENT_COUNT`/part boundaries and `eventSettingsOf` in lib/ConfigModel/src/ConfigInternal.h
+- [X] T007 JSON in/out in lib/ConfigModel/src/ConfigJsonIn.cpp and lib/ConfigModel/src/ConfigJsonOut.cpp (new section, alpaca/mqtt keys, Battery alerts part)
+- [X] T008 Validation in lib/ConfigModel/src/ConfigValidate.cpp: messages exactly as contracts/config.md; battery pins join the pin-conflict set used by `validateWindPins` and the display button check (spec 031); all three alerts parts ≤ `MAX_ALERTS_JSON_BYTES`; T004 passes
+- [X] T009 NVS key `alertsBatt`: save the Battery part and splice it in on load like the Client part in src/ConfigStore.cpp; T005 passes natively for the splice logic it shares
+- [X] T010 [P] Range and default fixture entries in test/fixtures/config-ranges.json and test/fixtures/settings-deps/default-config.json (test/test_config_ranges)
 
 ### Settings dependencies (research D11)
 
-- [ ] T011 Native tests first in test/test_settings_deps/ and cases in test/fixtures/settings-deps/cases.json for D-46..D-51 (D-47 fail-safe; D-49 mqtt-off and battery-missing; D-50 like D-08; D-51 messages); `alpaca.batteryMinPercent`, `alpaca.batteryAlert` in `noDependency`
-- [ ] T012 Catalogue entries D-46..D-51 and reason `battery-missing` ("No battery gauge detected", fix `device#battery`) in lib/SettingsDeps/catalogue.json; `Facts.batteryDetected` and entries in lib/SettingsDeps/include/SettingsDeps.h and lib/SettingsDeps/src/SettingsDeps.cpp; mirror in web/src/lib/settingsDeps.ts; `tools/settings-deps/check.py` and T011 pass
+- [X] T011 Native tests first in test/test_settings_deps/ and cases in test/fixtures/settings-deps/cases.json for D-46..D-51 (D-47 fail-safe; D-49 mqtt-off and battery-missing; D-50 like D-08; D-51 messages); `alpaca.batteryMinPercent`, `alpaca.batteryAlert` in `noDependency`
+- [X] T012 Catalogue entries D-46..D-51 and reason `battery-missing` ("No battery gauge detected", fix `device#battery`) in lib/SettingsDeps/catalogue.json; `Facts.batteryDetected` and entries in lib/SettingsDeps/include/SettingsDeps.h and lib/SettingsDeps/src/SettingsDeps.cpp; mirror in web/src/lib/settingsDeps.ts; `tools/settings-deps/check.py` and T011 pass
 
 ### Snapshot plumbing
 
-- [ ] T013 Add `BatterySnapshot battery` to `SensorSnapshot` (`battery.enabled` off → gauge not read and reported like no gauge, research D8) (present, initialized, lastUpdate, reading, estimating, charger output, estimate, policy state, gauge alert level) in lib/DeviceCore/include/DeviceCore.h; `Core::derive` fills the decoded/estimate fields from `lib/BatteryLogic`
+- [X] T013 Add `BatterySnapshot battery` to `SensorSnapshot` (`battery.enabled` off → gauge not read and reported like no gauge, research D8) (present, initialized, lastUpdate, reading, estimating, charger output, estimate, policy state, gauge alert level) in lib/DeviceCore/include/DeviceCore.h; `Core::derive` fills the decoded/estimate fields from `lib/BatteryLogic`
 
 **Checkpoint**: config, deps and snapshot compile natively; existing native tests unchanged and green.
 

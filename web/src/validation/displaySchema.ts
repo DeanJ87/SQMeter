@@ -39,6 +39,7 @@ export interface DisplayPinInput {
   rain?: { enabled: boolean; rxPin: number; txPin: number };
   wind?: { enabled: boolean; speedPin: number; directionEnabled: boolean; directionPin: number };
   display?: { enabled: boolean; buttonPin: number };
+  battery?: { alertPin: number; stat1Pin: number; stat2Pin: number; pgPin: number };
 }
 const secondBus = (data: DisplayPinInput) => {
   const { i2c2SDA = DISPLAY_BUTTON_UNSET, i2c2SCL = DISPLAY_BUTTON_UNSET } = data.sensor;
@@ -49,6 +50,10 @@ const serialAndWind = (data: DisplayPinInput) => [
   ...(data.rain?.enabled ? [data.rain.rxPin, data.rain.txPin] : []),
   ...(data.wind?.enabled ? [data.wind.speedPin] : []),
   ...(data.wind?.enabled && data.wind.directionEnabled ? [data.wind.directionPin] : []),
+  // The battery's wired pins (spec 032).
+  ...(data.battery ? [data.battery.alertPin, data.battery.stat1Pin, data.battery.stat2Pin, data.battery.pgPin] : []).filter(
+    (pin) => pin !== DISPLAY_BUTTON_UNSET,
+  ),
 ];
 export const checkDisplayButton = (data: DisplayPinInput, ctx: z.RefinementCtx) => {
   const pin = data.display?.buttonPin ?? DISPLAY_BUTTON_UNSET;

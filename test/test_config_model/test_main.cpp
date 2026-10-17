@@ -375,6 +375,12 @@ void test_display_page_validation();
 void test_display_range_validation();
 void test_display_button_pin_validation();
 void test_display_worst_case_config_fits();
+void test_battery_defaults();
+void test_battery_json_round_trip();
+void test_battery_level_validation();
+void test_battery_pin_validation();
+void test_battery_alerts_part();
+void test_battery_worst_cases_fit();
 
 int main()
 {
@@ -409,5 +415,11 @@ int main()
     RUN_TEST(test_display_range_validation);
     RUN_TEST(test_display_button_pin_validation);
     RUN_TEST(test_display_worst_case_config_fits);
+    RUN_TEST(test_battery_defaults);
+    RUN_TEST(test_battery_json_round_trip);
+    RUN_TEST(test_battery_level_validation);
+    RUN_TEST(test_battery_pin_validation);
+    RUN_TEST(test_battery_alerts_part);
+    RUN_TEST(test_battery_worst_cases_fit);
     return UNITY_END();
 }

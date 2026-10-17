@@ -18,6 +18,7 @@ export interface MQTTPublishGroups {
   gps: boolean;
   rain: boolean;
   wind: boolean;
+  battery?: boolean; // spec 032; older firmware has none
   safety: boolean;
   diagnostics: boolean;
 }
@@ -119,6 +120,11 @@ export interface AlpacaConfig {
   windSpeedUnsafeMs: number;
   windGustUnsafeEnabled: boolean;
   windGustUnsafeMs: number;
+  // Battery rule (spec 032); older firmware has none.
+  batteryEnabled?: boolean;
+  batteryMinPercent?: number; // 2..50
+  batteryAlert?: boolean;
+  batteryPhoneAlarm?: boolean;
 }
 
 export interface BleConfig {
@@ -153,6 +159,24 @@ export interface DisplayConfig {
   buttonPin: number; // 255 = none
 }
 
+// Li-ion pack with a fuel gauge (spec 032, contracts/config.md); pins 255 = not wired.
+export const BATTERY_PIN_UNSET = 255;
+
+export interface BatteryConfig {
+  enabled: boolean;
+  lowPercent: number; // 5..50
+  criticalPercent: number; // 2..25, below low
+  shutdownPercent: number; // 2..10, below critical
+  capacityMah: number; // 0 = unknown, or 500..50000
+  powerSaving: boolean;
+  saveReadIntervalSeconds: number; // 10..300
+  shutdownGraceSeconds: number; // 10..300
+  alertPin: number;
+  stat1Pin: number;
+  stat2Pin: number;
+  pgPin: number;
+}
+
 export interface Config {
   deviceName: string;
   language?: string; // "en" or a supported code (specs/023-i18n); older firmware has none
@@ -178,6 +202,7 @@ export interface Config {
   wind?: WindConfig;
   location?: LocationConfig;
   display?: DisplayConfig; // older firmware has none
+  battery?: BatteryConfig; // older firmware has none
 }
 
 export interface LocationConfig {

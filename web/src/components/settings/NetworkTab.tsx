@@ -212,7 +212,7 @@ const PublishGroups: FunctionalComponent<SettingsTabProps> = ({ config, update, 
           onFix={fix}
           prefix={t('settings.network.nothingToPublish')}
           label={item.label}
-          checked={publish[item.key]}
+          checked={publish[item.key] ?? true}
           onChange={(v) => update(['mqtt', 'publish', item.key], v)}
           hint={item.hint}
         />

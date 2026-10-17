@@ -156,6 +156,7 @@ namespace SQM
                 snapshot.mlx.ambientTemp,
                 snapshot.cloudHumidity,
                 {cfg.cloudDetection.clearSkyThreshold, cfg.cloudDetection.cloudyThreshold, cfg.cloudDetection.humidityCorrection});
+            Detail::deriveBattery(snapshot.battery, cfg);
         }
 
         namespace

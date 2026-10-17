@@ -15,7 +15,8 @@
     "infraredDetected": true,
     "environmentDetected": true,
     "languageInstalled": true,
-    "displayDetected": true
+    "displayDetected": true,
+    "batteryDetected": true
   },
   "cases": [
     {
@@ -1740,6 +1741,253 @@
         "display.stayOnAtNight": {
           "state": "active",
           "id": "D-44"
+        }
+      }
+    },
+    {
+      "name": "D-46/D-48/D-49 battery settings, events and MQTT group need a gauge (shown muted)",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "b",
+          "topic": "t"
+        },
+        "battery": {
+          "capacityMah": 7000
+        }
+      },
+      "facts": {
+        "batteryDetected": false
+      },
+      "expect": {
+        "battery.enabled": {
+          "state": "inactive",
+          "id": "D-46",
+          "reason": "battery-missing",
+          "text": "No battery gauge detected",
+          "fix": "device#battery",
+          "neutral": true
+        },
+        "battery.lowPercent": {
+          "state": "inactive",
+          "id": "D-46",
+          "reason": "battery-missing",
+          "neutral": true
+        },
+        "battery.capacityMah": {
+          "state": "inactive",
+          "id": "D-46",
+          "reason": "battery-missing",
+          "neutral": true
+        },
+        "battery.shutdownGraceSeconds": {
+          "state": "inactive",
+          "id": "D-46",
+          "reason": "battery-missing",
+          "neutral": true
+        },
+        "alerts.events.battery_low.level": {
+          "state": "inactive",
+          "id": "D-48",
+          "reason": "battery-missing",
+          "neutral": true
+        },
+        "alerts.events.battery_critical.level": {
+          "state": "inactive",
+          "id": "D-48",
+          "reason": "battery-missing",
+          "neutral": true
+        },
+        "alerts.events.power_restored.level": {
+          "state": "off",
+          "id": "D-48",
+          "neutral": true
+        },
+        "mqtt.publish.battery": {
+          "state": "inactive",
+          "id": "D-49",
+          "reason": "battery-missing",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-46/D-48/D-49 met: a gauge answers",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "b",
+          "topic": "t"
+        },
+        "alpaca": {
+          "batteryEnabled": true
+        }
+      },
+      "expect": {
+        "battery.enabled": {
+          "state": "active",
+          "id": "D-46",
+          "neutral": true
+        },
+        "battery.capacityMah": {
+          "state": "off",
+          "id": "D-46",
+          "neutral": true
+        },
+        "battery.powerSaving": {
+          "state": "active",
+          "id": "D-46",
+          "neutral": true
+        },
+        "alerts.events.charge_fault.level": {
+          "state": "active",
+          "id": "D-48",
+          "neutral": true
+        },
+        "mqtt.publish.battery": {
+          "state": "active",
+          "id": "D-49",
+          "neutral": true
+        },
+        "alpaca.batteryEnabled": {
+          "state": "active",
+          "id": "D-47",
+          "unmet": "fail-safe"
+        }
+      }
+    },
+    {
+      "name": "D-46 power saving off: its interval and warning time are off",
+      "config": {
+        "battery": {
+          "powerSaving": false
+        }
+      },
+      "expect": {
+        "battery.powerSaving": {
+          "state": "off",
+          "id": "D-46",
+          "neutral": true
+        },
+        "battery.saveReadIntervalSeconds": {
+          "state": "off",
+          "id": "D-46",
+          "neutral": true
+        },
+        "battery.lowPercent": {
+          "state": "active",
+          "id": "D-46",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-47 battery rule is fail-safe with no gauge",
+      "config": {
+        "alpaca": {
+          "batteryEnabled": true
+        }
+      },
+      "facts": {
+        "batteryDetected": false
+      },
+      "expect": {
+        "alpaca.batteryEnabled": {
+          "state": "inactive",
+          "id": "D-47",
+          "reason": "battery-missing",
+          "unmet": "fail-safe"
+        }
+      }
+    },
+    {
+      "name": "D-48 battery events wait for alerts; D-49 MQTT group waits for MQTT",
+      "config": {},
+      "expect": {
+        "alerts.events.battery_low.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off",
+          "neutral": true
+        },
+        "mqtt.publish.battery": {
+          "state": "inactive",
+          "id": "D-49",
+          "reason": "mqtt-off",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-50 ring paired phones: Bluetooth build, then passkey, then phones",
+      "config": {
+        "alpaca": {
+          "batteryEnabled": true
+        }
+      },
+      "facts": {
+        "bluetoothBuild": false
+      },
+      "expect": {
+        "alpaca.batteryPhoneAlarm": {
+          "state": "inactive",
+          "id": "D-50",
+          "reason": "ble-build",
+          "text": "Needs the Bluetooth firmware build",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-50 ring paired phones: Bluetooth on, no passkey",
+      "config": {
+        "ble": {
+          "enabled": true
+        }
+      },
+      "expect": {
+        "alpaca.batteryPhoneAlarm": {
+          "state": "inactive",
+          "id": "D-50",
+          "reason": "no-passkey",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-50 met: passkey set and a phone paired",
+      "config": {
+        "ble": {
+          "enabled": true,
+          "passkey": "123456"
+        }
+      },
+      "expect": {
+        "alpaca.batteryPhoneAlarm": {
+          "state": "active",
+          "id": "D-50",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-50 off: ring paired phones switched off",
+      "config": {
+        "alpaca": {
+          "batteryPhoneAlarm": false
+        }
+      },
+      "expect": {
+        "alpaca.batteryPhoneAlarm": {
+          "state": "off",
+          "id": "D-50",
+          "neutral": true
         }
       }
     }

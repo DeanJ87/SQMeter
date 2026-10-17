@@ -57,6 +57,7 @@ namespace SQM
             bool environmentDetected = false; // BME280
             bool languageInstalled = false;   // the chosen language's file is stored for this firmware
             bool displayDetected = false;     // an OLED answered at 0x3C (spec 031; never probed while off)
+            bool batteryDetected = false;     // a MAX17048 fuel gauge answered at 0x36 (spec 032)
         };
 
         struct Reason

@@ -11,10 +11,10 @@ import { t } from '../../i18n';
 import { getJson } from '../../lib/api';
 
 type NumericKey = {
-  [K in keyof AlpacaConfig]: AlpacaConfig[K] extends number ? K : never;
+  [K in keyof AlpacaConfig]-?: AlpacaConfig[K] extends number ? K : never;
 }[keyof AlpacaConfig];
 type BoolKey = {
-  [K in keyof AlpacaConfig]: AlpacaConfig[K] extends boolean ? K : never;
+  [K in keyof AlpacaConfig]-?: AlpacaConfig[K] extends boolean ? K : never;
 }[keyof AlpacaConfig];
 
 const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, deps, fix }) => {

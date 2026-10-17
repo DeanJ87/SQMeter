@@ -51,6 +51,7 @@ namespace
         f.environmentDetected = flag("environmentDetected");
         f.languageInstalled = flag("languageInstalled");
         f.displayDetected = flag("displayDetected");
+        f.batteryDetected = flag("batteryDetected");
         return f;
     }
 
@@ -64,6 +65,7 @@ namespace
         f.sqmDetected = f.sqmlDetected = true;
         f.languageInstalled = true;
         f.displayDetected = true;
+        f.batteryDetected = true;
         return f;
     }
 
@@ -157,7 +159,7 @@ void test_fixture_cases()
 
 void test_reasons_and_settings_match_catalogue()
 {
-    DynamicJsonDocument doc(32768);
+    DynamicJsonDocument doc(49152);
     TEST_ASSERT_FALSE(deserializeJson(doc, readFile("lib/SettingsDeps/catalogue.json")));
 
     JsonObjectConst reasons = doc["reasons"];
@@ -232,8 +234,10 @@ void test_report_document()
     TEST_ASSERT_FALSE(doc.overflowed());
     std::string json;
     serializeJson(doc, json);
-    // Was < 5 KB (spec 020); the display's eight entries (spec 031) add about 0.3 KB.
-    TEST_ASSERT_LESS_THAN(6000, json.size());
+    // Was < 5 KB (spec 020); the display's eight entries (spec 031) add about
+    // 0.3 KB and the battery's eighteen (spec 032) about 1.6 KB.
+    printf("settings report %u bytes\n", static_cast<unsigned>(json.size()));
+    TEST_ASSERT_LESS_THAN(7500, json.size());
 
     TEST_ASSERT_FALSE(doc["facts"]["mqttConnected"].as<bool>());
     JsonObject mqtt;
@@ -380,12 +384,68 @@ void test_display_needs_a_display()
     TEST_ASSERT_EQUAL_STRING("Display: wake button pin is not a valid GPIO", error.c_str());
 }
 
+// D-46..D-51 (spec 032): the battery's settings, rule, events and MQTT group
+// need a gauge; the rule is fail-safe without one; the phone alarm needs
+// Bluetooth like D-08; the pins are a constraint checked on save.
+void test_battery_needs_a_gauge()
+{
+    Config cfg = saveAndRestart(Config::createDefault(), R"({"alerts":{"enabled":true},"alpaca":{"batteryEnabled":true}})");
+    Deps::Facts f = healthy();
+    for (const char *setting : {"battery.enabled", "battery.lowPercent", "battery.powerSaving", "alerts.events.battery_low.level",
+                                "alpaca.batteryEnabled"})
+        TEST_ASSERT_EQUAL_STRING_MESSAGE("active", stateOf(cfg, f, setting).c_str(), setting);
+    TEST_ASSERT_EQUAL_STRING("off", stateOf(cfg, f, "battery.capacityMah").c_str());
+
+    f.batteryDetected = false;
+    TEST_ASSERT_EQUAL_STRING("inactive:battery-missing", stateOf(cfg, f, "battery.enabled").c_str());
+    TEST_ASSERT_EQUAL_STRING("inactive:battery-missing", stateOf(cfg, f, "alerts.events.battery_critical.level").c_str());
+    TEST_ASSERT_EQUAL_STRING("inactive:battery-missing", stateOf(cfg, f, "alpaca.batteryEnabled").c_str());
+    const std::vector<Deps::Entry> entries = Deps::evaluate(cfg, f);
+    const Deps::Entry *rule = Deps::find(entries, "alpaca.batteryEnabled");
+    TEST_ASSERT_NOT_NULL(rule);
+    TEST_ASSERT_TRUE(rule->unmet == Deps::Unmet::FailSafe);
+    TEST_ASSERT_EQUAL_STRING("D-47", rule->id);
+    const Deps::Entry *monitor = Deps::find(entries, "battery.enabled");
+    TEST_ASSERT_TRUE(monitor->neutral);
+    TEST_ASSERT_EQUAL_STRING("D-46", monitor->id);
+    TEST_ASSERT_EQUAL_STRING("D-48", Deps::find(entries, "alerts.events.battery_low.level")->id);
+    const Deps::Reason *reason = Deps::reasonFor(entries, "battery.criticalPercent");
+    TEST_ASSERT_NOT_NULL(reason);
+    TEST_ASSERT_EQUAL_STRING("No battery gauge detected", reason->text);
+    TEST_ASSERT_EQUAL_STRING("device#battery", reason->fix);
+    // The fail-safe rule isn't listed as "not in effect": it reports unsafe.
+    for (const std::string &listed : Deps::rulesNotInEffect(cfg))
+        TEST_ASSERT_TRUE_MESSAGE(listed.find("attery") == std::string::npos, listed.c_str());
+
+    // D-49: the MQTT group needs MQTT, then a gauge.
+    TEST_ASSERT_EQUAL_STRING("inactive:mqtt-off", stateOf(cfg, f, "mqtt.publish.battery").c_str());
+    TEST_ASSERT_EQUAL_STRING("D-49", Deps::find(entries, "mqtt.publish.battery")->id);
+
+    // D-50: ringing paired phones needs Bluetooth, as D-08.
+    f.bluetoothBuild = false;
+    TEST_ASSERT_EQUAL_STRING("inactive:ble-build", stateOf(cfg, f, "alpaca.batteryPhoneAlarm").c_str());
+    TEST_ASSERT_EQUAL_STRING("D-50", Deps::find(Deps::evaluate(cfg, f), "alpaca.batteryPhoneAlarm")->id);
+
+    // D-51: pins are checked on save with the shared messages.
+    std::string error;
+    TEST_ASSERT_FALSE(Config::fromJson(R"({"battery":{"alertPin":21}})", &cfg, &error).has_value());
+    TEST_ASSERT_EQUAL_STRING("Battery: pin is already in use", error.c_str());
+    TEST_ASSERT_FALSE(Config::fromJson(R"({"battery":{"stat1Pin":25}})", &cfg, &error).has_value());
+    TEST_ASSERT_EQUAL_STRING("Battery: set all three charger pins or none", error.c_str());
+
+    Deps::Facts facts = healthy();
+    DynamicJsonDocument doc(512);
+    Deps::writeFacts(doc.to<JsonObject>(), facts);
+    TEST_ASSERT_TRUE(doc["batteryDetected"].as<bool>());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_send_mode_needs_alpaca);
     RUN_TEST(test_language_needs_its_file);
     RUN_TEST(test_display_needs_a_display);
+    RUN_TEST(test_battery_needs_a_gauge);
     RUN_TEST(test_fixture_cases);
     RUN_TEST(test_reasons_and_settings_match_catalogue);
     RUN_TEST(test_default_config_fixture_is_current);

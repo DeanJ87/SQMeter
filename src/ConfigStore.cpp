@@ -16,6 +16,8 @@ namespace SQM
     // The imaging-app alert settings (Config::AlertsPart::Client): their own
     // key keeps both alerts strings under the NVS limit.
     static const char *NVS_ALERTS_CLIENT_KEY = "alertclient";
+    // The battery events (Config::AlertsPart::Battery, spec 032).
+    static const char *NVS_ALERTS_BATTERY_KEY = "alertsBatt";
 
     namespace
     {
@@ -74,23 +76,26 @@ namespace SQM
 
         // Alerts live under their own NVS keys; splice them into the main
         // document and parse once, straight into the caller's Config.
-        const size_t close = json.rfind('}');
         std::string alertsJson;
         std::string clientJson;
-        const bool haveAlerts = readNvsString(NVS_ALERTS_KEY, alertsJson) && !alertsJson.empty() && close != std::string::npos;
-        const bool haveClient = readNvsString(NVS_ALERTS_CLIENT_KEY, clientJson) && !clientJson.empty() && close != std::string::npos;
-        std::string spliced = json;
-        if (haveAlerts)
-            spliced.insert(close, std::string(",\"alerts\":") + alertsJson);
-        if (haveClient)
-            spliced.insert(spliced.rfind('}'), std::string(",\"alertsClient\":") + clientJson);
+        std::string batteryJson;
+        const bool haveAlerts = readNvsString(NVS_ALERTS_KEY, alertsJson) && !alertsJson.empty();
+        const bool haveClient = readNvsString(NVS_ALERTS_CLIENT_KEY, clientJson) && !clientJson.empty();
+        const bool haveBattery = readNvsString(NVS_ALERTS_BATTERY_KEY, batteryJson) && !batteryJson.empty();
+        if (!haveAlerts)
+            alertsJson.clear();
+        if (!haveClient)
+            clientJson.clear();
+        if (!haveBattery)
+            batteryJson.clear();
+        const std::string spliced = spliceStored(json, alertsJson, clientJson, batteryJson);
 
         out = createDefault();
         std::string reason;
         bool ok = applyJson(spliced, out, false, &reason);
         if (!ok)
             Logger::error(TAG, "Stored config rejected: %s", reason.c_str());
-        if (!ok && (haveAlerts || haveClient))
+        if (!ok && (haveAlerts || haveClient || haveBattery))
         {
             // A corrupt alerts entry mustn't take the whole config down.
             Logger::error(TAG, "Failed to parse config JSON with alerts - retrying without them");
@@ -120,6 +125,7 @@ namespace SQM
         std::string json = toJson(false, false);
         const std::string alertsJson = alertsToJson(false, AlertsPart::Main);
         const std::string clientJson = alertsToJson(false, AlertsPart::Client);
+        const std::string batteryJson = alertsToJson(false, AlertsPart::Battery);
         Logger::info(
             TAG,
             "Config JSON to save (%u bytes, alerts %u bytes)",
@@ -146,9 +152,10 @@ namespace SQM
         size_t written = prefs.putString(NVS_CONFIG_KEY, json.c_str());
         const size_t alertsWritten = prefs.putString(NVS_ALERTS_KEY, alertsJson.c_str());
         const size_t clientWritten = prefs.putString(NVS_ALERTS_CLIENT_KEY, clientJson.c_str());
+        const size_t batteryWritten = prefs.putString(NVS_ALERTS_BATTERY_KEY, batteryJson.c_str());
         prefs.end();
 
-        if (alertsWritten == 0 || clientWritten == 0)
+        if (alertsWritten == 0 || clientWritten == 0 || batteryWritten == 0)
         {
             Logger::error(TAG, "Failed to write alerts config to NVS");
             return false;

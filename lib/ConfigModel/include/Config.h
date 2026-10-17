@@ -48,6 +48,7 @@ namespace SQM
             bool gps = true;
             bool rain = true;
             bool wind = true;
+            bool battery = true;      // battery group (spec 032)
             bool safety = true;       // <topic>/safe and <topic>/safety
             bool diagnostics = false; // <topic>/diagnostics
         } publish;
@@ -183,6 +184,13 @@ namespace SQM
         bool windGustUnsafeEnabled;
         float windGustUnsafeMs; // 10-minute peak gust
 
+        // Battery (spec 032). Like rain and wind, checked regardless of the
+        // other sensors' freshness; missing battery data is unsafe.
+        bool batteryEnabled;
+        uint8_t batteryMinPercent; // unsafe below this charge
+        bool batteryAlert;         // Battery rule alert at Urgent when it trips
+        bool batteryPhoneAlarm;    // ring paired phones when it trips (BLE build)
+
         // Conditions must stay continuously safe this long before IsSafe
         // flips back to true (0 = report safe immediately).
         uint32_t safeDelaySeconds;
@@ -224,6 +232,13 @@ namespace SQM
         EventSetting clientLost;
         EventSetting clientBack;
         EventSetting clientDisconnected;
+        // Battery events (spec 032). Persisted under a third NVS key.
+        EventSetting batteryLow;
+        EventSetting batteryCritical;
+        EventSetting batteryShutdown; // going to sleep: battery empty
+        EventSetting powerRestored;
+        EventSetting chargeComplete;
+        EventSetting chargeFault;
 
         float dewRiskMarginC;          // temperature within this of the dew point
         float clearSkyCloudPercent;    // clear below this
@@ -300,6 +315,26 @@ namespace SQM
         std::string passkey; // 6 digits, entered on the phone when pairing
     };
 
+    // Li-ion pack with a MAX17048 fuel gauge and an MCP73871 charger (spec 032).
+    // Everything acts only while a gauge is detected.
+    struct BatteryConfig
+    {
+        static constexpr uint8_t PIN_UNSET = 255;
+        bool enabled = true; // monitoring
+        uint8_t lowPercent = 20;
+        uint8_t criticalPercent = 10;
+        uint8_t shutdownPercent = 5;
+        uint16_t capacityMah = 0; // 0 = unknown
+        bool powerSaving = true;
+        uint16_t saveReadIntervalSeconds = 30;
+        uint16_t shutdownGraceSeconds = 30;
+        uint8_t alertPin = PIN_UNSET; // gauge ALRT (diagnostics only)
+        uint8_t stat1Pin = PIN_UNSET; // charger STAT1/STAT2/PG: all set or none
+        uint8_t stat2Pin = PIN_UNSET;
+        uint8_t pgPin = PIN_UNSET; // must be RTC-capable (wakes the device)
+        bool chargerPins() const { return stat1Pin != PIN_UNSET && stat2Pin != PIN_UNSET && pgPin != PIN_UNSET; }
+    };
+
     // Optional SSD1306 OLED on the main I2C bus (spec 031); the struct lives in
     // lib/DisplayLogic so the display controller can read it.
     using DisplayConfig = Display::Settings;
@@ -328,6 +363,7 @@ namespace SQM
         WindConfig wind;
         LocationConfig location;
         DisplayConfig display;
+        BatteryConfig battery;
         std::string deviceName;
         // "en" or a supported code (specs/023-i18n). A fixed array, not
         // std::string: Config is copied in many places and this keeps each copy cheap.
@@ -354,14 +390,21 @@ namespace SQM
         std::string toJson(bool redactSecrets = false, bool includeAlerts = true) const;
         // The alerts settings as stored: Main under the "alerts" NVS key, Client
         // (the imaging-app events and silence times) under their own key so
-        // each stays under the NVS string limit; All is what the API shows.
+        // each stays under the NVS string limit; Battery (the battery events,
+        // spec 032) has a third key. All is what the API shows.
         enum class AlertsPart : uint8_t
         {
             All,
             Main,
             Client,
+            Battery,
         };
         static constexpr size_t MAX_ALERTS_JSON_BYTES = 3900;
+        // The stored document: the main JSON with each stored alerts part
+        // spliced in ("alerts", "alertsClient", "alertsBattery"); an empty
+        // part is left out. What load() parses (src/ConfigStore.cpp).
+        static std::string spliceStored(
+            const std::string &main, const std::string &alerts, const std::string &client, const std::string &battery);
         std::string alertsToJson(bool redactSecrets = false, AlertsPart part = AlertsPart::All) const;
         bool validate(std::string *error = nullptr) const;
         // `error` (if given) gets the reason a config is rejected - the same

@@ -41,6 +41,29 @@ namespace SQM
         SkyQualityMetrics metrics;
     };
 
+    // The fuel gauge and charger (spec 032). The driver fills `detected`,
+    // `initialized`, `lastUpdate` and `reading` (with monitoring off it only
+    // probes once at boot and reads nothing); the power manager `power` and
+    // `shutdownInSeconds`; Core::derive the rest.
+    struct BatterySnapshot
+    {
+        bool detected = false;    // a gauge answered at 0x36 (the boot probe counts)
+        bool initialized = false; // monitoring on and the gauge answering
+        uint32_t lastUpdate = 0;  // millis() of the last good gauge read, 0 = never
+        BatteryReading reading;
+        Battery::PowerState power = Battery::PowerState::Normal;
+        uint32_t shutdownInSeconds = 0; // while power == ShutdownPending
+
+        // Core::derive.
+        bool enabled = false; // battery.enabled
+        // Reported: monitoring on, and a gauge found or the charger wired (a
+        // pack pulled out on USB still reports "no battery" from the charger).
+        bool present = false;
+        std::optional<uint32_t> timeToEmptyMinutes;
+        std::optional<uint32_t> timeToFullMinutes;
+        std::optional<float> currentMa;
+    };
+
     // One consistent copy of every sensor's latest reading.
     struct SensorSnapshot
     {
@@ -70,6 +93,7 @@ namespace SQM
         uint32_t gpsLastUpdate = 0;
         uint32_t rg15LastUpdate = 0;
         WindReading wind;
+        BatterySnapshot battery;
         uint32_t dataTimestamp = 0;
         uint32_t capturedAt = 0;
 

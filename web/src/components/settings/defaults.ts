@@ -143,6 +143,7 @@ export const defaultMqttPublish: MQTTPublishGroups = {
   gps: true,
   rain: true,
   wind: true,
+  battery: true,
   safety: true,
   diagnostics: false,
 };
