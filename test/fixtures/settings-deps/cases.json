@@ -10,6 +10,8 @@
     "bluetoothRunning": true,
     "pairedPhones": 1,
     "lightDetected": true,
+    "sqmDetected": true,
+    "sqmlDetected": true,
     "infraredDetected": true,
     "environmentDetected": true,
     "languageInstalled": true
@@ -1104,14 +1106,14 @@
       }
     },
     {
-      "name": "D-29 sky calibration needs the TSL2591",
+      "name": "D-29 sky calibration needs the SQM",
       "config": {
         "skyCalibration": {
           "enabled": true
         }
       },
       "facts": {
-        "lightDetected": false
+        "sqmDetected": false
       },
       "expect": {
         "skyCalibration.enabled": {
@@ -1397,6 +1399,99 @@
         "language": {
           "state": "off",
           "id": "D-38"
+        }
+      }
+    },
+    {
+      "name": "D-40 the sky choice needs both sensors on",
+      "config": {
+        "sky": {
+          "authoritative": "sqm",
+          "showOther": true
+        }
+      },
+      "expect": {
+        "sky.authoritative": {
+          "state": "inactive",
+          "id": "D-40",
+          "reason": "sky-single",
+          "neutral": true
+        },
+        "sky.showOther": {
+          "state": "inactive",
+          "id": "D-40",
+          "reason": "sky-single",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-40 met",
+      "config": {
+        "sensor": {
+          "i2c2SDA": 25,
+          "i2c2SCL": 26
+        },
+        "sky": {
+          "sqmlEnabled": true
+        }
+      },
+      "expect": {
+        "sky.authoritative": {
+          "state": "active",
+          "id": "D-40",
+          "neutral": true
+        },
+        "sky.showOther": {
+          "state": "active",
+          "id": "D-40",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-41 SQM-L calibration needs the SQM-L",
+      "config": {
+        "sensor": {
+          "i2c2SDA": 25,
+          "i2c2SCL": 26
+        },
+        "sky": {
+          "sqmlEnabled": true
+        },
+        "skyCalibrationL": {
+          "enabled": true
+        }
+      },
+      "facts": {
+        "sqmlDetected": false
+      },
+      "expect": {
+        "skyCalibrationL.enabled": {
+          "state": "inactive",
+          "id": "D-41",
+          "reason": "sqml-missing"
+        }
+      }
+    },
+    {
+      "name": "D-41 met",
+      "config": {
+        "sensor": {
+          "i2c2SDA": 25,
+          "i2c2SCL": 26
+        },
+        "sky": {
+          "sqmlEnabled": true
+        },
+        "skyCalibrationL": {
+          "enabled": true
+        }
+      },
+      "expect": {
+        "skyCalibrationL.enabled": {
+          "state": "active",
+          "id": "D-41"
         }
       }
     }

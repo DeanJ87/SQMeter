@@ -277,3 +277,119 @@ void test_sky_status_documents()
     Core::writeSkySensorStatus(root, s, one);
     TEST_ASSERT_FALSE(root.containsKey("skySensors"));
 }
+
+namespace
+{
+    Alpaca::SafetyResult skyVerdict(SensorSnapshot &s, const Config &cfg, uint32_t now)
+    {
+        // The IR sky sensor answering and clear, so only the sky sensors matter.
+        s.mlx.status = SensorStatus::Ok;
+        s.mlx.objectTemp = -25.0F;
+        s.mlx.ambientTemp = 12.0F;
+        s.mlxInitialized = true;
+        s.mlxLastUpdate = now - 400;
+        s.dataTimestamp = now - 400;
+        Core::derive(s, cfg);
+        return Alpaca::evaluateSafety(Core::safetyInputs(s, cfg, now), Core::safetyThresholds(cfg));
+    }
+} // namespace
+
+// Spec 030 D4: only the authoritative sensor is required; no fallback.
+void test_sky_safety_uses_the_authoritative_sensor_only()
+{
+    const uint32_t now = 100000;
+    Config cfg = dual(SkyRole::Sqml);
+    cfg.alpaca.sqmMinEnabled = true;
+    cfg.alpaca.sqmMinSafe = 30.0F; // any reading is below it
+
+    // SQM-L authoritative and faulted, SQM fine: unsafe, limit not evaluated.
+    SensorSnapshot s = twoSensors(now);
+    s.skySensors[SQML_I].reading.status = SensorStatus::ReadError;
+    Alpaca::SafetyResult r = skyVerdict(s, cfg, now);
+    TEST_ASSERT_FALSE(r.isSafe);
+    TEST_ASSERT_EQUAL_STRING("Sensor fault: SQM-L sensor", r.unsafeReasons.front().c_str());
+    TEST_ASSERT_FALSE(r.reasonFlags & Alpaca::UnsafeSkyBright);
+
+    // SQM-L authoritative but switched off: the empty copy is a fault too.
+    Config off = cfg;
+    off.sky.sqmlEnabled = false;
+    s = twoSensors(now);
+    r = skyVerdict(s, off, now);
+    TEST_ASSERT_FALSE(r.isSafe);
+    TEST_ASSERT_TRUE(r.reasonFlags & Alpaca::UnsafeSensorFault);
+
+    // The non-authoritative sensor faulting changes nothing.
+    cfg.alpaca.sqmMinEnabled = false;
+    s = twoSensors(now);
+    TEST_ASSERT_TRUE(skyVerdict(s, cfg, now).isSafe);
+    s = twoSensors(now);
+    s.skySensors[SQM_I].reading.status = SensorStatus::ReadError;
+    s.skySensors[SQM_I].lastUpdate = 0;
+    TEST_ASSERT_TRUE(skyVerdict(s, cfg, now).isSafe);
+
+    // Freshness follows the authoritative sensor: a stale SQM doesn't matter,
+    // a stale SQM-L does.
+    s = twoSensors(now);
+    s.skySensors[SQM_I].lastUpdate = now - 600000;
+    TEST_ASSERT_TRUE(skyVerdict(s, cfg, now).isSafe);
+    s = twoSensors(now);
+    s.skySensors[SQML_I].lastUpdate = now - 600000;
+    r = skyVerdict(s, cfg, now);
+    TEST_ASSERT_TRUE(r.reasonFlags & Alpaca::UnsafeStaleData);
+
+    // The limit reason names the sensor.
+    cfg.alpaca.sqmMinEnabled = true;
+    s = twoSensors(now);
+    r = skyVerdict(s, cfg, now);
+    TEST_ASSERT_EQUAL_STRING("SQM-L", r.unsafeReasons.front().substr(0, 5).c_str());
+
+    // One sensor: today's reason.
+    Config one = Config::createDefault();
+    s = twoSensors(now);
+    s.skySensors[SQM_I].reading.status = SensorStatus::ReadError;
+    r = skyVerdict(s, one, now);
+    TEST_ASSERT_EQUAL_STRING("Sensor fault: light sensor", r.unsafeReasons.front().c_str());
+    // Two sensors, SQM authoritative.
+    s = twoSensors(now);
+    s.skySensors[SQM_I].reading.status = SensorStatus::ReadError;
+    r = skyVerdict(s, dual(SkyRole::Sqm), now);
+    TEST_ASSERT_EQUAL_STRING("Sensor fault: SQM sensor", r.unsafeReasons.front().c_str());
+}
+
+// Alpaca skyquality/skybrightness follow the authoritative sensor:
+// NotImplemented when it is off, no data when it is faulted.
+void test_sky_alpaca_follows_the_authoritative_sensor()
+{
+    using namespace SQM::Alpaca;
+    const uint32_t now = 100000;
+    Config cfg = dual(SkyRole::Sqml);
+    SensorSnapshot s = twoSensors(now);
+    Core::derive(s, cfg);
+    ObservingConditionsSnapshot obs = Core::observingConditions(s, cfg, now);
+    PropertyResult q = getObservingConditionsProperty("skyquality", obs);
+    TEST_ASSERT_TRUE(q.ok);
+    TEST_ASSERT_FLOAT_WITHIN(1e-4, SkyQuality::calculate(0.0002F).sqm, q.value);
+    TEST_ASSERT_EQUAL_STRING("TSL2591 SQM-L (narrow), calibrated SQM", getSensorDescription("skyquality", obs).value.c_str());
+
+    cfg.sky.sqmlEnabled = false;
+    s = twoSensors(now);
+    Core::derive(s, cfg);
+    obs = Core::observingConditions(s, cfg, now);
+    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, getObservingConditionsProperty("skyquality", obs).errorNumber);
+    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, getSensorDescription("skybrightness", obs).errorNumber);
+
+    cfg = dual(SkyRole::Sqml);
+    s = twoSensors(now);
+    s.skySensors[SQML_I].reading.status = SensorStatus::ReadError;
+    Core::derive(s, cfg);
+    obs = Core::observingConditions(s, cfg, now);
+    q = getObservingConditionsProperty("skyquality", obs);
+    TEST_ASSERT_FALSE(q.ok);
+    TEST_ASSERT_TRUE(q.errorNumber != ALPACA_ERR_NOT_IMPLEMENTED);
+
+    cfg = Config::createDefault();
+    s = twoSensors(now);
+    Core::derive(s, cfg);
+    obs = Core::observingConditions(s, cfg, now);
+    TEST_ASSERT_EQUAL_STRING("TSL2591 light sensor", getSensorDescription("skybrightness", obs).value.c_str());
+}

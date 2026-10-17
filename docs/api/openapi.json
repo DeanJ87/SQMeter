@@ -4839,6 +4839,12 @@
               "pairedPhones": {
                 "type": "number"
               },
+              "sqmDetected": {
+                "type": "boolean"
+              },
+              "sqmlDetected": {
+                "type": "boolean"
+              },
               "wifiConnected": {
                 "type": "boolean"
               }

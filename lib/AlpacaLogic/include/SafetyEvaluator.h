@@ -4,6 +4,8 @@
 #include <vector>
 #include <cstdint>
 
+#include "SensorTypes.h"
+
 namespace SQM
 {
     namespace Alpaca
@@ -51,8 +53,13 @@ namespace SQM
             bool requiredSensorFault = false; // any required sensor reporting a non-OK status
             // Which one: a faulted sensor's zeroed readings mustn't also
             // produce a misleading threshold reason (e.g. 100% cloud).
-            bool skyLightFault = false; // TSL2591 -> SQM rule skipped
-            bool irSkyFault = false;    // MLX90614 -> cloud cover rule skipped
+            bool skyLightFault = false; // authoritative sky sensor (TSL2591) -> SQM rule skipped
+            // Which sky sensor the light inputs come from, and whether both
+            // are on (spec 030): only picks the literal reason ("light
+            // sensor" with one sensor, "SQM sensor" / "SQM-L sensor" with two).
+            SkyRole skyRole = SkyRole::Sqm;
+            bool skyNamed = false;
+            bool irSkyFault = false; // MLX90614 -> cloud cover rule skipped
 
             float cloudCoverPercent = 0.0f;
             float sqm = 0.0f;

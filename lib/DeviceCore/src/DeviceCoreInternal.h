@@ -18,6 +18,12 @@ namespace SQM::Core::Detail
         return Readings::Status::Ok;
     }
 
+    // Both sky sensors on: reasons and descriptions name them (spec 030).
+    inline bool bothSkySensors(const Config &cfg)
+    {
+        return cfg.sky.sqmEnabled && cfg.sky.sqmlEnabled;
+    }
+
     // Each sky sensor's metrics and the authoritative copy (spec 030 research D3).
     void deriveSky(SensorSnapshot &snapshot, const Config &cfg);
 

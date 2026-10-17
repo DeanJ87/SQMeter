@@ -74,19 +74,19 @@ their own status; covering one changes only that entry (SC-002).
 
 ### Tests
 
-- [ ] T028 [P] [US2] Native tests first in test/test_alpaca_safety/: literal reasons per research D4 table (`Sensor fault: light sensor` unchanged with one sensor; `Sensor fault: SQM sensor`; `Sensor fault: SQM-L sensor`; the "and IR sky sensor" forms; `SQM %.2f < %.2f`; `SQM-L %.2f < %.2f`); authoritative faulted with the other ok -> unsafe and the limit rule not evaluated; non-authoritative fault -> verdict unchanged; `requiredDataAge` uses the authoritative role
-- [ ] T029 [P] [US2] Native tests first in test/test_alpaca_description/ and test/test_alpaca_logic/: `SensorDescription` per contracts/integrations.md table; `skyquality`/`skybrightness` NotImplemented when the authoritative role is disabled, no-data when faulted; values follow the authoritative role
-- [ ] T030 [P] [US2] Native tests first in test/test_settings_deps/ and test/fixtures/settings-deps/cases.json: D-39 (`sky.sqmlEnabled` needs I2C-2 pins, reason `i2c2-unset`), D-40 (`sky.authoritative`, `sky.showOther` need both on, reason `sky-single`), D-41 (`skyCalibrationL.enabled` needs SQM-L detected, reason `sqml-missing`), D-18/D-29 facts
+- [X] T028 [P] [US2] Native tests first in test/test_alpaca_safety/: literal reasons per research D4 table (`Sensor fault: light sensor` unchanged with one sensor; `Sensor fault: SQM sensor`; `Sensor fault: SQM-L sensor`; the "and IR sky sensor" forms; `SQM %.2f < %.2f`; `SQM-L %.2f < %.2f`); authoritative faulted with the other ok -> unsafe and the limit rule not evaluated; non-authoritative fault -> verdict unchanged; `requiredDataAge` uses the authoritative role
+- [X] T029 [P] [US2] Native tests first in test/test_alpaca_description/ and test/test_alpaca_logic/: `SensorDescription` per contracts/integrations.md table; `skyquality`/`skybrightness` NotImplemented when the authoritative role is disabled, no-data when faulted; values follow the authoritative role
+- [X] T030 [P] [US2] Native tests first in test/test_settings_deps/ and test/fixtures/settings-deps/cases.json: D-39 (`sky.sqmlEnabled` needs I2C-2 pins, reason `i2c2-unset`), D-40 (`sky.authoritative`, `sky.showOther` need both on, reason `sky-single`), D-41 (`skyCalibrationL.enabled` needs SQM-L detected, reason `sqml-missing`), D-18/D-29 facts
 
 ### Implementation
 
-- [ ] T031 [US2] `SafetyInputs::skyRole/skyNamed` and literal reason selection in lib/AlpacaLogic/include/SafetyEvaluator.h and lib/AlpacaLogic/src/SafetyEvaluator.cpp; set them in `Core::safetyInputs` (lib/DeviceCore/src/DeviceCore.cpp); T028 passes
-- [ ] T032 [US2] `ObservingConditionsSnapshot::skyRole/skyNamed` and per-role descriptions in lib/AlpacaLogic/include/ObservingConditionsMapper.h and lib/AlpacaLogic/src/ObservingConditionsMapper.cpp; set in `Core::observingConditions`; T029 passes
-- [ ] T033 [US2] Catalogue entries D-39..D-41, reasons `i2c2-unset`, `sky-single`, `sqml-missing`, new keys in `noDependency` in lib/SettingsDeps/catalogue.json; `Deps::Facts` + `i2c2Configured`, `sqmEnabled`, `sqmlEnabled`, `sqmDetected`, `sqmlDetected` in lib/SettingsDeps/include/SettingsDeps.h and its src; `Core::sensorFacts`; mirror in web/src/lib/settingsDeps.ts and web/src/components/settings/depLabels.ts; `tools/settings-deps/check.py` passes; T030 passes
-- [ ] T034 [US2] BLE summary `sqmSource` (document 256 -> 320 bytes) in src/WebServerAlerts.cpp `updateBle`; advertisement unchanged
+- [X] T031 [US2] `SafetyInputs::skyRole/skyNamed` and literal reason selection in lib/AlpacaLogic/include/SafetyEvaluator.h and lib/AlpacaLogic/src/SafetyEvaluator.cpp; set them in `Core::safetyInputs` (lib/DeviceCore/src/DeviceCore.cpp); T028 passes
+- [X] T032 [US2] `ObservingConditionsSnapshot::skyRole/skyNamed` and per-role descriptions in lib/AlpacaLogic/include/ObservingConditionsMapper.h and lib/AlpacaLogic/src/ObservingConditionsMapper.cpp; set in `Core::observingConditions`; T029 passes
+- [X] T033 [US2] Catalogue entries D-39..D-41, reasons `i2c2-unset`, `sky-single`, `sqml-missing`, new keys in `noDependency` in lib/SettingsDeps/catalogue.json; `Deps::Facts` + `i2c2Configured`, `sqmEnabled`, `sqmlEnabled`, `sqmDetected`, `sqmlDetected` in lib/SettingsDeps/include/SettingsDeps.h and its src; `Core::sensorFacts`; mirror in web/src/lib/settingsDeps.ts and web/src/components/settings/depLabels.ts; `tools/settings-deps/check.py` passes; T030 passes
+- [X] T034 [US2] BLE summary `sqmSource` (document 256 -> 320 bytes) in src/WebServerAlerts.cpp `updateBle`; advertisement unchanged
 - [ ] T035 [US2] Vitest first, then Settings "Authoritative reading" `SelectInput` and "Show other reading" `DepToggle` (D-40), and the Note + "Use SQM"/"Use SQM-L" action when the saved authoritative sensor is off, in web/src/components/settings/SensorsSkyCards.tsx
 - [ ] T036 [US2] Vitest first, then the Sky quality unavailable/fault card naming the missing authoritative sensor with a "Use <other>" `ActionButton` that saves `sky.authoritative` (FR-010), in web/src/components/dashboard/skyCards.tsx and web/src/components/dashboard/cards.tsx
-- [ ] T037 [US2] Device message catalogue for the new reasons and validation messages: `python3 tools/i18n/gen_device_catalog.py` then `--check` (web/src/i18n/en.json `device.*`)
+- [X] T037 [US2] Device message catalogue for the new reasons and validation messages: `python3 tools/i18n/gen_device_catalog.py` then `--check` (web/src/i18n/en.json `device.*`)
 
 **Checkpoint**: US1 + US2 deliver the P1 scope.
 

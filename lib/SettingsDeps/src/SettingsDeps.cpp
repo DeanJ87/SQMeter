@@ -22,6 +22,8 @@ namespace SQM
                 {"gps-restart", "GPS starts after a restart", "restart"},
                 {"gps-no-fix", "No GPS fix - using the location in Settings", "time#location"},
                 {"light-missing", "Light sensor not detected", "sensors#sky-sensors"},
+                {"sky-single", "SQM and SQM-L must both be on", "sensors#sky-sensors"},
+                {"sqml-missing", "SQM-L not detected", "sensors#sky-sensors"},
                 {"infrared-missing", "IR sky sensor not detected", "sensors#sky-sensors"},
                 {"environment-missing", "Environment sensor not detected", "sensors#sky-sensors"},
                 {"location-unknown", "Needs your location", "time#location"},
@@ -234,6 +236,17 @@ namespace SQM
                 c.add("alpaca.dewpointMarginEnabled", "D-19", s.dewpointMarginEnabled, {bme}, FAIL_SAFE);
             }
 
+            // Two sky sensors (spec 030): the choice between them only matters
+            // with both on; the SQM-L's calibration needs it found.
+            void addSkySensors(const Context &c)
+            {
+                const Config &cfg = c.cfg;
+                const Link bothOn{"D-40", "sky-single", cfg.sky.sqmEnabled && cfg.sky.sqmlEnabled};
+                c.add("sky.authoritative", "D-40", true, {bothOn}, NEUTRAL);
+                c.add("sky.showOther", "D-40", cfg.sky.showOther, {bothOn}, NEUTRAL);
+                c.add("skyCalibrationL.enabled", "D-41", cfg.skyCalibrationL.enabled, {{"D-41", "sqml-missing", c.f.sqmlDetected}});
+            }
+
             void addSensorsAndTime(const Context &c)
             {
                 const Config &cfg = c.cfg;
@@ -244,7 +257,8 @@ namespace SQM
                 const Link gpsRunning{"D-35", "gps-restart", c.f.gpsRunning};
                 c.add("gps.enabled", "D-26", cfg.gps.enabled, {gpsRunning, {"D-26", "gps-no-fix", c.f.gpsFix}});
                 c.add("ntp.enabled", "D-28", cfg.ntp.enabled, {{"D-28", "wifi-disconnected", c.f.wifiConnected}});
-                c.add("skyCalibration.enabled", "D-29", cfg.skyCalibration.enabled, {{"D-29", "light-missing", c.f.lightDetected}});
+                c.add("skyCalibration.enabled", "D-29", cfg.skyCalibration.enabled, {{"D-29", "light-missing", c.f.sqmDetected}});
+                addSkySensors(c);
             }
 
             void addDevice(const Context &c)
@@ -270,7 +284,7 @@ namespace SQM
         std::vector<Entry> evaluate(const Config &cfg, const Facts &f)
         {
             std::vector<Entry> out;
-            out.reserve(44);
+            out.reserve(48);
             // Paired phones ring for Wake-level events even with push alerts off
             // (WebServer::processAlerts), so events, arming and the night-only
             // options still matter to them.
@@ -361,6 +375,8 @@ namespace SQM
             target["bluetoothRunning"] = f.bluetoothRunning;
             target["pairedPhones"] = f.pairedPhones;
             target["lightDetected"] = f.lightDetected;
+            target["sqmDetected"] = f.sqmDetected;
+            target["sqmlDetected"] = f.sqmlDetected;
             target["infraredDetected"] = f.infraredDetected;
             target["environmentDetected"] = f.environmentDetected;
             target["languageInstalled"] = f.languageInstalled;
@@ -368,7 +384,7 @@ namespace SQM
 
         size_t reportCapacity(const std::vector<Entry> &entries)
         {
-            return JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(12) + JSON_ARRAY_SIZE(entries.size()) + entries.size() * JSON_OBJECT_SIZE(8);
+            return JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(14) + JSON_ARRAY_SIZE(entries.size()) + entries.size() * JSON_OBJECT_SIZE(8);
         }
 
         void writeReport(JsonObject root, const std::vector<Entry> &entries, const Facts &facts)

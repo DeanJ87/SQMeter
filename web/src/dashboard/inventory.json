@@ -1070,6 +1070,18 @@
       "match": "status.skySensors.**",
       "reason": "Each sky sensor's health (spec 030); glance tiles and Settings rows are pending the T022 mockup review",
       "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "deps.D-39",
+      "reason": "A save the device refuses; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-40",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-41",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
     }
   ]
 }

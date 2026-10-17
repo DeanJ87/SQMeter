@@ -216,8 +216,10 @@ sensor: `status`, `ageMs`, `detected`, `gain`, `integrationMs`, `saturated`, `ni
 
 **Decision**: catalogue entries:
 
-- `D-39` (dependency, setting): `sky.sqmlEnabled` depends on "Second I2C bus pins set", reason
-  `i2c2-unset` (fix `sensors#sky-sensors`).
+- `D-39` (constraint, feature): `sky.sqmlEnabled`, `sensor.i2c2SDA/SCL`. Implementation note: the
+  saved config can never hold the SQM-L on without pins (contracts/config.md rejects it), so this
+  is a constraint with the device's messages rather than a dependency with a reason; no
+  `i2c2-unset` reason or `i2c2Configured` fact is needed.
 - `D-40` (dependency, setting): `sky.authoritative`, `sky.showOther` depend on "SQM and SQM-L both
   on", reason `sky-single`.
 - `D-41` (dependency, setting, runtime): `skyCalibrationL.enabled` depends on "SQM-L detected",

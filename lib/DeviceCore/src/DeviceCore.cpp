@@ -376,7 +376,11 @@ namespace SQM
         {
             // Found and answering; a stale reading still means it's there.
             auto detected = [](Readings::Status status) { return status == Readings::Status::Ok || status == Readings::Status::Stale; };
-            facts.lightDetected = detected(readings.light.status);
+            facts.lightDetected = detected(readings.light.status); // the authoritative sky sensor
+            facts.sqmDetected =
+                readings.skySensors[skyRoleIndex(SkyRole::Sqm)].present && detected(readings.skySensors[skyRoleIndex(SkyRole::Sqm)].status);
+            facts.sqmlDetected = readings.skySensors[skyRoleIndex(SkyRole::Sqml)].present &&
+                                 detected(readings.skySensors[skyRoleIndex(SkyRole::Sqml)].status);
             facts.infraredDetected = detected(readings.infrared.status);
             facts.environmentDetected = detected(readings.environment.status);
             facts.gpsRunning = snapshot.gpsInitialized;
@@ -392,6 +396,8 @@ namespace SQM
             in.skyLightFault = snapshot.tsl.status != SensorStatus::Ok;
             in.irSkyFault = snapshot.mlx.status != SensorStatus::Ok;
             in.requiredSensorFault = snapshot.tsl.status != SensorStatus::Ok || snapshot.mlx.status != SensorStatus::Ok;
+            in.skyRole = snapshot.skySource;
+            in.skyNamed = Detail::bothSkySensors(cfg);
 
             in.sqm = snapshot.sky.sqm;
             in.cloudCoverPercent = snapshot.cloud.cloudCoverPercent;
@@ -454,6 +460,8 @@ namespace SQM
             // (spec 007 FR-004).
             Alpaca::ObservingConditionsSnapshot snap;
             snap.skyLight = sourceState(snapshot.tslInitialized, snapshot.tsl.status, snapshot.tslLastUpdate);
+            snap.skyRole = snapshot.skySource;
+            snap.skyNamed = Detail::bothSkySensors(cfg);
             snap.irSky = sourceState(snapshot.mlxInitialized, snapshot.mlx.status, snapshot.mlxLastUpdate);
             snap.environment = sourceState(snapshot.bmeInitialized, snapshot.bme.status, snapshot.bmeLastUpdate);
 

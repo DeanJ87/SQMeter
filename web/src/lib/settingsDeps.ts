@@ -21,7 +21,9 @@ export interface DepFacts {
   bluetoothBuild: boolean;
   bluetoothRunning: boolean;
   pairedPhones: number;
-  lightDetected: boolean;
+  lightDetected: boolean; // the authoritative sky sensor
+  sqmDetected?: boolean; // spec 030; older firmware doesn't report it
+  sqmlDetected?: boolean;
   infraredDetected: boolean;
   environmentDetected: boolean;
   languageInstalled?: boolean; // older firmware doesn't report it
@@ -59,6 +61,8 @@ export const REASONS: Record<string, { text: string; fix: string }> = {
   'gps-restart': { text: t('settingsDeps.gpsStartsAfterARestart'), fix: 'restart' },
   'gps-no-fix': { text: t('settingsDeps.noGpsFixUsingThe'), fix: 'time#location' },
   'light-missing': { text: t('settingsDeps.tsl2591NotDetected'), fix: 'sensors#sky-sensors' },
+  'sky-single': { text: t('settingsDeps.sqmAndSqmLMustBothBeOn'), fix: 'sensors#sky-sensors' },
+  'sqml-missing': { text: t('settingsDeps.sqmLNotDetected'), fix: 'sensors#sky-sensors' },
   'infrared-missing': { text: t('settingsDeps.mlx90614NotDetected'), fix: 'sensors#sky-sensors' },
   'environment-missing': { text: t('settingsDeps.bme280NotDetected'), fix: 'sensors#sky-sensors' },
   'location-unknown': { text: t('settingsDeps.needsYourLocation'), fix: 'time#location' },
@@ -85,6 +89,8 @@ export const FIX_LABEL: Record<string, string> = {
   'gps-restart': t('settingsDeps.restart'),
   'gps-no-fix': t('settingsDeps.location'),
   'light-missing': t('settingsDeps.skySensors'),
+  'sky-single': t('settingsDeps.skySensors'),
+  'sqml-missing': t('settingsDeps.skySensors'),
   'infrared-missing': t('settingsDeps.skySensors'),
   'environment-missing': t('settingsDeps.skySensors'),
   'location-unknown': t('settingsDeps.setLocation'),
@@ -311,7 +317,21 @@ const addSensorsAndTime = (c: Context) => {
     ['D-26', 'gps-no-fix', c.fact('gpsFix')],
   ]);
   c.add('ntp.enabled', 'D-28', on(c.config, 'ntp.enabled'), [['D-28', 'wifi-disconnected', c.fact('wifiConnected')]]);
-  c.add('skyCalibration.enabled', 'D-29', on(c.config, 'skyCalibration.enabled'), [['D-29', 'light-missing', c.fact('lightDetected')]]);
+  // Older firmware reports only the one light sensor: the SQM.
+  const sqmFound = c.fact('sqmDetected') ?? c.fact('lightDetected');
+  c.add('skyCalibration.enabled', 'D-29', on(c.config, 'skyCalibration.enabled'), [['D-29', 'light-missing', sqmFound]]);
+  addSkySensors(c);
+};
+
+// Two sky sensors (spec 030): the choice between them only matters with
+// both on; the SQM-L's calibration needs it found.
+const addSkySensors = (c: Context) => {
+  const bothOn: Link = ['D-40', 'sky-single', on(c.config, 'sky.sqmEnabled', true) && on(c.config, 'sky.sqmlEnabled')];
+  c.add('sky.authoritative', 'D-40', true, [bothOn], NEUTRAL);
+  c.add('sky.showOther', 'D-40', on(c.config, 'sky.showOther', true), [bothOn], NEUTRAL);
+  c.add('skyCalibrationL.enabled', 'D-41', on(c.config, 'skyCalibrationL.enabled'), [
+    ['D-41', 'sqml-missing', c.fact('sqmlDetected') ?? null],
+  ]);
 };
 
 const addDevice = (c: Context) => {

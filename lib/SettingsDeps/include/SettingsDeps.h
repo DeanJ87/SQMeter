@@ -50,7 +50,9 @@ namespace SQM
             bool bluetoothBuild = false;
             bool bluetoothRunning = false;
             uint8_t pairedPhones = 0;
-            bool lightDetected = false;       // TSL2591
+            bool lightDetected = false;       // the authoritative sky sensor (TSL2591)
+            bool sqmDetected = false;         // SQM, TSL2591 on I2C-1 (spec 030)
+            bool sqmlDetected = false;        // SQM-L, TSL2591 on I2C-2 (spec 030)
             bool infraredDetected = false;    // MLX90614
             bool environmentDetected = false; // BME280
             bool languageInstalled = false;   // the chosen language's file is stored for this firmware

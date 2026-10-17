@@ -28,7 +28,7 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-15 | `alpaca.rainUnsafeEnabled`, `alpaca.rainSensorRequired` | Rain sensor on | Dependency, inactive when unmet | Rain sensor is off (rain-off) |
 | D-16 | `alpaca.windSpeedUnsafeEnabled`, `alpaca.windGustUnsafeEnabled` | Anemometer on | Dependency, fail-safe when unmet | Anemometer is off (wind-off) |
 | D-17 | `alpaca.cloudCoverEnabled` | MLX90614 detected | Dependency, fail-safe when unmet, runtime | IR sky sensor not detected (infrared-missing) |
-| D-18 | `alpaca.sqmMinEnabled` | TSL2591 detected | Dependency, fail-safe when unmet, runtime | Light sensor not detected (light-missing) |
+| D-18 | `alpaca.sqmMinEnabled` | The authoritative sky sensor (TSL2591) detected (spec 030) | Dependency, fail-safe when unmet, runtime | Light sensor not detected (light-missing) |
 | D-19 | `alpaca.humidityMaxEnabled`, `alpaca.dewpointMarginEnabled` | BME280 detected | Dependency, fail-safe when unmet, runtime | Environment sensor not detected (environment-missing) |
 | D-20 | `alpaca.enabled` | Alpaca on - IsSafe and ObservingConditions served; the Alpaca page explains when it is off | Dependency | - |
 | D-21 | `rain.enabled` | Rain sensor on - Alpaca RainRate is NotImplemented otherwise | Dependency | - |
@@ -39,7 +39,7 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-26 | `gps.enabled` | GPS running and a GPS fix (location source) | Dependency, runtime | No GPS fix - using the location in Settings (gps-no-fix) |
 | D-27 | `primaryTimeSource`, `secondaryTimeSource`, `ntp.enabled`, `gps.enabled` | At least one time source on; primary and secondary sources on and different | Constraint | - |
 | D-28 | `ntp.enabled` | WiFi connected to a network | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
-| D-29 | `skyCalibration.enabled` | TSL2591 detected | Dependency, runtime | Light sensor not detected (light-missing) |
+| D-29 | `skyCalibration.enabled` | SQM (TSL2591 on I2C-1) detected | Dependency, runtime | Light sensor not detected (light-missing) |
 | D-30 | `ble.enabled`, `ble.phoneAlarm` | Bluetooth firmware build | Dependency | Needs the Bluetooth firmware build (ble-build) |
 | D-31 | `ble.phoneAlarm` | Bluetooth on and a passkey set (the alarm is on while a passkey is set) | Dependency | Bluetooth is off (ble-off) |
 | D-32 | `ota.enabled` | An OTA upload password set | Dependency | Set an upload password (ota-no-password) |
@@ -49,3 +49,6 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-37 | `alerts.events.client_lost.level`, `alerts.events.client_back.level`, `alerts.events.client_disconnected.level` | Alpaca on - imaging apps connect over Alpaca (spec 021) | Dependency | Alpaca is off (alpaca-off) |
 | D-36 | `wifi.mdns`, `wifi.ipv6` | WiFi connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
 | D-38 | `language` | A language other than English needs its file: downloaded over WiFi from the GitHub release (needs internet), or uploaded by hand (works offline) (spec 023) | Dependency, runtime | Needs WiFi to download - or upload the file (language-offline) |
+| D-39 | `sky.sqmlEnabled`, `sensor.i2c2SDA`, `sensor.i2c2SCL` | SQM-L on needs the second I2C bus pins: both unset, or two different valid GPIOs no other bus uses (spec 030) | Constraint | - |
+| D-40 | `sky.authoritative`, `sky.showOther` | SQM and SQM-L both on (spec 030) | Dependency | SQM and SQM-L must both be on (sky-single) |
+| D-41 | `skyCalibrationL.enabled` | SQM-L (TSL2591 on I2C-2) detected (spec 030) | Dependency, runtime | SQM-L not detected (sqml-missing) |

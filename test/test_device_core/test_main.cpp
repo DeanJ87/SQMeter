@@ -472,6 +472,8 @@ void test_sky_copy_never_falls_back();
 void test_sky_copy_one_sensor_is_unchanged();
 void test_sky_readings_per_role_status();
 void test_sky_status_documents();
+void test_sky_safety_uses_the_authoritative_sensor_only();
+void test_sky_alpaca_follows_the_authoritative_sensor();
 
 int main()
 {
@@ -497,5 +499,7 @@ int main()
     RUN_TEST(test_sky_copy_one_sensor_is_unchanged);
     RUN_TEST(test_sky_readings_per_role_status);
     RUN_TEST(test_sky_status_documents);
+    RUN_TEST(test_sky_safety_uses_the_authoritative_sensor_only);
+    RUN_TEST(test_sky_alpaca_follows_the_authoritative_sensor);
     return UNITY_END();
 }
