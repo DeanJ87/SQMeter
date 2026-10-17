@@ -8,6 +8,7 @@
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
 #include "sensors/WindSensor.h"
+#include "sensors/MAX17048Sensor.h"
 #include "DeviceCore.h"
 #include "TimeManager.h"
 #include "MQTTClient.h"
@@ -57,6 +58,7 @@ namespace SQM
             GPSSensor &gps;
             RG15Sensor &rg15;
             WindSensor &wind;
+            MAX17048Sensor &battery; // fuel gauge and charger lines, spec 032
         };
 
         WebServer(
@@ -123,6 +125,7 @@ namespace SQM
         GPSSensor &gpsSensor;
         RG15Sensor &rg15Sensor;
         WindSensor &windSensor;
+        MAX17048Sensor &batterySensor;
         TimeManager *timeManager;
         MQTTClient *mqttClient;
         GetConfigCallback getConfigCallback;

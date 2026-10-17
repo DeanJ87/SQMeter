@@ -1295,6 +1295,59 @@
       "match": "status.display.**",
       "reason": "The OLED is an output, not a sensor (spec 031): no dashboard card",
       "shownOn": "System"
+    },
+    {
+      "match": "deps.D-46",
+      "reason": "Doesn't affect safety or alerts; shown on the Battery card's rows in Settings",
+      "shownOn": "Settings → Device"
+    },
+    {
+      "match": "deps.D-47",
+      "reason": "Rules that are on but not in effect are shown with each rule (Reports unsafe, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-48",
+      "reason": "Shown on each battery event row in Settings",
+      "shownOn": "Settings → Alerts"
+    },
+    {
+      "match": "deps.D-49",
+      "reason": "Shown on its MQTT publish row in Settings",
+      "shownOn": "Settings → Network"
+    },
+    {
+      "match": "deps.D-50",
+      "reason": "Shown on the battery rule's Ring paired phones row in Settings",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-51",
+      "reason": "A save the device refuses; shown inline on the battery pin fields in Settings"
+    },
+    {
+      "match": "readings.battery",
+      "reason": "Spec 032: the dashboard Battery card and glance tile are built after the owner's mockup review (T028-T029)"
+    },
+    {
+      "match": "readings.battery.**",
+      "reason": "Spec 032: the dashboard Battery card and glance tile are built after the owner's mockup review (T028-T029)"
+    },
+    {
+      "match": "status.battery",
+      "reason": "The same object as readings.battery; the dashboard reads the readings (spec 032)"
+    },
+    {
+      "match": "status.battery.**",
+      "reason": "The same object as readings.battery plus the sleep countdown; the dashboard reads the readings (spec 032)"
+    },
+    {
+      "match": "status.sensors.battery",
+      "reason": "Spec 032: shown on the Battery card's unavailable state once it is built (T028)"
+    },
+    {
+      "match": "status.sensors.battery.**",
+      "reason": "Spec 032: shown on the Battery card's unavailable state once it is built (T028)"
     }
   ]
 }

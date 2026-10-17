@@ -50,6 +50,9 @@
         },
         "displayDetected": {
           "type": "boolean"
+        },
+        "batteryDetected": {
+          "type": "boolean"
         }
       },
       "required": [

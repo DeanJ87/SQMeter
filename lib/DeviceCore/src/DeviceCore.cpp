@@ -339,6 +339,7 @@ namespace SQM
             readGps(r, snapshot, cfg);
             readRain(r, snapshot, cfg, now);
             readWind(r, snapshot, cfg, now);
+            r.battery = Detail::readBattery(snapshot, cfg, now);
             return r;
         }
 
@@ -347,6 +348,7 @@ namespace SQM
             writeLightDiagnostics(root.createNestedObject("light"), snapshot.tslDiagnostics);
             if (cfg.rain.enabled)
                 writeRainDiagnostics(root.createNestedObject("rain"), snapshot.rg15Diagnostics, now);
+            writeBatteryDiagnostics(root, snapshot, cfg);
         }
 
         void writeSensorHealth(JsonObject sensors, const Readings::Snapshot &readings, const Config &cfg)
@@ -371,6 +373,8 @@ namespace SQM
                 JsonObject wind = health("wind", readings.wind.status, readings.wind.ageMs);
                 wind["vaneStatus"] = !cfg.wind.directionEnabled ? "off" : readings.wind.vaneFault ? "fault" : "ok";
             }
+            if (readings.battery.present)
+                health("battery", readings.battery.status, readings.battery.ageMs);
         }
 
         void sensorFacts(Deps::Facts &facts, const SensorSnapshot &snapshot, const Readings::Snapshot &readings)
@@ -386,6 +390,8 @@ namespace SQM
             facts.environmentDetected = detected(readings.environment.status);
             facts.gpsRunning = snapshot.gpsInitialized;
             facts.gpsFix = snapshot.gpsInitialized && snapshot.gps.hasFix;
+            // Found at boot even with monitoring off, so Settings can say so (spec 032).
+            facts.batteryDetected = snapshot.battery.detected;
         }
 
         Alpaca::SafetyInputs safetyInputs(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)

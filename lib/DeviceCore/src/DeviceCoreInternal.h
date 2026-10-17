@@ -29,6 +29,7 @@ namespace SQM::Core::Detail
 
     // The battery's reported presence and estimates (spec 032, DeviceBattery.cpp).
     void deriveBattery(BatterySnapshot &battery, const Config &cfg);
+    Readings::Battery readBattery(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now);
 
     // readings sky.source and skySensors (spec 030 FR-008).
     void readSkySensors(Readings::Snapshot &r, const SensorSnapshot &snapshot, uint32_t now, uint32_t staleAfter);

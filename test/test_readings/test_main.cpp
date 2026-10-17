@@ -315,6 +315,11 @@ void test_sky_sensor_entries_and_rounding();
 void test_sky_sensor_not_ok_carries_status_only();
 void test_worst_case_document_fits();
 void test_discovery_sky_sensor_entities();
+void test_battery_absent_is_present_false_only();
+void test_battery_full_object();
+void test_battery_nulls_while_estimating_and_without_charger();
+void test_battery_not_ok_carries_status_and_charger_only();
+void test_battery_group_off_for_mqtt();
 
 int main(int argc, char **argv)
 {
@@ -338,5 +343,10 @@ int main(int argc, char **argv)
     RUN_TEST(test_sky_sensor_not_ok_carries_status_only);
     RUN_TEST(test_worst_case_document_fits);
     RUN_TEST(test_discovery_sky_sensor_entities);
+    RUN_TEST(test_battery_absent_is_present_false_only);
+    RUN_TEST(test_battery_full_object);
+    RUN_TEST(test_battery_nulls_while_estimating_and_without_charger);
+    RUN_TEST(test_battery_not_ok_carries_status_and_charger_only);
+    RUN_TEST(test_battery_group_off_for_mqtt);
     return UNITY_END();
 }

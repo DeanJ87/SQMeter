@@ -25,6 +25,7 @@ const mockFacts: DepFacts = {
   infraredDetected: true,
   environmentDetected: true,
   languageInstalled: true,
+  batteryDetected: true, // spec 032: the mock board has a fuel gauge
 };
 
 // Demo-only: alerts switched on/off.

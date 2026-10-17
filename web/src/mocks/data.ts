@@ -1,4 +1,4 @@
-import type { SensorData, SystemStatus, GithubRelease, AlpacaConfiguredDevice, AlertRecord, WiFiNetwork } from '../types';
+import type { BatteryReading, SensorData, SystemStatus, GithubRelease, AlpacaConfiguredDevice, AlertRecord, WiFiNetwork } from '../types';
 
 export { mockConfig } from './config';
 
@@ -84,7 +84,25 @@ const climateReadings = (): Pick<SensorData, 'environment' | 'infrared' | 'cloud
   },
 });
 
-const fieldReadings = (): Pick<SensorData, 'gps' | 'wind' | 'rain' | 'safety'> => ({
+// The battery (spec 032): a travel board on its pack, and a board without a gauge.
+export const mockBatteryPresent = (): BatteryReading => ({
+  present: true,
+  status: 'ok',
+  ageMs: 1200,
+  estimating: false,
+  percent: 82.4,
+  voltage: 3.912,
+  ratePercentPerHour: -6.2,
+  state: 'discharging',
+  usbPower: false,
+  fault: null,
+  timeToEmptyMinutes: 797,
+  timeToFullMinutes: null,
+  powerSaving: false,
+});
+export const mockBatteryAbsent: BatteryReading = { present: false };
+
+const fieldReadings = (): Pick<SensorData, 'gps' | 'wind' | 'rain' | 'battery' | 'safety'> => ({
   gps: {
     status: 'ok',
     ageMs: Math.round(jitter(800, 100)),
@@ -115,6 +133,7 @@ const fieldReadings = (): Pick<SensorData, 'gps' | 'wind' | 'rain' | 'safety'> =
     lensFault: false,
     emitterSaturated: false,
   },
+  battery: mockBatteryPresent(),
   // Demo data shows rain, so the SafetyMonitor reports unsafe.
   safety: {
     safe: false,
@@ -152,6 +171,7 @@ export const mockStatus: SystemStatus = {
     },
   },
   sky: { locationSource: 'gps', nightKnown: true, isNight: true, sunAltitudeDeg: -24.3 },
+  battery: mockBatteryPresent(),
   firmware: {
     name: 'SQMeter',
     version: '0.2.0-beta.1',
@@ -266,6 +286,7 @@ export const mockStatus: SystemStatus = {
     gps: { status: 'ok', ageMs: 800 },
     rain: { status: 'ok', ageMs: 40 },
     wind: { status: 'ok', ageMs: 900, vaneStatus: 'ok' },
+    battery: { status: 'ok', ageMs: 1200 },
   },
   skySensors: {
     sqm: {
@@ -294,6 +315,19 @@ export const mockStatus: SystemStatus = {
     },
   },
   diagnostics: {
+    battery: {
+      version: '0x0012',
+      vcellRaw: 50074,
+      socRaw: 21094,
+      crateRaw: -30,
+      statusRaw: 0,
+      resetSeen: false,
+      estimating: false,
+      charger: { stat1: true, stat2: true, pg: true },
+      gaugeAlert: false,
+      policy: 'normal',
+      currentMa: null,
+    },
     light: {
       rollingVisible: 3.1,
       correctedVisible: 3.1,

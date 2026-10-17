@@ -1,5 +1,20 @@
 import type { AlertSchedule, AlpacaClientState } from './alerts';
-import type { SensorHealth } from './readings';
+import type { BatteryReading, SensorHealth } from './readings';
+
+// GET /api/status -> diagnostics.battery (spec 032; only with a gauge)
+export interface BatteryDiagnostics {
+  version: string; // "0x0012"
+  vcellRaw: number;
+  socRaw: number;
+  crateRaw: number;
+  statusRaw: number;
+  resetSeen: boolean;
+  estimating: boolean;
+  charger: { stat1: boolean; stat2: boolean; pg: boolean } | null; // levels, true = high
+  gaugeAlert: boolean | null;
+  policy: 'normal' | 'saving' | 'shutdown';
+  currentMa: number | null;
+}
 
 // GET /api/status -> diagnostics.rain
 export interface RainDiagnostics {
@@ -91,6 +106,9 @@ export interface SystemStatus {
       bondedPhones: number;
     };
   };
+  // The battery (spec 032): the readings object, plus the countdown while
+  // the device is about to sleep. Older firmware has none.
+  battery?: BatteryReading & { shutdownInSeconds?: number };
   // The optional OLED display (spec 031); older firmware has none.
   display?: {
     enabled: boolean;
@@ -192,11 +210,13 @@ export interface SystemStatus {
     gps?: SensorStatusEntry;
     rain?: SensorStatusEntry;
     wind?: SensorStatusEntry & { vaneStatus: 'ok' | 'fault' | 'off' };
+    battery?: SensorStatusEntry; // with a gauge (spec 032)
   };
   skySensors?: { sqm?: SkySensorHealth; sqml?: SkySensorHealth };
   diagnostics?: {
     light?: LightDiagnostics;
     rain?: RainDiagnostics;
+    battery?: BatteryDiagnostics;
   };
   alerts?: AlertSchedule;
   alpaca?: {

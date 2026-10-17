@@ -58,6 +58,7 @@ namespace SQM
         groups.gps = mqtt.publish.gps;
         groups.rain = mqtt.publish.rain;
         groups.wind = mqtt.publish.wind;
+        groups.battery = mqtt.publish.battery;
         const Config &cfg = getConfigCallback();
         const BleAlarmStatus alarm = ble.alarmStatus();
         groups.alertsSwitch = cfg.alerts.enabled || (cfg.ble.enabled && alarm.serviceActive && alarm.bondedPhones > 0); // dep: D-13
@@ -84,7 +85,7 @@ namespace SQM
 
         if (mqtt.publish.diagnostics)
         {
-            DynamicJsonDocument diag(1536);
+            DynamicJsonDocument diag(2048); // +512 for the battery (spec 032)
             appendDiagnostics(diag.to<JsonObject>(), getSensorSnapshot());
             std::string diagPayload;
             serializeJson(diag, diagPayload);
@@ -423,6 +424,7 @@ namespace SQM
         const Readings::Snapshot readings = buildReadings();
         Core::writeSensorHealth(doc.createNestedObject("sensors"), readings, getConfigCallback());
         Core::writeSkySensorStatus(doc.as<JsonObject>(), snapshot, readings);
+        Core::writeBatteryStatus(doc.as<JsonObject>(), snapshot, readings);
         JsonObject diagnostics = doc.createNestedObject("diagnostics");
         appendDiagnostics(diagnostics, snapshot);
         appendMqttStatus(doc);

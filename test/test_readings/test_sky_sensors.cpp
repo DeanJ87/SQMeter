@@ -107,6 +107,20 @@ namespace
         s.wind.directionValid = true;
         for (SkySensorEntry &e : s.skySensors)
             e.description = "Bright suburban sky";
+        // The battery with every field (spec 032).
+        s.battery.present = true;
+        s.battery.status = Status::Ok;
+        s.battery.ageMs = 4999;
+        s.battery.chargerPins = true;
+        s.battery.percent = 100.0;
+        s.battery.voltage = 4.198765;
+        s.battery.ratePercentPerHour = -123.4;
+        s.battery.state = "no-battery";
+        s.battery.usbPower = true;
+        s.battery.fault = "temperature";
+        s.battery.timeToEmptyMinutes = 5940;
+        s.battery.timeToFullMinutes = 5940;
+        s.battery.powerSaving = true;
         return s;
     }
 } // namespace

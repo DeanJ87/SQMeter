@@ -95,6 +95,7 @@ namespace SQM
           gpsSensor(sensors.gps),
           rg15Sensor(sensors.rg15),
           windSensor(sensors.wind),
+          batterySensor(sensors.battery),
           timeManager(timeMgr),
           mqttClient(mqtt),
           getConfigCallback(getConfig),
@@ -391,6 +392,10 @@ namespace SQM
         next.gpsLastUpdate = gpsSensor.getLastUpdateTime();
         next.rg15LastUpdate = rg15Sensor.getLastUpdateTime();
         next.wind = windSensor.getReading();
+        next.battery.detected = batterySensor.isDetected();
+        next.battery.initialized = batterySensor.isInitialized();
+        next.battery.lastUpdate = batterySensor.getLastUpdateTime();
+        next.battery.reading = batterySensor.getReading();
         next.dataTimestamp = dataTimestampMs;
         next.capturedAt = millis();
 

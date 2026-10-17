@@ -485,6 +485,12 @@ void test_display_view_stale_or_missing_sky_is_invalid(void);
 void test_display_view_groups_and_availability(void);
 void test_display_view_missing_sensors_and_network_modes(void);
 void test_display_status_document(void);
+void test_battery_readings_with_a_gauge();
+void test_battery_status_missing_error_stale();
+void test_battery_monitoring_off_or_no_gauge_reports_absent();
+void test_battery_charger_without_a_gauge();
+void test_battery_status_health_and_diagnostics();
+void test_display_battery_page();
 
 int main()
 {
@@ -522,5 +528,11 @@ int main()
     RUN_TEST(test_display_view_groups_and_availability);
     RUN_TEST(test_display_view_missing_sensors_and_network_modes);
     RUN_TEST(test_display_status_document);
+    RUN_TEST(test_battery_readings_with_a_gauge);
+    RUN_TEST(test_battery_status_missing_error_stale);
+    RUN_TEST(test_battery_monitoring_off_or_no_gauge_reports_absent);
+    RUN_TEST(test_battery_charger_without_a_gauge);
+    RUN_TEST(test_battery_status_health_and_diagnostics);
+    RUN_TEST(test_display_battery_page);
     return UNITY_END();
 }

@@ -1,6 +1,7 @@
 #include "DeviceCore.h"
 
 #include <cstdio>
+#include <cstring>
 
 // The OLED's view model and status (specs/031-oled-display, research D4/D9).
 
@@ -30,6 +31,23 @@ namespace SQM
                 sky.other.valid = sky.other.present && entry.status == Readings::Status::Ok;
                 sky.other.sqm = static_cast<float>(entry.sqm);
                 sky.other.label = skyRoleLabel(other);
+            }
+
+            // The battery page's short state words (5x7 font, research D5 of spec 031).
+            const char *batteryStateText(const Readings::Battery &battery)
+            {
+                const char *state = battery.state != nullptr ? battery.state : "";
+                static const char *const WORDS[][2] = {
+                    {"charging", "Chg"},
+                    {"charged", "Full"},
+                    {"discharging", "Disch"},
+                    {"fault", "Fault"},
+                    {"no-battery", "No batt"},
+                };
+                for (const auto &word : WORDS)
+                    if (std::strcmp(state, word[0]) == 0)
+                        return word[1];
+                return "";
             }
         } // namespace
 
@@ -66,7 +84,12 @@ namespace SQM
             v.gps.latitude = readings.gps.latitude;
             v.gps.longitude = readings.gps.longitude;
 
-            // v.battery stays unavailable until spec 032 adds the fuel gauge.
+            // The battery page (spec 032): percent and charging state.
+            const Readings::Battery &battery = readings.battery;
+            v.battery.available = battery.present;
+            v.battery.valid = battery.present && battery.status == Readings::Status::Ok && battery.percent.has_value();
+            v.battery.percent = v.battery.valid ? static_cast<uint8_t>(*battery.percent + 0.5) : 0;
+            v.battery.state = batteryStateText(battery);
 
             copyText(v.network.name, cfg.deviceName);
             v.network.mode = network.apMode      ? Display::View::NetMode::Ap

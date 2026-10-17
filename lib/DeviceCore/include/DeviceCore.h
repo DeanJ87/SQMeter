@@ -141,6 +141,11 @@ namespace SQM
         // other setting (spec 030 US3). `at` is Unix seconds, or millis()
         // before the clock is set.
         void applyDarkCalibration(Config &cfg, SkyRole role, const TSL2591Diagnostics &diagnostics, int64_t at);
+        // /api/status "battery" (the readings object, plus shutdownInSeconds
+        // while a shutdown is pending) and "diagnostics.battery" (only with a
+        // gauge), spec 032.
+        void writeBatteryStatus(JsonObject root, const SensorSnapshot &snapshot, const Readings::Snapshot &readings);
+        void writeBatteryDiagnostics(JsonObject root, const SensorSnapshot &snapshot, const Config &cfg);
         // Per-sensor health (/api/status "sensors").
         void writeSensorHealth(JsonObject sensors, const Readings::Snapshot &readings, const Config &cfg);
 

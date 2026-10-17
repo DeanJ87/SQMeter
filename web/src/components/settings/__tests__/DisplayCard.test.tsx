@@ -9,8 +9,10 @@ import type { DisplayConfig } from '../../../types';
 
 // Settings -> Device -> Display (spec 031 contracts/ui.md, mockups d1-d6).
 
-const displayStatus = (display: Partial<NonNullable<typeof mockStatus.display>>) =>
-  server.use(http.get('/api/status', () => HttpResponse.json({ ...mockStatus, display: { ...mockStatus.display!, ...display } })));
+const displayStatus = (display: Partial<NonNullable<typeof mockStatus.display>>, extra: Record<string, unknown> = {}) =>
+  server.use(
+    http.get('/api/status', () => HttpResponse.json({ ...mockStatus, display: { ...mockStatus.display!, ...display }, ...extra })),
+  );
 
 const open = (display: Partial<DisplayConfig> = {}, extra: Record<string, unknown> = {}, facts = {}) => {
   mockDevice({ config: { display: { ...mockConfig.display!, ...display }, ...extra }, facts: { displayDetected: true, ...facts } });
@@ -104,10 +106,10 @@ describe('Display card (spec 031)', () => {
   });
 
   it('marks a page without a data source', async () => {
-    displayStatus({ enabled: true, detected: true });
+    displayStatus({ enabled: true, detected: true }, { battery: { present: false } });
     open();
     const c = await card();
-    // No fuel gauge in status: the Battery page is skipped on the device.
+    // No fuel gauge (spec 032): the Battery page is skipped on the device.
     await waitFor(() => {
       const battery = c.getByRole('switch', { name: 'Battery' }).closest('.display-page') as HTMLElement;
       expect(within(battery).getByRole('button', { description: /No data source/ })).toBeInTheDocument();

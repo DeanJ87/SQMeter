@@ -47,6 +47,28 @@ namespace
         s.rg15.online = true;
         s.gps.hasFix = true;
         s.dataTimestamp = now - 400;
+        // The battery with the charger wired, shutting down (spec 032).
+        s.battery.detected = s.battery.initialized = true;
+        s.battery.lastUpdate = now - 400;
+        BatteryReading &b = s.battery.reading;
+        b.status = SensorStatus::Ok;
+        b.timestamp = now - 400;
+        b.version = 0x0012;
+        b.vcellRaw = 65535;
+        b.socRaw = 65535;
+        b.crateRaw = -32768;
+        b.statusRaw = 65535;
+        b.voltage = 4.199F;
+        b.percent = 4.4F;
+        b.estimating = false;
+        b.rateValid = true;
+        b.ratePercentPerHour = -123.4F;
+        b.chargerPins = true;
+        b.chargeState = Battery::ChargeState::Discharging;
+        b.usbPower = false;
+        b.gaugeAlert = true;
+        s.battery.power = Battery::PowerState::ShutdownPending;
+        s.battery.shutdownInSeconds = 300;
         return s;
     }
 
@@ -62,6 +84,11 @@ namespace
         c.location.latitude = 51.48;
         c.ntp.timezone = LONG;
         c.wifi.hostname = std::string(32, 'h');
+        c.battery.capacityMah = 50000;
+        c.battery.stat1Pin = 13;
+        c.battery.stat2Pin = 14;
+        c.battery.pgPin = 32;
+        c.battery.alertPin = 33;
         return c;
     }
 
@@ -200,6 +227,7 @@ namespace
         Core::writeClientWatch(doc.createNestedObject("alpaca"), Alpaca::ClientWatch{}, cfg, now);
         Core::writeSensorHealth(doc.createNestedObject("sensors"), readings, cfg);
         Core::writeSkySensorStatus(doc.as<JsonObject>(), s, readings);
+        Core::writeBatteryStatus(doc.as<JsonObject>(), s, readings);
         Core::writeDiagnostics(doc.createNestedObject("diagnostics"), s, cfg, now);
         Config withDisplay = cfg;
         withDisplay.display.enabled = true;
@@ -221,6 +249,8 @@ void test_status_document_fits()
     TEST_ASSERT_TRUE(doc["skySensors"].containsKey("sqml"));
     TEST_ASSERT_TRUE(doc["diagnostics"].size() > 0);
     TEST_ASSERT_EQUAL_STRING("environment", doc["display"]["page"]);
+    TEST_ASSERT_EQUAL(300, doc["battery"]["shutdownInSeconds"].as<int>());
+    TEST_ASSERT_EQUAL_STRING("shutdown", doc["diagnostics"]["battery"]["policy"]);
 
     // With 20% headroom, like the readings document.
     const size_t used = onDevice(doc);
@@ -261,6 +291,9 @@ void test_one_sensor_device_readings_document()
     TEST_ASSERT_EQUAL_FLOAT((float)sky["nelm"].as<double>(), (float)sqm["nelm"].as<double>());
     TEST_ASSERT_EQUAL(sky["bortle"].as<int>(), sqm["bortle"].as<int>());
     TEST_ASSERT_EQUAL_FLOAT((float)doc["light"]["lux"].as<double>(), (float)sqm["lux"].as<double>());
+    // No gauge: the only new field (spec 032 FR-011).
+    TEST_ASSERT_EQUAL(1, doc["battery"].size());
+    TEST_ASSERT_FALSE(doc["battery"]["present"].as<bool>());
 
     // /api/status: the SQM's own block beside the unchanged sensors.light.
     DynamicJsonDocument status(Core::STATUS_DOC_CAPACITY);
@@ -270,4 +303,5 @@ void test_one_sensor_device_readings_document()
     TEST_ASSERT_EQUAL_STRING("ok", root["sensors"]["light"]["status"]);
     TEST_ASSERT_EQUAL(1, root["skySensors"].size());
     TEST_ASSERT_TRUE(root["skySensors"]["sqm"]["detected"].as<bool>());
+    TEST_ASSERT_FALSE(root["sensors"].containsKey("battery"));
 }

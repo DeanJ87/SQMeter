@@ -19,6 +19,7 @@
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
 #include "sensors/WindSensor.h"
+#include "sensors/MAX17048Sensor.h"
 #include "FirmwareMarker.h"
 #include "OledDisplay.h"
 
@@ -35,6 +36,7 @@ static std::unique_ptr<MLX90614Sensor> mlxSensor;
 static std::unique_ptr<GPSSensor> gpsSensor;
 static std::unique_ptr<RG15Sensor> rg15Sensor;
 static std::unique_ptr<WindSensor> windSensor;
+static std::unique_ptr<MAX17048Sensor> batteryGauge; // spec 032; probed once, read only with monitoring on
 static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
@@ -116,6 +118,8 @@ bool saveConfigCallback(const Config &newConfig)
 
         if (oled)
             oled->requestReconfigure(); // applied by the loop task, no restart
+        if (batteryGauge)
+            batteryGauge->requestReconfigure();
     }
 
     return saved;
@@ -331,6 +335,14 @@ void startArduinoOta()
 
 // The OLED on the main I2C bus (spec 031). Always created (it's small), but
 // it only allocates its framebuffer and touches the bus while enabled.
+// The fuel gauge on the main I2C bus (spec 032): one probe at boot, so
+// Settings can say whether one is fitted, then reads only with monitoring on.
+void setupBattery()
+{
+    batteryGauge = std::make_unique<MAX17048Sensor>(Wire);
+    batteryGauge->begin(config.battery);
+}
+
 void setupDisplay()
 {
     oled = std::make_unique<OledDisplay>(Wire);
@@ -361,7 +373,7 @@ void startServices()
     mqttClient->begin();
     HeapTrace::mark("mqtt");
 
-    const WebServer::Sensors sensors{*tslSensor, *tslSensorL, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor, *windSensor};
+    const WebServer::Sensors sensors{*tslSensor, *tslSensorL, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor, *windSensor, *batteryGauge};
     webServer = std::make_unique<WebServer>(sensors, timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
     webServer->setDisplay(oled.get());
     webServer->begin();
@@ -392,6 +404,7 @@ void setup()
     mountFilesystem();
     setupI2C();
     setupSensors();
+    setupBattery();
     setupDisplay();
     HeapTrace::mark("sensors");
     startWifi();
@@ -464,6 +477,9 @@ void loop()
         if (skySensorActive(sky->role()))
             sky->tick(now);
     }
+
+    // The gauge every 5 s and the charger lines every 500 ms (spec 032).
+    batteryGauge->tick(now, config.battery);
 
     // Update slower sensors and publish periodically.
     if (now - lastSensorUpdate >= config.sensor.readIntervalMs)

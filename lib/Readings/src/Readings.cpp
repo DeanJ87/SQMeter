@@ -189,7 +189,54 @@ namespace SQM
                     wind["vaneFault"] = s.wind.vaneFault;
                 }
             }
+
+            template <typename T> void optionalValue(JsonObject out, const char *key, const std::optional<T> &value)
+            {
+                if (value)
+                    out[key] = *value;
+                else
+                    out[key] = nullptr;
+            }
+
         } // namespace
+
+        JsonObject writeBattery(JsonObject root, const Battery &b)
+        {
+            JsonObject out = root.createNestedObject("battery");
+            out["present"] = b.present;
+            if (!b.present)
+                return out;
+            out["status"] = statusName(b.status);
+            if (b.status != Status::Missing)
+                out["ageMs"] = b.ageMs;
+            if (b.status != Status::Ok)
+            {
+                // The charger still knows, e.g. the pack pulled out on USB.
+                if (b.chargerPins)
+                {
+                    out["state"] = b.state;
+                    optionalValue(out, "usbPower", b.usbPower);
+                }
+                return out;
+            }
+            out["estimating"] = b.estimating;
+            if (b.percent)
+                out["percent"] = rounded(*b.percent, 1);
+            else
+                out["percent"] = nullptr;
+            out["voltage"] = rounded(b.voltage, 3);
+            if (b.ratePercentPerHour)
+                out["ratePercentPerHour"] = rounded(*b.ratePercentPerHour, 1);
+            else
+                out["ratePercentPerHour"] = nullptr;
+            out["state"] = b.state;
+            optionalValue(out, "usbPower", b.usbPower);
+            out["fault"] = b.fault;
+            optionalValue(out, "timeToEmptyMinutes", b.timeToEmptyMinutes);
+            optionalValue(out, "timeToFullMinutes", b.timeToFullMinutes);
+            out["powerSaving"] = b.powerSaving;
+            return out;
+        }
 
         void write(JsonObject root, const Snapshot &s, const Groups &groups)
         {
@@ -212,6 +259,8 @@ namespace SQM
                 writeRain(root, s);
             if (groups.wind && s.wind.present)
                 writeWind(root, s);
+            if (groups.battery)
+                writeBattery(root, s.battery);
         }
 
         namespace

@@ -148,7 +148,7 @@ const DisplayCard: FunctionalComponent<SettingsTabProps & { actions: DeviceActio
         display={display}
         locked={locked}
         hw={hw}
-        hasBattery={Boolean(status && 'battery' in status)}
+        hasBattery={Boolean(status?.battery?.present)}
         setPages={(p) => set('pages', p)}
       />
       {pagesError && <Note tone="bad">{pagesError}</Note>}
