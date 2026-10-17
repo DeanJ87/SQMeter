@@ -187,6 +187,8 @@ export const handlers = [
 
   // REST — control
   http.post('/api/restart', () => HttpResponse.json({ ok: true })),
+  http.post('/api/display/wake', () => HttpResponse.json({ success: true })),
+  http.post('/api/display/blank', () => HttpResponse.json({ success: true })),
   http.post('/api/update', () => HttpResponse.json({ success: true })),
   http.post('/api/update/fs', () => HttpResponse.json({ success: true })),
 

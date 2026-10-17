@@ -166,6 +166,7 @@ export const mockStatus: SystemStatus = {
     clients: 0,
     alarm: { serviceActive: false, active: false, sequence: 0, acknowledgedSequence: 0, bondedPhones: 0 },
   },
+  display: { enabled: true, detected: true, on: true, page: 'sky', nightMode: true },
   uptime: 7200,
   bootCount: 3,
   resetReason: 3,

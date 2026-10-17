@@ -292,7 +292,7 @@ curl -X POST http://sqmeter.local/api/restart
 
 ### `POST /api/display/wake`, `POST /api/display/blank`
 
-Wake the [OLED display](../user-guide/display.md) for its switch-off time, or blank it until the next wake (a restart, a wake request or the wake button). No body; answers `200 {"ok": true}` and the display follows within one loop pass. Requires HTTP auth when enabled.
+Wake the [OLED display](../user-guide/display.md) for its switch-off time, or blank it until the next wake (a restart, a wake request or the wake button). No body; answers `200 {"success": true}` and the display follows within one loop pass. Requires HTTP auth when enabled.
 
 `409 {"error": "Display is off in settings"}`, `409 {"error": "Display not detected"}`, or (wake only, with power saving from spec 032) `409 {"error": "Display is off to save power"}`.
 

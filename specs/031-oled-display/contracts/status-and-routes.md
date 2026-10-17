@@ -33,14 +33,14 @@ Auth: required (`requireAuth`; constitution VI). No body.
 
 | Case | Status | Body |
 |---|---|---|
-| enabled and detected | 200 | `{"ok": true}` — display on for the timeout (applied by the loop task within one pass) |
+| enabled and detected | 200 | `{"success": true}` (the shared action shape, spec 013 FR-009) — display on for the timeout (applied by the loop task within one pass) |
 | display off in settings | 409 | `{"error": "Display is off in settings"}` |
 | not detected | 409 | `{"error": "Display not detected"}` |
 | forced off by power saving (spec 032) | 409 | `{"error": "Display is off to save power"}` |
 
 ## `POST /api/display/blank`
 
-Auth: required. No body. 200 `{"ok": true}` — display off now, until the next wake (boot, wake
+Auth: required. No body. 200 `{"success": true}` (the shared action shape, spec 013 FR-009) — display off now, until the next wake (boot, wake
 request, button). Same 409 cases for disabled / not detected.
 
 Both routes are registered before any broader `/api/display` handler (ESPAsyncWebServer prefix

@@ -1004,6 +1004,47 @@
         "alpacaRestoredAfterRestart"
       ],
       "additionalProperties": false
+    },
+    "display": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "detected": {
+          "type": "boolean"
+        },
+        "on": {
+          "type": "boolean"
+        },
+        "page": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "sky",
+            "environment",
+            "cloud",
+            "safety",
+            "gps",
+            "battery",
+            "network",
+            null
+          ]
+        },
+        "nightMode": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled",
+        "detected",
+        "on",
+        "page",
+        "nightMode"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

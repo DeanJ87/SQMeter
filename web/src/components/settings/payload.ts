@@ -4,6 +4,7 @@ import {
   defaultAuthConfig,
   defaultBleConfig,
   defaultCloudDetectionConfig,
+  defaultDisplayConfig,
   defaultLocationConfig,
   defaultRainConfig,
   defaultWindConfig,
@@ -96,6 +97,7 @@ export const toConfigPayload = (source: Config): Config => {
     ble: { ...defaultBleConfig, ...source.ble },
     wind: { ...defaultWindConfig, ...source.wind },
     location: { ...defaultLocationConfig, ...source.location },
+    display: { ...defaultDisplayConfig, ...source.display, pages: [...(source.display?.pages ?? defaultDisplayConfig.pages)] },
   };
 
   return {

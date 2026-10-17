@@ -52,6 +52,7 @@ interface Core {
   realTestAlert(): void;
   deliveryRequests(id: number, credentials: string): string;
   calibrateDark(sensor: string): string;
+  displayRequest(wake: boolean): string;
   alpaca(method: string, path: string, params: string): string;
   saveState(): string;
   loadState(json: string): boolean;
@@ -258,6 +259,12 @@ class DemoDevice {
   calibrateDark(sensor = ''): Reply {
     const reply = JSON.parse(this.core.calibrateDark(sensor));
     this.persist();
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
+  /** POST /api/display/wake or /blank (spec 031). */
+  displayRequest(wake: boolean): Reply {
+    const reply = JSON.parse(this.core.displayRequest(wake));
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 

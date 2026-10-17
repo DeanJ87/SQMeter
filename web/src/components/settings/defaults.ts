@@ -1,4 +1,4 @@
-import type { AlertsConfig, AlpacaConfig, BleConfig, Config, LocationConfig, WindConfig, MQTTPublishGroups } from '../../types';
+import type { AlertsConfig, AlpacaConfig, BleConfig, Config, DisplayConfig, LocationConfig, WindConfig, MQTTPublishGroups } from '../../types';
 
 // Defaults for every settings section - used to fill in fields that configs
 // from older firmware don't have yet.
@@ -60,6 +60,18 @@ export const defaultWindConfig: WindConfig = {
   kmhPerHz: 2.4,
   directionOffsetDeg: 0,
   vanePullupOhms: 10000,
+};
+
+export const defaultDisplayConfig: DisplayConfig = {
+  enabled: false,
+  pages: ['sky'],
+  cycleSeconds: 5,
+  brightness: 'medium',
+  timeoutSeconds: 60,
+  wakeOnBoot: true,
+  stayOnAtNight: false,
+  rotate180: false,
+  buttonPin: 255,
 };
 
 export const defaultAlertsConfig: AlertsConfig = {

@@ -54,6 +54,6 @@ namespace SQM
             display->requestWake();
         else
             display->requestBlank();
-        request->send(200, "application/json", "{\"ok\":true}");
+        request->send(200, "application/json", "{\"success\":true}");
     }
 } // namespace SQM

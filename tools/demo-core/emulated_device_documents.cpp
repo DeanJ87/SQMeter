@@ -23,6 +23,12 @@ std::string EmulatedDevice::statusParts() const
     Core::writeDiagnostics(doc.createNestedObject("diagnostics"), snapshot, cfg, nowMs);
     Core::writeAlertSchedule(doc.createNestedObject("alerts"), schedule.state(), cfg, nowMs);
     Core::writeClientWatch(doc.createNestedObject("alpaca"), clientWatch, cfg, nowMs);
+    Core::DisplayStatus display;
+    display.detected = true;
+    display.on = displayOut.on;
+    display.page = displayOut.page;
+    display.nightMode = displayOut.nightMode;
+    Core::writeDisplayStatus(doc.as<JsonObject>(), cfg, display);
     return serialize(doc);
 }
 

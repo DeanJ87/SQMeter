@@ -150,6 +150,10 @@ export const demoHandlers = [
   http.post('/api/ble/ack', () => HttpResponse.json({ error: 'No phone alarm is active' }, { status: 409 })),
   http.post('/api/ble/forget-bonds', () => HttpResponse.json({ error: 'Bluetooth is off' }, { status: 409 })),
 
+  // The OLED display (spec 031)
+  http.post('/api/display/wake', () => reply(demoDevice.displayRequest(true))),
+  http.post('/api/display/blank', () => reply(demoDevice.displayRequest(false))),
+
   // Sensors
   http.post('/api/sensors/tsl2591/calibrate-dark', ({ request }) =>
     reply(demoDevice.calibrateDark(new URL(request.url).searchParams.get('sensor') ?? '')),

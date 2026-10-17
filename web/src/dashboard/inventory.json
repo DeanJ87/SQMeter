@@ -1273,6 +1273,28 @@
     {
       "match": "deps.D-41",
       "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-43",
+      "reason": "Doesn't affect safety or alerts; shown on the Display card's rows in Settings"
+    },
+    {
+      "match": "deps.D-44",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-45",
+      "reason": "A save the device refuses; shown inline on the wake button pin field in Settings"
+    },
+    {
+      "match": "status.display",
+      "reason": "The OLED is an output, not a sensor (spec 031): no dashboard card",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.display.**",
+      "reason": "The OLED is an output, not a sensor (spec 031): no dashboard card",
+      "shownOn": "System"
     }
   ]
 }

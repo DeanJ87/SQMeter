@@ -91,6 +91,14 @@ export interface SystemStatus {
       bondedPhones: number;
     };
   };
+  // The optional OLED display (spec 031); older firmware has none.
+  display?: {
+    enabled: boolean;
+    detected: boolean;
+    on: boolean;
+    page: 'sky' | 'environment' | 'cloud' | 'safety' | 'gps' | 'battery' | 'network' | null;
+    nightMode: boolean;
+  };
   uptime: number;
   configRevision?: number; // goes up whenever the device saves its settings
   bootCount?: number;

@@ -47,6 +47,9 @@
         },
         "wifiConnected": {
           "type": "boolean"
+        },
+        "displayDetected": {
+          "type": "boolean"
         }
       },
       "required": [

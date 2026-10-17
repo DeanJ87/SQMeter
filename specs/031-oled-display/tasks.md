@@ -118,18 +118,18 @@ on at a known night.
 ## Phase 7: UI (US1-US4 settings)
 
 - [ ] T040 Mockup of the Settings → Device → Display card (detected, not detected, disabled, stay-on note, validation error) and the System Sensors row from contracts/ui.md in specs/031-oled-display/mockups/ (390 px and 1280 px) with a README; owner review recorded before T042-T044 are built
-- [ ] T041 [P] Web types and mocks: `DisplayConfig` in web/src/types/config.ts, `Status.display` in web/src/types/status.ts, Zod in web/src/validation/configSchema.ts, defaults in web/src/components/settings/defaults.ts, payload in web/src/components/settings/payload.ts, MSW handlers for `/api/display/wake|blank` and status in web/src/mocks/
+- [X] T041 [P] Web types and mocks: `DisplayConfig` in web/src/types/config.ts, `Status.display` in web/src/types/status.ts, Zod in web/src/validation/configSchema.ts, defaults in web/src/components/settings/defaults.ts, payload in web/src/components/settings/payload.ts, MSW handlers for `/api/display/wake|blank` and status in web/src/mocks/
 - [ ] T042 Vitest first for the Display card states (detected, not detected with the D-43 reason, disabled, stay-on note, one page selected disables the interval, validation error) in web/src/components/settings/__tests__/DisplayCard.test.tsx; then the card per contracts/ui.md in web/src/components/settings/DisplayCard.tsx, added to web/src/components/settings/DeviceTab.tsx after Bluetooth; wake action in web/src/hooks/useDeviceActions.ts (T036 passes); `device#display` anchor works from settings-deps fix links
 - [ ] T043 System page "Display" row in the Sensors card in web/src/components/System.tsx with a Vitest in web/src/components/__tests__/System.test.tsx
-- [ ] T044 Dashboard inventory: `status.display.*` and the D-43..D-45 ids recorded as not shown with reason in web/src/dashboard/inventory.json; `tools/dashboard/check.py` passes
+- [X] T044 Dashboard inventory: `status.display.*` and the D-43..D-45 ids recorded as not shown with reason in web/src/dashboard/inventory.json; `tools/dashboard/check.py` passes
 
 ## Phase 8: Polish & cross-cutting
 
 ### Demo and contracts (FR-014)
 
-- [ ] T045 [P] Contract schemas: `display` in specs/016-demo-device-emulation/contracts/schemas/status.schema.json, config keys in config.schema.json, `displayDetected` in settings-effective.schema.json; no existing property changed
-- [ ] T046 Demo: display detected in the demo device, wake/blank routes, controller-driven `display.on`/`page`, in tools/demo-core/emulated_device.cpp, tools/demo-core/emulated_device_documents.cpp and web/src/demo/handlers.ts; rebuild the WASM core with tools/demo-core/build.sh (or note emsdk unavailable); `tools/contract-check.py` passes
-- [ ] T047 `python tools/api/openapi.py` regenerates docs/api/openapi.json; `--check` passes
+- [X] T045 [P] Contract schemas: `display` in specs/016-demo-device-emulation/contracts/schemas/status.schema.json, config keys in config.schema.json, `displayDetected` in settings-effective.schema.json; no existing property changed
+- [X] T046 Demo: display detected in the demo device, wake/blank routes, controller-driven `display.on`/`page`, in tools/demo-core/emulated_device.cpp, tools/demo-core/emulated_device_documents.cpp and web/src/demo/handlers.ts; rebuild the WASM core with tools/demo-core/build.sh (or note emsdk unavailable); `tools/contract-check.py` passes
+- [X] T047 `python tools/api/openapi.py` regenerates docs/api/openapi.json; `--check` passes
 
 ### Strings (FR-019)
 
