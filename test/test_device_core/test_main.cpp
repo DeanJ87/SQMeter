@@ -491,6 +491,10 @@ void test_battery_monitoring_off_or_no_gauge_reports_absent();
 void test_battery_charger_without_a_gauge();
 void test_battery_status_health_and_diagnostics();
 void test_display_battery_page();
+void test_battery_safety_mapping();
+void test_battery_events_take_their_levels_and_ring_phones();
+void test_battery_rule_alert_and_phone_alarm();
+void test_battery_event_settings_and_samples();
 
 int main()
 {
@@ -534,5 +538,9 @@ int main()
     RUN_TEST(test_battery_charger_without_a_gauge);
     RUN_TEST(test_battery_status_health_and_diagnostics);
     RUN_TEST(test_display_battery_page);
+    RUN_TEST(test_battery_safety_mapping);
+    RUN_TEST(test_battery_events_take_their_levels_and_ring_phones);
+    RUN_TEST(test_battery_rule_alert_and_phone_alarm);
+    RUN_TEST(test_battery_event_settings_and_samples);
     return UNITY_END();
 }

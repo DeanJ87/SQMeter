@@ -2,6 +2,8 @@
 
 #include <cstdio>
 
+#include "DeviceCoreInternal.h"
+
 // The alert side of the device core: alert inputs from the device state,
 // the rules and wording from settings, the imaging-app (Alpaca client)
 // watch, the send schedule documents and test notifications. Readings and
@@ -23,6 +25,7 @@ namespace SQM
             in.safetySettling = (!status.isSafe && status.rawSafe) || (status.reasonFlags & Alpaca::UnsafeNoData) != 0;
             in.isSafe = status.isSafe;
             in.unsafeReasons = status.reasons;
+            in.unsafeFlags = status.reasonFlags;
 
             in.rainEnabled = cfg.rain.enabled;
             in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
@@ -49,6 +52,7 @@ namespace SQM
             in.cloudCoverPercent = obs.cloudCoverPercent;
             in.nightKnown = n.known;
             in.isNight = n.isNight;
+            Detail::batteryAlertInputs(in.battery, snapshot, cfg, now);
             return in;
         }
 
@@ -71,6 +75,16 @@ namespace SQM
             rules.onClientLost = a.clientLost.level != 0;
             rules.onClientBack = a.clientBack.level != 0;
             rules.onClientDisconnected = a.clientDisconnected.level != 0;
+            rules.onBatteryLow = a.batteryLow.level != 0;
+            rules.onBatteryCritical = a.batteryCritical.level != 0;
+            rules.onBatteryShutdown = a.batteryShutdown.level != 0;
+            rules.onPowerRestored = a.powerRestored.level != 0;
+            rules.onChargeComplete = a.chargeComplete.level != 0;
+            rules.onChargeFault = a.chargeFault.level != 0;
+            rules.onBatteryRule = cfg.alpaca.batteryEnabled && (cfg.alpaca.batteryAlert || cfg.alpaca.batteryPhoneAlarm);
+            rules.batteryLowPercent = cfg.battery.lowPercent;
+            rules.batteryCriticalPercent = cfg.battery.criticalPercent;
+            rules.batteryShutdownPercent = cfg.battery.shutdownPercent;
             return rules;
         }
 
@@ -103,6 +117,18 @@ namespace SQM
                 return &a.clientBack;
             case Alerts::AlertType::ClientDisconnected:
                 return &a.clientDisconnected;
+            case Alerts::AlertType::BatteryLow:
+                return &a.batteryLow;
+            case Alerts::AlertType::BatteryCritical:
+                return &a.batteryCritical;
+            case Alerts::AlertType::BatteryShutdown:
+                return &a.batteryShutdown;
+            case Alerts::AlertType::PowerRestored:
+                return &a.powerRestored;
+            case Alerts::AlertType::ChargeComplete:
+                return &a.chargeComplete;
+            case Alerts::AlertType::ChargeFault:
+                return &a.chargeFault;
             default:
                 return nullptr;
             }
@@ -310,6 +336,19 @@ namespace SQM
             AlertStep step;
             for (Alerts::Alert alert : engine.update(inputs, rules))
             {
+                if (alert.type == Alerts::AlertType::BatteryRule)
+                {
+                    // The battery rule's own options (spec 032 research D5): an
+                    // Urgent alert, and paired phones ring with the rule's bits.
+                    if (cfg.alpaca.batteryPhoneAlarm)
+                    {
+                        step.alarmFlags |= sources.status.reasonFlags & Alerts::BATTERY_RULE_FLAGS;
+                        step.ringPhones = true;
+                    }
+                    if (cfg.alpaca.batteryAlert)
+                        step.outgoing.push_back(std::move(alert));
+                    continue;
+                }
                 const AlertsConfig::EventSetting *setting = eventSettingFor(cfg.alerts, alert.type);
                 if (setting == nullptr || setting->level == 0)
                     continue;
@@ -321,7 +360,8 @@ namespace SQM
                                        (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UnsafeRain : 0u) |
                                        (alert.type == Alerts::AlertType::SensorFault || alert.type == Alerts::AlertType::LensFault
                                             ? Alpaca::UnsafeSensorFault
-                                            : 0u);
+                                            : 0u) |
+                                       Detail::batteryAlarmFlag(alert.type);
                 step.outgoing.push_back(std::move(alert));
             }
             return step;
@@ -346,6 +386,21 @@ namespace SQM
                  "Imaging app disconnected",
                  "The imaging app disconnects",
                  0},
+                // Battery (spec 032).
+                {"battery_low", Alerts::AlertType::BatteryLow, "Battery low", "The battery runs low", Alpaca::UnsafeBatteryLow},
+                {"battery_critical",
+                 Alerts::AlertType::BatteryCritical,
+                 "Battery critical",
+                 "The battery is critical",
+                 Alpaca::UnsafeBatteryLow},
+                {"battery_shutdown",
+                 Alerts::AlertType::BatteryShutdown,
+                 "Going to sleep: battery empty",
+                 "The device goes to sleep",
+                 Alpaca::UnsafeShutdown},
+                {"power_restored", Alerts::AlertType::PowerRestored, "Power restored", "USB power returns", 0},
+                {"charge_complete", Alerts::AlertType::ChargeComplete, "Battery charged", "The battery is full", 0},
+                {"charge_fault", Alerts::AlertType::ChargeFault, "Charging fault", "Charging stops with a fault", 0},
             };
         } // namespace
 

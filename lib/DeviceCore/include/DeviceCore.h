@@ -248,6 +248,9 @@ namespace SQM
         {
             std::vector<Alerts::Alert> outgoing;
             uint32_t alarmFlags = 0; // Bluetooth alarm reasons for Wake-level alerts
+            // The battery rule's "ring paired phones" (spec 032): ring with
+            // alarmFlags whatever the notification's level, alert sent or not.
+            bool ringPhones = false;
         };
         AlertStep runAlerts(
             Alerts::AlertEngine &engine,

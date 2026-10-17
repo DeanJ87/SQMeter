@@ -424,6 +424,7 @@ namespace SQM
             in.windSensorHealthy = windFresh(snapshot.wind, now);
             in.windSpeedMs = snapshot.wind.speedMs;
             in.windGustMs = snapshot.wind.gustMs;
+            Detail::batterySafetyInputs(in, snapshot, cfg, now);
             return in;
         }
 
@@ -446,6 +447,8 @@ namespace SQM
             t.windSpeedUnsafeMs = cfg.alpaca.windSpeedUnsafeMs;
             t.windGustUnsafeEnabled = cfg.alpaca.windGustUnsafeEnabled;
             t.windGustUnsafeMs = cfg.alpaca.windGustUnsafeMs;
+            t.batteryEnabled = cfg.alpaca.batteryEnabled;
+            t.batteryMinPercent = cfg.alpaca.batteryMinPercent;
             return t;
         }
 

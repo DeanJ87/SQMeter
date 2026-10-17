@@ -190,3 +190,149 @@ void test_display_battery_page()
     TEST_ASSERT_FALSE(nv.battery.available);
     TEST_ASSERT_FALSE(nv.available(Display::Page::Battery));
 }
+
+// Safety and alerts through DeviceCore (spec 032 US2).
+
+void test_battery_safety_mapping()
+{
+    Config cfg = Config::createDefault();
+    cfg.alpaca.batteryEnabled = true;
+    cfg.alpaca.batteryMinPercent = 25;
+    cfg.battery.shutdownPercent = 6;
+    const Alpaca::SafetyThresholds t = Core::safetyThresholds(cfg);
+    TEST_ASSERT_TRUE(t.batteryEnabled);
+    TEST_ASSERT_EQUAL_FLOAT(25.0F, t.batteryMinPercent);
+
+    SensorSnapshot s = withGauge(12.0F);
+    Core::derive(s, cfg);
+    Alpaca::SafetyInputs in = Core::safetyInputs(s, cfg, NOW);
+    TEST_ASSERT_TRUE(in.batteryValid);
+    TEST_ASSERT_EQUAL_FLOAT(12.0F, in.batteryPercent);
+    TEST_ASSERT_FALSE(in.shutdownPending);
+    TEST_ASSERT_EQUAL_FLOAT(6.0F, in.shutdownPercent);
+    TEST_ASSERT_TRUE((Alpaca::evaluateSafety(in, t).reasonFlags & Alpaca::UnsafeBatteryLow) != 0);
+
+    // Stale past alpaca.staleAfterSeconds, estimating, or monitoring off: not valid.
+    TEST_ASSERT_FALSE(Core::safetyInputs(s, cfg, NOW - 1200 + 30001).batteryValid);
+    s.battery.reading.estimating = true;
+    TEST_ASSERT_FALSE(Core::safetyInputs(s, cfg, NOW).batteryValid);
+    s.battery.reading.estimating = false;
+    Config off = cfg;
+    off.battery.enabled = false;
+    Core::derive(s, off);
+    TEST_ASSERT_FALSE(Core::safetyInputs(s, off, NOW).batteryValid);
+
+    Core::derive(s, cfg);
+    s.battery.power = Battery::PowerState::ShutdownPending;
+    TEST_ASSERT_TRUE(Core::safetyInputs(s, cfg, NOW).shutdownPending);
+}
+
+namespace
+{
+    struct AlertRig
+    {
+        Config cfg;
+        SensorSnapshot snapshot;
+        SafetyStatus status;
+        Alpaca::ObservingConditionsSnapshot obs;
+        Core::NightState night;
+        Alerts::AlertEngine engine;
+
+        Core::AlertStep pass(uint32_t now)
+        {
+            Core::derive(snapshot, cfg);
+            obs = Core::observingConditions(snapshot, cfg, now);
+            const Core::AlertSources sources{cfg, obs, night, status};
+            return Core::runAlerts(engine, Core::alertInputs(sources, snapshot, now), Core::alertRules(cfg), sources, Core::LocalClock{});
+        }
+    };
+
+    const Alerts::Alert *find(const Core::AlertStep &step, Alerts::AlertType type)
+    {
+        for (const Alerts::Alert &a : step.outgoing)
+            if (a.type == type)
+                return &a;
+        return nullptr;
+    }
+} // namespace
+
+void test_battery_events_take_their_levels_and_ring_phones()
+{
+    AlertRig rig;
+    rig.cfg = Config::createDefault();
+    rig.cfg.alerts.enabled = true;
+    rig.status.evaluatedAtMs = NOW;
+    rig.status.isSafe = rig.status.rawSafe = true;
+    rig.snapshot = withGauge(50.0F);
+    rig.pass(NOW);
+    // Past the 60 s start-up grace, the charge drops below low (Normal) and critical (Wake).
+    rig.snapshot = withGauge(8.0F);
+    rig.snapshot.battery.lastUpdate = rig.snapshot.battery.reading.timestamp = NOW + 70000;
+    const Core::AlertStep step = rig.pass(NOW + 70000);
+    const Alerts::Alert *low = find(step, Alerts::AlertType::BatteryLow);
+    const Alerts::Alert *critical = find(step, Alerts::AlertType::BatteryCritical);
+    TEST_ASSERT_NOT_NULL(low);
+    TEST_ASSERT_NOT_NULL(critical);
+    TEST_ASSERT_EQUAL(static_cast<int>(Alerts::AlertLevel::Normal), static_cast<int>(low->level));
+    TEST_ASSERT_EQUAL(static_cast<int>(Alerts::AlertLevel::Wake), static_cast<int>(critical->level));
+    TEST_ASSERT_TRUE((step.alarmFlags & Alpaca::UnsafeBatteryLow) != 0);
+}
+
+void test_battery_rule_alert_and_phone_alarm()
+{
+    AlertRig rig;
+    rig.cfg = Config::createDefault();
+    rig.cfg.alerts.enabled = true;
+    rig.cfg.alpaca.batteryEnabled = true;
+    rig.status.evaluatedAtMs = NOW;
+    rig.status.isSafe = rig.status.rawSafe = true;
+    rig.snapshot = withGauge(50.0F);
+    rig.pass(NOW);
+    rig.status.isSafe = rig.status.rawSafe = false;
+    rig.status.reasonFlags = Alpaca::UnsafeBatteryData;
+    rig.status.reasons = {"Battery data missing"};
+    Core::AlertStep step = rig.pass(NOW + 70000);
+    const Alerts::Alert *rule = find(step, Alerts::AlertType::BatteryRule);
+    TEST_ASSERT_NOT_NULL(rule);
+    TEST_ASSERT_EQUAL(static_cast<int>(Alerts::AlertLevel::Urgent), static_cast<int>(rule->level));
+    TEST_ASSERT_EQUAL_STRING("Battery data missing", rule->message.c_str());
+    TEST_ASSERT_NOT_NULL(find(step, Alerts::AlertType::Unsafe)); // stacked with the generic one by the dispatcher
+    TEST_ASSERT_TRUE((step.alarmFlags & Alpaca::UnsafeBatteryData) != 0);
+    TEST_ASSERT_TRUE(step.ringPhones);
+
+    // Options off: neither the alert nor the ring.
+    AlertRig quiet;
+    quiet.cfg = rig.cfg;
+    quiet.cfg.alpaca.batteryAlert = false;
+    quiet.cfg.alpaca.batteryPhoneAlarm = false;
+    quiet.status.evaluatedAtMs = NOW;
+    quiet.status.isSafe = quiet.status.rawSafe = true;
+    quiet.snapshot = withGauge(50.0F);
+    quiet.pass(NOW);
+    quiet.status = rig.status;
+    step = quiet.pass(NOW + 70000);
+    TEST_ASSERT_NULL(find(step, Alerts::AlertType::BatteryRule));
+    TEST_ASSERT_EQUAL_UINT32(0, step.alarmFlags & Alpaca::UnsafeBatteryData);
+}
+
+void test_battery_event_settings_and_samples()
+{
+    const Config cfg = Config::createDefault();
+    const char *keys[] = {"battery_low", "battery_critical", "battery_shutdown", "power_restored", "charge_complete", "charge_fault"};
+    const AlertsConfig::EventSetting *settings[] = {
+        &cfg.alerts.batteryLow,
+        &cfg.alerts.batteryCritical,
+        &cfg.alerts.batteryShutdown,
+        &cfg.alerts.powerRestored,
+        &cfg.alerts.chargeComplete,
+        &cfg.alerts.chargeFault};
+    for (size_t i = 0; i < 6; ++i)
+    {
+        const Core::SampleAlert *sample = Core::sampleAlert(keys[i]);
+        TEST_ASSERT_NOT_NULL_MESSAGE(sample, keys[i]);
+        TEST_ASSERT_EQUAL_STRING(keys[i], Alerts::alertTypeName(sample->type));
+        TEST_ASSERT_TRUE(Core::eventSettingFor(cfg.alerts, sample->type) == settings[i]);
+    }
+    TEST_ASSERT_EQUAL_UINT32(Alpaca::UnsafeShutdown, Core::sampleAlert("battery_shutdown")->bleFlags);
+    TEST_ASSERT_NULL(Core::eventSettingFor(cfg.alerts, Alerts::AlertType::BatteryRule));
+}

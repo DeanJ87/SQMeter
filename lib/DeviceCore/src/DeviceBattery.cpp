@@ -67,6 +67,45 @@ namespace SQM::Core
             out.powerSaving = b.power != Battery::PowerState::Normal;
             return out;
         }
+
+        void batterySafetyInputs(Alpaca::SafetyInputs &in, const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)
+        {
+            const BatterySnapshot &b = snapshot.battery;
+            const BatteryReading &r = b.reading;
+            // Monitoring off counts as no data: the rule, if on, fails safe.
+            const bool fresh = b.lastUpdate != 0 && now - b.lastUpdate <= cfg.alpaca.staleAfterSeconds * 1000U;
+            in.batteryValid = b.present && b.initialized && r.status == SensorStatus::Ok && !r.estimating && fresh;
+            in.batteryPercent = r.percent;
+            in.shutdownPending = b.present && b.power == Battery::PowerState::ShutdownPending;
+            in.shutdownPercent = cfg.battery.shutdownPercent;
+        }
+
+        void batteryAlertInputs(Alerts::BatteryInputs &in, const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)
+        {
+            const BatterySnapshot &b = snapshot.battery;
+            const BatteryReading &r = b.reading;
+            const Readings::Status status = readingStatus(r.status, b.initialized, b.lastUpdate, now, batteryStaleAfter(b, cfg));
+            in.present = b.present;
+            in.valid = b.present && status == Readings::Status::Ok && !r.estimating;
+            in.percent = r.percent;
+            in.charged = b.present && r.chargeState == Battery::ChargeState::Charged;
+            in.fault = b.present && r.chargeState == Battery::ChargeState::Fault;
+        }
+
+        uint32_t batteryAlarmFlag(Alerts::AlertType type)
+        {
+            static_assert(Alerts::BATTERY_RULE_FLAGS == (Alpaca::UnsafeBatteryLow | Alpaca::UnsafeBatteryData), "the rule's bits");
+            switch (type)
+            {
+            case Alerts::AlertType::BatteryLow:
+            case Alerts::AlertType::BatteryCritical:
+                return Alpaca::UnsafeBatteryLow;
+            case Alerts::AlertType::BatteryShutdown:
+                return Alpaca::UnsafeShutdown;
+            default:
+                return 0;
+            }
+        }
     } // namespace Detail
 
     void writeBatteryStatus(JsonObject root, const SensorSnapshot &snapshot, const Readings::Snapshot &readings)

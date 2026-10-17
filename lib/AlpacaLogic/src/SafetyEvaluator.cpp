@@ -1,5 +1,6 @@
 #include "SafetyEvaluator.h"
 
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 
@@ -54,6 +55,30 @@ namespace SQM
                     addReasonf(result, UnsafeWind, "Wind %.1f m/s >= %.1f m/s", in.windSpeedMs, t.windSpeedUnsafeMs);
                 if (t.windGustUnsafeEnabled && in.windGustMs >= t.windGustUnsafeMs)
                     addReasonf(result, UnsafeWindGust, "Gust %.1f m/s >= %.1f m/s", in.windGustMs, t.windGustUnsafeMs);
+            }
+
+            // The battery (spec 032), regardless of the other sensors'
+            // freshness. Percent is printed as an integer (floor), with the limit.
+            void checkBattery(SafetyResult &result, const SafetyInputs &in, const SafetyThresholds &t)
+            {
+                if (in.shutdownPending)
+                    addReasonf(
+                        result,
+                        UnsafeShutdown,
+                        "Shutting down: battery %d%% < %d%%",
+                        static_cast<int>(std::floor(in.batteryPercent)),
+                        static_cast<int>(std::floor(in.shutdownPercent)));
+                if (!t.batteryEnabled)
+                    return;
+                if (!in.batteryValid)
+                    addReason(result, UnsafeBatteryData, "Battery data missing");
+                else if (in.batteryPercent < t.batteryMinPercent)
+                    addReasonf(
+                        result,
+                        UnsafeBatteryLow,
+                        "Battery %d%% < %d%%",
+                        static_cast<int>(std::floor(in.batteryPercent)),
+                        static_cast<int>(std::floor(t.batteryMinPercent)));
             }
 
             void checkFreshness(SafetyResult &result, const SafetyInputs &in, const SafetyThresholds &t)
@@ -148,6 +173,7 @@ namespace SQM
                 addReason(result, UnsafeManualOverride, "Manual override forces unsafe");
             checkRain(result, in, t);
             checkWind(result, in, t);
+            checkBattery(result, in, t);
             checkFreshness(result, in, t);
             checkSensorFaults(result, in);
 

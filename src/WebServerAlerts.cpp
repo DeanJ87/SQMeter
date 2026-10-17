@@ -194,8 +194,15 @@ namespace SQM
     void WebServer::sendAlerts(
         const Core::AlertStep &step, const Core::AlertSources &sources, const SensorSnapshot &snapshot, uint32_t epoch)
     {
-        if (step.outgoing.empty() || !alertSchedule.state().sending)
+        if (!alertSchedule.state().sending)
             return;
+        if (step.outgoing.empty())
+        {
+            // The battery rule rings paired phones even with its alert off (spec 032).
+            if (step.ringPhones)
+                ble.raiseAlarm(step.alarmFlags, epoch);
+            return;
+        }
         const Config &cfg = sources.cfg;
         const Alerts::Alert notification = Alerts::stackAlerts(step.outgoing);
         if (cfg.alerts.enabled)
@@ -206,7 +213,7 @@ namespace SQM
                 if (sent.type == Alerts::AlertType::Unsafe || sent.type == Alerts::AlertType::Safe)
                     SafetyHistory::recordAlert(sent.type == Alerts::AlertType::Safe);
         }
-        if (notification.level == Alerts::AlertLevel::Wake)
+        if (notification.level == Alerts::AlertLevel::Wake || step.ringPhones)
             ble.raiseAlarm(step.alarmFlags, epoch);
         else
             ble.raiseInfo(sources.status.reasonFlags, epoch);

@@ -100,8 +100,8 @@ jobs:
             echo "|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
           # One sky sensor (every existing device), then both with the SQM-L
-          # authoritative (spec 030 SC-001).
-          for sky in one two; do
+          # authoritative (spec 030 SC-001), then the battery rule on (spec 032).
+          for sky in one two battery; do
             ./alpaca-sim 11111 "$sky" > "conformu-results/simulator-$sky.log" 2>&1 &
             sim=$!
             sleep 1
