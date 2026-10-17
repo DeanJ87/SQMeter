@@ -12,6 +12,7 @@ All notable changes to SQMeter are documented here.
 
 - Settings show when a language other than English can't be loaded: no file stored and no WiFi to download it (settings dependency D-38); a hand upload works offline.
 - The demo tour shows the Status card with the pretend imaging app connected, then gone quiet.
+- **Two sky sensors**: an optional second TSL2591 behind a narrow lens (the SQM-L) on a second I2C bus (`sensor.i2c2SDA`, `sensor.i2c2SCL`, `sky.sqmlEnabled`). Both are read without blocking and reported in `skySensors` (readings, `/api/status`, MQTT), with the difference between them; `sky.authoritative` picks the one that drives SQM, NELM, Bortle, safety, Alpaca, alerts and BLE (`sky.source`). If that sensor fails the device reports no sky reading rather than switching to the other. Each sensor has its own averaging, offset and dark calibration (`?sensor=sqml`), Home Assistant gets `sqm_wide`, `sqm_l` and `sqm_delta`, and alerts `{sqm_wide}`, `{sqm_l}`, `{sqm_delta}`, `{sqm_source}`. Devices with one sensor behave as before, apart from `sky.source`.
 
 ### Planned
 
