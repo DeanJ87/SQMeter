@@ -308,8 +308,35 @@ void test_requests_ignored_while_unavailable(void)
     TEST_ASSERT_FALSE(c.tick(on(), lost).on);
 }
 
+// Unplugged (or three failed writes on a glitchy bus) while lit: lit again
+// when found, without a wake (spec 031 edge cases, quickstart 4.5).
+void test_resumes_when_detected_again(void)
+{
+    Controller c;
+    Settings s = on();
+    s.timeoutSeconds = 0; // never by day
+    TEST_ASSERT_TRUE(c.tick(s, at(0)).on);
+    Inputs lost = at(1000);
+    lost.detected = false;
+    TEST_ASSERT_FALSE(c.tick(s, lost).on);
+    lost.nowMs = 6000;
+    TEST_ASSERT_FALSE(c.tick(s, lost).on);
+    TEST_ASSERT_TRUE(c.tick(s, at(11000)).on);
+
+    // Off when it went away: stays off when it's back.
+    Controller dark;
+    Settings quiet = on();
+    quiet.wakeOnBoot = false;
+    TEST_ASSERT_FALSE(dark.tick(quiet, at(0)).on);
+    Inputs gone = at(1000);
+    gone.detected = false;
+    dark.tick(quiet, gone);
+    TEST_ASSERT_FALSE(dark.tick(quiet, at(2000)).on);
+}
+
 void run_controller_tests(void)
 {
+    RUN_TEST(test_resumes_when_detected_again);
     RUN_TEST(test_wakes_on_boot_for_the_timeout);
     RUN_TEST(test_no_wake_on_boot_when_turned_off);
     RUN_TEST(test_timeout_never_by_day_but_sixty_seconds_at_night);

@@ -257,10 +257,17 @@ void startWifi()
     // Give the saved network a moment so most boots start fully connected. If
     // it isn't joined yet, start anyway: WiFiManager keeps trying, and opens
     // the setup hotspot only if it still hasn't joined after
-    // CaptivePortal::FALLBACK_AFTER_MS (spec 014).
+    // CaptivePortal::FALLBACK_AFTER_MS (spec 014). A saved network that
+    // isn't in range (the scan didn't find it) ends the wait at once, so the
+    // display shows the sky within seconds in the field (spec 031 SC-001).
     int attempts = 0;
     while (!wifiManager->isConnected() && !wifiManager->isInAPMode() && attempts < 20)
     {
+        if (WiFi.status() == WL_NO_SSID_AVAIL)
+        {
+            Logger::warn("Main", "Saved network not in range");
+            break;
+        }
         delay(500);
         attempts++;
     }

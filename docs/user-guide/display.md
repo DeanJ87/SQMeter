@@ -82,6 +82,7 @@ location it is kept as saved but has no effect (Settings says *Needs your locati
 - A **wake button**: a push button from a free GPIO to ground (internal pull-up), set as
   **Wake button pin**. A press while it is off lights it; a press while it is lit shows the next page
   and restarts the switch-off time. On the Rev A boards the AUX pins are free for this. The pin can't
-  be one that I2C, the second I2C bus, GPS, the rain sensor or the anemometer and vane use.
+  be one that I2C, the second I2C bus, GPS, the rain sensor, the anemometer and vane or the
+  [battery](battery.md) pins (gauge alert, STAT1, STAT2, PG) use.
 
 `/api/status` reports the display's state under `display` ([REST API](../api/rest.md#get-apistatus)).

@@ -139,9 +139,17 @@ namespace SQM::Display
             booted = false; // switching it on again counts as a boot
         if (!settings.enabled || !in.detected || in.forcedOff)
         {
+            // Lost (unplugged, or failed writes on a glitchy bus) while lit:
+            // it resumes when found again (spec 031 edge cases).
+            resumeOnDetect = settings.enabled && !in.detected && !in.forcedOff && (lit || resumeOnDetect);
             lit = false;
             out.shift = shiftPos;
             return out;
+        }
+        if (resumeOnDetect)
+        {
+            resumeOnDetect = false;
+            turnOn(settings, in);
         }
         handleRequests(settings, in);
         if (lit && timedOut(settings, in, out.nightMode))

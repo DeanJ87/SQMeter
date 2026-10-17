@@ -108,6 +108,7 @@ namespace SQM::Display
 
         bool booted = false; // the boot wake happened (again after re-enabling)
         bool lit = false;
+        bool resumeOnDetect = false; // lit when the display went away: lit again when it's back
         Page page = Page::Sky;
         uint32_t onSinceMs = 0;   // last wake or button press: the timeout runs from here
         uint32_t pageSinceMs = 0; // for cycling

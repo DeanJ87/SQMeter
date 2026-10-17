@@ -116,7 +116,9 @@ page.
 - No location or time set: night can't be computed, so the display uses the timeout and the owner's
   night-mode choice applies all the time until location and time are known.
 - Two devices on the same I2C address (another 0x3C device on the bus): the display is reported as
-  detected only if it answers as a display; a clash is documented.
+  detected when something at 0x3C acknowledges and answers a one-byte read (research D3: SSD1306
+  status bits are no reliable identity across clones), so another device there that answers reads
+  is taken for the display; the clash is documented.
 
 ## Clarifications
 
