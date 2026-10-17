@@ -334,7 +334,8 @@ namespace SQM
             const SensorSnapshot snapshot = getSensorSnapshot();
             const Core::NightState night = computeNight(snapshot, cfg);
             const Core::TestWording wording{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
-            const Core::AlertSources sources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
+            const Core::AlertSources sources{
+                cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
             const Alerts::Alert test = Core::buildTestAlert(sample, wording, sources, clock);
             if (sample != nullptr && test.level == Alerts::AlertLevel::Wake)
             {

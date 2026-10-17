@@ -17,7 +17,6 @@ namespace SQM
         PolicyEvents PowerPolicy::update(const PolicyInput &in)
         {
             PolicyEvents events;
-            const bool usb = onUsb(in);
             if (!in.powerSaving)
             {
                 // Off: no slowing, no display change and no shutdown.
@@ -25,55 +24,67 @@ namespace SQM
                 belowShutdown = 0;
                 return events;
             }
-
             switch (current)
             {
             case PowerState::Normal:
-                if (in.newRead && in.valid && !usb && in.percent < static_cast<float>(in.criticalPercent))
-                {
-                    current = PowerState::Saving;
-                    belowShutdown = 0;
-                    events.enteredSaving = true;
-                }
+                fromNormal(in, events);
                 break;
             case PowerState::Saving:
-                if (usb || (in.newRead && in.valid && in.percent >= static_cast<float>(in.criticalPercent) + RECOVERY_PERCENT))
-                {
-                    current = PowerState::Normal;
-                    belowShutdown = 0;
-                    events.powerRestored = true;
-                    break;
-                }
-                if (!in.newRead || !in.valid)
-                    break; // no news: never a step towards sleep
-                if (in.percent <= static_cast<float>(in.shutdownPercent))
-                {
-                    if (++belowShutdown >= READS_TO_SHUTDOWN)
-                    {
-                        current = PowerState::ShutdownPending;
-                        pendingSinceMs = in.nowMs;
-                        events.shutdownStarted = true;
-                    }
-                }
-                else
-                    belowShutdown = 0;
+                fromSaving(in, events);
                 break;
             case PowerState::ShutdownPending:
-            {
-                if (usb)
-                {
-                    current = PowerState::Normal;
-                    belowShutdown = 0;
-                    events.powerRestored = true;
-                    break;
-                }
-                const uint32_t elapsed = in.nowMs - pendingSinceMs;
-                const uint32_t grace = static_cast<uint32_t>(in.graceSeconds) * 1000U;
-                events.sleepNow = (elapsed >= grace && in.dispatcherIdle) || elapsed >= grace + MAX_EXTRA_MS;
+                fromPending(in, events);
                 break;
             }
-            }
             return events;
+        }
+
+        void PowerPolicy::backToNormal(PolicyEvents &events)
+        {
+            current = PowerState::Normal;
+            belowShutdown = 0;
+            events.powerRestored = true;
+        }
+
+        void PowerPolicy::fromNormal(const PolicyInput &in, PolicyEvents &events)
+        {
+            if (in.newRead && in.valid && !onUsb(in) && in.percent < static_cast<float>(in.criticalPercent))
+            {
+                current = PowerState::Saving;
+                belowShutdown = 0;
+                events.enteredSaving = true;
+            }
+        }
+
+        void PowerPolicy::fromSaving(const PolicyInput &in, PolicyEvents &events)
+        {
+            const bool fresh = in.newRead && in.valid; // anything else is no news: never a step towards sleep
+            if (onUsb(in) || (fresh && in.percent >= static_cast<float>(in.criticalPercent) + RECOVERY_PERCENT))
+            {
+                backToNormal(events);
+                return;
+            }
+            if (!fresh)
+                return;
+            belowShutdown = in.percent <= static_cast<float>(in.shutdownPercent) ? static_cast<uint8_t>(belowShutdown + 1) : 0;
+            if (belowShutdown >= READS_TO_SHUTDOWN)
+            {
+                current = PowerState::ShutdownPending;
+                pendingSinceMs = in.nowMs;
+                events.shutdownStarted = true;
+            }
+        }
+
+        void PowerPolicy::fromPending(const PolicyInput &in, PolicyEvents &events)
+        {
+            if (onUsb(in))
+            {
+                backToNormal(events);
+                return;
+            }
+            const uint32_t elapsed = in.nowMs - pendingSinceMs;
+            const uint32_t grace = static_cast<uint32_t>(in.graceSeconds) * 1000U;
+            events.sleepNow = (elapsed >= grace && in.dispatcherIdle) || elapsed >= grace + MAX_EXTRA_MS;
         }
 
         uint32_t PowerPolicy::secondsLeft(uint32_t nowMs, uint16_t graceSeconds) const

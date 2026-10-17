@@ -386,19 +386,29 @@ namespace SQM
         }
 
         // The battery (spec 032, contracts/config.md).
+        bool between(int value, int min, int max)
+        {
+            return value >= min && value <= max;
+        }
+
         bool validateBatteryLevels(const BatteryConfig &b, std::string *error)
         {
-            if (b.lowPercent < 5 || b.lowPercent > 50)
+            if (!between(b.lowPercent, 5, 50))
                 return setError(error, "Battery: low level must be 5 to 50%");
-            if (b.criticalPercent < 2 || b.criticalPercent > 25 || b.criticalPercent >= b.lowPercent)
+            if (!between(b.criticalPercent, 2, 25) || b.criticalPercent >= b.lowPercent)
                 return setError(error, "Battery: critical level must be 2 to 25% and below the low level");
-            if (b.shutdownPercent < 2 || b.shutdownPercent > 10 || b.shutdownPercent >= b.criticalPercent)
+            if (!between(b.shutdownPercent, 2, 10) || b.shutdownPercent >= b.criticalPercent)
                 return setError(error, "Battery: shutdown level must be 2 to 10% and below the critical level");
-            if (b.capacityMah != 0 && (b.capacityMah < 500 || b.capacityMah > 50000))
+            return true;
+        }
+
+        bool validateBatteryTimes(const BatteryConfig &b, std::string *error)
+        {
+            if (b.capacityMah != 0 && !between(b.capacityMah, 500, 50000))
                 return setError(error, "Battery: capacity must be 500 to 50000 mAh, or 0 if unknown");
-            if (b.saveReadIntervalSeconds < 10 || b.saveReadIntervalSeconds > 300)
+            if (!between(b.saveReadIntervalSeconds, 10, 300))
                 return setError(error, "Battery: power-saving read interval must be 10 to 300 seconds");
-            if (b.shutdownGraceSeconds < 10 || b.shutdownGraceSeconds > 300)
+            if (!between(b.shutdownGraceSeconds, 10, 300))
                 return setError(error, "Battery: warning time before sleep must be 10 to 300 seconds");
             return true;
         }
@@ -421,25 +431,29 @@ namespace SQM
             return pinIn(busPins(c, true), pin) || windSpeed || windVane || button;
         }
 
-        bool validateBatteryPins(const Config &c, std::string *error)
+        // Each wired pin a valid GPIO, none twice.
+        bool batteryPinsDistinct(const std::array<int, 4> &pins)
         {
-            const std::array<int, 4> pins = batteryPins(c);
             for (size_t i = 0; i < pins.size(); ++i)
             {
                 if (pins[i] < 0)
                     continue;
-                if (!isValidGpio(pins[i]))
-                    return setError(error, "Battery: pins must be valid and different");
-                for (size_t j = i + 1; j < pins.size(); ++j)
-                    if (pins[j] == pins[i])
-                        return setError(error, "Battery: pins must be valid and different");
+                if (!isValidGpio(pins[i]) || std::count(pins.begin() + static_cast<long>(i) + 1, pins.end(), pins[i]) != 0)
+                    return false;
             }
-            const int charger = (pins[1] >= 0 ? 1 : 0) + (pins[2] >= 0 ? 1 : 0) + (pins[3] >= 0 ? 1 : 0);
+            return true;
+        }
+
+        bool validateBatteryPins(const Config &c, std::string *error)
+        {
+            const std::array<int, 4> pins = batteryPins(c);
+            if (!batteryPinsDistinct(pins))
+                return setError(error, "Battery: pins must be valid and different");
+            const auto charger = std::count_if(pins.begin() + 1, pins.end(), [](int pin) { return pin >= 0; });
             if (charger != 0 && charger != 3)
                 return setError(error, "Battery: set all three charger pins or none");
-            for (int pin : pins)
-                if (pin >= 0 && batteryPinClashes(c, pin))
-                    return setError(error, "Battery: pin is already in use");
+            if (std::any_of(pins.begin(), pins.end(), [&c](int pin) { return pin >= 0 && batteryPinClashes(c, pin); }))
+                return setError(error, "Battery: pin is already in use");
             if (pins[3] >= 0 && !isRtcGpio(pins[3]))
                 return setError(error, "Battery: the USB power pin must be able to wake the device");
             return true;
@@ -447,7 +461,7 @@ namespace SQM
 
         bool validateBattery(const Config &c, std::string *error)
         {
-            return validateBatteryLevels(c.battery, error) && validateBatteryPins(c, error);
+            return validateBatteryLevels(c.battery, error) && validateBatteryTimes(c.battery, error) && validateBatteryPins(c, error);
         }
 
         bool validateAlertThresholds(const Config &c, std::string *error)

@@ -1,5 +1,6 @@
 #include "DeviceCore.h"
 
+#include <cmath>
 #include <cstdio>
 
 // The Bluetooth summary characteristic's JSON (src/WebServerAlerts.cpp
@@ -30,7 +31,7 @@ namespace SQM::Core
         put("wind", obs.wind.valid, obs.windSpeedMs);
         put("gust", obs.wind.valid, obs.windGustMs);
         if (battery.present && battery.status == Readings::Status::Ok && battery.percent)
-            out["battery"] = static_cast<int>(*battery.percent + 0.5);
+            out["battery"] = static_cast<int>(std::lround(*battery.percent));
         if (battery.present && battery.state != nullptr)
             out["batteryState"] = battery.state;
     }

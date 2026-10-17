@@ -52,6 +52,14 @@ namespace SQM
             nvs_close(handle);
             return length > 0 ? length - 1 : 0;
         }
+        // A stored alerts part, or "" when there is none.
+        std::string readStoredPart(const char *key)
+        {
+            std::string part;
+            if (!readNvsString(key, part))
+                part.clear();
+            return part;
+        }
     } // namespace
 
     bool Config::load(Config &out)
@@ -76,18 +84,10 @@ namespace SQM
 
         // Alerts live under their own NVS keys; splice them into the main
         // document and parse once, straight into the caller's Config.
-        std::string alertsJson;
-        std::string clientJson;
-        std::string batteryJson;
-        const bool haveAlerts = readNvsString(NVS_ALERTS_KEY, alertsJson) && !alertsJson.empty();
-        const bool haveClient = readNvsString(NVS_ALERTS_CLIENT_KEY, clientJson) && !clientJson.empty();
-        const bool haveBattery = readNvsString(NVS_ALERTS_BATTERY_KEY, batteryJson) && !batteryJson.empty();
-        if (!haveAlerts)
-            alertsJson.clear();
-        if (!haveClient)
-            clientJson.clear();
-        if (!haveBattery)
-            batteryJson.clear();
+        const std::string alertsJson = readStoredPart(NVS_ALERTS_KEY);
+        const std::string clientJson = readStoredPart(NVS_ALERTS_CLIENT_KEY);
+        const std::string batteryJson = readStoredPart(NVS_ALERTS_BATTERY_KEY);
+        const bool haveParts = !alertsJson.empty() || !clientJson.empty() || !batteryJson.empty();
         const std::string spliced = spliceStored(json, alertsJson, clientJson, batteryJson);
 
         out = createDefault();
@@ -95,7 +95,7 @@ namespace SQM
         bool ok = applyJson(spliced, out, false, &reason);
         if (!ok)
             Logger::error(TAG, "Stored config rejected: %s", reason.c_str());
-        if (!ok && (haveAlerts || haveClient || haveBattery))
+        if (!ok && haveParts)
         {
             // A corrupt alerts entry mustn't take the whole config down.
             Logger::error(TAG, "Failed to parse config JSON with alerts - retrying without them");

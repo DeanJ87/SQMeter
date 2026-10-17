@@ -14,9 +14,20 @@ namespace
         return {stat1 == 'H', stat2 == 'H', pg == 'H'};
     }
 
-    void expectRow(char s1, char s2, char pg, ChargeState state, bool usb, ChargeFault fault = ChargeFault::None)
+    struct Row
     {
-        const ChargerOutput out = decodeCharger(pins(s1, s2, pg));
+        const char *levels; // STAT1, STAT2, PG as "LHL"
+        ChargeState state;
+        bool usb;
+        ChargeFault fault = ChargeFault::None;
+    };
+
+    void expectRow(const Row &row)
+    {
+        const ChargeState state = row.state;
+        const bool usb = row.usb;
+        const ChargeFault fault = row.fault;
+        const ChargerOutput out = decodeCharger(pins(row.levels[0], row.levels[1], row.levels[2]));
         TEST_ASSERT_EQUAL(static_cast<int>(state), static_cast<int>(out.state));
         TEST_ASSERT_TRUE(out.usbPower.has_value());
         TEST_ASSERT_EQUAL(usb, *out.usbPower);
@@ -26,15 +37,15 @@ namespace
 
 void test_truth_table(void)
 {
-    expectRow('L', 'H', 'L', ChargeState::Charging, true);
-    expectRow('H', 'L', 'L', ChargeState::Charged, true);
-    expectRow('L', 'L', 'L', ChargeState::Fault, true, ChargeFault::Temperature);
-    expectRow('H', 'H', 'L', ChargeState::NoBattery, true);
-    expectRow('H', 'H', 'H', ChargeState::Discharging, false);
-    expectRow('L', 'H', 'H', ChargeState::Discharging, false); // the charger's low-battery output
+    expectRow({"LHL", ChargeState::Charging, true});
+    expectRow({"HLL", ChargeState::Charged, true});
+    expectRow({"LLL", ChargeState::Fault, true, ChargeFault::Temperature});
+    expectRow({"HHL", ChargeState::NoBattery, true});
+    expectRow({"HHH", ChargeState::Discharging, false});
+    expectRow({"LHH", ChargeState::Discharging, false}); // the charger's low-battery output
     // Unexpected patterns: from PG.
-    expectRow('H', 'L', 'H', ChargeState::Discharging, false);
-    expectRow('L', 'L', 'H', ChargeState::Discharging, false);
+    expectRow({"HLH", ChargeState::Discharging, false});
+    expectRow({"LLH", ChargeState::Discharging, false});
 }
 
 void test_pattern_must_hold_two_seconds(void)

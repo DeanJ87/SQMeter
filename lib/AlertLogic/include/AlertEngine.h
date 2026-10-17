@@ -287,6 +287,9 @@ namespace SQM
             void updateDew(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
             void updateSky(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
             void updateBattery(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
+            static void batteryOneShots(const BatteryInputs &battery, const AlertRules &rules, std::vector<Alert> &alerts);
+            void batteryLevels(const BatteryInputs &battery, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
+            void batteryRule(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
 
             bool started = false;
             uint32_t startedAt = 0;
@@ -312,7 +315,6 @@ namespace SQM
             bool belowLow = false;
             bool belowCritical = false;
             uint32_t batteryRuleFlags = 0; // the rule bits last seen
-
 
             // Imaging app: notified value = "lost"; disconnects wait out the
             // cooldown like any other change.

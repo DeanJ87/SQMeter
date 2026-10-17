@@ -1,5 +1,6 @@
 #include "DeviceCore.h"
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -88,7 +89,7 @@ namespace SQM
             const Readings::Battery &battery = readings.battery;
             v.battery.available = battery.present;
             v.battery.valid = battery.present && battery.status == Readings::Status::Ok && battery.percent.has_value();
-            v.battery.percent = v.battery.valid ? static_cast<uint8_t>(*battery.percent + 0.5) : 0;
+            v.battery.percent = v.battery.valid ? static_cast<uint8_t>(std::lround(*battery.percent)) : 0;
             v.battery.state = batteryStateText(battery);
 
             copyText(v.network.name, cfg.deviceName);

@@ -170,7 +170,8 @@ void test_battery_home_assistant_entities()
             TEST_ASSERT_FALSE(doc.containsKey("unit_of_measurement"));
         const std::string value = std::string("{{ ") + e.value + " if " + e.value + " is defined else none }}";
         TEST_ASSERT_EQUAL_STRING(value.c_str(), doc["value_template"]);
-        TEST_ASSERT_EQUAL_STRING("{{ 'online' if value_json.battery.status == 'ok' else 'offline' }}", doc["availability"][1]["value_template"]);
+        TEST_ASSERT_EQUAL_STRING(
+            "{{ 'online' if value_json.battery.status == 'ok' else 'offline' }}", doc["availability"][1]["value_template"]);
     }
     DynamicJsonDocument state(2048);
     deserializeJson(state, on[BATTERY_TOPIC + "battery_state/config"]);

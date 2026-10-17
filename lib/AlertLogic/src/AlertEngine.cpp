@@ -1,5 +1,6 @@
 #include "AlertEngine.h"
 
+#include <algorithm>
 #include <cstdio>
 
 namespace SQM
@@ -398,68 +399,6 @@ namespace SQM
             updateClients(in, rules, alerts);
             updateBattery(in, rules, step, alerts);
             return alerts;
-        }
-
-        // The battery (specs/032, contracts/integrations.md): low and critical
-        // once per crossing, re-armed BATTERY_HYSTERESIS_PERCENT above; charge
-        // complete and charge fault on entering; going to sleep and power
-        // restored at once; the safety rule's alert when its bits appear.
-        void AlertEngine::updateBattery(const AlertInputs &in, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts)
-        {
-            const BatteryInputs &b = in.battery;
-            if (b.present && b.shutdownStarted && rules.onBatteryShutdown)
-            {
-                alerts.push_back(make(
-                    AlertType::BatteryShutdown,
-                    "Going to sleep: battery empty",
-                    format("Battery at %.0f%% (sleep below %.0f%%). The device sleeps until USB power returns.",
-                           b.percent,
-                           rules.batteryShutdownPercent)));
-            }
-            if (b.present && b.powerRestored && rules.onPowerRestored)
-                alerts.push_back(make(AlertType::PowerRestored, "Power restored", "USB power is back; the battery is charging."));
-
-            if (b.present && b.valid)
-            {
-                const float low = rules.batteryLowPercent;
-                const float critical = rules.batteryCriticalPercent;
-                belowLow = belowLow ? b.percent < low + BATTERY_HYSTERESIS_PERCENT : b.percent < low;
-                belowCritical = belowCritical ? b.percent < critical + BATTERY_HYSTERESIS_PERCENT : b.percent < critical;
-                if (sync(batteryLow, belowLow, step.emit(rules.onBatteryLow)) && belowLow)
-                    alerts.push_back(make(
-                        AlertType::BatteryLow, "Battery low", format("Battery at %.0f%% (low below %.0f%%).", b.percent, low)));
-                if (sync(batteryCritical, belowCritical, step.emit(rules.onBatteryCritical)) && belowCritical)
-                    alerts.push_back(make(
-                        AlertType::BatteryCritical,
-                        "Battery critical",
-                        format("Battery at %.0f%% (critical below %.0f%%).", b.percent, critical)));
-            }
-            if (b.present)
-            {
-                if (sync(chargeComplete, b.charged, step.emit(rules.onChargeComplete)) && b.charged)
-                    alerts.push_back(make(AlertType::ChargeComplete, "Battery charged", "The battery is fully charged."));
-                if (sync(chargeFault, b.fault, step.emit(rules.onChargeFault)) && b.fault)
-                    alerts.push_back(make(
-                        AlertType::ChargeFault, "Charging fault", "The charger stopped: too cold or too hot to charge, or a bad cell."));
-            }
-
-            // The battery safety rule: when one of its reasons newly appears.
-            const uint32_t ruleBits = in.safetyKnown ? (in.unsafeFlags & BATTERY_RULE_FLAGS) : 0;
-            const uint32_t appeared = ruleBits & ~batteryRuleFlags;
-            batteryRuleFlags = ruleBits;
-            if (appeared != 0 && rules.onBatteryRule && step.pastGrace)
-            {
-                std::string reason = "Battery data missing";
-                for (const std::string &r : in.unsafeReasons)
-                    if (r.rfind("Battery", 0) == 0)
-                    {
-                        reason = r;
-                        break;
-                    }
-                Alert alert = make(AlertType::BatteryRule, "Battery: unsafe", reason);
-                alert.level = AlertLevel::Urgent;
-                alerts.push_back(std::move(alert));
-            }
         }
 
         // "Stopped checking" follows the usual cooldown; "is back" answers the

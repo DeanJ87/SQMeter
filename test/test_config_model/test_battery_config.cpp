@@ -37,7 +37,8 @@ namespace
     const char *const PG_MSG = "Battery: the USB power pin must be able to wake the device";
     const char *const LIMIT_MSG = "Safety: battery limit must be 2 to 50%";
 
-    const char *const EVENT_KEYS[] = {"battery_low", "battery_critical", "battery_shutdown", "power_restored", "charge_complete", "charge_fault"};
+    const char *const EVENT_KEYS[] = {
+        "battery_low", "battery_critical", "battery_shutdown", "power_restored", "charge_complete", "charge_fault"};
 
     // A charger wired to 25/26/27 (27 is free with the anemometer off).
     const char *const CHARGER = "\"stat1Pin\":25,\"stat2Pin\":26,\"pgPin\":27";
@@ -155,7 +156,8 @@ void test_battery_level_validation()
     TEST_ASSERT_EQUAL_STRING(CRITICAL_MSG, batteryReject(battery("\"criticalPercent\":1")).c_str());
     TEST_ASSERT_EQUAL_STRING("", batteryReject(battery("\"criticalPercent\":6")).c_str());
     TEST_ASSERT_EQUAL_STRING(SHUTDOWN_MSG, batteryReject(battery("\"criticalPercent\":5")).c_str());
-    TEST_ASSERT_EQUAL_STRING(SHUTDOWN_MSG, batteryReject(battery("\"shutdownPercent\":11,\"criticalPercent\":20,\"lowPercent\":30")).c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        SHUTDOWN_MSG, batteryReject(battery("\"shutdownPercent\":11,\"criticalPercent\":20,\"lowPercent\":30")).c_str());
     TEST_ASSERT_EQUAL_STRING(SHUTDOWN_MSG, batteryReject(battery("\"shutdownPercent\":1")).c_str());
     TEST_ASSERT_EQUAL_STRING("", batteryReject(battery("\"shutdownPercent\":2")).c_str());
 
@@ -200,8 +202,7 @@ void test_battery_pin_validation()
 
     // I2C-1 always; I2C-2 once wired.
     TEST_ASSERT_EQUAL_STRING(USED_MSG, batteryReject(battery("\"alertPin\":21")).c_str());
-    TEST_ASSERT_EQUAL_STRING(
-        USED_MSG, batteryReject("{\"sensor\":{\"i2c2SDA\":32,\"i2c2SCL\":33},\"battery\":{\"alertPin\":33}}").c_str());
+    TEST_ASSERT_EQUAL_STRING(USED_MSG, batteryReject("{\"sensor\":{\"i2c2SDA\":32,\"i2c2SCL\":33},\"battery\":{\"alertPin\":33}}").c_str());
     // GPS and rain while enabled.
     TEST_ASSERT_EQUAL_STRING("", batteryReject(battery("\"alertPin\":17")).c_str());
     TEST_ASSERT_EQUAL_STRING(USED_MSG, batteryReject("{\"gps\":{\"enabled\":true},\"battery\":{\"alertPin\":17}}").c_str());

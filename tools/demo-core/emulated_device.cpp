@@ -369,7 +369,8 @@ void EmulatedDevice::runAlerts()
     }
     const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
     const Core::NightState night = Core::night(snapshot, cfg, epoch);
-    const Core::AlertSources sources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)};
+    const Core::AlertSources sources{
+        cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)};
     Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, nowMs);
     in.nowSeconds = uptimeSeconds();
 

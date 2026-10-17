@@ -204,7 +204,8 @@ void test_pre_032_config_gets_battery_defaults()
         const size_t wantAt = want.find("\"battery\":{");
         const size_t gotAt = got.find("\"battery\":{");
         TEST_ASSERT_TRUE(wantAt != std::string::npos && gotAt != std::string::npos);
-        TEST_ASSERT_EQUAL_STRING(want.substr(wantAt, want.find('}', wantAt) - wantAt).c_str(), got.substr(gotAt, got.find('}', gotAt) - gotAt).c_str());
+        TEST_ASSERT_EQUAL_STRING(
+            want.substr(wantAt, want.find('}', wantAt) - wantAt).c_str(), got.substr(gotAt, got.find('}', gotAt) - gotAt).c_str());
         TEST_ASSERT_FALSE(loaded.alpaca.batteryEnabled);
         TEST_ASSERT_EQUAL_UINT8(10, loaded.alpaca.batteryMinPercent);
         TEST_ASSERT_TRUE(loaded.mqtt.publish.battery);

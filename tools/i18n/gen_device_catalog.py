@@ -29,6 +29,7 @@ SOURCES = {
     "lib/ConfigModel/src/ConfigValidate.cpp": ("settings", {"setError": [1]}),
     "lib/AlpacaLogic/src/SafetyEvaluator.cpp": ("safety", {"addReason": [2], "addReasonf": "fmt2"}),
     "lib/AlertLogic/src/AlertEngine.cpp": ("alert", {"make": [1, 2], "format": "fmt0"}),
+    "lib/AlertLogic/src/AlertBattery.cpp": ("alert", {"make": [1, 2], "format": "fmt0"}),
     "src/WebServer.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerApi.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerAlerts.cpp": ("api", {"createErrorJson": [0]}),

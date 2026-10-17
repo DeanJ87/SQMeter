@@ -36,7 +36,8 @@ namespace SQM
             pins.stat2 = digitalRead(settings.stat2Pin) == HIGH;
             pins.pg = digitalRead(settings.pgPin) == HIGH;
             const Battery::ChargerOutput out = Battery::decodeCharger(pins);
-            return out.usbPower.value_or(false) || out.state == Battery::ChargeState::Charging || out.state == Battery::ChargeState::Charged;
+            return out.usbPower.value_or(false) || out.state == Battery::ChargeState::Charging ||
+                   out.state == Battery::ChargeState::Charged;
         }
     } // namespace
 

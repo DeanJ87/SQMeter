@@ -5,10 +5,10 @@ implemented, before any 032 code); after values filled in by T025, T049 and T063
 
 | Budget | Limit | Before (3bc6f6a) | After | Delta |
 |---|---|---|---|---|
-| Firmware `esp32dev` (PlatformIO "Flash used") | OTA slot 1,835,008 B (SIZE-04) | 1,512,047 B (82.4%) | 1,527,423 B (83.2%) after US1 (T025); 1,538,739 B (83.9%) after US2-US3 (T049) | +26,692 B |
-| Firmware `esp32dev-ble` (PlatformIO "Flash used") | OTA slot 1,835,008 B; 95% line 1,743,257 B | 1,704,271 B (92.9%) | 1,719,643 B (93.7%) after US1 (T025); 1,731,207 B (94.3%, 12,050 B to the 95% line) after US2-US3 (T049) | +26,936 B: well over the 10 KB target |
-| `firmware.bin` `esp32dev` (`tools/firmware/flash_budget.py`) | 95% of the slot | 1,562,032 B (85.1%) | 1,577,856 B (86.0%) (T025); 1,589,552 B (86.6%) (T049) | +27,520 B |
-| `firmware.bin` `esp32dev-ble` (`tools/firmware/flash_budget.py`) | 95% of the slot | 1,757,136 B (95.8%) | 1,772,960 B (96.6%) (T025); 1,784,896 B (97.3%) (T049) | +27,760 B |
+| Firmware `esp32dev` (PlatformIO "Flash used") | OTA slot 1,835,008 B (SIZE-04) | 1,512,047 B (82.4%) | 1,527,423 B (83.2%) after US1 (T025); 1,538,739 B (83.9%) after US2-US3 (T049); 1,540,911 B (84.0%) at the end of round 1 (US4) | +28,864 B |
+| Firmware `esp32dev-ble` (PlatformIO "Flash used") | OTA slot 1,835,008 B; 95% line 1,743,257 B | 1,704,271 B (92.9%) | 1,719,643 B (93.7%) after US1 (T025); 1,731,207 B (94.3%) after US2-US3 (T049); 1,733,531 B (94.5%, 9,726 B to the 95% line) at the end of round 1 (US4) | +29,260 B: well over the 10 KB target |
+| `firmware.bin` `esp32dev` (`tools/firmware/flash_budget.py`) | 95% of the slot | 1,562,032 B (85.1%) | 1,577,856 B (86.0%) (T025); 1,589,552 B (86.6%) (T049); 1,591,952 B (86.8%) end of round 1 | +29,920 B |
+| `firmware.bin` `esp32dev-ble` (`tools/firmware/flash_budget.py`) | 95% of the slot | 1,757,136 B (95.8%) | 1,772,960 B (96.6%) (T025); 1,784,896 B (97.3%) (T049); 1,787,440 B (97.4%) end of round 1 | +30,304 B |
 | Static RAM `esp32dev` | | 52,812 B | 53,300 B (T025); 53,356 B (T049) | +544 B |
 | Static RAM `esp32dev-ble` | | 63,084 B | 63,572 B (T025); 63,644 B (T049) | +560 B |
 | UI gzip JS+CSS | growth <= 10 KB (SIZE-02, `tools/ui/size_check.py`) | 122,631 B (`tools/ui/size-baseline.json`) | | |

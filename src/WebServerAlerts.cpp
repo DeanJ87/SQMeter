@@ -102,7 +102,8 @@ namespace SQM
         const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
         seedAlertEngine();
         const Core::NightState night = computeNight(snapshot, cfg);
-        const Core::AlertSources sources{cfg, obs, night, status, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
+        const Core::AlertSources sources{
+            cfg, obs, night, status, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
         Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, millis());
         if (powerManager != nullptr)
         {

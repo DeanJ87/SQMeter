@@ -80,7 +80,7 @@ void test_shutdown_needs_two_valid_reads(void)
     PowerPolicy p;
     p.update(read(0, 9.0f));
     TEST_ASSERT_FALSE(p.update(read(10000, 5.0f)).shutdownStarted);
-    TEST_ASSERT_FALSE(p.update(tick(12000)).shutdownStarted); // no read: no count
+    TEST_ASSERT_FALSE(p.update(tick(12000)).shutdownStarted);       // no read: no count
     TEST_ASSERT_FALSE(p.update(read(20000, 5.1f)).shutdownStarted); // above: reset
     TEST_ASSERT_FALSE(p.update(read(30000, 5.0f)).shutdownStarted);
     PolicyEvents e = p.update(read(40000, 4.8f));

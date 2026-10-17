@@ -209,9 +209,9 @@ namespace SQM
         class PowerPolicy
         {
         public:
-            static constexpr float RECOVERY_PERCENT = 5.0f;  // above critical to leave power saving
-            static constexpr uint8_t READS_TO_SHUTDOWN = 2;  // consecutive valid reads at or below shutdown
-            static constexpr uint32_t MAX_EXTRA_MS = 15000;  // past the warning time, sleep regardless
+            static constexpr float RECOVERY_PERCENT = 5.0f; // above critical to leave power saving
+            static constexpr uint8_t READS_TO_SHUTDOWN = 2; // consecutive valid reads at or below shutdown
+            static constexpr uint32_t MAX_EXTRA_MS = 15000; // past the warning time, sleep regardless
 
             PolicyEvents update(const PolicyInput &input);
             PowerState state() const { return current; }
@@ -219,6 +219,11 @@ namespace SQM
             uint32_t secondsLeft(uint32_t nowMs, uint16_t graceSeconds) const;
 
         private:
+            void fromNormal(const PolicyInput &in, PolicyEvents &events);
+            void fromSaving(const PolicyInput &in, PolicyEvents &events);
+            void fromPending(const PolicyInput &in, PolicyEvents &events);
+            void backToNormal(PolicyEvents &events);
+
             PowerState current = PowerState::Normal;
             uint8_t belowShutdown = 0;
             uint32_t pendingSinceMs = 0;

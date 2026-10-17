@@ -413,7 +413,15 @@ namespace SQM
                  "V",
                  "voltage",
                  nullptr},
-                {"sensor", "battery_state", "Charging state", Group::Battery, "battery", "value_json.battery.state", nullptr, "enum", nullptr},
+                {"sensor",
+                 "battery_state",
+                 "Charging state",
+                 Group::Battery,
+                 "battery",
+                 "value_json.battery.state",
+                 nullptr,
+                 "enum",
+                 nullptr},
                 {"sensor",
                  "battery_time_to_empty",
                  "Battery time to empty",
@@ -429,33 +437,22 @@ namespace SQM
 
             bool enabled(Group group, const Groups &groups, bool safety)
             {
-                switch (group)
-                {
-                case Group::Sky:
-                    return groups.sky;
-                case Group::SkySqm:
-                    return groups.sky && groups.skySqm;
-                case Group::SkySqml:
-                    return groups.sky && groups.skySqml;
-                case Group::SkyPair:
-                    return groups.sky && groups.skySqm && groups.skySqml;
-                case Group::Environment:
-                    return groups.environment;
-                case Group::Clouds:
-                    return groups.clouds;
-                case Group::Rain:
-                    return groups.rain;
-                case Group::Wind:
-                    return groups.wind;
-                case Group::Battery:
-                    return groups.battery && groups.batteryEntities;
-                case Group::Safety:
-                    return safety;
-                case Group::AlertsSwitch:
-                    return groups.alertsSwitch;
-                default:
-                    return true;
-                }
+                // In Group order.
+                const bool on[] = {
+                    groups.sky,                                    // Sky
+                    groups.sky && groups.skySqm,                   // SkySqm
+                    groups.sky && groups.skySqml,                  // SkySqml
+                    groups.sky && groups.skySqm && groups.skySqml, // SkyPair
+                    groups.environment,                            // Environment
+                    groups.clouds,                                 // Clouds
+                    groups.rain,                                   // Rain
+                    groups.wind,                                   // Wind
+                    groups.battery && groups.batteryEntities,      // Battery (spec 032)
+                    safety,                                        // Safety
+                    groups.alertsSwitch,                           // AlertsSwitch
+                };
+                const auto index = static_cast<size_t>(group);
+                return index < sizeof(on) / sizeof(on[0]) ? on[index] : true;
             }
         } // namespace
 

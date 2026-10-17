@@ -42,7 +42,12 @@ RANGES = "test/fixtures/config-ranges.json"
 # The device's rules, and the UI's (configSchema.ts and the section schemas it imports).
 CONSTRAINT_SOURCES = {
     "lib/ConfigModel/src/ConfigValidate.cpp": ["lib/ConfigModel/src/ConfigValidate.cpp"],
-    "web/src/validation/": ["web/src/validation/configSchema.ts", "web/src/validation/displaySchema.ts", "web/src/validation/batterySchema.ts", "web/src/validation/i2cSchema.ts"],
+    "web/src/validation/": [
+        "web/src/validation/configSchema.ts",
+        "web/src/validation/displaySchema.ts",
+        "web/src/validation/batterySchema.ts",
+        "web/src/validation/i2cSchema.ts",
+    ],
 }
 
 # Device code scanned for undeclared dependencies and markers.

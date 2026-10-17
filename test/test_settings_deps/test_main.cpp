@@ -391,8 +391,8 @@ void test_battery_needs_a_gauge()
 {
     Config cfg = saveAndRestart(Config::createDefault(), R"({"alerts":{"enabled":true},"alpaca":{"batteryEnabled":true}})");
     Deps::Facts f = healthy();
-    for (const char *setting : {"battery.enabled", "battery.lowPercent", "battery.powerSaving", "alerts.events.battery_low.level",
-                                "alpaca.batteryEnabled"})
+    for (const char *setting :
+         {"battery.enabled", "battery.lowPercent", "battery.powerSaving", "alerts.events.battery_low.level", "alpaca.batteryEnabled"})
         TEST_ASSERT_EQUAL_STRING_MESSAGE("active", stateOf(cfg, f, setting).c_str(), setting);
     TEST_ASSERT_EQUAL_STRING("off", stateOf(cfg, f, "battery.capacityMah").c_str());
 

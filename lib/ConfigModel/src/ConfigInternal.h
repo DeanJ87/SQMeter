@@ -223,4 +223,8 @@ namespace SQM::ConfigDetail
         JsonObject object;
         std::string sectionPath;
     };
+
+    // The optional devices' sections (ConfigJsonInDevices.cpp).
+    bool applyDisplay(const Section &display, DisplayConfig &d, std::string *error);
+    void applyBattery(const Section &battery, BatteryConfig &b);
 } // namespace SQM::ConfigDetail

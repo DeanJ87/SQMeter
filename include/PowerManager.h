@@ -43,7 +43,7 @@ namespace SQM
 
     private:
         static constexpr uint64_t TIMER_WAKE_US = 60ULL * 60ULL * 1000000ULL; // hourly check without a PG pin
-        static constexpr uint32_t RESTORED_ALERT_AFTER_MS = 120000;          // or once WiFi is joined
+        static constexpr uint32_t RESTORED_ALERT_AFTER_MS = 120000;           // or once WiFi is joined
 
         [[noreturn]] void sleep(const BatteryConfig &settings);
 

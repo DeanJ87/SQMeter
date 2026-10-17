@@ -90,48 +90,34 @@ namespace SQM
 
         const AlertsConfig::EventSetting *eventSettingFor(const AlertsConfig &a, Alerts::AlertType type)
         {
-            switch (type)
-            {
-            case Alerts::AlertType::Unsafe:
-                return &a.unsafe;
-            case Alerts::AlertType::Safe:
-                return &a.safe;
-            case Alerts::AlertType::RainStarted:
-                return &a.rainStarted;
-            case Alerts::AlertType::RainStopped:
-                return &a.rainStopped;
-            case Alerts::AlertType::SensorFault:
-            case Alerts::AlertType::LensFault:
-                return &a.sensorFault;
-            case Alerts::AlertType::SensorRecovered:
-                return &a.sensorRecovered;
-            case Alerts::AlertType::DewRisk:
-                return &a.dewRisk;
-            case Alerts::AlertType::ClearSky:
-                return &a.clearSky;
-            case Alerts::AlertType::CloudedOver:
-                return &a.cloudedOver;
-            case Alerts::AlertType::ClientLost:
-                return &a.clientLost;
-            case Alerts::AlertType::ClientBack:
-                return &a.clientBack;
-            case Alerts::AlertType::ClientDisconnected:
-                return &a.clientDisconnected;
-            case Alerts::AlertType::BatteryLow:
-                return &a.batteryLow;
-            case Alerts::AlertType::BatteryCritical:
-                return &a.batteryCritical;
-            case Alerts::AlertType::BatteryShutdown:
-                return &a.batteryShutdown;
-            case Alerts::AlertType::PowerRestored:
-                return &a.powerRestored;
-            case Alerts::AlertType::ChargeComplete:
-                return &a.chargeComplete;
-            case Alerts::AlertType::ChargeFault:
-                return &a.chargeFault;
-            default:
-                return nullptr;
-            }
+            using Alerts::AlertType;
+            using Setting = AlertsConfig::EventSetting AlertsConfig::*;
+            // The lens fault is worded and levelled as a sensor fault.
+            static constexpr std::pair<AlertType, Setting> SETTINGS[] = {
+                {AlertType::Unsafe, &AlertsConfig::unsafe},
+                {AlertType::Safe, &AlertsConfig::safe},
+                {AlertType::RainStarted, &AlertsConfig::rainStarted},
+                {AlertType::RainStopped, &AlertsConfig::rainStopped},
+                {AlertType::SensorFault, &AlertsConfig::sensorFault},
+                {AlertType::LensFault, &AlertsConfig::sensorFault},
+                {AlertType::SensorRecovered, &AlertsConfig::sensorRecovered},
+                {AlertType::DewRisk, &AlertsConfig::dewRisk},
+                {AlertType::ClearSky, &AlertsConfig::clearSky},
+                {AlertType::CloudedOver, &AlertsConfig::cloudedOver},
+                {AlertType::ClientLost, &AlertsConfig::clientLost},
+                {AlertType::ClientBack, &AlertsConfig::clientBack},
+                {AlertType::ClientDisconnected, &AlertsConfig::clientDisconnected},
+                {AlertType::BatteryLow, &AlertsConfig::batteryLow},
+                {AlertType::BatteryCritical, &AlertsConfig::batteryCritical},
+                {AlertType::BatteryShutdown, &AlertsConfig::batteryShutdown},
+                {AlertType::PowerRestored, &AlertsConfig::powerRestored},
+                {AlertType::ChargeComplete, &AlertsConfig::chargeComplete},
+                {AlertType::ChargeFault, &AlertsConfig::chargeFault},
+            };
+            for (const auto &entry : SETTINGS)
+                if (entry.first == type)
+                    return &(a.*entry.second);
+            return nullptr;
         }
 
         namespace
