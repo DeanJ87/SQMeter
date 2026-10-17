@@ -70,7 +70,7 @@ namespace SQM::Core
 {
     SkyReadings skyReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs)
     {
-        const uint32_t staleAfter = cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
+        const uint32_t staleAfter = Detail::staleAfterMs(snapshot, cfg);
         SkyReadings out;
         out.source = cfg.sky.authoritative;
         for (size_t i = 0; i < SKY_ROLE_COUNT; ++i)

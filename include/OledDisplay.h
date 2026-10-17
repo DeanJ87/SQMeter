@@ -71,7 +71,9 @@ namespace SQM
         bool enabled() const { return settings.enabled; }
         // For /api/status and the settings dependencies; safe from any task.
         bool detected() const { return detectedNow.load(); }
-        bool forcedOff() const { return false; } // power saving: spec 032
+        // Power saving (spec 032): the display stays off; safe from any task.
+        bool forcedOff() const { return forcedOffNow.load(); }
+        void setForcedOff(bool off) { forcedOffNow = off; }
         Core::DisplayStatus status() const;
 
     private:
@@ -82,6 +84,7 @@ namespace SQM
         bool sent(bool ok, uint32_t nowMs);
         uint8_t availableMask() const;
 
+        std::atomic<bool> forcedOffNow{false};
         OledTransport transport;
         Display::Settings settings;
         std::unique_ptr<uint8_t[]> buffer; // 1 KB, only while enabled (FR-016)

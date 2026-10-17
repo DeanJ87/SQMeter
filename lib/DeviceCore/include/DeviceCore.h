@@ -94,6 +94,9 @@ namespace SQM
         uint32_t rg15LastUpdate = 0;
         WindReading wind;
         BatterySnapshot battery;
+        // The sensor read interval in use when longer than the setting:
+        // power saving slows reads (spec 032); 0 = the setting.
+        uint32_t readIntervalMs = 0;
         uint32_t dataTimestamp = 0;
         uint32_t capturedAt = 0;
 

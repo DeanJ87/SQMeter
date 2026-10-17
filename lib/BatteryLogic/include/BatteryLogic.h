@@ -176,5 +176,52 @@ namespace SQM
         };
 
         Estimate estimate(const EstimateInput &input);
+
+        // The power policy (research D7): Normal -> Saving below critical
+        // (power saving on, not charging) -> ShutdownPending after two valid
+        // reads at or below the shutdown level -> sleep once the warning time
+        // has passed and the alert dispatcher is idle (or 15 s later at most).
+        // USB or charging always returns to Normal. Missing or estimating data
+        // never moves it towards sleep.
+        struct PolicyInput
+        {
+            bool newRead = false; // a gauge read since the last update
+            bool valid = false;   // that read has a percent (ok, not estimating)
+            float percent = 0.0f;
+            ChargeState state = ChargeState::Unknown;
+            std::optional<bool> usbPower;
+            bool powerSaving = true;
+            uint8_t criticalPercent = 10;
+            uint8_t shutdownPercent = 5;
+            uint16_t graceSeconds = 30;
+            bool dispatcherIdle = true;
+            uint32_t nowMs = 0;
+        };
+
+        struct PolicyEvents
+        {
+            bool enteredSaving = false;
+            bool shutdownStarted = false;
+            bool powerRestored = false;
+            bool sleepNow = false;
+        };
+
+        class PowerPolicy
+        {
+        public:
+            static constexpr float RECOVERY_PERCENT = 5.0f;  // above critical to leave power saving
+            static constexpr uint8_t READS_TO_SHUTDOWN = 2;  // consecutive valid reads at or below shutdown
+            static constexpr uint32_t MAX_EXTRA_MS = 15000;  // past the warning time, sleep regardless
+
+            PolicyEvents update(const PolicyInput &input);
+            PowerState state() const { return current; }
+            // Seconds of the warning time left (0 when not pending).
+            uint32_t secondsLeft(uint32_t nowMs, uint16_t graceSeconds) const;
+
+        private:
+            PowerState current = PowerState::Normal;
+            uint8_t belowShutdown = 0;
+            uint32_t pendingSinceMs = 0;
+        };
     } // namespace Battery
 } // namespace SQM

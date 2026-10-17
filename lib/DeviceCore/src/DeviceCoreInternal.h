@@ -6,6 +6,14 @@
 
 namespace SQM::Core::Detail
 {
+    // A reading is stale this long after the read interval in use (power
+    // saving reads less often, spec 032).
+    inline uint32_t staleAfterMs(const SensorSnapshot &snapshot, const Config &cfg)
+    {
+        const uint32_t interval = snapshot.readIntervalMs > cfg.sensor.readIntervalMs ? snapshot.readIntervalMs : cfg.sensor.readIntervalMs;
+        return interval + SENSOR_STALE_GRACE_MS;
+    }
+
     // ok unless the driver reports a problem or the last good reading is too old.
     inline Readings::Status readingStatus(SensorStatus status, bool initialized, uint32_t lastUpdate, uint32_t now, uint32_t staleAfter)
     {

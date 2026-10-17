@@ -336,3 +336,41 @@ void test_battery_event_settings_and_samples()
     TEST_ASSERT_EQUAL_UINT32(Alpaca::UnsafeShutdown, Core::sampleAlert("battery_shutdown")->bleFlags);
     TEST_ASSERT_NULL(Core::eventSettingFor(cfg.alerts, Alerts::AlertType::BatteryRule));
 }
+
+// Going to sleep at its default Wake level rings phones with bit 16 (spec 032 US3).
+void test_going_to_sleep_rings_with_the_shutdown_bit()
+{
+    AlertRig rig;
+    rig.cfg = Config::createDefault();
+    rig.cfg.alerts.enabled = true;
+    rig.status.evaluatedAtMs = NOW;
+    rig.status.isSafe = rig.status.rawSafe = true;
+    rig.snapshot = withGauge(4.0F);
+    Core::derive(rig.snapshot, rig.cfg);
+    rig.obs = Core::observingConditions(rig.snapshot, rig.cfg, NOW);
+    const Core::AlertSources sources{rig.cfg, rig.obs, rig.night, rig.status};
+    Alerts::AlertInputs in = Core::alertInputs(sources, rig.snapshot, NOW);
+    in.battery.shutdownStarted = true; // during the start-up grace: sent anyway
+    const Core::AlertStep step = Core::runAlerts(rig.engine, in, Core::alertRules(rig.cfg), sources, Core::LocalClock{});
+    const Alerts::Alert *sleep = find(step, Alerts::AlertType::BatteryShutdown);
+    TEST_ASSERT_NOT_NULL(sleep);
+    TEST_ASSERT_EQUAL(static_cast<int>(Alerts::AlertLevel::Wake), static_cast<int>(sleep->level));
+    TEST_ASSERT_TRUE((step.alarmFlags & Alpaca::UnsafeShutdown) != 0);
+}
+
+// Power saving reads less often; nothing goes stale for it (spec 032 FR-010).
+void test_power_saving_interval_keeps_readings_fresh()
+{
+    const Config cfg = Config::createDefault();
+    SensorSnapshot s;
+    s.bmeInitialized = true;
+    s.bme.status = SensorStatus::Ok;
+    s.bme.temperature = 10.0F;
+    s.bme.humidity = 50.0F;
+    s.bme.pressure = 1000.0F;
+    s.bmeLastUpdate = s.bme.timestamp = NOW - 20000;
+    s.readIntervalMs = 30000;
+    TEST_ASSERT_TRUE(readingsOf(s, cfg).environment.status == Readings::Status::Ok);
+    s.readIntervalMs = 0;
+    TEST_ASSERT_TRUE(readingsOf(s, cfg).environment.status == Readings::Status::Stale);
+}

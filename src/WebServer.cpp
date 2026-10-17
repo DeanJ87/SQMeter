@@ -365,6 +365,11 @@ namespace SQM
         }
     }
 
+    bool WebServer::alertsIdle() const
+    {
+        return alertDispatcher == nullptr || alertDispatcher->idle();
+    }
+
     void WebServer::refreshSensorSnapshot(uint32_t dataTimestampMs)
     {
         SensorSnapshot next;
@@ -396,6 +401,12 @@ namespace SQM
         next.battery.initialized = batterySensor.isInitialized();
         next.battery.lastUpdate = batterySensor.getLastUpdateTime();
         next.battery.reading = batterySensor.getReading();
+        if (powerManager != nullptr)
+        {
+            next.battery.power = powerManager->state();
+            next.battery.shutdownInSeconds = powerManager->shutdownInSeconds();
+            next.readIntervalMs = powerManager->sensorIntervalMs(getConfigCallback());
+        }
         next.dataTimestamp = dataTimestampMs;
         next.capturedAt = millis();
 

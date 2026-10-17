@@ -9,6 +9,7 @@
 #include "sensors/RG15Sensor.h"
 #include "sensors/WindSensor.h"
 #include "sensors/MAX17048Sensor.h"
+#include "PowerManager.h"
 #include "DeviceCore.h"
 #include "TimeManager.h"
 #include "MQTTClient.h"
@@ -72,6 +73,11 @@ namespace SQM
         void begin();
         void handle();
         void refreshSensorSnapshot(uint32_t dataTimestampMs);
+        // The battery power policy (spec 032): its state for the snapshot and
+        // its one-shots for the alerts. Set once at start-up.
+        void setPowerManager(PowerManager *manager) { powerManager = manager; }
+        // No alert queued or being delivered (the shutdown waits for it).
+        bool alertsIdle() const;
         // The driver of a sky sensor (spec 030).
         TSL2591Sensor &skySensor(SkyRole role) const { return role == SkyRole::Sqml ? tslSensorL : tslSensor; }
         SafetyStatus getSafetyStatus() const;
@@ -126,6 +132,7 @@ namespace SQM
         RG15Sensor &rg15Sensor;
         WindSensor &windSensor;
         MAX17048Sensor &batterySensor;
+        PowerManager *powerManager = nullptr;
         TimeManager *timeManager;
         MQTTClient *mqttClient;
         GetConfigCallback getConfigCallback;

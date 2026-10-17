@@ -22,6 +22,7 @@
 #include "sensors/MAX17048Sensor.h"
 #include "FirmwareMarker.h"
 #include "OledDisplay.h"
+#include "PowerManager.h"
 
 using namespace SQM;
 
@@ -37,6 +38,7 @@ static std::unique_ptr<GPSSensor> gpsSensor;
 static std::unique_ptr<RG15Sensor> rg15Sensor;
 static std::unique_ptr<WindSensor> windSensor;
 static std::unique_ptr<MAX17048Sensor> batteryGauge; // spec 032; probed once, read only with monitoring on
+static std::unique_ptr<PowerManager> powerManager;   // spec 032: power saving and the battery sleep
 static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
@@ -341,6 +343,7 @@ void setupBattery()
 {
     batteryGauge = std::make_unique<MAX17048Sensor>(Wire);
     batteryGauge->begin(config.battery);
+    powerManager = std::make_unique<PowerManager>(*batteryGauge);
 }
 
 void setupDisplay()
@@ -376,6 +379,7 @@ void startServices()
     const WebServer::Sensors sensors{*tslSensor, *tslSensorL, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor, *windSensor, *batteryGauge};
     webServer = std::make_unique<WebServer>(sensors, timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
     webServer->setDisplay(oled.get());
+    webServer->setPowerManager(powerManager.get());
     webServer->begin();
     webServer->refreshSensorSnapshot(lastSensorUpdate);
     feedDisplay();
@@ -403,6 +407,8 @@ void setup()
     loadConfig();
     mountFilesystem();
     setupI2C();
+    // After a battery sleep woken by the hourly timer: back to sleep if still empty (spec 032).
+    PowerManager::bootCheck(Wire, config.battery);
     setupSensors();
     setupBattery();
     setupDisplay();
@@ -478,11 +484,17 @@ void loop()
             sky->tick(now);
     }
 
-    // The gauge every 5 s and the charger lines every 500 ms (spec 032).
+    // The gauge every 5 s and the charger lines every 500 ms; the power
+    // policy slows reads, turns the display off and sleeps when empty (spec 032).
     batteryGauge->tick(now, config.battery);
+    const Battery::PowerState powerBefore = powerManager->state();
+    powerManager->tick(now, config.battery, webServer->alertsIdle(), wifiManager->isConnected());
+    oled->setForcedOff(powerManager->saving());
+    // A change of power state reaches the verdict at once, not at the next (slow) read.
+    const bool powerChanged = powerManager->state() != powerBefore;
 
     // Update slower sensors and publish periodically.
-    if (now - lastSensorUpdate >= config.sensor.readIntervalMs)
+    if (powerChanged || now - lastSensorUpdate >= powerManager->sensorIntervalMs(config))
     {
         bmeSensor->update();
         mlxSensor->update();

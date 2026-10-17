@@ -104,6 +104,12 @@ namespace SQM
         const Core::NightState night = computeNight(snapshot, cfg);
         const Core::AlertSources sources{cfg, obs, night, status, Core::skyReadings(snapshot, cfg, millis())};
         Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, millis());
+        if (powerManager != nullptr)
+        {
+            // The power policy's one-shots (spec 032): going to sleep, power restored.
+            in.battery.shutdownStarted = powerManager->takeShutdownStarted();
+            in.battery.powerRestored = powerManager->takePowerRestored();
+        }
         Core::LocalClock clock;
         localClock(clock.time, clock.date);
         watchClients(in, cfg, clock.time);

@@ -7,6 +7,7 @@ void run_types_tests(void);
 void run_gauge_tests(void);
 void run_charger_tests(void);
 void run_estimate_tests(void);
+void run_power_policy_tests(void);
 
 int main(int, char **)
 {
@@ -15,5 +16,6 @@ int main(int, char **)
     run_gauge_tests();
     run_charger_tests();
     run_estimate_tests();
+    run_power_policy_tests();
     return UNITY_END();
 }

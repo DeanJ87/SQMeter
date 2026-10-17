@@ -102,17 +102,17 @@ phone alarm options.
 
 ### Tests
 
-- [ ] T042 [P] [US3] Native tests first in test/test_battery_logic/test_power_policy.cpp: Normal → Saving below critical (power saving on, not charging) with `enteredSaving`; Saving → Normal at critical + 5 or charging/USB with `powerRestored`; shutdown needs 2 consecutive valid reads ≤ shutdown; ShutdownPending → `sleepNow` after the grace and dispatcher idle, or at grace + 15 s regardless; USB during the grace cancels with `powerRestored`; missing/estimating data never advances towards sleep; power saving off → stays Normal; millis wrap
-- [ ] T043 [P] [US3] Native tests first in test/test_alert_logic/: going-to-sleep and power-restored one-shots are sent during the startup grace and ignore the cooldown; Wake level going-to-sleep adds bit 16 to `alarmFlags` (in test/test_device_core/)
+- [X] T042 [P] [US3] Native tests first in test/test_battery_logic/test_power_policy.cpp: Normal → Saving below critical (power saving on, not charging) with `enteredSaving`; Saving → Normal at critical + 5 or charging/USB with `powerRestored`; shutdown needs 2 consecutive valid reads ≤ shutdown; ShutdownPending → `sleepNow` after the grace and dispatcher idle, or at grace + 15 s regardless; USB during the grace cancels with `powerRestored`; missing/estimating data never advances towards sleep; power saving off → stays Normal; millis wrap
+- [X] T043 [P] [US3] Native tests first in test/test_alert_logic/: going-to-sleep and power-restored one-shots are sent during the startup grace and ignore the cooldown; Wake level going-to-sleep adds bit 16 to `alarmFlags` (in test/test_device_core/)
 
 ### Implementation
 
-- [ ] T044 [US3] `PowerPolicy` in lib/BatteryLogic/include/BatteryLogic.h and lib/BatteryLogic/src/PowerPolicy.cpp; T042 passes
-- [ ] T045 [US3] One-shot battery inputs in lib/AlertLogic/src/AlertEngine.cpp and alarm flag in lib/DeviceCore/src/DeviceAlerts.cpp; T043 passes
-- [ ] T046 [US3] `AlertDispatcher::idle()` (queue empty and no delivery running) in include/AlertDispatcher.h and src/AlertDispatcher.cpp
-- [ ] T047 [US3] Power manager: apply the policy each gauge read — slow the sensor/snapshot interval to `saveReadIntervalSeconds`, set the spec 031 display `forcedOff`, feed `shutdownPending` to the safety inputs, wait out the grace, then `esp_sleep_enable_ext0_wakeup(pgPin, 0)` when set + a 60 min timer wake and `esp_deep_sleep_start()`; RTC flags `sleptForBattery`/wake cause, in include/PowerManager.h and src/PowerManager.cpp
-- [ ] T048 [US3] Early boot check in src/main.cpp right after `setupI2C()`: after a battery timer wake, read the gauge (and charger pins); still ≤ shutdown and no USB/charging → back to sleep silently; PG wake or charging → normal boot and a power-restored alert once WiFi is joined or after 2 min; `powerSaving` in status/readings from the policy
-- [ ] T049 [US3] Both firmware builds pass with `-Werror`; record sizes in specs/032-battery/budgets.md
+- [X] T044 [US3] `PowerPolicy` in lib/BatteryLogic/include/BatteryLogic.h and lib/BatteryLogic/src/PowerPolicy.cpp; T042 passes
+- [X] T045 [US3] One-shot battery inputs in lib/AlertLogic/src/AlertEngine.cpp and alarm flag in lib/DeviceCore/src/DeviceAlerts.cpp; T043 passes
+- [X] T046 [US3] `AlertDispatcher::idle()` (queue empty and no delivery running) in include/AlertDispatcher.h and src/AlertDispatcher.cpp
+- [X] T047 [US3] Power manager: apply the policy each gauge read — slow the sensor/snapshot interval to `saveReadIntervalSeconds`, set the spec 031 display `forcedOff`, feed `shutdownPending` to the safety inputs, wait out the grace, then `esp_sleep_enable_ext0_wakeup(pgPin, 0)` when set + a 60 min timer wake and `esp_deep_sleep_start()`; RTC flags `sleptForBattery`/wake cause, in include/PowerManager.h and src/PowerManager.cpp
+- [X] T048 [US3] Early boot check in src/main.cpp right after `setupI2C()`: after a battery timer wake, read the gauge (and charger pins); still ≤ shutdown and no USB/charging → back to sleep silently; PG wake or charging → normal boot and a power-restored alert once WiFi is joined or after 2 min; `powerSaving` in status/readings from the policy
+- [X] T049 [US3] Both firmware builds pass with `-Werror`; record sizes in specs/032-battery/budgets.md
 
 ## Phase 6: User Story 4 - Integrations know the battery (P2)
 

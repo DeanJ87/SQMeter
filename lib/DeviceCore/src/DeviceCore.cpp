@@ -323,7 +323,7 @@ namespace SQM
 
         Readings::Snapshot buildReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now, int64_t epoch)
         {
-            const uint32_t staleAfter = cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
+            const uint32_t staleAfter = Detail::staleAfterMs(snapshot, cfg);
             Readings::Snapshot r;
             r.timeValid = epoch >= CLOCK_VALID_EPOCH;
             r.timestamp = r.timeValid ? epoch : 0;
@@ -454,7 +454,7 @@ namespace SQM
 
         Alpaca::ObservingConditionsSnapshot observingConditions(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)
         {
-            const uint32_t staleAfter = cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
+            const uint32_t staleAfter = Detail::staleAfterMs(snapshot, cfg);
             auto sourceState = [now, staleAfter](bool present, SensorStatus status, uint32_t lastUpdate)
             {
                 Alpaca::SourceState state;
