@@ -107,7 +107,7 @@ on at a known night.
 ### Tests
 
 - [X] T035 [P] [US4] Native tests first in test/test_display_logic/test_controller.cpp: wake request turns on for the timeout; blank turns off until the next wake; button press while off wakes, while on advances the page and restarts the timeout; requests ignored while disabled/not detected/forced off
-- [ ] T036 [P] [US4] Vitest first for the wake action (`POST /api/display/wake`, success and each 409 message) in web/src/components/__tests__/DeviceTab.test.tsx
+- [X] T036 [P] [US4] Vitest first for the wake action (`POST /api/display/wake`, success and each 409 message) in web/src/components/__tests__/DeviceTab.test.tsx
 
 ### Implementation
 
@@ -117,10 +117,10 @@ on at a known night.
 
 ## Phase 7: UI (US1-US4 settings)
 
-- [ ] T040 Mockup of the Settings → Device → Display card (detected, not detected, disabled, stay-on note, validation error) and the System Sensors row from contracts/ui.md in specs/031-oled-display/mockups/ (390 px and 1280 px) with a README; owner review recorded before T042-T044 are built
+- [X] T040 Mockup of the Settings → Device → Display card (detected, not detected, disabled, stay-on note, validation error) and the System Sensors row from contracts/ui.md in specs/031-oled-display/mockups/ (390 px and 1280 px) with a README; owner review recorded before T042-T044 are built (round 1: wireframes in `mockups/README.md`; round 2: the card and System row were built from them, as spec 030 did, so FR-015 exists; the owner's sign-off is still to be recorded in the README, and any change it asks for is a follow-up)
 - [X] T041 [P] Web types and mocks: `DisplayConfig` in web/src/types/config.ts, `Status.display` in web/src/types/status.ts, Zod in web/src/validation/configSchema.ts, defaults in web/src/components/settings/defaults.ts, payload in web/src/components/settings/payload.ts, MSW handlers for `/api/display/wake|blank` and status in web/src/mocks/
-- [ ] T042 Vitest first for the Display card states (detected, not detected with the D-43 reason, disabled, stay-on note, one page selected disables the interval, validation error) in web/src/components/settings/__tests__/DisplayCard.test.tsx; then the card per contracts/ui.md in web/src/components/settings/DisplayCard.tsx, added to web/src/components/settings/DeviceTab.tsx after Bluetooth; wake action in web/src/hooks/useDeviceActions.ts (T036 passes); `device#display` anchor works from settings-deps fix links
-- [ ] T043 System page "Display" row in the Sensors card in web/src/components/System.tsx with a Vitest in web/src/components/__tests__/System.test.tsx
+- [X] T042 Vitest first for the Display card states (detected, not detected with the D-43 reason, disabled, stay-on note, one page selected disables the interval, validation error) in web/src/components/settings/__tests__/DisplayCard.test.tsx; then the card per contracts/ui.md in web/src/components/settings/DisplayCard.tsx, added to web/src/components/settings/DeviceTab.tsx after Bluetooth; wake action in web/src/hooks/useDeviceActions.ts (T036 passes); `device#display` anchor works from settings-deps fix links
+- [X] T043 System page "Display" row in the Sensors card in web/src/components/System.tsx with a Vitest in web/src/components/__tests__/System.test.tsx
 - [X] T044 Dashboard inventory: `status.display.*` and the D-43..D-45 ids recorded as not shown with reason in web/src/dashboard/inventory.json; `tools/dashboard/check.py` passes
 
 ## Phase 8: Polish & cross-cutting
@@ -133,7 +133,7 @@ on at a known night.
 
 ### Strings (FR-019)
 
-- [ ] T048 Every new UI string in web/src/i18n/en.json with a context note in web/src/i18n/en.context.json; translations written for all 13 locales in web/src/i18n/locales/*.json in each file's register; device-built messages (validation, route errors, `display-missing`) via `python3 tools/i18n/gen_device_catalog.py`; `python3 tools/i18n/translate.py --all --record`, `node tools/i18n/check.mjs`, `gen_device_catalog.py --check` pass (no paid API)
+- [X] T048 Every new UI string in web/src/i18n/en.json with a context note in web/src/i18n/en.context.json; translations written for all 13 locales in web/src/i18n/locales/*.json in each file's register; device-built messages (validation, route errors, `display-missing`) via `python3 tools/i18n/gen_device_catalog.py`; `python3 tools/i18n/translate.py --all --record`, `node tools/i18n/check.mjs`, `gen_device_catalog.py --check` pass (no paid API)
 
 ### Docs (FR-018, constitution VII)
 

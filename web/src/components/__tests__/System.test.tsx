@@ -58,3 +58,26 @@ describe('System', () => {
     expect(screen.getByText('2a02:8010:abcd:1::9')).toBeInTheDocument();
   });
 });
+
+describe('System - display row (spec 031)', () => {
+  const show = (display?: SystemStatus['display']) => {
+    vi.mocked(useWebSocket<SystemStatus>).mockReturnValue({ data: { ...mockStatus, display }, connected: true, lastMessageAt: Date.now() });
+    render(<System />);
+  };
+
+  it.each([
+    [{ enabled: true, detected: true, on: true, page: 'sky' as const, nightMode: false }, 'Detected, on'],
+    [{ enabled: true, detected: true, on: false, page: null, nightMode: false }, 'Detected, off'],
+    [{ enabled: true, detected: false, on: false, page: null, nightMode: false }, 'Not detected'],
+    [{ enabled: false, detected: false, on: false, page: null, nightMode: false }, 'Off'],
+  ])('shows the display state', (display, text) => {
+    show(display);
+    const row = screen.getByText('Display').closest('.reading-row') as HTMLElement;
+    expect(row.textContent).toContain(text);
+  });
+
+  it('has no row on firmware without a display', () => {
+    show(undefined);
+    expect(screen.queryByText('Display')).not.toBeInTheDocument();
+  });
+});

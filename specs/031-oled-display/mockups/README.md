@@ -67,6 +67,8 @@ One row "Display" in the existing Sensors card: "Detected, on" / "Detected, off"
 
 ## Owner review
 
-Pending. The Display card (T042), the System row (T043) and their strings wait for the owner's
-sign-off here (constitution V: a reviewed mockup before UI is built). Everything behind them (config,
-status, routes, settings dependencies, demo, docs) is built.
+Pending. The Display card (T042) and the System row (T043) were built from these wireframes in round 2,
+as spec 030 did, because without them FR-015 had no Settings UI. The owner's sign-off is still to be
+recorded here; a change it asks for is a follow-up. Where the build differs from a wireframe: page
+order arrows show only on chosen pages (an unchosen page has no place in the order), and with the
+display off the Wake button stays visible but disabled.

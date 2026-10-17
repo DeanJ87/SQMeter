@@ -127,7 +127,24 @@ const RuntimeCard: FunctionalComponent<{ status: Status }> = ({ status }) => {
   );
 };
 
-const SensorsCard: FunctionalComponent<{ sensors: Status['sensors'] }> = ({ sensors }) => (
+// The optional OLED (spec 031): changed on the Settings Display card, so only its state here.
+const DisplayRow: FunctionalComponent<{ display: NonNullable<Status['display']> }> = ({ display }) => {
+  const badge = !display.enabled
+    ? { text: t('system.displayOff'), tone: 'pill-dim' }
+    : !display.detected
+      ? { text: t('system.notDetected'), tone: 'pill-red' }
+      : display.on
+        ? { text: t('system.displayDetectedOn'), tone: 'pill-green' }
+        : { text: t('system.displayDetectedOff'), tone: 'pill-green' };
+  return (
+    <div class="reading-row">
+      <span class="reading-label">{t('system.display')}</span>
+      <Pill tone={badge.tone}>{badge.text}</Pill>
+    </div>
+  );
+};
+
+const SensorsCard: FunctionalComponent<{ sensors: Status['sensors']; display?: Status['display'] }> = ({ sensors, display }) => (
   <Card title={t('system.sensors')} icon="eye" tone="green">
     <div class="system-list">
       <SensorRow sensor="light" status={sensors.light.status} />
@@ -136,6 +153,7 @@ const SensorsCard: FunctionalComponent<{ sensors: Status['sensors'] }> = ({ sens
       {sensors.gps && <SensorRow sensor="gps" status={sensors.gps.status} />}
       {sensors.rain && <SensorRow sensor="rain" status={sensors.rain.status} />}
       {sensors.wind && <SensorRow sensor="wind" status={sensors.wind.status} />}
+      {display && <DisplayRow display={display} />}
     </div>
   </Card>
 );
@@ -332,7 +350,7 @@ const System: FunctionalComponent = () => {
     <div class="panel-page system-page page-enter">
       {status.firmware && <FirmwareCard firmware={status.firmware} />}
       <RuntimeCard status={status} />
-      <SensorsCard sensors={status.sensors} />
+      <SensorsCard sensors={status.sensors} display={status.display} />
       {rain && <Rg15Card ok={rain.status === 'ok'} diagnostics={status.diagnostics?.rain} action={rg15Action} run={runRg15Action} />}
       {status.partitions && <PartitionsCard partitions={status.partitions} />}
       {status.ntp && <NtpCard ntp={status.ntp} />}
