@@ -81,3 +81,37 @@ describe('System - display row (spec 031)', () => {
     expect(screen.queryByText('Display')).not.toBeInTheDocument();
   });
 });
+
+describe('System - battery rows (spec 032)', () => {
+  const show = (status: Partial<SystemStatus>) => {
+    vi.mocked(useWebSocket<SystemStatus>).mockReturnValue({
+      data: { ...mockStatus, ...status },
+      connected: true,
+      lastMessageAt: Date.now(),
+    });
+    render(<System />);
+  };
+  const row = (label: string) => screen.getByText(label).closest('.reading-row') as HTMLElement;
+
+  it('shows the gauge, voltage and charger pins', () => {
+    show({});
+    expect(row('Battery gauge').textContent).toContain('Detected · v0x0012');
+    expect(row('Battery voltage').textContent).toContain('3.91 V');
+    expect(row('Charger pins').textContent).toContain('STAT1 H · STAT2 H · PG H');
+  });
+
+  it('says when the gauge stopped answering', () => {
+    show({
+      battery: { present: true, status: 'missing', state: 'no-battery', usbPower: true },
+      sensors: { ...mockStatus.sensors, battery: { status: 'missing' } },
+      diagnostics: { ...mockStatus.diagnostics!, battery: undefined },
+    });
+    expect(row('Battery gauge').textContent).toContain('Not detected');
+    expect(screen.queryByText('Charger pins')).not.toBeInTheDocument();
+  });
+
+  it('has no rows without a gauge', () => {
+    show({ battery: { present: false } });
+    expect(screen.queryByText('Battery gauge')).not.toBeInTheDocument();
+  });
+});

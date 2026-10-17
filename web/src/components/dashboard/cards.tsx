@@ -11,6 +11,7 @@ import { deviceTime } from '../../lib/deviceTime';
 import { t } from '../../i18n';
 import { CloudCard, IrCard, LightCard, SkyHero, SkyUnavailableCard, type Freshness } from './skyCards';
 import { EnvironmentCard, GpsCard, RainCard, WindCard } from './weatherCards';
+import { BatteryCard, BatteryStatePill } from './batteryCard';
 
 // What the dashboard's cards are drawn from, once readings have arrived.
 export interface CardContext {
@@ -161,6 +162,21 @@ const rainCard = ({ sensors, config }: CardContext, fault: Fault): Entry => {
   );
 };
 
+// Only on a board with a fuel gauge (spec 032). A gauge that stops answering
+// keeps its card in the fault state, with the charger's state when it is wired.
+const batteryCard = ({ sensors }: CardContext): Entry => {
+  const battery = sensors?.battery;
+  if (!battery?.present) return null;
+  const title = t('dashboard.battery');
+  const node =
+    battery.status && battery.status !== 'ok' ? (
+      <FaultCard title={title} icon="battery" health={battery.status} extra={<BatteryStatePill state={battery.state} />} />
+    ) : (
+      <BatteryCard battery={battery} />
+    );
+  return { id: 'battery', title, node };
+};
+
 // Every card the readings allow, in no particular order (the order is the user's).
 export const dashboardCards = (ctx: CardContext): MasonryItem[] => {
   const fault = faultOf(ctx);
@@ -182,6 +198,7 @@ export const dashboardCards = (ctx: CardContext): MasonryItem[] => {
     ir,
     windCard(ctx, fault),
     rainCard(ctx, fault),
+    batteryCard(ctx),
   ];
   return cards.filter((card): card is MasonryItem => Boolean(card));
 };

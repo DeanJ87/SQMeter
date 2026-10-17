@@ -66,10 +66,10 @@ without one, only `battery.present: false`.
 - [X] T025 [US1] Both firmware builds pass with `-Werror`; record sizes in specs/032-battery/budgets.md
 - [X] T026 [P] [US1] Web types and mocks: `Battery` in web/src/types/readings.ts and web/src/types/status.ts, MSW mocks with and without a gauge in web/src/mocks/
 - [X] T027 [US1] Mockup of the dashboard Battery card states, glance tile, System rows, Settings Battery card, Safety battery rule row and Alerts battery group from contracts/ui.md in specs/032-battery/mockups/ (390 px and 1280 px) with a README; owner review recorded before T028-T030, T040, T041 and T054 are built (round 1: wireframes in `mockups/README.md`; the owner's review is still to be recorded there)
-- [ ] T028 [US1] Vitest first, then the dashboard Battery card per contracts/ui.md (only with `battery.present`; states, "--", "> 99 h", Power saving pill) in web/src/components/dashboard/ (new batteryCard.tsx or cards.tsx) and web/src/components/__tests__/; card order in web/src/components/dashboard/order.ts
-- [ ] T029 [US1] Vitest first, then the glance battery tile (below low warn; below critical, fault or shutdown pending bad; none otherwise or without a gauge) in web/src/dashboard/glance.ts and web/src/dashboard/__tests__/
-- [ ] T030 [US1] System page battery rows in the Sensors card in web/src/components/System.tsx with a Vitest in web/src/components/__tests__/System.test.tsx
-- [ ] T031 [US1] Dashboard inventory entries for every new readings/status field and D-46..D-51 in web/src/dashboard/inventory.json; `inventory:` ids in web/tests/dashboard.spec.ts; `tools/dashboard/check.py` passes
+- [X] T028 [US1] Vitest first, then the dashboard Battery card per contracts/ui.md (only with `battery.present`; states, "--", "> 99 h", Power saving pill) in web/src/components/dashboard/ (new batteryCard.tsx or cards.tsx) and web/src/components/__tests__/; card order in web/src/components/dashboard/order.ts
+- [X] T029 [US1] Vitest first, then the glance battery tile (below low warn; below critical, fault or shutdown pending bad; none otherwise or without a gauge) in web/src/dashboard/glance.ts and web/src/dashboard/__tests__/
+- [X] T030 [US1] System page battery rows in the Sensors card in web/src/components/System.tsx with a Vitest in web/src/components/__tests__/System.test.tsx
+- [X] T031 [US1] Dashboard inventory entries for every new readings/status field and D-46..D-51 in web/src/dashboard/inventory.json; `inventory:` ids in web/tests/dashboard.spec.ts; `tools/dashboard/check.py` passes
 
 **Checkpoint**: US1 works on a board with a gauge; boards without one are unchanged (SC-005).
 

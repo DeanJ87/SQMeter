@@ -441,6 +441,53 @@
       "test": "wind-card"
     },
     {
+      "id": "battery-card",
+      "label": "dashboard.battery",
+      "sources": [
+        "readings.battery",
+        "readings.battery.present",
+        "readings.battery.status",
+        "readings.battery.estimating",
+        "readings.battery.percent",
+        "readings.battery.voltage",
+        "readings.battery.state",
+        "readings.battery.fault",
+        "readings.battery.timeToEmptyMinutes",
+        "readings.battery.timeToFullMinutes",
+        "readings.battery.powerSaving"
+      ],
+      "requiredBy": "032 FR-014",
+      "visibility": {
+        "rule": "when",
+        "when": "a fuel gauge is present (or the charger pins are set)"
+      },
+      "priority": 10,
+      "location": "card:battery",
+      "test": "battery-card",
+      "testIn": "unit",
+      "demoCannot": "Every charge state, the fault, estimating and power saving need a pack at chosen levels; each is tested on the component"
+    },
+    {
+      "id": "battery-glance",
+      "label": "dashboard.battery",
+      "sources": [
+        "readings.battery.percent",
+        "readings.battery.state",
+        "status.battery.shutdownInSeconds",
+        "status.diagnostics.battery.policy"
+      ],
+      "requiredBy": "032 FR-014",
+      "visibility": {
+        "rule": "when",
+        "when": "the pack is below its low or critical level, the charger has a fault, or the device is about to sleep"
+      },
+      "priority": 5,
+      "location": "card:status",
+      "test": "battery-glance",
+      "testIn": "unit",
+      "demoCannot": "The levels and the going-to-sleep countdown need a pack near empty; tested on the glance rules"
+    },
+    {
       "id": "gps-card",
       "label": "dashboard.gpsLocation",
       "sources": [
@@ -1326,14 +1373,6 @@
       "reason": "A save the device refuses; shown inline on the battery pin fields in Settings"
     },
     {
-      "match": "readings.battery",
-      "reason": "Spec 032: the dashboard Battery card and glance tile are built after the owner's mockup review (T028-T029)"
-    },
-    {
-      "match": "readings.battery.**",
-      "reason": "Spec 032: the dashboard Battery card and glance tile are built after the owner's mockup review (T028-T029)"
-    },
-    {
       "match": "status.battery",
       "reason": "The same object as readings.battery; the dashboard reads the readings (spec 032)"
     },
@@ -1342,12 +1381,26 @@
       "reason": "The same object as readings.battery plus the sleep countdown; the dashboard reads the readings (spec 032)"
     },
     {
+      "match": "readings.battery.ratePercentPerHour",
+      "reason": "The charge rate feeds the time estimates the Battery card shows; the rate itself is diagnostic (spec 032)"
+    },
+    {
+      "match": "readings.battery.usbPower",
+      "reason": "Said by the charge state pill (Charging, Charged, No battery); the flag itself is for integrations (spec 032)"
+    },
+    {
+      "match": "readings.battery.ageMs",
+      "reason": "The gauge is read every 5 s; a gauge that stops answering turns the Battery card to its fault state (spec 032)"
+    },
+    {
       "match": "status.sensors.battery",
-      "reason": "Spec 032: shown on the Battery card's unavailable state once it is built (T028)"
+      "reason": "The same health as readings.battery.status, which the Battery card's fault state reads (spec 032)",
+      "shownOn": "System"
     },
     {
       "match": "status.sensors.battery.**",
-      "reason": "Spec 032: shown on the Battery card's unavailable state once it is built (T028)"
+      "reason": "The same health as readings.battery.status, which the Battery card's fault state reads (spec 032)",
+      "shownOn": "System"
     }
   ]
 }
