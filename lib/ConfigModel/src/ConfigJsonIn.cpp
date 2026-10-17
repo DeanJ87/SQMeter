@@ -507,6 +507,10 @@ namespace SQM
             applyAccess(root, cfg, keep);
             applyTime(root, cfg);
             applyRain(root.child("rain"), cfg.rain);
+            // The battery rule's limit defaults to the critical level and
+            // follows it while the two are equal (spec 032 FR-008).
+            const bool minFollowsCritical =
+                !root.child("alpaca").has("batteryMinPercent") && cfg.alpaca.batteryMinPercent == cfg.battery.criticalPercent;
             applyAlpaca(root.child("alpaca"), cfg.alpaca);
             if (!applySky(root, cfg, error) || !applyAlerts(root.child("alerts"), cfg.alerts, keep, error) ||
                 !applyAlertsClient(root.child("alertsClient"), cfg.alerts, error))
@@ -515,6 +519,9 @@ namespace SQM
             applyAlertsBattery(root.child("alertsBattery"), cfg.alerts);
             applyHardware(root, cfg, keep);
             applyBattery(root.child("battery"), cfg.battery);
+            // An out-of-range critical level is left to its own check's message.
+            if (minFollowsCritical && cfg.battery.criticalPercent >= 2 && cfg.battery.criticalPercent <= 25)
+                cfg.alpaca.batteryMinPercent = cfg.battery.criticalPercent;
             return applyDisplay(root.child("display"), cfg.display, error);
         }
     } // namespace

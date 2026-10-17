@@ -400,6 +400,10 @@ namespace SQM
             const RequiredDataAge data = requiredDataAge(snapshot, now);
             in.hasEverHadGoodData = data.everRead;
             in.secondsSinceLastGoodData = data.ageMs / 1000;
+            // Power saving reads the sky sensors less often (spec 032): the
+            // stale limit stretches by the extra interval, plus the grace.
+            if (snapshot.readIntervalMs > cfg.sensor.readIntervalMs)
+                in.staleExtraSeconds = (snapshot.readIntervalMs - cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS + 999U) / 1000U;
             in.skyLightFault = snapshot.tsl.status != SensorStatus::Ok;
             in.irSkyFault = snapshot.mlx.status != SensorStatus::Ok;
             in.requiredSensorFault = snapshot.tsl.status != SensorStatus::Ok || snapshot.mlx.status != SensorStatus::Ok;

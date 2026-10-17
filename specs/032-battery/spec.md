@@ -144,7 +144,9 @@ charge, voltage and charging state; an alert template using `{battery}` renders 
 - **FR-001**: The device MUST detect the fuel gauge on the main I2C bus and report `battery.present`. With
   no gauge, battery features are absent and nothing else changes.
 - **FR-002**: The device MUST report state of charge (%), cell voltage (V), charge/discharge rate (%/h,
-  positive when charging), and status age, refreshed at least every 10 s.
+  positive when charging), and status age, refreshed at least every 10 s. While power saving (FR-010)
+  the gauge is read at the power-saving read interval instead (`battery.saveReadIntervalSeconds`,
+  10–300 s): FR-010 wins, and the battery and sky data count as fresh for that longer interval.
 - **FR-003**: The device MUST read the charger status outputs and report the charging state: `discharging`,
   `charging`, `charged`, `fault` (with reason where known, including temperature), or `no-battery`, and
   whether USB power is present.

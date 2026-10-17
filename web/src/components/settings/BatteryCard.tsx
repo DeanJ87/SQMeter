@@ -60,10 +60,21 @@ const PinFields: FunctionalComponent<{
   </Group>
 );
 
-const BatteryCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error, deps, fix }) => {
+const BatteryCard: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, deps, fix }) => {
   if (!config.battery) return null; // older firmware
   const battery = { ...defaultBatteryConfig, ...config.battery };
-  const set = (key: keyof BatteryConfig, value: unknown) => update(['battery', key], value);
+  const set = (key: keyof BatteryConfig, value: unknown) => {
+    // The Safety battery rule's limit follows the critical level while they're equal (FR-008).
+    const ruleLimit = config.alpaca?.batteryMinPercent;
+    if (key === 'criticalPercent' && config.alpaca && ruleLimit === battery.criticalPercent && Number.isFinite(value)) {
+      updateMany([
+        [['battery', key], value],
+        [['alpaca', 'batteryMinPercent'], value],
+      ]);
+      return;
+    }
+    update(['battery', key], value);
+  };
   const gauge = deps.get('battery.enabled');
   const missing = gauge.state === 'inactive';
   const locked = !battery.enabled || missing;

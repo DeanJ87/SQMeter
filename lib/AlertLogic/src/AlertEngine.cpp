@@ -193,16 +193,17 @@ namespace SQM
             return stacked;
         }
 
-        bool AlertEngine::sync(Tracker &tracker, bool current, const Emit &emit)
+        bool AlertEngine::sync(Tracker &tracker, bool current, const Emit &emit, bool announceAtStart)
         {
             if (!tracker.initialized || !emit.allowed)
             {
                 // Follow the condition silently so enabling a rule (or the end
                 // of the startup grace) doesn't announce a stale transition.
                 tracker.initialized = true;
-                tracker.notified = current;
+                tracker.notified = announceAtStart ? false : current;
                 tracker.pending = false;
-                return false;
+                if (!announceAtStart || !emit.allowed)
+                    return false;
             }
             if (current == tracker.notified)
             {

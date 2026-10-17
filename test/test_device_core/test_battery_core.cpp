@@ -68,9 +68,10 @@ void test_battery_status_missing_error_stale()
 {
     const Config cfg = Config::createDefault();
     SensorSnapshot s = withGauge();
-    // Stale after the gauge's 5 s read interval plus the grace.
-    TEST_ASSERT_TRUE(readingsOf(s, cfg, NOW - 1200 + 6000).battery.status == Readings::Status::Ok);
-    TEST_ASSERT_TRUE(readingsOf(s, cfg, NOW - 1200 + 6001).battery.status == Readings::Status::Stale);
+    // Stale after the gauge's 5 s read interval, the sensor interval the
+    // snapshot copies it at (5 s) and the grace.
+    TEST_ASSERT_TRUE(readingsOf(s, cfg, NOW - 1200 + 11000).battery.status == Readings::Status::Ok);
+    TEST_ASSERT_TRUE(readingsOf(s, cfg, NOW - 1200 + 11001).battery.status == Readings::Status::Stale);
     // Power saving reads every 30 s.
     s.battery.power = Battery::PowerState::Saving;
     TEST_ASSERT_TRUE(readingsOf(s, cfg, NOW - 1200 + 31000).battery.status == Readings::Status::Ok);
@@ -375,6 +376,40 @@ void test_power_saving_interval_keeps_readings_fresh()
     TEST_ASSERT_TRUE(readingsOf(s, cfg).environment.status == Readings::Status::Ok);
     s.readIntervalMs = 0;
     TEST_ASSERT_TRUE(readingsOf(s, cfg).environment.status == Readings::Status::Stale);
+}
+
+// The safety verdict while power saving (30 s reads, the 30 s stale default):
+// the battery rule never reads "missing" and the sky data never "stale" just
+// because reads are slower, at any phase of the gauge and snapshot timers.
+void test_power_saving_keeps_the_verdict_fresh()
+{
+    Config cfg = Config::createDefault();
+    cfg.alpaca.batteryEnabled = true;
+    cfg.battery.saveReadIntervalSeconds = 30;
+    SensorSnapshot s = withGauge(8.0F);
+    s.battery.power = Battery::PowerState::Saving;
+    s.readIntervalMs = 30000;
+    s.skySensors[0].initialized = s.mlxInitialized = true;
+    s.skySensors[0].reading.status = s.mlx.status = SensorStatus::Ok;
+    // Gauge read just after the last snapshot copy; the next copy is 30 s on.
+    s.battery.lastUpdate = s.battery.reading.timestamp = NOW - 59000;
+    s.skySensors[0].lastUpdate = s.mlxLastUpdate = s.dataTimestamp = NOW - 30500;
+    Core::derive(s, cfg);
+    const Alpaca::SafetyInputs in = Core::safetyInputs(s, cfg, NOW);
+    TEST_ASSERT_TRUE(in.batteryValid);
+    const Alpaca::SafetyResult result = Alpaca::evaluateSafety(in, Core::safetyThresholds(cfg));
+    TEST_ASSERT_TRUE((result.reasonFlags & Alpaca::UnsafeBatteryLow) != 0);
+    TEST_ASSERT_EQUAL_UINT32(0, result.reasonFlags & (Alpaca::UnsafeBatteryData | Alpaca::UnsafeStaleData));
+
+    // A read that is really overdue is still stale.
+    const Alpaca::SafetyInputs late = Core::safetyInputs(s, cfg, NOW + 40000);
+    TEST_ASSERT_FALSE(late.batteryValid);
+    TEST_ASSERT_TRUE((Alpaca::evaluateSafety(late, Core::safetyThresholds(cfg)).reasonFlags & Alpaca::UnsafeStaleData) != 0);
+    // Back to normal reads: the owner's 30 s limit again.
+    s.battery.power = Battery::PowerState::Normal;
+    s.readIntervalMs = 0;
+    Core::derive(s, cfg);
+    TEST_ASSERT_FALSE(Core::safetyInputs(s, cfg, NOW).batteryValid);
 }
 
 // {battery*} alert variables (spec 032 US4).

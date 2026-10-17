@@ -497,6 +497,7 @@ void test_battery_rule_alert_and_phone_alarm();
 void test_battery_event_settings_and_samples();
 void test_going_to_sleep_rings_with_the_shutdown_bit();
 void test_power_saving_interval_keeps_readings_fresh();
+void test_power_saving_keeps_the_verdict_fresh();
 void test_battery_alert_variables();
 void test_ble_summary_battery_fields_fit();
 
@@ -548,6 +549,7 @@ int main()
     RUN_TEST(test_battery_event_settings_and_samples);
     RUN_TEST(test_going_to_sleep_rings_with_the_shutdown_bit);
     RUN_TEST(test_power_saving_interval_keeps_readings_fresh);
+    RUN_TEST(test_power_saving_keeps_the_verdict_fresh);
     RUN_TEST(test_battery_alert_variables);
     RUN_TEST(test_ble_summary_battery_fields_fit);
     return UNITY_END();

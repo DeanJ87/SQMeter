@@ -9,7 +9,7 @@ value and limit:
 |---|---|---|
 | rule on, no gauge / estimating / stale (age > `alpaca.staleAfterSeconds`) | `UnsafeBatteryData` (bit 15) | `Battery data missing` |
 | rule on, percent < `batteryMinPercent` | `UnsafeBatteryLow` (bit 14) | `Battery 8% < 10%` |
-| shutdown pending (rule on or off) | `UnsafeShutdown` (bit 16) | `Shutting down: battery 4% < 5%` |
+| shutdown pending (rule on or off) | `UnsafeShutdown` (bit 16) | `Shutting down: battery 4% <= 5%` |
 
 Percent is printed as an integer (floor). `Deps::rulesNotInEffect` doesn't list the battery rule: its
 unmet behaviour is fail-safe. ConformU must pass unchanged (IsSafe still a boolean from the same

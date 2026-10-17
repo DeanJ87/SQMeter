@@ -202,7 +202,8 @@ namespace SQM
         {
             bool enteredSaving = false;
             bool shutdownStarted = false;
-            bool powerRestored = false;
+            bool powerRestored = false; // back to Normal on USB power or charging
+            bool recovered = false;     // back to Normal: the charge recovered without USB
             bool sleepNow = false;
         };
 
@@ -222,11 +223,27 @@ namespace SQM
             void fromNormal(const PolicyInput &in, PolicyEvents &events);
             void fromSaving(const PolicyInput &in, PolicyEvents &events);
             void fromPending(const PolicyInput &in, PolicyEvents &events);
-            void backToNormal(PolicyEvents &events);
+            void backToNormal(PolicyEvents &events, bool usb);
 
             PowerState current = PowerState::Normal;
             uint8_t belowShutdown = 0;
             uint32_t pendingSinceMs = 0;
         };
+
+        // After the hourly timer wake from a battery sleep (research D7): back
+        // to sleep unless USB power is back or the charge has recovered to the
+        // level that ends power saving (critical + RECOVERY_PERCENT). The
+        // margin keeps a cell whose charge creeps up after resting from
+        // booting, warning and sleeping again every hour; an unreadable gauge
+        // is no news, so the device stays asleep (a reset or USB power with a
+        // PG pin still wakes it).
+        struct WakeCheck
+        {
+            bool read = false; // the gauge answered with a percent
+            float percent = 0.0f;
+            bool usb = false; // the charger pins or a charging rate say so
+            uint8_t criticalPercent = 10;
+        };
+        bool stayAsleep(const WakeCheck &check);
     } // namespace Battery
 } // namespace SQM

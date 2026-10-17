@@ -39,11 +39,11 @@ namespace SQM
             return events;
         }
 
-        void PowerPolicy::backToNormal(PolicyEvents &events)
+        void PowerPolicy::backToNormal(PolicyEvents &events, bool usb)
         {
             current = PowerState::Normal;
             belowShutdown = 0;
-            events.powerRestored = true;
+            (usb ? events.powerRestored : events.recovered) = true;
         }
 
         void PowerPolicy::fromNormal(const PolicyInput &in, PolicyEvents &events)
@@ -61,7 +61,7 @@ namespace SQM
             const bool fresh = in.newRead && in.valid; // anything else is no news: never a step towards sleep
             if (onUsb(in) || (fresh && in.percent >= static_cast<float>(in.criticalPercent) + RECOVERY_PERCENT))
             {
-                backToNormal(events);
+                backToNormal(events, onUsb(in));
                 return;
             }
             if (!fresh)
@@ -79,12 +79,19 @@ namespace SQM
         {
             if (onUsb(in))
             {
-                backToNormal(events);
+                backToNormal(events, true);
                 return;
             }
             const uint32_t elapsed = in.nowMs - pendingSinceMs;
             const uint32_t grace = static_cast<uint32_t>(in.graceSeconds) * 1000U;
             events.sleepNow = (elapsed >= grace && in.dispatcherIdle) || elapsed >= grace + MAX_EXTRA_MS;
+        }
+
+        bool stayAsleep(const WakeCheck &check)
+        {
+            if (check.usb)
+                return false;
+            return !check.read || check.percent < static_cast<float>(check.criticalPercent) + PowerPolicy::RECOVERY_PERCENT;
         }
 
         uint32_t PowerPolicy::secondsLeft(uint32_t nowMs, uint16_t graceSeconds) const

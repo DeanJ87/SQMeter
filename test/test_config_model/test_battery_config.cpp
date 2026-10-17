@@ -325,3 +325,26 @@ void test_battery_worst_cases_fit()
     printf("battery worst case: %s\n", detail);
     TEST_ASSERT_TRUE_MESSAGE(part <= Config::MAX_ALERTS_JSON_BYTES, detail);
 }
+
+// The battery rule's limit defaults to the critical level and follows it while
+// the two are equal (FR-008); a limit set on its own stays.
+void test_battery_rule_limit_follows_critical()
+{
+    const Config base = Config::createDefault();
+    TEST_ASSERT_EQUAL_UINT8(base.battery.criticalPercent, base.alpaca.batteryMinPercent);
+    auto raised = Config::fromJson(battery("\"criticalPercent\":15"), &base);
+    TEST_ASSERT_TRUE(raised.has_value());
+    TEST_ASSERT_EQUAL_UINT8(15, raised->alpaca.batteryMinPercent);
+
+    // Set on its own: a later critical change leaves it alone.
+    auto own = Config::fromJson("{\"alpaca\":{\"batteryMinPercent\":20}}", &base);
+    TEST_ASSERT_TRUE(own.has_value());
+    auto later = Config::fromJson(battery("\"criticalPercent\":12"), &*own);
+    TEST_ASSERT_TRUE(later.has_value());
+    TEST_ASSERT_EQUAL_UINT8(20, later->alpaca.batteryMinPercent);
+
+    // Both in one save: the limit given wins.
+    auto both = Config::fromJson("{\"alpaca\":{\"batteryMinPercent\":10},\"battery\":{\"criticalPercent\":15}}", &base);
+    TEST_ASSERT_TRUE(both.has_value());
+    TEST_ASSERT_EQUAL_UINT8(10, both->alpaca.batteryMinPercent);
+}

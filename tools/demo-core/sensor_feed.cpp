@@ -384,6 +384,7 @@ namespace SQM
         const Battery::PolicyEvents events = policy.update(in);
         shutdownStarted = shutdownStarted || events.shutdownStarted;
         powerRestored = powerRestored || events.powerRestored;
+        recovered = recovered || events.recovered;
         b.power = policy.state();
         b.shutdownInSeconds = policy.secondsLeft(nowMs, cfg.battery.shutdownGraceSeconds);
     }

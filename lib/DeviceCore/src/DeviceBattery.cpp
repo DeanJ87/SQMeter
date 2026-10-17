@@ -11,13 +11,14 @@ namespace SQM::Core
 {
     namespace
     {
-        // The gauge is read every 5 s (or the power-saving interval), not at
-        // the sensor read interval.
-        uint32_t batteryStaleAfter(const BatterySnapshot &battery, const Config &cfg)
+        // The gauge is read every 5 s (or the power-saving interval) on its own
+        // timer, and the snapshot copies it at the sensor interval in use: a
+        // reading can be up to both intervals old before the next copy.
+        uint32_t batteryStaleAfter(const SensorSnapshot &snapshot, const Config &cfg)
         {
-            const uint32_t gauge =
-                battery.power == Battery::PowerState::Normal ? Battery::READ_INTERVAL_MS : cfg.battery.saveReadIntervalSeconds * 1000U;
-            return std::max(cfg.sensor.readIntervalMs, gauge) + SENSOR_STALE_GRACE_MS;
+            const uint32_t gauge = snapshot.battery.power == Battery::PowerState::Normal ? Battery::READ_INTERVAL_MS
+                                                                                         : cfg.battery.saveReadIntervalSeconds * 1000U;
+            return gauge + Detail::staleAfterMs(snapshot, cfg);
         }
     } // namespace
 
@@ -50,7 +51,7 @@ namespace SQM::Core
             if (!b.present)
                 return out;
             const BatteryReading &r = b.reading;
-            out.status = readingStatus(r.status, b.initialized, b.lastUpdate, now, batteryStaleAfter(b, cfg));
+            out.status = readingStatus(r.status, b.initialized, b.lastUpdate, now, batteryStaleAfter(snapshot, cfg));
             out.ageMs = ageMs(now, r.timestamp);
             out.chargerPins = cfg.battery.chargerPins();
             out.estimating = r.estimating;
@@ -73,7 +74,10 @@ namespace SQM::Core
             const BatterySnapshot &b = snapshot.battery;
             const BatteryReading &r = b.reading;
             // Monitoring off counts as no data: the rule, if on, fails safe.
-            const bool fresh = b.lastUpdate != 0 && now - b.lastUpdate <= cfg.alpaca.staleAfterSeconds * 1000U;
+            // Stale after the owner's limit, or the gauge and snapshot
+            // intervals if longer (power saving reads less often).
+            const uint32_t staleAfter = std::max(cfg.alpaca.staleAfterSeconds * 1000U, batteryStaleAfter(snapshot, cfg));
+            const bool fresh = b.lastUpdate != 0 && now - b.lastUpdate <= staleAfter;
             in.batteryValid = b.present && b.initialized && r.status == SensorStatus::Ok && !r.estimating && fresh;
             in.batteryPercent = r.percent;
             in.shutdownPending = b.present && b.power == Battery::PowerState::ShutdownPending;
@@ -84,7 +88,7 @@ namespace SQM::Core
         {
             const BatterySnapshot &b = snapshot.battery;
             const BatteryReading &r = b.reading;
-            const Readings::Status status = readingStatus(r.status, b.initialized, b.lastUpdate, now, batteryStaleAfter(b, cfg));
+            const Readings::Status status = readingStatus(r.status, b.initialized, b.lastUpdate, now, batteryStaleAfter(snapshot, cfg));
             in.present = b.present;
             in.valid = b.present && status == Readings::Status::Ok && !r.estimating;
             in.percent = r.percent;

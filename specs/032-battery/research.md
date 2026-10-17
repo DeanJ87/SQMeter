@@ -115,7 +115,7 @@ default; 2..50). Evaluated **independently of the other sensors' freshness**, li
   15) "Battery data missing";
 - rule on, percent < limit → `UnsafeBatteryLow` (bit 14) "Battery 8% < 10%";
 - shutdown pending (D7), **whether or not the rule is on** → `UnsafeShutdown` (bit 16) "Shutting down:
-  battery 4% < 5%" (US3 AC2: unsafe for at least one safety poll before sleeping).
+  battery 4% <= 5%" (US3 AC2: unsafe for at least one safety poll before sleeping).
 
 A charging pack below the limit stays unsafe (charge level, not state, is what the rule measures).
 Settings dependency: rule enabled with no gauge = fail-safe (unsafe), reason `battery-missing`.

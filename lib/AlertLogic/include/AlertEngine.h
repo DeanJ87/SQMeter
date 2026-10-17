@@ -168,7 +168,8 @@ namespace SQM
             // One-shots from the power policy: sent at once, exempt from the
             // startup grace and the cooldown.
             bool shutdownStarted = false;
-            bool powerRestored = false;
+            bool powerRestored = false; // USB power is back
+            bool recovered = false;     // power saving ended: the charge recovered without USB
         };
 
         struct AlertInputs
@@ -270,7 +271,12 @@ namespace SQM
             };
 
             // Returns true when a transition to `current` should be emitted now.
-            static bool sync(Tracker &tracker, bool current, const Emit &emit);
+            // A tracker that follows the condition silently (before its first
+            // update, during the startup grace, while its rule is off) takes the
+            // current value, or with `announceAtStart` the all-clear value, so a
+            // condition already present then (a battery already low at power-on)
+            // is announced once announcing is allowed.
+            static bool sync(Tracker &tracker, bool current, const Emit &emit, bool announceAtStart = false);
 
             // One update(): the time, the cooldown and whether the startup
             // grace is over, shared by every condition.
@@ -315,6 +321,8 @@ namespace SQM
             bool belowLow = false;
             bool belowCritical = false;
             uint32_t batteryRuleFlags = 0; // the rule bits last seen
+            bool batteryRuleSent = false;
+            uint32_t batteryRuleSentAt = 0; // a flapping rule alerts at most once per cooldown
 
             // Imaging app: notified value = "lost"; disconnects wait out the
             // cooldown like any other change.

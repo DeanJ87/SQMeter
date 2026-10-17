@@ -175,6 +175,28 @@ describe('Device tab Battery card (spec 032)', () => {
     await waitFor(() => expect(saved.body?.battery).toMatchObject({ lowPercent: 25, capacityMah: 0, alertPin: 255 }));
   });
 
+  it('the Safety battery limit follows the critical level while equal (FR-008)', async () => {
+    const saved = captureSave();
+    openDevice();
+    await card();
+    fireEvent.change(field('battery.criticalPercent'), { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(saved.body?.battery).toMatchObject({ criticalPercent: 15 }));
+    expect(saved.body?.alpaca).toMatchObject({ batteryMinPercent: 15 });
+  });
+
+  it('a Safety battery limit set on its own stays when the critical level changes', async () => {
+    const saved = captureSave();
+    mockDevice({ config: { alpaca: { ...mockConfig.alpaca!, batteryMinPercent: 20 } }, facts: { batteryDetected: true } });
+    window.history.replaceState(null, '', '/settings?tab=device');
+    render(<Settings />);
+    await card();
+    fireEvent.change(field('battery.criticalPercent'), { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(saved.body?.battery).toMatchObject({ criticalPercent: 15 }));
+    expect(saved.body?.alpaca).toMatchObject({ batteryMinPercent: 20 });
+  });
+
   it('is absent on firmware without a battery', async () => {
     const { battery: _battery, ...older } = mockConfig;
     mockDevice({ config: older });

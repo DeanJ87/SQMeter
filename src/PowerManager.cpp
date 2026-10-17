@@ -12,7 +12,7 @@ namespace SQM
     {
         // Kept across deep sleep (RTC memory, 8 bytes).
         RTC_DATA_ATTR bool sleptForBattery = false;
-        RTC_DATA_ATTR uint8_t batteryWakeCause = 0;
+        bool wokeOnUsb = false; // set by bootCheck() for this boot
 
         constexpr const char *TAG = "Power";
 
@@ -46,21 +46,35 @@ namespace SQM
         if (!sleptForBattery)
             return;
         const esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
-        batteryWakeCause = static_cast<uint8_t>(cause);
+        bool usb = cause == ESP_SLEEP_WAKEUP_EXT0; // PG went low: USB power
         if (cause == ESP_SLEEP_WAKEUP_TIMER && settings.enabled)
         {
             MAX17048Sensor probe(bus);
             BatteryConfig quiet = settings;
             probe.begin(quiet);
-            const bool read = probe.readNow(millis());
+            // A few tries: one failed read on a cold bus isn't "no gauge".
+            bool read = false;
+            for (int attempt = 0; attempt < 3 && !read; ++attempt)
+            {
+                if (attempt > 0)
+                    delay(50);
+                read = probe.readNow(millis()) && probe.getReading().status == SensorStatus::Ok;
+            }
             const BatteryReading &r = probe.getReading();
             // The gauge kept running through the sleep, so its percent stands
             // (no estimating window); charging shows in the rate without pins.
-            const bool stillEmpty = read && r.status == SensorStatus::Ok && r.percent <= static_cast<float>(settings.shutdownPercent);
-            const bool usb = chargerSaysUsb(settings) || (r.rateValid && r.ratePercentPerHour > Battery::MIN_ESTIMATE_RATE);
-            if (stillEmpty && !usb)
+            usb = chargerSaysUsb(settings) || (read && r.rateValid && r.ratePercentPerHour > Battery::MIN_ESTIMATE_RATE);
+            Battery::WakeCheck check;
+            check.read = read;
+            check.percent = r.percent;
+            check.usb = usb;
+            check.criticalPercent = settings.criticalPercent;
+            if (Battery::stayAsleep(check))
             {
-                Logger::info(TAG, "Battery still at %.0f%%: back to sleep", r.percent);
+                if (read)
+                    Logger::info(TAG, "Battery at %.0f%%: back to sleep", r.percent);
+                else
+                    Logger::warn(TAG, "Battery gauge unreadable: back to sleep");
                 if (settings.pgPin != BatteryConfig::PIN_UNSET && rtcCapable(settings.pgPin))
                     esp_sleep_enable_ext0_wakeup(static_cast<gpio_num_t>(settings.pgPin), 0);
                 esp_sleep_enable_timer_wakeup(TIMER_WAKE_US);
@@ -68,6 +82,8 @@ namespace SQM
             }
         }
         Logger::info(TAG, "Awake after a battery sleep (wake cause %u)", static_cast<unsigned>(cause));
+        // "Power restored" only when USB power woke it, not a recovered charge.
+        wokeOnUsb = usb;
         sleptForBattery = false;
     }
 
@@ -85,7 +101,7 @@ namespace SQM
         {
             bootChecked = true;
             // Woken by USB power (or charging at the hourly check): "power restored", later.
-            restoredAtBoot = batteryWakeCause != 0;
+            restoredAtBoot = wokeOnUsb;
         }
         if (restoredAtBoot && (wifiConnected || nowMs >= RESTORED_ALERT_AFTER_MS))
         {
@@ -120,17 +136,28 @@ namespace SQM
         current = policy.state();
         secondsLeft = policy.secondsLeft(nowMs, settings.shutdownGraceSeconds);
         gauge.setReadIntervalMs(saving() ? static_cast<uint32_t>(settings.saveReadIntervalSeconds) * 1000U : Battery::READ_INTERVAL_MS);
+        handleEvents(events, r.percent, settings);
+    }
+
+    // The policy's events: logged, kept for the next alert pass, or the sleep.
+    void PowerManager::handleEvents(const Battery::PolicyEvents &events, float percent, const BatteryConfig &settings)
+    {
         if (events.enteredSaving)
-            Logger::warn(TAG, "Battery %.0f%%: saving power", r.percent);
+            Logger::warn(TAG, "Battery %.0f%%: saving power", percent);
         if (events.shutdownStarted)
         {
-            Logger::warn(TAG, "Battery %.0f%%: going to sleep in %u s", r.percent, static_cast<unsigned>(settings.shutdownGraceSeconds));
+            Logger::warn(TAG, "Battery %.0f%%: going to sleep in %u s", percent, static_cast<unsigned>(settings.shutdownGraceSeconds));
             shutdownStarted = true;
         }
         if (events.powerRestored)
         {
             Logger::info(TAG, "Power restored");
             powerRestored = true;
+        }
+        if (events.recovered)
+        {
+            Logger::info(TAG, "Battery %.0f%%: power saving off", percent);
+            recovered = true;
         }
         if (events.sleepNow)
             sleep(settings);
@@ -140,7 +167,6 @@ namespace SQM
     {
         Logger::warn(TAG, "Deep sleep until USB power returns");
         sleptForBattery = true;
-        batteryWakeCause = 0;
         if (settings.pgPin != BatteryConfig::PIN_UNSET && rtcCapable(settings.pgPin))
             esp_sleep_enable_ext0_wakeup(static_cast<gpio_num_t>(settings.pgPin), 0); // PG low = USB power
         esp_sleep_enable_timer_wakeup(TIMER_WAKE_US);

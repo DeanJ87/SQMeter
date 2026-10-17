@@ -125,7 +125,7 @@ The safety verdict is re-evaluated every second from the current sensor readings
 3. **Rain sensor offline/faulty** - the rain sensor is enabled but not responding, its data is stale, or it reports a lens fault (fail safe; enabled by default)
 4. **Wind / gust** - the 2-minute mean wind speed or the 10-minute peak gust is at or above its limit (both disabled by default). If a wind limit is enabled but the [anemometer](../hardware/wind.md) is disabled or not reporting, that's unsafe too
 5. **No data yet** - the device hasn't completed a sensor read since boot
-6. **Stale data** - the last successful read is older than the stale-data threshold (default 30s)
+6. **Stale data** - the last successful read is older than the stale-data threshold (default 30s; while the battery is [saving power](battery.md#power-saving-and-deep-sleep) the limit grows by the slower read interval, and the reason shows the limit in use)
 7. **Sensor fault** - the light sensor (TSL2591) or IR sky sensor (MLX90614) is reporting a non-OK status. With two sky sensors only the authoritative one counts, and the reason names it: "Sensor fault: SQM sensor" or "Sensor fault: SQM-L sensor" ([no fallback](../reference/sky-quality.md#two-sky-sensors-sqm-and-sqm-l))
 8. **Cloud cover** - at or above the configured threshold (default 90%, if enabled)
 9. **Sky brightness (SQM)** - the authoritative sky sensor below the configured minimum (disabled by default): "SQM 18.21 < 19.50", or "SQM-L 18.21 < 19.50" when the SQM-L counts
@@ -133,7 +133,7 @@ The safety verdict is re-evaluated every second from the current sensor readings
 11. **Temperature-dewpoint margin** - below the configured minimum (disabled by default)
 12. **Sensor fault: environment sensor** - the humidity or dew-point rule is enabled but the environment sensor (BME280) isn't reporting, so it can't be evaluated
 13. **Battery** - the battery charge is below the limit (default 10%, disabled by default): "Battery 8% < 10%". If the rule is on but there is no fuel gauge, or its data is stale or still estimating, that's unsafe too: "Battery data missing". A charging pack below the limit stays unsafe. See [Battery](battery.md#the-safety-rule)
-14. **Shutting down** - the battery has reached its shutdown level and the device is about to sleep, whether or not the battery rule is on: "Shutting down: battery 4% < 5%"
+14. **Shutting down** - the battery has reached its shutdown level and the device is about to sleep, whether or not the battery rule is on: "Shutting down: battery 4% <= 5%"
 
 Rain, wind and battery rules (2-4, 13-14) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining, blowing a gale or about to switch off. Rules 8-12 only apply to fresh data.
 

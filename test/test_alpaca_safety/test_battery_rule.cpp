@@ -106,15 +106,32 @@ void test_shutdown_pending_is_unsafe_with_the_rule_off(void)
     TEST_ASSERT_FALSE(r.isSafe);
     TEST_ASSERT_EQUAL_UINT32(UnsafeShutdown, r.reasonFlags);
     TEST_ASSERT_EQUAL_UINT32(1u << 16, UnsafeShutdown);
-    TEST_ASSERT_TRUE(hasReason(r, "Shutting down: battery 4% < 5%"));
+    TEST_ASSERT_TRUE(hasReason(r, "Shutting down: battery 4% <= 5%"));
 
     // With the rule on too, both reasons.
     r = evaluateSafety(in, ruleOn());
     TEST_ASSERT_EQUAL_UINT32(UnsafeShutdown | UnsafeBatteryLow, r.reasonFlags);
 }
 
+// Power saving reads less often: the stale limit stretches by the extra
+// interval, and the reason states the limit in use.
+void test_stale_limit_stretches_while_reading_slowly(void)
+{
+    SafetyInputs in = fresh();
+    in.secondsSinceLastGoodData = 40;
+    SafetyThresholds t;
+    t.cloudCoverEnabled = false;
+    SafetyResult r = evaluateSafety(in, t);
+    TEST_ASSERT_TRUE(hasReason(r, "Sensor data is stale (40s old, limit 30s)"));
+    in.staleExtraSeconds = 26;
+    TEST_ASSERT_TRUE(evaluateSafety(in, t).isSafe);
+    in.secondsSinceLastGoodData = 57;
+    TEST_ASSERT_TRUE(hasReason(evaluateSafety(in, t), "Sensor data is stale (57s old, limit 56s)"));
+}
+
 void run_battery_rule_tests(void)
 {
+    RUN_TEST(test_stale_limit_stretches_while_reading_slowly);
     RUN_TEST(test_battery_rule_off_gives_no_battery_reason);
     RUN_TEST(test_battery_rule_without_data_is_unsafe);
     RUN_TEST(test_battery_below_limit_is_unsafe_with_value_and_limit);

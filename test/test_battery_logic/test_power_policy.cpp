@@ -58,14 +58,17 @@ void test_saving_back_to_normal(void)
 {
     PowerPolicy p;
     p.update(read(0, 9.0f));
-    TEST_ASSERT_FALSE(p.update(read(5000, 14.9f)).powerRestored);
+    TEST_ASSERT_FALSE(p.update(read(5000, 14.9f)).recovered);
     PolicyEvents e = p.update(read(10000, 15.0f));
-    TEST_ASSERT_TRUE(e.powerRestored);
+    // The charge recovered without USB: not "power restored".
+    TEST_ASSERT_TRUE(e.recovered);
+    TEST_ASSERT_FALSE(e.powerRestored);
     TEST_ASSERT_TRUE(p.state() == PowerState::Normal);
 
     p.update(read(15000, 9.0f));
     e = p.update(read(20000, 9.0f, ChargeState::Charging));
     TEST_ASSERT_TRUE(e.powerRestored);
+    TEST_ASSERT_FALSE(e.recovered);
     TEST_ASSERT_TRUE(p.state() == PowerState::Normal);
 
     // USB without a charging state (pins say PG).
@@ -160,8 +163,34 @@ void test_policy_survives_millis_wrap(void)
     TEST_ASSERT_TRUE(p.update(tick(start + 30000u)).sleepNow);
 }
 
+// The hourly timer wake: back to sleep unless USB is back or the charge is
+// above the level that ends power saving (no boot, warn, sleep every hour).
+void test_timer_wake_stays_asleep_until_recovered_or_usb(void)
+{
+    WakeCheck check;
+    check.read = true;
+    check.criticalPercent = 10;
+    check.percent = 5.0f;
+    TEST_ASSERT_TRUE(stayAsleep(check));
+    check.percent = 7.0f; // crept up after resting: still asleep
+    TEST_ASSERT_TRUE(stayAsleep(check));
+    check.percent = 14.9f;
+    TEST_ASSERT_TRUE(stayAsleep(check));
+    check.percent = 15.0f;
+    TEST_ASSERT_FALSE(stayAsleep(check));
+    check.percent = 4.0f;
+    check.usb = true;
+    TEST_ASSERT_FALSE(stayAsleep(check));
+    // An unreadable gauge is no news: stay asleep (USB still wakes it).
+    WakeCheck unread;
+    TEST_ASSERT_TRUE(stayAsleep(unread));
+    unread.usb = true;
+    TEST_ASSERT_FALSE(stayAsleep(unread));
+}
+
 void run_power_policy_tests(void)
 {
+    RUN_TEST(test_timer_wake_stays_asleep_until_recovered_or_usb);
     RUN_TEST(test_saving_below_critical);
     RUN_TEST(test_saving_back_to_normal);
     RUN_TEST(test_shutdown_needs_two_valid_reads);

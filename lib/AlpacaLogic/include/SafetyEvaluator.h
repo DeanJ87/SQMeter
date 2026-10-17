@@ -55,6 +55,10 @@ namespace SQM
         {
             bool hasEverHadGoodData = false;
             uint32_t secondsSinceLastGoodData = 0;
+            // Added to staleAfterSeconds while the sensors are read less often
+            // than usual (battery power saving, spec 032), so a slower read
+            // isn't reported as stale data.
+            uint32_t staleExtraSeconds = 0;
             bool requiredSensorFault = false; // any required sensor reporting a non-OK status
             // Which one: a faulted sensor's zeroed readings mustn't also
             // produce a misleading threshold reason (e.g. 100% cloud).

@@ -83,12 +83,14 @@ own wording like every event (see [Alerts](alerts.md)):
 | Battery low | The charge drops below the low level | Normal |
 | Battery critical | The charge drops below the critical level | Wake me |
 | Going to sleep: battery empty | The device is about to sleep at the shutdown level | Wake me |
-| Power restored | USB power returns after power saving or sleep | Off |
+| Power restored | USB power returns after power saving or sleep; *Battery recovered* when power saving ends because the charge climbed back without USB | Off |
 | Battery charged | The charger reports the pack full | Off |
 | Charging fault | The charger stops with a fault | Normal |
 
 *Battery low* and *critical* fire once on the way down and again only after the charge has risen
-5 points above the level, so a pack hovering at the line doesn't page you. *Going to sleep* and
+5 points above the level, so a pack hovering at the line doesn't page you. A pack already below a
+level when the device starts (or when the gauge's first reading arrives), and a charging fault
+already there at start-up, are announced once the first minute after start-up is over. *Going to sleep* and
 *Power restored* are sent even in the first minute after a start-up and skip the cooldown. A **Wake
 me** battery event also rings paired phones on the [Bluetooth](ble.md) build. Templates can use
 `{battery}`, `{battery_voltage}`, `{battery_state}` and `{battery_time_left}`.
@@ -101,13 +103,14 @@ goes dark:
 
 - below the limit: *Battery 8% < 10%* (a charging pack below the limit stays unsafe until it is above it);
 - no fuel gauge, monitoring off, or data stale or still estimating: *Battery data missing*;
-- at the shutdown level, whether the rule is on or not: *Shutting down: battery 4% < 5%*, before the
+- at the shutdown level, whether the rule is on or not: *Shutting down: battery 4% <= 5%*, before the
   device sleeps.
 
 Like rain and wind, the battery is checked even when the other sensors' data is stale. Two options
 change only who hears about it, never the verdict: **Send an alert** (an Urgent *Battery: unsafe*
-alert alongside the unsafe alert) and **Ring paired phones** (Bluetooth build, with a passkey and a
-paired phone). In `reasonFlags` the battery is bit 14 (below the limit), 15 (data missing) and 16
+alert alongside the unsafe alert, at most once per alert cooldown) and **Ring paired phones**
+(Bluetooth build, with a passkey and a paired phone). The limit follows the **Critical level** until
+you set it to something else. In `reasonFlags` the battery is bit 14 (below the limit), 15 (data missing) and 16
 (shutting down). See [ASCOM Alpaca → Safety rules](alpaca.md#safety-rules).
 
 ## Power saving and deep sleep
@@ -115,9 +118,10 @@ paired phone). In `reasonFlags` the battery is bit 14 (below the limit), 15 (dat
 With **Save power when low** on:
 
 1. **Below the critical level** (not charging): sensors are read every 30 s instead of every few
-   seconds, the OLED display goes off, and the dashboard's Battery card shows *Power saving*. Alpaca,
-   REST and MQTT keep answering. USB power, or the charge back 5 points above the critical level, ends
-   it (*Power restored*).
+   seconds (the gauge too), the OLED display goes off, and the dashboard's Battery card shows *Power
+   saving*. Alpaca, REST and MQTT keep answering, and the data counts as fresh for the slower interval,
+   so the verdict doesn't turn stale just because readings come less often. USB power (*Power
+   restored*), or the charge back 5 points above the critical level (*Battery recovered*), ends it.
 2. **At the shutdown level** (two readings in a row, not charging): the device sends *Going to
    sleep*, reports unsafe, and waits the warning time (30 s) for the alert to go out, 15 s more at
    most, then goes into **deep sleep**. Plugging in USB during the warning cancels it.
@@ -125,9 +129,10 @@ With **Save power when low** on:
    is why the warning and the unsafe verdict come first. It wakes:
     - **on USB power**, at once, when the charger's PG pin is set (it must be a pin that can wake the
       ESP32); it starts up normally and sends *Power restored* once WiFi is back, or after 2 minutes;
-    - **every hour** to check the gauge: still empty and not charging, it goes straight back to sleep
-      without a word. Without a PG pin this hourly check is how it notices charging, so it can take up
-      to an hour to wake after you plug in.
+    - **every hour** to check the gauge: not charging and the charge not back 5 points above the
+      critical level (a resting cell's charge creeps up a little), or the gauge not answering, it goes
+      straight back to sleep without a word. Without a PG pin this hourly check is how it notices
+      charging, so it can take up to an hour to wake after you plug in. The reset button always wakes it.
 
 With **Save power when low** off nothing slows down and the device never sleeps; it runs until the
 cells' protection cuts them off at about 2.4 V. Missing or estimating gauge data never moves the

@@ -110,6 +110,7 @@ namespace SQM
             // The power policy's one-shots (spec 032): going to sleep, power restored.
             in.battery.shutdownStarted = powerManager->takeShutdownStarted();
             in.battery.powerRestored = powerManager->takePowerRestored();
+            in.battery.recovered = powerManager->takeRecovered();
         }
         Core::LocalClock clock;
         localClock(clock.time, clock.date);

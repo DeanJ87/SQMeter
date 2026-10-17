@@ -376,6 +376,7 @@ void EmulatedDevice::runAlerts()
     in.nowSeconds = uptimeSeconds();
     in.battery.shutdownStarted = feed.takeShutdownStarted();
     in.battery.powerRestored = feed.takePowerRestored();
+    in.battery.recovered = feed.takeRecovered();
 
     // The imaging app: is each Alpaca device still being checked?
     const Alpaca::DeviceActivity activity[Alpaca::DEVICE_COUNT] = {

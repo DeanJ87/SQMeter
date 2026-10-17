@@ -37,6 +37,7 @@ namespace SQM
         // The power policy's one-shots for the alert engine (spec 032), as PowerManager's.
         bool takeShutdownStarted() { return std::exchange(shutdownStarted, false); }
         bool takePowerRestored() { return std::exchange(powerRestored, false); }
+        bool takeRecovered() { return std::exchange(recovered, false); }
         uint16_t lightWindowSeconds() const { return lightWindow; }
         uint32_t lastLightStepMs() const { return lastLightStep; }
 
@@ -56,6 +57,7 @@ namespace SQM
         Battery::PowerPolicy policy;
         bool shutdownStarted = false;
         bool powerRestored = false;
+        bool recovered = false;
 
         float averagedLux(float inputLux, bool nightMode, uint32_t now);
         void readLight(JsonObjectConst in);

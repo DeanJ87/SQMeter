@@ -138,7 +138,7 @@ namespace SQM
             alpaca.windGustUnsafeEnabled = false;
             alpaca.windGustUnsafeMs = 15.0f;
             alpaca.batteryEnabled = false;
-            alpaca.batteryMinPercent = 10;
+            alpaca.batteryMinPercent = BatteryConfig{}.criticalPercent; // follows it (ConfigJsonIn)
             alpaca.batteryAlert = true;
             alpaca.batteryPhoneAlarm = true;
         }
