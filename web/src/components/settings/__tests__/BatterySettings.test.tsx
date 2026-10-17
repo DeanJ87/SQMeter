@@ -115,3 +115,73 @@ describe('Alerts tab battery group (spec 032)', () => {
     expect(document.querySelector('[data-event="battery_low"]')).toBeNull();
   });
 });
+
+describe('Device tab Battery card (spec 032)', () => {
+  const openDevice = (battery: Record<string, unknown> = {}, facts: Record<string, unknown> = { batteryDetected: true }) => {
+    mockDevice({ config: { battery: { ...mockConfig.battery!, ...battery } }, facts });
+    window.history.replaceState(null, '', '/settings?tab=device');
+    render(<Settings />);
+  };
+  const card = async () =>
+    within(
+      await waitFor(() => {
+        const el = document.getElementById('battery');
+        if (!el?.textContent?.includes('Monitor battery')) throw new Error('not rendered');
+        return el;
+      }),
+    );
+  const field = (name: string) => document.querySelector(`[data-field="${name}"]`) as HTMLInputElement;
+
+  it('s1: a detected gauge with its levels, power saving and pins', async () => {
+    openDevice();
+    const c = await card();
+    expect(await c.findByText('Detected')).toBeInTheDocument();
+    expect(c.getByRole('switch', { name: 'Monitor battery' })).toBeChecked();
+    expect(field('battery.lowPercent').value).toBe('20');
+    expect(field('battery.criticalPercent')).not.toBeDisabled();
+    expect(field('battery.capacityMah').value).toBe('');
+    expect(c.getByRole('switch', { name: 'Save power when low' })).toBeChecked();
+    expect(field('battery.saveReadIntervalSeconds')).not.toBeDisabled();
+    expect(field('battery.pgPin').value).toBe('');
+  });
+
+  it('s2: without a gauge every row but the pins is muted, said once', async () => {
+    openDevice({}, { batteryDetected: false });
+    const c = await card();
+    expect(await c.findByText('Not detected')).toBeInTheDocument();
+    expect(c.getAllByText(/No battery gauge detected/)).toHaveLength(1);
+    expect(field('battery.lowPercent')).toBeDisabled();
+    expect(field('battery.saveReadIntervalSeconds')).toBeDisabled();
+    expect(field('battery.stat1Pin')).not.toBeDisabled();
+  });
+
+  it('s3: shows the message for a level out of order', async () => {
+    openDevice();
+    await card();
+    fireEvent.change(field('battery.criticalPercent'), { target: { value: '22' } });
+    fireEvent.change(field('battery.lowPercent'), { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findAllByText('2 to 25%, below the low level')).not.toHaveLength(0);
+  });
+
+  it('saves the levels, an empty capacity as 0 and an unset pin as 255', async () => {
+    const saved = captureSave();
+    openDevice({ capacityMah: 7000, alertPin: 4 });
+    await card();
+    fireEvent.change(field('battery.lowPercent'), { target: { value: '25' } });
+    fireEvent.change(field('battery.capacityMah'), { target: { value: '' } });
+    fireEvent.change(field('battery.alertPin'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(saved.body?.battery).toMatchObject({ lowPercent: 25, capacityMah: 0, alertPin: 255 }));
+  });
+
+  it('is absent on firmware without a battery', async () => {
+    const { battery: _battery, ...older } = mockConfig;
+    mockDevice({ config: older });
+    server.use(http.get('/api/config', () => HttpResponse.json(older)));
+    window.history.replaceState(null, '', '/settings?tab=device');
+    render(<Settings />);
+    await screen.findByText('Show on display');
+    expect(document.getElementById('battery')).toBeNull();
+  });
+});

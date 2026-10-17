@@ -20,6 +20,7 @@ import { defaultBleConfig } from './defaults';
 import { t } from '../../i18n';
 import LanguageCard from './LanguageCard';
 import DisplayCard from './DisplayCard';
+import BatteryCard from './BatteryCard';
 
 type BleAlarm = NonNullable<NonNullable<SystemStatus['ble']>['alarm']>;
 type WithActions = SettingsTabProps & { actions: DeviceActions };
@@ -204,6 +205,8 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = (props) => {
       <BluetoothCard {...props} actions={actions} />
 
       <DisplayCard {...props} actions={displayActions} />
+
+      <BatteryCard {...props} />
     </>
   );
 };

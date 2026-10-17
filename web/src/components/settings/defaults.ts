@@ -1,6 +1,7 @@
 import type {
   AlertsConfig,
   AlpacaConfig,
+  BatteryConfig,
   BleConfig,
   Config,
   DisplayConfig,
@@ -81,6 +82,22 @@ export const defaultDisplayConfig: DisplayConfig = {
   stayOnAtNight: false,
   rotate180: false,
   buttonPin: 255,
+};
+
+// The Li-ion pack (spec 032, contracts/config.md); pins 255 = not wired.
+export const defaultBatteryConfig: BatteryConfig = {
+  enabled: true,
+  lowPercent: 20,
+  criticalPercent: 10,
+  shutdownPercent: 5,
+  capacityMah: 0,
+  powerSaving: true,
+  saveReadIntervalSeconds: 30,
+  shutdownGraceSeconds: 30,
+  alertPin: 255,
+  stat1Pin: 255,
+  stat2Pin: 255,
+  pgPin: 255,
 };
 
 export const defaultAlertsConfig: AlertsConfig = {

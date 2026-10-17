@@ -131,7 +131,7 @@ phone alarm options.
 
 ## Phase 7: Settings UI (US1-US3)
 
-- [ ] T054 Vitest first, then the Settings → Device → Battery card per contracts/ui.md (badge, monitoring toggle, thresholds, capacity, power saving with interval and grace, pins; disabled with D-46 except pins) in web/src/components/settings/BatteryCard.tsx, added to web/src/components/settings/DeviceTab.tsx after Display; Zod in web/src/validation/configSchema.ts, defaults in web/src/components/settings/defaults.ts, payload in web/src/components/settings/payload.ts; tests in web/src/components/settings/__tests__/
+- [X] T054 Vitest first, then the Settings → Device → Battery card per contracts/ui.md (badge, monitoring toggle, thresholds, capacity, power saving with interval and grace, pins; disabled with D-46 except pins) in web/src/components/settings/BatteryCard.tsx, added to web/src/components/settings/DeviceTab.tsx after Display; Zod in web/src/validation/configSchema.ts, defaults in web/src/components/settings/defaults.ts, payload in web/src/components/settings/payload.ts; tests in web/src/components/settings/__tests__/
 
 ## Phase 8: Polish & cross-cutting
 
