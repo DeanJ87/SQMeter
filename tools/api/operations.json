@@ -127,7 +127,7 @@
     "POST /api/mqtt/test": {
       "tag": "Network",
       "summary": "Test an MQTT broker",
-      "description": "Tries to connect with the given details without saving them.",
+      "description": "Tries to connect with the given details without saving them. A `password` of `********` (the mask settings return) or empty means the saved password, which is only used when broker, port and username match the saved ones; for any other broker a masked password is refused with 400.",
       "requestBody": {
         "inline": {
           "type": "object",
@@ -142,7 +142,7 @@
         },
         "example": { "broker": "192.168.1.10", "port": 1883, "username": "", "password": "", "clientId": "SQM-Test" }
       },
-      "responses": { "200": "action", "502": "error" }
+      "responses": { "200": "action", "400": "error", "502": "error" }
     },
     "POST /api/update": {
       "tag": "Updates",
