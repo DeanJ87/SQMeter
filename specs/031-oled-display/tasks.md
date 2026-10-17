@@ -11,9 +11,9 @@ dependency on an unfinished task.
 
 ## Phase 1: Setup
 
-- [ ] T001 Record the baselines in specs/031-oled-display/budgets.md: firmware size of `pio run -e esp32dev` and `-e esp32dev-ble`, static RAM, gzipped UI JS+CSS (`tools/ui/size_check.py`), default and long-string main config JSON size, `/api/status` worst case (`test_status_document_fits`)
-- [ ] T002 Create lib/DisplayLogic/ (include/, src/, like lib/WindLogic) and add `-Ilib/DisplayLogic/include` to `[env:native]` build_flags in platformio.ini; add `lib/DisplayLogic/src/*.cpp` to SOURCES in tools/demo-core/build.sh
-- [ ] T003 [P] `Display::Page` enum (Sky, Environment, Cloud, Safety, Gps, Battery, Network), `PAGE_COUNT`, `pageName()`/`parsePage()` (exact names), `Brightness` (Low/Medium/High) with names/parse in lib/DisplayLogic/include/DisplayTypes.h, with tests first in test/test_display_logic/test_display_types.cpp
+- [X] T001 Record the baselines in specs/031-oled-display/budgets.md: firmware size of `pio run -e esp32dev` and `-e esp32dev-ble`, static RAM, gzipped UI JS+CSS (`tools/ui/size_check.py`), default and long-string main config JSON size, `/api/status` worst case (`test_status_document_fits`)
+- [X] T002 Create lib/DisplayLogic/ (include/, src/, like lib/WindLogic) and add `-Ilib/DisplayLogic/include` to `[env:native]` build_flags in platformio.ini; add `lib/DisplayLogic/src/*.cpp` to SOURCES in tools/demo-core/build.sh
+- [X] T003 [P] `Display::Page` enum (Sky, Environment, Cloud, Safety, Gps, Battery, Network), `PAGE_COUNT`, `pageName()`/`parsePage()` (exact names), `Brightness` (Low/Medium/High) with names/parse in lib/DisplayLogic/include/DisplayTypes.h, with tests first in test/test_display_logic/test_display_types.cpp
 
 ## Phase 2: Foundational (blocks every story)
 
