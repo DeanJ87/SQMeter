@@ -1,6 +1,7 @@
-import type { AlertEventKey, Config } from '../types';
+import type { AlertEventKey, Config, SkyRole } from '../types';
 import { t } from '../i18n';
 import { deviceText } from '../i18n/deviceMessage';
+import { REASONS } from './settingsDepReasons';
 
 // Whether each setting that needs another setting (or hardware, or the
 // network) is in effect - the device's rules from lib/SettingsDeps, mirrored
@@ -48,62 +49,8 @@ export interface EffectiveReport {
   settings: DepEntry[];
 }
 
-// Same codes, texts and fix targets as lib/SettingsDeps/catalogue.json (a
-// test compares them).
-export const REASONS: Record<string, { text: string; fix: string }> = {
-  'alerts-off': { text: t('settingsDeps.alertsAreOff'), fix: 'alerts#alerts' },
-  'mqtt-off': { text: t('settingsDeps.mqttIsOff'), fix: 'network#mqtt' },
-  'mqtt-disconnected': { text: t('settingsDeps.brokerNotConnected'), fix: 'network#mqtt' },
-  'wifi-disconnected': { text: t('settingsDeps.notConnectedToWifi'), fix: 'network#wifi' },
-  'rain-off': { text: t('settingsDeps.rainSensorIsOff'), fix: 'sensors#rain' },
-  'wind-off': { text: t('settingsDeps.anemometerIsOff'), fix: 'sensors#wind' },
-  'gps-off': { text: t('settingsDeps.gpsIsOff'), fix: 'time#time-sources' },
-  'gps-restart': { text: t('settingsDeps.gpsStartsAfterARestart'), fix: 'restart' },
-  'gps-no-fix': { text: t('settingsDeps.noGpsFixUsingThe'), fix: 'time#location' },
-  'light-missing': { text: t('settingsDeps.tsl2591NotDetected'), fix: 'sensors#sky-sensors' },
-  'sky-single': { text: t('settingsDeps.sqmAndSqmLMustBothBeOn'), fix: 'sensors#sky-sensors' },
-  'sqml-missing': { text: t('settingsDeps.sqmLNotDetected'), fix: 'sensors#sky-sensors' },
-  'infrared-missing': { text: t('settingsDeps.mlx90614NotDetected'), fix: 'sensors#sky-sensors' },
-  'environment-missing': { text: t('settingsDeps.bme280NotDetected'), fix: 'sensors#sky-sensors' },
-  'location-unknown': { text: t('settingsDeps.needsYourLocation'), fix: 'time#location' },
-  'alpaca-off': { text: t('settingsDeps.alpacaIsOff'), fix: 'safety#alpaca' },
-  'ble-build': { text: t('settingsDeps.needsTheBluetoothFirmwareBuild'), fix: 'device#ble' },
-  'ble-off': { text: t('settingsDeps.bluetoothIsOff'), fix: 'device#ble' },
-  'ble-restart': { text: t('settingsDeps.bluetoothStartsAfterARestart'), fix: 'restart' },
-  'no-passkey': { text: t('settingsDeps.noPairingPasskeySet'), fix: 'device#ble' },
-  'no-phones': { text: t('settingsDeps.noPhonePaired'), fix: 'device#ble' },
-  'clock-unset': { text: t('settingsDeps.theDeviceDoesnTKnow'), fix: 'time#time-sources' },
-  'ota-no-password': { text: t('settingsDeps.setAnUploadPassword'), fix: 'device#security' },
-  'language-offline': { text: t('settingsDeps.needsWifiToDownloadOr'), fix: 'network#wifi' },
-};
-
-// Label for the one-click fix of each reason.
-export const FIX_LABEL: Record<string, string> = {
-  'alerts-off': t('settingsDeps.turnOnAlerts'),
-  'mqtt-off': t('settingsDeps.turnOnMqtt'),
-  'mqtt-disconnected': t('settingsDeps.mqttSettings'),
-  'wifi-disconnected': t('settingsDeps.wifiSettings'),
-  'rain-off': t('settingsDeps.turnOn'),
-  'wind-off': t('settingsDeps.turnOn'),
-  'gps-off': t('settingsDeps.turnOnGps'),
-  'gps-restart': t('settingsDeps.restart'),
-  'gps-no-fix': t('settingsDeps.location'),
-  'light-missing': t('settingsDeps.skySensors'),
-  'sky-single': t('settingsDeps.skySensors'),
-  'sqml-missing': t('settingsDeps.skySensors'),
-  'infrared-missing': t('settingsDeps.skySensors'),
-  'environment-missing': t('settingsDeps.skySensors'),
-  'location-unknown': t('settingsDeps.setLocation'),
-  'alpaca-off': t('settingsDeps.turnOnAlpaca'),
-  'ble-build': t('settingsDeps.bluetooth'),
-  'ble-off': t('settingsDeps.turnOnBluetooth'),
-  'ble-restart': t('settingsDeps.restart'),
-  'no-passkey': t('settingsDeps.setAPasskey'),
-  'no-phones': t('settingsDeps.pairAPhone'),
-  'clock-unset': t('settingsDeps.timeSources'),
-  'ota-no-password': t('settingsDeps.setPassword'),
-  'language-offline': t('settingsDeps.wifiSettings'),
-};
+// The reasons' texts and fix targets (same as lib/SettingsDeps/catalogue.json) and fix labels.
+export { FIX_LABEL, REASONS } from './settingsDepReasons';
 
 // One link of a dependency chain: met, or the catalogue ID and reason that
 // make the setting inactive. `met === null`: unknown (no facts yet).
@@ -293,7 +240,15 @@ const addSafetyRules = (c: Context) => {
     [['D-17', 'infrared-missing', c.fact('infraredDetected')]],
     FAIL_SAFE,
   );
-  c.add('alpaca.sqmMinEnabled', 'D-18', rule('sqmMinEnabled'), [['D-18', 'light-missing', c.fact('lightDetected')]], FAIL_SAFE);
+  // With both sky sensors on, the reason names the authoritative one (spec 030 FR-010).
+  const authoritative = read<SkyRole>(c.config, 'sky.authoritative', 'sqm');
+  c.add(
+    'alpaca.sqmMinEnabled',
+    'D-18',
+    rule('sqmMinEnabled'),
+    [['D-18', skyMissing(c.config, authoritative), c.fact('lightDetected')]],
+    FAIL_SAFE,
+  );
   const bme: Link = ['D-19', 'environment-missing', c.fact('environmentDetected')];
   c.add('alpaca.humidityMaxEnabled', 'D-19', rule('humidityMaxEnabled'), [bme], FAIL_SAFE);
   c.add('alpaca.dewpointMarginEnabled', 'D-19', rule('dewpointMarginEnabled'), [bme], FAIL_SAFE);
@@ -319,14 +274,25 @@ const addSensorsAndTime = (c: Context) => {
   c.add('ntp.enabled', 'D-28', on(c.config, 'ntp.enabled'), [['D-28', 'wifi-disconnected', c.fact('wifiConnected')]]);
   // Older firmware reports only the one light sensor: the SQM.
   const sqmFound = c.fact('sqmDetected') ?? c.fact('lightDetected');
-  c.add('skyCalibration.enabled', 'D-29', on(c.config, 'skyCalibration.enabled'), [['D-29', 'light-missing', sqmFound]]);
+  c.add('skyCalibration.enabled', 'D-29', on(c.config, 'skyCalibration.enabled'), [['D-29', skyMissing(c.config, 'sqm'), sqmFound]]);
   addSkySensors(c);
 };
 
-// Two sky sensors (spec 030): the choice between them only matters with
-// both on; the SQM-L's calibration needs it found.
+// Both sky sensors on (spec 030).
+const bothSky = (config: Config) => on(config, 'sky.sqmEnabled', true) && on(config, 'sky.sqmlEnabled');
+
+// A missing sky sensor's reason: "Light sensor" with one sensor (as before
+// spec 030), the sensor's own name with both on.
+const skyMissing = (config: Config, role: SkyRole) =>
+  !bothSky(config) ? 'light-missing' : role === 'sqml' ? 'sqml-missing' : 'sqm-missing';
+
+const i2c2Set = (config: Config) => read(config, 'sensor.i2c2SDA', 255) !== 255 && read(config, 'sensor.i2c2SCL', 255) !== 255;
+
+// Two sky sensors (spec 030): the SQM-L needs the second bus; the choice
+// between them only matters with both on; the SQM-L's calibration needs it found.
 const addSkySensors = (c: Context) => {
-  const bothOn: Link = ['D-40', 'sky-single', on(c.config, 'sky.sqmEnabled', true) && on(c.config, 'sky.sqmlEnabled')];
+  c.add('sky.sqmlEnabled', 'D-39', on(c.config, 'sky.sqmlEnabled'), [['D-39', 'i2c2-unset', i2c2Set(c.config)]]);
+  const bothOn: Link = ['D-40', 'sky-single', bothSky(c.config)];
   c.add('sky.authoritative', 'D-40', true, [bothOn], NEUTRAL);
   c.add('sky.showOther', 'D-40', on(c.config, 'sky.showOther', true), [bothOn], NEUTRAL);
   c.add('skyCalibrationL.enabled', 'D-41', on(c.config, 'skyCalibrationL.enabled'), [

@@ -19,7 +19,7 @@ using namespace SQM;
 // are shared with web/src/lib/__tests__/settingsDeps.test.ts, so the device
 // and the web UI's preview give the same answers. Catalogue IDs covered here:
 // D-01 D-02 D-03 D-04 D-05 D-06 D-07 D-08 D-09 D-10 D-11 D-12 D-13 D-14 D-15
-// D-16 D-17 D-18 D-19 D-23 D-24 D-25 D-26 D-28 D-29 D-30 D-31 D-32 D-35 D-36 D-37 D-38 D-39 D-40 D-41.
+// D-16 D-17 D-18 D-19 D-23 D-24 D-25 D-26 D-28 D-29 D-30 D-31 D-32 D-35 D-36 D-37 D-38 D-39 D-40 D-41 D-42.
 
 namespace
 {
@@ -107,6 +107,13 @@ void test_fixture_cases()
         serializeJson(c["config"], overlay);
         std::string error;
         auto cfg = Config::fromJson(overlay, nullptr, &error);
+        // A form state the device refuses to save (a constraint, e.g. D-42):
+        // only the web preview evaluates it; here the refusal is the check.
+        if (c["draft"] | false)
+        {
+            TEST_ASSERT_FALSE_MESSAGE(cfg.has_value(), name);
+            continue;
+        }
         if (!cfg)
             TEST_FAIL_MESSAGE((std::string(name) + ": " + error).c_str());
         const std::vector<Deps::Entry> entries = Deps::evaluate(*cfg, factsFrom(base, c["facts"]));

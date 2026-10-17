@@ -1,5 +1,5 @@
 {
-  "$comment": "Shared by test/test_settings_deps (lib/SettingsDeps) and web/src/lib/__tests__/settingsDeps.test.ts (web/src/lib/settingsDeps.ts): the same config and facts must give the same answers. `config` is applied on top of the device defaults (default-config.json); `facts` on top of `baseFacts`. `expect` lists only the settings a case is about.",
+  "$comment": "Shared by test/test_settings_deps (lib/SettingsDeps) and web/src/lib/__tests__/settingsDeps.test.ts (web/src/lib/settingsDeps.ts): the same config and facts must give the same answers. `config` is applied on top of the device defaults (default-config.json); `facts` on top of `baseFacts`. `expect` lists only the settings a case is about. `draft: true` marks a form state the device refuses to save: the device test checks the refusal, the web preview the answers.",
   "baseFacts": {
     "wifiConnected": true,
     "mqttConnected": true,
@@ -1492,6 +1492,108 @@
         "skyCalibrationL.enabled": {
           "state": "active",
           "id": "D-41"
+        }
+      }
+    },
+    {
+      "name": "D-39 the SQM-L needs the second I2C bus pins (a draft: the device refuses to save it, D-42)",
+      "draft": true,
+      "config": {
+        "sky": {
+          "sqmlEnabled": true
+        }
+      },
+      "expect": {
+        "sky.sqmlEnabled": {
+          "state": "inactive",
+          "id": "D-39",
+          "reason": "i2c2-unset",
+          "text": "Second I2C bus pins not set",
+          "fix": "sensors#sky-sensors"
+        }
+      }
+    },
+    {
+      "name": "D-39 met",
+      "config": {
+        "sensor": {
+          "i2c2SDA": 25,
+          "i2c2SCL": 26
+        },
+        "sky": {
+          "sqmlEnabled": true
+        }
+      },
+      "expect": {
+        "sky.sqmlEnabled": {
+          "state": "active",
+          "id": "D-39"
+        }
+      }
+    },
+    {
+      "name": "D-18 names the authoritative SQM-L with both sky sensors on",
+      "config": {
+        "sensor": {
+          "i2c2SDA": 25,
+          "i2c2SCL": 26
+        },
+        "sky": {
+          "sqmlEnabled": true,
+          "authoritative": "sqml"
+        },
+        "alpaca": {
+          "sqmMinEnabled": true
+        }
+      },
+      "facts": {
+        "lightDetected": false,
+        "sqmlDetected": false
+      },
+      "expect": {
+        "alpaca.sqmMinEnabled": {
+          "state": "inactive",
+          "id": "D-18",
+          "reason": "sqml-missing",
+          "text": "SQM-L not detected",
+          "unmet": "fail-safe"
+        }
+      }
+    },
+    {
+      "name": "D-18 and D-29 name the SQM with both sky sensors on",
+      "config": {
+        "sensor": {
+          "i2c2SDA": 25,
+          "i2c2SCL": 26
+        },
+        "sky": {
+          "sqmlEnabled": true
+        },
+        "alpaca": {
+          "sqmMinEnabled": true
+        },
+        "skyCalibration": {
+          "enabled": true
+        }
+      },
+      "facts": {
+        "lightDetected": false,
+        "sqmDetected": false
+      },
+      "expect": {
+        "alpaca.sqmMinEnabled": {
+          "state": "inactive",
+          "id": "D-18",
+          "reason": "sqm-missing",
+          "text": "SQM not detected",
+          "unmet": "fail-safe"
+        },
+        "skyCalibration.enabled": {
+          "state": "inactive",
+          "id": "D-29",
+          "reason": "sqm-missing",
+          "text": "SQM not detected"
         }
       }
     }
