@@ -51,7 +51,7 @@ through `applyJson` with placeholders preserved: the same validation and message
   the file, so a later release can raise it without breaking old files. Files are accepted with 1,000 to
   100,000 iterations, so a crafted file can't hold the device for minutes. The firmware logs each
   derivation's measured time (`Backup key derived in N ms`) so the cost can be confirmed on the test
-  device; the native build of the portable code takes about 15 ms for 20,000 iterations on a 2024 laptop.
+  device; the native build of the portable code takes about 13 ms for 20,000 iterations (-O2, Apple silicon laptop).
 - **Alternatives**: scrypt/Argon2 (memory-hard, better against GPUs) - not in ESP-IDF's mbedTLS and need
   tens of KB of RAM per derivation; ChaCha20-Poly1305 - in mbedTLS but not in WebCrypto, which the docs
   can point to for decrypting a file by hand; HKDF - not a slow derivation (FR-004).

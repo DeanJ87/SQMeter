@@ -1,0 +1,36 @@
+{
+  "sqmeterBackup": 1,
+  "firmware": "0.3.4-beta.1",
+  "board": "esp32",
+  "build": "ble",
+  "deviceName": "webcrypto-fixture",
+  "createdAt": "2026-10-18T21:04:05Z",
+  "settings": {
+    "deviceName": "webcrypto-fixture",
+    "wifi": {
+      "ssid": "Observatory",
+      "password": "********"
+    },
+    "mqtt": {
+      "enabled": true,
+      "broker": "broker.lan",
+      "port": 1883,
+      "username": "sqm",
+      "password": "********",
+      "topic": "sqmeter"
+    },
+    "auth": {
+      "enabled": true,
+      "username": "admin",
+      "password": "********"
+    }
+  },
+  "secrets": {
+    "kdf": "pbkdf2-sha256",
+    "iterations": 20000,
+    "salt": "AwoRGB8mLTQ7QklQV15lbA==",
+    "cipher": "aes-256-gcm",
+    "nonce": "yMO+ubSvqqWgm5aR",
+    "data": "Nif7ALxmHs7ia2fUIfrIfWNa4DmQNSxsNOgEL1W6uqW264w37pAzGfjg0Hywqpe3T9YXtlEt/IAJ81gWyOfRvNSecy2Lv9D1hXt1jKUkuT9ejYBeu1ExFFDOhNAbqpVybE+wfEanRI9NS4R7Xp6c1JCvaCxth8aPOiwigY1OBXugvXQvavHSBTqN+laVcpV6lvRo+tN16bR+doe6Ll3tPswUi3XFu5Au/qoayU8g3f3ILfnRVNQuWoXgrHCduarW2q2wlZy7d87qeMq0tWH7Fa6aiU2nyyj+8pGqUVYidgoyP/icIrL0Xevd3fmBA0jj42rTYtEDDzEaDAvLPhqERH4ish7EnfDg2iaX3Loie6huinHorR/IkWA5YaQ="
+  }
+}
