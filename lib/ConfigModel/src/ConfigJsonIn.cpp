@@ -559,4 +559,15 @@ namespace SQM
             return false;
         return !preserveSecretPlaceholders || validateIncoming(cfg, errorOut);
     }
+
+    std::optional<std::string> Config::mqttTestPassword(const MQTTConfig &saved, const MqttTestTarget &target)
+    {
+        if (!isPlaceholderSecret(target.password.c_str()) || saved.password.empty())
+            return target.password;
+        if (target.broker == saved.broker && target.port == saved.port && target.username == saved.username)
+            return saved.password;
+        if (target.password.empty())
+            return target.password; // testing another broker without a password
+        return std::nullopt;
+    }
 } // namespace SQM

@@ -279,6 +279,7 @@
   "device.api.theRainSensorIsSwitchedOff": "Yağmur sensörü kapalı (Ayarlar → Sensörler → Yağmur sensörü)",
   "device.api.theSensorIsSeeingLightCover": "Sensör ışık görüyor. Tamamen kapatın ve ortalama penceresinin dolmasını bekleyin.",
   "device.api.titleIsUpTo80Characters": "Başlık en fazla 80, mesaj en fazla 240 karakter olabilir",
+  "device.api.typeTheMqttPasswordToTest": "Kayıtlı aracı dışında bir aracıyı test etmek için MQTT parolasını yazın",
   "device.api.unauthorized": "Yetkisiz",
   "device.api.unavailable": "Kullanılamıyor",
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "Bilinmeyen kanal (beklenen: mqtt, pushover, ntfy, webhook veya all)",

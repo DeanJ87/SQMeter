@@ -285,6 +285,7 @@
   "device.api.theRainSensorIsSwitchedOff": "Czujnik deszczu jest wyłączony (Ustawienia → Czujniki → Czujnik deszczu)",
   "device.api.theSensorIsSeeingLightCover": "Czujnik widzi światło. Zakryj go całkowicie i poczekaj, aż okno uśredniania się zapełni.",
   "device.api.titleIsUpTo80Characters": "Tytuł może mieć do 80 znaków, a wiadomość do 240",
+  "device.api.typeTheMqttPasswordToTest": "Wpisz hasło MQTT, aby przetestować inny broker niż zapisany",
   "device.api.unauthorized": "Brak uprawnień",
   "device.api.unavailable": "Niedostępne",
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "Nieznany kanał (oczekiwano mqtt, pushover, ntfy, webhook lub all)",

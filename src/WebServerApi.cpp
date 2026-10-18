@@ -535,8 +535,18 @@ namespace SQM
         const char *broker = jsonObj["broker"];
         uint16_t port = jsonObj["port"];
         const char *username = jsonObj["username"] | "";
-        const char *password = jsonObj["password"] | "";
         const char *clientId = jsonObj["clientId"] | "SQM-Test";
+        // The form shows a saved password as the mask: test with the saved one, but only for the
+        // saved broker, port and user.
+        const auto passwordToTry =
+            Config::mqttTestPassword(getConfigCallback().mqtt, {broker != nullptr ? broker : "", port, username, jsonObj["password"] | ""});
+        if (!passwordToTry)
+        {
+            request->send(
+                400, "application/json", createErrorJson("Type the MQTT password to test a broker other than the saved one").c_str());
+            return;
+        }
+        const char *password = passwordToTry->c_str();
 
         // "[fd00::10]:1883" and bare IPv6 work as in the saved settings (spec 015).
         Net::Host host;

@@ -1042,7 +1042,7 @@
           "Network"
         ],
         "summary": "Test an MQTT broker",
-        "description": "Tries to connect with the given details without saving them.\n\nNeeds the password when protection is on.",
+        "description": "Tries to connect with the given details without saving them. A `password` of `********` (the mask settings return) or empty means the saved password, which is only used when broker, port and username match the saved ones; for any other broker a masked password is refused with 400.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -1055,6 +1055,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }

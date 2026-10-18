@@ -276,6 +276,7 @@
   "device.api.theRainSensorIsSwitchedOff": "강우 센서가 꺼져 있습니다(설정 → 센서 → 강우 센서)",
   "device.api.theSensorIsSeeingLightCover": "센서에 빛이 들어오고 있습니다. 완전히 덮고 평균 구간이 채워질 때까지 기다리세요.",
   "device.api.titleIsUpTo80Characters": "제목은 최대 80자, 메시지는 최대 240자입니다",
+  "device.api.typeTheMqttPasswordToTest": "저장된 브로커가 아닌 다른 브로커를 테스트하려면 MQTT 비밀번호를 입력하세요",
   "device.api.unauthorized": "권한 없음",
   "device.api.unavailable": "사용할 수 없음",
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "알 수 없는 채널(mqtt, pushover, ntfy, webhook, all 중 하나)",

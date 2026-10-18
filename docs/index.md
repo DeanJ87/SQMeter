@@ -147,17 +147,6 @@ A TSL2591 light sensor for sky brightness (not the TSL237 in the Unihedron SQM),
 
 No. The device works on its own from the browser. MQTT, with Home Assistant discovery, is one of several optional outputs ([MQTT Integration](user-guide/mqtt.md)).
 
-### How does it compare with other open-source SQM projects?
-
-| Project | What it is | Good at |
-|---|---|---|
-| [mySQM+](https://sourceforge.net/projects/mysqmproesp32/) by Robert Brown | ESP32 sky quality meter and weather station, successor to the Arduino Nano + TSL237 [mySQM](https://sourceforge.net/projects/arduinomysqmskyqualitymeter/) | A long-running, feature-rich DIY build with its own web server, MQTT, a Windows application, Windows ASCOM ObservingConditions and SafetyMonitor drivers, and published PCB files |
-| [SimpleSQM](https://github.com/marcocipriani01/SimpleSQM) | Arduino Nano + TSL237 with an ASCOM ObservingConditions driver | The simplest possible build: one sensor, three wires, the same sensor as the Unihedron SQM |
-| [SQM_TSL2591](https://github.com/gshau/SQM_TSL2591) by gshau | Arduino library for SQM readings from a TSL2591 | Adaptive gain and exposure, noise estimates, and SQM-LE / SQM-LU emulator examples |
-| [PySQM](https://github.com/mireianievas/PySQM) | Python client for Unihedron SQM-LE and SQM-LU meters | Logging and plotting in the IDA NSBM community-standard format; it reads meters, it isn't one |
-
-SQMeter's Alpaca devices run on the ESP32 itself, so any Alpaca client on any OS connects directly. It adds a safety monitor with your own rules and the reasons shown, alerts it sends itself (ntfy, Pushover, webhook, MQTT, a Bluetooth phone alarm), Home Assistant discovery, and an OpenAPI-described REST API.
-
 ---
 
 ## Quick Start
