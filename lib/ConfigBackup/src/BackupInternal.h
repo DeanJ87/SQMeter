@@ -53,16 +53,13 @@ namespace SQM::Backup::Detail
 
     bool isSecretPath(const std::string &path);
 
-    // The variant at a dotted path ("alerts.pushover.userKey"), creating
-    // objects on the way when `create` is set; null when it isn't there.
-    JsonVariant atPath(JsonObject root, const std::string &path, bool create);
+    // Document capacity to parse `text` (strings copied), plus `extra` bytes
+    // for values added afterwards.
+    size_t jsonCapacity(const std::string &text, size_t extra);
 
-    // Document capacity to parse `text` in place (zero-copy: strings stay in
-    // `text`), plus `extra` bytes for values added afterwards.
-    size_t inPlaceCapacity(const std::string &text, size_t extra);
-
-    // Parses `text` in place; it must outlive `doc`. False on any error.
-    bool parseInPlace(std::string &text, JsonDocument &doc);
+    // Parses `text` into `doc`. False on any error. (Copying, like
+    // Config::applyJson, so the firmware links one deserializer.)
+    bool parseCopy(const std::string &text, JsonDocument &doc);
 
     // JSON text of a value.
     std::string jsonText(JsonVariantConst value);

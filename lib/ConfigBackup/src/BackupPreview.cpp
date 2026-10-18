@@ -6,8 +6,9 @@
 #include <utility>
 
 // The restore preview: the candidate config a restore would save, built and
-// validated exactly as a settings save, and what it changes
-// (specs/033-config-backup FR-007, FR-008, FR-011, FR-012).
+// validated exactly as a settings save (specs/033-config-backup FR-007,
+// FR-009, FR-011, FR-012). The device decides what is applied; the web UI
+// lists the differences from the candidate's masked settings.
 
 namespace SQM::Backup
 {
@@ -15,86 +16,39 @@ namespace SQM::Backup
 
     namespace
     {
-        // Derived from alerts.sendMode and written only for older firmware.
-        constexpr const char *DERIVED_PATH = "alerts.armWithAlpaca";
-
-        bool reported(const std::string &path) { return path != DERIVED_PATH && !isSecretPath(path); }
-
-        std::string join(const std::string &base, const char *key) { return base.empty() ? std::string(key) : base + "." + key; }
-
-        // Paths in `have` that `other` lacks; a whole missing object is one path.
-        void listMissing(JsonObjectConst have, JsonObjectConst other, const std::string &base, std::vector<std::string> &out)
-        {
-            for (JsonPairConst pair : have)
-            {
-                const std::string path = join(base, pair.key().c_str());
-                if (!reported(path))
-                    continue;
-                if (!other.containsKey(pair.key()))
-                    out.push_back(path);
-                else if (pair.value().is<JsonObjectConst>() && other[pair.key()].is<JsonObjectConst>())
-                    listMissing(pair.value().as<JsonObjectConst>(), other[pair.key()].as<JsonObjectConst>(), path, out);
-            }
-        }
-
-        // Every reported setting whose value differs between the two documents.
-        void listChanges(JsonObjectConst before, JsonObjectConst after, const std::string &base, std::vector<Change> &out)
-        {
-            for (JsonPairConst pair : before)
-            {
-                const std::string path = join(base, pair.key().c_str());
-                JsonVariantConst next = after[pair.key()];
-                if (!reported(path) || next.isNull())
-                    continue;
-                if (pair.value().is<JsonObjectConst>() && next.is<JsonObjectConst>())
-                {
-                    listChanges(pair.value().as<JsonObjectConst>(), next.as<JsonObjectConst>(), path, out);
-                    continue;
-                }
-                std::string from = jsonText(pair.value());
-                std::string to = jsonText(next);
-                if (from != to)
-                    out.push_back({path, std::move(from), std::move(to)});
-            }
-        }
-
         struct PinSetting
         {
-            const char *path;
+            const char *section;
+            const char *key;
             bool analog;
         };
         constexpr PinSetting PIN_SETTINGS[] = {
-            {"gps.rxPin", false},
-            {"gps.txPin", false},
-            {"rain.rxPin", false},
-            {"rain.txPin", false},
-            {"sensor.i2cSDA", false},
-            {"sensor.i2cSCL", false},
-            {"wind.speedPin", false},
-            {"wind.directionPin", true},
+            {"gps", "rxPin", false},
+            {"gps", "txPin", false},
+            {"rain", "rxPin", false},
+            {"rain", "txPin", false},
+            {"sensor", "i2cSDA", false},
+            {"sensor", "i2cSCL", false},
+            {"wind", "speedPin", false},
+            {"wind", "directionPin", true},
         };
 
-        // Removes a setting from the backup document, so the restore keeps this device's value.
-        void dropSetting(JsonObject settings, const std::string &path)
-        {
-            const size_t dot = path.rfind('.');
-            JsonVariant parent = dot == std::string::npos ? JsonVariant(settings) : atPath(settings, path.substr(0, dot), false);
-            if (parent.is<JsonObject>())
-                parent.as<JsonObject>().remove(path.substr(dot + 1));
-        }
-
+        // Pins this board doesn't have are removed from the backup document,
+        // so the restore keeps this board's value.
         void markPins(JsonObject settings, const BoardPins &pins, std::vector<NotApplicable> &out)
         {
             for (const PinSetting &setting : PIN_SETTINGS)
             {
-                JsonVariant value = atPath(settings, setting.path, false);
-                if (!value.is<int>())
+                JsonObject section = settings[setting.section].as<JsonObject>();
+                JsonVariant value = section[setting.key];
+                if (!value.is<uint8_t>())
                     continue; // missing (kept) or the wrong type (the save refuses it)
-                const int pin = value.as<int>();
+                const int pin = value.as<uint8_t>();
                 if (setting.analog ? pins.analog(pin) : pins.valid(pin))
                     continue;
-                out.push_back({setting.path, jsonText(value), setting.analog ? NotApplicableReason::Analog : NotApplicableReason::Pin});
-                dropSetting(settings, setting.path);
+                out.push_back({std::string(setting.section) + "." + setting.key, jsonText(value),
+                               setting.analog ? NotApplicableReason::Analog : NotApplicableReason::Pin});
+                section.remove(setting.key);
             }
         }
 
@@ -108,30 +62,47 @@ namespace SQM::Backup
         }
 
         // Bluetooth settings on the standard build: never applied; listed when they'd differ.
-        void markBluetooth(JsonObject settings, const PreviewInput &in, std::vector<NotApplicable> &out)
+        void markBluetooth(JsonObject settings, const PreviewInput &in, const Config &current, std::vector<NotApplicable> &out)
         {
             JsonVariant ble = settings["ble"];
             if (in.device.bluetoothBuild || !ble.is<JsonObject>())
                 return;
             JsonVariant enabled = ble["enabled"];
-            if (enabled.is<bool>() && enabled.as<bool>() != in.current->ble.enabled)
+            if (enabled.is<bool>() && enabled.as<bool>() != current.ble.enabled)
                 out.push_back({"ble.enabled", jsonText(enabled), NotApplicableReason::Bluetooth});
             const std::string *passkey = findSecret(in.secrets, SECRET_PATHS[BLE_PASSKEY]);
-            if (passkey && *passkey != in.current->ble.passkey)
+            if (passkey && *passkey != current.ble.passkey)
                 out.push_back({SECRET_PATHS[BLE_PASSKEY], std::string(), NotApplicableReason::Bluetooth});
             settings.remove("ble");
         }
 
         // Pushover on in the backup, but no keys to send with: the save would be refused.
-        void markPushover(JsonObject settings, const PreviewInput &in, std::vector<NotApplicable> &out)
+        void markPushover(JsonObject settings, const PreviewInput &in, const Config &current, std::vector<NotApplicable> &out)
         {
-            if (in.secrets || (!in.current->alerts.pushoverUserKey.empty() && !in.current->alerts.pushoverAppToken.empty()))
+            if (in.secrets || (!current.alerts.pushoverUserKey.empty() && !current.alerts.pushoverAppToken.empty()))
                 return;
-            JsonVariant enabled = atPath(settings, "alerts.pushover.enabled", false);
-            if (!enabled.is<bool>() || !enabled.as<bool>())
+            JsonObject pushover = settings["alerts"]["pushover"].as<JsonObject>();
+            if (!pushover["enabled"].is<bool>() || !pushover["enabled"].as<bool>())
                 return;
             out.push_back({"alerts.pushover.enabled", "true", NotApplicableReason::PushoverKeys});
-            dropSetting(settings, "alerts.pushover.enabled");
+            pushover.remove("enabled");
+        }
+
+        // Where a secret goes in the settings document, made if missing.
+        JsonVariant secretSlot(JsonObject settings, const std::string &path)
+        {
+            JsonObject node = settings;
+            size_t start = 0;
+            for (size_t dot = path.find('.'); dot != std::string::npos; start = dot + 1, dot = path.find('.', start))
+            {
+                const std::string key = path.substr(start, dot - start);
+                JsonObject child = node[key].as<JsonObject>();
+                node = child.isNull() ? node.createNestedObject(key) : child;
+            }
+            const std::string key = path.substr(start);
+            if (!node.containsKey(key))
+                node[key] = nullptr; // a member must exist before a variant can point at it
+            return node[key];
         }
 
         // The decrypted secrets replace the masks; an empty one clears the setting.
@@ -141,7 +112,7 @@ namespace SQM::Backup
             {
                 if (!bluetoothBuild && secret.first == SECRET_PATHS[BLE_PASSKEY])
                     continue;
-                JsonVariant target = atPath(settings, secret.first, true);
+                JsonVariant target = secretSlot(settings, secret.first);
                 if (secret.second.empty())
                     target.set(nullptr);
                 else
@@ -149,7 +120,7 @@ namespace SQM::Backup
             }
         }
 
-        void secretStatus(const PreviewInput &in, Preview &out)
+        void secretStatus(const PreviewInput &in, const Config &current, Preview &out)
         {
             if (!in.secrets)
                 return;
@@ -157,97 +128,25 @@ namespace SQM::Backup
             {
                 if (i == BLE_PASSKEY && !in.device.bluetoothBuild)
                     continue;
-                const bool same = secretRef(*in.current, i) == secretRef(out.candidate, i);
-                (same ? out.secretsUnchanged : out.secretsChanged).emplace_back(SECRET_PATHS[i]);
+                const bool same = secretRef(current, i) == secretRef(out.candidate, i);
+                (same ? out.secretsUnchanged : out.secretsChanged) |= static_cast<uint16_t>(1U << i);
             }
         }
 
-        void addWarnings(const PreviewInput &in, Preview &out)
-        {
-            const Config &before = *in.current;
-            const Config &after = out.candidate;
-            if (before.wifi.ssid != after.wifi.ssid)
-                out.warnings.push_back(Warning::WifiNetwork);
-            const bool passwordOn = after.auth.enabled && !after.auth.password.empty();
-            const bool passwordNew = !before.auth.enabled || before.auth.password.empty() || before.auth.username != after.auth.username ||
-                                     before.auth.password != after.auth.password;
-            if (passwordOn && passwordNew)
-                out.warnings.push_back(Warning::DevicePassword);
-            if (before.wifi.hostname != after.wifi.hostname || before.wifi.mdns != after.wifi.mdns)
-                out.warnings.push_back(Warning::Address);
-            if (out.restart != 0 && in.imagingAppConnected)
-                out.warnings.push_back(Warning::ImagingApp);
-            if (!in.parsed->firmware.empty() && compareVersions(in.parsed->firmware, in.device.firmware) > 0)
-                out.warnings.push_back(Warning::NewerFirmware);
-        }
-
         // The backup's settings as they will be applied: what can't apply removed, secrets in.
-        Error prepareSettings(const PreviewInput &in, JsonObjectConst current, Preview &out, std::string &applyText)
+        Error prepareSettings(const PreviewInput &in, const Config &current, Preview &out, std::string &applyText)
         {
-            std::string buffer = in.parsed->settings;
-            DynamicJsonDocument doc(inPlaceCapacity(buffer, 2048)); // + the secrets put in
-            if (!parseInPlace(buffer, doc) || !doc.is<JsonObject>())
+            DynamicJsonDocument doc(jsonCapacity(in.parsed->settings, 2048)); // + the secrets put in
+            if (!parseCopy(in.parsed->settings, doc) || !doc.is<JsonObject>())
                 return Error::Damaged;
             JsonObject settings = doc.as<JsonObject>();
-            listMissing(current, settings, "", out.kept);
-            listMissing(settings, current, "", out.ignored);
             markPins(settings, in.device.pins, out.notApplicable);
-            markBluetooth(settings, in, out.notApplicable);
-            markPushover(settings, in, out.notApplicable);
+            markBluetooth(settings, in, current, out.notApplicable);
+            markPushover(settings, in, current, out.notApplicable);
             if (in.secrets)
                 injectSecrets(settings, *in.secrets, in.device.bluetoothBuild);
             serializeJson(settings, applyText);
             return Error::None;
-        }
-    } // namespace
-
-    Error buildPreview(const PreviewInput &in, Preview &out, std::string *error)
-    {
-        out = Preview{};
-        const Config &current = *in.current;
-        out.candidate = current;
-        out.secretsState = in.secrets ? SecretsState::Restored : (in.parsed->hasSecrets ? SecretsState::Kept : SecretsState::None);
-
-        std::string currentJson = current.toJson(false);
-        DynamicJsonDocument currentDoc(inPlaceCapacity(currentJson, 0));
-        parseInPlace(currentJson, currentDoc);
-        std::string applyText;
-        const Error prepared = prepareSettings(in, currentDoc.as<JsonObjectConst>(), out, applyText);
-        if (prepared != Error::None)
-            return prepared;
-        // The same rules as POST /api/config: masks keep secrets, types are strict, validate() runs.
-        if (!Config::applyJson(applyText, out.candidate, true, error))
-            return Error::Invalid;
-        applyText.clear();
-
-        std::string candidateJson = out.candidate.toJson(false);
-        DynamicJsonDocument candidateDoc(inPlaceCapacity(candidateJson, 0));
-        parseInPlace(candidateJson, candidateDoc);
-        listChanges(currentDoc.as<JsonObjectConst>(), candidateDoc.as<JsonObjectConst>(), "", out.changes);
-        secretStatus(in, out);
-        out.restart = restartReasons(current, out.candidate);
-        addWarnings(in, out);
-        return Error::None;
-    }
-
-    namespace
-    {
-        const char *warningCode(Warning warning)
-        {
-            switch (warning)
-            {
-            case Warning::WifiNetwork:
-                return "wifi-network";
-            case Warning::DevicePassword:
-                return "device-password";
-            case Warning::Address:
-                return "address";
-            case Warning::ImagingApp:
-                return "imaging-app";
-            case Warning::NewerFirmware:
-                break;
-            }
-            return "newer-firmware";
         }
 
         const char *secretsStateName(SecretsState state)
@@ -262,16 +161,6 @@ namespace SQM::Backup
                 break;
             }
             return "none";
-        }
-
-        // Capacity for previewJson: every string is referenced, values are raw JSON.
-        size_t previewCapacity(const Preview &p)
-        {
-            size_t size = 2048 + 96 * p.changes.size() + 128 * p.warnings.size();
-            for (const NotApplicable &n : p.notApplicable)
-                size += 96 + n.path.size();
-            size += 16 * (p.kept.size() + p.ignored.size() + p.secretsChanged.size() + p.secretsUnchanged.size());
-            return size;
         }
 
         void writeHeader(JsonObject target, const Parsed &parsed)
@@ -289,66 +178,54 @@ namespace SQM::Backup
                     target[field.first] = field.second->c_str();
         }
 
-        void writeList(JsonArray target, const std::vector<std::string> &paths)
+        void writeSecretList(JsonArray target, uint16_t bits)
         {
-            for (const std::string &path : paths)
-                target.add(path.c_str());
-        }
-
-        void writeWarnings(JsonArray target, const Preview &p, const Parsed &parsed)
-        {
-            for (Warning warning : p.warnings)
-            {
-                JsonObject item = target.createNestedObject();
-                item["code"] = warningCode(warning);
-                if (warning == Warning::WifiNetwork)
-                    item["ssid"] = p.candidate.wifi.ssid.c_str();
-                else if (warning == Warning::Address)
-                    item["hostname"] = p.candidate.wifi.hostname.c_str();
-                else if (warning == Warning::NewerFirmware)
-                    item["firmware"] = parsed.firmware.c_str();
-            }
-        }
-
-        void writeSettingLists(JsonObject root, const Preview &p)
-        {
-            JsonArray changes = root.createNestedArray("changes");
-            for (const Change &c : p.changes)
-            {
-                JsonObject item = changes.createNestedObject();
-                item["path"] = c.path.c_str();
-                item["from"] = serialized(c.from.c_str(), c.from.size());
-                item["to"] = serialized(c.to.c_str(), c.to.size());
-            }
-            JsonObject secrets = root.createNestedObject("secrets");
-            secrets["state"] = secretsStateName(p.secretsState);
-            writeList(secrets.createNestedArray("changed"), p.secretsChanged);
-            writeList(secrets.createNestedArray("unchanged"), p.secretsUnchanged);
-            writeList(root.createNestedArray("kept"), p.kept);
-            writeList(root.createNestedArray("ignored"), p.ignored);
-            JsonArray notApplicable = root.createNestedArray("notApplicable");
-            for (const NotApplicable &n : p.notApplicable)
-            {
-                JsonObject item = notApplicable.createNestedObject();
-                item["path"] = n.path.c_str();
-                if (!n.value.empty())
-                    item["value"] = serialized(n.value.c_str(), n.value.size());
-                item["reason"] = reasonCode(n.reason);
-            }
+            for (size_t i = 0; i < SECRET_COUNT; ++i)
+                if ((bits >> i) & 1U)
+                    target.add(SECRET_PATHS[i]);
         }
     } // namespace
 
+    Error buildPreview(const PreviewInput &in, Preview &out, std::string *error)
+    {
+        const Config &current = *in.current;
+        out.secretsState = in.secrets ? SecretsState::Restored : (in.parsed->hasSecrets ? SecretsState::Kept : SecretsState::None);
+        std::string applyText;
+        const Error prepared = prepareSettings(in, current, out, applyText);
+        if (prepared != Error::None)
+            return prepared;
+        // The same rules as POST /api/config: masks keep secrets, types are strict, validate() runs.
+        if (!Config::applyJson(applyText, out.candidate, true, error))
+            return Error::Invalid;
+        secretStatus(in, current, out);
+        out.restart = restartReasons(current, out.candidate);
+        return Error::None;
+    }
+
     std::string previewJson(const Preview &preview, const Parsed &parsed, const std::string &token)
     {
-        DynamicJsonDocument doc(previewCapacity(preview));
+        const std::string settings = preview.candidate.toJson(true);
+        DynamicJsonDocument doc(1536 + 96 * preview.notApplicable.size());
         doc["token"] = token.c_str();
         writeHeader(doc.createNestedObject("backup"), parsed);
-        writeSettingLists(doc.as<JsonObject>(), preview);
+        doc["settings"] = serialized(settings.c_str(), settings.size()); // referenced: `settings` outlives the document
+        JsonObject secrets = doc.createNestedObject("secrets");
+        secrets["state"] = secretsStateName(preview.secretsState);
+        writeSecretList(secrets.createNestedArray("changed"), preview.secretsChanged);
+        writeSecretList(secrets.createNestedArray("unchanged"), preview.secretsUnchanged);
+        JsonArray notApplicable = doc.createNestedArray("notApplicable");
+        for (const NotApplicable &n : preview.notApplicable)
+        {
+            JsonObject item = notApplicable.createNestedObject();
+            item["path"] = n.path.c_str();
+            if (!n.value.empty())
+                item["value"] = serialized(n.value.c_str(), n.value.size());
+            item["reason"] = reasonCode(n.reason);
+        }
         JsonArray restart = doc.createNestedArray("restart");
         for (int i = 0; i < RESTART_REASON_COUNT; ++i)
             if (preview.restart & (1U << i))
                 restart.add(restartCode(i));
-        writeWarnings(doc.createNestedArray("warnings"), preview, parsed);
         std::string out;
         serializeJson(doc, out);
         return out;

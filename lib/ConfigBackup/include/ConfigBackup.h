@@ -36,6 +36,8 @@ namespace SQM::Backup
         PassphraseShort,
         BadRequest, // the request body isn't the JSON the route expects
         Invalid, // the save's own validation refused the result
+        Busy,    // another backup or preview is running
+        Stale,   // no such preview, or the settings changed since
     };
     const char *errorCode(Error error);
     const char *errorText(Error error);
@@ -125,17 +127,6 @@ namespace SQM::Backup
     // "wifi", "ota", "gps", "i2c", "ipv6", "alpaca", "ble" for bit `index`.
     const char *restartCode(int index);
 
-    // -1, 0 or 1 comparing "major.minor.patch[-pre.N][+build]" versions.
-    int compareVersions(const std::string &a, const std::string &b);
-
-    // One setting that will change; values as JSON text.
-    struct Change
-    {
-        std::string path;
-        std::string from;
-        std::string to;
-    };
-
     enum class NotApplicableReason : uint8_t
     {
         Pin,          // not a usable GPIO on this board
@@ -159,46 +150,43 @@ namespace SQM::Backup
         None,     // the file has none: this device's stay
     };
 
-    enum class Warning : uint8_t
-    {
-        WifiNetwork,    // joins another network
-        DevicePassword, // the next page load asks for the backup's password
-        Address,        // the local name changes
-        ImagingApp,     // a restart interrupts a connected imaging app
-        NewerFirmware,  // made by newer firmware
-    };
-
-    // Everything the owner sees before confirming, and what confirming saves.
+    // What a restore will save and what the device decided about it. The web
+    // UI words the rest (each change, kept and ignored settings, warnings)
+    // from the candidate's masked settings, which keeps the device image small
+    // (research R7).
     struct Preview
     {
-        Config candidate;
-        std::vector<Change> changes;
+        explicit Preview(const Config &current)
+            : candidate(current)
+        {
+        }
+        Config candidate; // starts as the current settings
         SecretsState secretsState = SecretsState::None;
-        std::vector<std::string> secretsChanged;
-        std::vector<std::string> secretsUnchanged;
-        std::vector<std::string> kept;
-        std::vector<std::string> ignored;
+        // Bits by index into secretPaths().
+        uint16_t secretsChanged = 0;
+        uint16_t secretsUnchanged = 0;
         std::vector<NotApplicable> notApplicable;
-        uint8_t restart = 0;
-        std::vector<Warning> warnings;
+        uint8_t restart = 0; // RESTART_* bits
     };
 
-    // The facts a preview needs besides the two configs.
+    // What a preview is built from.
     struct PreviewInput
     {
-        const Config *current = nullptr;
+        const Config *current = nullptr; // also the starting point of Preview::candidate
         const Parsed *parsed = nullptr;
         const Secrets *secrets = nullptr; // nullptr: not restored
         DeviceInfo device;
-        bool imagingAppConnected = false;
     };
 
-    // Builds the candidate (validated like any save) and the preview.
-    // Error::Invalid puts the save's reason in `error`.
+    // Builds the candidate (validated like any save); `out` was constructed
+    // from the current settings. Error::Invalid puts the save's reason in `error`.
     Error buildPreview(const PreviewInput &input, Preview &out, std::string *error);
 
     // The preview document (POST /api/backup/preview).
     std::string previewJson(const Preview &preview, const Parsed &parsed, const std::string &token);
+
+    // POST /api/backup/apply body: {"token": "..."}; empty when it isn't there.
+    std::string readApplyRequest(const std::string &body);
 
     // {"error": text, "code": code}.
     std::string errorJson(Error error, const std::string &detail = std::string());

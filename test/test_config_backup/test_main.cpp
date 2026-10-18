@@ -85,16 +85,19 @@ namespace
 
     struct Restore
     {
+        explicit Restore(const Config &current)
+            : preview(current)
+        {
+        }
         Backup::Error error = Backup::Error::None;
         std::string reason;
         Backup::Parsed parsed;
         Backup::Preview preview;
     };
 
-    Restore restore(const Config &current, const std::string &file, const char *passphrase = nullptr,
-                    const Backup::DeviceInfo &info = device(), bool imagingApp = false)
+    Restore restore(const Config &current, const std::string &file, const char *passphrase = nullptr, const Backup::DeviceInfo &info = device())
     {
-        Restore r;
+        Restore r(current);
         r.error = Backup::parseBackup(file, r.parsed);
         if (r.error != Backup::Error::None)
             return r;
@@ -107,22 +110,23 @@ namespace
         input.parsed = &r.parsed;
         input.secrets = open ? &secrets : nullptr;
         input.device = info;
-        input.imagingAppConnected = imagingApp;
         r.error = Backup::buildPreview(input, r.preview, &r.reason);
         return r;
     }
 
     bool contains(const std::vector<std::string> &list, const char *item) { return std::find(list.begin(), list.end(), item) != list.end(); }
 
-    const Backup::Change *changeAt(const Backup::Preview &p, const char *path)
-    {
-        for (const Backup::Change &c : p.changes)
-            if (c.path == path)
-                return &c;
-        return nullptr;
-    }
+    // The candidate's settings, secrets included, as JSON (for "nothing changed").
+    std::string settingsOf(const Config &cfg) { return cfg.toJson(false); }
 
-    bool hasWarning(const Backup::Preview &p, Backup::Warning w) { return std::find(p.warnings.begin(), p.warnings.end(), w) != p.warnings.end(); }
+    bool secretIn(uint16_t bits, const char *path)
+    {
+        const auto &paths = Backup::secretPaths();
+        for (size_t i = 0; i < paths.size(); ++i)
+            if (std::string(paths[i]) == path)
+                return (bits >> i) & 1U;
+        return false;
+    }
 
     const char *const SECRET_VALUES[] = {"wifi-secret-1", "mqtt-secret-2", "admin-secret-3", "123456", "ntfy-secret-4", "webhook-secret-5"};
 } // namespace
@@ -152,6 +156,15 @@ void test_backup_holds_every_section_and_the_header()
         TEST_ASSERT_TRUE_MESSAGE(doc["settings"][section].is<JsonObject>(), section);
     TEST_ASSERT_EQUAL_STRING("********", doc["settings"]["wifi"]["password"]);
     TEST_ASSERT_EQUAL_STRING("", doc["settings"]["ota"]["password"]);
+}
+
+void test_backup_escapes_the_device_name()
+{
+    Config cfg = configured();
+    cfg.deviceName = "roof \"east\"\\\n";
+    Backup::Parsed parsed;
+    TEST_ASSERT_EQUAL(Backup::Error::None, Backup::parseBackup(backupOf(cfg), parsed));
+    TEST_ASSERT_EQUAL_STRING(cfg.deviceName.c_str(), parsed.deviceName.c_str());
 }
 
 void test_backup_leaves_out_created_at_when_the_clock_is_unset()
@@ -184,9 +197,8 @@ void test_restore_with_the_passphrase_brings_the_secrets_back()
     TEST_ASSERT_EQUAL_STRING("wifi-secret-1", r.preview.candidate.wifi.password.c_str());
     TEST_ASSERT_EQUAL_STRING("mqtt-secret-2", r.preview.candidate.mqtt.password.c_str());
     TEST_ASSERT_EQUAL_STRING("Bearer webhook-secret-5", r.preview.candidate.alerts.webhookAuthHeader.c_str());
-    TEST_ASSERT_TRUE(contains(r.preview.secretsChanged, "wifi.password"));
-    TEST_ASSERT_TRUE(contains(r.preview.secretsUnchanged, "ota.password"));
-    TEST_ASSERT_NULL(changeAt(r.preview, "wifi.password")); // secrets never listed with values
+    TEST_ASSERT_TRUE(secretIn(r.preview.secretsChanged, "wifi.password"));
+    TEST_ASSERT_TRUE(secretIn(r.preview.secretsUnchanged, "ota.password"));
 }
 
 void test_restore_with_the_default_iterations_round_trips()
@@ -195,7 +207,7 @@ void test_restore_with_the_default_iterations_round_trips()
     const std::string file = Backup::makeBackup(configured(), device(), "", &seal);
     const Restore r = restore(configured(), file, "default iterations");
     TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
-    TEST_ASSERT_TRUE(r.preview.secretsChanged.empty());
+    TEST_ASSERT_EQUAL(0, r.preview.secretsChanged);
 }
 
 void test_wrong_passphrase_is_refused()
@@ -229,7 +241,7 @@ void test_restore_without_passphrase_keeps_this_devices_secrets()
     TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
     TEST_ASSERT_EQUAL(Backup::SecretsState::Kept, r.preview.secretsState);
     TEST_ASSERT_EQUAL_STRING("wifi-secret-1", r.preview.candidate.wifi.password.c_str());
-    TEST_ASSERT_TRUE(r.preview.changes.empty());
+    TEST_ASSERT_EQUAL_STRING(settingsOf(configured()).c_str(), settingsOf(r.preview.candidate).c_str());
 }
 
 void test_an_empty_secret_in_the_backup_clears_it()
@@ -239,7 +251,7 @@ void test_an_empty_secret_in_the_backup_clears_it()
     const Restore r = restore(configured(), backupOf(other, "a long passphrase"), "a long passphrase");
     TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
     TEST_ASSERT_TRUE(r.preview.candidate.alerts.ntfyToken.empty());
-    TEST_ASSERT_TRUE(contains(r.preview.secretsChanged, "alerts.ntfy.token"));
+    TEST_ASSERT_TRUE(secretIn(r.preview.secretsChanged, "alerts.ntfy.token"));
 }
 
 void test_a_backup_encrypted_by_webcrypto_opens()
@@ -262,29 +274,10 @@ void test_an_unchanged_backup_changes_nothing()
 {
     const Restore r = restore(configured(), backupOf(configured(), "a long passphrase"), "a long passphrase");
     TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
-    TEST_ASSERT_TRUE(r.preview.changes.empty());
-    TEST_ASSERT_TRUE(r.preview.secretsChanged.empty());
-    TEST_ASSERT_TRUE(r.preview.kept.empty());
-    TEST_ASSERT_TRUE(r.preview.ignored.empty());
+    TEST_ASSERT_EQUAL_STRING(settingsOf(configured()).c_str(), settingsOf(r.preview.candidate).c_str());
+    TEST_ASSERT_EQUAL(0, r.preview.secretsChanged);
     TEST_ASSERT_TRUE(r.preview.notApplicable.empty());
     TEST_ASSERT_EQUAL(0, r.preview.restart);
-    TEST_ASSERT_TRUE(r.preview.warnings.empty());
-}
-
-void test_the_preview_lists_exactly_the_differences()
-{
-    Config other = configured();
-    other.mqtt.broker = "192.168.1.10";
-    other.alpaca.sqmMinSafe = 20.5F;
-    const Restore r = restore(configured(), backupOf(other));
-    TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
-    TEST_ASSERT_EQUAL(2, r.preview.changes.size());
-    const Backup::Change *broker = changeAt(r.preview, "mqtt.broker");
-    TEST_ASSERT_NOT_NULL(broker);
-    TEST_ASSERT_EQUAL_STRING("\"broker.lan\"", broker->from.c_str());
-    TEST_ASSERT_EQUAL_STRING("\"192.168.1.10\"", broker->to.c_str());
-    TEST_ASSERT_NOT_NULL(changeAt(r.preview, "alpaca.sqmMinSafe"));
-    TEST_ASSERT_EQUAL_STRING("192.168.1.10", r.preview.candidate.mqtt.broker.c_str());
 }
 
 void test_settings_the_save_refuses_are_refused_with_its_reason()
@@ -293,30 +286,6 @@ void test_settings_the_save_refuses_are_refused_with_its_reason()
     const Restore r = restore(configured(), file);
     TEST_ASSERT_EQUAL(Backup::Error::Invalid, r.error);
     TEST_ASSERT_TRUE(r.reason.find("mqtt.port") != std::string::npos);
-}
-
-void test_cut_off_warnings_and_restart()
-{
-    Config other = configured();
-    other.wifi.ssid = "Elsewhere";
-    other.wifi.hostname = "roof";
-    other.auth.password = "another-password";
-    const Restore r = restore(configured(), backupOf(other, "a long passphrase"), "a long passphrase", device(), true);
-    TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
-    TEST_ASSERT_TRUE(hasWarning(r.preview, Backup::Warning::WifiNetwork));
-    TEST_ASSERT_TRUE(hasWarning(r.preview, Backup::Warning::Address));
-    TEST_ASSERT_TRUE(hasWarning(r.preview, Backup::Warning::DevicePassword));
-    TEST_ASSERT_TRUE(hasWarning(r.preview, Backup::Warning::ImagingApp));
-    TEST_ASSERT_EQUAL(Backup::RESTART_WIFI, r.preview.restart);
-}
-
-void test_no_imaging_app_warning_without_a_restart()
-{
-    Config other = configured();
-    other.mqtt.broker = "elsewhere.lan";
-    const Restore r = restore(configured(), backupOf(other), nullptr, device(), true);
-    TEST_ASSERT_EQUAL(0, r.preview.restart);
-    TEST_ASSERT_FALSE(hasWarning(r.preview, Backup::Warning::ImagingApp));
 }
 
 void test_restart_rules_match_the_shared_cases()
@@ -344,24 +313,6 @@ void test_restart_rules_match_the_shared_cases()
             want += std::string(want.empty() ? "" : ",") + code.as<const char *>();
         TEST_ASSERT_EQUAL_STRING_MESSAGE(want.c_str(), got.c_str(), c["name"]);
     }
-}
-
-void test_preview_document_shape()
-{
-    Config other = configured();
-    other.mqtt.broker = "elsewhere.lan";
-    other.wifi.hostname = "roof";
-    const Restore r = restore(configured(), backupOf(other));
-    DynamicJsonDocument doc(16384);
-    TEST_ASSERT_FALSE(deserializeJson(doc, Backup::previewJson(r.preview, r.parsed, "00ff")));
-    TEST_ASSERT_EQUAL_STRING("00ff", doc["token"]);
-    TEST_ASSERT_EQUAL(1, doc["backup"]["format"].as<int>());
-    TEST_ASSERT_EQUAL_STRING("backyard-sqm", doc["backup"]["deviceName"]);
-    TEST_ASSERT_EQUAL_STRING("none", doc["secrets"]["state"]);
-    TEST_ASSERT_EQUAL_STRING("elsewhere.lan", doc["changes"][1]["to"].as<const char *>() ? doc["changes"][1]["to"] : doc["changes"][0]["to"]);
-    TEST_ASSERT_EQUAL_STRING("wifi", doc["restart"][0]);
-    TEST_ASSERT_EQUAL_STRING("address", doc["warnings"][0]["code"]);
-    TEST_ASSERT_EQUAL_STRING("roof", doc["warnings"][0]["hostname"]);
 }
 
 // --- Boards and versions (US4) ------------------------------------------------
@@ -413,47 +364,13 @@ void test_pushover_without_its_keys_is_not_applied()
     TEST_ASSERT_TRUE(restore(configured(), backupOf(other, "a long passphrase"), "a long passphrase").preview.candidate.alerts.pushoverEnabled);
 }
 
-void test_settings_an_older_firmware_lacked_are_kept()
-{
-    const std::string file = edited(backupOf(configured()),
-                                    [](JsonObject f)
-                                    {
-                                        f["firmware"] = "0.2.0";
-                                        f["settings"].remove("wind");
-                                        f["settings"]["mqtt"]["publish"].remove("diagnostics");
-                                    });
-    const Restore r = restore(configured(), file);
-    TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
-    TEST_ASSERT_EQUAL(2, r.preview.kept.size());
-    TEST_ASSERT_TRUE(contains(r.preview.kept, "wind"));
-    TEST_ASSERT_TRUE(contains(r.preview.kept, "mqtt.publish.diagnostics"));
-    TEST_ASSERT_TRUE(r.preview.warnings.empty());
-}
-
-void test_settings_a_newer_firmware_wrote_are_ignored_with_a_warning()
-{
-    const std::string file = edited(backupOf(configured()),
-                                    [](JsonObject f)
-                                    {
-                                        f["firmware"] = "0.9.0-beta.2";
-                                        f["settings"]["skySensors"]["second"] = true;
-                                        f["settings"]["wifi"]["band"] = "5GHz";
-                                    });
-    const Restore r = restore(configured(), file);
-    TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
-    TEST_ASSERT_EQUAL(2, r.preview.ignored.size());
-    TEST_ASSERT_TRUE(contains(r.preview.ignored, "skySensors"));
-    TEST_ASSERT_TRUE(contains(r.preview.ignored, "wifi.band"));
-    TEST_ASSERT_TRUE(hasWarning(r.preview, Backup::Warning::NewerFirmware));
-}
-
 void test_a_plain_settings_export_reads_as_format_0()
 {
     const Restore r = restore(configured(), configured().toJson(true));
     TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
     TEST_ASSERT_EQUAL(0, r.parsed.format);
     TEST_ASSERT_EQUAL(Backup::SecretsState::None, r.preview.secretsState);
-    TEST_ASSERT_TRUE(r.preview.changes.empty());
+    TEST_ASSERT_EQUAL_STRING(settingsOf(configured()).c_str(), settingsOf(r.preview.candidate).c_str());
 }
 
 void test_files_that_arent_backups_or_are_damaged_are_refused()
@@ -516,15 +433,6 @@ void test_preview_request_takes_the_file_as_text_or_object()
     TEST_ASSERT_EQUAL(Backup::Error::NotBackup, Backup::readPreviewRequest("{\"backup\":3}", parsed, passphrase));
 }
 
-void test_versions_compare_numerically_with_releases_after_betas()
-{
-    TEST_ASSERT_EQUAL(-1, Backup::compareVersions("0.3.4-beta.1", "0.3.4-beta.2"));
-    TEST_ASSERT_EQUAL(-1, Backup::compareVersions("0.3.4-beta.9", "0.3.4"));
-    TEST_ASSERT_EQUAL(1, Backup::compareVersions("0.10.0", "0.9.9"));
-    TEST_ASSERT_EQUAL(0, Backup::compareVersions("v0.3.4-beta.1", "0.3.4-beta.1+dev"));
-    TEST_ASSERT_EQUAL(-1, Backup::compareVersions("0.3.4-beta.10", "0.3.4-beta.11+dev"));
-}
-
 void test_error_json_has_code_and_text()
 {
     TEST_ASSERT_EQUAL_STRING("{\"error\":\"Wrong passphrase, or the file's secrets were changed\",\"code\":\"wrong-passphrase\"}",
@@ -532,11 +440,53 @@ void test_error_json_has_code_and_text()
     TEST_ASSERT_EQUAL_STRING("{\"error\":\"MQTT broker: bad\",\"code\":\"invalid\"}", Backup::errorJson(Backup::Error::Invalid, "MQTT broker: bad").c_str());
 }
 
+void test_a_restored_setting_is_saved_and_restart_needs_are_named()
+{
+    Config other = configured();
+    other.mqtt.broker = "192.168.1.10";
+    other.wifi.hostname = "roof";
+    const Restore r = restore(configured(), backupOf(other));
+    TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
+    TEST_ASSERT_EQUAL_STRING("192.168.1.10", r.preview.candidate.mqtt.broker.c_str());
+    TEST_ASSERT_EQUAL(Backup::RESTART_WIFI, r.preview.restart);
+}
+
+void test_preview_document_shape()
+{
+    Config other = configured();
+    other.wifi.hostname = "roof";
+    other.gps.rxPin = 25;
+    Backup::DeviceInfo board = device();
+    board.pins.validPins &= ~(1ULL << 25);
+    const Restore r = restore(configured(), backupOf(other, "a long passphrase"), "a long passphrase", board);
+    DynamicJsonDocument doc(16384);
+    TEST_ASSERT_FALSE(deserializeJson(doc, Backup::previewJson(r.preview, r.parsed, "00ff")));
+    TEST_ASSERT_EQUAL_STRING("00ff", doc["token"]);
+    TEST_ASSERT_EQUAL(1, doc["backup"]["format"].as<int>());
+    TEST_ASSERT_EQUAL_STRING("backyard-sqm", doc["backup"]["deviceName"]);
+    TEST_ASSERT_EQUAL_STRING("roof", doc["settings"]["wifi"]["hostname"]);
+    TEST_ASSERT_EQUAL_STRING("********", doc["settings"]["wifi"]["password"]); // masked, like GET /api/config
+    TEST_ASSERT_EQUAL_STRING("restored", doc["secrets"]["state"]);
+    TEST_ASSERT_EQUAL(9, doc["secrets"]["unchanged"].size());
+    TEST_ASSERT_EQUAL_STRING("gps.rxPin", doc["notApplicable"][0]["path"]);
+    TEST_ASSERT_EQUAL(25, doc["notApplicable"][0]["value"].as<int>());
+    TEST_ASSERT_EQUAL_STRING("pin", doc["notApplicable"][0]["reason"]);
+    TEST_ASSERT_EQUAL_STRING("wifi", doc["restart"][0]);
+}
+
+void test_apply_request_reads_the_token()
+{
+    TEST_ASSERT_EQUAL_STRING("abc", Backup::readApplyRequest("{\"token\":\"abc\"}").c_str());
+    TEST_ASSERT_EQUAL_STRING("", Backup::readApplyRequest("{}").c_str());
+    TEST_ASSERT_EQUAL_STRING("", Backup::readApplyRequest("token").c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_backup_without_passphrase_holds_no_secret);
     RUN_TEST(test_backup_holds_every_section_and_the_header);
+    RUN_TEST(test_backup_escapes_the_device_name);
     RUN_TEST(test_backup_leaves_out_created_at_when_the_clock_is_unset);
     RUN_TEST(test_backup_with_passphrase_encrypts_the_secrets);
     RUN_TEST(test_restore_with_the_passphrase_brings_the_secrets_back);
@@ -547,22 +497,18 @@ int main(int, char **)
     RUN_TEST(test_an_empty_secret_in_the_backup_clears_it);
     RUN_TEST(test_a_backup_encrypted_by_webcrypto_opens);
     RUN_TEST(test_an_unchanged_backup_changes_nothing);
-    RUN_TEST(test_the_preview_lists_exactly_the_differences);
     RUN_TEST(test_settings_the_save_refuses_are_refused_with_its_reason);
-    RUN_TEST(test_cut_off_warnings_and_restart);
-    RUN_TEST(test_no_imaging_app_warning_without_a_restart);
     RUN_TEST(test_restart_rules_match_the_shared_cases);
-    RUN_TEST(test_preview_document_shape);
     RUN_TEST(test_pins_this_board_lacks_are_not_applied);
     RUN_TEST(test_bluetooth_settings_are_not_applied_on_the_standard_build);
     RUN_TEST(test_pushover_without_its_keys_is_not_applied);
-    RUN_TEST(test_settings_an_older_firmware_lacked_are_kept);
-    RUN_TEST(test_settings_a_newer_firmware_wrote_are_ignored_with_a_warning);
     RUN_TEST(test_a_plain_settings_export_reads_as_format_0);
     RUN_TEST(test_files_that_arent_backups_or_are_damaged_are_refused);
     RUN_TEST(test_backup_request_checks_the_passphrase);
     RUN_TEST(test_preview_request_takes_the_file_as_text_or_object);
-    RUN_TEST(test_versions_compare_numerically_with_releases_after_betas);
     RUN_TEST(test_error_json_has_code_and_text);
+    RUN_TEST(test_a_restored_setting_is_saved_and_restart_needs_are_named);
+    RUN_TEST(test_preview_document_shape);
+    RUN_TEST(test_apply_request_reads_the_token);
     return UNITY_END();
 }

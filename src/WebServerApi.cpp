@@ -38,6 +38,7 @@ namespace SQM
 
     void WebServer::setupAPIRoutes()
     {
+        setupBackupRoutes();
         setupReadingRoutes();
         setupSettingsRoutes();
         setupNetworkRoutes();
@@ -164,16 +165,23 @@ namespace SQM
             return;
         }
 
-        const std::string previousLanguage = currentConfig.language;
-        if (!saveConfigCallback(*configOpt))
+        if (!saveAndApply(*configOpt))
         {
             request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
             return;
         }
-        tslSensor.configureSkyMeasurement(configOpt->skyAveraging, configOpt->skyCalibration);
-        if (previousLanguage != configOpt->language)
-            languagePack->onLanguageChanged(configOpt->language);
         request->send(200, "application/json", "{\"success\":true}");
+    }
+
+    bool WebServer::saveAndApply(const Config &next)
+    {
+        const std::string previousLanguage = getConfigCallback().language;
+        if (!saveConfigCallback(next))
+            return false;
+        tslSensor.configureSkyMeasurement(next.skyAveraging, next.skyCalibration);
+        if (previousLanguage != next.language)
+            languagePack->onLanguageChanged(next.language);
+        return true;
     }
 
     void WebServer::handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json)

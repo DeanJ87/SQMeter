@@ -5,6 +5,7 @@
 
 #include <cstring>
 #include <iterator>
+#include <string>
 
 // The backup file: making it, reading it and opening its secrets block
 // (specs/033-config-backup/contracts/backup-file.md).
@@ -149,13 +150,13 @@ namespace SQM::Backup
                 serializeJson(obj, out.settings);
                 return Error::None;
             }
-            if (!version.is<int>() || version.as<int>() < 1)
+            if (!version.is<uint32_t>() || version.as<uint32_t>() < 1)
                 return Error::Damaged;
-            if (version.as<int>() > FORMAT_VERSION)
+            if (version.as<uint32_t>() > static_cast<uint32_t>(FORMAT_VERSION))
                 return Error::NewerFormat;
             if (!obj["settings"].is<JsonObjectConst>())
                 return Error::Damaged;
-            out.format = version.as<int>();
+            out.format = static_cast<int>(version.as<uint32_t>());
             takeString(obj, "firmware", out.firmware);
             takeString(obj, "board", out.board);
             takeString(obj, "build", out.build);
@@ -187,41 +188,15 @@ namespace SQM::Backup
             return false;
         }
 
-        JsonVariant atPath(JsonObject root, const std::string &path, bool create)
-        {
-            JsonObject node = root;
-            size_t start = 0;
-            for (size_t dot = path.find('.'); dot != std::string::npos; start = dot + 1, dot = path.find('.', start))
-            {
-                const std::string key = path.substr(start, dot - start);
-                JsonObject child = node[key].as<JsonObject>();
-                if (child.isNull())
-                {
-                    if (!create)
-                        return JsonVariant();
-                    child = node.createNestedObject(key);
-                }
-                node = child;
-            }
-            const std::string last = path.substr(start);
-            if (!node.containsKey(last))
-            {
-                if (!create)
-                    return JsonVariant();
-                node[last] = nullptr; // a member must exist before a variant can point at it
-            }
-            return node[last];
-        }
-
-        size_t inPlaceCapacity(const std::string &text, size_t extra)
+        size_t jsonCapacity(const std::string &text, size_t extra)
         {
             size_t values = 8;
             for (char c : text)
                 values += c == ':' || c == ',' || c == '[' || c == '{';
-            return JSON_OBJECT_SIZE(values) + extra;
+            return JSON_OBJECT_SIZE(values) + text.size() + extra; // + the strings, copied
         }
 
-        bool parseInPlace(std::string &text, JsonDocument &doc) { return !deserializeJson(doc, &text[0], text.size()); }
+        bool parseCopy(const std::string &text, JsonDocument &doc) { return !deserializeJson(doc, text); }
 
         std::string jsonText(JsonVariantConst value)
         {
@@ -242,12 +217,12 @@ namespace SQM::Backup
         const std::string settings = cfg.toJson(true);
         DynamicJsonDocument doc(settings.size() + 2048);
         doc["sqmeterBackup"] = FORMAT_VERSION;
-        doc["firmware"] = device.firmware;
-        doc["board"] = device.board;
+        doc["firmware"] = device.firmware.c_str();
+        doc["board"] = device.board.c_str();
         doc["build"] = device.bluetoothBuild ? "ble" : "standard";
-        doc["deviceName"] = cfg.deviceName;
+        doc["deviceName"] = cfg.deviceName.c_str();
         if (!createdAt.empty())
-            doc["createdAt"] = createdAt;
+            doc["createdAt"] = createdAt.c_str();
         doc["settings"] = serialized(settings.c_str(), settings.size()); // referenced: `settings` outlives the document
         std::string data;
         if (seal && !writeSecrets(doc.createNestedObject("secrets"), cfg, *seal, data))
@@ -261,9 +236,8 @@ namespace SQM::Backup
     {
         if (text.size() > MAX_BODY_BYTES)
             return Error::TooLarge;
-        std::string buffer = text;
-        DynamicJsonDocument doc(inPlaceCapacity(buffer, 0));
-        if (!parseInPlace(buffer, doc))
+        DynamicJsonDocument doc(jsonCapacity(text, 0));
+        if (!parseCopy(text, doc))
             return text.find("\"sqmeterBackup\"") != std::string::npos ? Error::Damaged : Error::NotBackup;
         if (!doc.is<JsonObject>())
             return Error::NotBackup;
@@ -283,15 +257,16 @@ namespace SQM::Backup
             return Error::Damaged;
         if (deriveIterations)
             *deriveIterations = parsed.secrets.iterations;
-        std::string plain;
-        const bool opened = open(key, nonce, AAD, parsed.secrets.sealed, plain);
+        std::string decrypted;
+        const bool opened = open(key, nonce, AAD, parsed.secrets.sealed, decrypted);
+        const std::string &plain = decrypted; // const: the same JSON reader as Config::applyJson
         volatile uint8_t *wipe = key;
         for (size_t i = 0; i < KEY_BYTES; ++i)
             wipe[i] = 0;
         if (!opened)
             return Error::WrongPassphrase;
-        DynamicJsonDocument doc(plain.size() + 1024);
-        if (deserializeJson(doc, plain) || !doc.is<JsonObject>())
+        DynamicJsonDocument doc(jsonCapacity(plain, 0));
+        if (!parseCopy(plain, doc) || !doc.is<JsonObject>())
             return Error::Damaged;
         for (const char *path : SECRET_PATHS)
             if (doc[path].is<const char *>())
@@ -306,12 +281,20 @@ namespace SQM::Backup
             return Error::TooLarge;
         if (isBlank(body))
             return Error::None;
-        DynamicJsonDocument doc(body.size() + 256);
-        if (deserializeJson(doc, body) || !doc.is<JsonObject>())
+        DynamicJsonDocument doc(jsonCapacity(body, 0));
+        if (!parseCopy(body, doc) || !doc.is<JsonObject>())
             return Error::BadRequest;
         if (doc["passphrase"].is<const char *>())
             passphrase = doc["passphrase"].as<const char *>();
         return passphrase.empty() || characters(passphrase) >= MIN_PASSPHRASE_CHARS ? Error::None : Error::PassphraseShort;
+    }
+
+    std::string readApplyRequest(const std::string &body)
+    {
+        if (body.size() > 256)
+            return std::string();
+        DynamicJsonDocument doc(jsonCapacity(body, 0));
+        return parseCopy(body, doc) && doc["token"].is<const char *>() ? std::string(doc["token"].as<const char *>()) : std::string();
     }
 
     Error readPreviewRequest(const std::string &body, Parsed &parsed, std::string &passphrase)
@@ -321,9 +304,8 @@ namespace SQM::Backup
             return Error::TooLarge;
         std::string text;
         {
-            std::string buffer = body;
-            DynamicJsonDocument doc(inPlaceCapacity(buffer, 0));
-            if (!parseInPlace(buffer, doc) || !doc.is<JsonObject>())
+            DynamicJsonDocument doc(jsonCapacity(body, 0));
+            if (!parseCopy(body, doc) || !doc.is<JsonObject>())
                 return Error::BadRequest;
             if (doc["passphrase"].is<const char *>())
                 passphrase = doc["passphrase"].as<const char *>();

@@ -2,7 +2,6 @@
 
 #include <ArduinoJson.h>
 
-#include <cstdlib>
 #include <tuple>
 
 // The small rules behind a backup: refusal codes and texts, the board's pins,
@@ -30,6 +29,10 @@ namespace SQM::Backup
             return "passphrase-short";
         case Error::BadRequest:
             return "bad-request";
+        case Error::Busy:
+            return "busy";
+        case Error::Stale:
+            return "stale";
         case Error::Invalid:
             break;
         }
@@ -50,13 +53,17 @@ namespace SQM::Backup
         case Error::Damaged:
             return "The backup file is damaged";
         case Error::NewerFormat:
-            return "This backup is from newer firmware; update this device first";
+            return "Update this device first: the backup is from newer firmware";
         case Error::WrongPassphrase:
             return "Wrong passphrase, or the file's secrets were changed";
         case Error::PassphraseShort:
             return "The passphrase needs at least 8 characters";
         case Error::BadRequest:
             return "The request isn't valid JSON";
+        case Error::Busy:
+            return "Another backup or restore is running";
+        case Error::Stale:
+            return "Preview again: the preview expired or the settings changed";
         case Error::Invalid:
             break;
         }
@@ -66,7 +73,7 @@ namespace SQM::Backup
     std::string errorJson(Error error, const std::string &detail)
     {
         StaticJsonDocument<256> doc;
-        doc["error"] = detail.empty() ? std::string(errorText(error)) : detail;
+        doc["error"] = detail.empty() ? errorText(error) : detail.c_str();
         doc["code"] = errorCode(error);
         std::string out;
         serializeJson(doc, out);
@@ -149,56 +156,6 @@ namespace SQM::Backup
             break;
         }
         return "pushover-keys";
-    }
-
-    namespace
-    {
-        struct Version
-        {
-            long part[3] = {0, 0, 0};
-            bool release = true; // no pre-release suffix
-            long pre = 0;        // the pre-release's trailing number ("beta.4" -> 4)
-        };
-
-        Version parseVersion(const std::string &text)
-        {
-            Version v;
-            const char *p = text.c_str();
-            if (*p == 'v')
-                ++p;
-            for (long &part : v.part)
-            {
-                char *end = nullptr;
-                part = std::strtol(p, &end, 10);
-                p = end;
-                if (*p != '.')
-                    break;
-                ++p;
-            }
-            if (*p == '-')
-            {
-                v.release = false;
-                std::string pre(p + 1);
-                pre = pre.substr(0, pre.find('+'));
-                const size_t dot = pre.find_last_of('.');
-                v.pre = std::strtol(pre.c_str() + (dot == std::string::npos ? 0 : dot + 1), nullptr, 10);
-            }
-            return v;
-        }
-    } // namespace
-
-    int compareVersions(const std::string &a, const std::string &b)
-    {
-        const Version x = parseVersion(a);
-        const Version y = parseVersion(b);
-        for (size_t i = 0; i < 3; ++i)
-            if (x.part[i] != y.part[i])
-                return x.part[i] < y.part[i] ? -1 : 1;
-        if (x.release != y.release)
-            return x.release ? 1 : -1;
-        if (x.pre != y.pre)
-            return x.pre < y.pre ? -1 : 1;
-        return 0;
     }
 
     std::string toHex(const uint8_t *bytes, size_t size)
