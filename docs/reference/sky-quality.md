@@ -9,7 +9,7 @@ SQMeter converts TSL2591 light readings into three astronomical metrics. The con
 <!-- diagram: DIA-05
 sources: src/sensors/TSL2591Sensor.cpp#TSL2591Sensor::updateRollingReading lib/SkyLogic/src/ lib/DeviceCore/src/DeviceCore.cpp#derive lib/DeviceCore/src/DeviceCore.cpp#buildReadings lib/DeviceCore/src/DeviceCore.cpp#readSkyGroups src/sensors/BME280Sensor.cpp#BME280Sensor::calculateDewpoint
 blocking: false
-fingerprint: 7cdcdfd44b4bc6be
+fingerprint: e6b78369b92f2df0
 -->
 <figure class="diagram" markdown>
 
@@ -30,7 +30,7 @@ flowchart TB
     BORTLE --> DOC
     CLOUD --> DOC
     DEW --> DOC
-    DOC["One readings document<br/>with a status per sensor group"] --> OUT["Dashboard, REST and WebSocket,<br/>MQTT state, Alpaca properties,<br/>safety rules and alerts"]
+    DOC["One readings document<br/>with a status per sensor group;<br/>with SQM and SQM-L, both values,<br/>the authoritative one for safety"] --> OUT["Dashboard, REST and WebSocket,<br/>MQTT state, Alpaca properties,<br/>safety rules and alerts"]
 ```
 
 <figcaption>From sensor readings to the one readings document every interface uses.</figcaption>
@@ -44,7 +44,7 @@ flowchart TB
     2. **Sky quality**: SQM = 12.6 - 2.5 × log₁₀(lux). NELM and the Bortle class are worked out from the SQM.
     3. **Cloud**: the MLX90614's sky temperature minus its own (ambient) temperature, corrected for humidity: corrected = delta - (k / 100) × humidity. The BME280's humidity is used, or 53 % when it isn't working. The corrected delta, against the **Clear below** and **Overcast above** limits, gives the cloud cover % and condition.
     4. **Dew point**: from the BME280's temperature and humidity (Magnus formula).
-    5. Everything goes into **one readings document**, with a status per sensor group. The dashboard, REST and WebSocket, MQTT `<base>/state`, the Alpaca ObservingConditions properties, the safety rules and the alerts all use it, so they always agree.
+    5. Everything goes into **one readings document**, with a status per sensor group. With two sky sensors (SQM and SQM-L) each runs the light chain on its own bus; both values are in the document and the authoritative one is used by Alpaca and the safety rules. The dashboard, REST and WebSocket, MQTT `<base>/state`, the Alpaca ObservingConditions properties, the safety rules and the alerts all use it, so they always agree.
 
 ---
 
