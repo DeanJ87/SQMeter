@@ -227,7 +227,7 @@ The dashboard shows the device state that decides whether it is safe to observe 
 
 ## UI design system (DS)
 
-The web UI is built from a small set of parts in `web/src/components/ui.tsx`, and new screens use them the way the existing ones do (spec 026). A UI change cites the DS rules it relies on, and a spec that adds or changes UI includes a mockup screenshot reviewed before it is built.
+The web UI is built from a small set of parts in `web/src/components/ui.tsx`, and new screens use them the way the existing ones do (spec 026). A UI change cites the DS rules it relies on, and a spec that adds or changes UI is mocked up and reviewed by the owner before it is built. Mockup images stay outside the repo; the spec records the review.
 
 **Layout and parts**
 
