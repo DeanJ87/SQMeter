@@ -120,6 +120,18 @@ class UsbPackageTest(unittest.TestCase):
             command = next(line for line in readme.splitlines() if "write_flash" in line)
             self.assertNotIn("erase", command)
 
+    def test_s3_package(self):
+        csv = ROOT / "partitions_16MB.csv"
+        offsets = {part["path"]: part["offset"] for part in usb_package.parts(csv, "esp32s3")}
+        self.assertEqual(offsets["bootloader.bin"], 0x0)  # S3 bootloader at 0
+        self.assertEqual(offsets["littlefs.bin"], 0xC10000)
+        for offset in offsets.values():
+            self.assertFalse(0x9000 <= offset < 0xE000)
+        manifest = usb_package.manifest("standard", "0.4.0-alpha.1", csv, "esp32s3", "esp32s3-eth")
+        self.assertEqual(manifest["builds"][0]["chipFamily"], "ESP32-S3")
+        self.assertIn("esp32s3-eth", manifest["name"])
+        self.assertIn("--chip esp32s3", usb_package.esptool_command(csv, "esp32s3"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -14,11 +14,22 @@ namespace SQM
     // is written and refuses it before the boot partition is switched.
     namespace FirmwareImage
     {
-        // The whole-chip layout of partitions.csv (spec 027).
+        // The whole-chip layout of partitions.csv (spec 027): the 4 MB boards,
+        // classic ESP32 and ESP32-S3-Zero.
         constexpr const char *LAYOUT = "l2";
         // Its app slot and LittleFS sizes, to recognise it at run time.
         constexpr uint32_t APP_SLOT_SIZE = 0x1C0000;
         constexpr uint32_t FS_SIZE = 0x70000;
+        // The ESP32-S3 layouts (spec 034): partitions_8MB.csv (S3-Zero-N8R8)
+        // and partitions_16MB.csv (S3-ETH).
+        constexpr const char *LAYOUT_S8 = "s8";
+        constexpr uint32_t S8_APP_SLOT_SIZE = 0x380000;
+        constexpr uint32_t S8_FS_SIZE = 0xF0000;
+        constexpr const char *LAYOUT_S16 = "s16";
+        constexpr uint32_t S16_APP_SLOT_SIZE = 0x600000;
+        constexpr uint32_t S16_FS_SIZE = 0x3F0000;
+        // Any other partition table: a device still on the 2.x layout.
+        constexpr const char *LEGACY_LAYOUT = "legacy";
 
         enum class Build
         {
@@ -28,7 +39,7 @@ namespace SQM
 
         const char *buildName(Build build);
 
-        // "l2" when the running partition table is this layout, otherwise
+        // "l2", "s8" or "s16" for the running partition table, otherwise
         // "legacy" (a device moved to 3.x firmware without the USB flash).
         std::string layoutOf(uint32_t appSlotSize, uint32_t fsSize);
 
@@ -41,7 +52,7 @@ namespace SQM
 
         // The full marker for an image of this build (magic + fields + NUL),
         // as embedded by the firmware (src/FirmwareMarker.cpp).
-        std::string marker(Build build);
+        std::string marker(Build build, const char *layout = LAYOUT);
 
         // Finds the marker in an image fed in chunks of any size.
         class Scanner

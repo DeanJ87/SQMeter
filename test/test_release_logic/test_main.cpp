@@ -101,8 +101,9 @@ void test_ignores_non_bin_and_drafts()
 
 void test_full_page_of_releases_fits()
 {
-    // A full page of v0.3-style releases: the firmware, web UI and USB-flash
-    // files plus 13 languages (file + checksum) and the manifest, with
+    // A full page of v0.4-style releases: the firmware, web UI and USB-flash
+    // files, 13 languages (file + checksum) and the manifest, the banner, the
+    // OpenAPI file and the ESP32-S3 boards' files, with
     // real-length URLs and the release notes and uploader details the filter
     // drops.
     std::vector<std::string> kinds = {
@@ -112,7 +113,14 @@ void test_full_page_of_releases_fits()
         "sqmeter-l2-usb-standard-",
         "sqmeter-l2-usb-ble-",
         "sqmeter-i18n-manifest-",
-        "sqmeter-checksums-"};
+        "sqmeter-checksums-",
+        "sqmeter-release-",
+        "sqmeter-release-2x-",
+        "sqmeter-openapi-"};
+    // The ESP32-S3 boards' files (spec 034): 15 more per release.
+    for (const char *board : {"esp32s3-eth", "esp32s3-zero", "esp32s3-zero8"})
+        for (const char *kind : {"-firmware-", "-ble-firmware-", "-littlefs-", "-usb-standard-", "-usb-ble-"})
+            kinds.push_back(std::string("sqmeter-") + board + kind);
     for (const char *code : {"ar", "de", "es", "fr", "id", "it", "ja", "ko", "nl", "pl", "pt-BR", "tr", "zh-Hans"})
     {
         kinds.push_back(std::string("sqmeter-i18n-") + code + ".json.gz.");
@@ -150,6 +158,32 @@ void test_full_page_of_releases_fits()
         out.back().firmwareAssetUrl.c_str());
 }
 
+void test_s3_board_picks_its_own_files()
+{
+    std::string assets;
+    for (const char *name : {"sqmeter-l2-firmware-v1.bin", "sqmeter-l2-ble-firmware-v1.bin", "sqmeter-l2-littlefs-v1.bin",
+                             "sqmeter-esp32s3-zero-firmware-v1.bin", "sqmeter-esp32s3-zero-littlefs-v1.bin",
+                             "sqmeter-esp32s3-zero8-firmware-v1.bin", "sqmeter-esp32s3-zero8-ble-firmware-v1.bin",
+                             "sqmeter-esp32s3-zero8-littlefs-v1.bin"})
+        assets += std::string(assets.empty() ? "" : ",") + "{\"name\":\"" + name + "\",\"size\":1000}";
+    const std::string json = "[{\"tag_name\":\"v1\",\"prerelease\":true,\"assets\":[" + assets + "]}]";
+    std::vector<GithubRelease> out;
+    std::string error;
+    TEST_ASSERT_TRUE(Releases::parse(json, "beta", false, out, error, "esp32s3-zero"));
+    TEST_ASSERT_EQUAL(1, out.size());
+    TEST_ASSERT_TRUE(out[0].firmwareAssetUrl.find("sqmeter-esp32s3-zero-firmware-v1.bin") != std::string::npos);
+    TEST_ASSERT_TRUE(out[0].fsAssetUrl.find("sqmeter-esp32s3-zero-littlefs-v1.bin") != std::string::npos);
+    TEST_ASSERT_TRUE(Releases::parse(json, "beta", true, out, error, "esp32s3-zero"));
+    TEST_ASSERT_EQUAL(0, out.size()); // no Bluetooth image for the Zero in this release
+    TEST_ASSERT_TRUE(Releases::parse(json, "beta", true, out, error, "esp32s3-zero8"));
+    TEST_ASSERT_EQUAL(1, out.size());
+    TEST_ASSERT_TRUE(out[0].firmwareAssetUrl.find("sqmeter-esp32s3-zero8-ble-firmware-v1.bin") != std::string::npos);
+    TEST_ASSERT_TRUE(Releases::parse(json, "beta", false, out, error));
+    TEST_ASSERT_TRUE(out[0].firmwareAssetUrl.find("sqmeter-l2-firmware-v1.bin") != std::string::npos); // classic
+    TEST_ASSERT_TRUE(Releases::parse(json, "beta", false, out, error, "esp32s3-eth"));
+    TEST_ASSERT_EQUAL(0, out.size());
+}
+
 void test_bad_json()
 {
     std::vector<GithubRelease> out;
@@ -168,6 +202,7 @@ int main()
     RUN_TEST(test_skips_incomplete_releases);
     RUN_TEST(test_ignores_non_bin_and_drafts);
     RUN_TEST(test_full_page_of_releases_fits);
+    RUN_TEST(test_s3_board_picks_its_own_files);
     RUN_TEST(test_bad_json);
     return UNITY_END();
 }

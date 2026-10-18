@@ -406,7 +406,7 @@ void setup()
     Logger::info("Main", "Flash: %d bytes", ESP.getFlashChipSize());
     // Spec 027: the image's own marker and the partition layout it runs on.
     Logger::info("Main", "Firmware %s partitions %s", SQM::FirmwareMarker::fields(), SQM::FirmwareMarker::layout().c_str());
-    if (SQM::FirmwareMarker::layout() != SQM::FirmwareImage::LAYOUT)
+    if (SQM::FirmwareMarker::layout() == SQM::FirmwareImage::LEGACY_LAYOUT)
         Logger::warn("Main", "Old partition layout: this device needs the one-time USB flash (sqmeter.dev)");
     HeapTrace::mark("boot");
 

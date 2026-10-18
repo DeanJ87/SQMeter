@@ -2,6 +2,8 @@
 
 Releases are made from tags. Until the first stable release, every tag is a beta: `vX.Y.Z-beta.N`. GitHub publishes it as a pre-release, which devices on the beta track are offered.
 
+An early build for testers is an alpha: `vX.Y.Z-alpha.N`. It is published as a pre-release too, so devices on the beta track are offered it as well. The browser flasher on sqmeter.dev skips alphas and keeps serving the newest beta.
+
 ## 1. Changelog pull request
 
 Move the entries under `## [Unreleased]` in `CHANGELOG.md` into a new section:
@@ -47,7 +49,7 @@ git push origin v0.3.3-beta.1
 
 The tag starts the **Build Firmware & LittleFS** workflow. Its release job:
 
-1. builds both firmware variants and the web UI with the version stamped in, and the USB flash packages;
+1. builds both firmware variants and the web UI with the version stamped in, and the USB flash packages, for the classic ESP32 (`sqmeter-l2-*`) and each ESP32-S3 board (`sqmeter-esp32s3-eth-*`, `sqmeter-esp32s3-zero-*`, `sqmeter-esp32s3-zero8-*`; spec 034). Each board's firmware only offers and installs its own files;
 2. builds the language files and the OpenAPI description for this version;
 3. writes the release notes and banner from the changelog section (`tools/release/notes.mjs`). If `CHANGELOG.md` has no section for the tag, the job stops here and nothing is published;
 4. publishes the release with the banner at the top, the changelog section, how to upgrade, and GitHub's list of merged pull requests;

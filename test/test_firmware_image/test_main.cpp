@@ -93,6 +93,12 @@ void test_verdicts()
     TEST_ASSERT_EQUAL(Verdict::OtherBuild, FirmwareImage::check(standardL2, "l2", Build::Ble));
     TEST_ASSERT_EQUAL(Verdict::NeedsUsbFlash, FirmwareImage::check(standardL2, "legacy", Build::Standard));
     TEST_ASSERT_EQUAL(Verdict::OtherLayout, FirmwareImage::check(otherLayout, "l2", Build::Standard));
+
+    // ESP32-S3 boards (spec 034): an image only for its own layout.
+    const auto s16 = scan(image(FirmwareImage::marker(Build::Standard, FirmwareImage::LAYOUT_S16)), 512);
+    TEST_ASSERT_EQUAL(Verdict::Ok, FirmwareImage::check(s16, "s16", Build::Standard));
+    TEST_ASSERT_EQUAL(Verdict::OtherLayout, FirmwareImage::check(s16, "l2", Build::Standard));
+    TEST_ASSERT_EQUAL(Verdict::OtherLayout, FirmwareImage::check(standardL2, "s8", Build::Standard));
 }
 
 void test_messages_are_short()
@@ -109,6 +115,8 @@ void test_messages_are_short()
 void test_layout_of_partition_table()
 {
     TEST_ASSERT_EQUAL_STRING("l2", FirmwareImage::layoutOf(0x1C0000, 0x70000).c_str());
+    TEST_ASSERT_EQUAL_STRING("s8", FirmwareImage::layoutOf(0x380000, 0xF0000).c_str());
+    TEST_ASSERT_EQUAL_STRING("s16", FirmwareImage::layoutOf(0x600000, 0x3F0000).c_str());
     TEST_ASSERT_EQUAL_STRING("legacy", FirmwareImage::layoutOf(0x180000, 0x80000).c_str());
     TEST_ASSERT_EQUAL_STRING("legacy", FirmwareImage::layoutOf(0x1B0000, 0x80000).c_str());
 }
@@ -136,8 +144,15 @@ void test_firmware_embeds_the_same_marker()
         escaped += buf;
     }
     TEST_ASSERT_TRUE_MESSAGE(source.str().find(escaped) != std::string::npos, escaped.c_str());
-    TEST_ASSERT_TRUE(source.str().find("\"layout=l2;build=ble;\"") != std::string::npos);
-    TEST_ASSERT_TRUE(source.str().find("\"layout=l2;build=standard;\"") != std::string::npos);
+    TEST_ASSERT_TRUE(source.str().find("\"layout=\" SQM_LAYOUT_ID \";build=ble;\"") != std::string::npos);
+    TEST_ASSERT_TRUE(source.str().find("\"layout=\" SQM_LAYOUT_ID \";build=standard;\"") != std::string::npos);
+    // include/BuildTarget.h names the same layouts as the library.
+    std::ifstream target("include/BuildTarget.h");
+    TEST_ASSERT_TRUE(target.good());
+    std::stringstream targetSource;
+    targetSource << target.rdbuf();
+    for (const char *layout : {FirmwareImage::LAYOUT, FirmwareImage::LAYOUT_S8, FirmwareImage::LAYOUT_S16})
+        TEST_ASSERT_TRUE_MESSAGE(targetSource.str().find(std::string("#define SQM_LAYOUT_ID \"") + layout + "\"") != std::string::npos, layout);
 }
 
 int main()
