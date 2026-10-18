@@ -1,7 +1,8 @@
 # Audit: current UI against the DS rules
 
 Main at `940c302` (after #115), demo build, 1280 px and 390 px. Screenshots are in [audit/](audit/);
-proposed designs in [mockups/](mockups/) (branch `mock/026`, not for merge).
+proposed designs were mocked up (branch `mock/026`, not for merge) and reviewed by the owner; the
+mockup images are kept outside the repo.
 
 | # | Where | Violation | Rule | Screenshot | Proposed fix | Outcome |
 |---|---|---|---|---|---|---|

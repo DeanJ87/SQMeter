@@ -76,19 +76,6 @@ flowchart LR
 - OTA firmware updates from the browser, or self-updated directly from GitHub Releases
 - Captive portal WiFi setup on first boot
 
-## How SQMeter compares
-
-There are several good open-source sky quality meter projects. In brief:
-
-| Project | What it is | Good at |
-|---|---|---|
-| [mySQM+](https://sourceforge.net/projects/mysqmproesp32/) by Robert Brown | ESP32 sky quality meter and weather station, successor to the Arduino Nano + TSL237 [mySQM](https://sourceforge.net/projects/arduinomysqmskyqualitymeter/) | A long-running, feature-rich DIY build with its own web server, MQTT, a Windows application, Windows ASCOM ObservingConditions and SafetyMonitor drivers, and published PCB files |
-| [SimpleSQM](https://github.com/marcocipriani01/SimpleSQM) | Arduino Nano + TSL237 with an ASCOM ObservingConditions driver | The simplest possible build: one sensor, three wires, the same sensor as the Unihedron SQM |
-| [SQM_TSL2591](https://github.com/gshau/SQM_TSL2591) by gshau | Arduino library for SQM readings from a TSL2591 | Adaptive gain and exposure, noise estimates, and SQM-LE / SQM-LU emulator examples for software that expects a Unihedron meter |
-| [PySQM](https://github.com/mireianievas/PySQM) | Python client for Unihedron SQM-LE and SQM-LU meters | Logging and plotting readings in the IDA NSBM community-standard format; it reads meters, it isn't one |
-
-Where SQMeter differs: the ASCOM Alpaca devices run **on the ESP32 itself**, so any Alpaca client on any OS connects directly (no Windows driver), and they're tested with ASCOM ConformU in CI. On top of the sky readings it is a safety monitor with your own rules and the reasons shown, sends alerts itself (ntfy, Pushover, webhook, MQTT, Bluetooth phone alarm), announces itself to Home Assistant over MQTT, and documents its REST API with OpenAPI. It does **not** speak the Unihedron SQM-LE/LU protocol, and a bare TSL2591 sees a much wider patch of sky than a commercial SQM, so match one with a lens or baffle and the calibration offset ([why](https://sqmeter.dev/reference/sky-quality/)).
-
 ## Quick Start
 
 See [Flashing Your Device](https://sqmeter.dev/getting-started/flashing/) to get started with a new ESP32.
