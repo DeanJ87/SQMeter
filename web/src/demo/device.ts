@@ -1,4 +1,5 @@
 import createSqmCore from './core/sqm-core.mjs';
+import type { BackupCore } from './backup';
 import {
   advanceRamps,
   cloneConditions,
@@ -32,7 +33,7 @@ const LONDON_TZ = 'GMT0BST,M3.5.0/1,M10.5.0';
 // Cloud shortcuts roll in over this long unless another ramp is chosen (FR-010).
 export const CLOUD_RAMP_MS = 40_000;
 
-interface Core {
+interface Core extends BackupCore {
   getConfig(redacted: boolean): string;
   applyConfig(json: string): string;
   loadConfig(json: string): boolean;
@@ -220,9 +221,7 @@ class DemoDevice {
     return JSON.parse(this.core.pending());
   }
 
-  rawConfig() {
-    return this.config();
-  }
+  rawConfig = () => this.config();
 
   applyConfig(json: string): Reply {
     const result = this.core.applyConfig(json);
@@ -267,6 +266,9 @@ class DemoDevice {
     const body = typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body);
     return { status: reply.status, body, contentType: reply.contentType };
   }
+
+  /** The device core's backup routes (specs/033), answered by demo/backup.ts. */
+  backupCore = (): BackupCore => this.core;
 
   /** Restart the emulated device: a few seconds offline, then a new boot. */
   restart() {
