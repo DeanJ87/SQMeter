@@ -237,6 +237,7 @@
   "device.api.theRainSensorIsSwitchedOff": "Der Regensensor ist ausgeschaltet (Einstellungen → Sensoren → Regensensor)",
   "device.api.theSensorIsSeeingLightCover": "Der Sensor sieht Licht. Decken Sie ihn vollständig ab und warten Sie, bis das Mittelungsfenster voll ist.",
   "device.api.titleIsUpTo80Characters": "Titel bis 80 Zeichen, Nachricht bis 240",
+  "device.api.typeTheMqttPasswordToTest": "Geben Sie das MQTT-Passwort ein, um einen anderen als den gespeicherten Broker zu testen",
   "device.api.unauthorized": "Nicht autorisiert",
   "device.api.unavailable": "Nicht verfügbar",
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "Unbekannter Kanal (erwartet: mqtt, pushover, ntfy, webhook oder all)",
