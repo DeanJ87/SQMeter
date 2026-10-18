@@ -231,6 +231,7 @@
   "device.api.theRainSensorIsSwitchedOff": "Sent by the device and shown in the UI: an error the device returns for an action (test, calibrate, restart...).",
   "device.api.theSensorIsSeeingLightCover": "Sent by the device and shown in the UI: an error the device returns for an action (test, calibrate, restart...).",
   "device.api.titleIsUpTo80Characters": "Sent by the device and shown in the UI: an error the device returns for an action (test, calibrate, restart...).",
+  "device.api.typeTheMqttPasswordToTest": "Settings > Network > Test connection: the password field still shows the saved (hidden) password but the broker, port or username was changed, so the device won't send the saved password there; the user must type it. Broker = the MQTT server.",
   "device.api.unauthorized": "Sent by the device (src/WebServer.cpp) and shown in the UI. Keep the {placeholders}: they are values the device fills in.",
   "device.api.unavailable": "Sent by the device (src/WebServer.cpp) and shown in the UI. Keep the {placeholders}: they are values the device fills in.",
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "Sent by the device and shown in the UI: an error the device returns for an action (test, calibrate, restart...).",

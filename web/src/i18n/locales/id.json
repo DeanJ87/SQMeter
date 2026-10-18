@@ -239,6 +239,7 @@
   "device.api.theRainSensorIsSwitchedOff": "Sensor hujan dimatikan (Pengaturan → Sensor → Sensor hujan)",
   "device.api.theSensorIsSeeingLightCover": "Sensor menangkap cahaya. Tutup sepenuhnya dan tunggu hingga jendela rata-rata terisi.",
   "device.api.titleIsUpTo80Characters": "Judul maksimal 80 karakter dan pesan maksimal 240",
+  "device.api.typeTheMqttPasswordToTest": "Ketik kata sandi MQTT untuk menguji broker selain yang tersimpan",
   "device.api.unauthorized": "Tidak diizinkan",
   "device.api.unavailable": "Tidak tersedia",
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "Saluran tidak dikenal (seharusnya mqtt, pushover, ntfy, webhook, atau all)",

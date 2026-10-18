@@ -232,6 +232,7 @@
     "device.api.theRainSensorIsSwitchedOff": "4a1828101a",
     "device.api.theSensorIsSeeingLightCover": "496ef7e325",
     "device.api.titleIsUpTo80Characters": "107df79852",
+    "device.api.typeTheMqttPasswordToTest": "3e7bf2a5cf",
     "device.api.unauthorized": "19e4e1f7b7",
     "device.api.unavailable": "464e11f721",
     "device.api.unknownChannelExpectedMqttPushoverNtfy": "9424a11573",

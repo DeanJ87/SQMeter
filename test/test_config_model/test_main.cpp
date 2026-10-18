@@ -288,6 +288,54 @@ void test_ipv6_broker_and_webhook_forms()
 
 // A settings save never takes the device off its network (spec 011 FR-009):
 // an empty WiFi network is refused while one is set; WiFi setup changes it.
+void test_masked_mqtt_password_round_trips_through_a_save()
+{
+    // Settings out masks the password; saving the form back unchanged must keep it.
+    Config base = Config::createDefault();
+    base.mqtt.broker = "broker.local";
+    base.mqtt.username = "sqm";
+    base.mqtt.password = "real-secret";
+    const std::string shown = base.toJson(true);
+    TEST_ASSERT_TRUE(shown.find("real-secret") == std::string::npos);
+    std::string error;
+    const auto saved = Config::fromJson(shown, &base, &error);
+    TEST_ASSERT_TRUE_MESSAGE(saved.has_value(), error.c_str());
+    TEST_ASSERT_EQUAL_STRING("real-secret", saved->mqtt.password.c_str());
+    const auto again = Config::fromJson(saved->toJson(true), &*saved, &error);
+    TEST_ASSERT_TRUE_MESSAGE(again.has_value(), error.c_str());
+    TEST_ASSERT_EQUAL_STRING("real-secret", again->mqtt.password.c_str());
+}
+
+void test_mqtt_test_uses_the_saved_password_only_for_the_saved_broker()
+{
+    MQTTConfig saved = Config::createDefault().mqtt;
+    saved.broker = "broker.local";
+    saved.port = 1883;
+    saved.username = "sqm";
+    saved.password = "real-secret";
+    const auto tryWith = [&](const char *broker, uint16_t port, const char *user, const char *password)
+    { return Config::mqttTestPassword(saved, {broker, port, user, password}); };
+
+    // The mask (or a blank field) for the saved broker tests with the saved password.
+    TEST_ASSERT_EQUAL_STRING("real-secret", tryWith("broker.local", 1883, "sqm", "********").value().c_str());
+    TEST_ASSERT_EQUAL_STRING("real-secret", tryWith("broker.local", 1883, "sqm", "").value().c_str());
+
+    // A typed password is always used as typed.
+    TEST_ASSERT_EQUAL_STRING("typed", tryWith("other.host", 1883, "sqm", "typed").value().c_str());
+
+    // The mask for another broker, port or user never sends the saved password.
+    TEST_ASSERT_FALSE(tryWith("evil.host", 1883, "sqm", "********").has_value());
+    TEST_ASSERT_FALSE(tryWith("broker.local", 8883, "sqm", "********").has_value());
+    TEST_ASSERT_FALSE(tryWith("broker.local", 1883, "admin", "********").has_value());
+
+    // A blank password for another broker is a test without a password, not a refusal.
+    TEST_ASSERT_EQUAL_STRING("", tryWith("other.host", 1883, "", "").value().c_str());
+
+    // Nothing saved: what was sent is what's tried.
+    saved.password.clear();
+    TEST_ASSERT_EQUAL_STRING("********", tryWith("evil.host", 1883, "sqm", "********").value().c_str());
+}
+
 void test_settings_save_cannot_blank_the_wifi_network()
 {
     Config base = Config::createDefault();
@@ -389,6 +437,8 @@ int main()
     RUN_TEST(test_ipv6_setting_defaults_on_and_round_trips);
     RUN_TEST(test_ipv6_broker_and_webhook_forms);
     RUN_TEST(test_settings_save_cannot_blank_the_wifi_network);
+    RUN_TEST(test_masked_mqtt_password_round_trips_through_a_save);
+    RUN_TEST(test_mqtt_test_uses_the_saved_password_only_for_the_saved_broker);
     RUN_TEST(test_wrong_types_are_rejected_not_defaulted);
     RUN_TEST(test_stored_wrong_type_keeps_current_value);
     RUN_TEST(test_sky_defaults);

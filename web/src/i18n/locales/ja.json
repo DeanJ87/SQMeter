@@ -239,6 +239,7 @@
   "device.api.theRainSensorIsSwitchedOff": "雨センサーがオフです（設定 → センサー → 雨センサー）",
   "device.api.theSensorIsSeeingLightCover": "センサーが光を受けています。完全に覆い、平均化ウィンドウが埋まるまで待ってください。",
   "device.api.titleIsUpTo80Characters": "タイトルは80文字まで、メッセージは240文字までです",
+  "device.api.typeTheMqttPasswordToTest": "保存済み以外のブローカーをテストするには MQTT パスワードを入力してください",
   "device.api.unauthorized": "認証されていません",
   "device.api.unavailable": "利用不可",
   "device.api.unknownChannelExpectedMqttPushoverNtfy": "不明なチャネルです（mqtt、pushover、ntfy、webhook、allのいずれか）",
