@@ -135,6 +135,12 @@ charge, voltage and charging state; an alert template using `{battery}` renders 
 - Q (follow-up): How is the owner warned? → A: Through the normal alert channels and, on the BLE build,
   a Bluetooth phone alarm; both are options of the battery safety rule and of the battery alert events.
 
+## Open questions
+
+- **Travel board**: the travel rig may use the ESP32-S3-Zero-N8R8 (8 MB flash, env `esp32s3-zero8`)
+  instead of the 4 MB ESP32-S3-Zero. Same pins (the battery and charger lines are unchanged); the
+  8 MB part has a 3.5 MB app slot instead of 1.75 MB. Owner deciding (also spec 034).
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements

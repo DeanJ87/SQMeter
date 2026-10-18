@@ -127,6 +127,13 @@ page.
 - Q: What language does the screen use? → A: English short labels and numerals, always, whatever the
   device language. The web UI's display settings are translated as usual.
 
+## Open questions
+
+- **Panel**: an SSD1327 128 × 128 greyscale I2C panel instead of the SSD1306 128 × 64 monochrome one.
+  Recommended (more room per page, dimmable greys for dark adaptation); owner deciding. Choosing it
+  changes FR-001 (detection), the framebuffer and fonts in DisplayLogic, the page layouts (FR-011)
+  and the transport; the controller, settings and wake logic stay.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements

@@ -78,7 +78,6 @@ specs/032-battery/
 │   ├── readings.md      # readings + /api/status
 │   ├── integrations.md  # safety, alerts, HA, BLE
 │   └── ui.md
-├── mockups/             # owner review before UI build
 └── tasks.md
 ```
 

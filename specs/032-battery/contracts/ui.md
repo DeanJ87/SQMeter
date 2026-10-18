@@ -3,8 +3,8 @@
 DS rules relied on: DS-01 (cards from shared parts), DS-02 (state as one pill), DS-03 (MetricTile /
 ReadingRow), DS-04 (reasons behind "?"), DS-06/07, DS-08 (one place per fact), DS-09 (phone width),
 DS-20..25 (copy), DS-27 (one name: "Battery"). Constitution V: no battery card, tile, row or setting
-enabled on boards without a gauge. A mockup of every state below (390 px and 1280 px) goes in
-`specs/032-battery/mockups/` and is reviewed by the owner before the components are built.
+enabled on boards without a gauge. A mockup of every state below (390 px and 1280 px) is reviewed
+by the owner before the components are built. The mockup was reviewed outside the repo; mockup images are not committed.
 
 ## Dashboard (FR-014)
 

@@ -4,8 +4,7 @@ DS rules relied on: DS-01 (cards from the shared parts), DS-02 (state as one pil
 behind "?"), DS-06/07 (actions and notes inside the card), DS-08 (one place per fact), DS-09 (phone
 width), DS-20..25 (short English copy), DS-27 (one name: "Display"). Constitution V: no dashboard
 card for the display (it is an output, not a sensor). A mockup of each state below (390 px and
-1280 px) goes in `specs/031-oled-display/mockups/` and is reviewed by the owner before the card is
-built.
+1280 px) is reviewed by the owner before the card is built. The mockup was reviewed outside the repo; mockup images are not committed.
 
 ## Settings → Device → Display card (`#display`, FR-015)
 

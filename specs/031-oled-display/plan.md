@@ -74,7 +74,6 @@ specs/031-oled-display/
 │   ├── status-and-routes.md
 │   ├── screen.md
 │   └── ui.md
-├── mockups/             # owner review before the Settings card is built
 └── tasks.md
 ```
 
