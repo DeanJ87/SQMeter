@@ -26,7 +26,10 @@ namespace
         return out;
     }
 
-    std::string hexOf(const std::string &bytes) { return Backup::toHex(reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size()); }
+    std::string hexOf(const std::string &bytes)
+    {
+        return Backup::toHex(reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size());
+    }
 
     std::string derive(const char *passphrase, const char *salt, uint32_t iterations)
     {
@@ -56,8 +59,8 @@ void test_pbkdf2_matches_published_vectors_when_many_iterations()
 
 void test_pbkdf2_hashes_a_passphrase_longer_than_a_block()
 {
-    TEST_ASSERT_EQUAL_STRING("59bfa49750dd5462ce38370a1e7abe0736ff334cf1c2f0d84f23a03435d660d1",
-                             derive(std::string(100, 'x').c_str(), "salt", 3).c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "59bfa49750dd5462ce38370a1e7abe0736ff334cf1c2f0d84f23a03435d660d1", derive(std::string(100, 'x').c_str(), "salt", 3).c_str());
 }
 
 void test_pbkdf2_refuses_zero_iterations()
@@ -83,14 +86,16 @@ void test_gcm_matches_nist_case_16_with_associated_data()
     uint8_t nonce[Backup::NONCE_BYTES];
     copyTo(key, fromHex("feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308"));
     copyTo(nonce, fromHex("cafebabefacedbaddecaf888"));
-    const std::string plain = fromHex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa"
-                                      "0de657ba637b39");
+    const std::string plain =
+        fromHex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa"
+                "0de657ba637b39");
     const std::string aad = fromHex("feedfacedeadbeeffeedfacedeadbeefabaddad2");
     std::string sealed;
     TEST_ASSERT_TRUE(Backup::seal(key, nonce, aad, plain, sealed));
-    TEST_ASSERT_EQUAL_STRING("522dc1f099567d07f47f37a32a84427d643a8cdcbfe5c0c97598a2bd2555d1aa8cb08e48590dbb3da7b08b1056828838c5f61e6393ba7a0abcc9f6"
-                             "6276fc6ece0f4e1768cddf8853bb2d551b",
-                             hexOf(sealed).c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "522dc1f099567d07f47f37a32a84427d643a8cdcbfe5c0c97598a2bd2555d1aa8cb08e48590dbb3da7b08b1056828838c5f61e6393ba7a0abcc9f6"
+        "6276fc6ece0f4e1768cddf8853bb2d551b",
+        hexOf(sealed).c_str());
     std::string opened;
     TEST_ASSERT_TRUE(Backup::open(key, nonce, aad, sealed, opened));
     TEST_ASSERT_TRUE(opened == plain);

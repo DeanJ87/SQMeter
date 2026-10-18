@@ -164,7 +164,14 @@ export const handlers = [
   ),
   http.post('/api/backup/apply', () => HttpResponse.json({ success: true, restarting: false })),
   http.post('/api/backup', () =>
-    HttpResponse.json({ sqmeterBackup: 1, firmware: '0.3.4-beta.1', board: 'esp32', build: 'standard', deviceName: mockConfig.deviceName, settings: mockConfig }),
+    HttpResponse.json({
+      sqmeterBackup: 1,
+      firmware: '0.3.4-beta.1',
+      board: 'esp32',
+      build: 'standard',
+      deviceName: mockConfig.deviceName,
+      settings: mockConfig,
+    }),
   ),
 
   // REST — wifi (returns { networks: [...] } to match firmware API shape)

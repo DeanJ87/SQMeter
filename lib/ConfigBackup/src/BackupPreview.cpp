@@ -46,8 +46,10 @@ namespace SQM::Backup
                 const int pin = value.as<uint8_t>();
                 if (setting.analog ? pins.analog(pin) : pins.valid(pin))
                     continue;
-                out.push_back({std::string(setting.section) + "." + setting.key, jsonText(value),
-                               setting.analog ? NotApplicableReason::Analog : NotApplicableReason::Pin});
+                out.push_back(
+                    {std::string(setting.section) + "." + setting.key,
+                     jsonText(value),
+                     setting.analog ? NotApplicableReason::Analog : NotApplicableReason::Pin});
                 section.remove(setting.key);
             }
         }

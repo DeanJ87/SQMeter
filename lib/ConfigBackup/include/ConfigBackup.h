@@ -35,9 +35,9 @@ namespace SQM::Backup
         WrongPassphrase,
         PassphraseShort,
         BadRequest, // the request body isn't the JSON the route expects
-        Invalid, // the save's own validation refused the result
-        Busy,    // another backup or preview is running
-        Stale,   // no such preview, or the settings changed since
+        Invalid,    // the save's own validation refused the result
+        Busy,       // another backup or preview is running
+        Stale,      // no such preview, or the settings changed since
     };
     const char *errorCode(Error error);
     const char *errorText(Error error);

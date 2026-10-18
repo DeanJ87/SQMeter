@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { changedSettings, changesNothing, missingPaths, previewDetails, restoreWarnings, sectionOf, type RestorePreview, type Settings } from '../backupPreview';
+import {
+  changedSettings,
+  changesNothing,
+  missingPaths,
+  previewDetails,
+  restoreWarnings,
+  sectionOf,
+  type RestorePreview,
+  type Settings,
+} from '../backupPreview';
 
 // What a restore preview lists (specs/033-config-backup FR-007, FR-008).
 

@@ -73,7 +73,10 @@ namespace SQM::Backup
             return true;
         }
 
-        std::string bytes(const uint8_t *data, size_t size) { return std::string(reinterpret_cast<const char *>(data), size); }
+        std::string bytes(const uint8_t *data, size_t size)
+        {
+            return std::string(reinterpret_cast<const char *>(data), size);
+        }
 
         std::string secretsPlaintext(const Config &cfg)
         {
@@ -175,7 +178,10 @@ namespace SQM::Backup
             return count;
         }
 
-        bool isBlank(const std::string &text) { return text.find_first_not_of(" \t\r\n") == std::string::npos; }
+        bool isBlank(const std::string &text)
+        {
+            return text.find_first_not_of(" \t\r\n") == std::string::npos;
+        }
     } // namespace
 
     namespace Detail
@@ -196,7 +202,10 @@ namespace SQM::Backup
             return JSON_OBJECT_SIZE(values) + text.size() + extra; // + the strings, copied
         }
 
-        bool parseCopy(const std::string &text, JsonDocument &doc) { return !deserializeJson(doc, text); }
+        bool parseCopy(const std::string &text, JsonDocument &doc)
+        {
+            return !deserializeJson(doc, text);
+        }
 
         std::string jsonText(JsonVariantConst value)
         {

@@ -18,7 +18,10 @@ namespace
         }
     }
 
-    int statusFor(Backup::Error error) { return error == Backup::Error::TooLarge ? 413 : 400; }
+    int statusFor(Backup::Error error)
+    {
+        return error == Backup::Error::TooLarge ? 413 : 400;
+    }
 } // namespace
 
 Backup::DeviceInfo EmulatedDevice::backupDevice() const

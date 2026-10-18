@@ -95,7 +95,8 @@ namespace
         Backup::Preview preview;
     };
 
-    Restore restore(const Config &current, const std::string &file, const char *passphrase = nullptr, const Backup::DeviceInfo &info = device())
+    Restore restore(
+        const Config &current, const std::string &file, const char *passphrase = nullptr, const Backup::DeviceInfo &info = device())
     {
         Restore r(current);
         r.error = Backup::parseBackup(file, r.parsed);
@@ -114,10 +115,16 @@ namespace
         return r;
     }
 
-    bool contains(const std::vector<std::string> &list, const char *item) { return std::find(list.begin(), list.end(), item) != list.end(); }
+    bool contains(const std::vector<std::string> &list, const char *item)
+    {
+        return std::find(list.begin(), list.end(), item) != list.end();
+    }
 
     // The candidate's settings, secrets included, as JSON (for "nothing changed").
-    std::string settingsOf(const Config &cfg) { return cfg.toJson(false); }
+    std::string settingsOf(const Config &cfg)
+    {
+        return cfg.toJson(false);
+    }
 
     bool secretIn(uint16_t bits, const char *path)
     {
@@ -151,8 +158,23 @@ void test_backup_holds_every_section_and_the_header()
     TEST_ASSERT_EQUAL_STRING("ble", doc["build"]);
     TEST_ASSERT_EQUAL_STRING("backyard-sqm", doc["deviceName"]);
     TEST_ASSERT_EQUAL_STRING("2026-10-18T21:04:05Z", doc["createdAt"]);
-    for (const char *section : {"wifi", "mqtt", "ota", "auth", "ntp", "gps", "rain", "sensor", "skyAveraging", "skyCalibration",
-                                "cloudDetection", "alpaca", "ble", "location", "wind", "alerts"})
+    for (const char *section :
+         {"wifi",
+          "mqtt",
+          "ota",
+          "auth",
+          "ntp",
+          "gps",
+          "rain",
+          "sensor",
+          "skyAveraging",
+          "skyCalibration",
+          "cloudDetection",
+          "alpaca",
+          "ble",
+          "location",
+          "wind",
+          "alerts"})
         TEST_ASSERT_TRUE_MESSAGE(doc["settings"][section].is<JsonObject>(), section);
     TEST_ASSERT_EQUAL_STRING("********", doc["settings"]["wifi"]["password"]);
     TEST_ASSERT_EQUAL_STRING("", doc["settings"]["ota"]["password"]);
@@ -222,13 +244,14 @@ void test_changed_ciphertext_salt_or_nonce_reads_as_wrong_passphrase()
     const char *fields[] = {"data", "salt", "nonce"};
     for (const char *field : fields)
     {
-        const std::string changed = edited(file,
-                                           [field](JsonObject f)
-                                           {
-                                               std::string value = f["secrets"][field].as<const char *>();
-                                               value[2] = value[2] == 'A' ? 'B' : 'A';
-                                               f["secrets"][field] = value;
-                                           });
+        const std::string changed = edited(
+            file,
+            [field](JsonObject f)
+            {
+                std::string value = f["secrets"][field].as<const char *>();
+                value[2] = value[2] == 'A' ? 'B' : 'A';
+                f["secrets"][field] = value;
+            });
         TEST_ASSERT_EQUAL_MESSAGE(Backup::Error::WrongPassphrase, restore(configured(), changed, "a long passphrase").error, field);
     }
 }
@@ -361,7 +384,8 @@ void test_pushover_without_its_keys_is_not_applied()
     TEST_ASSERT_EQUAL(1, r.preview.notApplicable.size());
     TEST_ASSERT_EQUAL(Backup::NotApplicableReason::PushoverKeys, r.preview.notApplicable[0].reason);
     TEST_ASSERT_FALSE(r.preview.candidate.alerts.pushoverEnabled);
-    TEST_ASSERT_TRUE(restore(configured(), backupOf(other, "a long passphrase"), "a long passphrase").preview.candidate.alerts.pushoverEnabled);
+    TEST_ASSERT_TRUE(
+        restore(configured(), backupOf(other, "a long passphrase"), "a long passphrase").preview.candidate.alerts.pushoverEnabled);
 }
 
 void test_a_plain_settings_export_reads_as_format_0()
@@ -409,8 +433,11 @@ void test_backup_request_checks_the_passphrase()
     TEST_ASSERT_EQUAL(Backup::Error::None, Backup::readBackupRequest("{}", passphrase));
     TEST_ASSERT_EQUAL(Backup::Error::PassphraseShort, Backup::readBackupRequest("{\"passphrase\":\"short\"}", passphrase));
     // Eight characters, more than eight bytes: counted as the web UI counts them.
-    TEST_ASSERT_EQUAL(Backup::Error::None, Backup::readBackupRequest("{\"passphrase\":\"\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\"}", passphrase));
-    TEST_ASSERT_EQUAL(Backup::Error::PassphraseShort, Backup::readBackupRequest("{\"passphrase\":\"\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\"}", passphrase));
+    TEST_ASSERT_EQUAL(
+        Backup::Error::None,
+        Backup::readBackupRequest("{\"passphrase\":\"\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\"}", passphrase));
+    TEST_ASSERT_EQUAL(
+        Backup::Error::PassphraseShort, Backup::readBackupRequest("{\"passphrase\":\"\xc3\xa9\xc3\xa9\xc3\xa9\xc3\xa9\"}", passphrase));
     TEST_ASSERT_EQUAL(Backup::Error::BadRequest, Backup::readBackupRequest("passphrase", passphrase));
 }
 
@@ -429,15 +456,18 @@ void test_preview_request_takes_the_file_as_text_or_object()
     TEST_ASSERT_EQUAL(1, parsed.format);
     const std::string asObject = "{\"backup\":" + file + "}";
     TEST_ASSERT_EQUAL(Backup::Error::None, Backup::readPreviewRequest(asObject, parsed, passphrase));
-    TEST_ASSERT_EQUAL(Backup::Error::TooLarge, Backup::readPreviewRequest(std::string(Backup::MAX_BODY_BYTES + 1, ' '), parsed, passphrase));
+    TEST_ASSERT_EQUAL(
+        Backup::Error::TooLarge, Backup::readPreviewRequest(std::string(Backup::MAX_BODY_BYTES + 1, ' '), parsed, passphrase));
     TEST_ASSERT_EQUAL(Backup::Error::NotBackup, Backup::readPreviewRequest("{\"backup\":3}", parsed, passphrase));
 }
 
 void test_error_json_has_code_and_text()
 {
-    TEST_ASSERT_EQUAL_STRING("{\"error\":\"Wrong passphrase, or the file's secrets were changed\",\"code\":\"wrong-passphrase\"}",
-                             Backup::errorJson(Backup::Error::WrongPassphrase).c_str());
-    TEST_ASSERT_EQUAL_STRING("{\"error\":\"MQTT broker: bad\",\"code\":\"invalid\"}", Backup::errorJson(Backup::Error::Invalid, "MQTT broker: bad").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "{\"error\":\"Wrong passphrase, or the file's secrets were changed\",\"code\":\"wrong-passphrase\"}",
+        Backup::errorJson(Backup::Error::WrongPassphrase).c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "{\"error\":\"MQTT broker: bad\",\"code\":\"invalid\"}", Backup::errorJson(Backup::Error::Invalid, "MQTT broker: bad").c_str());
 }
 
 void test_a_restored_setting_is_saved_and_restart_needs_are_named()

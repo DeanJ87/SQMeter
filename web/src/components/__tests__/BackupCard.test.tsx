@@ -99,12 +99,17 @@ describe('Backup & restore card', () => {
     server.use(
       http.post('/api/backup/preview', async ({ request }) => {
         sent = await request.json();
-        return HttpResponse.json({ error: "Wrong passphrase, or the file's secrets were changed", code: 'wrong-passphrase' }, { status: 400 });
+        return HttpResponse.json(
+          { error: "Wrong passphrase, or the file's secrets were changed", code: 'wrong-passphrase' },
+          { status: 400 },
+        );
       }),
     );
     const { container } = renderCard();
     choose(container, encrypted);
-    fireEvent.input(await screen.findByLabelText('Passphrase for this file', { selector: 'input' }), { target: { value: 'not it at all' } });
+    fireEvent.input(await screen.findByLabelText('Passphrase for this file', { selector: 'input' }), {
+      target: { value: 'not it at all' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
     expect(await screen.findByText("Wrong passphrase, or the file's secrets were changed")).toBeInTheDocument();
     expect(sent).toEqual({ backup: encrypted, passphrase: 'not it at all' });
@@ -112,7 +117,9 @@ describe('Backup & restore card', () => {
 
   it('shows why a file is refused', async () => {
     server.use(
-      http.post('/api/backup/preview', () => HttpResponse.json({ error: "This isn't a SQMeter backup file", code: 'not-backup' }, { status: 400 })),
+      http.post('/api/backup/preview', () =>
+        HttpResponse.json({ error: "This isn't a SQMeter backup file", code: 'not-backup' }, { status: 400 }),
+      ),
     );
     const { container } = renderCard();
     choose(container, 'not json', 'notes.txt');

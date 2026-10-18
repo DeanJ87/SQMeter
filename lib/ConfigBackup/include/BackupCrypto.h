@@ -20,11 +20,19 @@ namespace SQM::Backup
     bool deriveKey(const std::string &passphrase, const uint8_t *salt, size_t saltLength, uint32_t iterations, uint8_t (&key)[KEY_BYTES]);
 
     // AES-256-GCM encryption: `sealed` becomes ciphertext followed by the tag.
-    bool seal(const uint8_t (&key)[KEY_BYTES], const uint8_t (&nonce)[NONCE_BYTES], const std::string &aad, const std::string &plain,
-              std::string &sealed);
+    bool seal(
+        const uint8_t (&key)[KEY_BYTES],
+        const uint8_t (&nonce)[NONCE_BYTES],
+        const std::string &aad,
+        const std::string &plain,
+        std::string &sealed);
 
     // AES-256-GCM decryption of ciphertext + tag. False (and `plain` empty)
     // when the tag doesn't verify: a wrong key or changed data.
-    bool open(const uint8_t (&key)[KEY_BYTES], const uint8_t (&nonce)[NONCE_BYTES], const std::string &aad, const std::string &sealed,
-              std::string &plain);
+    bool open(
+        const uint8_t (&key)[KEY_BYTES],
+        const uint8_t (&nonce)[NONCE_BYTES],
+        const std::string &aad,
+        const std::string &sealed,
+        std::string &plain);
 } // namespace SQM::Backup

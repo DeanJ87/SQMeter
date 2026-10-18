@@ -233,7 +233,8 @@ namespace SQM
         }
         const bool restarting = staged->preview.restart != 0;
         Logger::info(TAG, "Settings restored from a backup%s", restarting ? "; restarting" : "");
-        request->send(200, "application/json", restarting ? "{\"success\":true,\"restarting\":true}" : "{\"success\":true,\"restarting\":false}");
+        request->send(
+            200, "application/json", restarting ? "{\"success\":true,\"restarting\":true}" : "{\"success\":true,\"restarting\":false}");
         if (restarting)
             scheduleRestart(RESTORE_RESTART_DELAY_MS);
     }
