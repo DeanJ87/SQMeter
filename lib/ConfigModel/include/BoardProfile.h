@@ -70,7 +70,8 @@ namespace SQM
         // ESP32-S3: no USB (19/20), the RGB LED (21), flash and octal PSRAM (26-37).
         constexpr uint64_t S3_GPIOS = gpioRange(0, 18) | gpioRange(38, 48);
         // RTC GPIOs (deep-sleep wake sources).
-        constexpr uint64_t ESP32_RTC_GPIOS = gpioBit(0) | gpioBit(2) | gpioBit(4) | gpioRange(12, 15) | gpioRange(25, 27) | gpioRange(32, 39);
+        constexpr uint64_t ESP32_RTC_GPIOS =
+            gpioBit(0) | gpioBit(2) | gpioBit(4) | gpioRange(12, 15) | gpioRange(25, 27) | gpioRange(32, 39);
         constexpr uint64_t S3_RTC_GPIOS = gpioRange(0, 21);
 
         constexpr BoardProfile esp32Dev()

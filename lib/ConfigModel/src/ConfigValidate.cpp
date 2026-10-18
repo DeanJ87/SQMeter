@@ -452,7 +452,8 @@ namespace SQM
 
         bool validateBattery(const Config &c, const BoardProfile &board, std::string *error)
         {
-            return validateBatteryLevels(c.battery, error) && validateBatteryTimes(c.battery, error) && validateBatteryPins(c, board, error);
+            return validateBatteryLevels(c.battery, error) && validateBatteryTimes(c.battery, error) &&
+                   validateBatteryPins(c, board, error);
         }
 
         bool validateAlertThresholds(const Config &c, std::string *error)
