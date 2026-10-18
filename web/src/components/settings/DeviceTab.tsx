@@ -19,6 +19,7 @@ import {
 import { defaultBleConfig } from './defaults';
 import { t } from '../../i18n';
 import LanguageCard from './LanguageCard';
+import BackupCard from './BackupCard';
 
 type BleAlarm = NonNullable<NonNullable<SystemStatus['ble']>['alarm']>;
 type WithActions = SettingsTabProps & { actions: DeviceActions };
@@ -198,6 +199,8 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = (props) => {
       />
 
       <SecurityCard {...props} />
+
+      <BackupCard deviceName={config.deviceName} status={props.status} />
 
       <BluetoothCard {...props} actions={actions} />
     </>
