@@ -396,7 +396,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "Wiatr: korekta kierunku musi wynosić od -360 do 360 stopni",
   "device.settings.windKmHPerHzMust": "Wiatr: km/h na Hz musi wynosić od 0 do 20",
   "device.settings.windPinIsAlreadyUsedBy": "Wiatr: pin jest już używany przez I2C, GPS lub czujnik deszczu",
-  "device.settings.windVanePinMustBeAn": "Wiatr: pin wiatrowskazu musi być pinem ADC1 (GPIO 32-39)",
+  "device.settings.windVanePinMustBeAn": "Wiatr: pin wiatrowskazu musi być pinem ADC1 (GPIO {adc1Pins})",
   "device.settings.windVanePullUpMustBe": "Wiatr: rezystor podciągający wiatrowskazu musi mieć od 1k do 100k omów",
   "device.sky.brightSuburbanSky": "Jasne niebo podmiejskie",
   "device.sky.citySky": "Niebo miejskie",

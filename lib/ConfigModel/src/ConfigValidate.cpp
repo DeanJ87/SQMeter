@@ -112,7 +112,7 @@ namespace SQM
             return true;
         }
 
-        bool validateAuthAndNtp(const Config &c, std::string *error)
+        bool validateAuthAndNtp(const Config &c, const BoardProfile &b, std::string *error)
         {
             if (c.auth.enabled && c.auth.password.empty())
                 return setError(error, "HTTP auth password is required when auth is enabled");
@@ -122,7 +122,7 @@ namespace SQM
                 return setError(error, "Primary NTP server is required when NTP is enabled");
             if (c.ntp.syncIntervalMs < 600000 || c.ntp.syncIntervalMs > 86400000)
                 return setError(error, "NTP sync interval is invalid");
-            if (!isValidGpio(c.gps.rxPin) || !isValidGpio(c.gps.txPin) || c.gps.rxPin == c.gps.txPin)
+            if (!b.isValidGpio(c.gps.rxPin) || !b.isValidGpio(c.gps.txPin) || c.gps.rxPin == c.gps.txPin)
                 return setError(error, "GPS pins are invalid");
             if (!isValidBaudRate(c.gps.baudRate))
                 return setError(error, "GPS baud rate is invalid");
@@ -137,9 +137,9 @@ namespace SQM
             return false;
         }
 
-        bool validateRain(const RainConfig &r, std::string *error)
+        bool validateRain(const RainConfig &r, const BoardProfile &b, std::string *error)
         {
-            if (!isValidGpio(r.rxPin) || !isValidGpio(r.txPin) || (r.enabled && r.rxPin == r.txPin))
+            if (!b.isValidGpio(r.rxPin) || !b.isValidGpio(r.txPin) || (r.enabled && r.rxPin == r.txPin))
                 return setError(error, "Rain sensor pins are invalid");
             if (!isValidBaudRate(r.baudRate))
                 return setError(error, "Rain sensor baud rate is invalid");
@@ -190,12 +190,12 @@ namespace SQM
         // The second I2C bus pins: both unset, or two different valid GPIOs
         // no other bus uses (spec 030, contracts/config.md). The anemometer's
         // own check reports a clash with these pins.
-        bool validateI2c2Pins(const Config &c, std::string *error)
+        bool validateI2c2Pins(const Config &c, const BoardProfile &b, std::string *error)
         {
             const SensorConfig &s = c.sensor;
             if (s.i2c2SDA == SensorConfig::PIN_UNSET && s.i2c2SCL == SensorConfig::PIN_UNSET)
                 return true;
-            if (!isValidGpio(s.i2c2SDA) || !isValidGpio(s.i2c2SCL) || s.i2c2SDA == s.i2c2SCL)
+            if (!b.isValidGpio(s.i2c2SDA) || !b.isValidGpio(s.i2c2SCL) || s.i2c2SDA == s.i2c2SCL)
                 return setError(error, "Second I2C bus pins are invalid");
             const std::array<int, 8> others = busPins(c, false);
             if (pinIn(others, s.i2c2SDA) || pinIn(others, s.i2c2SCL))
@@ -204,9 +204,9 @@ namespace SQM
         }
 
         // The SQM-L and the authoritative choice.
-        bool validateSecondSky(const Config &c, std::string *error)
+        bool validateSecondSky(const Config &c, const BoardProfile &b, std::string *error)
         {
-            if (!validateI2c2Pins(c, error))
+            if (!validateI2c2Pins(c, b, error))
                 return false;
             if (c.sky.sqmlEnabled && !c.sensor.i2c2Configured())
                 return setError(error, "SQM-L needs the second I2C bus pins");
@@ -221,12 +221,12 @@ namespace SQM
             return true;
         }
 
-        bool validateSky(const Config &c, std::string *error)
+        bool validateSky(const Config &c, const BoardProfile &b, std::string *error)
         {
             const SensorConfig &s = c.sensor;
             if (s.readIntervalMs < 100 || s.readIntervalMs > 3600000)
                 return setError(error, "Sensor read interval is invalid");
-            if (!isValidGpio(s.i2cSDA) || !isValidGpio(s.i2cSCL) || s.i2cSDA == s.i2cSCL)
+            if (!b.isValidGpio(s.i2cSDA) || !b.isValidGpio(s.i2cSCL) || s.i2cSDA == s.i2cSCL)
                 return setError(error, "I2C pins are invalid");
             if (s.i2cFrequency < 10000 || s.i2cFrequency > 400000)
                 return setError(error, "I2C frequency is invalid");
@@ -237,7 +237,7 @@ namespace SQM
                 return setError(error, "Sky SQM calibration offset is invalid");
             if (!validDarkOffsets(cal))
                 return setError(error, "Sky dark calibration offsets are invalid");
-            return validateSecondSky(c, error);
+            return validateSecondSky(c, b, error);
         }
 
         bool validateCloudDetection(const CloudDetectionConfig &d, std::string *error)
@@ -280,13 +280,13 @@ namespace SQM
             return true;
         }
 
-        bool validateWindPins(const Config &c, std::string *error)
+        bool validateWindPins(const Config &c, const BoardProfile &b, std::string *error)
         {
             const WindConfig &w = c.wind;
-            if (!isValidGpio(w.speedPin))
+            if (!b.isValidGpio(w.speedPin))
                 return setError(error, "Wind: anemometer pin is not a valid GPIO");
-            if (w.directionEnabled && (w.directionPin < 32 || w.directionPin > 39))
-                return setError(error, "Wind: vane pin must be an ADC1 pin (GPIO 32-39)");
+            if (w.directionEnabled && !b.isAdc1(w.directionPin))
+                return setError(error, std::string("Wind: vane pin must be an ADC1 pin (GPIO ") + b.adc1Pins + ")");
             for (int pin : busPins(c, true))
             {
                 if (pin == w.speedPin || (w.directionEnabled && pin == w.directionPin))
@@ -297,9 +297,9 @@ namespace SQM
             return true;
         }
 
-        bool validateWindAndBle(const Config &c, std::string *error)
+        bool validateWindAndBle(const Config &c, const BoardProfile &b, std::string *error)
         {
-            if (c.wind.enabled && !validateWindPins(c, error))
+            if (c.wind.enabled && !validateWindPins(c, b, error))
                 return false;
             if (!positiveUpTo(c.wind.kmhPerHz, 20.0F))
                 return setError(error, "Wind: km/h per Hz must be between 0 and 20");
@@ -408,23 +408,28 @@ namespace SQM
 
     bool Config::validate(std::string *error) const
     {
-        using Check = bool (*)(const Config &, std::string *);
+        return validate(boardProfile(BUILD_BOARD), error);
+    }
+
+    bool Config::validate(const BoardProfile &board, std::string *error) const
+    {
+        using Check = bool (*)(const Config &, const BoardProfile &, std::string *);
         static const Check CHECKS[] = {
-            validateIdentity,
-            validateTimeSources,
-            validateWifiAndMqtt,
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateIdentity(c, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateTimeSources(c, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateWifiAndMqtt(c, e); },
             validateAuthAndNtp,
-            [](const Config &c, std::string *e) { return validateRain(c.rain, e); },
+            [](const Config &c, const BoardProfile &b, std::string *e) { return validateRain(c.rain, b, e); },
             validateSky,
-            [](const Config &c, std::string *e) { return validateCloudDetection(c.cloudDetection, e); },
-            [](const Config &c, std::string *e) { return validateAlpaca(c.alpaca, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateCloudDetection(c.cloudDetection, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateAlpaca(c.alpaca, e); },
             validateWindAndBle,
-            validateAlertThresholds,
-            validateAlertEvents,
-            [](const Config &c, std::string *e) { return validateAlertChannels(c.alerts, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateAlertThresholds(c, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateAlertEvents(c, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateAlertChannels(c.alerts, e); },
         };
         for (Check check : CHECKS)
-            if (!check(*this, error))
+            if (!check(*this, board, error))
                 return false;
         return true;
     }

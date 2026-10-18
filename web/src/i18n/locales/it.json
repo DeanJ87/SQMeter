@@ -390,7 +390,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "Vento: la correzione della direzione deve essere tra -360 e 360 gradi",
   "device.settings.windKmHPerHzMust": "Vento: i km/h per Hz devono essere tra 0 e 20",
   "device.settings.windPinIsAlreadyUsedBy": "Vento: il pin è già usato da I2C, GPS o dal sensore di pioggia",
-  "device.settings.windVanePinMustBeAn": "Vento: il pin della banderuola deve essere un pin ADC1 (GPIO 32-39)",
+  "device.settings.windVanePinMustBeAn": "Vento: il pin della banderuola deve essere un pin ADC1 (GPIO {adc1Pins})",
   "device.settings.windVanePullUpMustBe": "Vento: il pull-up della banderuola deve essere tra 1k e 100k ohm",
   "device.sky.brightSuburbanSky": "Cielo suburbano luminoso",
   "device.sky.citySky": "Cielo urbano",

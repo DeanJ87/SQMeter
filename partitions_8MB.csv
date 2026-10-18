@@ -1,0 +1,11 @@
+# 8 MB layout for the ESP32-S3-Zero-N8R8 builds (esp32s3-zero8, esp32s3-zero8-ble).
+# nvs and otadata keep the 4 MB layout's offsets and sizes, so settings survive
+# a USB flash that skips 0x9000-0xDFFF. Two 3.5 MB app slots and 960 KB of
+# LittleFS fill the 8 MB flash. Changing the layout needs a USB flash: OTA
+# can't rewrite the partition table.
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     0x9000,  0x5000,
+otadata,  data, ota,     0xe000,  0x2000,
+app0,     app,  ota_0,   0x10000, 0x380000,
+app1,     app,  ota_1,   0x390000,0x380000,
+spiffs,   data, spiffs,  0x710000,0xF0000,

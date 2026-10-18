@@ -390,7 +390,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "Viento: la corrección de dirección debe estar entre -360 y 360 grados",
   "device.settings.windKmHPerHzMust": "Viento: los km/h por Hz deben estar entre 0 y 20",
   "device.settings.windPinIsAlreadyUsedBy": "Viento: el pin ya lo usa el I2C, el GPS o el sensor de lluvia",
-  "device.settings.windVanePinMustBeAn": "Viento: el pin de la veleta debe ser un pin ADC1 (GPIO 32-39)",
+  "device.settings.windVanePinMustBeAn": "Viento: el pin de la veleta debe ser un pin ADC1 (GPIO {adc1Pins})",
   "device.settings.windVanePullUpMustBe": "Viento: el pull-up de la veleta debe estar entre 1k y 100k ohmios",
   "device.sky.brightSuburbanSky": "Cielo suburbano brillante",
   "device.sky.citySky": "Cielo urbano",

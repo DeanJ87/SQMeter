@@ -390,7 +390,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "Rüzgar: yön düzeltmesi -360 ile 360 derece arasında olmalı",
   "device.settings.windKmHPerHzMust": "Rüzgar: Hz başına km/h 0 ile 20 arasında olmalı",
   "device.settings.windPinIsAlreadyUsedBy": "Rüzgar: pin zaten I2C, GPS veya yağmur sensörü tarafından kullanılıyor",
-  "device.settings.windVanePinMustBeAn": "Rüzgar: rüzgar gülü pini bir ADC1 pini olmalı (GPIO 32-39)",
+  "device.settings.windVanePinMustBeAn": "Rüzgar: rüzgar gülü pini bir ADC1 pini olmalı (GPIO {adc1Pins})",
   "device.settings.windVanePullUpMustBe": "Rüzgar: rüzgar gülü pull-up direnci 1k ile 100k ohm arasında olmalı",
   "device.sky.brightSuburbanSky": "Parlak banliyö gökyüzü",
   "device.sky.citySky": "Şehir gökyüzü",

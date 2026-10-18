@@ -390,7 +390,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "Wind: direction offset must be between -360 and 360 degrees",
   "device.settings.windKmHPerHzMust": "Wind: km/h per Hz must be between 0 and 20",
   "device.settings.windPinIsAlreadyUsedBy": "Wind: pin is already used by I2C, GPS or the rain sensor",
-  "device.settings.windVanePinMustBeAn": "Wind: vane pin must be an ADC1 pin (GPIO 32-39)",
+  "device.settings.windVanePinMustBeAn": "Wind: vane pin must be an ADC1 pin (GPIO {adc1Pins})",
   "device.settings.windVanePullUpMustBe": "Wind: vane pull-up must be between 1k and 100k ohms",
   "device.sky.brightSuburbanSky": "Bright suburban sky",
   "device.sky.citySky": "City sky",
