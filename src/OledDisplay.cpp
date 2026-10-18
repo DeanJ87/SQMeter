@@ -6,6 +6,9 @@
 
 #include "Logger.h"
 
+#include "BoardFeatures.h"
+
+#if SQM_HAS_DISPLAY
 namespace SQM
 {
     namespace
@@ -259,3 +262,25 @@ namespace SQM
         return s;
     }
 } // namespace SQM
+
+#else // classic ESP32 builds: no driver (include/BoardFeatures.h)
+
+namespace SQM
+{
+    void OledDisplay::applySettings(const Display::Settings &next)
+    {
+        settings = next;
+        settings.enabled = false; // never probed, never fed
+    }
+
+    void OledDisplay::setView(const Display::View &, const Display::Night &) {}
+
+    void OledDisplay::tick(uint32_t, const Display::Settings &) {}
+
+    Core::DisplayStatus OledDisplay::status() const
+    {
+        return Core::DisplayStatus{};
+    }
+} // namespace SQM
+
+#endif

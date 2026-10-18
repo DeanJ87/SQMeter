@@ -7,6 +7,10 @@ description: "An optional 128 x 64 OLED display on SQMeter: the sky reading and 
 SQMeter can drive a small **SSD1306 128 × 64 OLED** (the common 0.96" I2C module) so you can read
 the sky at the pier without a phone. It is optional: without one, nothing changes.
 
+!!! note "ESP32-S3 boards only"
+    The display is supported by the ESP32-S3 firmware builds. The classic ESP32 builds leave its
+    driver out to fit their flash, so there a display always shows as not detected.
+
 ## Fitting one
 
 The display goes on the **main I2C bus** with the other sensors, at address **`0x3C`**

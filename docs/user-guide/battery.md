@@ -10,6 +10,10 @@ status lines, shows how much is left, warns you before it runs out, can tell you
 the night is over, and puts itself to sleep before the cells cut out. Without a fuel gauge nothing
 here appears and nothing changes.
 
+!!! note "ESP32-S3 boards only"
+    Battery support is in the ESP32-S3 firmware builds. The classic ESP32 builds leave the gauge and
+    power-saving code out to fit their flash, so there no gauge is ever found.
+
 ## Charging and power
 
 The charger is a power-path type: on USB-C it runs the device and charges the pack at the same time

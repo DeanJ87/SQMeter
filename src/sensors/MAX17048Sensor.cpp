@@ -4,6 +4,9 @@
 
 #include "Logger.h"
 
+#include "BoardFeatures.h"
+
+#if SQM_HAS_BATTERY
 namespace SQM
 {
     namespace
@@ -201,3 +204,22 @@ namespace SQM
         }
     }
 } // namespace SQM
+
+#else // classic ESP32 builds: no driver (include/BoardFeatures.h)
+
+namespace SQM
+{
+    void MAX17048Sensor::begin(const BatteryConfig &next)
+    {
+        settings = next;
+    }
+
+    void MAX17048Sensor::tick(uint32_t, const BatteryConfig &) {}
+
+    bool MAX17048Sensor::readNow(uint32_t)
+    {
+        return false;
+    }
+} // namespace SQM
+
+#endif

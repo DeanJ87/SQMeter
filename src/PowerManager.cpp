@@ -6,6 +6,9 @@
 
 #include "Logger.h"
 
+#include "BoardFeatures.h"
+
+#if SQM_HAS_BATTERY
 namespace SQM
 {
     namespace
@@ -174,3 +177,19 @@ namespace SQM
         esp_deep_sleep_start();
     }
 } // namespace SQM
+
+#else // classic ESP32 builds: no driver (include/BoardFeatures.h)
+
+namespace SQM
+{
+    void PowerManager::bootCheck(TwoWire &, const BatteryConfig &) {}
+
+    uint32_t PowerManager::sensorIntervalMs(const Config &cfg) const
+    {
+        return cfg.sensor.readIntervalMs;
+    }
+
+    void PowerManager::tick(uint32_t, const BatteryConfig &, bool, bool) {}
+} // namespace SQM
+
+#endif
