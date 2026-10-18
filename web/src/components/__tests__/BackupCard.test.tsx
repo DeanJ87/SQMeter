@@ -8,8 +8,8 @@ import { server } from '../../test/mswServer';
 
 // Settings → Device → Backup & restore (specs/033-config-backup contracts/ui.md).
 
-const fileInput = (container: HTMLElement) => container.querySelector('input[type="file"]') as HTMLInputElement;
-const choose = (container: HTMLElement, text: string, name = 'backup.json') =>
+const fileInput = (container: Element) => container.querySelector('input[type="file"]') as HTMLInputElement;
+const choose = (container: Element, text: string, name = 'backup.json') =>
   fireEvent.change(fileInput(container), { target: { files: [new File([text], name, { type: 'application/json' })] } });
 const encrypted = JSON.stringify({ sqmeterBackup: 1, deviceName: 'backyard-sqm', settings: mockConfig, secrets: { kdf: 'pbkdf2-sha256' } });
 const plain = JSON.stringify({ sqmeterBackup: 1, deviceName: 'backyard-sqm', firmware: '0.3.4-beta.1', settings: mockConfig });

@@ -733,6 +733,7 @@
   "settings.alerts.windMS": "Wind m/s",
   "settings.alerts.writeYourOwnTitleAnd": "Write your own title and message",
   "settings.alerts.yourUserKeyTopOf": "Your user key, top of the Pushover dashboard - not the app token or your email.",
+  "settings.backup.allUnchanged": "All unchanged.",
   "settings.backup.asksForTheBackupsPassword": "The next page load asks for the backup's device password.",
   "settings.backup.atLeast8Characters": "At least 8 characters",
   "settings.backup.backUpSettings": "Back up settings",

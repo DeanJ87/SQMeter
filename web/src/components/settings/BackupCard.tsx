@@ -90,7 +90,11 @@ const SecretsGroup: FunctionalComponent<{ preview: RestorePreview }> = ({ previe
       {changed.map((path) => (
         <ReadingRow key={path} label={path} labelClass="mono" value={t('settings.backup.willChange')} />
       ))}
-      {state === 'restored' && unchanged.length > 0 && <Note>{t('settings.backup.moreUnchanged', { count: unchanged.length })}</Note>}
+      {state === 'restored' && unchanged.length > 0 && (
+        <Note>
+          {changed.length > 0 ? t('settings.backup.moreUnchanged', { count: unchanged.length }) : t('settings.backup.allUnchanged')}
+        </Note>
+      )}
     </Group>
   );
 };
@@ -147,7 +151,12 @@ const FileRows: FunctionalComponent<{ restore: Restore }> = ({ restore }) => {
     <>
       <ReadingRow label={t('updates.file')} value={restore.file.name} valueClass="mono" />
       {header?.deviceName && <ReadingRow label={t('settings.device.device')} value={header.deviceName} />}
-      {header?.createdAt && <ReadingRow label={t('settings.backup.made')} value={formatDateTime(new Date(header.createdAt))} />}
+      {header?.createdAt && (
+        <ReadingRow
+          label={t('settings.backup.made')}
+          value={formatDateTime(new Date(header.createdAt), { dateStyle: 'medium', timeStyle: 'short' })}
+        />
+      )}
       {header?.firmware && <ReadingRow label={t('system.firmware')} value={header.firmware} />}
       {header?.build && (
         <ReadingRow

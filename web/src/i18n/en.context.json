@@ -719,6 +719,7 @@
   "settings.alerts.windMS": "Settings -> Alerts: a label in a list or table; max 13 chars.",
   "settings.alerts.writeYourOwnTitleAnd": "Settings -> Alerts: a card or section title; max 51 chars.",
   "settings.alerts.yourUserKeyTopOf": "Settings -> Alerts: a help text shown with a '?' tip. Pushover and ntfy are push-notification services - keep the names.",
+  "settings.backup.allUnchanged": "Settings -> Device -> Backup & restore: status note: none of the passwords and keys change (one sentence).",
   "settings.backup.asksForTheBackupsPassword": "Settings -> Device -> Backup & restore: warning note: the device password changes to the backup's (one sentence).",
   "settings.backup.atLeast8Characters": "Settings -> Device -> Backup & restore: error message under the passphrase field.",
   "settings.backup.backUpSettings": "Settings -> Device -> Backup & restore: button label: downloads the backup file.",
