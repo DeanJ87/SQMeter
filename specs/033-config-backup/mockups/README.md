@@ -32,5 +32,7 @@ with the full value in `title` (DS-05).
 
 ## Owner review
 
-Pending. The card was built from these mockups (owner's rule: mock before building). Differences in
-the build are recorded here when they arise.
+Pending. The card was built from these mockups (owner's rule: mock before building). Where the build
+differs: the file rows show **Build** (Standard / Bluetooth) instead of a combined "Board" value (DS-24:
+one fact per row); the unchanged secrets are counted in one Note, which reads "All unchanged." when no
+secret changes; dates follow the browser's language.

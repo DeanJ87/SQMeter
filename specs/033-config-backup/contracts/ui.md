@@ -11,9 +11,9 @@ values one per row, monospace, truncated with `title`), DS-06 (progress and outc
 | Backing up | Back up button busy ("Working…"). |
 | Backed up | Note ok: "Backup saved with encrypted passwords and keys." or "Backup saved without passwords and keys." |
 | Passphrase errors | Field errors: "At least 8 characters", "Passphrases don't match". |
-| File chosen | Group **Restore** with rows File, Device, Made, Firmware (board/build pill amber when different). If the file has encrypted secrets: `Passphrase for this file` field (optional). Buttons **Preview**, **Cancel**. A file without secrets previews at once. |
+| File chosen | Group **Restore** with rows File, Device, Made, Firmware, Build. If the file has encrypted secrets: `Passphrase for this file` field (optional). Buttons **Preview**, **Cancel**. A file without secrets previews at once. |
 | Previewing | Preview button busy. |
-| Preview | Group per section (section label) with one `ReadingRow` per change: path → "old → new". Group **Passwords and keys**: one row per secret, "Will change" / "Unchanged", or one Note "Kept as on this device" / "Not in the backup". Groups **Not in the backup** (kept), **Unknown to this firmware** (ignored) and **Can't apply here** (not applicable, with reason), each a list of paths. Warning Notes (restart, WiFi network, password, address, imaging app, newer firmware). Buttons **Restore**, **Cancel**. |
+| Preview | Group per section (section label) with one `ReadingRow` per change: path → "old → new". Group **Passwords and keys**: a row per secret that will change and a Note counting the unchanged ones ("All unchanged." when none change), or one Note "Kept as on this device" / "Not in the backup". Groups **Not in the backup** (kept), **Unknown to this firmware** (ignored) and **Can't apply here** (not applicable, with reason), each a list of paths. Warning Notes (restart, WiFi network, password, address, imaging app, newer firmware). Buttons **Restore**, **Cancel**. |
 | No changes | Note: "Nothing will change." Restore disabled. |
 | Refused | Note bad with the reason: wrong passphrase, damaged, not a backup, newer format, too large, or the save's validation message. Button **Cancel**. |
 | Restoring | Restore button busy; with a restart, Note "Restarting…" then the page reloads when the device answers. |

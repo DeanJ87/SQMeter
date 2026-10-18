@@ -9,18 +9,19 @@
 ## 1. Logic (native)
 
 ```bash
-pio test -e native -f test_config_backup
+pio test -e native -f test_config_backup -f test_backup_crypto
 ```
 
 Covers: crypto against published vectors and a WebCrypto-made fixture; backup without a passphrase holds
 no secret (SC-002); with one, the secrets round-trip; wrong passphrase, changed ciphertext, damaged files,
-not-a-backup, newer format and a format-0 export (SC-003); unchanged backup → no changes; cross-board pins
-listed as not applicable (SC-005); kept/ignored settings; restart and warning codes (shared fixture).
+not-a-backup, newer format and a format-0 export (SC-003); unchanged backup → candidate equals current;
+cross-board pins listed as not applicable (SC-005); restart codes (shared fixture). The per-setting
+changes, kept/ignored settings and warnings are Vitest (`web/src/lib/__tests__/backupPreview.test.ts`).
 
 ## 2. Web UI and demo
 
 ```bash
-cd web && npx vitest run src/components/__tests__/BackupCard.test.tsx src/demo/__tests__/backup.test.ts
+cd web && npx vitest run src/components/__tests__/BackupCard.test.tsx src/demo/__tests__/backup.test.ts src/lib/__tests__/backupPreview.test.ts
 npm run build:demo && npm run preview:demo
 ```
 

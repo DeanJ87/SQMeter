@@ -38,23 +38,31 @@ Pin settings checked: `gps.rxPin`, `gps.txPin`, `rain.rxPin`, `rain.txPin`, `sen
 
 ## Device identity (`Backup::DeviceInfo`)
 
-`firmware`, `board`, `bluetoothBuild`, `pins` (BoardPins), `imagingAppConnected`.
+`firmware`, `board`, `bluetoothBuild`, `pins` (BoardPins).
 
 ## Restore preview
 
 Full contract: [contracts/rest-api.md](contracts/rest-api.md#post-apibackuppreview).
 
+From the device:
+
 | Field | Meaning |
 |---|---|
 | `token` | 32 hex characters; binds this preview to `POST /api/backup/apply`. |
 | `backup` | The file's header: `format`, `firmware`, `board`, `build`, `deviceName`, `createdAt` (each present when known). |
-| `changes[]` | `{path, from, to}` for every non-secret setting that will change. |
+| `settings` | The candidate config, masked as in `GET /api/config`. |
 | `secrets` | `{state, changed[], unchanged[]}`. `state`: `restored` (passphrase right), `kept` (file has secrets, no passphrase given), `none` (file has none). Paths only; never values. |
-| `kept[]` | Paths this device has that the backup lacks: they keep their values. |
-| `ignored[]` | Paths in the backup this firmware doesn't know. |
 | `notApplicable[]` | `{path, value?, reason}`; reason `pin`, `analog`, `bluetooth` or `pushover-keys`. |
 | `restart[]` | Codes: `wifi`, `ota`, `gps`, `i2c`, `ipv6`, `alpaca`, `ble`. Empty: no restart. |
-| `warnings[]` | `{code, …}`: `wifi-network` (`ssid`), `device-password`, `address` (`hostname`), `imaging-app`, `newer-firmware` (`firmware`). |
+
+Worked out by the web UI (`web/src/lib/backupPreview.ts`, research R10):
+
+| Item | From |
+|---|---|
+| Changes `{path, from, to}` | `GET /api/config` vs `settings` (secrets and `alerts.armWithAlpaca` left out). |
+| Kept | Paths in `GET /api/config` missing from the file's settings (a whole missing section is one path). |
+| Ignored | Paths in the file's settings missing from `settings`. |
+| Warnings | `wifi-network` (`ssid`), `device-password`, `address` (`hostname`), `imaging-app`, `newer-firmware` (`firmware`). |
 
 Paths and codes are API values, never translated (I18N-06); the web UI words them.
 
@@ -63,9 +71,8 @@ Paths and codes are API values, never translated (I18N-06); the web UI words the
 | Field | Meaning |
 |---|---|
 | `token` | As returned. |
-| `candidate` | The complete validated `Config` to save. |
+| `preview` | `Backup::Preview`: the complete validated candidate `Config` to save, and its restart bits. |
 | `revision` | `configRevision` when previewed. |
-| `restart` | Whether applying restarts. |
 | `stagedAtMs` | Expires after 10 minutes. |
 
 State: none → staged (preview) → none (apply, expiry, or replaced by a new preview).
@@ -73,5 +80,5 @@ State: none → staged (preview) → none (apply, expiry, or replaced by a new p
 ## Errors
 
 `{"error": "<English message>", "code": "<code>"}` with code `too-large` (413), `not-backup`, `damaged`,
-`newer-format`, `wrong-passphrase`, `passphrase-short`, `passphrase-mismatch` (UI only), `invalid` (the
-save's own validation message), `stale` (409), `busy` (409).
+`newer-format`, `wrong-passphrase`, `passphrase-short`, `bad-request`, `invalid` (the save's own
+validation message), `stale` (409), `busy` (409).

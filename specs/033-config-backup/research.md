@@ -89,7 +89,8 @@ through `applyJson` with placeholders preserved: the same validation and message
   discovery, Bluetooth), held together by a shared fixture (`test/fixtures/backup/restart-cases.json`)
   run by the native tests and Vitest. Apply restarts the device (`scheduleRestart`) only when a reason is
   present (FR-008, US2.2).
-- Warnings, as codes the UI words: `wifi-network` (other SSID: may become unreachable; the WiFi setup
+- Warnings, worked out by the web UI from the preview's candidate settings and `/api/status` (R10):
+  `wifi-network` (other SSID: may become unreachable; the WiFi setup
   hotspot is the way back), `device-password` (password protection on and its username or password
   changes, or it is switched on), `address` (hostname or local name changes), `imaging-app` (a restart
   while an Alpaca client is connected or watched), `newer-firmware` (the backup's firmware is newer).
@@ -121,6 +122,15 @@ through `applyJson` with placeholders preserved: the same validation and message
   the worst case (every alert wording at its limit) about 60 KB, transiently, in the job task. To be
   measured on the spare device (`/api/status` `freeHeap`) before release.
 
+- **Flash** (measured): the first design, with the per-setting diff, kept/ignored lists, warnings and
+  version compare on the device, added 43 KB to the Bluetooth build, which `main` already has at 94%
+  of its slot. The device now decides only what is applied (candidate, secrets, what can't apply,
+  validation, restart) and returns the candidate's masked settings; the web UI lists the differences,
+  kept and ignored settings and the warnings from them (`web/src/lib/backupPreview.ts`, Vitest).
+  Result: +24.0 KB on the Bluetooth build and +24.2 KB on the standard build. Writing the documents by
+  string concatenation instead of `JsonDocument` was tried and was 4.6 KB larger (inlined
+  `std::string` operators); zero-copy parsing added a second ArduinoJson deserializer and was dropped.
+
 ## R8. Demo
 
 - The demo's device core is `lib/` compiled to WebAssembly (`tools/demo-core/build.sh`). **Decision**:
@@ -134,4 +144,16 @@ through `applyJson` with placeholders preserved: the same validation and message
   `TextInput`, `ActionButton`, `Group`, `ReadingRow`, `Note` and `InfoTip` (DS-01, DS-03, DS-04, DS-06,
   DS-07, DS-22, DS-23). Mockups first ([mockups/README.md](mockups/README.md)).
 - The download is made in the browser from the device's answer (pretty-printed, named
-  `sqmeter-<device>-<YYYY-MM-DD>.json`); the device also sends `Content-Disposition` for curl users.
+  `sqmeter-<device>-<YYYY-MM-DD>.json`). The device sends no `Content-Disposition` (flash, R7); curl
+  users name the file with `-o`.
+
+## R10. Who words the preview
+
+- **Decision**: the device returns `settings` (the candidate, masked as in `GET /api/config`),
+  `secrets` (state and changed/unchanged paths), `notApplicable` and `restart`; the browser compares
+  `settings` with its own `GET /api/config` for the changes, with the uploaded file for the settings
+  kept (missing from the file) and ignored (in the file, unknown to the candidate), and derives the
+  warnings (other SSID, device password on or changed, new local name, restart while an Alpaca client
+  is connected or watched per `/api/status`, backup firmware newer than `/api/status` firmware).
+  These are presentation rules used only by the web UI, so STRUCT-07 (one implementation) holds; the
+  rules that decide what is saved stay in `lib/ConfigBackup`.
