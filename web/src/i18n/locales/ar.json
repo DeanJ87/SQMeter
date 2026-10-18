@@ -457,7 +457,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "الرياح: يجب أن تكون إزاحة الاتجاه بين -360 و360 درجة",
   "device.settings.windKmHPerHzMust": "الرياح: يجب أن تكون قيمة km/h لكل Hz بين 0 و20",
   "device.settings.windPinIsAlreadyUsedBy": "الرياح: المنفذ مستخدم بالفعل من I2C أو GPS أو مستشعر المطر",
-  "device.settings.windVanePinMustBeAn": "الرياح: يجب أن يكون منفذ دوّارة الرياح منفذ ADC1 (GPIO 32-39)",
+  "device.settings.windVanePinMustBeAn": "الرياح: يجب أن يكون منفذ دوّارة الرياح منفذ ADC1 (GPIO {adc1Pins})",
   "device.settings.windVanePullUpMustBe": "الرياح: يجب أن تكون مقاومة الرفع لدوّارة الرياح بين 1k و100k أوم",
   "device.sky.brightSuburbanSky": "سماء ضاحية ساطعة",
   "device.sky.citySky": "سماء مدينة",

@@ -74,7 +74,6 @@ specs/030-dual-sky-sensors/
 │   ├── status-and-routes.md
 │   ├── integrations.md  # HA, Alpaca, SafetyMonitor, BLE, alerts
 │   └── ui.md
-├── mockups/             # owner review before UI build (tasks)
 └── tasks.md
 ```
 

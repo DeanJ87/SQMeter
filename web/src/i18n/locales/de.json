@@ -447,7 +447,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "Wind: Richtungskorrektur muss zwischen -360 und 360 Grad liegen",
   "device.settings.windKmHPerHzMust": "Wind: km/h pro Hz muss zwischen 0 und 20 liegen",
   "device.settings.windPinIsAlreadyUsedBy": "Wind: Pin wird bereits von I2C, GPS oder dem Regensensor verwendet",
-  "device.settings.windVanePinMustBeAn": "Wind: Windfahnen-Pin muss ein ADC1-Pin sein (GPIO 32-39)",
+  "device.settings.windVanePinMustBeAn": "Wind: Windfahnen-Pin muss ein ADC1-Pin sein (GPIO {adc1Pins})",
   "device.settings.windVanePullUpMustBe": "Wind: Pull-up der Windfahne muss zwischen 1k und 100k Ohm liegen",
   "device.sky.brightSuburbanSky": "Heller Vorstadthimmel",
   "device.sky.citySky": "Stadthimmel",

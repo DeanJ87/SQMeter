@@ -444,7 +444,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "Angin: offset arah harus antara -360 dan 360 derajat",
   "device.settings.windKmHPerHzMust": "Angin: km/h per Hz harus antara 0 dan 20",
   "device.settings.windPinIsAlreadyUsedBy": "Angin: pin sudah digunakan oleh I2C, GPS, atau sensor hujan",
-  "device.settings.windVanePinMustBeAn": "Angin: pin penunjuk arah angin harus pin ADC1 (GPIO 32-39)",
+  "device.settings.windVanePinMustBeAn": "Angin: pin penunjuk arah angin harus pin ADC1 (GPIO {adc1Pins})",
   "device.settings.windVanePullUpMustBe": "Angin: pull-up penunjuk arah angin harus antara 1k dan 100k ohm",
   "device.sky.brightSuburbanSky": "Langit pinggir kota terang",
   "device.sky.citySky": "Langit kota",

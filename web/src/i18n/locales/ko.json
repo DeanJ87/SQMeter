@@ -444,7 +444,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "바람: 풍향 오프셋은 -360~360도 사이여야 합니다",
   "device.settings.windKmHPerHzMust": "바람: Hz당 km/h는 0~20 사이여야 합니다",
   "device.settings.windPinIsAlreadyUsedBy": "바람: 해당 핀은 이미 I2C, GPS 또는 강우 센서가 사용 중입니다",
-  "device.settings.windVanePinMustBeAn": "바람: 풍향계 핀은 ADC1 핀(GPIO 32-39)이어야 합니다",
+  "device.settings.windVanePinMustBeAn": "바람: 풍향계 핀은 ADC1 핀(GPIO {adc1Pins})이어야 합니다",
   "device.settings.windVanePullUpMustBe": "바람: 풍향계 풀업은 1k~100k옴 사이여야 합니다",
   "device.sky.brightSuburbanSky": "밝은 교외 하늘",
   "device.sky.citySky": "도시 하늘",

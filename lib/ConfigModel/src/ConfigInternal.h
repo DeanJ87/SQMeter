@@ -34,17 +34,6 @@ namespace SQM::ConfigDetail
         return std::isfinite(value) && value >= min && value <= max;
     }
 
-    // ESP32 GPIOs usable for the sensor buses (no flash pins, no 20/24/28-31).
-    inline bool isValidGpio(int pin)
-    {
-        constexpr uint64_t VALID_PINS = (1ULL << 0) | (1ULL << 1) | (1ULL << 2) | (1ULL << 3) | (1ULL << 4) | (1ULL << 5) | (1ULL << 12) |
-                                        (1ULL << 13) | (1ULL << 14) | (1ULL << 15) | (1ULL << 16) | (1ULL << 17) | (1ULL << 18) |
-                                        (1ULL << 19) | (1ULL << 21) | (1ULL << 22) | (1ULL << 23) | (1ULL << 25) | (1ULL << 26) |
-                                        (1ULL << 27) | (1ULL << 32) | (1ULL << 33) | (1ULL << 34) | (1ULL << 35) | (1ULL << 36) |
-                                        (1ULL << 39);
-        return pin >= 0 && pin < 64 && ((VALID_PINS >> pin) & 1ULL) != 0;
-    }
-
     inline bool isValidBaudRate(uint32_t baudRate)
     {
         constexpr uint32_t RATES[] = {2400, 4800, 9600, 19200, 38400, 57600, 115200};

@@ -444,7 +444,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "風：風向オフセットは-360～360度で指定してください",
   "device.settings.windKmHPerHzMust": "風：Hzあたりのkm/hは0～20で指定してください",
   "device.settings.windPinIsAlreadyUsedBy": "風：そのピンはI2C、GPS、または雨センサーで使用中です",
-  "device.settings.windVanePinMustBeAn": "風：風向計のピンはADC1のピン（GPIO 32-39）にしてください",
+  "device.settings.windVanePinMustBeAn": "風：風向計のピンはADC1のピン（GPIO {adc1Pins}）にしてください",
   "device.settings.windVanePullUpMustBe": "風：風向計のプルアップは1k～100kΩで指定してください",
   "device.sky.brightSuburbanSky": "明るい郊外の空",
   "device.sky.citySky": "都市の空",

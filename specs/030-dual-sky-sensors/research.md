@@ -262,7 +262,7 @@ sensor: `status`, `ageMs`, `detected`, `gain`, `integrationMs`, `saturated`, `ni
 - Names: "SQM", "SQM-L" join `tools/i18n/glossary/en.json` (DS-27); new keys in
   `web/src/i18n/en.json` + context notes; 13 locales written by hand, then the record and checks.
 - A mockup of the dashboard hero (both readings, missing-authoritative state) and Settings → Sensors
-  goes in `specs/030-dual-sky-sensors/mockups/` for owner review before the UI is built
+  is reviewed by the owner before the UI is built (the mockup was reviewed outside the repo)
   (constitution workflow, spec 026 FR-015).
 
 ## D15 Demo and contracts

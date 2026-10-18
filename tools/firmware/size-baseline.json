@@ -1,5 +1,10 @@
 {
-  "esp32dev": 1583280,
-  "esp32dev-ble": 1778752,
-  "overBudgetReason": "Bluetooth build at 96.9% after specs 030-032 (dual sky sensors, OLED display, Li-ion battery with power policy and deep sleep), about 54 KB over main after trimming 9.9 KB (no libc scanf). Under 95% needs about 35 KB more, which means dropping features; 54.9 KB of the slot stays free. See specs/032-battery/budgets.md."
+  "esp32dev": 1547968,
+  "esp32dev-ble": 1743168,
+  "esp32s3-eth": 1546816,
+  "esp32s3-eth-ble": 1738880,
+  "esp32s3-zero": 1544800,
+  "esp32s3-zero-ble": 1736896,
+  "esp32s3-zero8": 1546832,
+  "esp32s3-zero8-ble": 1738896
 }

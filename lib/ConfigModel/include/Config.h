@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstddef>
 
+#include "BoardProfile.h"
 #include "DisplayTypes.h"
 #include "SensorTypes.h"
 
@@ -288,7 +289,7 @@ namespace SQM
         bool enabled;
         uint8_t speedPin; // reed-switch anemometer, internal pull-up
         bool directionEnabled;
-        uint8_t directionPin;     // resistor-ladder vane, must be an ADC1 pin (32-39)
+        uint8_t directionPin;     // resistor-ladder vane, must be an ADC1 pin (BoardProfile)
         float kmhPerHz;           // 2.4 Misol/Argent/SparkFun, 3.621 Davis 6410
         float directionOffsetDeg; // added to the vane reading to correct mounting
         float vanePullupOhms;     // vane divider pull-up to 3.3 V
@@ -385,7 +386,10 @@ namespace SQM
         // if nothing valid is stored.
         static bool load(Config &out);
         bool save() const;
+        // Defaults for the board this firmware is built for (BUILD_BOARD), or
+        // for another board (native tests).
         static Config createDefault();
+        static Config createDefault(Board board);
 
         std::string toJson(bool redactSecrets = false, bool includeAlerts = true) const;
         // The alerts settings as stored: Main under the "alerts" NVS key, Client
@@ -407,6 +411,8 @@ namespace SQM
             const std::string &main, const std::string &alerts, const std::string &client, const std::string &battery);
         std::string alertsToJson(bool redactSecrets = false, AlertsPart part = AlertsPart::All) const;
         bool validate(std::string *error = nullptr) const;
+        // Same, with another board's GPIO rules (native tests).
+        bool validate(const BoardProfile &board, std::string *error = nullptr) const;
         // `error` (if given) gets the reason a config is rejected - the same
         // message the web UI shows.
         static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr, std::string *error = nullptr);

@@ -3,8 +3,8 @@
 DS rules relied on: DS-01 (cards), DS-02 (state as one pill), DS-03 (MetricTile / ReadingRow),
 DS-04 (reasons behind "?"), DS-06/07 (actions and notes in the card), DS-08 (one place per fact),
 DS-09 (phone width), DS-20..25 (copy limits), DS-27 (one name: "SQM", "SQM-L"). Constitution V: no
-card or tile for a disabled or undetected sensor. A mockup of every state below goes in
-`specs/030-dual-sky-sensors/mockups/` for owner review before the components are built.
+card or tile for a disabled or undetected sensor. A mockup of every state below is reviewed by the owner before the components are built
+(the mockup was reviewed outside the repo; images are not committed).
 
 ## Dashboard: Sky quality card (`SkyHero`, FR-012)
 

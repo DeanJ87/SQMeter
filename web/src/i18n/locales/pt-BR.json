@@ -447,7 +447,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "Vento: a correção de direção deve estar entre -360 e 360 graus",
   "device.settings.windKmHPerHzMust": "Vento: km/h por Hz deve estar entre 0 e 20",
   "device.settings.windPinIsAlreadyUsedBy": "Vento: o pino já é usado pelo I2C, pelo GPS ou pelo sensor de chuva",
-  "device.settings.windVanePinMustBeAn": "Vento: o pino da biruta deve ser um pino ADC1 (GPIO 32-39)",
+  "device.settings.windVanePinMustBeAn": "Vento: o pino da biruta deve ser um pino ADC1 (GPIO {adc1Pins})",
   "device.settings.windVanePullUpMustBe": "Vento: o pull-up da biruta deve estar entre 1k e 100k ohms",
   "device.sky.brightSuburbanSky": "Céu suburbano claro",
   "device.sky.citySky": "Céu urbano",

@@ -447,7 +447,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "Wind: de richtingscorrectie moet tussen -360 en 360 graden liggen",
   "device.settings.windKmHPerHzMust": "Wind: km/h per Hz moet tussen 0 en 20 liggen",
   "device.settings.windPinIsAlreadyUsedBy": "Wind: de pin wordt al gebruikt door I2C, GPS of de regensensor",
-  "device.settings.windVanePinMustBeAn": "Wind: de pin van de windvaan moet een ADC1-pin zijn (GPIO 32-39)",
+  "device.settings.windVanePinMustBeAn": "Wind: de pin van de windvaan moet een ADC1-pin zijn (GPIO {adc1Pins})",
   "device.settings.windVanePullUpMustBe": "Wind: de pull-up van de windvaan moet tussen 1k en 100k ohm liggen",
   "device.sky.brightSuburbanSky": "Heldere voorstedelijke hemel",
   "device.sky.citySky": "Stadshemel",

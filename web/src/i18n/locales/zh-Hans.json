@@ -444,7 +444,7 @@
   "device.settings.windDirectionOffsetMustBeBetween": "风：风向偏移必须在-360到360度之间",
   "device.settings.windKmHPerHzMust": "风：每Hz对应的km/h必须在0到20之间",
   "device.settings.windPinIsAlreadyUsedBy": "风：该引脚已被I2C、GPS或雨量传感器占用",
-  "device.settings.windVanePinMustBeAn": "风：风向标引脚必须是ADC1引脚（GPIO 32-39）",
+  "device.settings.windVanePinMustBeAn": "风：风向标引脚必须是ADC1引脚（GPIO {adc1Pins}）",
   "device.settings.windVanePullUpMustBe": "风：风向标上拉电阻必须在1k到100k欧姆之间",
   "device.sky.brightSuburbanSky": "明亮的郊区天空",
   "device.sky.citySky": "城市天空",
