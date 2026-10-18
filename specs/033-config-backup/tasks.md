@@ -72,7 +72,7 @@ success criteria SC-002, SC-003, SC-005.
 - [x] T032 [P] REST docs for the three routes in docs/api/rest.md; replace "Backup & Restore" in docs/user-guide/configuration.md; passphrase note in docs/user-guide/security.md
 - [x] T033 i18n: English strings and context notes (web/src/i18n/en.json, en.context.json); device messages (`python3 tools/i18n/gen_device_catalog.py`, adding lib/ConfigBackup/src/BackupFile.cpp and BackupPreview.cpp to its sources); 13 translations in web/src/i18n/locales/*.json; `python3 tools/i18n/translate.py --all --record`; `node tools/i18n/check.mjs`
 - [x] T034 Rebuild the demo core (tools/demo-core/build.sh) and check `python3 tools/demo-core/source_hash.py --check`
-- [ ] T035 Gate: `pio test -e native`, `pio run -e esp32dev`, `pio run -e esp32dev-ble` (record flash in tools/firmware/size-baseline.json if it moves > 2 KB), `tools/quality/check.py`, web vitest/tsc/eslint, UI size baseline
+- [x] T035 Gate: `pio test -e native`, `pio run -e esp32dev`, `pio run -e esp32dev-ble` (record flash in tools/firmware/size-baseline.json if it moves > 2 KB), `tools/quality/check.py`, web vitest/tsc/eslint, UI size baseline
 - [x] T036 [P] CHANGELOG.md entry under the unreleased section
 - [ ] T037 On the spare device (owner, before release): both builds, `freeHeap` and `stackFree` during a backup and a preview, the logged derivation time, and SC-001 (restore onto a reset device) - constitution IV and the device check in Development Workflow
 
@@ -91,6 +91,15 @@ success criteria SC-002, SC-003, SC-005.
 
 MVP = US1 + US2 (backup and preview/apply without secrets); US3 adds the secrets; US4 the cross-board rules.
 All four ship in one PR.
+
+## Gate (2026-10-18)
+
+- Native: 314 tests pass (`pio test -e native`); both firmware builds pass with no warnings from the new code.
+- Flash: +24.2 KB standard (84.7% of the slot), +24.0 KB Bluetooth (95.3%: over the 95% line; reason
+  recorded in tools/firmware/size-baseline.json for the owner to accept or reject).
+- `tools/quality/check.py`: 0 findings. Web: 645 Vitest tests, `tsc`, ESLint clean; UI +4.4 KB gzipped
+  (limit +10 KB). OpenAPI, routes, i18n (14 languages), copy, labels, dashboard inventory, demo core
+  hash: OK. `mkdocs build --strict`: only the CI-generated screenshots are missing (as on main).
 
 ## Analysis (speckit-analyze, 2026-10-18)
 
