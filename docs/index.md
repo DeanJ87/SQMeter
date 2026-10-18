@@ -20,7 +20,7 @@ SQMeter is open-source (MIT) firmware that makes an ESP32 and a few I²C sensors
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/sensors/ include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h include/OtaUpdater.h include/TimeManager.h
 blocking: false
-fingerprint: 5529915a79e7a01c
+fingerprint: a40ae6ab5f0558c6
 -->
 <figure class="diagram" markdown>
 
@@ -29,7 +29,7 @@ flowchart LR
     accTitle: What SQMeter connects to
     accDescr: Sensors feed the ESP32. It keeps its settings and web UI on the device, serves a dashboard and APIs to browsers, publishes to an MQTT broker, answers ASCOM Alpaca clients such as N.I.N.A., and sends alerts to push services and paired phones.
     I2C["<b>Sky and air</b><br/>TSL2591 brightness, SQM<br/>optional second TSL2591, SQM-L, on I²C-2<br/>MLX90614 IR sky temperature<br/>BME280 temperature, humidity, pressure"]
-    OPT["<b>Optional</b><br/>GPS: location and time<br/>RG-15: rain<br/>Anemometer and vane: wind"]
+    OPT["<b>Optional</b><br/>GPS: location and time<br/>RG-15: rain<br/>Anemometer and vane: wind<br/>OLED display, Li-ion battery gauge:<br/>ESP32-S3 boards"]
     ESP["<b>ESP32 running SQMeter</b><br/>readings, cloud cover,<br/>safety verdict, alerts<br/><i>settings in NVS,<br/>web UI and language file in LittleFS</i>"]
     WEB["Browser<br/>dashboard, REST, WebSocket"]
     MQTT["MQTT broker<br/>Home Assistant discovery"]
@@ -56,6 +56,7 @@ flowchart LR
         - TSL2591 sky brightness, MLX90614 IR sky temperature and BME280 air temperature, humidity and pressure, on the I²C bus.
         - Optional GPS (location and time) and RG-15 rain gauge on serial (UART).
         - Optional anemometer (pulses) and wind vane (analogue).
+        - On the ESP32-S3 boards: an optional OLED display and Li-ion battery fuel gauge on I²C.
     - **The ESP32** works out the readings, cloud cover, the safety verdict and alerts. It keeps its settings in NVS and the web UI's files in LittleFS.
     - **Outputs:**
         - Browsers get the dashboard, the REST API and live WebSocket updates.

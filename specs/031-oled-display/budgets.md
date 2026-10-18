@@ -33,3 +33,10 @@ in static RAM; a device without a display allocates none.
 Device heap and loop `stackFree` with and without a display: not measured (no device contacted in
 implementation rounds 1 and 2); open for the PR, to be measured on the spare device only, with the
 owner's permission.
+
+## Resolved for the merge
+
+The display driver is built only for the ESP32-S3 boards (`SQM_HAS_DISPLAY`,
+`include/BoardFeatures.h`); in the classic `esp32dev` builds the display is never probed and shows
+as not detected (D-43). With C++ exceptions off in every build, all eight builds are under 95% of
+their app slot with no waiver; the per-build sizes are in `specs/032-battery/budgets.md`.

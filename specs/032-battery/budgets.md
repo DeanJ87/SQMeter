@@ -66,3 +66,31 @@ build about 54 KB above main (96.9% of the slot, 54.9 KB free). Getting under 95
 35 KB more, and the remaining large items are framework code (WiFi, lwIP, mbedTLS, the Bluetooth
 controller) and the string literals of features the specs require. The standard build stays at
 86.3%. Whether to accept the waiver or drop features for it is the owner's call at the PR.
+
+## Resolved for the merge (no waiver)
+
+The `overBudgetReason` waiver is removed. Two changes bring every build under 95% of its app
+slot (`firmware.bin`, `tools/firmware/flash_budget.py`, recorded in `tools/firmware/size-baseline.json`):
+
+1. **No C++ exceptions** (`CONFIG_COMPILER_CXX_EXCEPTIONS=n`, every env): nothing catches one and an
+   allocation failure aborts either way; the unwind tables were about 55 KB per build.
+2. **Battery and display drivers only in the ESP32-S3 builds** (`SQM_HAS_BATTERY`,
+   `SQM_HAS_DISPLAY`, `include/BoardFeatures.h`, set in `platformio.ini` `[s3]`). The battery is
+   travel-board hardware. In the classic `esp32dev` builds the gauge, charger and deep-sleep code
+   is left out; no gauge is ever found, so the battery card, rows, rule and alerts behave as on any
+   board without a gauge (D-46..D-49). The settings, validation and the hardware-free logic in
+   `lib/` are the same in every build, so native tests and the demo cover them.
+
+| Build | `firmware.bin` | Slot | Used |
+|---|---|---|---|
+| `esp32dev` | 1,513,296 B | 1,835,008 B | 82.5% |
+| `esp32dev-ble` | 1,705,392 B | 1,835,008 B | 92.9% |
+| `esp32s3-eth` | 1,529,616 B | 6,291,456 B | 24.3% |
+| `esp32s3-eth-ble` | 1,718,784 B | 6,291,456 B | 27.3% |
+| `esp32s3-zero` | 1,527,600 B | 1,835,008 B | 83.2% |
+| `esp32s3-zero-ble` | 1,716,784 B | 1,835,008 B | 93.6% |
+| `esp32s3-zero8` | 1,529,616 B | 3,670,016 B | 41.7% |
+| `esp32s3-zero8-ble` | 1,718,784 B | 3,670,016 B | 46.8% |
+
+The 4 MB ESP32-S3-Zero Bluetooth build is now the tightest budget (it carries the battery and
+display code); the 8 MB Zero-N8R8 has twice the slot (spec 034 open question).
