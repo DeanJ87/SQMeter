@@ -12,6 +12,7 @@ All notable changes to SQMeter are documented here.
 
 - Settings show when a language other than English can't be loaded: no file stored and no WiFi to download it (settings dependency D-38); a hand upload works offline.
 - The demo tour shows the Status card with the pretend imaging app connected, then gone quiet.
+- **Settings → Device → Backup & restore**: back up every setting to a file, optionally with the passwords and keys encrypted under a passphrase, and restore it on this or a replacement device after a preview of exactly what changes, what can't apply on this board and whether it restarts. Also in the REST API (`/api/backup`, `/preview`, `/apply`) and the demo.
 
 ### Planned
 

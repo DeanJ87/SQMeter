@@ -45,8 +45,10 @@ HTTP_STATUS = {
     "400": "Bad request",
     "401": "The password is needed",
     "409": "Not now",
+    "413": "The request body is too large",
     "500": "Device failure",
     "502": "A sensor, broker or GitHub didn't answer",
+    "503": "Not enough free memory",
 }
 
 

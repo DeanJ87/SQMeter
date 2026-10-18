@@ -184,6 +184,61 @@ A setting whose dependency is off is saved as sent and reported inactive by `GET
 
 ---
 
+### `POST /api/backup`
+
+The settings backup file ([format](../user-guide/configuration.md#backup-restore)): a header and every setting as `GET /api/config` shows it. With `{"passphrase": "..."}` (8 characters or more) the passwords, keys and tokens are added encrypted (AES-256-GCM, PBKDF2-HMAC-SHA256, 20,000 iterations); without one the file holds no secret. An empty body is fine. Needs the password when protection is on.
+
+```bash
+curl -X POST http://sqmeter.local/api/backup -H "Content-Type: application/json" \
+  -d '{"passphrase": "correct horse battery"}' -o backup.json
+```
+
+The key derivation takes a second or two, in a background task: the web server keeps answering. One backup or preview runs at a time (`409`, `"code": "busy"`). Refusals add a `code`: `passphrase-short` (400), `too-large` (413, bodies over 20,480 bytes).
+
+---
+
+### `POST /api/backup/preview`
+
+What restoring a backup would save. Nothing is applied.
+
+```json
+{ "backup": "<the backup file's text, or its JSON>", "passphrase": "correct horse battery" }
+```
+
+```json
+{
+  "token": "4f1c0d7e9a2b3c4d5e6f708192a3b4c5",
+  "backup": { "format": 1, "firmware": "0.3.4-beta.1", "board": "esp32", "build": "ble", "deviceName": "backyard-sqm", "createdAt": "2026-10-18T21:04:05Z" },
+  "settings": { "deviceName": "backyard-sqm", "wifi": { "ssid": "Observatory", "password": "********" } },
+  "secrets": { "state": "restored", "changed": ["wifi.password"], "unchanged": ["mqtt.password"] },
+  "notApplicable": [ { "path": "gps.rxPin", "value": 44, "reason": "pin" } ],
+  "restart": ["wifi"]
+}
+```
+
+`settings` is what applying saves, masked like `GET /api/config` (shortened above). `secrets.state` is `restored` (passphrase right), `kept` (the file has secrets, no passphrase given: this device keeps its own) or `none`. `notApplicable` lists settings this board can't use (`pin`, `analog`, `bluetooth`, `pushover-keys`); they keep this device's values. `restart` says why applying restarts the device (empty: it doesn't). The web UI works out the per-setting differences from `settings`.
+
+Refused with `400` and a `code`: `not-backup`, `damaged`, `newer-format`, `wrong-passphrase` (also when the encrypted part was changed), or `invalid` with the same message a settings save gives. A new preview replaces the previous one.
+
+---
+
+### `POST /api/backup/apply`
+
+Saves exactly what the preview with this token showed, as one settings save.
+
+```bash
+curl -X POST http://sqmeter.local/api/backup/apply -H "Content-Type: application/json" \
+  -d '{"token": "4f1c0d7e9a2b3c4d5e6f708192a3b4c5"}'
+```
+
+```json
+{ "success": true, "restarting": true }
+```
+
+With `restarting`, the device restarts about 2 s later. `409` with `"code": "stale"` when the token was already used or replaced, is more than 10 minutes old, or the settings changed after the preview: preview again.
+
+---
+
 ### `GET /api/settings/effective`
 
 Whether each setting that depends on another setting, on hardware or on the network is actually in effect. Settings are reported as saved; this says what the device does with them. Read-only, no secrets.

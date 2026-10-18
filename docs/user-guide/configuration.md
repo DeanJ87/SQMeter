@@ -491,12 +491,69 @@ Password fields returned by `GET /api/config` are masked as `********`. Sending 
 
 ## Backup & Restore
 
-```bash
-# Backup
-curl http://sqmeter.local/api/config > config-backup.json
+**Settings → Device → Backup & restore** saves every setting to a file and puts it back, on the same
+device or on a replacement.
 
-# Restore
-curl -X POST http://sqmeter.local/api/config \
-  -H "Content-Type: application/json" \
-  -d @config-backup.json
+### Back up
+
+1. Optionally type a **Passphrase** (8 characters or more), twice.
+2. Press **Back up settings**. The browser saves `sqmeter-<name>-<date>.json`.
+
+The file is readable JSON: a short header (format, firmware version, board, build, device name, when it
+was made) and `settings`, exactly as `GET /api/config` shows them. Without a passphrase it holds **no
+password, key or token** at all. With a passphrase, the nine secrets (WiFi, MQTT, ArduinoOTA and device
+passwords, the Bluetooth passkey, the Pushover keys, the ntfy token and the webhook authorization) are
+added encrypted: AES-256-GCM under a key derived from the passphrase with PBKDF2-HMAC-SHA256 (20,000
+iterations, random salt). The device makes the file; the secrets never leave it in clear text.
+
+!!! warning "The passphrase can't be recovered"
+    The passphrase isn't stored anywhere. If it's lost, the passwords and keys in that file are lost
+    too; everything else in it still restores. Keep the file somewhere private all the same: it shows
+    your network name, MQTT broker and alert settings.
+
+### Restore
+
+1. Press **Restore settings** and choose the file.
+2. If the file has encrypted secrets, type its passphrase under **Passphrase for this file** and press
+   **Preview**. Without it, this device keeps its own passwords and keys and everything else restores.
+3. Check the preview, then press **Restore** (or **Cancel**: nothing changes until you press Restore).
+
+The preview lists, per section, every setting that will change with its current and new value; each
+password or key only as "Will change" or unchanged; settings **Not in the backup** (a backup from older
+firmware: they keep their values); settings **Unknown to this firmware** (a backup from newer firmware:
+they're ignored); and settings this board **Can't apply here**, with the reason. It says when restoring
+restarts the device and warns before changes that can cut you off: another WiFi network (if the device
+can't join it, use the [WiFi setup hotspot](../getting-started/first-setup.md)), a new device password
+(the next page load asks for the backup's), a new local name, or a restart while an imaging app is
+connected. Restore applies exactly what the preview showed, as one settings save with the usual checks.
+
+A wrong passphrase, a damaged file, a file from newer firmware's backup format, or a file that isn't an
+SQMeter backup is refused with the reason, and nothing changes.
+
+### Across boards and versions
+
+A pin setting whose pin this board doesn't offer (for example a backup from another ESP32 board) isn't
+applied; the board keeps its own value and the preview lists it under **Can't apply here**. So are
+Bluetooth settings on the standard build, and Pushover switched on when its keys weren't restored.
+A plain `GET /api/config` export (the backup this page used to describe) still restores, without
+secrets.
+
+### From a script
+
+The same three steps are in the [REST API](../api/rest.md#post-apibackup), each needing the password
+when protection is on:
+
+```bash
+# Back up (secrets encrypted with the passphrase)
+curl -u admin:pass -X POST http://sqmeter.local/api/backup \
+  -H "Content-Type: application/json" -d '{"passphrase": "correct horse battery"}' -o backup.json
+
+# Preview: nothing changes yet; note the token
+jq -n --rawfile f backup.json '{backup: $f, passphrase: "correct horse battery"}' |
+  curl -u admin:pass -X POST http://sqmeter.local/api/backup/preview \
+  -H "Content-Type: application/json" -d @-
+
+# Apply exactly that preview
+curl -u admin:pass -X POST http://sqmeter.local/api/backup/apply \
+  -H "Content-Type: application/json" -d '{"token": "<token from the preview>"}'
 ```

@@ -750,6 +750,265 @@
         }
       }
     },
+    "/api/backup/preview": {
+      "post": {
+        "operationId": "post_backup_preview",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Preview a restore",
+        "description": "Reads a backup file (`backup`, its text or its JSON) and, with its `passphrase`, its secrets, and answers what applying would save: the settings (masked), which secrets change, settings this board can't use and why it would restart. Nothing is applied; the `token` binds this preview to `POST /api/backup/apply`. Refused with `code` `not-backup`, `damaged`, `newer-format`, `wrong-passphrase` or `invalid` (the save's own reason in `error`).\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "backup": {
+                    "description": "The backup file's text, or its JSON."
+                  },
+                  "passphrase": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "backup"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "backup": "{\"sqmeterBackup\":1,\"firmware\":\"0.3.4-beta.1\",\"board\":\"esp32\",\"build\":\"standard\",\"deviceName\":\"backyard-sqm\",\"settings\":{\"deviceName\":\"backyard-sqm\"}}"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backup/apply": {
+      "post": {
+        "operationId": "post_backup_apply",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Apply a previewed restore",
+        "description": "Saves exactly the settings the preview with this `token` showed, as one settings save, and restarts the device about 2 s later when `restarting` is true. 409 `stale` when the preview was already applied or replaced, is older than 10 minutes, or the settings changed since: preview again.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "restarting": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "restarting"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Device failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "token": "00112233445566778899aabbccddeeff"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backup": {
+      "post": {
+        "operationId": "post_backup",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Back up the settings",
+        "description": "The backup file: every setting as `GET /api/config` shows it, with a header. With a `passphrase` (8 characters or more) the passwords, keys and tokens are included encrypted (AES-256-GCM, PBKDF2-HMAC-SHA256); without one the file holds no secret. Answered from a background task: a second or two with a passphrase. Refusals carry a `code`: 400 `passphrase-short`, 409 `busy` while another backup or preview runs, 413 `too-large`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Backup"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not enough free memory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "passphrase": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "passphrase": "correct horse battery"
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/wifi/scan": {
       "get": {
         "operationId": "get_wifi_scan",
@@ -2198,6 +2457,223 @@
           "ErrorNumber",
           "ServerTransactionID",
           "Value"
+        ],
+        "additionalProperties": false
+      },
+      "Backup": {
+        "title": "Backup",
+        "description": "POST /api/backup (src/WebServerBackup.cpp, lib/ConfigBackup): the settings backup file, format 1 (specs/033-config-backup/contracts/backup-file.md). Hand-written, not generated.",
+        "type": "object",
+        "properties": {
+          "sqmeterBackup": {
+            "type": "integer",
+            "const": 1,
+            "description": "Format version."
+          },
+          "firmware": {
+            "type": "string",
+            "description": "Firmware version that made it."
+          },
+          "board": {
+            "type": "string",
+            "description": "Chip, e.g. esp32."
+          },
+          "build": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "ble"
+            ]
+          },
+          "deviceName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC; left out when the device clock wasn't set."
+          },
+          "settings": {
+            "type": "object",
+            "description": "Every setting as GET /api/config shows it: a set secret is \"********\", an empty one \"\"."
+          },
+          "secrets": {
+            "type": "object",
+            "description": "Only with a passphrase: the nine secrets, encrypted with AES-256-GCM under a PBKDF2-HMAC-SHA256 key.",
+            "properties": {
+              "kdf": {
+                "type": "string",
+                "const": "pbkdf2-sha256"
+              },
+              "iterations": {
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 100000
+              },
+              "salt": {
+                "type": "string",
+                "description": "Base64, 16 bytes."
+              },
+              "cipher": {
+                "type": "string",
+                "const": "aes-256-gcm"
+              },
+              "nonce": {
+                "type": "string",
+                "description": "Base64, 12 bytes."
+              },
+              "data": {
+                "type": "string",
+                "description": "Base64 ciphertext followed by the 16-byte tag; associated data \"sqmeter-backup/1\"."
+              }
+            },
+            "required": [
+              "kdf",
+              "iterations",
+              "salt",
+              "cipher",
+              "nonce",
+              "data"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "sqmeterBackup",
+          "firmware",
+          "board",
+          "build",
+          "deviceName",
+          "settings"
+        ],
+        "additionalProperties": false
+      },
+      "BackupPreview": {
+        "title": "BackupPreview",
+        "description": "POST /api/backup/preview (src/WebServerBackup.cpp, lib/ConfigBackup): what restoring a backup would save, before anything is applied (specs/033-config-backup/contracts/rest-api.md). Hand-written, not generated.",
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "32 hex characters; send it to POST /api/backup/apply."
+          },
+          "backup": {
+            "type": "object",
+            "description": "The file's header, as far as it has one (format 0 is a plain settings export).",
+            "properties": {
+              "format": {
+                "type": "integer"
+              },
+              "firmware": {
+                "type": "string"
+              },
+              "board": {
+                "type": "string"
+              },
+              "build": {
+                "type": "string"
+              },
+              "deviceName": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "format"
+            ],
+            "additionalProperties": false
+          },
+          "settings": {
+            "type": "object",
+            "description": "The settings applying would save, secrets masked as in GET /api/config."
+          },
+          "secrets": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "restored",
+                  "kept",
+                  "none"
+                ],
+                "description": "restored: decrypted with the passphrase; kept: the file has secrets but no passphrase was given; none: the file has none."
+              },
+              "changed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Secret paths that will change (never values)."
+              },
+              "unchanged": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "state",
+              "changed",
+              "unchanged"
+            ],
+            "additionalProperties": false
+          },
+          "notApplicable": {
+            "type": "array",
+            "description": "Settings in the backup this board can't use: not applied, this board's value is kept.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "value": {
+                  "description": "The backup's value (left out for a secret)."
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "pin",
+                    "analog",
+                    "bluetooth",
+                    "pushover-keys"
+                  ]
+                }
+              },
+              "required": [
+                "path",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "restart": {
+            "type": "array",
+            "description": "Why applying restarts the device; empty: no restart.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "wifi",
+                "ota",
+                "gps",
+                "i2c",
+                "ipv6",
+                "alpaca",
+                "ble"
+              ]
+            }
+          }
+        },
+        "required": [
+          "token",
+          "backup",
+          "settings",
+          "secrets",
+          "notApplicable",
+          "restart"
         ],
         "additionalProperties": false
       },
