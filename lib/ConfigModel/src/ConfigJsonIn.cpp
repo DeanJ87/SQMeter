@@ -175,6 +175,7 @@ namespace SQM
             publish.take("gps", m.publish.gps);
             publish.take("rain", m.publish.rain);
             publish.take("wind", m.publish.wind);
+            publish.take("battery", m.publish.battery);
             publish.take("safety", m.publish.safety);
             publish.take("diagnostics", m.publish.diagnostics);
             const Section homeAssistant = mqtt.child("homeAssistant");
@@ -310,6 +311,10 @@ namespace SQM
             alpaca.take("windSpeedUnsafeMs", a.windSpeedUnsafeMs);
             alpaca.take("windGustUnsafeEnabled", a.windGustUnsafeEnabled);
             alpaca.take("windGustUnsafeMs", a.windGustUnsafeMs);
+            alpaca.take("batteryEnabled", a.batteryEnabled);
+            alpaca.take("batteryMinPercent", a.batteryMinPercent);
+            alpaca.take("batteryAlert", a.batteryAlert);
+            alpaca.take("batteryPhoneAlarm", a.batteryPhoneAlarm);
         }
 
         // Applies an "events" object ({"rain_started": {"level": 4, ...}, ...}).
@@ -441,6 +446,15 @@ namespace SQM
             return true;
         }
 
+        // The battery events as stored under their own NVS key (ConfigStore
+        // splices them in as "alertsBattery", spec 032).
+        void applyAlertsBattery(const Section &battery, AlertsConfig &a)
+        {
+            const Section events = battery.child("events");
+            if (!events.isNull())
+                applyEvents(events, a);
+        }
+
         void applyHardware(const Section &doc, Config &cfg, bool keepSecrets)
         {
             const Section wind = doc.child("wind");
@@ -493,21 +507,30 @@ namespace SQM
             applyAccess(root, cfg, keep);
             applyTime(root, cfg);
             applyRain(root.child("rain"), cfg.rain);
+            // The battery rule's limit defaults to the critical level and
+            // follows it while the two are equal (spec 032 FR-008).
+            const bool minFollowsCritical =
+                !root.child("alpaca").has("batteryMinPercent") && cfg.alpaca.batteryMinPercent == cfg.battery.criticalPercent;
             applyAlpaca(root.child("alpaca"), cfg.alpaca);
             if (!applySky(root, cfg, error) || !applyAlerts(root.child("alerts"), cfg.alerts, keep, error) ||
                 !applyAlertsClient(root.child("alertsClient"), cfg.alerts, error))
                 return false;
             cfg.alerts.armWithAlpaca = cfg.alerts.sendMode == AlertsConfig::SendMode::WhileConnected;
+            applyAlertsBattery(root.child("alertsBattery"), cfg.alerts);
             applyHardware(root, cfg, keep);
-            return true;
+            applyBattery(root.child("battery"), cfg.battery);
+            // An out-of-range critical level is left to its own check's message.
+            if (minFollowsCritical && cfg.battery.criticalPercent >= 2 && cfg.battery.criticalPercent <= 25)
+                cfg.alpaca.batteryMinPercent = cfg.battery.criticalPercent;
+            return applyDisplay(root.child("display"), cfg.display, error);
         }
     } // namespace
 
     bool Config::applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *errorOut)
     {
         // Parsing copies every string; custom alert texts can make the JSON
-        // bigger than the old fixed 8 KB.
-        DynamicJsonDocument doc(json.size() + 6144 > 8192 ? json.size() + 6144 : 8192);
+        // bigger than the old fixed 8 KB (+1 KB for the battery, spec 032).
+        DynamicJsonDocument doc(json.size() + 7168 > 9216 ? json.size() + 7168 : 9216);
         const DeserializationError error = deserializeJson(doc, json);
         if (error)
             return setError(errorOut, std::string("Settings JSON couldn't be read: ") + error.c_str());

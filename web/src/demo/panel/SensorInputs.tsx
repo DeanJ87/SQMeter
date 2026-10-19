@@ -1,7 +1,7 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
 import { useState } from 'preact/hooks';
-import { Note } from '../../components/ui';
+import { Button, Note } from '../../components/ui';
 import { differential, INPUTS, type SensorId } from '../conditions';
 import { demoDevice } from '../device';
 import { Check, DraftNumber, NumberField } from './NumberField';
@@ -126,6 +126,30 @@ const GpsGroup: FunctionalComponent = () => {
   );
 };
 
+// The travel board's pack (spec 032): its charge drains on its own and
+// fills on USB power; the presets set a low pack or a charger fault.
+const BatteryGroup: FunctionalComponent = () => {
+  const c = demoDevice.conditions;
+  return (
+    <Group title="Battery (MAX17048)">
+      <div class="demo-grid">
+        <NumberField field="battery.percent" value={c.battery.percent} onCommit={(v) => demoDevice.setInput('battery.percent', v)} />
+      </div>
+      <Check label="USB power" checked={c.battery.usb} onChange={(on) => demoDevice.setUsbPower(on)} />
+      <Check label="Charging fault" checked={c.battery.fault} onChange={(on) => demoDevice.setChargeFault(on)} />
+      <NotResponding sensor="battery" name="Fuel gauge" />
+      <div class="btn-row">
+        <Button small onClick={() => demoDevice.applyBatteryPreset('batteryLow')}>
+          Battery low
+        </Button>
+        <Button small onClick={() => demoDevice.applyBatteryPreset('chargeFault')}>
+          Charge fault
+        </Button>
+      </div>
+    </Group>
+  );
+};
+
 const SensorInputs: FunctionalComponent = () => (
   <section class="demo-section" aria-label="Sensor readings">
     <h3>Sensor readings</h3>
@@ -134,6 +158,7 @@ const SensorInputs: FunctionalComponent = () => (
     <RainGroup />
     <WindGroup />
     <GpsGroup />
+    <BatteryGroup />
     <Check label="Hold steady (no natural variation)" checked={demoDevice.conditions.steady} onChange={(on) => demoDevice.setSteady(on)} />
   </section>
 );

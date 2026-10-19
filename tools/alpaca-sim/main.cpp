@@ -2,15 +2,18 @@
 // lib/AlpacaLogic) on a desktop machine with fixed, healthy sensor readings,
 // so ConformU can test the protocol in CI without an ESP32.
 //
-//   tools/alpaca-sim/build.sh && ./alpaca-sim [port] [two]     (default 11111)
+//   tools/alpaca-sim/build.sh && ./alpaca-sim [port] [two|battery]     (default 11111)
 //
 // `two` simulates both sky sensors configured with the SQM-L authoritative
-// (spec 030): the sky descriptions name the sensor.
+// (spec 030): the sky descriptions name the sensor. `battery` turns on the
+// battery safety rule (spec 032) with a pack at 80%: IsSafe comes from the
+// firmware's safety evaluator.
 //
 // Deliberately tiny: one request per connection, GET query strings and
 // application/x-www-form-urlencoded PUT bodies, nothing else.
 
 #include "AlpacaRouter.h"
+#include "SafetyEvaluator.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -30,12 +33,26 @@ namespace
     class SimBackend : public Backend
     {
     public:
-        explicit SimBackend(bool twoSkySensors)
-            : twoSkySensors(twoSkySensors)
+        SimBackend(bool twoSkySensors, bool batteryRule)
+            : twoSkySensors(twoSkySensors),
+              batteryRule(batteryRule)
         {
         }
         bool alpacaEnabled() const override { return true; }
-        bool isSafe() const override { return true; }
+        bool isSafe() const override
+        {
+            if (!batteryRule)
+                return true;
+            SafetyInputs in;
+            in.hasEverHadGoodData = true;
+            in.secondsSinceLastGoodData = 2;
+            in.cloudCoverPercent = 12.0f;
+            in.batteryValid = true;
+            in.batteryPercent = 80.0f;
+            SafetyThresholds t;
+            t.batteryEnabled = true;
+            return evaluateSafety(in, t).isSafe;
+        }
         ObservingConditionsSnapshot observingConditions() const override
         {
             ObservingConditionsSnapshot s;
@@ -74,6 +91,7 @@ namespace
 
     private:
         bool twoSkySensors;
+        bool batteryRule;
     };
 
     std::string urlDecode(const std::string &in)
@@ -208,7 +226,8 @@ int main(int argc, char **argv)
     std::printf("Alpaca simulator on http://127.0.0.1:%d\n", port);
     std::fflush(stdout);
 
-    SimBackend backend(argc > 2 && std::string(argv[2]) == "two");
+    const std::string mode = argc > 2 ? argv[2] : "";
+    SimBackend backend(mode == "two", mode == "battery");
     Router router(backend, {"SQMeter (simulator)", "SQMeter", "sim", 0x0000AABBCCDDEEFFULL});
     for (;;)
     {

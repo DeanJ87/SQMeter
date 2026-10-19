@@ -6,7 +6,7 @@ cd "$(dirname "$0")/../.."
 ARDUINOJSON=.pio/libdeps/native/ArduinoJson/src
 [ -d "$ARDUINOJSON" ] || pio pkg install -e native
 c++ -std=gnu++17 -O1 -Wall -Wextra \
-    -Ilib/AlpacaLogic/include -Ilib/SensorTypes/include -I"$ARDUINOJSON" \
+    -Ilib/AlpacaLogic/include -Ilib/SensorTypes/include -Ilib/BatteryLogic/include -I"$ARDUINOJSON" \
     lib/AlpacaLogic/src/*.cpp tools/alpaca-sim/main.cpp \
     -o alpaca-sim
 echo "Built ./alpaca-sim"

@@ -558,9 +558,12 @@ void test_waits_does_not_change_what_is_sent(void)
     TEST_ASSERT_EQUAL(a.update(safeInputs(70), rules).size(), b.update(safeInputs(70), rules).size());
 }
 
+void run_battery_alert_tests(void);
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
+    run_battery_alert_tests();
     RUN_TEST(test_first_update_sets_baseline_without_alerts);
     RUN_TEST(test_unsafe_then_safe);
     RUN_TEST(test_cooldown_defers_but_does_not_lose_final_state);

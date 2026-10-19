@@ -41,6 +41,11 @@ namespace SQM
             float windSpeedUnsafeMs = 10.0f;
             bool windGustUnsafeEnabled = false;
             float windGustUnsafeMs = 15.0f;
+
+            // Battery (spec 032): unsafe below this charge, and without
+            // battery data (fail-safe).
+            bool batteryEnabled = false;
+            float batteryMinPercent = 10.0f;
         };
 
         // Current sensor/data-freshness state to evaluate against the
@@ -50,6 +55,10 @@ namespace SQM
         {
             bool hasEverHadGoodData = false;
             uint32_t secondsSinceLastGoodData = 0;
+            // Added to staleAfterSeconds while the sensors are read less often
+            // than usual (battery power saving, spec 032), so a slower read
+            // isn't reported as stale data.
+            uint32_t staleExtraSeconds = 0;
             bool requiredSensorFault = false; // any required sensor reporting a non-OK status
             // Which one: a faulted sensor's zeroed readings mustn't also
             // produce a misleading threshold reason (e.g. 100% cloud).
@@ -81,6 +90,15 @@ namespace SQM
             bool windSensorHealthy = false;
             float windSpeedMs = 0.0f;
             float windGustMs = 0.0f;
+
+            // Battery (spec 032). Like rain and wind, evaluated independently
+            // of the others. Valid = a gauge, ok, not estimating, fresh.
+            bool batteryValid = false;
+            float batteryPercent = 0.0f;
+            // The device is about to sleep for an empty battery: always
+            // unsafe, rule on or off (research D7).
+            bool shutdownPending = false;
+            float shutdownPercent = 5.0f;
         };
 
         // One bit per distinct unsafe reason, so callers (alerts, BLE) can
@@ -101,6 +119,9 @@ namespace SQM
             UnsafeWind = 1u << 11,
             UnsafeWindGust = 1u << 12,
             UnsafeWindSensorFault = 1u << 13,
+            UnsafeBatteryLow = 1u << 14,  // spec 032
+            UnsafeBatteryData = 1u << 15, // battery rule on, no valid battery data
+            UnsafeShutdown = 1u << 16,    // about to sleep for an empty battery
         };
 
         struct SafetyResult

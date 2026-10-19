@@ -189,7 +189,54 @@ namespace SQM
                     wind["vaneFault"] = s.wind.vaneFault;
                 }
             }
+
+            template <typename T> void optionalValue(JsonObject out, const char *key, const std::optional<T> &value)
+            {
+                if (value)
+                    out[key] = *value;
+                else
+                    out[key] = nullptr;
+            }
+
         } // namespace
+
+        JsonObject writeBattery(JsonObject root, const Battery &b)
+        {
+            JsonObject out = root.createNestedObject("battery");
+            out["present"] = b.present;
+            if (!b.present)
+                return out;
+            out["status"] = statusName(b.status);
+            if (b.status != Status::Missing)
+                out["ageMs"] = b.ageMs;
+            if (b.status != Status::Ok)
+            {
+                // The charger still knows, e.g. the pack pulled out on USB.
+                if (b.chargerPins)
+                {
+                    out["state"] = b.state;
+                    optionalValue(out, "usbPower", b.usbPower);
+                }
+                return out;
+            }
+            out["estimating"] = b.estimating;
+            if (b.percent)
+                out["percent"] = rounded(*b.percent, 1);
+            else
+                out["percent"] = nullptr;
+            out["voltage"] = rounded(b.voltage, 3);
+            if (b.ratePercentPerHour)
+                out["ratePercentPerHour"] = rounded(*b.ratePercentPerHour, 1);
+            else
+                out["ratePercentPerHour"] = nullptr;
+            out["state"] = b.state;
+            optionalValue(out, "usbPower", b.usbPower);
+            out["fault"] = b.fault;
+            optionalValue(out, "timeToEmptyMinutes", b.timeToEmptyMinutes);
+            optionalValue(out, "timeToFullMinutes", b.timeToFullMinutes);
+            out["powerSaving"] = b.powerSaving;
+            return out;
+        }
 
         void write(JsonObject root, const Snapshot &s, const Groups &groups)
         {
@@ -212,6 +259,8 @@ namespace SQM
                 writeRain(root, s);
             if (groups.wind && s.wind.present)
                 writeWind(root, s);
+            if (groups.battery)
+                writeBattery(root, s.battery);
         }
 
         namespace
@@ -226,6 +275,7 @@ namespace SQM
                 Clouds,
                 Rain,
                 Wind,
+                Battery,
                 Safety,
                 AlertsSwitch,
             };
@@ -352,37 +402,57 @@ namespace SQM
                  "°",
                  nullptr,
                  "mdi:compass"},
+                // The battery (spec 032, contracts/integrations.md).
+                {"sensor", "battery", "Battery", Group::Battery, "battery", "value_json.battery.percent", "%", "battery", nullptr},
+                {"sensor",
+                 "battery_voltage",
+                 "Battery voltage",
+                 Group::Battery,
+                 "battery",
+                 "value_json.battery.voltage",
+                 "V",
+                 "voltage",
+                 nullptr},
+                {"sensor",
+                 "battery_state",
+                 "Charging state",
+                 Group::Battery,
+                 "battery",
+                 "value_json.battery.state",
+                 nullptr,
+                 "enum",
+                 nullptr},
+                {"sensor",
+                 "battery_time_to_empty",
+                 "Battery time to empty",
+                 Group::Battery,
+                 "battery",
+                 "value_json.battery.timeToEmptyMinutes",
+                 "min",
+                 "duration",
+                 nullptr},
                 {"binary_sensor", "safety", "Observatory", Group::Safety, nullptr, nullptr, nullptr, "safety", nullptr},
                 {"switch", "alerts", "Alerts", Group::AlertsSwitch, nullptr, nullptr, nullptr, nullptr, "mdi:bell-ring"},
             };
 
             bool enabled(Group group, const Groups &groups, bool safety)
             {
-                switch (group)
-                {
-                case Group::Sky:
-                    return groups.sky;
-                case Group::SkySqm:
-                    return groups.sky && groups.skySqm;
-                case Group::SkySqml:
-                    return groups.sky && groups.skySqml;
-                case Group::SkyPair:
-                    return groups.sky && groups.skySqm && groups.skySqml;
-                case Group::Environment:
-                    return groups.environment;
-                case Group::Clouds:
-                    return groups.clouds;
-                case Group::Rain:
-                    return groups.rain;
-                case Group::Wind:
-                    return groups.wind;
-                case Group::Safety:
-                    return safety;
-                case Group::AlertsSwitch:
-                    return groups.alertsSwitch;
-                default:
-                    return true;
-                }
+                // In Group order.
+                const bool on[] = {
+                    groups.sky,                                    // Sky
+                    groups.sky && groups.skySqm,                   // SkySqm
+                    groups.sky && groups.skySqml,                  // SkySqml
+                    groups.sky && groups.skySqm && groups.skySqml, // SkyPair
+                    groups.environment,                            // Environment
+                    groups.clouds,                                 // Clouds
+                    groups.rain,                                   // Rain
+                    groups.wind,                                   // Wind
+                    groups.battery && groups.batteryEntities,      // Battery (spec 032)
+                    safety,                                        // Safety
+                    groups.alertsSwitch,                           // AlertsSwitch
+                };
+                const auto index = static_cast<size_t>(group);
+                return index < sizeof(on) / sizeof(on[0]) ? on[index] : true;
             }
         } // namespace
 
@@ -417,7 +487,16 @@ namespace SQM
                     doc["state_topic"] = base + "/state";
                     // Values can be absent (e.g. wind direction when calm): report unknown, not an error.
                     doc["value_template"] = std::string("{{ ") + entity.value + " if " + entity.value + " is defined else none }}";
-                    doc["state_class"] = "measurement";
+                    // An enum has no state class; its options are listed instead.
+                    const bool isEnum = entity.deviceClass != nullptr && std::string(entity.deviceClass) == "enum";
+                    if (isEnum)
+                    {
+                        JsonArray options = doc.createNestedArray("options");
+                        for (const char *state : {"discharging", "charging", "charged", "fault", "no-battery"})
+                            options.add(state);
+                    }
+                    else
+                        doc["state_class"] = "measurement";
                 }
             }
 

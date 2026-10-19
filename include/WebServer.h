@@ -8,6 +8,8 @@
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
 #include "sensors/WindSensor.h"
+#include "sensors/MAX17048Sensor.h"
+#include "PowerManager.h"
 #include "DeviceCore.h"
 #include "TimeManager.h"
 #include "MQTTClient.h"
@@ -37,6 +39,7 @@
 
 namespace SQM
 {
+    class OledDisplay;
 
     class WebServer
     {
@@ -56,6 +59,7 @@ namespace SQM
             GPSSensor &gps;
             RG15Sensor &rg15;
             WindSensor &wind;
+            MAX17048Sensor &battery; // fuel gauge and charger lines, spec 032
         };
 
         WebServer(
@@ -69,6 +73,11 @@ namespace SQM
         void begin();
         void handle();
         void refreshSensorSnapshot(uint32_t dataTimestampMs);
+        // The battery power policy (spec 032): its state for the snapshot and
+        // its one-shots for the alerts. Set once at start-up.
+        void setPowerManager(PowerManager *manager) { powerManager = manager; }
+        // No alert queued or being delivered (the shutdown waits for it).
+        bool alertsIdle() const;
         // The driver of a sky sensor (spec 030).
         TSL2591Sensor &skySensor(SkyRole role) const { return role == SkyRole::Sqml ? tslSensorL : tslSensor; }
         SafetyStatus getSafetyStatus() const;
@@ -82,6 +91,11 @@ namespace SQM
         // OTA update status
         void setOTAProgress(int progress);
         void setOTAError(const char *error);
+
+        // The optional OLED (spec 031): status, routes and its view.
+        void setDisplay(OledDisplay *oled) { display = oled; }
+        // Hands the display the latest readings and night (after each refresh).
+        void feedDisplay(const Core::DisplayNetwork &network);
 
         // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
         bool isWifiConnectPending() const { return wifiConnectActive; }
@@ -117,6 +131,8 @@ namespace SQM
         GPSSensor &gpsSensor;
         RG15Sensor &rg15Sensor;
         WindSensor &windSensor;
+        MAX17048Sensor &batterySensor;
+        PowerManager *powerManager = nullptr;
         TimeManager *timeManager;
         MQTTClient *mqttClient;
         GetConfigCallback getConfigCallback;
@@ -321,6 +337,12 @@ namespace SQM
         void rememberAlpacaConnections();
         void onSensorWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
         void onStatusWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
+
+        // The OLED (src/WebServerDisplay.cpp).
+        OledDisplay *display = nullptr;
+        void setupDisplayRoutes();
+        void handleDisplayRequest(AsyncWebServerRequest *request, bool wake);
+        void appendDisplayStatus(JsonDocument &doc) const;
 
         // Helper functions
         bool requireAuth(AsyncWebServerRequest *request) const;

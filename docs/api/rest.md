@@ -88,6 +88,22 @@ curl http://sqmeter.local/api/status
 
 `detected` means found and answering (`ok` or `stale`); the gain and calibration fields are only there while it is. `ageMs` is left out while `missing`.
 
+`display` is the optional [OLED display](../user-guide/display.md), always present:
+
+```json
+"display": { "enabled": true, "detected": true, "on": true, "page": "sky", "nightMode": false }
+```
+
+`battery` is the travel board's pack (spec 032): the same object as in `/api/sensors`, plus `shutdownInSeconds` while the device is about to sleep. With a fuel gauge, `sensors.battery` has its health (`status`, `ageMs`) and `diagnostics.battery` the raw gauge registers (`version`, `vcellRaw`, `socRaw`, `crateRaw`, `statusRaw`), `resetSeen`, `estimating`, the charger pin levels (`charger: {stat1, stat2, pg}`, `true` = high, `null` without the pins), `gaugeAlert`, the power `policy` (`normal`, `saving`, `shutdown`) and `currentMa` (with a pack capacity set). See [Battery](../user-guide/battery.md).
+
+```json
+"battery": { "present": true, "status": "ok", "ageMs": 1200, "estimating": false, "percent": 4.2, "voltage": 3.412,
+             "ratePercentPerHour": -6.2, "state": "discharging", "usbPower": false, "fault": null,
+             "timeToEmptyMinutes": 41, "timeToFullMinutes": null, "powerSaving": true, "shutdownInSeconds": 18 }
+```
+
+`enabled` is the setting; `detected` means a display answered at `0x3C` (always `false` while it is off in settings, since it isn't probed then); `on` means it is lit now; `page` is the page shown (`sky`, `environment`, `cloud`, `safety`, `gps`, `battery`, `network`), `null` while it is off; `nightMode` means the night layout and minimum brightness are in use (at night, or while night can't be worked out).
+
 ---
 
 ### `GET /api/sensors`
@@ -114,9 +130,12 @@ curl http://sqmeter.local/api/sensors
   "environment": { "status": "error", "ageMs": 61000 },
   "infrared": { "status": "ok", "ageMs": 3100, "skyTemperature": -24.7, "ambientTemperature": 12.4 },
   "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "description": "Clear", "temperatureDelta": -37.1, "correctedDelta": -33.0, "humidity": 53, "humiditySource": "assumed" },
+  "battery": { "present": false },
   "safety": { "safe": true, "rawSafe": true, "reasons": [], "reasonFlags": 0, "secondsUntilSafe": 0, "rulesNotInEffect": [], "alpacaEnabled": true, "evaluatedAgeMs": 412, "changedAgeMs": 3600000 }
 }
 ```
+
+`battery` is always there: `{"present": false}` on a board without a fuel gauge (as above), the full group with one ([MQTT → Readings](../user-guide/mqtt.md#readings-basestate), [Battery](../user-guide/battery.md)).
 
 A group whose sensor isn't `ok` carries only `status` and `ageMs` - just `status` when `missing` (like `environment` above).
 
@@ -282,6 +301,18 @@ curl -X POST http://sqmeter.local/api/restart
 
 ---
 
+### `POST /api/display/wake`, `POST /api/display/blank`
+
+Wake the [OLED display](../user-guide/display.md) for its switch-off time, or blank it until the next wake (a restart, a wake request or the wake button). No body; answers `200 {"success": true}` and the display follows within one loop pass. Requires HTTP auth when enabled.
+
+`409 {"error": "Display is off in settings"}`, `409 {"error": "Display not detected"}`, or (wake only, with power saving from spec 032) `409 {"error": "Display is off to save power"}`.
+
+```bash
+curl -X POST http://sqmeter.local/api/display/wake
+```
+
+---
+
 ### `POST /api/update`
 
 OTA firmware update. Send a raw `.bin` file as `multipart/form-data`.
@@ -395,7 +426,7 @@ The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clie
 |---|---|
 | `safe` | Reported verdict, after the safe delay |
 | `rawSafe` | Instantaneous rule evaluation, before the safe delay |
-| `reasons` / `reasonFlags` | Why it's unsafe (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault) |
+| `reasons` / `reasonFlags` | Why it's unsafe (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault, 14 battery below the limit, 15 battery data missing, 16 shutting down: battery empty) |
 | `secondsUntilSafe` | Remaining safe-delay countdown while `rawSafe` is true but `safe` isn't yet |
 | `rulesNotInEffect` | Rules switched on but ignored because what they need is off, e.g. `"Unsafe while raining"` (they are listed only while the rain sensor is off). Rules that can't measure their limit (wind, cloud, SQM, humidity) report unsafe instead |
 | `changedAgeMs` | Time since `safe` last changed |

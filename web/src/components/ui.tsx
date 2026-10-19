@@ -68,6 +68,12 @@ export const Icon: FunctionalComponent<{ name: string; tone?: IconTone; size?: n
       </>
     ),
     moon: <path {...common} d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />,
+    battery: (
+      <>
+        <rect {...common} x="3" y="7" width="16" height="10" rx="2" />
+        <path {...common} d="M22 11v2M7 10v4M11 10v4" />
+      </>
+    ),
   };
 
   return (

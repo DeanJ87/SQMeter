@@ -156,6 +156,7 @@ namespace SQM
                 snapshot.mlx.ambientTemp,
                 snapshot.cloudHumidity,
                 {cfg.cloudDetection.clearSkyThreshold, cfg.cloudDetection.cloudyThreshold, cfg.cloudDetection.humidityCorrection});
+            Detail::deriveBattery(snapshot.battery, cfg);
         }
 
         namespace
@@ -322,7 +323,7 @@ namespace SQM
 
         Readings::Snapshot buildReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now, int64_t epoch)
         {
-            const uint32_t staleAfter = cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
+            const uint32_t staleAfter = Detail::staleAfterMs(snapshot, cfg);
             Readings::Snapshot r;
             r.timeValid = epoch >= CLOCK_VALID_EPOCH;
             r.timestamp = r.timeValid ? epoch : 0;
@@ -338,6 +339,7 @@ namespace SQM
             readGps(r, snapshot, cfg);
             readRain(r, snapshot, cfg, now);
             readWind(r, snapshot, cfg, now);
+            r.battery = Detail::readBattery(snapshot, cfg, now);
             return r;
         }
 
@@ -346,6 +348,7 @@ namespace SQM
             writeLightDiagnostics(root.createNestedObject("light"), snapshot.tslDiagnostics);
             if (cfg.rain.enabled)
                 writeRainDiagnostics(root.createNestedObject("rain"), snapshot.rg15Diagnostics, now);
+            writeBatteryDiagnostics(root, snapshot, cfg);
         }
 
         void writeSensorHealth(JsonObject sensors, const Readings::Snapshot &readings, const Config &cfg)
@@ -370,6 +373,8 @@ namespace SQM
                 JsonObject wind = health("wind", readings.wind.status, readings.wind.ageMs);
                 wind["vaneStatus"] = !cfg.wind.directionEnabled ? "off" : readings.wind.vaneFault ? "fault" : "ok";
             }
+            if (readings.battery.present)
+                health("battery", readings.battery.status, readings.battery.ageMs);
         }
 
         void sensorFacts(Deps::Facts &facts, const SensorSnapshot &snapshot, const Readings::Snapshot &readings)
@@ -385,6 +390,8 @@ namespace SQM
             facts.environmentDetected = detected(readings.environment.status);
             facts.gpsRunning = snapshot.gpsInitialized;
             facts.gpsFix = snapshot.gpsInitialized && snapshot.gps.hasFix;
+            // Found at boot even with monitoring off, so Settings can say so (spec 032).
+            facts.batteryDetected = snapshot.battery.detected;
         }
 
         Alpaca::SafetyInputs safetyInputs(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)
@@ -393,6 +400,10 @@ namespace SQM
             const RequiredDataAge data = requiredDataAge(snapshot, now);
             in.hasEverHadGoodData = data.everRead;
             in.secondsSinceLastGoodData = data.ageMs / 1000;
+            // Power saving reads the sky sensors less often (spec 032): the
+            // stale limit stretches by the extra interval, plus the grace.
+            if (snapshot.readIntervalMs > cfg.sensor.readIntervalMs)
+                in.staleExtraSeconds = (snapshot.readIntervalMs - cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS + 999U) / 1000U;
             in.skyLightFault = snapshot.tsl.status != SensorStatus::Ok;
             in.irSkyFault = snapshot.mlx.status != SensorStatus::Ok;
             in.requiredSensorFault = snapshot.tsl.status != SensorStatus::Ok || snapshot.mlx.status != SensorStatus::Ok;
@@ -417,34 +428,13 @@ namespace SQM
             in.windSensorHealthy = windFresh(snapshot.wind, now);
             in.windSpeedMs = snapshot.wind.speedMs;
             in.windGustMs = snapshot.wind.gustMs;
+            Detail::batterySafetyInputs(in, snapshot, cfg, now);
             return in;
-        }
-
-        Alpaca::SafetyThresholds safetyThresholds(const Config &cfg)
-        {
-            Alpaca::SafetyThresholds t;
-            t.manualOverrideUnsafe = cfg.alpaca.manualOverrideUnsafe;
-            t.staleAfterSeconds = cfg.alpaca.staleAfterSeconds;
-            t.cloudCoverEnabled = cfg.alpaca.cloudCoverEnabled;
-            t.cloudCoverUnsafePercent = cfg.alpaca.cloudCoverUnsafePercent;
-            t.sqmMinEnabled = cfg.alpaca.sqmMinEnabled;
-            t.sqmMinSafe = cfg.alpaca.sqmMinSafe;
-            t.humidityMaxEnabled = cfg.alpaca.humidityMaxEnabled;
-            t.humidityMaxSafe = cfg.alpaca.humidityMaxSafe;
-            t.dewpointMarginEnabled = cfg.alpaca.dewpointMarginEnabled;
-            t.dewpointMarginMinC = cfg.alpaca.dewpointMarginMinC;
-            t.rainUnsafeEnabled = cfg.alpaca.rainUnsafeEnabled;
-            t.rainSensorRequired = cfg.alpaca.rainSensorRequired;
-            t.windSpeedUnsafeEnabled = cfg.alpaca.windSpeedUnsafeEnabled;
-            t.windSpeedUnsafeMs = cfg.alpaca.windSpeedUnsafeMs;
-            t.windGustUnsafeEnabled = cfg.alpaca.windGustUnsafeEnabled;
-            t.windGustUnsafeMs = cfg.alpaca.windGustUnsafeMs;
-            return t;
         }
 
         Alpaca::ObservingConditionsSnapshot observingConditions(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now)
         {
-            const uint32_t staleAfter = cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS;
+            const uint32_t staleAfter = Detail::staleAfterMs(snapshot, cfg);
             auto sourceState = [now, staleAfter](bool present, SensorStatus status, uint32_t lastUpdate)
             {
                 Alpaca::SourceState state;

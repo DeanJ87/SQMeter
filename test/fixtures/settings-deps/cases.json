@@ -14,7 +14,9 @@
     "sqmlDetected": true,
     "infraredDetected": true,
     "environmentDetected": true,
-    "languageInstalled": true
+    "languageInstalled": true,
+    "displayDetected": true,
+    "batteryDetected": true
   },
   "cases": [
     {
@@ -1594,6 +1596,398 @@
           "id": "D-29",
           "reason": "sqm-missing",
           "text": "SQM not detected"
+        }
+      }
+    },
+    {
+      "name": "D-43 the display's settings need a display (display on, none answering)",
+      "config": {
+        "display": {
+          "enabled": true,
+          "wakeOnBoot": true,
+          "rotate180": true,
+          "buttonPin": 33
+        }
+      },
+      "facts": {
+        "displayDetected": false
+      },
+      "expect": {
+        "display.pages": {
+          "state": "inactive",
+          "id": "D-43",
+          "reason": "display-missing",
+          "text": "No display detected",
+          "fix": "device#display"
+        },
+        "display.cycleSeconds": {
+          "state": "inactive",
+          "id": "D-43",
+          "reason": "display-missing"
+        },
+        "display.brightness": {
+          "state": "inactive",
+          "id": "D-43",
+          "reason": "display-missing"
+        },
+        "display.timeoutSeconds": {
+          "state": "inactive",
+          "id": "D-43",
+          "reason": "display-missing"
+        },
+        "display.wakeOnBoot": {
+          "state": "inactive",
+          "id": "D-43",
+          "reason": "display-missing"
+        },
+        "display.rotate180": {
+          "state": "inactive",
+          "id": "D-43",
+          "reason": "display-missing"
+        },
+        "display.buttonPin": {
+          "state": "inactive",
+          "id": "D-43",
+          "reason": "display-missing"
+        }
+      }
+    },
+    {
+      "name": "D-43 met: a display answers",
+      "config": {
+        "display": {
+          "enabled": true
+        }
+      },
+      "expect": {
+        "display.pages": {
+          "state": "active",
+          "id": "D-43"
+        },
+        "display.timeoutSeconds": {
+          "state": "active",
+          "id": "D-43"
+        },
+        "display.stayOnAtNight": {
+          "state": "off",
+          "id": "D-44"
+        },
+        "display.buttonPin": {
+          "state": "off",
+          "id": "D-43"
+        }
+      }
+    },
+    {
+      "name": "D-43 off: the display is off in settings",
+      "config": {
+        "display": {
+          "enabled": false,
+          "stayOnAtNight": true
+        }
+      },
+      "facts": {
+        "displayDetected": false
+      },
+      "expect": {
+        "display.pages": {
+          "state": "off",
+          "id": "D-43"
+        },
+        "display.stayOnAtNight": {
+          "state": "off",
+          "id": "D-44"
+        }
+      }
+    },
+    {
+      "name": "D-44 staying on at night needs a location or a GPS fix",
+      "config": {
+        "display": {
+          "enabled": true,
+          "stayOnAtNight": true
+        }
+      },
+      "facts": {
+        "gpsFix": false
+      },
+      "expect": {
+        "display.stayOnAtNight": {
+          "state": "inactive",
+          "id": "D-44",
+          "reason": "location-unknown",
+          "text": "Needs your location",
+          "fix": "time#location"
+        }
+      }
+    },
+    {
+      "name": "D-44 met: location set",
+      "config": {
+        "display": {
+          "enabled": true,
+          "stayOnAtNight": true
+        },
+        "location": {
+          "set": true,
+          "latitude": 51.5,
+          "longitude": -0.1
+        }
+      },
+      "facts": {
+        "gpsFix": false
+      },
+      "expect": {
+        "display.stayOnAtNight": {
+          "state": "active",
+          "id": "D-44"
+        }
+      }
+    },
+    {
+      "name": "D-46/D-48/D-49 battery settings, events and MQTT group need a gauge (shown muted)",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "b",
+          "topic": "t"
+        },
+        "battery": {
+          "capacityMah": 7000
+        }
+      },
+      "facts": {
+        "batteryDetected": false
+      },
+      "expect": {
+        "battery.enabled": {
+          "state": "inactive",
+          "id": "D-46",
+          "reason": "battery-missing",
+          "text": "No battery gauge detected",
+          "fix": "device#battery",
+          "neutral": true
+        },
+        "battery.lowPercent": {
+          "state": "inactive",
+          "id": "D-46",
+          "reason": "battery-missing",
+          "neutral": true
+        },
+        "battery.capacityMah": {
+          "state": "inactive",
+          "id": "D-46",
+          "reason": "battery-missing",
+          "neutral": true
+        },
+        "battery.shutdownGraceSeconds": {
+          "state": "inactive",
+          "id": "D-46",
+          "reason": "battery-missing",
+          "neutral": true
+        },
+        "alerts.events.battery_low.level": {
+          "state": "inactive",
+          "id": "D-48",
+          "reason": "battery-missing",
+          "neutral": true
+        },
+        "alerts.events.battery_critical.level": {
+          "state": "inactive",
+          "id": "D-48",
+          "reason": "battery-missing",
+          "neutral": true
+        },
+        "alerts.events.power_restored.level": {
+          "state": "off",
+          "id": "D-48",
+          "neutral": true
+        },
+        "mqtt.publish.battery": {
+          "state": "inactive",
+          "id": "D-49",
+          "reason": "battery-missing",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-46/D-48/D-49 met: a gauge answers",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "b",
+          "topic": "t"
+        },
+        "alpaca": {
+          "batteryEnabled": true
+        }
+      },
+      "expect": {
+        "battery.enabled": {
+          "state": "active",
+          "id": "D-46",
+          "neutral": true
+        },
+        "battery.capacityMah": {
+          "state": "off",
+          "id": "D-46",
+          "neutral": true
+        },
+        "battery.powerSaving": {
+          "state": "active",
+          "id": "D-46",
+          "neutral": true
+        },
+        "alerts.events.charge_fault.level": {
+          "state": "active",
+          "id": "D-48",
+          "neutral": true
+        },
+        "mqtt.publish.battery": {
+          "state": "active",
+          "id": "D-49",
+          "neutral": true
+        },
+        "alpaca.batteryEnabled": {
+          "state": "active",
+          "id": "D-47",
+          "unmet": "fail-safe"
+        }
+      }
+    },
+    {
+      "name": "D-46 power saving off: its interval and warning time are off",
+      "config": {
+        "battery": {
+          "powerSaving": false
+        }
+      },
+      "expect": {
+        "battery.powerSaving": {
+          "state": "off",
+          "id": "D-46",
+          "neutral": true
+        },
+        "battery.saveReadIntervalSeconds": {
+          "state": "off",
+          "id": "D-46",
+          "neutral": true
+        },
+        "battery.lowPercent": {
+          "state": "active",
+          "id": "D-46",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-47 battery rule is fail-safe with no gauge",
+      "config": {
+        "alpaca": {
+          "batteryEnabled": true
+        }
+      },
+      "facts": {
+        "batteryDetected": false
+      },
+      "expect": {
+        "alpaca.batteryEnabled": {
+          "state": "inactive",
+          "id": "D-47",
+          "reason": "battery-missing",
+          "unmet": "fail-safe"
+        }
+      }
+    },
+    {
+      "name": "D-48 battery events wait for alerts; D-49 MQTT group waits for MQTT",
+      "config": {},
+      "expect": {
+        "alerts.events.battery_low.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off",
+          "neutral": true
+        },
+        "mqtt.publish.battery": {
+          "state": "inactive",
+          "id": "D-49",
+          "reason": "mqtt-off",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-50 ring paired phones: Bluetooth build, then passkey, then phones",
+      "config": {
+        "alpaca": {
+          "batteryEnabled": true
+        }
+      },
+      "facts": {
+        "bluetoothBuild": false
+      },
+      "expect": {
+        "alpaca.batteryPhoneAlarm": {
+          "state": "inactive",
+          "id": "D-50",
+          "reason": "ble-build",
+          "text": "Needs the Bluetooth firmware build",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-50 ring paired phones: Bluetooth on, no passkey",
+      "config": {
+        "ble": {
+          "enabled": true
+        }
+      },
+      "expect": {
+        "alpaca.batteryPhoneAlarm": {
+          "state": "inactive",
+          "id": "D-50",
+          "reason": "no-passkey",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-50 met: passkey set and a phone paired",
+      "config": {
+        "ble": {
+          "enabled": true,
+          "passkey": "123456"
+        }
+      },
+      "expect": {
+        "alpaca.batteryPhoneAlarm": {
+          "state": "active",
+          "id": "D-50",
+          "neutral": true
+        }
+      }
+    },
+    {
+      "name": "D-50 off: ring paired phones switched off",
+      "config": {
+        "alpaca": {
+          "batteryPhoneAlarm": false
+        }
+      },
+      "expect": {
+        "alpaca.batteryPhoneAlarm": {
+          "state": "off",
+          "id": "D-50",
+          "neutral": true
         }
       }
     }

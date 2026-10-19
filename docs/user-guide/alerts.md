@@ -11,7 +11,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: d83827949bda3eb8
+fingerprint: fd2a81c8bd0eeac7
 -->
 <figure class="diagram" markdown>
 
@@ -19,10 +19,10 @@ fingerprint: d83827949bda3eb8
 flowchart TB
     accTitle: Why an alert does or doesn't arrive
     accDescr: Each second the device compares every condition with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on, sent to every enabled channel unless alerts are paused, with each channel's result recorded.
-    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky,<br/>the imaging app"]) --> SILENT{"Ignored?"}
-    SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>first minute after boot, the event's rule off,<br/>the sensor switched off, or no imaging app since boot"]
+    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky,<br/>the imaging app, the battery"]) --> SILENT{"Ignored?"}
+    SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>first minute after boot (not the imaging app<br/>or going to sleep), the event's rule off,<br/>the sensor switched off, or no imaging app since boot"]
     SILENT -->|no| HELD{"Held back?"}
-    HELD -->|yes| LATER["<b>Sent later if it still differs</b><br/>safety or sky changes while it's light,<br/>safety still settling,<br/>a fault not yet 30 s old,<br/>a sky change not yet 2 min old,<br/>within the 5 min cooldown<br/>(except &quot;imaging app is back&quot;)"]
+    HELD -->|yes| LATER["<b>Sent later if it still differs</b><br/>safety or sky changes while it's light,<br/>safety still settling,<br/>a fault not yet 30 s old,<br/>a sky change not yet 2 min old,<br/>within the 5 min cooldown<br/>(except &quot;imaging app is back&quot;,<br/>going to sleep and power restored)"]
     HELD -->|no| LEVEL{"Event level Off?"}
     LEVEL -->|yes| DROPPED["Not sent"]
     LEVEL -->|no| WORDING["Default or your own wording;<br/>events raised together become one notification"]
@@ -49,14 +49,14 @@ flowchart TB
 
 ??? info "Diagram in words"
 
-    1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, each sensor, dew risk, the sky, whether the imaging app is still checking) with what you were last told, every second.
-    2. **Tracked silently, never announced**: changes in the first minute after boot (imaging-app events excepted), changes while that event's rule is switched off, anything from a sensor that is switched off, and imaging-app events for a device no app has used since boot (a connection kept across a restart the device caused itself counts as used).
+    1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, each sensor, dew risk, the sky, whether the imaging app is still checking, the battery) with what you were last told, every second.
+    2. **Tracked silently, never announced**: changes in the first minute after boot (imaging-app events, going to sleep and power restored excepted), changes while that event's rule is switched off, anything from a sensor that is switched off, and imaging-app events for a device no app has used since boot (a connection kept across a restart the device caused itself counts as used).
     3. **Held back for now, sent later if still true**:
         - safe/unsafe while it's light (with "Safety alerts only when it's dark"), or while the verdict is still settling (no data yet, or waiting out the safe delay);
         - sky changes while it's light (with sky alerts limited to darkness): at nightfall a clear sky is announced once;
         - a sensor fault or recovery not yet 30 seconds old;
         - a sky change not yet 2 minutes old;
-        - within the 5-minute cooldown since that condition's last alert.
+        - within the 5-minute cooldown since that condition's last alert (not "the imaging app is back", going to sleep or power restored).
     4. **Not sent**: an event whose level is Off.
     5. The alert gets its default or custom wording; events raised in the same second become one notification.
     6. **Alerts paused** (by you, Home Assistant or a script, or because the imaging app disconnected in "Only while an imaging app is connected"): nothing is sent and no phone rings.
@@ -82,6 +82,10 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | Skies clear up / cloud over | Cloud cover drops below the "clear" percentage (default 20%) / rises above the "clouded over" percentage (default 70%). Between the two nothing changes, and a change has to hold for 2 minutes | Off |
 | The imaging app stops checking / is back | No request reached the safety monitor or weather device for its **Silent for** time / it started checking again. See [The imaging app](#the-imaging-app) | Urgent / Quiet |
 | The imaging app disconnects | An imaging app disconnected normally, e.g. at the end of a session | Off |
+| Battery low / critical | The charge drops below the low / critical level (Settings → Device → Battery); again only after it has risen 5 points above it. See [Battery](battery.md#alerts) | Normal / Wake me |
+| Going to sleep: battery empty | The device is about to sleep at the shutdown level, sent once even in the first minute after boot | Wake me |
+| Power restored | USB power returns after power saving or sleep | Off |
+| Battery charged / Charging fault | The charger reports the pack full / stops with a fault (needs the charger pins) | Off / Normal |
 
 | Level | Pushover | ntfy | Bluetooth phone alarm |
 |---|---|---|---|
@@ -108,6 +112,8 @@ Observatory UNSAFE
 
 The same wording shows on the dashboard's safety card and in `GET /api/safety`.
 
+The battery safety rule can also send its own Urgent **Battery: unsafe** alert alongside it, and ring paired phones; both are options of the rule (Settings → Safety → Battery). See [Battery](battery.md#the-safety-rule).
+
 ### Several at once
 
 Alerts raised at the same moment - rain starting usually makes the observatory unsafe too - arrive as one notification ("Rain detected · Observatory UNSAFE") at the loudest of their levels, using that event's sound. Webhook and MQTT payloads then also carry `"events": ["rain_started", "unsafe"]`.
@@ -128,6 +134,7 @@ Alerts raised at the same moment - rain starting usually makes the observatory u
 | `{sqm_delta}` | SQM-L − SQM, signed (`+0.25`; `--` unless both report) |
 | `{sqm_source}` | Which sky sensor `{sqm}` comes from: `SQM` or `SQM-L` |
 | `{clear_below}`, `{cloudy_above}`, `{dew_margin_min}` | Your alert thresholds |
+| `{battery}`, `{battery_voltage}`, `{battery_state}`, `{battery_time_left}` | The battery's charge (%), voltage (V), charge state and time until empty (`--` without a fuel gauge or while it isn't known) |
 | `{silent_for}`, `{last_checked}`, `{client_id}` | Imaging-app events: the **Silent for** time ("2 min"), when the app last checked ("21:04", or "3 min ago" without a clock) and the Alpaca ClientID it sent. For these events `{device}` is "safety monitor" or "weather device" |
 
 Titles are up to 80 characters and messages up to 240. An unknown `{name}` is left as typed, so a typo shows up in the test.

@@ -1,5 +1,6 @@
 #include "SafetyEvaluator.h"
 
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 
@@ -56,20 +57,50 @@ namespace SQM
                     addReasonf(result, UnsafeWindGust, "Gust %.1f m/s >= %.1f m/s", in.windGustMs, t.windGustUnsafeMs);
             }
 
+            // The battery (spec 032), regardless of the other sensors'
+            // freshness. Percent is printed as an integer (floor), with the limit.
+            void checkBattery(SafetyResult &result, const SafetyInputs &in, const SafetyThresholds &t)
+            {
+                if (in.shutdownPending)
+                    addReasonf(
+                        result,
+                        UnsafeShutdown,
+                        "Shutting down: battery %d%% <= %d%%",
+                        static_cast<int>(std::floor(in.batteryPercent)),
+                        static_cast<int>(std::floor(in.shutdownPercent)));
+                if (!t.batteryEnabled)
+                    return;
+                if (!in.batteryValid)
+                    addReason(result, UnsafeBatteryData, "Battery data missing");
+                else if (in.batteryPercent < t.batteryMinPercent)
+                    addReasonf(
+                        result,
+                        UnsafeBatteryLow,
+                        "Battery %d%% < %d%%",
+                        static_cast<int>(std::floor(in.batteryPercent)),
+                        static_cast<int>(std::floor(t.batteryMinPercent)));
+            }
+
+            uint32_t staleLimit(const SafetyInputs &in, const SafetyThresholds &t)
+            {
+                return t.staleAfterSeconds + in.staleExtraSeconds;
+            }
+
             void checkFreshness(SafetyResult &result, const SafetyInputs &in, const SafetyThresholds &t)
             {
+                const uint32_t staleAfterSeconds = staleLimit(in, t);
                 if (!in.hasEverHadGoodData)
                 {
                     addReason(result, UnsafeNoData, "No successful sensor data yet");
                 }
-                else if (in.secondsSinceLastGoodData > t.staleAfterSeconds)
+                else if (in.secondsSinceLastGoodData > staleAfterSeconds)
                 {
                     addReasonf(
                         result,
                         UnsafeStaleData,
                         "Sensor data is stale (%us old, limit %us)",
                         static_cast<unsigned>(in.secondsSinceLastGoodData),
-                        static_cast<unsigned>(t.staleAfterSeconds));
+                        static_cast<unsigned>(staleAfterSeconds));
                 }
             }
 
@@ -148,6 +179,7 @@ namespace SQM
                 addReason(result, UnsafeManualOverride, "Manual override forces unsafe");
             checkRain(result, in, t);
             checkWind(result, in, t);
+            checkBattery(result, in, t);
             checkFreshness(result, in, t);
             checkSensorFaults(result, in);
 
@@ -155,7 +187,7 @@ namespace SQM
             // verdict from missing/stale data above already covers that case,
             // and comparing garbage/zeroed readings here would just produce
             // misleading extra reasons.
-            const bool haveFreshData = in.hasEverHadGoodData && in.secondsSinceLastGoodData <= t.staleAfterSeconds;
+            const bool haveFreshData = in.hasEverHadGoodData && in.secondsSinceLastGoodData <= staleLimit(in, t);
             if (haveFreshData)
             {
                 checkSky(result, in, t);

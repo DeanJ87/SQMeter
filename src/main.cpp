@@ -19,7 +19,10 @@
 #include "sensors/GPSSensor.h"
 #include "sensors/RG15Sensor.h"
 #include "sensors/WindSensor.h"
+#include "sensors/MAX17048Sensor.h"
 #include "FirmwareMarker.h"
+#include "OledDisplay.h"
+#include "PowerManager.h"
 
 using namespace SQM;
 
@@ -34,9 +37,12 @@ static std::unique_ptr<MLX90614Sensor> mlxSensor;
 static std::unique_ptr<GPSSensor> gpsSensor;
 static std::unique_ptr<RG15Sensor> rg15Sensor;
 static std::unique_ptr<WindSensor> windSensor;
+static std::unique_ptr<MAX17048Sensor> batteryGauge; // spec 032; probed once, read only with monitoring on
+static std::unique_ptr<PowerManager> powerManager;   // spec 032: power saving and the battery sleep
 static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
+static std::unique_ptr<OledDisplay> oled; // spec 031; framebuffer and bus traffic only while enabled
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 
@@ -111,6 +117,11 @@ bool saveConfigCallback(const Config &newConfig)
         {
             windSensor->configure(toWindSettings(config.wind));
         }
+
+        if (oled)
+            oled->requestReconfigure(); // applied by the loop task, no restart
+        if (batteryGauge)
+            batteryGauge->requestReconfigure();
     }
 
     return saved;
@@ -246,10 +257,17 @@ void startWifi()
     // Give the saved network a moment so most boots start fully connected. If
     // it isn't joined yet, start anyway: WiFiManager keeps trying, and opens
     // the setup hotspot only if it still hasn't joined after
-    // CaptivePortal::FALLBACK_AFTER_MS (spec 014).
+    // CaptivePortal::FALLBACK_AFTER_MS (spec 014). A saved network that
+    // isn't in range (the scan didn't find it) ends the wait at once, so the
+    // display shows the sky within seconds in the field (spec 031 SC-001).
     int attempts = 0;
     while (!wifiManager->isConnected() && !wifiManager->isInAPMode() && attempts < 20)
     {
+        if (WiFi.status() == WL_NO_SSID_AVAIL)
+        {
+            Logger::warn("Main", "Saved network not in range");
+            break;
+        }
         delay(500);
         attempts++;
     }
@@ -324,6 +342,34 @@ void startArduinoOta()
     Logger::info("Main", "ArduinoOTA enabled with password authentication");
 }
 
+// The OLED on the main I2C bus (spec 031). Always created (it's small), but
+// it only allocates its framebuffer and touches the bus while enabled.
+// The fuel gauge on the main I2C bus (spec 032): one probe at boot, so
+// Settings can say whether one is fitted, then reads only with monitoring on.
+void setupBattery()
+{
+    batteryGauge = std::make_unique<MAX17048Sensor>(Wire);
+    batteryGauge->begin(config.battery);
+    powerManager = std::make_unique<PowerManager>(*batteryGauge);
+}
+
+void setupDisplay()
+{
+    oled = std::make_unique<OledDisplay>(Wire);
+    oled->configure(config.display);
+}
+
+// The display's view: the readings, the verdict and the network, after each refresh.
+static void feedDisplay()
+{
+    Core::DisplayNetwork network;
+    network.connected = wifiManager->isConnected();
+    network.apMode = wifiManager->isInAPMode();
+    network.ip = wifiManager->getIPAddress();
+    network.apName = WiFiManager::apName();
+    webServer->feedDisplay(network);
+}
+
 // Time (GPS/NTP priority), MQTT, then the web server, which needs them all.
 void startServices()
 {
@@ -337,10 +383,13 @@ void startServices()
     mqttClient->begin();
     HeapTrace::mark("mqtt");
 
-    const WebServer::Sensors sensors{*tslSensor, *tslSensorL, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor, *windSensor};
+    const WebServer::Sensors sensors{*tslSensor, *tslSensorL, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor, *windSensor, *batteryGauge};
     webServer = std::make_unique<WebServer>(sensors, timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
+    webServer->setDisplay(oled.get());
+    webServer->setPowerManager(powerManager.get());
     webServer->begin();
     webServer->refreshSensorSnapshot(lastSensorUpdate);
+    feedDisplay();
     HeapTrace::mark("setup complete");
 }
 
@@ -365,7 +414,11 @@ void setup()
     loadConfig();
     mountFilesystem();
     setupI2C();
+    // After a battery sleep woken by the hourly timer: back to sleep if still empty (spec 032).
+    PowerManager::bootCheck(Wire, config.battery);
     setupSensors();
+    setupBattery();
+    setupDisplay();
     HeapTrace::mark("sensors");
     startWifi();
     startArduinoOta();
@@ -438,8 +491,17 @@ void loop()
             sky->tick(now);
     }
 
+    // The gauge every 5 s and the charger lines every 500 ms; the power
+    // policy slows reads, turns the display off and sleeps when empty (spec 032).
+    batteryGauge->tick(now, config.battery);
+    const Battery::PowerState powerBefore = powerManager->state();
+    powerManager->tick(now, config.battery, webServer->alertsIdle(), wifiManager->isConnected());
+    oled->setForcedOff(powerManager->saving());
+    // A change of power state reaches the verdict at once, not at the next (slow) read.
+    const bool powerChanged = powerManager->state() != powerBefore;
+
     // Update slower sensors and publish periodically.
-    if (now - lastSensorUpdate >= config.sensor.readIntervalMs)
+    if (powerChanged || now - lastSensorUpdate >= powerManager->sensorIntervalMs(config))
     {
         bmeSensor->update();
         mlxSensor->update();
@@ -447,7 +509,11 @@ void loop()
         rg15Sensor->update();
         lastSensorUpdate = now;
         webServer->refreshSensorSnapshot(lastSensorUpdate); // also feeds MQTT <base>/state
+        feedDisplay();
     }
+
+    // At most one framebuffer page per pass (spec 031): the loop never waits on the display.
+    oled->tick(now, config.display);
 
     // Small delay to prevent tight loop
     delay(10);

@@ -15,6 +15,7 @@ namespace SQM
         lightSamples.clear();
         lastLightStep = 0;
         lastInputLux = 0.0f;
+        policy = Battery::PowerPolicy{};
     }
 
     float SensorFeed::averagedLux(float inputLux, bool nightMode, uint32_t now)
@@ -51,6 +52,7 @@ namespace SQM
         readRain(in);
         rainDiagnostics();
         readWind(in);
+        readBattery(in);
     }
 
     void SensorFeed::readLight(JsonObjectConst in)
@@ -292,5 +294,98 @@ namespace SQM
             if (cfg.wind.enabled)
                 wind.status = SensorStatus::Timeout;
         }
+    }
+
+    namespace
+    {
+        // A Li-ion cell's resting voltage against its charge, roughly (3.3 V empty, 4.2 V full).
+        float cellVoltage(float percent)
+        {
+            const float p = std::max(0.0f, std::min(100.0f, percent)) / 100.0f;
+            return 3.3f + 0.6f * p + 0.3f * p * p * p;
+        }
+    } // namespace
+
+    // The travel board's fuel gauge and charger (spec 032, research D13): a
+    // 7 Ah pack whose charge the demo moves (web/src/demo/conditions.ts);
+    // the charger's pins are wired, so every state can be shown.
+    void SensorFeed::readBattery(JsonObjectConst in)
+    {
+        BatterySnapshot &b = snapshot.battery;
+        BatteryReading &r = b.reading;
+        JsonObjectConst p = in["battery"];
+        b.detected = p["present"] | false;
+        const bool failed = p["failed"] | false;
+        b.initialized = cfg.battery.enabled && b.detected && !failed;
+        if (!cfg.battery.enabled || !b.detected)
+        {
+            r = BatteryReading{};
+            policy = Battery::PowerPolicy{};
+            b.power = Battery::PowerState::Normal;
+            b.shutdownInSeconds = 0;
+            return;
+        }
+        const bool usb = p["usb"] | false;
+        const bool fault = p["fault"] | false;
+        const float percent = std::max(0.0f, std::min(100.0f, p["percent"] | 50.0f));
+        // Charger lines, active low: PG with USB; STAT1/STAT2 as the MCP73871 drives them.
+        Battery::ChargerPins pins;
+        pins.pg = !usb;
+        pins.stat1 = !(usb && (fault || percent < 99.5f));
+        pins.stat2 = !(usb && (fault || percent >= 99.5f));
+        const Battery::ChargerOutput charger = Battery::decodeCharger(pins);
+        r.chargerPins = cfg.battery.chargerPins();
+        r.stat1 = pins.stat1;
+        r.stat2 = pins.stat2;
+        r.pg = pins.pg;
+        r.chargeState = charger.state;
+        r.fault = charger.fault;
+        r.usbPower = r.chargerPins ? std::optional<bool>(charger.usbPower) : std::nullopt;
+        if (failed)
+        {
+            r.status = SensorStatus::Timeout;
+            batteryPolicy();
+            return;
+        }
+        const float rate = charger.state == Battery::ChargeState::Charging      ? 12.0f
+                           : charger.state == Battery::ChargeState::Discharging ? -6.2f
+                                                                                : 0.0f;
+        r.status = SensorStatus::Ok;
+        r.timestamp = nowMs;
+        b.lastUpdate = nowMs;
+        r.version = 0x0012;
+        r.percent = percent;
+        r.socRaw = static_cast<uint16_t>(percent * 256.0f);
+        r.voltage = cellVoltage(percent);
+        r.vcellRaw = static_cast<uint16_t>(r.voltage / 78.125e-6f);
+        r.estimating = false;
+        r.rateValid = true;
+        r.ratePercentPerHour = rate;
+        r.crateRaw = static_cast<int16_t>(rate / 0.208f);
+        batteryPolicy();
+    }
+
+    // As PowerManager::tick, without the sleep: the demo device stays awake.
+    void SensorFeed::batteryPolicy()
+    {
+        BatterySnapshot &b = snapshot.battery;
+        const BatteryReading &r = b.reading;
+        Battery::PolicyInput in;
+        in.newRead = true;
+        in.valid = b.initialized && r.status == SensorStatus::Ok && !r.estimating;
+        in.percent = r.percent;
+        in.state = r.chargeState;
+        in.usbPower = r.usbPower;
+        in.powerSaving = cfg.battery.powerSaving;
+        in.criticalPercent = cfg.battery.criticalPercent;
+        in.shutdownPercent = cfg.battery.shutdownPercent;
+        in.graceSeconds = cfg.battery.shutdownGraceSeconds;
+        in.nowMs = nowMs;
+        const Battery::PolicyEvents events = policy.update(in);
+        shutdownStarted = shutdownStarted || events.shutdownStarted;
+        powerRestored = powerRestored || events.powerRestored;
+        recovered = recovered || events.recovered;
+        b.power = policy.state();
+        b.shutdownInSeconds = policy.secondsLeft(nowMs, cfg.battery.shutdownGraceSeconds);
     }
 } // namespace SQM

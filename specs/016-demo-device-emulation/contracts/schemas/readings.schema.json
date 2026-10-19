@@ -442,6 +442,87 @@
         "status"
       ],
       "additionalProperties": false
+    },
+    "battery": {
+      "type": "object",
+      "properties": {
+        "present": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "ageMs": {
+          "type": "number"
+        },
+        "estimating": {
+          "type": "boolean"
+        },
+        "percent": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "voltage": {
+          "type": "number"
+        },
+        "ratePercentPerHour": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "discharging",
+            "charging",
+            "charged",
+            "fault",
+            "no-battery",
+            null
+          ]
+        },
+        "usbPower": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "fault": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "temperature",
+            null
+          ]
+        },
+        "timeToEmptyMinutes": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "timeToFullMinutes": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "powerSaving": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "present"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

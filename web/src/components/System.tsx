@@ -10,6 +10,7 @@ import { SENSOR_MODEL, sensorName, type SensorId } from '../lib/sensorNames';
 import { formatAgeMs, formatBytes, formatUptime } from '../i18n/format';
 import { deviceError } from '../i18n/deviceMessage';
 import { bodyOf, post } from '../lib/api';
+import BatteryRows from './BatteryRows';
 
 const formatShortAgeMs = (value: number | null | undefined): string => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > 86400000) return '--';
@@ -127,18 +128,40 @@ const RuntimeCard: FunctionalComponent<{ status: Status }> = ({ status }) => {
   );
 };
 
-const SensorsCard: FunctionalComponent<{ sensors: Status['sensors'] }> = ({ sensors }) => (
-  <Card title={t('system.sensors')} icon="eye" tone="green">
-    <div class="system-list">
-      <SensorRow sensor="light" status={sensors.light.status} />
-      <SensorRow sensor="environment" status={sensors.environment.status} />
-      <SensorRow sensor="infrared" status={sensors.infrared.status} />
-      {sensors.gps && <SensorRow sensor="gps" status={sensors.gps.status} />}
-      {sensors.rain && <SensorRow sensor="rain" status={sensors.rain.status} />}
-      {sensors.wind && <SensorRow sensor="wind" status={sensors.wind.status} />}
+// The optional OLED (spec 031): changed on the Settings Display card, so only its state here.
+const DisplayRow: FunctionalComponent<{ display: NonNullable<Status['display']> }> = ({ display }) => {
+  const badge = !display.enabled
+    ? { text: t('system.displayOff'), tone: 'pill-dim' }
+    : !display.detected
+      ? { text: t('system.notDetected'), tone: 'pill-red' }
+      : display.on
+        ? { text: t('system.displayDetectedOn'), tone: 'pill-green' }
+        : { text: t('system.displayDetectedOff'), tone: 'pill-green' };
+  return (
+    <div class="reading-row">
+      <span class="reading-label">{t('system.display')}</span>
+      <Pill tone={badge.tone}>{badge.text}</Pill>
     </div>
-  </Card>
-);
+  );
+};
+
+const SensorsCard: FunctionalComponent<{ status: Status }> = ({ status }) => {
+  const { sensors, display } = status;
+  return (
+    <Card title={t('system.sensors')} icon="eye" tone="green">
+      <div class="system-list">
+        <SensorRow sensor="light" status={sensors.light.status} />
+        <SensorRow sensor="environment" status={sensors.environment.status} />
+        <SensorRow sensor="infrared" status={sensors.infrared.status} />
+        {sensors.gps && <SensorRow sensor="gps" status={sensors.gps.status} />}
+        {sensors.rain && <SensorRow sensor="rain" status={sensors.rain.status} />}
+        {sensors.wind && <SensorRow sensor="wind" status={sensors.wind.status} />}
+        {display && <DisplayRow display={display} />}
+        <BatteryRows status={status} />
+      </div>
+    </Card>
+  );
+};
 
 type RainDiagnostics = NonNullable<NonNullable<Status['diagnostics']>['rain']>;
 
@@ -332,7 +355,7 @@ const System: FunctionalComponent = () => {
     <div class="panel-page system-page page-enter">
       {status.firmware && <FirmwareCard firmware={status.firmware} />}
       <RuntimeCard status={status} />
-      <SensorsCard sensors={status.sensors} />
+      <SensorsCard status={status} />
       {rain && <Rg15Card ok={rain.status === 'ok'} diagnostics={status.diagnostics?.rain} action={rg15Action} run={runRg15Action} />}
       {status.partitions && <PartitionsCard partitions={status.partitions} />}
       {status.ntp && <NtpCard ntp={status.ntp} />}

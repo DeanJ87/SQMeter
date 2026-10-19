@@ -480,6 +480,27 @@ void test_sky_alert_sensor_slots();
 void test_status_document_fits();
 void test_one_sensor_device_readings_document();
 
+void test_display_view_sky_follows_the_authoritative_reading(void);
+void test_display_view_stale_or_missing_sky_is_invalid(void);
+void test_display_view_groups_and_availability(void);
+void test_display_view_missing_sensors_and_network_modes(void);
+void test_display_status_document(void);
+void test_battery_readings_with_a_gauge();
+void test_battery_status_missing_error_stale();
+void test_battery_monitoring_off_or_no_gauge_reports_absent();
+void test_battery_charger_without_a_gauge();
+void test_battery_status_health_and_diagnostics();
+void test_display_battery_page();
+void test_battery_safety_mapping();
+void test_battery_events_take_their_levels_and_ring_phones();
+void test_battery_rule_alert_and_phone_alarm();
+void test_battery_event_settings_and_samples();
+void test_going_to_sleep_rings_with_the_shutdown_bit();
+void test_power_saving_interval_keeps_readings_fresh();
+void test_power_saving_keeps_the_verdict_fresh();
+void test_battery_alert_variables();
+void test_ble_summary_battery_fields_fit();
+
 int main()
 {
     UNITY_BEGIN();
@@ -511,5 +532,25 @@ int main()
     RUN_TEST(test_sky_alert_sensor_slots);
     RUN_TEST(test_status_document_fits);
     RUN_TEST(test_one_sensor_device_readings_document);
+    RUN_TEST(test_display_view_sky_follows_the_authoritative_reading);
+    RUN_TEST(test_display_view_stale_or_missing_sky_is_invalid);
+    RUN_TEST(test_display_view_groups_and_availability);
+    RUN_TEST(test_display_view_missing_sensors_and_network_modes);
+    RUN_TEST(test_display_status_document);
+    RUN_TEST(test_battery_readings_with_a_gauge);
+    RUN_TEST(test_battery_status_missing_error_stale);
+    RUN_TEST(test_battery_monitoring_off_or_no_gauge_reports_absent);
+    RUN_TEST(test_battery_charger_without_a_gauge);
+    RUN_TEST(test_battery_status_health_and_diagnostics);
+    RUN_TEST(test_display_battery_page);
+    RUN_TEST(test_battery_safety_mapping);
+    RUN_TEST(test_battery_events_take_their_levels_and_ring_phones);
+    RUN_TEST(test_battery_rule_alert_and_phone_alarm);
+    RUN_TEST(test_battery_event_settings_and_samples);
+    RUN_TEST(test_going_to_sleep_rings_with_the_shutdown_bit);
+    RUN_TEST(test_power_saving_interval_keeps_readings_fresh);
+    RUN_TEST(test_power_saving_keeps_the_verdict_fresh);
+    RUN_TEST(test_battery_alert_variables);
+    RUN_TEST(test_ble_summary_battery_fields_fit);
     return UNITY_END();
 }

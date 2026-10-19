@@ -35,19 +35,21 @@ namespace SQM
         uint8_t aux1 = NONE;
         uint8_t aux2 = NONE;
         // Travel board power monitoring (MAX17048 ALRT, charger STAT1/STAT2/PG;
-        // all active low). Not used by the firmware yet.
+        // all active low). Reference wiring for the battery settings (spec 032).
         uint8_t batteryAlert = NONE;
         uint8_t chargerStat1 = NONE;
         uint8_t chargerStat2 = NONE;
         uint8_t chargerPowerGood = NONE;
         uint8_t statusLed = NONE; // on-board RGB LED (not driven yet)
         uint64_t validGpios = 0;  // bit n set = GPIO n can carry a sensor bus
+        uint64_t rtcGpios = 0;    // bit n set = GPIO n can wake the chip from deep sleep (ext0)
         // The wind vane needs ADC1 (ADC2 can't be read while WiFi is on).
         uint8_t adc1First = NONE;
         uint8_t adc1Last = NONE;
         const char *adc1Pins = ""; // the same range as text, for the settings error
 
         constexpr bool isValidGpio(int pin) const { return pin >= 0 && pin < 64 && ((validGpios >> pin) & 1ULL) != 0; }
+        constexpr bool isRtcGpio(int pin) const { return pin >= 0 && pin < 64 && ((rtcGpios >> pin) & 1ULL) != 0; }
         constexpr bool isAdc1(int pin) const { return pin >= adc1First && pin <= adc1Last; }
     };
 
@@ -67,6 +69,10 @@ namespace SQM
             gpioRange(0, 5) | gpioRange(12, 19) | gpioRange(21, 23) | gpioRange(25, 27) | gpioRange(32, 36) | gpioBit(39);
         // ESP32-S3: no USB (19/20), the RGB LED (21), flash and octal PSRAM (26-37).
         constexpr uint64_t S3_GPIOS = gpioRange(0, 18) | gpioRange(38, 48);
+        // RTC GPIOs (deep-sleep wake sources).
+        constexpr uint64_t ESP32_RTC_GPIOS =
+            gpioBit(0) | gpioBit(2) | gpioBit(4) | gpioRange(12, 15) | gpioRange(25, 27) | gpioRange(32, 39);
+        constexpr uint64_t S3_RTC_GPIOS = gpioRange(0, 21);
 
         constexpr BoardProfile esp32Dev()
         {
@@ -80,6 +86,7 @@ namespace SQM
             p.windSpeed = 27;
             p.windDirection = 35;
             p.validGpios = ESP32_GPIOS;
+            p.rtcGpios = ESP32_RTC_GPIOS;
             p.adc1First = 32;
             p.adc1Last = 39;
             p.adc1Pins = "32-39";
@@ -104,6 +111,7 @@ namespace SQM
             p.aux2 = 40;
             p.statusLed = 21;
             p.validGpios = S3_GPIOS & ~gpioRange(9, 14);
+            p.rtcGpios = S3_RTC_GPIOS;
             p.adc1First = 1;
             p.adc1Last = 10;
             p.adc1Pins = "1-10";
@@ -134,6 +142,7 @@ namespace SQM
             p.chargerPowerGood = 5;
             p.statusLed = 21;
             p.validGpios = S3_GPIOS;
+            p.rtcGpios = S3_RTC_GPIOS;
             p.adc1First = 1;
             p.adc1Last = 10;
             p.adc1Pins = "1-10";

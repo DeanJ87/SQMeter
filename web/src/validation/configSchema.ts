@@ -3,8 +3,10 @@ import { t } from '../i18n';
 import { alertsConfigSchema } from './alertsSchema';
 import { isIpv6Literal, ntpIpv6Text, parseHost } from '../lib/netAddress';
 
-// Valid ESP32 GPIO pins
-const validGPIOs = [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39];
+import { checkDisplayButton, displayConfigSchema } from './displaySchema';
+import { checkSecondI2c } from './i2cSchema';
+import { batteryConfigSchema, batteryRuleFields, checkBatteryPins } from './batterySchema';
+import { validGPIOs } from './gpio';
 
 export const wifiConfigSchema = z.object({
   // The device refuses a blank network while one is saved (spec 011 FR-009).
@@ -45,6 +47,7 @@ export const mqttConfigSchema = z
         gps: z.boolean(),
         rain: z.boolean(),
         wind: z.boolean(),
+        battery: z.boolean().optional(),
         safety: z.boolean(),
         diagnostics: z.boolean(),
       })
@@ -225,6 +228,7 @@ export const alpacaConfigSchema = z.object({
   windSpeedUnsafeMs: z.number().gt(0, t('validation.configSchema.mustBeAbove0')).max(60, t('validation.configSchema.mustBeAtMost60')),
   windGustUnsafeEnabled: z.boolean(),
   windGustUnsafeMs: z.number().gt(0, t('validation.configSchema.mustBeAbove0')).max(80, t('validation.configSchema.mustBeAtMost80')),
+  ...batteryRuleFields,
 });
 
 export const windConfigSchema = z
@@ -295,39 +299,6 @@ export const rainSensorConfigSchema = z
 
 export { alertsConfigSchema };
 
-// The second I2C bus and the SQM-L (spec 030, D-42): both pins unset (255),
-// or two different valid GPIOs no other bus uses; the SQM-L needs them. The
-// anemometer and vane pins count too: the device refuses that clash in its
-// wind check, so it is shown here, on the I2C-2 field, rather than on save.
-const I2C2_UNSET = 255;
-interface SecondI2cInput {
-  sensor: { i2cSDA: number; i2cSCL: number; i2c2SDA?: number; i2c2SCL?: number };
-  gps: { enabled: boolean; rxPin: number; txPin: number };
-  rain?: { enabled: boolean; rxPin: number; txPin: number };
-  wind?: { enabled: boolean; speedPin: number; directionEnabled: boolean; directionPin: number };
-  sky?: { sqmlEnabled: boolean };
-}
-const secondI2cPinsInUse = (data: SecondI2cInput, sda: number, scl: number) => {
-  const used = [data.sensor.i2cSDA, data.sensor.i2cSCL];
-  if (data.gps.enabled) used.push(data.gps.rxPin, data.gps.txPin);
-  if (data.rain?.enabled) used.push(data.rain.rxPin, data.rain.txPin);
-  if (data.wind?.enabled) used.push(data.wind.speedPin, ...(data.wind.directionEnabled ? [data.wind.directionPin] : []));
-  return used.includes(sda) || used.includes(scl);
-};
-const secondI2cIssue = (data: SecondI2cInput, sda: number, scl: number) => {
-  if (!validGPIOs.includes(sda) || !validGPIOs.includes(scl) || sda === scl) return t('validation.configSchema.secondI2cBusPinsAreInvalid');
-  return secondI2cPinsInUse(data, sda, scl) ? t('validation.configSchema.secondI2cBusPinsAreInUse') : null;
-};
-const checkSecondI2c = (data: SecondI2cInput, ctx: z.RefinementCtx) => {
-  const sda = data.sensor.i2c2SDA ?? I2C2_UNSET;
-  const scl = data.sensor.i2c2SCL ?? I2C2_UNSET;
-  const unset = sda === I2C2_UNSET && scl === I2C2_UNSET;
-  const pinIssue = unset ? null : secondI2cIssue(data, sda, scl);
-  if (pinIssue) ctx.addIssue({ code: 'custom', message: pinIssue, path: ['sensor', 'i2c2SDA'] });
-  if (data.sky?.sqmlEnabled && unset)
-    ctx.addIssue({ code: 'custom', message: t('validation.configSchema.sqmLNeedsTheSecondI2cBusPins'), path: ['sky', 'sqmlEnabled'] });
-};
-
 export const configSchema = z
   .object({
     deviceName: z.string().min(1, t('validation.configSchema.deviceNameIsRequired')),
@@ -379,6 +350,8 @@ export const configSchema = z
         showSunMoon: z.boolean().optional(),
       })
       .optional(),
+    display: displayConfigSchema.optional(),
+    battery: batteryConfigSchema.optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.ntp.enabled && !data.gps.enabled) {
@@ -416,7 +389,9 @@ export const configSchema = z
       });
     }
   })
-  .superRefine((data, ctx) => checkSecondI2c(data, ctx));
+  .superRefine((data, ctx) => checkSecondI2c(data, ctx))
+  .superRefine((data, ctx) => checkDisplayButton(data, ctx))
+  .superRefine((data, ctx) => checkBatteryPins(data, ctx));
 
 export type ConfigSchema = z.infer<typeof configSchema>;
 export type ValidationErrors = Record<string, string>;

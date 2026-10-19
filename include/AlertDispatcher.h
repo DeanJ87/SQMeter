@@ -90,6 +90,9 @@ namespace SQM
         // Goes up whenever recent() would answer differently (a new alert, a
         // channel's result, a clear), so the UI can fetch the list only then.
         uint32_t recentRevision() const { return revision; }
+        // Nothing queued and no delivery running (spec 032: the device waits
+        // for this before it sleeps for an empty battery). Any task.
+        bool idle() const;
 
     private:
         static constexpr size_t MAX_RECORDS = 20;
@@ -124,6 +127,7 @@ namespace SQM
         BusyCheck networkBusy;
         QueueHandle_t queue = nullptr;
         std::atomic<bool> taskRunning{false};
+        std::atomic<bool> delivering{false};
         SemaphoreHandle_t mutex = nullptr;
         std::vector<AlertRecord> records;
         uint32_t nextId = 1;

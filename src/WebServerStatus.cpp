@@ -1,4 +1,5 @@
 #include "WebServer.h"
+#include "OledDisplay.h"
 #include "ConnectionBudget.h"
 #include "WebServerShared.h"
 #include "Logger.h"
@@ -57,12 +58,15 @@ namespace SQM
         groups.gps = mqtt.publish.gps;
         groups.rain = mqtt.publish.rain;
         groups.wind = mqtt.publish.wind;
+        groups.battery = mqtt.publish.battery;
         const Config &cfg = getConfigCallback();
         const BleAlarmStatus alarm = ble.alarmStatus();
         groups.alertsSwitch = cfg.alerts.enabled || (cfg.ble.enabled && alarm.serviceActive && alarm.bondedPhones > 0); // dep: D-13
         // Home Assistant's per-sensor sky entities follow the sensors switched on (spec 030).
         groups.skySqm = cfg.sky.sqmEnabled;
         groups.skySqml = cfg.sky.sqmlEnabled;
+        // The battery's entities while a gauge is present (spec 032); republished when that changes.
+        groups.batteryEntities = getSensorSnapshot().battery.present; // dep: D-49
 
         publishDiscovery(mqtt, groups);
 
@@ -83,7 +87,7 @@ namespace SQM
 
         if (mqtt.publish.diagnostics)
         {
-            DynamicJsonDocument diag(1536);
+            DynamicJsonDocument diag(2048); // +512 for the battery (spec 032)
             appendDiagnostics(diag.to<JsonObject>(), getSensorSnapshot());
             std::string diagPayload;
             serializeJson(diag, diagPayload);
@@ -107,6 +111,7 @@ namespace SQM
               groups.clouds,
               groups.rain,
               groups.wind,
+              groups.battery && groups.batteryEntities,
               mqtt.publish.safety,
               groups.alertsSwitch})
             key += on ? '1' : '0';
@@ -143,6 +148,7 @@ namespace SQM
         const uint32_t phones = ble.alarmStatus().bondedPhones;
         facts.pairedPhones = static_cast<uint8_t>(phones > 255 ? 255 : phones);
         facts.languageInstalled = languagePack != nullptr && languagePack->installed();
+        Core::displayFacts(facts, getConfigCallback(), display != nullptr && display->detected());
         return facts;
     }
 
@@ -421,10 +427,12 @@ namespace SQM
         const Readings::Snapshot readings = buildReadings();
         Core::writeSensorHealth(doc.createNestedObject("sensors"), readings, getConfigCallback());
         Core::writeSkySensorStatus(doc.as<JsonObject>(), snapshot, readings);
+        Core::writeBatteryStatus(doc.as<JsonObject>(), snapshot, readings);
         JsonObject diagnostics = doc.createNestedObject("diagnostics");
         appendDiagnostics(diagnostics, snapshot);
         appendMqttStatus(doc);
         appendConnections(doc);
+        appendDisplayStatus(doc);
         // A full pool drops the trailing sections silently: say so.
         if (doc.overflowed())
             Logger::warn(TAG, "/api/status document overflowed %u bytes", static_cast<unsigned>(doc.capacity()));
