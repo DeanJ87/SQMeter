@@ -108,7 +108,7 @@ class UsbPackageTest(unittest.TestCase):
                 sources[name] = tmp / name
                 sources[name].write_bytes(b"\x00" * 16)
             out = tmp / "pkg.zip"
-            usb_package.build(sources, "ble", "0.3.0-beta.1", ROOT / "partitions.csv", out)
+            usb_package.build(sources, usb_package.Target("ble", "0.3.0-beta.1", ROOT / "partitions.csv"), out)
             with zipfile.ZipFile(out) as z:
                 names = set(z.namelist())
                 manifest = json.loads(z.read("manifest.json"))
@@ -119,6 +119,18 @@ class UsbPackageTest(unittest.TestCase):
             self.assertIn("0x390000 littlefs.bin", readme)
             command = next(line for line in readme.splitlines() if "write_flash" in line)
             self.assertNotIn("erase", command)
+
+    def test_s3_package(self):
+        csv = ROOT / "partitions_16MB.csv"
+        offsets = {part["path"]: part["offset"] for part in usb_package.parts(csv, "esp32s3")}
+        self.assertEqual(offsets["bootloader.bin"], 0x0)  # S3 bootloader at 0
+        self.assertEqual(offsets["littlefs.bin"], 0xC10000)
+        for offset in offsets.values():
+            self.assertFalse(0x9000 <= offset < 0xE000)
+        manifest = usb_package.manifest("standard", "0.4.0-alpha.1", csv, "esp32s3", "esp32s3-eth")
+        self.assertEqual(manifest["builds"][0]["chipFamily"], "ESP32-S3")
+        self.assertIn("esp32s3-eth", manifest["name"])
+        self.assertIn("--chip esp32s3", usb_package.esptool_command(csv, "esp32s3"))
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@
 // Local builds: the next release plus "+dev", so update checks order them
 // correctly. CI stamps the tag (without "v") on release builds; bump this
 // after each release.
-#define FIRMWARE_VERSION "0.3.4-beta.1+dev"
+#define FIRMWARE_VERSION "0.4.0-alpha.1+dev"
 #define FIRMWARE_BUILD_DATE __DATE__
 #define FIRMWARE_BUILD_TIME __TIME__
 #define FIRMWARE_NAME "SQMeter"

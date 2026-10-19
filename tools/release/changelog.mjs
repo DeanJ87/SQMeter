@@ -135,6 +135,7 @@ export function releaseBody({ tag, section, bannerUrl, docsBase }) {
     '',
     `- **From v0.3.x**: Updates → Check for updates (${tag.includes('-') ? 'beta' : 'stable'} track) → Update. Settings are kept.`,
     `- **From v0.2.x**: a one-time USB flash moves the device to the v0.3 layout, keeping its settings: ${docs}getting-started/usb-flash/`,
+    '- **ESP32-S3 boards**: the first install is a USB flash from `sqmeter-<board>-usb-*.zip` (`FLASH.txt` inside); after that, updates as above.',
     '',
   ].join('\n');
 }

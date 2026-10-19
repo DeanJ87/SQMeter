@@ -4,7 +4,8 @@
 The browser flasher (docs/getting-started/usb-flash.md, ESP Web Tools) reads
 site/flash/<standard|ble>/manifest.json and the parts next to it, from
 sqmeter.dev itself: GitHub release downloads can't be fetched by a page.
-Finds the newest release (pre-releases included) that has
+Finds the newest release (beta pre-releases included, alphas skipped so the
+flasher never offers an alpha by default) that has
 sqmeter-l2-usb-standard-*.zip and sqmeter-l2-usb-ble-*.zip and unpacks them.
 With no such release yet, writes nothing and the page says so.
 
@@ -36,10 +37,15 @@ def api(url: str) -> object:
         return json.load(response)
 
 
+def is_alpha(tag: str) -> bool:
+    """v0.4.0-alpha.1: an early build for testers, never the flasher's default."""
+    return "-alpha" in tag
+
+
 def pick(releases: list[dict]) -> tuple[str, dict[str, str]] | None:
-    """(tag, {build: zip download URL}) of the newest release with both packages."""
+    """(tag, {build: zip download URL}) of the newest non-alpha release with both packages."""
     for release in releases:
-        if release.get("draft"):
+        if release.get("draft") or is_alpha(release.get("tag_name", "")):
             continue
         urls = {}
         for asset in release.get("assets", []):

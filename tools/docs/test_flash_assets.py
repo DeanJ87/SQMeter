@@ -42,6 +42,20 @@ class FlashAssetsTest(unittest.TestCase):
         self.assertEqual(tag, "v0.3.0-beta.1")
         self.assertTrue(urls["ble"].endswith("sqmeter-l2-usb-ble-v0.3.0-beta.1.zip"))
 
+    def test_alpha_is_never_the_default(self):
+        releases = [
+            {
+                "tag_name": "v0.4.0-alpha.1",
+                "assets": [asset("sqmeter-l2-usb-standard-v0.4.0-alpha.1.zip"), asset("sqmeter-l2-usb-ble-v0.4.0-alpha.1.zip")],
+            },
+            {
+                "tag_name": "v0.3.3-beta.1",
+                "assets": [asset("sqmeter-l2-usb-standard-v0.3.3-beta.1.zip"), asset("sqmeter-l2-usb-ble-v0.3.3-beta.1.zip")],
+            },
+        ]
+        tag, _ = flash_assets.pick(releases)
+        self.assertEqual(tag, "v0.3.3-beta.1")
+
     def test_none_yet(self):
         self.assertIsNone(flash_assets.pick([{"tag_name": "v0.2.0-beta.3", "assets": []}]))
 

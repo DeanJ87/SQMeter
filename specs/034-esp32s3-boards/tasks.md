@@ -20,8 +20,9 @@
 
 ## Phase 3: Install and update (US3) - open
 
-- [ ] T011 [US3] Per-board OTA asset naming (e.g. `sqmeter-<board>[-ble].bin`) and the update check picking its own board's asset (FR-006)
-- [ ] T012 [US3] Release job builds and attaches every S3 env's images; USB web flasher manifest per board (FR-007)
+- [X] T011 [US3] Per-board release files `sqmeter-<board>-firmware-`, `-ble-firmware-`, `-littlefs-` (lib/ReleaseLogic `prefixesFor`, include/BuildTarget.h) and the update check picking its own board's files; the image marker carries the board's layout (`l2`, `s8`, `s16`) so OTA refuses another layout's image (FR-006)
+- [X] T012 [US3] Release job builds and attaches every S3 env's firmware, LittleFS and USB packages (`usb_package.py --chip esp32s3`) (FR-007)
+- [ ] T012a [US3] Browser flasher manifest per S3 board on sqmeter.dev (FR-007); until then S3 boards are installed with esptool from the USB package
 - [ ] T013 [US3] Settings pin hints from the running board's profile (FR-008); mockup reviewed before build
 
 ## Phase 4: Board hardware (US4) - open

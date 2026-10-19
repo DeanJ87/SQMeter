@@ -30,6 +30,14 @@ namespace SQM
             }
         } // namespace
 
+        AssetPrefixes prefixesFor(const std::string &board)
+        {
+            if (board.empty() || board == CLASSIC_BOARD)
+                return {FIRMWARE_PREFIX, BLE_FIRMWARE_PREFIX, FS_PREFIX};
+            const std::string base = "sqmeter-" + board + "-";
+            return {base + "firmware-", base + "ble-firmware-", base + "littlefs-"};
+        }
+
         void buildFilter(JsonDocument &filter)
         {
             JsonObject release = filter.createNestedObject();
@@ -43,13 +51,14 @@ namespace SQM
             asset["size"] = true;
         }
 
-        std::vector<GithubRelease> parse(const JsonDocument &doc, const std::string &track, bool ble)
+        std::vector<GithubRelease> parse(const JsonDocument &doc, const std::string &track, bool ble, const std::string &board)
         {
             std::vector<GithubRelease> results;
             const bool wantPrerelease = (track == "beta");
             // The BLE build ships as its own file; installing the standard
             // firmware would silently drop Bluetooth (and the device refuses it).
-            const char *firmwarePrefix = ble ? BLE_FIRMWARE_PREFIX : FIRMWARE_PREFIX;
+            const AssetPrefixes prefixes = prefixesFor(board);
+            const char *firmwarePrefix = ble ? prefixes.bleFirmware.c_str() : prefixes.firmware.c_str();
 
             for (JsonObjectConst release : doc.as<JsonArrayConst>())
             {
@@ -69,7 +78,7 @@ namespace SQM
 
                 JsonArrayConst assets = release["assets"].as<JsonArrayConst>();
                 const bool hasFirmware = findAsset(assets, entry.tag, firmwarePrefix, entry.firmwareAssetUrl, entry.firmwareAssetSize);
-                const bool hasFs = findAsset(assets, entry.tag, FS_PREFIX, entry.fsAssetUrl, entry.fsAssetSize);
+                const bool hasFs = findAsset(assets, entry.tag, prefixes.fs.c_str(), entry.fsAssetUrl, entry.fsAssetSize);
                 if (!hasFirmware || !hasFs)
                     continue;
 

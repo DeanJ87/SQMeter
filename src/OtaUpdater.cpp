@@ -1,5 +1,6 @@
 #include "OtaUpdater.h"
 #include "AlertRootCA.h"
+#include "BuildTarget.h"
 #include "FirmwareImage.h"
 #include "FirmwareMarker.h"
 #include "Logger.h"
@@ -230,7 +231,7 @@ namespace SQM
             Logger::warn(TAG, "Release list truncated - JSON_DOC_CAPACITY too small");
 
         currentPhase = Phase::Idle;
-        return Releases::parse(doc, track, SQM_ENABLE_BLE != 0);
+        return Releases::parse(doc, track, SQM_ENABLE_BLE != 0, SQM_RELEASE_BOARD);
     }
 
     OtaUpdater::Fetch OtaUpdater::fetchReleaseList(JsonDocument &doc, const JsonDocument &filter, std::string &error)
