@@ -1,6 +1,8 @@
+import type { BackupCore } from './backup';
+
 // What the device core (WebAssembly, tools/demo-core/bridge.cpp) exports.
 
-export interface Core {
+export interface Core extends BackupCore {
   getConfig(redacted: boolean): string;
   applyConfig(json: string): string;
   loadConfig(json: string): boolean;

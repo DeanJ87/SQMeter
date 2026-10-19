@@ -32,6 +32,7 @@ EMSCRIPTEN_BINDINGS(sqmeter_core)
         .function("calibrateDark", &EmulatedDevice::calibrateDark)
         .function("displayRequest", &EmulatedDevice::displayRequest)
         .function("alpaca", &EmulatedDevice::alpaca)
+        .function("backupRoute", &EmulatedDevice::backupRoute)
         .function("saveState", &EmulatedDevice::saveState)
         .function("loadState", &EmulatedDevice::loadState);
 }

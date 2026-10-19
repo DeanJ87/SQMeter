@@ -1,10 +1,10 @@
 {
-  "esp32dev": 1513296,
-  "esp32dev-ble": 1705392,
-  "esp32s3-eth": 1529616,
-  "esp32s3-eth-ble": 1718784,
-  "esp32s3-zero": 1527600,
-  "esp32s3-zero-ble": 1716784,
-  "esp32s3-zero8": 1529616,
-  "esp32s3-zero8-ble": 1718784
+  "esp32dev": 1536560,
+  "esp32dev-ble": 1729424,
+  "esp32s3-eth": 1552144,
+  "esp32s3-eth-ble": 1742448,
+  "esp32s3-zero": 1550144,
+  "esp32s3-zero-ble": 1740432,
+  "esp32s3-zero8": 1552160,
+  "esp32s3-zero8-ble": 1742448
 }

@@ -38,6 +38,7 @@ namespace SQM
 
     void WebServer::setupAPIRoutes()
     {
+        setupBackupRoutes();
         setupReadingRoutes();
         setupSettingsRoutes();
         setupNetworkRoutes();
@@ -165,16 +166,11 @@ namespace SQM
             return;
         }
 
-        const std::string previousLanguage = currentConfig.language;
-        if (!saveConfigCallback(*configOpt))
+        if (!saveAndApply(*configOpt))
         {
             request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
             return;
         }
-        for (SkyRole role : {SkyRole::Sqm, SkyRole::Sqml})
-            skySensor(role).configureSkyMeasurement(configOpt->averaging(role), configOpt->calibration(role));
-        if (previousLanguage != configOpt->language)
-            languagePack->onLanguageChanged(configOpt->language);
         request->send(200, "application/json", "{\"success\":true}");
     }
 

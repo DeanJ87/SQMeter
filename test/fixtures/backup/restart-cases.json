@@ -1,0 +1,20 @@
+{
+  "about": "Which setting changes need a restart (specs/033-config-backup research R5). Run by test/test_config_backup (Backup::restartReasons) and web/src/components/settings/__tests__/restart.test.ts (restart.ts), so the device and the web UI agree. before/after are applied on top of the same defaults.",
+  "cases": [
+    { "name": "nothing changes", "before": {}, "after": {}, "reasons": [] },
+    { "name": "WiFi network", "before": { "wifi": { "ssid": "Home" } }, "after": { "wifi": { "ssid": "Observatory" } }, "reasons": ["wifi"] },
+    { "name": "WiFi password", "before": { "wifi": { "password": "one" } }, "after": { "wifi": { "password": "two" } }, "reasons": ["wifi"] },
+    { "name": "local name", "before": { "wifi": { "hostname": "sqm" } }, "after": { "wifi": { "hostname": "roof" } }, "reasons": ["wifi"] },
+    { "name": "command-line uploads switched on", "before": { "ota": { "enabled": false, "password": "otapass" } }, "after": { "ota": { "enabled": true, "password": "otapass" } }, "reasons": ["ota"] },
+    { "name": "upload password changed while off", "before": { "ota": { "enabled": false, "password": "one" } }, "after": { "ota": { "enabled": false, "password": "two" } }, "reasons": [] },
+    { "name": "GPS baud rate", "before": { "gps": { "baudRate": 9600 } }, "after": { "gps": { "baudRate": 38400 } }, "reasons": ["gps"] },
+    { "name": "I2C frequency", "before": { "sensor": { "i2cFrequency": 100000 } }, "after": { "sensor": { "i2cFrequency": 400000 } }, "reasons": ["i2c"] },
+    { "name": "IPv6 off", "before": { "wifi": { "ipv6": true } }, "after": { "wifi": { "ipv6": false } }, "reasons": ["ipv6"] },
+    { "name": "Alpaca switched off", "before": { "alpaca": { "enabled": true } }, "after": { "alpaca": { "enabled": false } }, "reasons": ["alpaca"] },
+    { "name": "Bluetooth switched on", "before": { "ble": { "enabled": false } }, "after": { "ble": { "enabled": true } }, "reasons": ["ble"] },
+    { "name": "renamed with Bluetooth on", "before": { "deviceName": "one", "ble": { "enabled": true } }, "after": { "deviceName": "two", "ble": { "enabled": true } }, "reasons": ["ble"] },
+    { "name": "renamed with Bluetooth off", "before": { "deviceName": "one", "ble": { "enabled": false } }, "after": { "deviceName": "two", "ble": { "enabled": false } }, "reasons": [] },
+    { "name": "MQTT broker", "before": { "mqtt": { "broker": "a.lan" } }, "after": { "mqtt": { "broker": "b.lan" } }, "reasons": [] },
+    { "name": "local name and GPS", "before": { "wifi": { "hostname": "sqm" }, "gps": { "enabled": false } }, "after": { "wifi": { "hostname": "roof" }, "gps": { "enabled": true } }, "reasons": ["wifi", "gps"] }
+  ]
+}

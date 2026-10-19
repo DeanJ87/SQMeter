@@ -19,6 +19,7 @@ import {
 import { defaultBleConfig } from './defaults';
 import { t } from '../../i18n';
 import LanguageCard from './LanguageCard';
+import BackupCard from './BackupCard';
 import DisplayCard from './DisplayCard';
 import BatteryCard from './BatteryCard';
 
@@ -201,6 +202,8 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = (props) => {
       />
 
       <SecurityCard {...props} />
+
+      <BackupCard deviceName={config.deviceName} status={props.status} />
 
       <BluetoothCard {...props} actions={actions} />
 

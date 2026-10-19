@@ -37,6 +37,10 @@ SOURCES = {
     "src/WebServerStatus.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerDisplay.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerUpdates.cpp": ("api", {"createErrorJson": [0], "fail": [0]}),
+    # Settings backup and restore (spec 033): refusals and their reasons.
+    "src/WebServerBackup.cpp": ("api", {"createErrorJson": [0]}),
+    "lib/ConfigBackup/src/BackupRules.cpp": ("backup", {}),
+    "tools/demo-core/emulated_device_backup.cpp": ("api", {"errorJson": [0]}),
     "src/OtaUpdater.cpp": ("ota", {"errorCb": [0]}),
     # Why an update file is refused (spec 027 FR-020).
     "lib/FirmwareImage/src/FirmwareImage.cpp": ("ota", {}),
@@ -72,6 +76,7 @@ ASSIGN = {
     "lib/SkyLogic/src/CloudDetection.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/SkyLogic/src/SkyQuality.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/FirmwareImage/src/FirmwareImage.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
+    "lib/ConfigBackup/src/BackupRules.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r"\btest\.(?:title|message)\s*=\s*"),
     "src/AlertDispatcher.cpp": re.compile(r"(?<![\w.>])(?:detail|record\.detail\[[^\]]+\])\s*=\s*(?!=)"),
 }

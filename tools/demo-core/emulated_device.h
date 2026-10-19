@@ -20,6 +20,7 @@
 #include "AlertDelivery.h"
 #include "AlpacaRouter.h"
 #include "Config.h"
+#include "ConfigBackup.h"
 #include "DeviceCore.h"
 #include "DisplayController.h"
 #include "RainLogic.h"
@@ -65,7 +66,8 @@ class EmulatedDevice : public Alpaca::Backend
 public:
     // identityJson: {"version": "...", "mac": "a1b2c3d4e5f6"}
     explicit EmulatedDevice(const std::string &identityJson)
-        : router(*this, identity(identityJson))
+        : router(*this, identity(identityJson)),
+          firmwareVersion(identity(identityJson).version)
     {
         cfg = Config::createDefault();
         // The demo board has the second I2C bus wired and both sky sensors
@@ -177,6 +179,16 @@ public:
     // method "GET"/"PUT", path, params as [[name, value], ...].
     std::string alpaca(const std::string &method, const std::string &path, const std::string &paramsJson);
 
+    // --- Backup and restore (specs/033-config-backup) ---------------------------
+    // POST /api/backup. randomHex: 28 random bytes (salt, nonce). Returns {status, body}.
+    std::string backup(const std::string &body, const std::string &randomHex);
+    // POST /api/backup/preview. randomHex: 16 random bytes (the token).
+    std::string restorePreview(const std::string &body, const std::string &randomHex);
+    // POST /api/backup/apply. The demo restarts itself when "restarting" is true.
+    std::string restoreApply(const std::string &body);
+    // The three above by route ("backup", "preview", "apply"): one binding for the demo.
+    std::string backupRoute(const std::string &route, const std::string &body, const std::string &randomHex);
+
     // --- Persistence (sessionStorage) -----------------------------------------
     std::string saveState() const;
 
@@ -184,6 +196,17 @@ public:
 
 private:
     static Alpaca::ServerIdentity identity(const std::string &json);
+    Backup::DeviceInfo backupDevice() const;
+
+    // The previewed restore, until applied (the device's StagedRestore).
+    struct StagedRestore
+    {
+        std::string token;
+        Config candidate;
+        std::string from; // the settings it was previewed on
+        bool restart = false;
+    };
+    StagedRestore staged;
 
     static std::string serialize(const JsonDocument &doc);
 
@@ -229,6 +252,7 @@ private:
     std::string clockTime = "--:--";
     std::string clockDate = "--";
     Alpaca::Router router;
+    std::string firmwareVersion;
     Display::Controller displayController;
     Display::Output displayOut;
     bool displayWake = false;

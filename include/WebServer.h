@@ -24,6 +24,7 @@
 #include "AlertEngine.h"
 #include "SafetyStatus.h"
 #include "BleService.h"
+#include "ConfigBackup.h"
 #include <atomic>
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
@@ -325,6 +326,32 @@ namespace SQM
         void handleSettingsEffective(AsyncWebServerRequest *request);
         void handleGetSafety(AsyncWebServerRequest *request);
         void handleSetConfig(AsyncWebServerRequest *request, JsonVariant &json);
+        // Saves settings and applies what takes effect at once (a settings save and a restore).
+        bool saveAndApply(const Config &next);
+
+        // Settings backup and restore (specs/033-config-backup, src/WebServerBackup.cpp).
+        struct BackupJob;
+        struct StagedRestore
+        {
+            explicit StagedRestore(const Config &current)
+                : preview(current)
+            {
+            }
+            std::string token;
+            Backup::Preview preview; // preview.candidate is what apply saves
+            uint32_t revision = 0;
+            uint32_t stagedAtMs = 0;
+        };
+        static inline std::atomic<bool> backupJobRunning{false};
+        std::unique_ptr<StagedRestore> stagedRestore; // the previewed restore, until applied
+        std::mutex stagedRestoreLock;
+        void setupBackupRoutes();
+        void handleBackupStart(AsyncWebServerRequest *request, bool preview);
+        void handleBackupApply(AsyncWebServerRequest *request);
+        static void runBackupJob(void *arg);
+        static std::string makeBackupFile(BackupJob &job, int &status);
+        std::string previewRestore(BackupJob &job, int &status);
+        static Backup::DeviceInfo backupDevice();
         void handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json);
 
         // WebSocket handlers

@@ -38,6 +38,7 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/config` | POST / PUT | Save configuration |
+| `/api/backup`, `/api/backup/preview`, `/api/backup/apply` | POST | Back up and restore settings |
 | `/api/restart` | POST | Reboot device |
 | `/api/update` | POST | Flash firmware OTA |
 | `/api/update/fs` | POST | Flash filesystem OTA |
@@ -83,6 +84,14 @@ Once saved, the browser will prompt for credentials on the next mutation request
 ### Password masking and preservation
 
 `GET /api/config` returns `********` for the auth password (and likewise for the WiFi/MQTT/OTA passwords, Pushover keys, ntfy token, webhook auth header and Bluetooth passkey). When you POST config back, sending `********` or an empty string preserves the stored password unchanged. Send `null` only to intentionally clear the password.
+
+### Backups
+
+A settings backup made without a passphrase holds no secret. With one, the secrets are encrypted on the
+device (AES-256-GCM, key from the passphrase with PBKDF2-HMAC-SHA256), so a lost backup file doesn't give
+away your passwords; a weak passphrase can still be guessed offline, so use a long one. The passphrase
+itself travels to the device over plain HTTP like the device password does, so back up and restore on
+your own network. See [Backup & Restore](configuration.md#backup-restore).
 
 ### Password reset / lockout
 

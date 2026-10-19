@@ -26,7 +26,7 @@ A TSL2591 light sensor gives sky brightness in mag/arcsec² (SQM), Bortle class 
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/sensors/ include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h include/OtaUpdater.h include/TimeManager.h
 blocking: false
-fingerprint: a40ae6ab5f0558c6
+fingerprint: c5469a7836233065
 -->
 ```mermaid
 flowchart LR
