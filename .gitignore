@@ -77,3 +77,8 @@ release-notes/
 
 # Mockups are reviewed outside the repo; a spec records the review, not the images
 specs/*/mockups/
+specs/**/*.png
+specs/**/*.jpg
+specs/**/*.jpeg
+specs/**/*.gif
+specs/**/*.webp
