@@ -58,3 +58,61 @@ describe('System', () => {
     expect(screen.getByText('2a02:8010:abcd:1::9')).toBeInTheDocument();
   });
 });
+
+describe('System - display row (spec 031)', () => {
+  const show = (display?: SystemStatus['display']) => {
+    vi.mocked(useWebSocket<SystemStatus>).mockReturnValue({ data: { ...mockStatus, display }, connected: true, lastMessageAt: Date.now() });
+    render(<System />);
+  };
+
+  it.each([
+    [{ enabled: true, detected: true, on: true, page: 'sky' as const, nightMode: false }, 'Detected, on'],
+    [{ enabled: true, detected: true, on: false, page: null, nightMode: false }, 'Detected, off'],
+    [{ enabled: true, detected: false, on: false, page: null, nightMode: false }, 'Not detected'],
+    [{ enabled: false, detected: false, on: false, page: null, nightMode: false }, 'Off'],
+  ])('shows the display state', (display, text) => {
+    show(display);
+    const row = screen.getByText('Display').closest('.reading-row') as HTMLElement;
+    expect(row.textContent).toContain(text);
+  });
+
+  it('has no row on firmware without a display', () => {
+    show(undefined);
+    expect(screen.queryByText('Display')).not.toBeInTheDocument();
+  });
+});
+
+describe('System - battery rows (spec 032)', () => {
+  const show = (status: Partial<SystemStatus>) => {
+    vi.mocked(useWebSocket<SystemStatus>).mockReturnValue({
+      data: { ...mockStatus, ...status },
+      connected: true,
+      lastMessageAt: Date.now(),
+    });
+    render(<System />);
+  };
+  const row = (label: string) => screen.getByText(label).closest('.reading-row') as HTMLElement;
+
+  it('shows the gauge, voltage and charger pins', () => {
+    show({});
+    expect(row('Battery gauge').textContent).toContain('MAX17048 v0x0012');
+    expect(row('Battery gauge').textContent).toContain('Detected');
+    expect(row('Battery voltage').textContent).toContain('3.91 V');
+    expect(row('Charger pins').textContent).toContain('STAT1 H · STAT2 H · PG H');
+  });
+
+  it('says when the gauge stopped answering', () => {
+    show({
+      battery: { present: true, status: 'missing', state: 'no-battery', usbPower: true },
+      sensors: { ...mockStatus.sensors, battery: { status: 'missing' } },
+      diagnostics: { ...mockStatus.diagnostics!, battery: undefined },
+    });
+    expect(row('Battery gauge').textContent).toContain('Not detected');
+    expect(screen.queryByText('Charger pins')).not.toBeInTheDocument();
+  });
+
+  it('has no rows without a gauge', () => {
+    show({ battery: { present: false } });
+    expect(screen.queryByText('Battery gauge')).not.toBeInTheDocument();
+  });
+});

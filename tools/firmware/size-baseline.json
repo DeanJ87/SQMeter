@@ -1,5 +1,10 @@
 {
-  "esp32dev": 1553504,
-  "esp32dev-ble": 1748848,
-  "overBudgetReason": "Spec 033 (settings backup and restore: encrypted secrets, restore preview, staged apply) adds about 24 KB to each build; the Bluetooth build was already at 94.0% on main and lands at 95.3%. Trimmed from 43 KB by moving the preview wording to the web UI (research R7, R10); the owner decides before merge."
+  "esp32dev": 1513296,
+  "esp32dev-ble": 1705392,
+  "esp32s3-eth": 1529616,
+  "esp32s3-eth-ble": 1718784,
+  "esp32s3-zero": 1527600,
+  "esp32s3-zero-ble": 1716784,
+  "esp32s3-zero8": 1529616,
+  "esp32s3-zero8-ble": 1718784
 }

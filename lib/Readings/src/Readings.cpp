@@ -50,6 +50,7 @@ namespace SQM
                 JsonObject light = group(root, "light", s.light.status, s.light.ageMs);
                 JsonObject sky = root.createNestedObject("sky");
                 sky["status"] = statusName(s.light.status);
+                sky["source"] = skyRoleName(s.source);
                 if (s.light.status == Status::Ok)
                 {
                     light["lux"] = rounded(s.light.lux, 6);
@@ -70,6 +71,42 @@ namespace SQM
                     sky["calibrated"] = s.sky.calibrated;
                     sky["averagingWindowSeconds"] = s.sky.averagingWindowSeconds;
                 }
+            }
+
+            void writeSkySensor(JsonObject parent, const char *name, const SkySensorEntry &e)
+            {
+                JsonObject out = group(parent, name, e.status, e.ageMs);
+                if (e.status != Status::Ok)
+                    return;
+                out["sqm"] = rounded(e.sqm, 2);
+                out["rawSqm"] = rounded(e.rawSqm, 2);
+                out["nelm"] = rounded(e.nelm, 1);
+                out["bortle"] = e.bortle;
+                out["description"] = e.description;
+                out["calibrated"] = e.calibrated;
+                out["averagingWindowSeconds"] = e.averagingWindowSeconds;
+                out["lux"] = rounded(e.lux, 6);
+                out["gain"] = e.gain;
+                out["integrationMs"] = e.integrationMs;
+                out["saturated"] = e.saturated;
+                out["nightMode"] = e.nightMode;
+            }
+
+            // Each enabled sky sensor under its own name (spec 030 FR-008).
+            void writeSkySensors(JsonObject root, const Snapshot &s)
+            {
+                const SkySensorEntry &sqm = s.skySensors[skyRoleIndex(SkyRole::Sqm)];
+                const SkySensorEntry &sqml = s.skySensors[skyRoleIndex(SkyRole::Sqml)];
+                if (!sqm.present && !sqml.present)
+                    return;
+                JsonObject sensors = root.createNestedObject("skySensors");
+                if (sqm.present)
+                    writeSkySensor(sensors, skyRoleName(SkyRole::Sqm), sqm);
+                if (sqml.present)
+                    writeSkySensor(sensors, skyRoleName(SkyRole::Sqml), sqml);
+                const bool bothOk = sqm.present && sqml.present && sqm.status == Status::Ok && sqml.status == Status::Ok;
+                if (bothOk)
+                    sensors["deltaSqm"] = rounded(sqml.sqm - sqm.sqm, 2);
             }
 
             void writeEnvironment(JsonObject root, const Snapshot &s)
@@ -152,7 +189,54 @@ namespace SQM
                     wind["vaneFault"] = s.wind.vaneFault;
                 }
             }
+
+            template <typename T> void optionalValue(JsonObject out, const char *key, const std::optional<T> &value)
+            {
+                if (value)
+                    out[key] = *value;
+                else
+                    out[key] = nullptr;
+            }
+
         } // namespace
+
+        JsonObject writeBattery(JsonObject root, const Battery &b)
+        {
+            JsonObject out = root.createNestedObject("battery");
+            out["present"] = b.present;
+            if (!b.present)
+                return out;
+            out["status"] = statusName(b.status);
+            if (b.status != Status::Missing)
+                out["ageMs"] = b.ageMs;
+            if (b.status != Status::Ok)
+            {
+                // The charger still knows, e.g. the pack pulled out on USB.
+                if (b.chargerPins)
+                {
+                    out["state"] = b.state;
+                    optionalValue(out, "usbPower", b.usbPower);
+                }
+                return out;
+            }
+            out["estimating"] = b.estimating;
+            if (b.percent)
+                out["percent"] = rounded(*b.percent, 1);
+            else
+                out["percent"] = nullptr;
+            out["voltage"] = rounded(b.voltage, 3);
+            if (b.ratePercentPerHour)
+                out["ratePercentPerHour"] = rounded(*b.ratePercentPerHour, 1);
+            else
+                out["ratePercentPerHour"] = nullptr;
+            out["state"] = b.state;
+            optionalValue(out, "usbPower", b.usbPower);
+            out["fault"] = b.fault;
+            optionalValue(out, "timeToEmptyMinutes", b.timeToEmptyMinutes);
+            optionalValue(out, "timeToFullMinutes", b.timeToFullMinutes);
+            out["powerSaving"] = b.powerSaving;
+            return out;
+        }
 
         void write(JsonObject root, const Snapshot &s, const Groups &groups)
         {
@@ -161,7 +245,10 @@ namespace SQM
             root["dataAgeMs"] = s.dataAgeMs;
             root["dataStale"] = s.dataStale;
             if (groups.sky)
+            {
                 writeSky(root, s);
+                writeSkySensors(root, s);
+            }
             if (groups.environment)
                 writeEnvironment(root, s);
             if (groups.clouds)
@@ -172,6 +259,8 @@ namespace SQM
                 writeRain(root, s);
             if (groups.wind && s.wind.present)
                 writeWind(root, s);
+            if (groups.battery)
+                writeBattery(root, s.battery);
         }
 
         namespace
@@ -179,10 +268,14 @@ namespace SQM
             enum class Group : uint8_t
             {
                 Sky,
+                SkySqm,
+                SkySqml,
+                SkyPair,
                 Environment,
                 Clouds,
                 Rain,
                 Wind,
+                Battery,
                 Safety,
                 AlertsSwitch,
             };
@@ -205,6 +298,35 @@ namespace SQM
                 {"sensor", "nelm", "Limiting magnitude", Group::Sky, "sky", "value_json.sky.nelm", "mag", nullptr, "mdi:eye"},
                 {"sensor", "bortle", "Bortle class", Group::Sky, "sky", "value_json.sky.bortle", nullptr, nullptr, "mdi:weather-night"},
                 {"sensor", "illuminance", "Illuminance", Group::Sky, "light", "value_json.light.lux", "lx", "illuminance", nullptr},
+                // Each sky sensor and their difference (spec 030 D7); the
+                // difference is there exactly while both are ok.
+                {"sensor",
+                 "sqm_wide",
+                 "SQM (wide)",
+                 Group::SkySqm,
+                 "skySensors.sqm",
+                 "value_json.skySensors.sqm.sqm",
+                 "mag/arcsec²",
+                 nullptr,
+                 "mdi:star-four-points"},
+                {"sensor",
+                 "sqm_l",
+                 "SQM-L (narrow)",
+                 Group::SkySqml,
+                 "skySensors.sqml",
+                 "value_json.skySensors.sqml.sqm",
+                 "mag/arcsec²",
+                 nullptr,
+                 "mdi:star-four-points-outline"},
+                {"sensor",
+                 "sqm_delta",
+                 "SQM-L − SQM",
+                 Group::SkyPair,
+                 nullptr,
+                 "value_json.skySensors.deltaSqm",
+                 "mag/arcsec²",
+                 nullptr,
+                 "mdi:delta"},
                 {"sensor",
                  "temperature",
                  "Temperature",
@@ -280,31 +402,57 @@ namespace SQM
                  "°",
                  nullptr,
                  "mdi:compass"},
+                // The battery (spec 032, contracts/integrations.md).
+                {"sensor", "battery", "Battery", Group::Battery, "battery", "value_json.battery.percent", "%", "battery", nullptr},
+                {"sensor",
+                 "battery_voltage",
+                 "Battery voltage",
+                 Group::Battery,
+                 "battery",
+                 "value_json.battery.voltage",
+                 "V",
+                 "voltage",
+                 nullptr},
+                {"sensor",
+                 "battery_state",
+                 "Charging state",
+                 Group::Battery,
+                 "battery",
+                 "value_json.battery.state",
+                 nullptr,
+                 "enum",
+                 nullptr},
+                {"sensor",
+                 "battery_time_to_empty",
+                 "Battery time to empty",
+                 Group::Battery,
+                 "battery",
+                 "value_json.battery.timeToEmptyMinutes",
+                 "min",
+                 "duration",
+                 nullptr},
                 {"binary_sensor", "safety", "Observatory", Group::Safety, nullptr, nullptr, nullptr, "safety", nullptr},
                 {"switch", "alerts", "Alerts", Group::AlertsSwitch, nullptr, nullptr, nullptr, nullptr, "mdi:bell-ring"},
             };
 
             bool enabled(Group group, const Groups &groups, bool safety)
             {
-                switch (group)
-                {
-                case Group::Sky:
-                    return groups.sky;
-                case Group::Environment:
-                    return groups.environment;
-                case Group::Clouds:
-                    return groups.clouds;
-                case Group::Rain:
-                    return groups.rain;
-                case Group::Wind:
-                    return groups.wind;
-                case Group::Safety:
-                    return safety;
-                case Group::AlertsSwitch:
-                    return groups.alertsSwitch;
-                default:
-                    return true;
-                }
+                // In Group order.
+                const bool on[] = {
+                    groups.sky,                                    // Sky
+                    groups.sky && groups.skySqm,                   // SkySqm
+                    groups.sky && groups.skySqml,                  // SkySqml
+                    groups.sky && groups.skySqm && groups.skySqml, // SkyPair
+                    groups.environment,                            // Environment
+                    groups.clouds,                                 // Clouds
+                    groups.rain,                                   // Rain
+                    groups.wind,                                   // Wind
+                    groups.battery && groups.batteryEntities,      // Battery (spec 032)
+                    safety,                                        // Safety
+                    groups.alertsSwitch,                           // AlertsSwitch
+                };
+                const auto index = static_cast<size_t>(group);
+                return index < sizeof(on) / sizeof(on[0]) ? on[index] : true;
             }
         } // namespace
 
@@ -339,7 +487,16 @@ namespace SQM
                     doc["state_topic"] = base + "/state";
                     // Values can be absent (e.g. wind direction when calm): report unknown, not an error.
                     doc["value_template"] = std::string("{{ ") + entity.value + " if " + entity.value + " is defined else none }}";
-                    doc["state_class"] = "measurement";
+                    // An enum has no state class; its options are listed instead.
+                    const bool isEnum = entity.deviceClass != nullptr && std::string(entity.deviceClass) == "enum";
+                    if (isEnum)
+                    {
+                        JsonArray options = doc.createNestedArray("options");
+                        for (const char *state : {"discharging", "charging", "charged", "fault", "no-battery"})
+                            options.add(state);
+                    }
+                    else
+                        doc["state_class"] = "measurement";
                 }
             }
 
@@ -354,12 +511,14 @@ namespace SQM
                 JsonArray availability = doc.createNestedArray("availability");
                 JsonObject online = availability.createNestedObject();
                 online["topic"] = base + "/availability";
-                if (entity.jsonGroup != nullptr)
+                if (entity.jsonGroup != nullptr || entity.group == Group::SkyPair)
                 {
                     JsonObject groupOk = availability.createNestedObject();
                     groupOk["topic"] = base + "/state";
                     groupOk["value_template"] =
-                        std::string("{{ 'online' if value_json.") + entity.jsonGroup + ".status == 'ok' else 'offline' }}";
+                        entity.jsonGroup != nullptr
+                            ? std::string("{{ 'online' if value_json.") + entity.jsonGroup + ".status == 'ok' else 'offline' }}"
+                            : std::string("{{ 'online' if value_json.skySensors.deltaSqm is defined else 'offline' }}");
                     doc["availability_mode"] = "all";
                 }
 

@@ -1,9 +1,14 @@
 import { FunctionalComponent } from 'preact';
-import type { SensorData } from '../../types';
+import { useState } from 'preact/hooks';
+import type { SensorData, SkyRole } from '../../types';
 import { Card, Icon, MetricTile, Note, Pill, ReadingRow, SensorReadingRow } from '../ui';
 import { t } from '../../i18n';
 import { formatIlluminance, formatNumber } from '../../i18n/format';
-import { deviceText } from '../../i18n/deviceMessage';
+import { deviceError, deviceText } from '../../i18n/deviceMessage';
+import { skySensorName } from '../../lib/sensorNames';
+import { bodyOf, postJson } from '../../lib/api';
+import type { OtherReading, SkyMissing } from '../../dashboard/skySensors';
+import { healthWords } from '../../dashboard/glance';
 import { MiniSpark, StatusDot } from './MiniSpark';
 import { bortleTone, conditionTone } from './tones';
 
@@ -16,11 +21,14 @@ const LIVE_TONE: Record<Freshness, string> = { live: 'pill-green', stale: 'pill-
 const liveText = (state: Freshness) =>
   ({ live: t('dashboard.live'), stale: t('dashboard.stale'), quiet: t('status.noUpdates'), offline: t('status.offline') })[state];
 
-export const SkyHero: FunctionalComponent<Readings & { freshness: Freshness; sqmHistory: number[] }> = ({
-  sensors,
-  freshness,
-  sqmHistory,
-}) => {
+// The difference is SQM-L - SQM, signed: the narrow lens usually reads darker.
+const signed = (value: number) => `${value > 0 ? '+' : ''}${formatNumber(value, 2)}`;
+
+// With both sky sensors on (spec 030): `name` is the authoritative sensor's
+// name pill; `other` the other reading and the difference, when shown.
+export const SkyHero: FunctionalComponent<
+  Readings & { freshness: Freshness; sqmHistory: number[]; name?: SkyRole; other?: OtherReading | null }
+> = ({ sensors, freshness, sqmHistory, name, other }) => {
   const skyTone = bortleTone(sensors?.sky?.bortle);
   return (
     <section class={`hero-card ${skyTone}`}>
@@ -30,6 +38,7 @@ export const SkyHero: FunctionalComponent<Readings & { freshness: Freshness; sqm
           <h2>{t('dashboard.skyQuality')}</h2>
         </div>
         <div class="hero-pills">
+          {name && <Pill>{skySensorName(name)}</Pill>}
           <span data-inventory="freshness">
             <Pill tone={LIVE_TONE[freshness]}>
               <StatusDot ok={freshness === 'live'} /> {liveText(freshness)}
@@ -53,19 +62,75 @@ export const SkyHero: FunctionalComponent<Readings & { freshness: Freshness; sqm
         <MetricTile label={t('dashboard.bortle')} value={formatNumber(sensors.sky.bortle, 0)} tone={skyTone} />
         <MetricTile label="NELM" value={formatNumber(sensors.sky.nelm, 1)} unit="mag" tone="tone-cyan" />
         <MetricTile label={t('dashboard.illuminance')} value={formatIlluminance(sensors.light.lux)} unit="lux" />
+        {other && (
+          <MetricTile label={skySensorName(other.role)} value={formatNumber(other.sqm, 2)} unit={t('dashboard.magArcsec')} tone={skyTone} />
+        )}
+        {other?.difference !== undefined && (
+          <MetricTile
+            label={t('dashboard.skyDifference')}
+            value={signed(other.difference)}
+            unit={t('dashboard.magArcsec')}
+            tone={other.warn ? 'tone-amber' : ''}
+          />
+        )}
       </div>
     </section>
   );
 };
 
-export const SkyUnavailableCard: FunctionalComponent = () => (
-  <Card
-    title={t('dashboard.skyQuality')}
-    icon="star"
-    tone="muted"
-    actions={<Pill tone="pill-red">{t('settings.sensors.notResponding')}</Pill>}
-  />
-);
+// Saves the other sensor as the authoritative one (FR-010): the device
+// never switches on its own.
+const useSwitchSky = () => {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const switchTo = async (role: SkyRole) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await postJson('/api/config', { sky: { authoritative: role } });
+      if (!response.ok) setError(deviceError(await bodyOf(response), t('dashboard.couldNotSwitch')));
+    } catch {
+      setError(t('settings.couldNotReachTheDevice'));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { busy, error, switchTo };
+};
+
+const missingText = (missing: SkyMissing) => {
+  const name = skySensorName(missing.role);
+  return missing.health === 'off' ? t('dashboard.skySensorOff', { name }) : t('dashboard.skySensorNotResponding', { name });
+};
+
+// No sky reading. With the SQM-L in play, `missing` names the authoritative
+// sensor and offers the other one (spec 030 FR-010).
+export const SkyUnavailableCard: FunctionalComponent<{ missing?: SkyMissing | null }> = ({ missing }) => {
+  const { busy, error, switchTo } = useSwitchSky();
+  const target = missing?.switchTo;
+  const pill = missing && missing.health !== 'off' ? healthWords(missing.health) : missing ? t('status.off') : null;
+  return (
+    <Card
+      title={t('dashboard.skyQuality')}
+      icon="star"
+      tone="muted"
+      actions={<Pill tone="pill-red">{pill ?? t('settings.sensors.notResponding')}</Pill>}
+    >
+      {missing && (
+        <Note
+          action={
+            target && !busy
+              ? { label: t('dashboard.useSkySensor', { name: skySensorName(target) }), onClick: () => void switchTo(target) }
+              : undefined
+          }
+        >
+          {missingText(missing)}
+        </Note>
+      )}
+      {error && <Note tone="bad">{error}</Note>}
+    </Card>
+  );
+};
 
 export const CloudCard: FunctionalComponent<Readings> = ({ sensors }) => (
   <Card

@@ -21,17 +21,26 @@ namespace SQM::Backup
             const char *section;
             const char *key;
             bool analog;
+            bool optional; // 255 = not wired, kept as it is
         };
         constexpr PinSetting PIN_SETTINGS[] = {
-            {"gps", "rxPin", false},
-            {"gps", "txPin", false},
-            {"rain", "rxPin", false},
-            {"rain", "txPin", false},
-            {"sensor", "i2cSDA", false},
-            {"sensor", "i2cSCL", false},
-            {"wind", "speedPin", false},
-            {"wind", "directionPin", true},
+            {"gps", "rxPin", false, false},
+            {"gps", "txPin", false, false},
+            {"rain", "rxPin", false, false},
+            {"rain", "txPin", false, false},
+            {"sensor", "i2cSDA", false, false},
+            {"sensor", "i2cSCL", false, false},
+            {"sensor", "i2c2SDA", false, true}, // spec 030
+            {"sensor", "i2c2SCL", false, true},
+            {"wind", "speedPin", false, false},
+            {"wind", "directionPin", true, false},
+            {"display", "buttonPin", false, true}, // spec 031
+            {"battery", "alertPin", false, true},  // spec 032
+            {"battery", "stat1Pin", false, true},
+            {"battery", "stat2Pin", false, true},
+            {"battery", "pgPin", false, true},
         };
+        constexpr int PIN_UNSET = 255;
 
         // Pins this board doesn't have are removed from the backup document,
         // so the restore keeps this board's value.
@@ -44,7 +53,7 @@ namespace SQM::Backup
                 if (!value.is<uint8_t>())
                     continue; // missing (kept) or the wrong type (the save refuses it)
                 const int pin = value.as<uint8_t>();
-                if (setting.analog ? pins.analog(pin) : pins.valid(pin))
+                if ((setting.optional && pin == PIN_UNSET) || (setting.analog ? pins.analog(pin) : pins.valid(pin)))
                     continue;
                 out.push_back(
                     {std::string(setting.section) + "." + setting.key,

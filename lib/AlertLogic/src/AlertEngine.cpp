@@ -1,5 +1,6 @@
 #include "AlertEngine.h"
 
+#include <algorithm>
 #include <cstdio>
 
 namespace SQM
@@ -100,6 +101,13 @@ namespace SQM
                 "client_lost",
                 "client_back",
                 "client_disconnected",
+                "battery_low",
+                "battery_critical",
+                "battery_shutdown",
+                "power_restored",
+                "charge_complete",
+                "charge_fault",
+                "battery_rule",
             };
             static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == ALERT_TYPE_COUNT, "a name for every AlertType");
             const size_t index = static_cast<size_t>(type);
@@ -185,16 +193,17 @@ namespace SQM
             return stacked;
         }
 
-        bool AlertEngine::sync(Tracker &tracker, bool current, const Emit &emit)
+        bool AlertEngine::sync(Tracker &tracker, bool current, const Emit &emit, bool announceAtStart)
         {
             if (!tracker.initialized || !emit.allowed)
             {
                 // Follow the condition silently so enabling a rule (or the end
                 // of the startup grace) doesn't announce a stale transition.
                 tracker.initialized = true;
-                tracker.notified = current;
+                tracker.notified = announceAtStart ? false : current;
                 tracker.pending = false;
-                return false;
+                if (!announceAtStart || !emit.allowed)
+                    return false;
             }
             if (current == tracker.notified)
             {
@@ -389,6 +398,7 @@ namespace SQM
             updateDew(in, rules, step, alerts);
             updateSky(in, rules, step, alerts);
             updateClients(in, rules, alerts);
+            updateBattery(in, rules, step, alerts);
             return alerts;
         }
 

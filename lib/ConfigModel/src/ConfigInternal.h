@@ -16,9 +16,11 @@ namespace SQM::ConfigDetail
 {
     inline constexpr const char *SECRET_MASK = "********";
 
-    constexpr size_t EVENT_COUNT = 12;
+    constexpr size_t EVENT_COUNT = 18;
     // Events from here on are the imaging-app events, persisted separately.
     constexpr size_t FIRST_CLIENT_EVENT = 9;
+    // And from here on the battery events (spec 032), under a third key.
+    constexpr size_t FIRST_BATTERY_EVENT = 12;
 
     inline bool setError(std::string *error, const std::string &message)
     {
@@ -30,17 +32,6 @@ namespace SQM::ConfigDetail
     inline bool inRange(float value, float min, float max)
     {
         return std::isfinite(value) && value >= min && value <= max;
-    }
-
-    // ESP32 GPIOs usable for the sensor buses (no flash pins, no 20/24/28-31).
-    inline bool isValidGpio(int pin)
-    {
-        constexpr uint64_t VALID_PINS = (1ULL << 0) | (1ULL << 1) | (1ULL << 2) | (1ULL << 3) | (1ULL << 4) | (1ULL << 5) | (1ULL << 12) |
-                                        (1ULL << 13) | (1ULL << 14) | (1ULL << 15) | (1ULL << 16) | (1ULL << 17) | (1ULL << 18) |
-                                        (1ULL << 19) | (1ULL << 21) | (1ULL << 22) | (1ULL << 23) | (1ULL << 25) | (1ULL << 26) |
-                                        (1ULL << 27) | (1ULL << 32) | (1ULL << 33) | (1ULL << 34) | (1ULL << 35) | (1ULL << 36) |
-                                        (1ULL << 39);
-        return pin >= 0 && pin < 64 && ((VALID_PINS >> pin) & 1ULL) != 0;
     }
 
     inline bool isValidBaudRate(uint32_t baudRate)
@@ -72,7 +63,13 @@ namespace SQM::ConfigDetail
              {"clouded_over", &a.cloudedOver},
              {"client_lost", &a.clientLost},
              {"client_back", &a.clientBack},
-             {"client_disconnected", &a.clientDisconnected}}};
+             {"client_disconnected", &a.clientDisconnected},
+             {"battery_low", &a.batteryLow},
+             {"battery_critical", &a.batteryCritical},
+             {"battery_shutdown", &a.batteryShutdown},
+             {"power_restored", &a.powerRestored},
+             {"charge_complete", &a.chargeComplete},
+             {"charge_fault", &a.chargeFault}}};
     }
     inline std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, EVENT_COUNT> eventSettings(const AlertsConfig &a)
     {
@@ -215,4 +212,8 @@ namespace SQM::ConfigDetail
         JsonObject object;
         std::string sectionPath;
     };
+
+    // The optional devices' sections (ConfigJsonInDevices.cpp).
+    bool applyDisplay(const Section &display, DisplayConfig &d, std::string *error);
+    void applyBattery(const Section &battery, BatteryConfig &b);
 } // namespace SQM::ConfigDetail

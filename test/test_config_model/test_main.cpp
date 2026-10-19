@@ -134,7 +134,7 @@ void test_alert_schedule_defaults()
     TEST_ASSERT_EQUAL_UINT8(3, cfg.alerts.clientLost.level);
     TEST_ASSERT_EQUAL_UINT8(1, cfg.alerts.clientBack.level);
     TEST_ASSERT_EQUAL_UINT8(0, cfg.alerts.clientDisconnected.level);
-    DynamicJsonDocument doc(8192);
+    DynamicJsonDocument doc(16384);
     deserializeJson(doc, cfg.toJson());
     TEST_ASSERT_EQUAL_STRING("any", doc["alerts"]["sendMode"]);
     TEST_ASSERT_FALSE(doc["alerts"]["armWithAlpaca"].as<bool>());
@@ -288,6 +288,54 @@ void test_ipv6_broker_and_webhook_forms()
 
 // A settings save never takes the device off its network (spec 011 FR-009):
 // an empty WiFi network is refused while one is set; WiFi setup changes it.
+void test_masked_mqtt_password_round_trips_through_a_save()
+{
+    // Settings out masks the password; saving the form back unchanged must keep it.
+    Config base = Config::createDefault();
+    base.mqtt.broker = "broker.local";
+    base.mqtt.username = "sqm";
+    base.mqtt.password = "real-secret";
+    const std::string shown = base.toJson(true);
+    TEST_ASSERT_TRUE(shown.find("real-secret") == std::string::npos);
+    std::string error;
+    const auto saved = Config::fromJson(shown, &base, &error);
+    TEST_ASSERT_TRUE_MESSAGE(saved.has_value(), error.c_str());
+    TEST_ASSERT_EQUAL_STRING("real-secret", saved->mqtt.password.c_str());
+    const auto again = Config::fromJson(saved->toJson(true), &*saved, &error);
+    TEST_ASSERT_TRUE_MESSAGE(again.has_value(), error.c_str());
+    TEST_ASSERT_EQUAL_STRING("real-secret", again->mqtt.password.c_str());
+}
+
+void test_mqtt_test_uses_the_saved_password_only_for_the_saved_broker()
+{
+    MQTTConfig saved = Config::createDefault().mqtt;
+    saved.broker = "broker.local";
+    saved.port = 1883;
+    saved.username = "sqm";
+    saved.password = "real-secret";
+    const auto tryWith = [&](const char *broker, uint16_t port, const char *user, const char *password)
+    { return Config::mqttTestPassword(saved, {broker, port, user, password}); };
+
+    // The mask (or a blank field) for the saved broker tests with the saved password.
+    TEST_ASSERT_EQUAL_STRING("real-secret", tryWith("broker.local", 1883, "sqm", "********").value().c_str());
+    TEST_ASSERT_EQUAL_STRING("real-secret", tryWith("broker.local", 1883, "sqm", "").value().c_str());
+
+    // A typed password is always used as typed.
+    TEST_ASSERT_EQUAL_STRING("typed", tryWith("other.host", 1883, "sqm", "typed").value().c_str());
+
+    // The mask for another broker, port or user never sends the saved password.
+    TEST_ASSERT_FALSE(tryWith("evil.host", 1883, "sqm", "********").has_value());
+    TEST_ASSERT_FALSE(tryWith("broker.local", 8883, "sqm", "********").has_value());
+    TEST_ASSERT_FALSE(tryWith("broker.local", 1883, "admin", "********").has_value());
+
+    // A blank password for another broker is a test without a password, not a refusal.
+    TEST_ASSERT_EQUAL_STRING("", tryWith("other.host", 1883, "", "").value().c_str());
+
+    // Nothing saved: what was sent is what's tried.
+    saved.password.clear();
+    TEST_ASSERT_EQUAL_STRING("********", tryWith("evil.host", 1883, "sqm", "********").value().c_str());
+}
+
 void test_settings_save_cannot_blank_the_wifi_network()
 {
     Config base = Config::createDefault();
@@ -364,6 +412,25 @@ void test_stored_wrong_type_keeps_current_value()
     TEST_ASSERT_EQUAL_STRING("sqmeter", cfg.wifi.hostname.c_str());
 }
 
+void test_sky_defaults();
+void test_sky_json_round_trip();
+void test_sky_validation_messages();
+void test_sky_worst_case_config_fits();
+void test_display_defaults();
+void test_display_json_round_trip();
+void test_display_partial_update_keeps_other_keys();
+void test_display_page_validation();
+void test_display_range_validation();
+void test_display_button_pin_validation();
+void test_display_worst_case_config_fits();
+void test_battery_defaults();
+void test_battery_json_round_trip();
+void test_battery_level_validation();
+void test_battery_pin_validation();
+void test_battery_alerts_part();
+void test_battery_worst_cases_fit();
+void test_battery_rule_limit_follows_critical();
+
 int main()
 {
     UNITY_BEGIN();
@@ -384,7 +451,27 @@ int main()
     RUN_TEST(test_ipv6_setting_defaults_on_and_round_trips);
     RUN_TEST(test_ipv6_broker_and_webhook_forms);
     RUN_TEST(test_settings_save_cannot_blank_the_wifi_network);
+    RUN_TEST(test_masked_mqtt_password_round_trips_through_a_save);
+    RUN_TEST(test_mqtt_test_uses_the_saved_password_only_for_the_saved_broker);
     RUN_TEST(test_wrong_types_are_rejected_not_defaulted);
     RUN_TEST(test_stored_wrong_type_keeps_current_value);
+    RUN_TEST(test_sky_defaults);
+    RUN_TEST(test_sky_json_round_trip);
+    RUN_TEST(test_sky_validation_messages);
+    RUN_TEST(test_sky_worst_case_config_fits);
+    RUN_TEST(test_display_defaults);
+    RUN_TEST(test_display_json_round_trip);
+    RUN_TEST(test_display_partial_update_keeps_other_keys);
+    RUN_TEST(test_display_page_validation);
+    RUN_TEST(test_display_range_validation);
+    RUN_TEST(test_display_button_pin_validation);
+    RUN_TEST(test_display_worst_case_config_fits);
+    RUN_TEST(test_battery_defaults);
+    RUN_TEST(test_battery_json_round_trip);
+    RUN_TEST(test_battery_level_validation);
+    RUN_TEST(test_battery_pin_validation);
+    RUN_TEST(test_battery_alerts_part);
+    RUN_TEST(test_battery_worst_cases_fit);
+    RUN_TEST(test_battery_rule_limit_follows_critical);
     return UNITY_END();
 }

@@ -80,14 +80,19 @@ namespace SQM::Backup
         return out;
     }
 
-    BoardPins classicEsp32Pins()
+    BoardPins boardPins(const BoardProfile &board)
     {
         BoardPins pins;
-        for (int pin : {0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39})
-            pins.validPins |= 1ULL << pin;
-        for (int pin = 32; pin <= 39; ++pin)
-            pins.analogPins |= 1ULL << pin;
+        pins.validPins = board.validGpios;
+        for (int pin = 0; pin < 64; ++pin)
+            if (board.isValidGpio(pin) && board.isAdc1(pin))
+                pins.analogPins |= 1ULL << pin;
         return pins;
+    }
+
+    BoardPins buildBoardPins()
+    {
+        return boardPins(boardProfile(BUILD_BOARD));
     }
 
     namespace

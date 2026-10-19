@@ -3,7 +3,9 @@
 // code) derives cloud cover, SQM, dew point, the verdict and alerts from
 // them, exactly as on the roof.
 
-export type SensorId = 'light' | 'environment' | 'infrared' | 'rain' | 'wind' | 'gps';
+// 'lightL' is the SQM-L, the second sky sensor (spec 030).
+// 'battery' is the travel board's fuel gauge (spec 032).
+export type SensorId = 'light' | 'lightL' | 'environment' | 'infrared' | 'rain' | 'wind' | 'gps' | 'battery';
 
 export interface Conditions {
   air: { temperature: number; humidity: number; pressure: number }; // BME280
@@ -12,6 +14,7 @@ export interface Conditions {
   rain: { rate: number; lensFault: boolean }; // RG-15, mm/h
   wind: { speed: number; gust: number; direction: number }; // m/s, degrees
   gps: { fix: boolean };
+  battery: { percent: number; usb: boolean; fault: boolean }; // MAX17048 charge; USB power; charger fault
   faults: Record<SensorId, boolean>; // "not responding"
   steady: boolean; // no natural variation
 }
@@ -26,7 +29,8 @@ export type NumericInput =
   | 'rain.rate'
   | 'wind.speed'
   | 'wind.gust'
-  | 'wind.direction';
+  | 'wind.direction'
+  | 'battery.percent';
 
 export interface InputSpec {
   label: string;
@@ -49,6 +53,7 @@ export const INPUTS: Record<NumericInput, InputSpec> = {
   'wind.speed': { label: 'Wind speed', unit: 'm/s', min: 0, max: 60, step: 0.1, sensor: 'wind' },
   'wind.gust': { label: 'Gust', unit: 'm/s', min: 0, max: 60, step: 0.1, sensor: 'wind' },
   'wind.direction': { label: 'Direction', unit: '°', min: 0, max: 359, step: 1, sensor: 'wind' },
+  'battery.percent': { label: 'Battery charge', unit: '%', min: 0, max: 100, step: 0.1, sensor: 'battery' },
 };
 
 // A typical clear night (spec 019 Assumptions).
@@ -59,7 +64,8 @@ export const DEFAULT_CONDITIONS: Conditions = {
   rain: { rate: 0, lensFault: false },
   wind: { speed: 3, gust: 5.9, direction: 240 },
   gps: { fix: true },
-  faults: { light: false, environment: false, infrared: false, rain: false, wind: false, gps: false },
+  battery: { percent: 82, usb: false, fault: false },
+  faults: { light: false, lightL: false, environment: false, infrared: false, rain: false, wind: false, gps: false, battery: false },
   steady: false,
 };
 
@@ -87,6 +93,31 @@ export const differential = (c: Conditions) => c.ir.sky - c.ir.ambient;
 
 /** Sets the differential by moving the sky temperature; the IR sensor's own temperature stays. */
 export const withDifferential = (c: Conditions, value: number) => withInput(c, 'ir.sky', c.ir.ambient + value);
+
+// --- The battery (spec 032, research D13) ---------------------------------------
+
+// A 7 Ah pack: about 6 %/h on the device alone; the charger's 833 mA puts back about 12 %/h.
+const DISCHARGE_PERCENT_PER_HOUR = 6.2;
+const CHARGE_PERCENT_PER_HOUR = 12;
+
+/** The pack after `elapsedMs` of the demo clock: draining on its own, filling on USB, stuck on a fault. */
+export function advanceBattery(c: Conditions, elapsedMs: number): Conditions {
+  const battery = c.battery ?? DEFAULT_CONDITIONS.battery;
+  if (battery.fault || elapsedMs <= 0) return c;
+  const hours = elapsedMs / 3_600_000;
+  const delta = battery.usb ? CHARGE_PERCENT_PER_HOUR * hours : -DISCHARGE_PERCENT_PER_HOUR * hours;
+  const percent = Math.min(100, Math.max(0, battery.percent + delta));
+  return percent === battery.percent ? c : { ...c, battery: { ...battery, percent } };
+}
+
+export type BatteryPresetId = 'batteryLow' | 'chargeFault';
+
+/** "Battery low": on the pack, just below the low level in Settings. "Charge fault": on USB, the charger stopped. */
+export function batteryPreset(id: BatteryPresetId, c: Conditions, lowPercent = 20): Conditions {
+  const battery = c.battery ?? DEFAULT_CONDITIONS.battery;
+  if (id === 'chargeFault') return { ...c, battery: { ...battery, usb: true, fault: true } };
+  return { ...c, battery: { percent: Math.max(0, lowPercent - 2), usb: false, fault: false } };
+}
 
 // --- Ramps ---------------------------------------------------------------------
 
@@ -160,6 +191,9 @@ export function toCoreInputs(c: Conditions, nowMs: number, context: InputContext
       full: counts,
       nightMode: lux < 0.5,
     },
+    // The SQM-L sees the same sky through a narrow lens; the core works out
+    // its (darker) reading from the SQM's.
+    lightL: { present: true, failed: c.faults.lightL },
     environment: {
       present: true,
       failed: c.faults.environment,
@@ -176,5 +210,6 @@ export function toCoreInputs(c: Conditions, nowMs: number, context: InputContext
     gps: gpsInput(c, context),
     rain: { failed: c.faults.rain, rate: c.rain.rate, lensFault: c.rain.lensFault },
     wind: { failed: c.faults.wind, speed, gust, direction: (c.wind.direction + w(200, 25) + 360) % 360 },
+    battery: { present: true, failed: Boolean(c.faults.battery), ...(c.battery ?? DEFAULT_CONDITIONS.battery) },
   };
 }

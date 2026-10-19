@@ -18,6 +18,8 @@ const SECTION_TO_TAB: Record<string, SettingsTabId> = {
   safety: 'safety',
   alerts: 'alerts',
   ble: 'device',
+  display: 'device',
+  battery: 'device',
   wind: 'sensors',
   rain: 'sensors',
   mqtt: 'network',

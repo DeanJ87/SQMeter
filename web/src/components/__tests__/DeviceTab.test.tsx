@@ -75,3 +75,35 @@ describe('Device tab - Bluetooth phone alarm', () => {
     expect(await screen.findByText('Set a passkey to turn on the phone alarm.')).toBeInTheDocument();
   });
 });
+
+describe('Device tab - display wake (spec 031)', () => {
+  const openDisplay = () => {
+    server.use(http.get('/api/status', () => HttpResponse.json({ ...mockStatus, display: { ...mockStatus.display!, on: false } })));
+    window.history.replaceState(null, '', '/settings?tab=device');
+    render(<Settings />);
+  };
+
+  it('wakes the display', async () => {
+    let woke = false;
+    server.use(
+      http.post('/api/display/wake', () => {
+        woke = true;
+        return HttpResponse.json({ success: true });
+      }),
+    );
+    openDisplay();
+    fireEvent.click(await screen.findByRole('button', { name: 'Wake' }));
+    expect(await screen.findByText('Display on.')).toBeInTheDocument();
+    expect(woke).toBe(true);
+  });
+
+  it.each(['Display is off in settings', 'Display not detected', 'Display is off to save power'])(
+    'shows "%s" from the device',
+    async (error) => {
+      server.use(http.post('/api/display/wake', () => HttpResponse.json({ error }, { status: 409 })));
+      openDisplay();
+      fireEvent.click(await screen.findByRole('button', { name: 'Wake' }));
+      expect(await screen.findByText(error)).toBeInTheDocument();
+    },
+  );
+});

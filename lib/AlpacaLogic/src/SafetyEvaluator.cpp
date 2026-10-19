@@ -1,5 +1,6 @@
 #include "SafetyEvaluator.h"
 
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 
@@ -56,31 +57,77 @@ namespace SQM
                     addReasonf(result, UnsafeWindGust, "Gust %.1f m/s >= %.1f m/s", in.windGustMs, t.windGustUnsafeMs);
             }
 
+            // The battery (spec 032), regardless of the other sensors'
+            // freshness. Percent is printed as an integer (floor), with the limit.
+            void checkBattery(SafetyResult &result, const SafetyInputs &in, const SafetyThresholds &t)
+            {
+                if (in.shutdownPending)
+                    addReasonf(
+                        result,
+                        UnsafeShutdown,
+                        "Shutting down: battery %d%% <= %d%%",
+                        static_cast<int>(std::floor(in.batteryPercent)),
+                        static_cast<int>(std::floor(in.shutdownPercent)));
+                if (!t.batteryEnabled)
+                    return;
+                if (!in.batteryValid)
+                    addReason(result, UnsafeBatteryData, "Battery data missing");
+                else if (in.batteryPercent < t.batteryMinPercent)
+                    addReasonf(
+                        result,
+                        UnsafeBatteryLow,
+                        "Battery %d%% < %d%%",
+                        static_cast<int>(std::floor(in.batteryPercent)),
+                        static_cast<int>(std::floor(t.batteryMinPercent)));
+            }
+
+            uint32_t staleLimit(const SafetyInputs &in, const SafetyThresholds &t)
+            {
+                return t.staleAfterSeconds + in.staleExtraSeconds;
+            }
+
             void checkFreshness(SafetyResult &result, const SafetyInputs &in, const SafetyThresholds &t)
             {
+                const uint32_t staleAfterSeconds = staleLimit(in, t);
                 if (!in.hasEverHadGoodData)
                 {
                     addReason(result, UnsafeNoData, "No successful sensor data yet");
                 }
-                else if (in.secondsSinceLastGoodData > t.staleAfterSeconds)
+                else if (in.secondsSinceLastGoodData > staleAfterSeconds)
                 {
                     addReasonf(
                         result,
                         UnsafeStaleData,
                         "Sensor data is stale (%us old, limit %us)",
                         static_cast<unsigned>(in.secondsSinceLastGoodData),
-                        static_cast<unsigned>(t.staleAfterSeconds));
+                        static_cast<unsigned>(staleAfterSeconds));
                 }
+            }
+
+            // Literal per sky role (spec 030 research D4), each passed straight
+            // to addReason so the device message catalogue finds it.
+            void addSkyFault(SafetyResult &result, const SafetyInputs &in)
+            {
+                if (in.skyRole == SkyRole::Sqml && in.irSkyFault)
+                    addReason(result, UnsafeSensorFault, "Sensor fault: SQM-L sensor and IR sky sensor");
+                else if (in.skyRole == SkyRole::Sqml)
+                    addReason(result, UnsafeSensorFault, "Sensor fault: SQM-L sensor");
+                else if (in.skyNamed && in.irSkyFault)
+                    addReason(result, UnsafeSensorFault, "Sensor fault: SQM sensor and IR sky sensor");
+                else if (in.skyNamed)
+                    addReason(result, UnsafeSensorFault, "Sensor fault: SQM sensor");
+                else if (in.irSkyFault)
+                    addReason(result, UnsafeSensorFault, "Sensor fault: light sensor and IR sky sensor");
+                else
+                    addReason(result, UnsafeSensorFault, "Sensor fault: light sensor");
             }
 
             void checkSensorFaults(SafetyResult &result, const SafetyInputs &in)
             {
                 if (!in.requiredSensorFault)
                     return;
-                if (in.skyLightFault && in.irSkyFault)
-                    addReason(result, UnsafeSensorFault, "Sensor fault: light sensor and IR sky sensor");
-                else if (in.skyLightFault)
-                    addReason(result, UnsafeSensorFault, "Sensor fault: light sensor");
+                if (in.skyLightFault)
+                    addSkyFault(result, in);
                 else if (in.irSkyFault)
                     addReason(result, UnsafeSensorFault, "Sensor fault: IR sky sensor");
                 else
@@ -92,7 +139,12 @@ namespace SQM
                 if (t.cloudCoverEnabled && !in.irSkyFault && in.cloudCoverPercent >= t.cloudCoverUnsafePercent)
                     addReasonf(result, UnsafeCloudCover, "Cloud %.0f%% >= %.0f%%", in.cloudCoverPercent, t.cloudCoverUnsafePercent);
                 if (t.sqmMinEnabled && !in.skyLightFault && in.sqm < t.sqmMinSafe)
-                    addReasonf(result, UnsafeSkyBright, "SQM %.2f < %.2f", in.sqm, t.sqmMinSafe);
+                {
+                    if (in.skyRole == SkyRole::Sqml)
+                        addReasonf(result, UnsafeSkyBright, "SQM-L %.2f < %.2f", in.sqm, t.sqmMinSafe);
+                    else
+                        addReasonf(result, UnsafeSkyBright, "SQM %.2f < %.2f", in.sqm, t.sqmMinSafe);
+                }
             }
 
             void checkEnvironment(SafetyResult &result, const SafetyInputs &in, const SafetyThresholds &t)
@@ -127,6 +179,7 @@ namespace SQM
                 addReason(result, UnsafeManualOverride, "Manual override forces unsafe");
             checkRain(result, in, t);
             checkWind(result, in, t);
+            checkBattery(result, in, t);
             checkFreshness(result, in, t);
             checkSensorFaults(result, in);
 
@@ -134,7 +187,7 @@ namespace SQM
             // verdict from missing/stale data above already covers that case,
             // and comparing garbage/zeroed readings here would just produce
             // misleading extra reasons.
-            const bool haveFreshData = in.hasEverHadGoodData && in.secondsSinceLastGoodData <= t.staleAfterSeconds;
+            const bool haveFreshData = in.hasEverHadGoodData && in.secondsSinceLastGoodData <= staleLimit(in, t);
             if (haveFreshData)
             {
                 checkSky(result, in, t);

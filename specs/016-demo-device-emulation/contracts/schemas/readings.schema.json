@@ -280,6 +280,13 @@
         "rawSqm": {
           "type": "number"
         },
+        "source": {
+          "type": "string",
+          "enum": [
+            "sqm",
+            "sqml"
+          ]
+        },
         "sqm": {
           "type": "number"
         },
@@ -290,6 +297,117 @@
       "required": [
         "status"
       ],
+      "additionalProperties": false
+    },
+    "skySensors": {
+      "type": "object",
+      "properties": {
+        "deltaSqm": {
+          "type": "number"
+        },
+        "sqm": {
+          "type": "object",
+          "properties": {
+            "ageMs": {
+              "type": "number"
+            },
+            "averagingWindowSeconds": {
+              "type": "number"
+            },
+            "bortle": {
+              "type": "number"
+            },
+            "calibrated": {
+              "type": "boolean"
+            },
+            "description": {
+              "type": "string"
+            },
+            "gain": {
+              "type": "string"
+            },
+            "integrationMs": {
+              "type": "number"
+            },
+            "lux": {
+              "type": "number"
+            },
+            "nelm": {
+              "type": "number"
+            },
+            "nightMode": {
+              "type": "boolean"
+            },
+            "rawSqm": {
+              "type": "number"
+            },
+            "saturated": {
+              "type": "boolean"
+            },
+            "sqm": {
+              "type": "number"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "sqml": {
+          "type": "object",
+          "properties": {
+            "ageMs": {
+              "type": "number"
+            },
+            "averagingWindowSeconds": {
+              "type": "number"
+            },
+            "bortle": {
+              "type": "number"
+            },
+            "calibrated": {
+              "type": "boolean"
+            },
+            "description": {
+              "type": "string"
+            },
+            "gain": {
+              "type": "string"
+            },
+            "integrationMs": {
+              "type": "number"
+            },
+            "lux": {
+              "type": "number"
+            },
+            "nelm": {
+              "type": "number"
+            },
+            "nightMode": {
+              "type": "boolean"
+            },
+            "rawSqm": {
+              "type": "number"
+            },
+            "saturated": {
+              "type": "boolean"
+            },
+            "sqm": {
+              "type": "number"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        }
+      },
       "additionalProperties": false
     },
     "timeValid": {
@@ -322,6 +440,87 @@
       },
       "required": [
         "status"
+      ],
+      "additionalProperties": false
+    },
+    "battery": {
+      "type": "object",
+      "properties": {
+        "present": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "ageMs": {
+          "type": "number"
+        },
+        "estimating": {
+          "type": "boolean"
+        },
+        "percent": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "voltage": {
+          "type": "number"
+        },
+        "ratePercentPerHour": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "discharging",
+            "charging",
+            "charged",
+            "fault",
+            "no-battery",
+            null
+          ]
+        },
+        "usbPower": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "fault": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "temperature",
+            null
+          ]
+        },
+        "timeToEmptyMinutes": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "timeToFullMinutes": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "powerSaving": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "present"
       ],
       "additionalProperties": false
     }

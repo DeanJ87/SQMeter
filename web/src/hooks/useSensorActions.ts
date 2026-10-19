@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import type { ConfigPath } from '../components/settings/context';
+import type { SkyRole } from '../types';
 import { post } from '../lib/api';
 import { t } from '../i18n';
 import { deviceError } from '../i18n/deviceMessage';
@@ -9,7 +10,8 @@ import { deviceError } from '../i18n/deviceMessage';
 
 export type ActionResult = { type: 'success' | 'error'; text: string } | null;
 
-export const useDarkCalibration = (applyStored: (changes: [ConfigPath, unknown][]) => void) => {
+// `sensor`: which sky sensor (spec 030); its own calibration section is updated.
+export const useDarkCalibration = (applyStored: (changes: [ConfigPath, unknown][]) => void, sensor: SkyRole = 'sqm') => {
   const [calibrating, setCalibrating] = useState(false);
   const [calibrationResult, setCalibrationResult] = useState<ActionResult>(null);
 
@@ -17,14 +19,15 @@ export const useDarkCalibration = (applyStored: (changes: [ConfigPath, unknown][
     setCalibrating(true);
     setCalibrationResult(null);
     try {
-      const response = await post('/api/sensors/tsl2591/calibrate-dark');
+      const response = await post(`/api/sensors/tsl2591/calibrate-dark?sensor=${sensor}`);
       const result = await response.json();
       if (response.ok) {
         // The device saved it; keep the form in step so a later Save doesn't undo it.
+        const section = sensor === 'sqml' ? 'skyCalibrationL' : 'skyCalibration';
         applyStored([
-          [['skyCalibration', 'darkVisibleOffset'], result.darkVisibleOffset],
-          [['skyCalibration', 'darkSampleCount'], result.sampleCount],
-          [['skyCalibration', 'darkCalibratedAt'], result.darkCalibratedAt],
+          [[section, 'darkVisibleOffset'], result.darkVisibleOffset],
+          [[section, 'darkSampleCount'], result.sampleCount],
+          [[section, 'darkCalibratedAt'], result.darkCalibratedAt],
         ]);
         setCalibrationResult({ type: 'success', text: t('settings.sensors.darkOffsetSaved') });
       } else {

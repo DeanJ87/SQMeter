@@ -9,7 +9,7 @@ SQMeter converts TSL2591 light readings into three astronomical metrics. The con
 <!-- diagram: DIA-05
 sources: src/sensors/TSL2591Sensor.cpp#TSL2591Sensor::updateRollingReading lib/SkyLogic/src/ lib/DeviceCore/src/DeviceCore.cpp#derive lib/DeviceCore/src/DeviceCore.cpp#buildReadings lib/DeviceCore/src/DeviceCore.cpp#readSkyGroups src/sensors/BME280Sensor.cpp#BME280Sensor::calculateDewpoint
 blocking: false
-fingerprint: 7cdcdfd44b4bc6be
+fingerprint: 8c9ffa67f8bdd7d3
 -->
 <figure class="diagram" markdown>
 
@@ -30,7 +30,7 @@ flowchart TB
     BORTLE --> DOC
     CLOUD --> DOC
     DEW --> DOC
-    DOC["One readings document<br/>with a status per sensor group"] --> OUT["Dashboard, REST and WebSocket,<br/>MQTT state, Alpaca properties,<br/>safety rules and alerts"]
+    DOC["One readings document<br/>with a status per sensor group;<br/>with SQM and SQM-L, both values,<br/>the authoritative one for safety"] --> OUT["Dashboard, REST and WebSocket,<br/>MQTT state, Alpaca properties,<br/>safety rules and alerts"]
 ```
 
 <figcaption>From sensor readings to the one readings document every interface uses.</figcaption>
@@ -44,7 +44,7 @@ flowchart TB
     2. **Sky quality**: SQM = 12.6 - 2.5 × log₁₀(lux). NELM and the Bortle class are worked out from the SQM.
     3. **Cloud**: the MLX90614's sky temperature minus its own (ambient) temperature, corrected for humidity: corrected = delta - (k / 100) × humidity. The BME280's humidity is used, or 53 % when it isn't working. The corrected delta, against the **Clear below** and **Overcast above** limits, gives the cloud cover % and condition.
     4. **Dew point**: from the BME280's temperature and humidity (Magnus formula).
-    5. Everything goes into **one readings document**, with a status per sensor group. The dashboard, REST and WebSocket, MQTT `<base>/state`, the Alpaca ObservingConditions properties, the safety rules and the alerts all use it, so they always agree.
+    5. Everything goes into **one readings document**, with a status per sensor group. With two sky sensors (SQM and SQM-L) each runs the light chain on its own bus; both values are in the document and the authoritative one is used by Alpaca and the safety rules. The dashboard, REST and WebSocket, MQTT `<base>/state`, the Alpaca ObservingConditions properties, the safety rules and the alerts all use it, so they always agree.
 
 ---
 
@@ -60,7 +60,7 @@ Light below 0.0001 lux is treated as 0.0001 lux (SQM 22.6), the darkest the form
 
 Firmware averages raw TSL2591 counts before this conversion, in every measurement mode: it applies a rolling average (restarted on each gain or integration change), subtracts the saved dark visible offset, then applies the optional SQM calibration offset. `sky.sqm` is the calibrated value and `sky.rawSqm` the uncalibrated one, so `sqm − rawSqm` equals the offset whenever calibration is on. Night mode (MAX gain, 600 ms integration) is when the reading is most sensitive.
 
-To calibrate in **Settings → Sensors → Sky quality**: cover the sensor completely (lens cap or foil), wait until **Averaging window** shows the window full, then press **Calibrate dark**. The device refuses while the sensor still sees light or the window holds readings from before it was covered. **Averaging window** (10-300 s, default 90) and **Apply SQM offset** (±5 mag/arcsec², e.g. to match a reference SQM-L) are in the same card.
+To calibrate in **Settings → Sensors → Sky quality** (with two sky sensors there is one card per sensor, titled **SQM** and **SQM-L**): cover the sensor completely (lens cap or foil), wait until **Averaging window** shows the window full, then press **Calibrate dark**. The device refuses while the sensor still sees light or the window holds readings from before it was covered. **Averaging window** (10-300 s, default 90) and **Apply SQM offset** (±5 mag/arcsec², e.g. to match a reference SQM-L) are in the same card.
 
 Dark calibration should be repeated whenever the lens, baffle, aperture, lens-to-sensor distance, or internal finish changes.
 
@@ -72,6 +72,49 @@ Typical values:
 | Rural sky | ~21.5 |
 | Suburban sky | ~19–20 |
 | City centre | < 17 |
+
+---
+
+## Two sky sensors: SQM and SQM-L
+
+A device can carry two TSL2591s: the wide **SQM** on the first I2C bus, and the narrow-lens
+**SQM-L** on the second I2C bus (`sensor.i2c2SDA` / `sensor.i2c2SCL`). Both are read the same way
+(auto-ranging, averaging window, dark offset, SQM offset), each with its own averaging and
+calibration settings (`skyAveraging` / `skyCalibration` for the SQM, `skyAveragingL` /
+`skyCalibrationL` for the SQM-L), so one can be calibrated without touching the other.
+
+The SQM-L usually reads a little **darker** than the SQM. Its narrow lens sees only the sky
+around the zenith; the wide sensor also collects light from near the horizon, where skyglow,
+buildings and the enclosure add light. A difference of a few tenths of a mag/arcsec² is normal;
+a large one (more than about 1.5) usually means stray light reaching one of them.
+
+**The authoritative reading.** One sensor's reading counts: `sky.authoritative` (`sqm`, the
+default, or `sqml`). It is the `sky` and `light` reading in every interface, the minimum-SQM
+safety rule, Alpaca SkyQuality and SkyBrightness, Bluetooth, `{sqm}` in alerts and Home
+Assistant's Sky quality entity; `sky.source` says which one it is. Both readings are also
+published under their own names (`skySensors` in the readings, `{sqm_wide}` / `{sqm_l}` in
+alerts, Home Assistant's SQM (wide), SQM-L (narrow) and SQM-L − SQM entities).
+
+**No fallback.** If the authoritative sensor is switched off, not found or stops answering, the
+sky reading is missing: the safety verdict is unsafe with a reason naming it ("Sensor fault:
+SQM-L sensor"), Alpaca reports no data, and the other sensor's value is **not** used in its
+place. Pick the other sensor as authoritative to use it: the dashboard's Sky Quality card names
+the missing sensor with a **Use SQM** (or **Use SQM-L**) button, and Settings shows the same note.
+The sensor that isn't authoritative never changes the safety verdict.
+
+**In Settings.** **Settings → Sensors → Sky sensors** lists the SQM and the SQM-L, each with its
+state and a **Use SQM** / **Use SQM-L** switch, the **I2C-2 SDA** and **I2C-2 SCL** pins (empty
+when not wired), **Authoritative reading** and **Show other reading** (both only matter with the
+two sensors on). Each sensor then has its own Sky quality card.
+
+**On the dashboard.** With both on, the Sky Quality card's big value is the authoritative
+reading with a pill naming it; with **Show other reading** on and the other sensor reporting,
+two more tiles show the other reading and the **Difference** (SQM-L − SQM), amber above
+1.5 mag/arcsec².
+
+An unplugged sensor is reported as a read error, never as a dark sky, and is found again
+without a restart when it is plugged back in (the device retries every 5 s, backing off to once
+a minute).
 
 ---
 
@@ -134,4 +177,6 @@ The dew point is the Magnus formula (a = 17.27, b = 237.7 °C).
 
 ## Implementation
 
-`lib/SkyLogic` - `SkyQuality.cpp`, `CloudDetection.cpp` and `Dewpoint.cpp` - with native tests in `test/test_sky_logic`.
+`lib/SkyLogic` - `SkyQuality.cpp`, `CloudDetection.cpp`, `Dewpoint.cpp` and `SkyReadCycle.cpp`
+(when each sky sensor is started, read and re-found) - with native tests in `test/test_sky_logic`.
+The authoritative copy of the sky reading is chosen in `lib/DeviceCore` (`DeviceSky.cpp`).

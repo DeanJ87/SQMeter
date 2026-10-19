@@ -50,8 +50,11 @@ namespace SQM::Backup
         bool valid(int pin) const { return pin >= 0 && pin < 64 && ((validPins >> pin) & 1ULL) != 0; }
         bool analog(int pin) const { return pin >= 0 && pin < 64 && ((analogPins >> pin) & 1ULL) != 0; }
     };
-    // The classic ESP32 (ConfigDetail::isValidGpio; ADC1 is GPIO 32-39).
-    BoardPins classicEsp32Pins();
+    // A board's pins from its profile (lib/ConfigModel BoardProfile.h, spec
+    // 034): its usable GPIOs, and its ADC1 range for the vane.
+    BoardPins boardPins(const BoardProfile &board);
+    // The pins of the board this firmware is built for.
+    BoardPins buildBoardPins();
 
     // What the device restoring or backing up is.
     struct DeviceInfo

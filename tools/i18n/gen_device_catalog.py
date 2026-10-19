@@ -29,11 +29,13 @@ SOURCES = {
     "lib/ConfigModel/src/ConfigValidate.cpp": ("settings", {"setError": [1]}),
     "lib/AlpacaLogic/src/SafetyEvaluator.cpp": ("safety", {"addReason": [2], "addReasonf": "fmt2"}),
     "lib/AlertLogic/src/AlertEngine.cpp": ("alert", {"make": [1, 2], "format": "fmt0"}),
+    "lib/AlertLogic/src/AlertBattery.cpp": ("alert", {"make": [1, 2], "format": "fmt0"}),
     "src/WebServer.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerApi.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerAlerts.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerAlpaca.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerStatus.cpp": ("api", {"createErrorJson": [0]}),
+    "src/WebServerDisplay.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerUpdates.cpp": ("api", {"createErrorJson": [0], "fail": [0]}),
     # Settings backup and restore (spec 033): refusals and their reasons.
     "src/WebServerBackup.cpp": ("api", {"createErrorJson": [0]}),

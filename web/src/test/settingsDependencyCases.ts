@@ -198,7 +198,8 @@ export const CASES: Case[] = [
     tab: 'safety',
     config: { alpaca: { ...mockConfig.alpaca, sqmMinEnabled: false } },
     facts: { lightDetected: false },
-    note: 'Light sensor not detected.',
+    // Both sky sensors are on in the mock: the reason names the authoritative SQM (spec 030).
+    note: 'SQM not detected.',
     control: 'Min sky darkness',
     control_state: 'locked',
   },
@@ -252,11 +253,37 @@ export const CASES: Case[] = [
   {
     id: 'D-29',
     tab: 'sensors',
-    config: { skyCalibration: { ...mockConfig.skyCalibration, enabled: false } },
+    // One sky sensor: the reason is the light sensor's, as before spec 030.
+    config: { skyCalibration: { ...mockConfig.skyCalibration, enabled: false }, sky: { ...mockConfig.sky!, sqmlEnabled: false } },
     facts: { lightDetected: false },
     note: 'Light sensor not detected.',
     control: 'Apply SQM offset',
     control_state: 'locked',
+  },
+  {
+    id: 'D-39',
+    tab: 'sensors',
+    config: { sensor: { ...mockConfig.sensor, i2c2SDA: 255, i2c2SCL: 255 }, sky: { ...mockConfig.sky!, sqmlEnabled: false } },
+    note: 'Second I2C bus pins not set.',
+    control: 'Use SQM-L',
+    control_state: 'locked',
+    fixLabel: 'Set up',
+    fixTab: 'Sensors',
+  },
+  {
+    id: 'D-40',
+    tab: 'sensors',
+    config: { sky: { ...mockConfig.sky!, sqmlEnabled: false, showOther: true } },
+    note: 'Inactive: SQM and SQM-L must both be on',
+    control: 'Show other reading',
+    control_state: 'unlocked',
+  },
+  {
+    id: 'D-41',
+    tab: 'sensors',
+    config: { skyCalibrationL: { ...mockConfig.skyCalibrationL!, enabled: true } },
+    facts: { sqmlDetected: false },
+    note: 'Inactive: SQM-L not detected',
   },
   {
     id: 'D-32',

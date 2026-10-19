@@ -31,6 +31,7 @@ const PUBLISH_GROUPS: {
   { key: 'gps', label: 'GPS' },
   { key: 'rain', label: t('settings.network.rain') },
   { key: 'wind', label: t('settings.network.wind') },
+  { key: 'battery', label: t('settings.network.battery') }, // spec 032; D-49 without a gauge
   { key: 'safety', label: t('settings.network.safeUnsafe'), hint: t('settings.network.retainedBaseSafe10') },
   {
     key: 'diagnostics',
@@ -212,7 +213,7 @@ const PublishGroups: FunctionalComponent<SettingsTabProps> = ({ config, update, 
           onFix={fix}
           prefix={t('settings.network.nothingToPublish')}
           label={item.label}
-          checked={publish[item.key]}
+          checked={publish[item.key] ?? true}
           onChange={(v) => update(['mqtt', 'publish', item.key], v)}
           hint={item.hint}
         />

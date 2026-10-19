@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Firmware flash budget (coding standard SIZE-04, spec 027 FR-001..FR-003).
 
-For each firmware build (esp32dev, esp32dev-ble), compares firmware.bin with
-the app slot in partitions.csv:
+For each firmware build (ENVS: classic ESP32 and the ESP32-S3 boards, each with
+and without Bluetooth), compares firmware.bin with the app slot of that build's
+own partition table (board_build.partitions in platformio.ini):
 
 - warns (GitHub annotation) above 90% of the slot, fails above 95%, listing
   the largest contributors from the linker map (tools/firmware/size_map.py);
@@ -19,6 +20,7 @@ does for the web UI.
 from __future__ import annotations
 
 import argparse
+import configparser
 import importlib.util
 import json
 import subprocess
@@ -43,7 +45,16 @@ FAIL_LEVEL = 0.95
 STALE_TOLERANCE_BYTES = 2 * 1024
 BASELINE_PATH = "tools/firmware/size-baseline.json"
 REASON_KEY = "overBudgetReason"
-ENVS = ("esp32dev", "esp32dev-ble")
+ENVS = (
+    "esp32dev",
+    "esp32dev-ble",
+    "esp32s3-eth",
+    "esp32s3-eth-ble",
+    "esp32s3-zero",
+    "esp32s3-zero-ble",
+    "esp32s3-zero8",
+    "esp32s3-zero8-ble",
+)
 TOP = 10
 
 
@@ -56,6 +67,22 @@ def app_slot_bytes(csv: Path) -> int:
         if len(fields) >= 5 and fields[1] == "app" and fields[2] == "ota_0":
             return int(fields[4], 0)
     raise ValueError(f"no ota_0 app partition in {csv}")
+
+
+def partitions_for(env: str, ini: Path = ROOT / "platformio.ini") -> Path:
+    """The partition table an env builds with, following `extends`."""
+    parser = configparser.RawConfigParser(inline_comment_prefixes=(";",), strict=False)
+    parser.read(ini)
+    section = f"env:{env}"
+    seen = set()
+    while section and section not in seen:
+        seen.add(section)
+        if not parser.has_section(section):
+            break
+        if parser.has_option(section, "board_build.partitions"):
+            return ini.parent / parser.get(section, "board_build.partitions").strip()
+        section = parser.get(section, "extends", fallback="").strip()
+    raise ValueError(f"no board_build.partitions for {env} in {ini}")
 
 
 def kb(size: float) -> str:
@@ -107,7 +134,6 @@ def record_at(ref: str) -> dict | None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Firmware flash budget (SIZE-04)")
     parser.add_argument("--build-dir", type=Path, default=ROOT / ".pio" / "build")
-    parser.add_argument("--partitions", type=Path, default=ROOT / "partitions.csv")
     parser.add_argument("--baseline", type=Path, default=ROOT / BASELINE_PATH)
     parser.add_argument("--base-ref", help="git ref of the branch this change merges into (e.g. origin/main)")
     parser.add_argument("--update-baseline", action="store_true", help="record the current sizes")
@@ -115,7 +141,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--envs", nargs="+", default=list(ENVS))
     args = parser.parse_args(argv)
 
-    slot = app_slot_bytes(args.partitions)
     sizes = {}
     for env in args.envs:
         image = args.build_dir / env / "firmware.bin"
@@ -125,7 +150,10 @@ def main(argv: list[str] | None = None) -> int:
         sizes[env] = image.stat().st_size
 
     if args.update_baseline:
-        record = dict(sizes)
+        # Other builds keep their recorded sizes (CI measures them in separate jobs).
+        previous = json.loads(args.baseline.read_text()) if args.baseline.exists() else {}
+        previous.update(sizes)
+        record = {env: previous[env] for env in ENVS if env in previous}
         if args.reason:
             record[REASON_KEY] = args.reason
         args.baseline.write_text(json.dumps(record, indent=2) + "\n")
@@ -135,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
 
     failures: list[str] = []
     for env, size in sizes.items():
+        slot = app_slot_bytes(partitions_for(env))
         env_failures, env_warnings, lines = evaluate(env, size, slot, record, base)
         print("\n".join(lines))
         if env_failures or env_warnings:

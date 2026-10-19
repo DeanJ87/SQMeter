@@ -1,7 +1,10 @@
 import createSqmCore from './core/sqm-core.mjs';
 import type { BackupCore } from './backup';
+import type { Core } from './coreApi';
 import {
+  advanceBattery,
   advanceRamps,
+  batteryPreset,
   cloneConditions,
   DEFAULT_CONDITIONS,
   getInput,
@@ -9,6 +12,7 @@ import {
   toCoreInputs,
   withDifferential,
   withInput,
+  type BatteryPresetId,
   type Conditions,
   type NumericInput,
   type Ramp,
@@ -32,32 +36,6 @@ export const DEMO_VERSION: string = import.meta.env.VITE_DEMO_VERSION ?? 'dev';
 const LONDON_TZ = 'GMT0BST,M3.5.0/1,M10.5.0';
 // Cloud shortcuts roll in over this long unless another ramp is chosen (FR-010).
 export const CLOUD_RAMP_MS = 40_000;
-
-interface Core extends BackupCore {
-  getConfig(redacted: boolean): string;
-  applyConfig(json: string): string;
-  loadConfig(json: string): boolean;
-  restart(nowMs: number): void;
-  tick(nowMs: number, epoch: number, inputs: string, localTime: string, localDate: string): void;
-  readings(): string;
-  statusParts(): string;
-  safety(): string;
-  effective(): string;
-  safetyHistory(): string;
-  recentAlerts(): string;
-  clearAlerts(): void;
-  isArmed(): boolean;
-  armedDocument(): string;
-  setArmed(on: boolean, source: string): void;
-  testAlert(params: string): string;
-  realTestAlert(): void;
-  deliveryRequests(id: number, credentials: string): string;
-  calibrateDark(): string;
-  alpaca(method: string, path: string, params: string): string;
-  saveState(): string;
-  loadState(json: string): boolean;
-  pending(): string;
-}
 
 interface SavedV1 {
   version: 1;
@@ -94,6 +72,7 @@ const LINKS: Record<string, { time?: TimePresetId; shortcut?: ShortcutId; rampMs
   clear: { shortcut: 'clear' },
   dawn: { time: 'dawn' },
   'fail-light': { fault: 'light' },
+  'fail-sqml': { fault: 'lightL' },
   'fail-ir': { fault: 'infrared' },
   'fail-environment': { fault: 'environment' },
   'fail-rain': { fault: 'rain' },
@@ -187,7 +166,7 @@ class DemoDevice {
       this.activeRamps = this.activeRamps.filter((ramp) => ramp.field !== 'rain.rate');
     }
     const advanced = advanceRamps(this.inputs, this.activeRamps, this.demoMs);
-    this.inputs = advanced.conditions;
+    this.inputs = advanceBattery(advanced.conditions, elapsed);
     this.activeRamps = advanced.ramps;
     const place = simulatorLocation(cfg.location);
     const inputs = toCoreInputs(this.inputs, this.demoMs, {
@@ -253,9 +232,15 @@ class DemoDevice {
     this.persist();
   }
 
-  calibrateDark(): Reply {
-    const reply = JSON.parse(this.core.calibrateDark());
+  calibrateDark(sensor = ''): Reply {
+    const reply = JSON.parse(this.core.calibrateDark(sensor));
     this.persist();
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
+  /** POST /api/display/wake or /blank (spec 031). */
+  displayRequest(wake: boolean): Reply {
+    const reply = JSON.parse(this.core.displayRequest(wake));
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 
@@ -322,6 +307,19 @@ class DemoDevice {
 
   setGpsFix(on: boolean) {
     this.update({ ...this.inputs, gps: { fix: on } });
+  }
+
+  /** The travel board's USB power switch (spec 032): on, the pack charges; a charger fault clears with it. */
+  setUsbPower(on: boolean) {
+    this.update({ ...this.inputs, battery: { ...this.inputs.battery, usb: on, fault: on && this.inputs.battery.fault } });
+  }
+
+  setChargeFault(on: boolean) {
+    this.update({ ...this.inputs, battery: { ...this.inputs.battery, fault: on, usb: on || this.inputs.battery.usb } });
+  }
+
+  applyBatteryPreset(id: BatteryPresetId) {
+    this.update(batteryPreset(id, this.inputs, this.config().battery?.lowPercent), ['battery.percent']);
   }
 
   followSun() {

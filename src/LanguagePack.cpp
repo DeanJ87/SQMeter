@@ -11,6 +11,7 @@
 
 #include <ESPAsyncWebServer.h>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <LittleFS.h>
 #include <freertos/FreeRTOS.h>
@@ -90,7 +91,25 @@ namespace SQM
             char line[64] = "";
             line[file.readBytes(line, sizeof(line) - 1)] = '\0';
             file.close();
-            return std::sscanf(line, "%11s %31s %u", meta.lang, meta.version, &meta.size) == 3 && LittleFS.exists(FILE_PATH);
+            // "<lang> <version> <size>", parsed without sscanf (libc's scanf engine is ~9 KB).
+            char *cursor = line;
+            auto token = [&cursor](char *out, size_t capacity)
+            {
+                cursor += std::strspn(cursor, " \t\r\n");
+                const size_t length = std::strcspn(cursor, " \t\r\n");
+                if (length == 0 || length >= capacity)
+                    return false;
+                std::memcpy(out, cursor, length);
+                out[length] = '\0';
+                cursor += length;
+                return true;
+            };
+            char size[12] = "";
+            if (!token(meta.lang, sizeof meta.lang) || !token(meta.version, sizeof meta.version) || !token(size, sizeof size))
+                return false;
+            char *end = nullptr;
+            meta.size = static_cast<unsigned>(std::strtoul(size, &end, 10));
+            return *end == '\0' && LittleFS.exists(FILE_PATH);
         }
 
         void writeMeta(const std::string &code, const std::string &version, size_t size)

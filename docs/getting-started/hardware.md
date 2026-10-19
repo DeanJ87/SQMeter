@@ -9,7 +9,7 @@ SQMeter runs on any standard ESP32 dev board. The three core sensors share the I
 <!-- diagram: DIA-13
 sources: lib/ConfigModel/src/ConfigModel.cpp src/main.cpp#setupI2C src/sensors/WindSensor.cpp
 blocking: false
-fingerprint: 92c31584ecdb3fe5
+fingerprint: a062d83250f84abd
 -->
 <figure class="diagram" markdown>
 
@@ -70,6 +70,22 @@ ESP32          TSL2591     BME280      MLX90614
  G22  ─────────  SCL ──────  SCL ──────  SCL
 ```
 
+### OLED display (optional)
+
+A 0.96" **SSD1306 128 × 64 I2C OLED** at `0x3C` goes on the same bus, in parallel with the
+sensors: VCC to 3.3 V, GND, SDA to GPIO 21 and SCL to GPIO 22. On the Rev A boards it plugs into the
+OLED port (J6). An optional **wake button** goes from any free GPIO to GND (the internal pull-up is
+used); the AUX pins on Rev A are free for it. Then turn it on in **Settings → Device → Display**; see
+[OLED display](../user-guide/display.md).
+
+### Battery (travel board, optional)
+
+The travel board's **MAX17048** fuel gauge is on the main I2C bus at `0x36`, so it is found without
+any setting. Its charger's **STAT1**, **STAT2** and **PG** outputs and the gauge's **ALRT** can go to
+free GPIOs (set them in **Settings → Device → Battery**; the three charger pins go together, and PG must
+be a pin that can wake the ESP32: 0, 2, 4, 12-15, 25-27 or 32-39 on the classic board). See
+[Battery](../user-guide/battery.md) and the [travel board](../hardware/overview.md#travel-board-battery).
+
 ---
 
 ## I2C Addresses
@@ -79,9 +95,32 @@ ESP32          TSL2591     BME280      MLX90614
 | TSL2591 | `0x29` | Fixed |
 | BME280 | `0x76` | `0x77` if SDO pulled high |
 | MLX90614 | `0x5A` | Fixed |
+| SSD1306 OLED (optional) | `0x3C` | The common 128 × 64 modules; some are `0x3D` and aren't supported |
+| MAX17048 fuel gauge (travel board) | `0x36` | Fixed |
 
 !!! warning "Address conflict"
     If you have multiple BME280s on the same bus, one must be wired with SDO to 3.3V to use address `0x77`.
+
+## Second sky sensor (SQM-L, optional)
+
+A second TSL2591 behind a narrow lens, the **SQM-L**, can sit beside the wide one. Its address
+is fixed at `0x29` too, so it goes on the ESP32's **second I2C bus**, on two free GPIOs of your
+choice (not used by the first bus, the GPS, the rain sensor or the anemometer):
+
+```
+ESP32          SQM-L (TSL2591)
+ 3V3  ─────────  VIN
+ GND  ─────────  GND
+ SDA2 ─────────  SDA     (second-bus SDA pin, e.g. GPIO 25)
+ SCL2 ─────────  SCL     (second-bus SCL pin, e.g. GPIO 26)
+```
+
+Then, in **Settings → Sensors → Sky sensors**, type the pins into **I2C-2 SDA** and **I2C-2 SCL**
+(`sensor.i2c2SDA`, `sensor.i2c2SCL`), switch on **Use SQM-L** (`sky.sqmlEnabled`), save and
+restart. **Use SQM-L** stays blocked until both pins are set. Choose which sensor's reading counts
+with **Authoritative reading** (`sky.authoritative`);
+see [Two sky sensors](../reference/sky-quality.md#two-sky-sensors-sqm-and-sqm-l) and
+[Configuration → Sky sensors](../user-guide/configuration.md#sky-sensors).
 
 ---
 

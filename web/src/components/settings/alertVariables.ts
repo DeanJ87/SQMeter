@@ -13,6 +13,10 @@ export const COMMON_VARS = [
   'level',
   'sqm',
   'sqm_min',
+  'sqm_wide',
+  'sqm_l',
+  'sqm_delta',
+  'sqm_source',
   'cloud',
   'cloud_max',
   'clear_below',
@@ -28,6 +32,11 @@ export const COMMON_VARS = [
   'wind',
   'gust',
   'sun_alt',
+  // The battery (spec 032): "--" without a gauge.
+  'battery',
+  'battery_voltage',
+  'battery_state',
+  'battery_time_left',
 ];
 
 // The extra values an event adds.

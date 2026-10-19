@@ -31,7 +31,7 @@ namespace
         info.firmware = "0.3.4-beta.1";
         info.board = "esp32";
         info.bluetoothBuild = bluetooth;
-        info.pins = Backup::classicEsp32Pins();
+        info.pins = Backup::boardPins(ESP32_DEV_PROFILE);
         return info;
     }
 
@@ -340,6 +340,30 @@ void test_restart_rules_match_the_shared_cases()
 
 // --- Boards and versions (US4) ------------------------------------------------
 
+void test_s3_board_pins_from_its_profile()
+{
+    // A classic-ESP32 backup restored on an ESP32-S3-ETH (spec 034): its
+    // GPS pins 16/17 exist there, but vane pin 35 is not ADC1 and the W5500
+    // owns 9-14; an unwired SQM-L bus (255) is kept as it is.
+    Config other = configured();
+    other.wind.directionPin = 35;
+    other.display.buttonPin = 12;
+    Backup::DeviceInfo s3 = device();
+    s3.board = "esp32s3";
+    s3.pins = Backup::boardPins(ESP32S3_ETH_PROFILE);
+    const Restore r = restore(configured(), backupOf(other), nullptr, s3);
+    TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
+    std::vector<std::string> paths;
+    for (const auto &n : r.preview.notApplicable)
+        paths.push_back(n.path);
+    auto has = [&paths](const char *path) { return std::find(paths.begin(), paths.end(), path) != paths.end(); };
+    TEST_ASSERT_TRUE(has("wind.directionPin"));
+    TEST_ASSERT_TRUE(has("display.buttonPin"));
+    TEST_ASSERT_TRUE(has("sensor.i2cSDA") == !ESP32S3_ETH_PROFILE.isValidGpio(other.sensor.i2cSDA));
+    TEST_ASSERT_FALSE(has("sensor.i2c2SDA"));
+    TEST_ASSERT_FALSE(has("battery.pgPin"));
+}
+
 void test_pins_this_board_lacks_are_not_applied()
 {
     Config other = configured();
@@ -530,6 +554,7 @@ int main(int, char **)
     RUN_TEST(test_settings_the_save_refuses_are_refused_with_its_reason);
     RUN_TEST(test_restart_rules_match_the_shared_cases);
     RUN_TEST(test_pins_this_board_lacks_are_not_applied);
+    RUN_TEST(test_s3_board_pins_from_its_profile);
     RUN_TEST(test_bluetooth_settings_are_not_applied_on_the_standard_build);
     RUN_TEST(test_pushover_without_its_keys_is_not_applied);
     RUN_TEST(test_a_plain_settings_export_reads_as_format_0);

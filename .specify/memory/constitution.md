@@ -1,5 +1,7 @@
 <!--
 Sync Impact Report
+- 1.3.0 -> 1.3.1 (PATCH): UI specs record the owner's mockup review; mockup images are kept
+  outside the repo and never committed (spec template updated)
 - 1.2.0 -> 1.3.0 (MINOR, spec 027): platform Arduino-ESP32 3.x / ESP-IDF 5.5 (pioarduino); one
   whole-chip partition layout for both builds; firmware flash budget (SIZE-04); OTA refuses images
   for another layout or build
@@ -160,8 +162,9 @@ Code is read far more often than it's written, by people and by AI agents workin
   `/speckit-implement`, repeating `/speckit-converge` until it reports converged. Specs live in
   `specs/<NNN-feature>/`. A feature's `spec.md` is a living contract while its PR is open, and
   a historical record once merged; later changes get a new spec.
-- A spec that adds or changes UI cites the DS rules it relies on and includes a mockup
-  screenshot the owner reviews before it is built (spec 026 FR-015).
+- A spec that adds or changes UI cites the DS rules it relies on, and the change is mocked up
+  and reviewed by the owner before it is built (spec 026 FR-015). Mockup images are kept outside
+  the repository and never committed; the spec records that the review happened, not the image.
 - The owner's prompts never go into the repository: no `**Input**: User description` line or
   quoted request in specs, plans, tasks, commits or PRs. Write the spec in its own words.
   The build's integrity checks enforce it for `specs/` and `.specify/`.
@@ -180,4 +183,4 @@ Code is read far more often than it's written, by people and by AI agents workin
   Tracking section.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 1.3.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-09
+**Version**: 1.3.1 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-19

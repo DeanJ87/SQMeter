@@ -68,6 +68,8 @@ namespace SQM
                 {"sensor", "readIntervalMs"},
                 {"sensor", "i2cFrequency"},
                 {"skyAveraging", "windowSeconds"},
+                {"skyAveragingL", "windowSeconds"},
+                {"skyCalibrationL", "darkSampleCount"},
                 {"alpaca", "staleAfterSeconds"},
                 {"alpaca", "safeDelaySeconds"},
                 {"rain", "pollIntervalMs"},
@@ -173,6 +175,7 @@ namespace SQM
             publish.take("gps", m.publish.gps);
             publish.take("rain", m.publish.rain);
             publish.take("wind", m.publish.wind);
+            publish.take("battery", m.publish.battery);
             publish.take("safety", m.publish.safety);
             publish.take("diagnostics", m.publish.diagnostics);
             const Section homeAssistant = mqtt.child("homeAssistant");
@@ -236,29 +239,56 @@ namespace SQM
             rain.take("dailyResetMinute", r.dailyResetMinute);
         }
 
-        void applySky(const Section &doc, Config &cfg)
+        void applySkySections(const Section &doc, const char *averagingKey, const char *calibrationKey, Config &cfg, SkyRole role)
+        {
+            doc.child(averagingKey).take("windowSeconds", cfg.averaging(role).windowSeconds);
+
+            SkyCalibrationConfig &target = cfg.calibration(role);
+            const Section cal = doc.child(calibrationKey);
+            cal.take("enabled", target.enabled);
+            cal.take("sqmOffset", target.sqmOffset);
+            cal.take("darkVisibleOffset", target.darkVisibleOffset);
+            cal.take("darkFullOffset", target.darkFullOffset);
+            cal.take("darkIrOffset", target.darkIrOffset);
+            cal.take("darkSampleCount", target.darkSampleCount);
+            cal.take("darkCalibratedAt", target.darkCalibratedAt);
+        }
+
+        // Which sky sensors run (spec 030). An unknown authoritative name is
+        // rejected; settings stored by older firmware never have one.
+        bool applySkySensors(const Section &doc, Config &cfg, std::string *error)
+        {
+            const Section sky = doc.child("sky");
+            sky.take("sqmEnabled", cfg.sky.sqmEnabled);
+            sky.take("sqmlEnabled", cfg.sky.sqmlEnabled);
+            sky.take("showOther", cfg.sky.showOther);
+            if (sky.has("authoritative"))
+            {
+                JsonVariant value = sky["authoritative"];
+                if (!parseSkyRole(value.is<const char *>() ? value.as<const char *>() : nullptr, cfg.sky.authoritative))
+                    return setError(error, "Authoritative sky reading must be sqm or sqml");
+            }
+            return true;
+        }
+
+        bool applySky(const Section &doc, Config &cfg, std::string *error)
         {
             const Section sensor = doc.child("sensor");
             sensor.take("readIntervalMs", cfg.sensor.readIntervalMs);
             sensor.take("i2cSDA", cfg.sensor.i2cSDA);
             sensor.take("i2cSCL", cfg.sensor.i2cSCL);
             sensor.take("i2cFrequency", cfg.sensor.i2cFrequency);
+            sensor.take("i2c2SDA", cfg.sensor.i2c2SDA);
+            sensor.take("i2c2SCL", cfg.sensor.i2c2SCL);
 
-            doc.child("skyAveraging").take("windowSeconds", cfg.skyAveraging.windowSeconds);
-
-            const Section cal = doc.child("skyCalibration");
-            cal.take("enabled", cfg.skyCalibration.enabled);
-            cal.take("sqmOffset", cfg.skyCalibration.sqmOffset);
-            cal.take("darkVisibleOffset", cfg.skyCalibration.darkVisibleOffset);
-            cal.take("darkFullOffset", cfg.skyCalibration.darkFullOffset);
-            cal.take("darkIrOffset", cfg.skyCalibration.darkIrOffset);
-            cal.take("darkSampleCount", cfg.skyCalibration.darkSampleCount);
-            cal.take("darkCalibratedAt", cfg.skyCalibration.darkCalibratedAt);
+            applySkySections(doc, "skyAveraging", "skyCalibration", cfg, SkyRole::Sqm);
+            applySkySections(doc, "skyAveragingL", "skyCalibrationL", cfg, SkyRole::Sqml);
 
             const Section cloud = doc.child("cloudDetection");
             cloud.take("clearSkyThreshold", cfg.cloudDetection.clearSkyThreshold);
             cloud.take("cloudyThreshold", cfg.cloudDetection.cloudyThreshold);
             cloud.take("humidityCorrection", cfg.cloudDetection.humidityCorrection);
+            return applySkySensors(doc, cfg, error);
         }
 
         void applyAlpaca(const Section &alpaca, AlpacaConfig &a)
@@ -281,6 +311,10 @@ namespace SQM
             alpaca.take("windSpeedUnsafeMs", a.windSpeedUnsafeMs);
             alpaca.take("windGustUnsafeEnabled", a.windGustUnsafeEnabled);
             alpaca.take("windGustUnsafeMs", a.windGustUnsafeMs);
+            alpaca.take("batteryEnabled", a.batteryEnabled);
+            alpaca.take("batteryMinPercent", a.batteryMinPercent);
+            alpaca.take("batteryAlert", a.batteryAlert);
+            alpaca.take("batteryPhoneAlarm", a.batteryPhoneAlarm);
         }
 
         // Applies an "events" object ({"rain_started": {"level": 4, ...}, ...}).
@@ -412,6 +446,15 @@ namespace SQM
             return true;
         }
 
+        // The battery events as stored under their own NVS key (ConfigStore
+        // splices them in as "alertsBattery", spec 032).
+        void applyAlertsBattery(const Section &battery, AlertsConfig &a)
+        {
+            const Section events = battery.child("events");
+            if (!events.isNull())
+                applyEvents(events, a);
+        }
+
         void applyHardware(const Section &doc, Config &cfg, bool keepSecrets)
         {
             const Section wind = doc.child("wind");
@@ -453,13 +496,41 @@ namespace SQM
                 return setError(error, "Pushover app token must be 30 letters and digits");
             return true;
         }
+        // Every section, in order. False (with the reason) on a value that
+        // can never be stored.
+        bool applySections(const Section &root, Config &cfg, bool keep, std::string *error)
+        {
+            if (!applyRoot(root, cfg, error))
+                return false;
+            applyWifi(root.child("wifi"), cfg.wifi, keep);
+            applyMqtt(root.child("mqtt"), cfg.mqtt, keep);
+            applyAccess(root, cfg, keep);
+            applyTime(root, cfg);
+            applyRain(root.child("rain"), cfg.rain);
+            // The battery rule's limit defaults to the critical level and
+            // follows it while the two are equal (spec 032 FR-008).
+            const bool minFollowsCritical =
+                !root.child("alpaca").has("batteryMinPercent") && cfg.alpaca.batteryMinPercent == cfg.battery.criticalPercent;
+            applyAlpaca(root.child("alpaca"), cfg.alpaca);
+            if (!applySky(root, cfg, error) || !applyAlerts(root.child("alerts"), cfg.alerts, keep, error) ||
+                !applyAlertsClient(root.child("alertsClient"), cfg.alerts, error))
+                return false;
+            cfg.alerts.armWithAlpaca = cfg.alerts.sendMode == AlertsConfig::SendMode::WhileConnected;
+            applyAlertsBattery(root.child("alertsBattery"), cfg.alerts);
+            applyHardware(root, cfg, keep);
+            applyBattery(root.child("battery"), cfg.battery);
+            // An out-of-range critical level is left to its own check's message.
+            if (minFollowsCritical && cfg.battery.criticalPercent >= 2 && cfg.battery.criticalPercent <= 25)
+                cfg.alpaca.batteryMinPercent = cfg.battery.criticalPercent;
+            return applyDisplay(root.child("display"), cfg.display, error);
+        }
     } // namespace
 
     bool Config::applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *errorOut)
     {
         // Parsing copies every string; custom alert texts can make the JSON
-        // bigger than the old fixed 8 KB.
-        DynamicJsonDocument doc(json.size() + 6144 > 8192 ? json.size() + 6144 : 8192);
+        // bigger than the old fixed 8 KB (+1 KB for the battery, spec 032).
+        DynamicJsonDocument doc(json.size() + 7168 > 9216 ? json.size() + 7168 : 9216);
         const DeserializationError error = deserializeJson(doc, json);
         if (error)
             return setError(errorOut, std::string("Settings JSON couldn't be read: ") + error.c_str());
@@ -474,20 +545,8 @@ namespace SQM
             return setError(errorOut, "Settings must be a JSON object");
         const Section root(reader, doc.as<JsonVariant>(), "");
         const std::string previousSsid = cfg.wifi.ssid;
-        if (!applyRoot(root, cfg, errorOut))
+        if (!applySections(root, cfg, keep, errorOut))
             return false;
-        applyWifi(root.child("wifi"), cfg.wifi, keep);
-        applyMqtt(root.child("mqtt"), cfg.mqtt, keep);
-        applyAccess(root, cfg, keep);
-        applyTime(root, cfg);
-        applyRain(root.child("rain"), cfg.rain);
-        applySky(root, cfg);
-        applyAlpaca(root.child("alpaca"), cfg.alpaca);
-        if (!applyAlerts(root.child("alerts"), cfg.alerts, keep, errorOut) ||
-            !applyAlertsClient(root.child("alertsClient"), cfg.alerts, errorOut))
-            return false;
-        cfg.alerts.armWithAlpaca = cfg.alerts.sendMode == AlertsConfig::SendMode::WhileConnected;
-        applyHardware(root, cfg, keep);
         if (reader.failed())
             return typeError(reader, errorOut);
         // Saving settings never takes the device off its network: changing
@@ -499,5 +558,16 @@ namespace SQM
         if (!cfg.validate(errorOut))
             return false;
         return !preserveSecretPlaceholders || validateIncoming(cfg, errorOut);
+    }
+
+    std::optional<std::string> Config::mqttTestPassword(const MQTTConfig &saved, const MqttTestTarget &target)
+    {
+        if (!isPlaceholderSecret(target.password.c_str()) || saved.password.empty())
+            return target.password;
+        if (target.broker == saved.broker && target.port == saved.port && target.username == saved.username)
+            return saved.password;
+        if (target.password.empty())
+            return target.password; // testing another broker without a password
+        return std::nullopt;
     }
 } // namespace SQM

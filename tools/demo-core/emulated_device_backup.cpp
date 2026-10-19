@@ -30,7 +30,7 @@ Backup::DeviceInfo EmulatedDevice::backupDevice() const
     device.firmware = firmwareVersion;
     device.board = "esp32";
     device.bluetoothBuild = false; // the demo reports the standard build (Bluetooth unavailable)
-    device.pins = Backup::classicEsp32Pins();
+    device.pins = Backup::buildBoardPins();
     return device;
 }
 

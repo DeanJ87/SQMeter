@@ -98,7 +98,7 @@ namespace SQM
         device.firmware = FIRMWARE_VERSION;
         device.board = CONFIG_IDF_TARGET;
         device.bluetoothBuild = BleService::available();
-        device.pins = Backup::classicEsp32Pins(); // until board profiles exist (spec 033 assumptions)
+        device.pins = Backup::buildBoardPins(); // this build's board profile (spec 034)
         return device;
     }
 

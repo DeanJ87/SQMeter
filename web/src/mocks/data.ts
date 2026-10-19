@@ -1,4 +1,5 @@
 import type { SensorData, SystemStatus, GithubRelease, AlpacaConfiguredDevice, AlertRecord, WiFiNetwork } from '../types';
+import { mockBatteryDiagnostics, mockBatteryPresent } from './battery';
 
 export { mockConfig } from './config';
 
@@ -24,6 +25,7 @@ const lightReadings = (sqm: number): Pick<SensorData, 'light' | 'sky'> => {
     },
     sky: {
       status: 'ok',
+      source: 'sqm',
       sqm: round(sqm, 2),
       rawSqm: round(sqm - 0.07, 2),
       nelm: round(jitter(6.18, 0.05), 1),
@@ -33,6 +35,27 @@ const lightReadings = (sqm: number): Pick<SensorData, 'light' | 'sky'> => {
       averagingWindowSeconds: 90,
     },
   };
+};
+
+// Both sky sensors (spec 030): the SQM-L reads ~0.25 darker through its narrow lens.
+const skySensorReadings = (sqm: number): Pick<SensorData, 'skySensors'> => {
+  const entry = (value: number, gain: string) => ({
+    status: 'ok' as const,
+    ageMs: 400,
+    sqm: round(value, 2),
+    rawSqm: round(value - 0.07, 2),
+    nelm: round(jitter(6.18, 0.05), 1),
+    bortle: 2,
+    description: 'Typical truly dark site',
+    calibrated: false,
+    averagingWindowSeconds: 90,
+    lux: round(Math.pow(10, (12.6 - value) / 2.5), 6),
+    gain,
+    integrationMs: 600,
+    saturated: false,
+    nightMode: true,
+  });
+  return { skySensors: { sqm: entry(sqm, 'MAX'), sqml: entry(sqm + 0.25, 'MAX'), deltaSqm: 0.25 } };
 };
 
 const climateReadings = (): Pick<SensorData, 'environment' | 'infrared' | 'clouds'> => ({
@@ -62,7 +85,7 @@ const climateReadings = (): Pick<SensorData, 'environment' | 'infrared' | 'cloud
   },
 });
 
-const fieldReadings = (): Pick<SensorData, 'gps' | 'wind' | 'rain' | 'safety'> => ({
+const fieldReadings = (): Pick<SensorData, 'gps' | 'wind' | 'rain' | 'battery' | 'safety'> => ({
   gps: {
     status: 'ok',
     ageMs: Math.round(jitter(800, 100)),
@@ -93,6 +116,7 @@ const fieldReadings = (): Pick<SensorData, 'gps' | 'wind' | 'rain' | 'safety'> =
     lensFault: false,
     emitterSaturated: false,
   },
+  battery: mockBatteryPresent(),
   // Demo data shows rain, so the SafetyMonitor reports unsafe.
   safety: {
     safe: false,
@@ -114,6 +138,7 @@ export function generateSensorData(): SensorData {
     dataAgeMs: 400,
     dataStale: false,
     ...lightReadings(sqm),
+    ...skySensorReadings(sqm),
     ...climateReadings(),
     ...fieldReadings(),
   };
@@ -129,6 +154,7 @@ export const mockStatus: SystemStatus = {
     },
   },
   sky: { locationSource: 'gps', nightKnown: true, isNight: true, sunAltitudeDeg: -24.3 },
+  battery: mockBatteryPresent(),
   firmware: {
     name: 'SQMeter',
     version: '0.2.0-beta.1',
@@ -143,6 +169,7 @@ export const mockStatus: SystemStatus = {
     clients: 0,
     alarm: { serviceActive: false, active: false, sequence: 0, acknowledgedSequence: 0, bondedPhones: 0 },
   },
+  display: { enabled: true, detected: true, on: true, page: 'sky', nightMode: true },
   uptime: 7200,
   bootCount: 3,
   resetReason: 3,
@@ -242,8 +269,36 @@ export const mockStatus: SystemStatus = {
     gps: { status: 'ok', ageMs: 800 },
     rain: { status: 'ok', ageMs: 40 },
     wind: { status: 'ok', ageMs: 900, vaneStatus: 'ok' },
+    battery: { status: 'ok', ageMs: 1200 },
+  },
+  skySensors: {
+    sqm: {
+      status: 'ok',
+      ageMs: 400,
+      detected: true,
+      gain: 'MAX',
+      integrationMs: 600,
+      saturated: false,
+      nightMode: true,
+      sampleCount: 150,
+      windowSamples: 150,
+      darkVisibleOffset: 0,
+    },
+    sqml: {
+      status: 'ok',
+      ageMs: 380,
+      detected: true,
+      gain: 'MAX',
+      integrationMs: 600,
+      saturated: false,
+      nightMode: true,
+      sampleCount: 150,
+      windowSamples: 150,
+      darkVisibleOffset: 0,
+    },
   },
   diagnostics: {
+    battery: mockBatteryDiagnostics,
     light: {
       rollingVisible: 3.1,
       correctedVisible: 3.1,

@@ -28,6 +28,34 @@ class FlashBudgetTest(unittest.TestCase):
     def test_slot_from_the_real_layout(self):
         self.assertEqual(flash_budget.app_slot_bytes(ROOT / "partitions.csv"), SLOT)
 
+    def test_each_build_has_its_own_slot(self):
+        slots = {env: flash_budget.app_slot_bytes(flash_budget.partitions_for(env)) for env in flash_budget.ENVS}
+        self.assertEqual(slots["esp32dev"], SLOT)
+        self.assertEqual(slots["esp32dev-ble"], SLOT)
+        self.assertEqual(slots["esp32s3-zero"], SLOT)
+        self.assertEqual(slots["esp32s3-zero-ble"], SLOT)
+        self.assertEqual(slots["esp32s3-zero8"], 0x380000)
+        self.assertEqual(slots["esp32s3-zero8-ble"], 0x380000)
+        self.assertEqual(slots["esp32s3-eth"], 0x600000)
+        self.assertEqual(slots["esp32s3-eth-ble"], 0x600000)
+
+    def test_every_build_is_recorded(self):
+        record = json.loads((ROOT / flash_budget.BASELINE_PATH).read_text())
+        self.assertEqual([env for env in record if env != flash_budget.REASON_KEY], list(flash_budget.ENVS))
+
+    def test_layouts_keep_settings_offsets(self):
+        # nvs and otadata stay put on every layout, so a USB flash keeps the settings.
+        for env in flash_budget.ENVS:
+            rows = [
+                [f.strip() for f in line.split(",")]
+                for line in flash_budget.partitions_for(env).read_text().splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            ]
+            by_name = {row[0]: (int(row[3], 0), int(row[4], 0)) for row in rows}
+            self.assertEqual(by_name["nvs"], (0x9000, 0x5000), env)
+            self.assertEqual(by_name["otadata"], (0xE000, 0x2000), env)
+            self.assertEqual(by_name["app0"][0], 0x10000, env)
+
     def test_under_warning(self):
         failures, warnings, _ = flash_budget.evaluate("esp32dev", int(SLOT * 0.85), SLOT, {}, None)
         self.assertEqual((failures, warnings), ([], []))
