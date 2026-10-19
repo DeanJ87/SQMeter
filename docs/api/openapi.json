@@ -65,7 +65,7 @@
     },
     {
       "name": "Device",
-      "description": "Restart."
+      "description": "Restart, and the optional OLED display."
     },
     {
       "name": "Alpaca",
@@ -941,6 +941,86 @@
           },
           "502": {
             "description": "A sensor, broker or GitHub didn't answer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      }
+    },
+    "/api/display/wake": {
+      "post": {
+        "operationId": "post_display_wake",
+        "tags": [
+          "Device"
+        ],
+        "summary": "Wake the display",
+        "description": "Turns the OLED display on for its switch-off time (applied within one loop pass). 409 when the display is off in settings, not detected, or off to save power.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      }
+    },
+    "/api/display/blank": {
+      "post": {
+        "operationId": "post_display_blank",
+        "tags": [
+          "Device"
+        ],
+        "summary": "Blank the display",
+        "description": "Turns the OLED display off now, until the next wake (a restart, a wake request or the wake button). 409 when the display is off in settings or not detected.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
             "content": {
               "application/json": {
                 "schema": {
@@ -2557,6 +2637,150 @@
                       "title"
                     ],
                     "additionalProperties": false
+                  },
+                  "battery_low": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "battery_critical": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "battery_shutdown": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "power_restored": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "charge_complete": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "charge_fault": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -2753,6 +2977,18 @@
               },
               "windSpeedUnsafeMs": {
                 "type": "number"
+              },
+              "batteryEnabled": {
+                "type": "boolean"
+              },
+              "batteryAlert": {
+                "type": "boolean"
+              },
+              "batteryPhoneAlarm": {
+                "type": "boolean"
+              },
+              "batteryMinPercent": {
+                "type": "number"
               }
             },
             "required": [
@@ -2943,6 +3179,9 @@
                     "type": "boolean"
                   },
                   "wind": {
+                    "type": "boolean"
+                  },
+                  "battery": {
                     "type": "boolean"
                   }
                 },
@@ -3320,6 +3559,130 @@
               "vanePullupOhms"
             ],
             "additionalProperties": false
+          },
+          "display": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "pages": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 7,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "sky",
+                    "environment",
+                    "cloud",
+                    "safety",
+                    "gps",
+                    "battery",
+                    "network"
+                  ]
+                }
+              },
+              "cycleSeconds": {
+                "type": "number",
+                "minimum": 2,
+                "maximum": 60
+              },
+              "brightness": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "timeoutSeconds": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1800
+              },
+              "wakeOnBoot": {
+                "type": "boolean"
+              },
+              "stayOnAtNight": {
+                "type": "boolean"
+              },
+              "rotate180": {
+                "type": "boolean"
+              },
+              "buttonPin": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "enabled",
+              "pages",
+              "cycleSeconds",
+              "brightness",
+              "timeoutSeconds",
+              "wakeOnBoot",
+              "stayOnAtNight",
+              "rotate180",
+              "buttonPin"
+            ],
+            "additionalProperties": false
+          },
+          "battery": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "lowPercent": {
+                "type": "number"
+              },
+              "criticalPercent": {
+                "type": "number"
+              },
+              "shutdownPercent": {
+                "type": "number"
+              },
+              "capacityMah": {
+                "type": "number"
+              },
+              "powerSaving": {
+                "type": "boolean"
+              },
+              "saveReadIntervalSeconds": {
+                "type": "number"
+              },
+              "shutdownGraceSeconds": {
+                "type": "number"
+              },
+              "alertPin": {
+                "type": "number"
+              },
+              "stat1Pin": {
+                "type": "number"
+              },
+              "stat2Pin": {
+                "type": "number"
+              },
+              "pgPin": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "enabled",
+              "lowPercent",
+              "criticalPercent",
+              "shutdownPercent",
+              "capacityMah",
+              "powerSaving",
+              "saveReadIntervalSeconds",
+              "shutdownGraceSeconds",
+              "alertPin",
+              "stat1Pin",
+              "stat2Pin",
+              "pgPin"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -3594,6 +3957,114 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "battery_low": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "battery_critical": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "battery_shutdown": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "power_restored": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "charge_complete": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "charge_fault": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false
@@ -3736,6 +4207,18 @@
               },
               "windSpeedUnsafeMs": {
                 "type": "number"
+              },
+              "batteryEnabled": {
+                "type": "boolean"
+              },
+              "batteryAlert": {
+                "type": "boolean"
+              },
+              "batteryPhoneAlarm": {
+                "type": "boolean"
+              },
+              "batteryMinPercent": {
+                "type": "number"
               }
             },
             "additionalProperties": false
@@ -3876,6 +4359,9 @@
                     "type": "boolean"
                   },
                   "wind": {
+                    "type": "boolean"
+                  },
+                  "battery": {
                     "type": "boolean"
                   }
                 },
@@ -4147,6 +4633,105 @@
                 "type": "number"
               },
               "vanePullupOhms": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          "display": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "pages": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 7,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "sky",
+                    "environment",
+                    "cloud",
+                    "safety",
+                    "gps",
+                    "battery",
+                    "network"
+                  ]
+                }
+              },
+              "cycleSeconds": {
+                "type": "number",
+                "minimum": 2,
+                "maximum": 60
+              },
+              "brightness": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "timeoutSeconds": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1800
+              },
+              "wakeOnBoot": {
+                "type": "boolean"
+              },
+              "stayOnAtNight": {
+                "type": "boolean"
+              },
+              "rotate180": {
+                "type": "boolean"
+              },
+              "buttonPin": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          "battery": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "lowPercent": {
+                "type": "number"
+              },
+              "criticalPercent": {
+                "type": "number"
+              },
+              "shutdownPercent": {
+                "type": "number"
+              },
+              "capacityMah": {
+                "type": "number"
+              },
+              "powerSaving": {
+                "type": "boolean"
+              },
+              "saveReadIntervalSeconds": {
+                "type": "number"
+              },
+              "shutdownGraceSeconds": {
+                "type": "number"
+              },
+              "alertPin": {
+                "type": "number"
+              },
+              "stat1Pin": {
+                "type": "number"
+              },
+              "stat2Pin": {
+                "type": "number"
+              },
+              "pgPin": {
                 "type": "number"
               }
             },
@@ -4666,6 +5251,87 @@
               "status"
             ],
             "additionalProperties": false
+          },
+          "battery": {
+            "type": "object",
+            "properties": {
+              "present": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string"
+              },
+              "ageMs": {
+                "type": "number"
+              },
+              "estimating": {
+                "type": "boolean"
+              },
+              "percent": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "voltage": {
+                "type": "number"
+              },
+              "ratePercentPerHour": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "state": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "discharging",
+                  "charging",
+                  "charged",
+                  "fault",
+                  "no-battery",
+                  null
+                ]
+              },
+              "usbPower": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "fault": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "temperature",
+                  null
+                ]
+              },
+              "timeToEmptyMinutes": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "timeToFullMinutes": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "powerSaving": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "present"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -4881,6 +5547,12 @@
                 "type": "boolean"
               },
               "wifiConnected": {
+                "type": "boolean"
+              },
+              "displayDetected": {
+                "type": "boolean"
+              },
+              "batteryDetected": {
                 "type": "boolean"
               }
             },
@@ -5290,6 +5962,89 @@
                   "uartPort"
                 ],
                 "additionalProperties": false
+              },
+              "battery": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "string"
+                  },
+                  "vcellRaw": {
+                    "type": "number"
+                  },
+                  "socRaw": {
+                    "type": "number"
+                  },
+                  "crateRaw": {
+                    "type": "number"
+                  },
+                  "statusRaw": {
+                    "type": "number"
+                  },
+                  "resetSeen": {
+                    "type": "boolean"
+                  },
+                  "estimating": {
+                    "type": "boolean"
+                  },
+                  "charger": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "stat1": {
+                        "type": "boolean"
+                      },
+                      "stat2": {
+                        "type": "boolean"
+                      },
+                      "pg": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "stat1",
+                      "stat2",
+                      "pg"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "gaugeAlert": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "policy": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "saving",
+                      "shutdown"
+                    ]
+                  },
+                  "currentMa": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "version",
+                  "vcellRaw",
+                  "socRaw",
+                  "crateRaw",
+                  "statusRaw",
+                  "resetSeen",
+                  "estimating",
+                  "charger",
+                  "gaugeAlert",
+                  "policy",
+                  "currentMa"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -5655,6 +6410,21 @@
                   "vaneStatus"
                 ],
                 "additionalProperties": false
+              },
+              "battery": {
+                "type": "object",
+                "properties": {
+                  "ageMs": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -5948,6 +6718,131 @@
               "tcpLimit",
               "liveUpdates",
               "alpacaRestoredAfterRestart"
+            ],
+            "additionalProperties": false
+          },
+          "display": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "detected": {
+                "type": "boolean"
+              },
+              "on": {
+                "type": "boolean"
+              },
+              "page": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "sky",
+                  "environment",
+                  "cloud",
+                  "safety",
+                  "gps",
+                  "battery",
+                  "network",
+                  null
+                ]
+              },
+              "nightMode": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "enabled",
+              "detected",
+              "on",
+              "page",
+              "nightMode"
+            ],
+            "additionalProperties": false
+          },
+          "battery": {
+            "type": "object",
+            "properties": {
+              "present": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string"
+              },
+              "ageMs": {
+                "type": "number"
+              },
+              "estimating": {
+                "type": "boolean"
+              },
+              "percent": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "voltage": {
+                "type": "number"
+              },
+              "ratePercentPerHour": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "state": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "discharging",
+                  "charging",
+                  "charged",
+                  "fault",
+                  "no-battery",
+                  null
+                ]
+              },
+              "usbPower": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "fault": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "temperature",
+                  null
+                ]
+              },
+              "timeToEmptyMinutes": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "timeToFullMinutes": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "powerSaving": {
+                "type": "boolean"
+              },
+              "shutdownInSeconds": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "present"
             ],
             "additionalProperties": false
           }

@@ -95,6 +95,7 @@ namespace SQM
           gpsSensor(sensors.gps),
           rg15Sensor(sensors.rg15),
           windSensor(sensors.wind),
+          batterySensor(sensors.battery),
           timeManager(timeMgr),
           mqttClient(mqtt),
           getConfigCallback(getConfig),
@@ -333,7 +334,8 @@ namespace SQM
             const SensorSnapshot snapshot = getSensorSnapshot();
             const Core::NightState night = computeNight(snapshot, cfg);
             const Core::TestWording wording{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
-            const Core::AlertSources sources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, millis())};
+            const Core::AlertSources sources{
+                cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
             const Alerts::Alert test = Core::buildTestAlert(sample, wording, sources, clock);
             if (sample != nullptr && test.level == Alerts::AlertLevel::Wake)
             {
@@ -364,6 +366,11 @@ namespace SQM
         }
     }
 
+    bool WebServer::alertsIdle() const
+    {
+        return alertDispatcher == nullptr || alertDispatcher->idle();
+    }
+
     void WebServer::refreshSensorSnapshot(uint32_t dataTimestampMs)
     {
         SensorSnapshot next;
@@ -391,6 +398,16 @@ namespace SQM
         next.gpsLastUpdate = gpsSensor.getLastUpdateTime();
         next.rg15LastUpdate = rg15Sensor.getLastUpdateTime();
         next.wind = windSensor.getReading();
+        next.battery.detected = batterySensor.isDetected();
+        next.battery.initialized = batterySensor.isInitialized();
+        next.battery.lastUpdate = batterySensor.getLastUpdateTime();
+        next.battery.reading = batterySensor.getReading();
+        if (powerManager != nullptr)
+        {
+            next.battery.power = powerManager->state();
+            next.battery.shutdownInSeconds = powerManager->shutdownInSeconds();
+            next.readIntervalMs = powerManager->sensorIntervalMs(getConfigCallback());
+        }
         next.dataTimestamp = dataTimestampMs;
         next.capturedAt = millis();
 

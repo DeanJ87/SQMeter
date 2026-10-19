@@ -31,9 +31,25 @@ namespace SQM
             ClientLost,
             ClientBack,
             ClientDisconnected,
+            // The battery (specs/032). BatteryRule is the safety rule's own
+            // alert (always Urgent, not an event setting).
+            BatteryLow,
+            BatteryCritical,
+            BatteryShutdown, // going to sleep: battery empty
+            PowerRestored,
+            ChargeComplete,
+            ChargeFault,
+            BatteryRule,
         };
         // Keep in step with the enum: alertTypeName() is a table indexed by it.
-        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::ClientDisconnected) + 1;
+        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::BatteryRule) + 1;
+
+        // The safety verdict's battery rule bits (Alpaca::UnsafeBatteryLow,
+        // UnsafeBatteryData; DeviceCore checks they match).
+        constexpr uint32_t BATTERY_RULE_FLAGS = (1u << 14) | (1u << 15);
+        // A battery level alert fires again only once the charge is back this
+        // far above its threshold.
+        constexpr float BATTERY_HYSTERESIS_PERCENT = 5.0f;
 
         // How loudly an alert is delivered; set per event in the alert
         // settings. The dispatcher maps it to each channel's priority, and
@@ -105,6 +121,17 @@ namespace SQM
             bool onClientLost = true;
             bool onClientBack = true;
             bool onClientDisconnected = false;
+            // Battery (specs/032).
+            bool onBatteryLow = true;
+            bool onBatteryCritical = true;
+            bool onBatteryShutdown = true;
+            bool onPowerRestored = false;
+            bool onChargeComplete = false;
+            bool onChargeFault = true;
+            bool onBatteryRule = false; // the rule's alert or phone alarm
+            float batteryLowPercent = 20.0f;
+            float batteryCriticalPercent = 10.0f;
+            float batteryShutdownPercent = 5.0f;
         };
 
         // Light (or SQM), IR sky, environment, rain, anemometer, SQM-L (spec 030).
@@ -130,6 +157,21 @@ namespace SQM
             bool healthy = false;
         };
 
+        // The battery as the alert engine sees it (specs/032).
+        struct BatteryInputs
+        {
+            bool present = false;
+            bool valid = false; // a percent: ok, not estimating
+            float percent = 0.0f;
+            bool charged = false; // the charger reports full
+            bool fault = false;   // the charger reports a fault
+            // One-shots from the power policy: sent at once, exempt from the
+            // startup grace and the cooldown.
+            bool shutdownStarted = false;
+            bool powerRestored = false; // USB power is back
+            bool recovered = false;     // power saving ended: the charge recovered without USB
+        };
+
         struct AlertInputs
         {
             uint32_t nowSeconds = 0; // monotonic
@@ -142,6 +184,7 @@ namespace SQM
             // unsafe spell already announced). Treated as no news.
             bool safetySettling = false;
             std::vector<std::string> unsafeReasons;
+            uint32_t unsafeFlags = 0; // the verdict's reason bits
 
             bool rainEnabled = false;
             bool raining = false; // includes the rain-clear hold-off
@@ -163,6 +206,8 @@ namespace SQM
             bool isNight = false;
 
             ClientInputs clients[CLIENT_DEVICE_COUNT];
+
+            BatteryInputs battery;
         };
 
         // Why a change hasn't been announced yet.
@@ -226,7 +271,12 @@ namespace SQM
             };
 
             // Returns true when a transition to `current` should be emitted now.
-            static bool sync(Tracker &tracker, bool current, const Emit &emit);
+            // A tracker that follows the condition silently (before its first
+            // update, during the startup grace, while its rule is off) takes the
+            // current value, or with `announceAtStart` the all-clear value, so a
+            // condition already present then (a battery already low at power-on)
+            // is announced once announcing is allowed.
+            static bool sync(Tracker &tracker, bool current, const Emit &emit, bool announceAtStart = false);
 
             // One update(): the time, the cooldown and whether the startup
             // grace is over, shared by every condition.
@@ -242,6 +292,10 @@ namespace SQM
             void updateSensors(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
             void updateDew(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
             void updateSky(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
+            void updateBattery(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
+            static void batteryOneShots(const BatteryInputs &battery, const AlertRules &rules, std::vector<Alert> &alerts);
+            void batteryLevels(const BatteryInputs &battery, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
+            void batteryRule(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
 
             bool started = false;
             uint32_t startedAt = 0;
@@ -258,6 +312,17 @@ namespace SQM
             // Observed (hysteresis) state for threshold conditions.
             bool dewObserved = false;
             bool skyClear = false;
+
+            // Battery: below low / critical (with hysteresis), charged, fault.
+            Tracker batteryLow;
+            Tracker batteryCritical;
+            Tracker chargeComplete;
+            Tracker chargeFault;
+            bool belowLow = false;
+            bool belowCritical = false;
+            uint32_t batteryRuleFlags = 0; // the rule bits last seen
+            bool batteryRuleSent = false;
+            uint32_t batteryRuleSentAt = 0; // a flapping rule alerts at most once per cooldown
 
             // Imaging app: notified value = "lost"; disconnects wait out the
             // cooldown like any other change.

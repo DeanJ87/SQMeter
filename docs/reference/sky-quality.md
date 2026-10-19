@@ -9,7 +9,7 @@ SQMeter converts TSL2591 light readings into three astronomical metrics. The con
 <!-- diagram: DIA-05
 sources: src/sensors/TSL2591Sensor.cpp#TSL2591Sensor::updateRollingReading lib/SkyLogic/src/ lib/DeviceCore/src/DeviceCore.cpp#derive lib/DeviceCore/src/DeviceCore.cpp#buildReadings lib/DeviceCore/src/DeviceCore.cpp#readSkyGroups src/sensors/BME280Sensor.cpp#BME280Sensor::calculateDewpoint
 blocking: false
-fingerprint: e6b78369b92f2df0
+fingerprint: 8c9ffa67f8bdd7d3
 -->
 <figure class="diagram" markdown>
 

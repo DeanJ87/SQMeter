@@ -38,6 +38,8 @@ namespace SQM
                 {"clock-unset", "The device doesn't know the time yet", "time#time-sources"},
                 {"ota-no-password", "Set an upload password", "device#security"},
                 {"language-offline", "Needs WiFi to download - or upload the file", "network#wifi"},
+                {"display-missing", "No display detected", "device#display"},
+                {"battery-missing", "No battery gauge detected", "device#battery"},
             };
 
             const Reason *reason(const char *code)
@@ -302,12 +304,84 @@ namespace SQM
                     std::strcmp(cfg.language, "en") != 0,
                     {{"D-38", "language-offline", c.f.languageInstalled || c.f.wifiConnected}});
             }
+
+            // The OLED display (spec 031): every setting but its own switch
+            // needs a display that answers; staying on at night needs a night
+            // the device can work out.
+            void addDisplay(const Context &c)
+            {
+                const DisplayConfig &d = c.cfg.display;
+                const Link found{"D-43", "display-missing", c.f.displayDetected};
+                c.add("display.pages", "D-43", d.enabled, {found});
+                c.add("display.cycleSeconds", "D-43", d.enabled, {found});
+                c.add("display.brightness", "D-43", d.enabled, {found});
+                c.add("display.timeoutSeconds", "D-43", d.enabled, {found});
+                c.add("display.wakeOnBoot", "D-43", d.enabled && d.wakeOnBoot, {found});
+                c.add(
+                    "display.stayOnAtNight", "D-44", d.enabled && d.stayOnAtNight, {found, {"D-44", "location-unknown", c.locationKnown}});
+                c.add("display.rotate180", "D-43", d.enabled && d.rotate180, {found});
+                c.add("display.buttonPin", "D-43", d.enabled && d.buttonPin != DisplayConfig::BUTTON_UNSET, {found});
+            }
+
+            // The battery (spec 032): its settings, rule and events need a
+            // fuel gauge. Monitoring and the events ship on, so without a
+            // gauge they're shown muted; the safety rule is fail-safe.
+            void addBattery(const Context &c)
+            {
+                const BatteryConfig &b = c.cfg.battery;
+                const AlertsConfig &a = c.cfg.alerts;
+                const Link found{"D-46", "battery-missing", c.f.batteryDetected};
+                c.add("battery.enabled", "D-46", b.enabled, {found}, NEUTRAL);
+                c.add("battery.lowPercent", "D-46", b.enabled, {found}, NEUTRAL);
+                c.add("battery.criticalPercent", "D-46", b.enabled, {found}, NEUTRAL);
+                c.add("battery.shutdownPercent", "D-46", b.enabled, {found}, NEUTRAL);
+                c.add("battery.capacityMah", "D-46", b.enabled && b.capacityMah != 0, {found}, NEUTRAL);
+                c.add("battery.powerSaving", "D-46", b.enabled && b.powerSaving, {found}, NEUTRAL);
+                c.add("battery.saveReadIntervalSeconds", "D-46", b.enabled && b.powerSaving, {found}, NEUTRAL);
+                c.add("battery.shutdownGraceSeconds", "D-46", b.enabled && b.powerSaving, {found}, NEUTRAL);
+
+                const AlpacaConfig &s = c.cfg.alpaca;
+                c.add("alpaca.batteryEnabled", "D-47", s.batteryEnabled, {{"D-47", "battery-missing", c.f.batteryDetected}}, FAIL_SAFE);
+                const BleConfig &ble = c.cfg.ble;
+                c.add(
+                    "alpaca.batteryPhoneAlarm",
+                    "D-50",
+                    s.batteryPhoneAlarm,
+                    {{"D-50", "ble-build", c.f.bluetoothBuild},
+                     {"D-50", "ble-off", ble.enabled},
+                     {"D-35", "ble-restart", c.f.bluetoothRunning},
+                     {"D-50", "no-passkey", !ble.passkey.empty()},
+                     {"D-50", "no-phones", c.f.pairedPhones > 0}},
+                    NEUTRAL);
+
+                const Link gauge{"D-48", "battery-missing", c.f.batteryDetected};
+                auto event = [&](const AlertsConfig::EventSetting &e) -> Link
+                { return {"D-04", "alerts-off", a.enabled || (e.level == 4 && c.phonesRing)}; };
+                const std::pair<const char *, const AlertsConfig::EventSetting *> events[] = {
+                    {"alerts.events.battery_low.level", &a.batteryLow},
+                    {"alerts.events.battery_critical.level", &a.batteryCritical},
+                    {"alerts.events.battery_shutdown.level", &a.batteryShutdown},
+                    {"alerts.events.power_restored.level", &a.powerRestored},
+                    {"alerts.events.charge_complete.level", &a.chargeComplete},
+                    {"alerts.events.charge_fault.level", &a.chargeFault},
+                };
+                for (const auto &e : events)
+                    c.add(e.first, "D-48", e.second->level != 0, {event(*e.second), gauge}, NEUTRAL);
+
+                const Link publishMqtt{"D-49", "mqtt-off", c.cfg.mqtt.enabled};
+                c.add(
+                    "mqtt.publish.battery",
+                    "D-49",
+                    c.cfg.mqtt.publish.battery,
+                    {publishMqtt, {"D-49", "battery-missing", c.f.batteryDetected}},
+                    NEUTRAL);
+            }
         } // namespace
 
         std::vector<Entry> evaluate(const Config &cfg, const Facts &f)
         {
             std::vector<Entry> out;
-            out.reserve(52);
+            out.reserve(80);
             // Paired phones ring for Wake-level events even with push alerts off
             // (WebServer::processAlerts), so events, arming and the night-only
             // options still matter to them.
@@ -321,6 +395,8 @@ namespace SQM
             addSafetyRules(c);
             addSensorsAndTime(c);
             addDevice(c);
+            addDisplay(c);
+            addBattery(c);
             return out;
         }
 
@@ -403,11 +479,13 @@ namespace SQM
             target["infraredDetected"] = f.infraredDetected;
             target["environmentDetected"] = f.environmentDetected;
             target["languageInstalled"] = f.languageInstalled;
+            target["displayDetected"] = f.displayDetected;
+            target["batteryDetected"] = f.batteryDetected;
         }
 
         size_t reportCapacity(const std::vector<Entry> &entries)
         {
-            return JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(14) + JSON_ARRAY_SIZE(entries.size()) + entries.size() * JSON_OBJECT_SIZE(8);
+            return JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(16) + JSON_ARRAY_SIZE(entries.size()) + entries.size() * JSON_OBJECT_SIZE(8);
         }
 
         void writeReport(JsonObject root, const std::vector<Entry> &entries, const Facts &facts)

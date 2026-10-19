@@ -16,9 +16,11 @@ namespace SQM::ConfigDetail
 {
     inline constexpr const char *SECRET_MASK = "********";
 
-    constexpr size_t EVENT_COUNT = 12;
+    constexpr size_t EVENT_COUNT = 18;
     // Events from here on are the imaging-app events, persisted separately.
     constexpr size_t FIRST_CLIENT_EVENT = 9;
+    // And from here on the battery events (spec 032), under a third key.
+    constexpr size_t FIRST_BATTERY_EVENT = 12;
 
     inline bool setError(std::string *error, const std::string &message)
     {
@@ -61,7 +63,13 @@ namespace SQM::ConfigDetail
              {"clouded_over", &a.cloudedOver},
              {"client_lost", &a.clientLost},
              {"client_back", &a.clientBack},
-             {"client_disconnected", &a.clientDisconnected}}};
+             {"client_disconnected", &a.clientDisconnected},
+             {"battery_low", &a.batteryLow},
+             {"battery_critical", &a.batteryCritical},
+             {"battery_shutdown", &a.batteryShutdown},
+             {"power_restored", &a.powerRestored},
+             {"charge_complete", &a.chargeComplete},
+             {"charge_fault", &a.chargeFault}}};
     }
     inline std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, EVENT_COUNT> eventSettings(const AlertsConfig &a)
     {
@@ -204,4 +212,8 @@ namespace SQM::ConfigDetail
         JsonObject object;
         std::string sectionPath;
     };
+
+    // The optional devices' sections (ConfigJsonInDevices.cpp).
+    bool applyDisplay(const Section &display, DisplayConfig &d, std::string *error);
+    void applyBattery(const Section &battery, BatteryConfig &b);
 } // namespace SQM::ConfigDetail

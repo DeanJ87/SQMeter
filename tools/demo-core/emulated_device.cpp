@@ -71,6 +71,39 @@ void EmulatedDevice::tick(
         pushHistory(SafetyHistory::Kind::Change, safety.isSafe, !safety.isSafe && result.isSafe, result.reasonFlags, 0);
 
     runAlerts();
+    tickDisplay();
+}
+
+void EmulatedDevice::tickDisplay()
+{
+    Core::DisplayNetwork network;
+    network.connected = true; // the demo's network is simulated
+    network.ip = "192.168.1.42";
+    const Display::View view = Core::displayView(snapshot, Core::buildReadings(snapshot, cfg, nowMs, epoch), safety, cfg, network);
+    const Core::NightState night = Core::night(snapshot, cfg, epoch);
+    Display::Inputs in;
+    in.nowMs = nowMs;
+    in.detected = cfg.display.enabled; // the demo board has a display
+    in.night = {night.known, night.isNight};
+    for (size_t i = 0; i < Display::PAGE_COUNT; ++i)
+        if (view.available(static_cast<Display::Page>(i)))
+            in.availableMask = static_cast<uint8_t>(in.availableMask | (1U << i));
+    in.forcedOff = snapshot.battery.power != Battery::PowerState::Normal; // power saving (spec 032)
+    in.wake = displayWake;
+    in.blank = displayBlank;
+    displayWake = displayBlank = false;
+    displayOut = displayController.tick(cfg.display, in);
+}
+
+std::string EmulatedDevice::displayRequest(bool wake)
+{
+    if (!cfg.display.enabled)
+        return response(409, errorJson("Display is off in settings"));
+    if (wake)
+        displayWake = true;
+    else
+        displayBlank = true;
+    return response(200, "{\"success\":true}");
 }
 
 void EmulatedDevice::setArmed(bool on, const std::string &source)
@@ -153,7 +186,7 @@ std::string EmulatedDevice::testAlert(const std::string &paramsJson)
     const Alerts::Alert test = Core::buildTestAlert(
         sample,
         Core::TestWording{level, sound, title, message},
-        Core::AlertSources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs)},
+        Core::AlertSources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)},
         Core::LocalClock{clockTime, clockDate});
     record(test, mask);
     return response(202, "{\"success\":true,\"message\":\"Test notification queued\",\"demo\":true}");
@@ -166,7 +199,7 @@ void EmulatedDevice::realTestAlert()
     const Alerts::Alert test = Core::buildTestAlert(
         nullptr,
         Core::TestWording{2, "", "", ""},
-        Core::AlertSources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs)},
+        Core::AlertSources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)},
         Core::LocalClock{clockTime, clockDate});
     record(test, 0x0F);
 }
@@ -273,6 +306,7 @@ Deps::Facts EmulatedDevice::facts() const
     f.mqttConnected = cfg.mqtt.enabled;
     f.clockSet = epoch >= Core::CLOCK_VALID_EPOCH;
     f.languageInstalled = true; // the demo bundles every language
+    Core::displayFacts(f, cfg, true);
     return f;
 }
 
@@ -336,9 +370,13 @@ void EmulatedDevice::runAlerts()
     }
     const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
     const Core::NightState night = Core::night(snapshot, cfg, epoch);
-    const Core::AlertSources sources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs)};
+    const Core::AlertSources sources{
+        cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)};
     Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, nowMs);
     in.nowSeconds = uptimeSeconds();
+    in.battery.shutdownStarted = feed.takeShutdownStarted();
+    in.battery.powerRestored = feed.takePowerRestored();
+    in.battery.recovered = feed.takeRecovered();
 
     // The imaging app: is each Alpaca device still being checked?
     const Alpaca::DeviceActivity activity[Alpaca::DEVICE_COUNT] = {

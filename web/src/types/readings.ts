@@ -108,6 +108,27 @@ export interface WindReading extends Group {
   vaneFault?: boolean;
 }
 
+// The Li-ion pack (spec 032, contracts/readings.md): `{ present: false }`
+// without a gauge; values only while status is ok (state and usbPower also
+// without the gauge when the charger is wired).
+export type ChargeState = 'discharging' | 'charging' | 'charged' | 'fault' | 'no-battery';
+
+export interface BatteryReading {
+  present: boolean;
+  status?: SensorHealth;
+  ageMs?: number;
+  estimating?: boolean;
+  percent?: number | null;
+  voltage?: number;
+  ratePercentPerHour?: number | null;
+  state?: ChargeState | null;
+  usbPower?: boolean | null;
+  fault?: 'temperature' | null;
+  timeToEmptyMinutes?: number | null;
+  timeToFullMinutes?: number | null;
+  powerSaving?: boolean;
+}
+
 export interface SensorData {
   timestamp: number;
   timeValid: boolean;
@@ -122,6 +143,7 @@ export interface SensorData {
   gps?: GpsReading;
   rain?: RainReading;
   wind?: WindReading;
+  battery?: BatteryReading; // older firmware has none
   safety?: SafetyStatus;
 }
 

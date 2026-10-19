@@ -137,6 +137,10 @@ namespace SQM
             alpaca.windSpeedUnsafeMs = 10.0f;
             alpaca.windGustUnsafeEnabled = false;
             alpaca.windGustUnsafeMs = 15.0f;
+            alpaca.batteryEnabled = false;
+            alpaca.batteryMinPercent = BatteryConfig{}.criticalPercent; // follows it (ConfigJsonIn)
+            alpaca.batteryAlert = true;
+            alpaca.batteryPhoneAlarm = true;
         }
 
         void defaultAlerts(AlertsConfig &a)
@@ -154,6 +158,12 @@ namespace SQM
             a.clientLost = {3, "", "", ""};
             a.clientBack = {1, "", "", ""};
             a.clientDisconnected = {0, "", "", ""};
+            a.batteryLow = {2, "", "", ""};
+            a.batteryCritical = {4, "", "", ""};
+            a.batteryShutdown = {4, "", "", ""};
+            a.powerRestored = {0, "", "", ""};
+            a.chargeComplete = {0, "", "", ""};
+            a.chargeFault = {2, "", "", ""};
             a.sendMode = AlertsConfig::SendMode::Any;
             a.clientSilentSafetySeconds = 120;
             a.clientSilentWeatherSeconds = 600;
@@ -193,7 +203,27 @@ namespace SQM
         defaultSensors(cfg, board);
         defaultAlpaca(cfg.alpaca);
         defaultAlerts(cfg.alerts);
+        cfg.battery = BatteryConfig{};
         return cfg;
+    }
+
+    std::string Config::spliceStored(
+        const std::string &main, const std::string &alerts, const std::string &client, const std::string &battery)
+    {
+        std::string spliced = main;
+        const std::pair<const char *, const std::string *> parts[] = {
+            {"alerts", &alerts},
+            {"alertsClient", &client},
+            {"alertsBattery", &battery},
+        };
+        for (const auto &part : parts)
+        {
+            const size_t close = spliced.rfind('}');
+            if (part.second->empty() || close == std::string::npos)
+                continue;
+            spliced.insert(close, std::string(",\"") + part.first + "\":" + *part.second);
+        }
+        return spliced;
     }
 
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig, std::string *error)

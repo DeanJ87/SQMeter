@@ -16,6 +16,8 @@
     { "path": "/api/sensors/rg15/test", "method": "POST", "auth": "required" },
     { "path": "/api/sensors/rg15/reset-total", "method": "POST", "auth": "required" },
     { "path": "/api/sensors/rg15/reboot", "method": "POST", "auth": "required" },
+    { "path": "/api/display/wake", "method": "POST", "auth": "required" },
+    { "path": "/api/display/blank", "method": "POST", "auth": "required" },
     { "path": "/api/mqtt/test", "method": "POST", "auth": "required" },
     { "path": "/api/wifi/connect", "method": "POST", "auth": "required" },
     { "path": "/api/update/fs", "method": "POST", "auth": "required" },

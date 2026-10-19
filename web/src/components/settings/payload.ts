@@ -2,8 +2,10 @@ import type { Config } from '../../types';
 import {
   defaultAlpacaConfig,
   defaultAuthConfig,
+  defaultBatteryConfig,
   defaultBleConfig,
   defaultCloudDetectionConfig,
+  defaultDisplayConfig,
   defaultLocationConfig,
   defaultRainConfig,
   defaultWindConfig,
@@ -96,6 +98,9 @@ export const toConfigPayload = (source: Config): Config => {
     ble: { ...defaultBleConfig, ...source.ble },
     wind: { ...defaultWindConfig, ...source.wind },
     location: { ...defaultLocationConfig, ...source.location },
+    display: { ...defaultDisplayConfig, ...source.display, pages: [...(source.display?.pages ?? defaultDisplayConfig.pages)] },
+    // Only to firmware that has it (spec 032).
+    ...(source.battery ? { battery: { ...defaultBatteryConfig, ...source.battery } } : {}),
   };
 
   return {

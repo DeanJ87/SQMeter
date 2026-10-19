@@ -1,4 +1,5 @@
 import type { SensorData, SystemStatus, GithubRelease, AlpacaConfiguredDevice, AlertRecord, WiFiNetwork } from '../types';
+import { mockBatteryDiagnostics, mockBatteryPresent } from './battery';
 
 export { mockConfig } from './config';
 
@@ -84,7 +85,7 @@ const climateReadings = (): Pick<SensorData, 'environment' | 'infrared' | 'cloud
   },
 });
 
-const fieldReadings = (): Pick<SensorData, 'gps' | 'wind' | 'rain' | 'safety'> => ({
+const fieldReadings = (): Pick<SensorData, 'gps' | 'wind' | 'rain' | 'battery' | 'safety'> => ({
   gps: {
     status: 'ok',
     ageMs: Math.round(jitter(800, 100)),
@@ -115,6 +116,7 @@ const fieldReadings = (): Pick<SensorData, 'gps' | 'wind' | 'rain' | 'safety'> =
     lensFault: false,
     emitterSaturated: false,
   },
+  battery: mockBatteryPresent(),
   // Demo data shows rain, so the SafetyMonitor reports unsafe.
   safety: {
     safe: false,
@@ -152,6 +154,7 @@ export const mockStatus: SystemStatus = {
     },
   },
   sky: { locationSource: 'gps', nightKnown: true, isNight: true, sunAltitudeDeg: -24.3 },
+  battery: mockBatteryPresent(),
   firmware: {
     name: 'SQMeter',
     version: '0.2.0-beta.1',
@@ -166,6 +169,7 @@ export const mockStatus: SystemStatus = {
     clients: 0,
     alarm: { serviceActive: false, active: false, sequence: 0, acknowledgedSequence: 0, bondedPhones: 0 },
   },
+  display: { enabled: true, detected: true, on: true, page: 'sky', nightMode: true },
   uptime: 7200,
   bootCount: 3,
   resetReason: 3,
@@ -265,6 +269,7 @@ export const mockStatus: SystemStatus = {
     gps: { status: 'ok', ageMs: 800 },
     rain: { status: 'ok', ageMs: 40 },
     wind: { status: 'ok', ageMs: 900, vaneStatus: 'ok' },
+    battery: { status: 'ok', ageMs: 1200 },
   },
   skySensors: {
     sqm: {
@@ -293,6 +298,7 @@ export const mockStatus: SystemStatus = {
     },
   },
   diagnostics: {
+    battery: mockBatteryDiagnostics,
     light: {
       rollingVisible: 3.1,
       correctedVisible: 3.1,

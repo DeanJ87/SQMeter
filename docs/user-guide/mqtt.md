@@ -53,7 +53,7 @@ Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 <!-- diagram: DIA-09
 sources: src/WebServerStatus.cpp#WebServer::publishMqttReadings src/WebServerAlerts.cpp#WebServer::publishMqttSafety src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: b6c530a1b4a697c3
+fingerprint: 9784c504ea161289
 -->
 <figure class="diagram" markdown>
 
@@ -100,6 +100,7 @@ flowchart LR
 | Temperature, humidity, pressure | `environment` |
 | IR and cloud cover | `infrared` and `clouds` |
 | GPS, Rain, Wind | `gps`, `rain`, `wind` (only when that hardware is enabled) |
+| Battery | `battery` (only does anything with a fuel gauge, D-49) |
 | Safe / unsafe | `<base>/safe` and `<base>/safety` |
 | Diagnostics | `<base>/diagnostics` (off by default) |
 
@@ -127,7 +128,8 @@ The same document as [`GET /api/sensors`](../api/rest.md#get-apisensors) and `/w
   "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "description": "Clear", "temperatureDelta": -37.1, "correctedDelta": -33.0, "humidity": 64.7, "humiditySource": "measured" },
   "gps": { "status": "ok", "ageMs": 750, "fix": true, "satellites": 9, "latitude": 51.5074, "longitude": -0.1278, "altitude": 42.0, "hdop": 1.1 },
   "rain": { "status": "ok", "ageMs": 40, "raining": false, "rainingNow": false, "intensity": 0.0, "eventAccumulation": 0.4, "sensorEventAccumulation": 0.4, "totalAccumulation": 12.6, "lensFault": false, "emitterSaturated": false },
-  "wind": { "status": "ok", "ageMs": 900, "speed": 3.3, "gust": 6.8, "direction": 246, "vaneFault": false }
+  "wind": { "status": "ok", "ageMs": 900, "speed": 3.3, "gust": 6.8, "direction": 246, "vaneFault": false },
+  "battery": { "present": true, "status": "ok", "ageMs": 1200, "estimating": false, "percent": 82.4, "voltage": 3.912, "ratePercentPerHour": -6.2, "state": "discharging", "usbPower": false, "fault": null, "timeToEmptyMinutes": 797, "timeToFullMinutes": null, "powerSaving": false }
 }
 ```
 
@@ -137,6 +139,7 @@ The same document as [`GET /api/sensors`](../api/rest.md#get-apisensors) and `/w
 - **`light` and `sky`** are the authoritative sky sensor; `sky.source` (`sqm` or `sqml`) says which. **`skySensors`** has each sky sensor that is switched on under its own name (`sqm`, the wide sensor; `sqml`, the narrow SQM-L), with the same `status` rules, and `deltaSqm` (SQM-L − SQM) while both are `ok`. It is left out when neither is on. See [Two sky sensors](../reference/sky-quality.md#two-sky-sensors-sqm-and-sqm-l).
 - **Units**: °C, %, hPa, lux, mag/arcsec², m/s, degrees (0 = north), mm and mm/h (an RG-15 set to inches is converted). `wind.direction` is left out when it's calm or there's no vane.
 - **`rain.raining`** is held for the rain clear delay after the last drop; `rainingNow` is instantaneous; while held, `clearInSeconds` says how long is left. `eventAccumulation` is cleared by the clear delay; `sensorEventAccumulation` is the RG-15's own event total.
+- **`battery`** (spec 032) is `{"present": false}` without a fuel gauge (or with **Monitor battery** off). With one: `percent` (null while `estimating`), `voltage` (V), `ratePercentPerHour` (positive when charging, null for the first minute), `state` (`discharging`, `charging`, `charged`, `fault`, `no-battery`), `usbPower` (null without the charger pins), `fault` (`temperature`), `timeToEmptyMinutes` / `timeToFullMinutes` (null when not known, at most 5940) and `powerSaving`. See [Battery](battery.md).
 - **`clouds.humiditySource`** is `assumed` when there's no humidity sensor (53% is used).
 
 !!! note "The same in every language"
@@ -150,6 +153,7 @@ Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**.
 
 - **Sensors**: sky quality, limiting magnitude, Bortle class, illuminance, temperature, humidity, pressure, dew point, sky temperature, cloud cover, rain intensity, wind speed, gust and direction - for the groups you publish
 - **Per sky sensor** (spec 030): *SQM (wide)* and *SQM-L (narrow)* for each sky sensor that is switched on, and *SQM-L − SQM* while both are; *Sky quality* stays the authoritative reading
+- **Battery** (spec 032, with a fuel gauge and the Battery group published): *Battery* (%), *Battery voltage*, *Battery state* (an enum: discharging, charging, charged, fault, no-battery) and *Battery time to empty* (minutes)
 - **Binary sensors**: *Raining* (moisture) and *Observatory* (safety: on = unsafe)
 - **Switch**: *Alerts* - on while sending, off while paused (see [When to send](alerts.md#when-to-send))
 

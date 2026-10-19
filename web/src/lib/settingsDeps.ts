@@ -2,6 +2,7 @@ import type { AlertEventKey, Config, SkyRole } from '../types';
 import { t } from '../i18n';
 import { deviceText } from '../i18n/deviceMessage';
 import { REASONS } from './settingsDepReasons';
+import { BATTERY_EVENT_DEFAULTS, and, blocker, decide, FAIL_SAFE, NEUTRAL, on, or, read, type Link, type Shown } from './settingsDepLinks';
 
 // Whether each setting that needs another setting (or hardware, or the
 // network) is in effect - the device's rules from lib/SettingsDeps, mirrored
@@ -28,6 +29,8 @@ export interface DepFacts {
   infraredDetected: boolean;
   environmentDetected: boolean;
   languageInstalled?: boolean; // older firmware doesn't report it
+  displayDetected?: boolean; // spec 031; older firmware doesn't report it
+  batteryDetected?: boolean; // spec 032; older firmware doesn't report it
 }
 
 export interface DepEntry {
@@ -52,10 +55,6 @@ export interface EffectiveReport {
 // The reasons' texts and fix targets (same as lib/SettingsDeps/catalogue.json) and fix labels.
 export { FIX_LABEL, REASONS } from './settingsDepReasons';
 
-// One link of a dependency chain: met, or the catalogue ID and reason that
-// make the setting inactive. `met === null`: unknown (no facts yet).
-type Link = [id: string, reason: string, met: boolean | null];
-
 const EVENT_KEYS: AlertEventKey[] = [
   'unsafe',
   'safe',
@@ -70,47 +69,6 @@ const EVENT_KEYS: AlertEventKey[] = [
   'client_back',
   'client_disconnected',
 ];
-
-// Three-valued logic for links whose facts may be unknown (null).
-const and = (...values: (boolean | null)[]): boolean | null => {
-  if (values.includes(false)) return false;
-  return values.includes(null) ? null : true;
-};
-const or = (...values: (boolean | null)[]): boolean | null => {
-  if (values.includes(true)) return true;
-  return values.includes(null) ? null : false;
-};
-
-// A setting from the config, or the device's default when the config
-// doesn't carry it (older firmware, partial mocks).
-const read = <T>(config: Config, path: string, fallback: T): T => {
-  let value: unknown = config;
-  for (const key of path.split('.')) value = value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined;
-  return value === undefined || value === null ? fallback : (value as T);
-};
-const on = (config: Config, path: string, fallback = false) => read(config, path, fallback);
-
-type Shown = { unmet?: Unmet; neutral?: boolean };
-const NEUTRAL: Shown = { neutral: true };
-const FAIL_SAFE: Shown = { unmet: 'fail-safe' };
-
-// The first unmet link makes an entry inactive; a link that's unknown makes
-// it unknown unless a later one is unmet.
-const decide = (entry: DepEntry, chain: Link[]) => {
-  entry.state = 'active';
-  for (const [linkId, reason, met] of chain) {
-    if (met === null) entry.state = 'unknown';
-    if (met !== false) continue;
-    Object.assign(entry, { state: 'inactive', id: linkId, reason, ...REASONS[reason] });
-    return;
-  }
-};
-
-// While off: what would make it inactive if it were switched on.
-const blocker = (chain: Link[]) => {
-  const unmet = chain.find(([, , met]) => met === false);
-  return unmet ? { id: unmet[0], reason: unmet[1], ...REASONS[unmet[1]] } : undefined;
-};
 
 // What every section needs, worked out once.
 interface Context {
@@ -315,6 +273,69 @@ const addDevice = (c: Context) => {
   ]);
 };
 
+// The OLED display (spec 031): every setting but its own switch needs a
+// display that answers; staying on at night needs a night the device can work out.
+const addDisplay = (c: Context) => {
+  const enabled = on(c.config, 'display.enabled');
+  const found: Link = ['D-43', 'display-missing', c.fact('displayDetected') ?? null];
+  for (const key of ['pages', 'cycleSeconds', 'brightness', 'timeoutSeconds']) c.add(`display.${key}`, 'D-43', enabled, [found]);
+  c.add('display.wakeOnBoot', 'D-43', enabled && on(c.config, 'display.wakeOnBoot', true), [found]);
+  c.add('display.stayOnAtNight', 'D-44', enabled && on(c.config, 'display.stayOnAtNight'), [
+    found,
+    ['D-44', 'location-unknown', c.locationKnown],
+  ]);
+  c.add('display.rotate180', 'D-43', enabled && on(c.config, 'display.rotate180'), [found]);
+  c.add('display.buttonPin', 'D-43', enabled && read(c.config, 'display.buttonPin', 255) !== 255, [found]);
+};
+
+// The battery (spec 032): its settings, rule and events need a fuel gauge.
+// Monitoring and the events ship on, so without a gauge they're shown muted;
+// the safety rule is fail-safe. Older firmware (no fact) has no gauge.
+const addBattery = (c: Context) => {
+  const gauge = c.fact('batteryDetected') ?? (c.fact('wifiConnected') === null ? null : false);
+  const enabled = on(c.config, 'battery.enabled', true);
+  const powerSaving = enabled && on(c.config, 'battery.powerSaving', true);
+  const found: Link = ['D-46', 'battery-missing', gauge];
+  for (const key of ['enabled', 'lowPercent', 'criticalPercent', 'shutdownPercent'])
+    c.add(`battery.${key}`, 'D-46', enabled, [found], NEUTRAL);
+  c.add('battery.capacityMah', 'D-46', enabled && read(c.config, 'battery.capacityMah', 0) !== 0, [found], NEUTRAL);
+  for (const key of ['powerSaving', 'saveReadIntervalSeconds', 'shutdownGraceSeconds'])
+    c.add(`battery.${key}`, 'D-46', powerSaving, [found], NEUTRAL);
+
+  c.add('alpaca.batteryEnabled', 'D-47', on(c.config, 'alpaca.batteryEnabled'), [['D-47', 'battery-missing', gauge]], FAIL_SAFE);
+  c.add(
+    'alpaca.batteryPhoneAlarm',
+    'D-50',
+    on(c.config, 'alpaca.batteryPhoneAlarm', true),
+    [
+      ['D-50', 'ble-build', c.fact('bluetoothBuild')],
+      ['D-50', 'ble-off', on(c.config, 'ble.enabled')],
+      ['D-35', 'ble-restart', c.fact('bluetoothRunning')],
+      ['D-50', 'no-passkey', read(c.config, 'ble.passkey', '') !== ''],
+      ['D-50', 'no-phones', c.hasPhones],
+    ],
+    NEUTRAL,
+  );
+
+  const alertsEnabled = on(c.config, 'alerts.enabled');
+  for (const key of Object.keys(BATTERY_EVENT_DEFAULTS)) {
+    const eventLevel = read(c.config, `alerts.events.${key}.level`, BATTERY_EVENT_DEFAULTS[key]);
+    const event: Link = ['D-04', 'alerts-off', or(alertsEnabled, and(eventLevel === 4, c.phonesRing))];
+    c.add(`alerts.events.${key}.level`, 'D-48', eventLevel !== 0, [event, ['D-48', 'battery-missing', gauge]], NEUTRAL);
+  }
+
+  c.add(
+    'mqtt.publish.battery',
+    'D-49',
+    on(c.config, 'mqtt.publish.battery', true),
+    [
+      ['D-49', 'mqtt-off', on(c.config, 'mqtt.enabled')],
+      ['D-49', 'battery-missing', gauge],
+    ],
+    NEUTRAL,
+  );
+};
+
 /**
  * Every reported setting, in catalogue order. With `facts === null` (status
  * not loaded yet) runtime and hardware links are unknown: they never make a
@@ -341,9 +362,17 @@ export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
       out.push(entry);
     },
   };
-  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafetyRules, addSensorsAndTime, addDevice].forEach((section) =>
-    section(context),
-  );
+  [
+    addAlertChannels,
+    addAlertEvents,
+    addAlertOptions,
+    addMqtt,
+    addSafetyRules,
+    addSensorsAndTime,
+    addDevice,
+    addDisplay,
+    addBattery,
+  ].forEach((section) => section(context));
   return out;
 }
 

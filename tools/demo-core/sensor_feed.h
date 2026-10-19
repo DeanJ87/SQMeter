@@ -10,6 +10,7 @@
 #include <utility>
 #include "Config.h"
 #include "RainLogic.h"
+#include "BatteryLogic.h"
 #include "DeviceCore.h"
 
 namespace SQM
@@ -33,6 +34,10 @@ namespace SQM
         void restart();
 
         const Rain::Latch &rainLatch() const { return latch; }
+        // The power policy's one-shots for the alert engine (spec 032), as PowerManager's.
+        bool takeShutdownStarted() { return std::exchange(shutdownStarted, false); }
+        bool takePowerRestored() { return std::exchange(powerRestored, false); }
+        bool takeRecovered() { return std::exchange(recovered, false); }
         uint16_t lightWindowSeconds() const { return lightWindow; }
         uint32_t lastLightStepMs() const { return lastLightStep; }
 
@@ -49,6 +54,10 @@ namespace SQM
         uint16_t lightWindow = 90;
         uint32_t lastLightStep = 0;
         float lastInputLux = 0.0f;
+        Battery::PowerPolicy policy;
+        bool shutdownStarted = false;
+        bool powerRestored = false;
+        bool recovered = false;
 
         float averagedLux(float inputLux, bool nightMode, uint32_t now);
         void readLight(JsonObjectConst in);
@@ -61,5 +70,7 @@ namespace SQM
         void readRain(JsonObjectConst in);
         void rainDiagnostics();
         void readWind(JsonObjectConst in);
+        void readBattery(JsonObjectConst in);
+        void batteryPolicy();
     };
 } // namespace SQM

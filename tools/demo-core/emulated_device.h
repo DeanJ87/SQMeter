@@ -21,6 +21,7 @@
 #include "AlpacaRouter.h"
 #include "Config.h"
 #include "DeviceCore.h"
+#include "DisplayController.h"
 #include "RainLogic.h"
 #include "SafetyHistoryLog.h"
 #include "SettingsDeps.h"
@@ -72,6 +73,16 @@ public:
         cfg.sensor.i2c2SDA = 25;
         cfg.sensor.i2c2SCL = 26;
         cfg.sky.sqmlEnabled = true;
+        // ...and an OLED display (spec 031), cycling a few pages.
+        cfg.display.enabled = true;
+        const Display::Page pages[] = {Display::Page::Sky, Display::Page::Environment, Display::Page::Safety, Display::Page::Network};
+        cfg.display.pageCount = 4;
+        for (uint8_t i = 0; i < cfg.display.pageCount; ++i)
+            cfg.display.pages[i] = pages[i];
+        // ...and the travel board's battery with its charger pins wired (spec 032).
+        cfg.battery.stat1Pin = 13;
+        cfg.battery.stat2Pin = 14;
+        cfg.battery.pgPin = 32;
         bootConfig = cfg;
         history.magic = 0; // garbage -> cleared on the first boot
         SafetyHistory::startBoot(history, false);
@@ -158,6 +169,10 @@ public:
     // POST /api/sensors/tsl2591/calibrate-dark - the device's checks.
     std::string calibrateDark(const std::string &sensor);
 
+    // POST /api/display/wake (wake true) or /blank (spec 031): the demo
+    // board has an OLED; the next tick applies the request.
+    std::string displayRequest(bool wake);
+
     // --- Alpaca --------------------------------------------------------------
     // method "GET"/"PUT", path, params as [[name, value], ...].
     std::string alpaca(const std::string &method, const std::string &path, const std::string &paramsJson);
@@ -190,6 +205,9 @@ private:
 
     void runAlerts();
 
+    // The OLED's controller, ticked with each sensor cycle (spec 031).
+    void tickDisplay();
+
     // The TSL2591 driver averages its samples over the sky averaging window
     // and, at night, reports the average (src/sensors/TSL2591Sensor.cpp);
     // emulated here so light changes take the time they take on the device.
@@ -211,6 +229,10 @@ private:
     std::string clockTime = "--:--";
     std::string clockDate = "--";
     Alpaca::Router router;
+    Display::Controller displayController;
+    Display::Output displayOut;
+    bool displayWake = false;
+    bool displayBlank = false;
     // Simulated sensors -> the readings the drivers would produce (sensor_feed.cpp).
     SensorFeed feed{snapshot, cfg, bootConfig, nowMs, bootMs};
 };

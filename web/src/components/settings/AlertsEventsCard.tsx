@@ -20,7 +20,7 @@ const darknessLocation = (view: AlertsView, status: SystemStatus | null) => {
   return view.config.location?.set ? view.config.location : null;
 };
 
-const EventRows: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
+const EventRows: FunctionalComponent<{ view: AlertsView; battery: boolean }> = ({ view, battery }) => {
   const { alerts, off, set, err } = view;
   const [editing, setEditing] = useState<AlertEventKey | null>(null);
   const row = (key: AlertEventKey, label: string, opts: { hint?: string; threshold?: ComponentChildren } = {}) => (
@@ -93,6 +93,17 @@ const EventRows: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
       {row('client_disconnected', t('settings.alerts.theImagingAppDisconnects'), {
         hint: t('settings.alerts.itDisconnectedNormallyForExample'),
       })}
+      {battery && (
+        <>
+          <h3 class="card-group-title">{t('settings.alerts.battery')}</h3>
+          {row('battery_low', t('settings.alerts.batteryLowTitle'), { hint: t('settings.alerts.batteryLowHint') })}
+          {row('battery_critical', t('settings.alerts.batteryCriticalTitle'), { hint: t('settings.alerts.batteryCriticalHint') })}
+          {row('battery_shutdown', t('settings.alerts.batteryShutdownTitle'), { hint: t('settings.alerts.batteryShutdownHint') })}
+          {row('power_restored', t('settings.alerts.powerRestoredTitle'), { hint: t('settings.alerts.powerRestoredHint') })}
+          {row('charge_complete', t('settings.alerts.chargeCompleteTitle'))}
+          {row('charge_fault', t('settings.alerts.chargeFaultTitle'), { hint: t('settings.alerts.chargeFaultHint') })}
+        </>
+      )}
     </>
   );
 };
@@ -197,6 +208,8 @@ export const AlertsEventsCard: FunctionalComponent<{ view: AlertsView; status: S
   wakePhones,
 }) => {
   const { alerts, off, set, err, fix, pushoverOn } = view;
+  // The battery events (spec 032): firmware that has them, on a board with a gauge.
+  const battery = Boolean(view.config.alerts?.events?.battery_low && status?.battery?.present);
   const darkness = describeDarkness({
     sky: status?.sky,
     location: darknessLocation(view, status),
@@ -214,7 +227,7 @@ export const AlertsEventsCard: FunctionalComponent<{ view: AlertsView; status: S
             <span />
             <span />
           </div>
-          <EventRows view={view} />
+          <EventRows view={view} battery={battery} />
         </div>
         {err('cloudedOverCloudPercent') && <Note tone="bad">{err('cloudedOverCloudPercent')}</Note>}
         {wakePhones.state === 'inactive' && <DepNote entry={wakePhones} onFix={fix} prefix={t('settings.alerts.phonesWontRing')} />}

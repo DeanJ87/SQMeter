@@ -45,6 +45,7 @@ Each message on `/ws/sensors` is the readings document - the same as [`GET /api/
   "infrared": { "status": "ok", "skyTemperature": -24.7, "ambientTemperature": 12.4, "...": "..." },
   "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "...": "..." },
   "rain": { "status": "ok", "raining": false, "intensity": 0.0, "...": "..." },
+  "battery": { "present": true, "status": "ok", "percent": 82.4, "state": "discharging", "...": "..." },
   "safety": { "safe": true, "reasons": [], "...": "..." }
 }
 ```
@@ -79,7 +80,7 @@ asyncio.run(stream())
 
 ## Notes
 
-- `/ws/status` streams the same object as [`GET /api/status`](rest.md#get-apistatus) every 2 seconds (WiFi, memory, MQTT, Bluetooth, darkness/sun position). It is also sent at once when the recent alerts change: `alerts.recentRevision` goes up whenever [`GET /api/alerts/recent`](rest.md#get-apialertsrecent) would answer differently, so a page fetches the list only then
+- `/ws/status` streams the same object as [`GET /api/status`](rest.md#get-apistatus) every 2 seconds (WiFi, memory, MQTT, Bluetooth, darkness/sun position, the OLED display, the battery). It is also sent at once when the recent alerts change: `alerts.recentRevision` goes up whenever [`GET /api/alerts/recent`](rest.md#get-apialertsrecent) would answer differently, so a page fetches the list only then
 - The server broadcasts to all connected clients simultaneously
 - There is no authentication on the WebSocket endpoint
 - Broadcasts happen every 1 second regardless of `sensor.readIntervalMs`

@@ -12,6 +12,7 @@ export const DEFAULT_ORDER = [
   'ir',
   'wind',
   'rain',
+  'battery',
 ];
 const ORDER_KEY = 'sqm.dashboard.order';
 

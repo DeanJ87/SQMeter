@@ -280,8 +280,10 @@ namespace SQM
             {
                 if (job != nullptr)
                 {
+                    delivering = true;
                     deliver(*job);
                     delete job;
+                    delivering = false;
                 }
                 continue;
             }
@@ -294,6 +296,11 @@ namespace SQM
                 continue;
             vTaskDelete(nullptr);
         }
+    }
+
+    bool AlertDispatcher::idle() const
+    {
+        return !delivering.load() && (queue == nullptr || uxQueueMessagesWaiting(queue) == 0);
     }
 
     void AlertDispatcher::deliver(const Job &job)

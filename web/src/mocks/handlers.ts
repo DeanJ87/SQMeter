@@ -25,6 +25,7 @@ const mockFacts: DepFacts = {
   infraredDetected: true,
   environmentDetected: true,
   languageInstalled: true,
+  batteryDetected: true, // spec 032: the mock board has a fuel gauge
 };
 
 // Demo-only: alerts switched on/off.
@@ -187,6 +188,8 @@ export const handlers = [
 
   // REST — control
   http.post('/api/restart', () => HttpResponse.json({ ok: true })),
+  http.post('/api/display/wake', () => HttpResponse.json({ success: true })),
+  http.post('/api/display/blank', () => HttpResponse.json({ success: true })),
   http.post('/api/update', () => HttpResponse.json({ success: true })),
   http.post('/api/update/fs', () => HttpResponse.json({ success: true })),
 

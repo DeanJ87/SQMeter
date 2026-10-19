@@ -33,3 +33,7 @@
 ## Phase 5: Validation - open
 
 - [ ] T017 Hardware validation on a real S3-ETH, S3-Zero and S3-Zero-N8R8: boot, sensors on both I2C buses, WiFi, OTA, BLE build (FR-012, SC-004)
+
+## Phase 6: Board features (specs 031, 032)
+
+- [X] T018 OLED display and battery drivers built only for the S3 boards (`SQM_HAS_DISPLAY`, `SQM_HAS_BATTERY` in `[s3]`, include/BoardFeatures.h); classic builds report them as not detected

@@ -19,6 +19,8 @@ import {
 import { defaultBleConfig } from './defaults';
 import { t } from '../../i18n';
 import LanguageCard from './LanguageCard';
+import DisplayCard from './DisplayCard';
+import BatteryCard from './BatteryCard';
 
 type BleAlarm = NonNullable<NonNullable<SystemStatus['ble']>['alarm']>;
 type WithActions = SettingsTabProps & { actions: DeviceActions };
@@ -182,6 +184,7 @@ const BluetoothCard: FunctionalComponent<WithActions> = (props) => {
 const DeviceTab: FunctionalComponent<SettingsTabProps> = (props) => {
   const { config, update, error, deps, fix } = props;
   const actions = useDeviceActions();
+  const displayActions = useDeviceActions();
   return (
     <>
       <SettingsCard title={t('settings.device.device')}>
@@ -200,6 +203,10 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = (props) => {
       <SecurityCard {...props} />
 
       <BluetoothCard {...props} actions={actions} />
+
+      <DisplayCard {...props} actions={displayActions} />
+
+      <BatteryCard {...props} />
     </>
   );
 };
