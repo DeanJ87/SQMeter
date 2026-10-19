@@ -108,6 +108,7 @@ AREA_KINDS = {
 
 TERMS = {
     "SQM": "SQM = sky quality in mag/arcsec² - keep 'SQM'",
+    "SQM-L": "SQM-L = the second, narrow-lens sky quality sensor - keep 'SQM-L'",
     "NELM": "NELM = naked-eye limiting magnitude - keep 'NELM'",
     "Bortle": "Bortle = the Bortle dark-sky scale (1-9) - keep 'Bortle'",
     "Alpaca": "ASCOM Alpaca, the protocol imaging apps use - keep 'Alpaca'",

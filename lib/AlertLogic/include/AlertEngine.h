@@ -107,7 +107,8 @@ namespace SQM
             bool onClientDisconnected = false;
         };
 
-        constexpr size_t SENSOR_COUNT = 5;
+        // Light (or SQM), IR sky, environment, rain, anemometer, SQM-L (spec 030).
+        constexpr size_t SENSOR_COUNT = 6;
         constexpr size_t CLIENT_DEVICE_COUNT = 2; // SafetyMonitor, ObservingConditions
 
         // One Alpaca device as the imaging app sees it (from Alpaca::ClientWatch).

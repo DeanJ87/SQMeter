@@ -28,9 +28,29 @@
 
 namespace SQM
 {
+    // One sky sensor (TSL2591) as read by its driver (spec 030). `enabled`
+    // and `metrics` are filled by Core::derive.
+    struct SkySensorSnapshot
+    {
+        bool enabled = false;
+        bool initialized = false; // begun and answering
+        TSL2591Reading reading;
+        TSL2591Diagnostics diagnostics{};
+        uint32_t lastUpdate = 0; // millis() of the last good read, 0 = never
+        SkyQualityMetrics metrics;
+    };
+
     // One consistent copy of every sensor's latest reading.
     struct SensorSnapshot
     {
+        // Both sky sensors, indexed by SkyRole. The drivers fill these.
+        SkySensorSnapshot skySensors[SKY_ROLE_COUNT];
+        // The authoritative sky sensor (cfg.sky.authoritative); set by Core::derive.
+        SkyRole skySource = SkyRole::Sqm;
+        // The authoritative copy (Core::derive): every single-value consumer
+        // (readings light/sky, safety, Alpaca, BLE, alerts, status) reads these.
+        // Empty and not initialised when the authoritative sensor is off - never
+        // the other sensor's values (FR-010).
         TSL2591Reading tsl;
         TSL2591Diagnostics tslDiagnostics;
         BME280Reading bme;
@@ -66,13 +86,20 @@ namespace SQM
         constexpr int64_t CLOCK_VALID_EPOCH = 1704067200;
         // A reading is stale this long after the read interval.
         constexpr uint32_t SENSOR_STALE_GRACE_MS = 1000;
+        // ArduinoJson pool for /api/status (src/WebServerStatus.cpp): the
+        // sections this library writes plus the device's own (firmware,
+        // memory, partitions, time, WiFi, MQTT, connections), worst case with
+        // both sky sensors, pinned by test/test_device_core
+        // (test_status_document_fits).
+        constexpr size_t STATUS_DOC_CAPACITY = 7680;
 
         inline uint32_t ageMs(uint32_t now, uint32_t timestamp)
         {
             return timestamp == 0 ? 0 : now - timestamp;
         }
 
-        // Fills the derived fields (sky quality, cloud model) from the raw readings.
+        // Fills the derived fields (each sky sensor's metrics, the
+        // authoritative sky copy, cloud model) from the raw readings.
         void derive(SensorSnapshot &snapshot, const Config &cfg);
 
         // The readings document's content (lib/Readings writes it).
@@ -81,6 +108,14 @@ namespace SQM
         uint16_t windowSamples(const TSL2591Diagnostics &diag);
         // Bring-up diagnostics (/api/status "diagnostics", MQTT <base>/diagnostics).
         void writeDiagnostics(JsonObject root, const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
+        // /api/status "skySensors": health and diagnostics of each enabled sky
+        // sensor (spec 030); nothing when neither is enabled.
+        void writeSkySensorStatus(JsonObject root, const SensorSnapshot &snapshot, const Readings::Snapshot &readings);
+        // Dark calibration (POST /api/sensors/tsl2591/calibrate-dark): stores
+        // the covered window's average as `role`'s dark offset and touches no
+        // other setting (spec 030 US3). `at` is Unix seconds, or millis()
+        // before the clock is set.
+        void applyDarkCalibration(Config &cfg, SkyRole role, const TSL2591Diagnostics &diagnostics, int64_t at);
         // Per-sensor health (/api/status "sensors").
         void writeSensorHealth(JsonObject sensors, const Readings::Snapshot &readings, const Config &cfg);
 
@@ -122,12 +157,26 @@ namespace SQM
         // Alerts.
         // The device state an alert pass reads: settings, readings, darkness
         // and the safety verdict.
+        // Each sky sensor's own reading for the alert wording (spec 030):
+        // {sqm_wide}, {sqm_l}, {sqm_delta}, {sqm_source}.
+        struct SkyReadings
+        {
+            struct Role
+            {
+                bool valid = false; // on, ok and fresh
+                float sqm = 0.0F;
+            } roles[SKY_ROLE_COUNT];
+            SkyRole source = SkyRole::Sqm;
+        };
+        SkyReadings skyReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
+
         struct AlertSources
         {
             const Config &cfg;
             const Alpaca::ObservingConditionsSnapshot &obs;
             const NightState &night;
             const SafetyStatus &status;
+            SkyReadings sky{}; // none given: every per-sensor value reads "--"
         };
         // The device's local time ("HH:MM") and date for {time} and {date}.
         struct LocalClock

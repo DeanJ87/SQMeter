@@ -234,7 +234,7 @@ void test_discovery_messages(void)
     forEachDiscovery(
         device, groups, true, [&](const std::string &topic, const std::string &payload) { messages.emplace_back(topic, payload); });
 
-    TEST_ASSERT_EQUAL(17, messages.size());
+    TEST_ASSERT_EQUAL(20, messages.size()); // + the sky sensors' three (spec 030), removed here
     bool sawSqm = false, sawWindRemoval = false, sawSafety = false, sawSwitch = false;
     for (const auto &m : messages)
     {
@@ -309,6 +309,13 @@ void test_readings_use_a_decimal_point_under_any_locale(void)
             TEST_FAIL_MESSAGE(json.c_str());
 }
 
+void test_sky_source_always_written_with_the_sky_group();
+void test_sky_group_unchanged_but_source();
+void test_sky_sensor_entries_and_rounding();
+void test_sky_sensor_not_ok_carries_status_only();
+void test_worst_case_document_fits();
+void test_discovery_sky_sensor_entities();
+
 int main(int argc, char **argv)
 {
     (void)argc;
@@ -325,5 +332,11 @@ int main(int argc, char **argv)
     RUN_TEST(test_discovery_messages);
     RUN_TEST(test_discovery_alerts_switch_needs_alerts);
     RUN_TEST(test_readings_use_a_decimal_point_under_any_locale);
+    RUN_TEST(test_sky_source_always_written_with_the_sky_group);
+    RUN_TEST(test_sky_group_unchanged_but_source);
+    RUN_TEST(test_sky_sensor_entries_and_rounding);
+    RUN_TEST(test_sky_sensor_not_ok_carries_status_only);
+    RUN_TEST(test_worst_case_document_fits);
+    RUN_TEST(test_discovery_sky_sensor_entities);
     return UNITY_END();
 }

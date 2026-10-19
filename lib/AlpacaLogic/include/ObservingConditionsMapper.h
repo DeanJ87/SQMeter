@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "SensorTypes.h"
+
 namespace SQM
 {
     namespace Alpaca
@@ -47,7 +49,11 @@ namespace SQM
         // sensor doesn't knock out properties served by the others.
         struct ObservingConditionsSnapshot
         {
-            SourceState skyLight;    // TSL2591: skybrightness, skyquality
+            SourceState skyLight; // authoritative TSL2591: skybrightness, skyquality
+            // Which sky sensor skyLight is, and whether both are on (spec 030):
+            // only changes the SensorDescription text.
+            SkyRole skyRole = SkyRole::Sqm;
+            bool skyNamed = false;
             SourceState irSky;       // MLX90614: skytemperature, cloudcover
             SourceState environment; // BME280: temperature, humidity, dewpoint, pressure
             SourceState rain;        // RG-15: rainrate

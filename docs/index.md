@@ -20,7 +20,7 @@ SQMeter is open-source (MIT) firmware that makes an ESP32 and a few I²C sensors
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/sensors/ include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h include/OtaUpdater.h include/TimeManager.h
 blocking: false
-fingerprint: 7922de94bffa9319
+fingerprint: 5529915a79e7a01c
 -->
 <figure class="diagram" markdown>
 
@@ -28,7 +28,7 @@ fingerprint: 7922de94bffa9319
 flowchart LR
     accTitle: What SQMeter connects to
     accDescr: Sensors feed the ESP32. It keeps its settings and web UI on the device, serves a dashboard and APIs to browsers, publishes to an MQTT broker, answers ASCOM Alpaca clients such as N.I.N.A., and sends alerts to push services and paired phones.
-    I2C["<b>Sky and air</b><br/>TSL2591 brightness<br/>MLX90614 IR sky temperature<br/>BME280 temperature, humidity, pressure"]
+    I2C["<b>Sky and air</b><br/>TSL2591 brightness, SQM<br/>optional second TSL2591, SQM-L, on I²C-2<br/>MLX90614 IR sky temperature<br/>BME280 temperature, humidity, pressure"]
     OPT["<b>Optional</b><br/>GPS: location and time<br/>RG-15: rain<br/>Anemometer and vane: wind"]
     ESP["<b>ESP32 running SQMeter</b><br/>readings, cloud cover,<br/>safety verdict, alerts<br/><i>settings in NVS,<br/>web UI and language file in LittleFS</i>"]
     WEB["Browser<br/>dashboard, REST, WebSocket"]

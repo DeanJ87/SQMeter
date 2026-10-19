@@ -10,6 +10,8 @@
     { "path": "sensor.i2cFrequency", "int": true, "min": 10000, "max": 400000 },
     { "path": "skyAveraging.windowSeconds", "int": true, "min": 10, "max": 300 },
     { "path": "skyCalibration.sqmOffset", "min": -5, "max": 5 },
+    { "path": "skyAveragingL.windowSeconds", "int": true, "min": 10, "max": 300 },
+    { "path": "skyCalibrationL.sqmOffset", "min": -5, "max": 5 },
     { "path": "cloudDetection.clearSkyThreshold", "min": -30, "max": 0, "with": { "cloudDetection.cloudyThreshold": 5 } },
     { "path": "cloudDetection.cloudyThreshold", "min": -20, "max": 10, "with": { "cloudDetection.clearSkyThreshold": -25 } },
     { "path": "cloudDetection.humidityCorrection", "min": 0, "max": 2 },

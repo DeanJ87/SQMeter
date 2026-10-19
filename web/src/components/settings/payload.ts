@@ -12,6 +12,8 @@ import {
   defaultHomeAssistant,
   defaultSkyAveraging,
   defaultSkyCalibration,
+  defaultSkyConfig,
+  I2C2_PIN_UNSET,
 } from './defaults';
 
 // Normalises a config from the device (or the form) into the full shape the
@@ -81,9 +83,12 @@ export const toConfigPayload = (source: Config): Config => {
     ntp: { ...source.ntp },
     gps: { ...source.gps },
     rain,
-    sensor: { ...source.sensor },
+    sensor: { i2c2SDA: I2C2_PIN_UNSET, i2c2SCL: I2C2_PIN_UNSET, ...source.sensor },
     skyAveraging: { ...defaultSkyAveraging, ...source.skyAveraging },
     skyCalibration: { ...defaultSkyCalibration, ...source.skyCalibration },
+    sky: { ...defaultSkyConfig, ...source.sky },
+    skyAveragingL: { ...defaultSkyAveraging, ...source.skyAveragingL },
+    skyCalibrationL: { ...defaultSkyCalibration, ...source.skyCalibrationL },
     cloudDetection: source.cloudDetection ? { ...source.cloudDetection } : { ...defaultCloudDetectionConfig },
     // Merge defaults so configs from older firmware gain newly added fields.
     alpaca: { ...defaultAlpacaConfig, ...source.alpaca },

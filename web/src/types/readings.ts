@@ -20,7 +20,11 @@ export interface LightReading extends Group {
   nightMode?: boolean;
 }
 
+export type SkySource = 'sqm' | 'sqml';
+
 export interface SkyReading extends Group {
+  // The authoritative sky sensor (spec 030); older firmware has none (= sqm).
+  source?: SkySource;
   sqm?: number;
   rawSqm?: number;
   nelm?: number;
@@ -28,6 +32,29 @@ export interface SkyReading extends Group {
   description?: string;
   calibrated?: boolean;
   averagingWindowSeconds?: number;
+}
+
+// One sky sensor's own reading (spec 030 FR-008).
+export interface SkySensorReading extends Group {
+  sqm?: number;
+  rawSqm?: number;
+  nelm?: number;
+  bortle?: number;
+  description?: string;
+  calibrated?: boolean;
+  averagingWindowSeconds?: number;
+  lux?: number;
+  gain?: string;
+  integrationMs?: number;
+  saturated?: boolean;
+  nightMode?: boolean;
+}
+
+// Each enabled sky sensor; deltaSqm (SQM-L - SQM) when both are ok.
+export interface SkySensorsReading {
+  sqm?: SkySensorReading;
+  sqml?: SkySensorReading;
+  deltaSqm?: number;
 }
 
 export interface EnvironmentReading extends Group {
@@ -88,6 +115,7 @@ export interface SensorData {
   dataStale: boolean;
   light: LightReading;
   sky: SkyReading;
+  skySensors?: SkySensorsReading;
   environment: EnvironmentReading;
   infrared: InfraredReading;
   clouds: CloudReading;

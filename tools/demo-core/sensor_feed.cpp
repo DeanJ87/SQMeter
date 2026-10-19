@@ -55,20 +55,33 @@ namespace SQM
 
     void SensorFeed::readLight(JsonObjectConst in)
     {
-        const uint32_t now = nowMs;
-        // TSL2591: detected at boot unless the demo says it's missing.
+        // TSL2591s: detected at boot unless the demo says one is missing. The
+        // SQM-L (spec 030) sees the same sky through a narrow lens: about
+        // 0.25 mag/arcsec² darker, so 10^(-0.1) of the SQM's light.
         JsonObjectConst light = in["light"];
-        snapshot.tslInitialized = light["present"] | true;
-        TSL2591Reading &tsl = snapshot.tsl;
-        if (snapshot.tslInitialized && !(light["failed"] | false))
+        const float lux = averagedLux(light["lux"] | 0.001f, light["nightMode"] | false, nowMs);
+        readSky(SkyRole::Sqm, light, light, lux);
+        readSky(SkyRole::Sqml, in["lightL"], light, lux * std::pow(10.0f, -SQML_DARKER_MAG / 2.5f));
+    }
+
+    // `sensor`: present / failed flags; `light`: the sky (counts, night mode).
+    void SensorFeed::readSky(SkyRole role, JsonObjectConst sensor, JsonObjectConst light, float averagedRawLux)
+    {
+        const uint32_t now = nowMs;
+        SkySensorSnapshot &sky = snapshot.skySensors[skyRoleIndex(role)];
+        // A sensor that is off is never begun.
+        sky.initialized = cfg.skyEnabled(role) && (sensor["present"] | true);
+        TSL2591Reading &tsl = sky.reading;
+        if (sky.initialized && !(sensor["failed"] | false))
         {
+            const SkyCalibrationConfig &cal = cfg.calibration(role);
             tsl.status = SensorStatus::Ok;
             tsl.timestamp = now;
-            snapshot.tslLastUpdate = now;
-            tsl.rawLux = averagedLux(light["lux"] | 0.001f, light["nightMode"] | false, now);
-            const CalibratedLight calibrated = SkyQuality::calibrate(tsl.rawLux, cfg.skyCalibration.enabled, cfg.skyCalibration.sqmOffset);
+            sky.lastUpdate = now;
+            tsl.rawLux = averagedRawLux;
+            const CalibratedLight calibrated = SkyQuality::calibrate(tsl.rawLux, cal.enabled, cal.sqmOffset);
             tsl.rawSqm = calibrated.rawSqm;
-            tsl.calibrated = cfg.skyCalibration.enabled;
+            tsl.calibrated = cal.enabled;
             tsl.calibratedSqm = calibrated.calibratedSqm;
             tsl.lux = calibrated.lux;
             tsl.visible = light["visible"] | 0;
@@ -76,31 +89,39 @@ namespace SQM
             tsl.full = light["full"] | 0;
             tsl.nightMode = light["nightMode"] | false;
         }
-        else if (snapshot.tslInitialized)
+        else if (sky.initialized)
         {
             tsl.status = SensorStatus::Timeout;
+        }
+        else
+        {
+            tsl = TSL2591Reading{};
         }
     }
 
     void SensorFeed::lightDiagnostics()
     {
         const uint32_t now = nowMs;
-        const TSL2591Reading &tsl = snapshot.tsl;
-        TSL2591Diagnostics &d = snapshot.tslDiagnostics;
-        d.gainName = tsl.nightMode ? "MAX" : "HIGH";
-        d.gainFactor = tsl.nightMode ? 9876.0f : 428.0f;
-        d.integrationMs = 600;
-        d.averagingWindowSeconds = static_cast<uint16_t>(cfg.skyAveraging.windowSeconds);
-        const uint32_t sinceBoot = now - bootMs;
-        d.sampleCount = static_cast<uint16_t>(std::min<uint32_t>(sinceBoot / 600, Core::windowSamples(d)));
-        d.rollingVisible = tsl.visible;
-        d.darkVisibleOffset = cfg.skyCalibration.darkVisibleOffset;
-        d.correctedVisible = std::max(0.0f, d.rollingVisible - d.darkVisibleOffset);
-        d.rawSqm = tsl.rawSqm;
-        d.calibratedSqm = tsl.calibratedSqm;
-        d.nightMode = tsl.nightMode;
-        d.calibrated = tsl.calibrated;
-        d.saturated = false;
+        for (size_t i = 0; i < SKY_ROLE_COUNT; ++i)
+        {
+            const SkyRole role = static_cast<SkyRole>(i);
+            const TSL2591Reading &tsl = snapshot.skySensors[i].reading;
+            TSL2591Diagnostics &d = snapshot.skySensors[i].diagnostics;
+            d.gainName = tsl.nightMode ? "MAX" : "HIGH";
+            d.gainFactor = tsl.nightMode ? 9876.0f : 428.0f;
+            d.integrationMs = 600;
+            d.averagingWindowSeconds = static_cast<uint16_t>(cfg.averaging(role).windowSeconds);
+            const uint32_t sinceBoot = now - bootMs;
+            d.sampleCount = static_cast<uint16_t>(std::min<uint32_t>(sinceBoot / 600, Core::windowSamples(d)));
+            d.rollingVisible = tsl.visible;
+            d.darkVisibleOffset = cfg.calibration(role).darkVisibleOffset;
+            d.correctedVisible = std::max(0.0f, d.rollingVisible - d.darkVisibleOffset);
+            d.rawSqm = tsl.rawSqm;
+            d.calibratedSqm = tsl.calibratedSqm;
+            d.nightMode = tsl.nightMode;
+            d.calibrated = tsl.calibrated;
+            d.saturated = false;
+        }
     }
 
     void SensorFeed::readEnvironment(JsonObjectConst in)

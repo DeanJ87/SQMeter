@@ -76,6 +76,18 @@ curl http://sqmeter.local/api/status
 
 `sensors` lists the built-in sensors (`light`, `environment`, `infrared`) and, when enabled, `gps`, `rain` and `wind`. `status` is `ok`, `missing`, `error` or `stale`. `diagnostics.rain` is only present while the rain sensor is enabled. Readings are in `/api/sensors`.
 
+`sensors.light` and `diagnostics.light` are the authoritative sky sensor (`sky.authoritative`). `skySensors` has an entry per sky sensor that is switched on (spec 030), and is left out when neither is:
+
+```json
+"skySensors": {
+  "sqm":  { "status": "ok", "ageMs": 412, "detected": true, "gain": "MAX", "integrationMs": 600,
+            "saturated": false, "nightMode": true, "sampleCount": 150, "windowSamples": 150, "darkVisibleOffset": 0.0 },
+  "sqml": { "status": "missing", "detected": false }
+}
+```
+
+`detected` means found and answering (`ok` or `stale`); the gain and calibration fields are only there while it is. `ageMs` is left out while `missing`.
+
 ---
 
 ### `GET /api/sensors`
@@ -93,7 +105,12 @@ curl http://sqmeter.local/api/sensors
   "dataAgeMs": 412,
   "dataStale": false,
   "light": { "status": "ok", "ageMs": 400, "lux": 0.0003, "visible": 307, "infrared": 47, "full": 357, "gain": "MAX", "gainFactor": 9876, "integrationMs": 600, "saturated": false, "nightMode": true },
-  "sky": { "status": "ok", "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90 },
+  "sky": { "status": "ok", "source": "sqm", "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90 },
+  "skySensors": {
+    "sqm": { "status": "ok", "ageMs": 400, "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90, "lux": 0.000301, "gain": "MAX", "integrationMs": 600, "saturated": false, "nightMode": true },
+    "sqml": { "status": "ok", "ageMs": 380, "sqm": 21.73, "...": "the same fields" },
+    "deltaSqm": 0.25
+  },
   "environment": { "status": "error", "ageMs": 61000 },
   "infrared": { "status": "ok", "ageMs": 3100, "skyTemperature": -24.7, "ambientTemperature": 12.4 },
   "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "description": "Clear", "temperatureDelta": -37.1, "correctedDelta": -33.0, "humidity": 53, "humiditySource": "assumed" },
@@ -103,26 +120,29 @@ curl http://sqmeter.local/api/sensors
 
 A group whose sensor isn't `ok` carries only `status` and `ageMs` - just `status` when `missing` (like `environment` above).
 
+`light` and `sky` are the authoritative sky sensor; `sky.source` (`sqm` or `sqml`) says which. If it is switched off or not answering they report that sensor's state, never the other sensor's reading. `skySensors` (two sky sensors, spec 030) has each sensor that is switched on under its own name, with the same rules, and `deltaSqm` (SQM-L − SQM) while both are `ok`.
+
 ---
 
 ### `POST /api/sensors/tsl2591/calibrate-dark`
 
-Stores the current rolling TSL2591 visible count as the dark visible offset. Cover the aperture with an opaque cap, wait for the rolling window to fill, then call this endpoint.
+Stores the current rolling TSL2591 visible count as the dark visible offset. Cover the aperture with an opaque cap, wait for the rolling window to fill, then call this endpoint. `?sensor=sqm` (the default) calibrates the SQM and writes `skyCalibration`; `?sensor=sqml` calibrates the SQM-L and writes `skyCalibrationL` only. Any other `sensor` is refused with `400 {"error": "Unknown sky sensor"}`.
 
 ```bash
-curl -X POST http://sqmeter.local/api/sensors/tsl2591/calibrate-dark
+curl -X POST "http://sqmeter.local/api/sensors/tsl2591/calibrate-dark?sensor=sqml"
 ```
 
 ```json
 {
   "success": true,
+  "sensor": "sqml",
   "darkVisibleOffset": 1.5,
   "sampleCount": 138,
   "darkCalibratedAt": 1778171234
 }
 ```
 
-It's refused with `409 {"error": "..."}` while it can't give a good offset: no light-sensor readings yet, the sensor isn't in night mode (it's seeing light), or the averaging window isn't full - then the body also has `sampleCount` and `windowSamples`. `/api/status` → `diagnostics.light` shows `sampleCount`, `windowSamples` and `nightMode` so you can wait for it. `darkCalibratedAt` is Unix seconds, or uptime milliseconds if the clock wasn't set.
+It's refused with `409 {"error": "..."}` while it can't give a good offset: the sensor is switched off or not found, no light-sensor readings yet, the sensor isn't in night mode (it's seeing light), or the averaging window isn't full - then the body also has `sampleCount` and `windowSamples`. `/api/status` → `skySensors.<sensor>` (or `diagnostics.light` for the authoritative one) shows `sampleCount`, `windowSamples` and `nightMode` so you can wait for it. `darkCalibratedAt` is Unix seconds, or uptime milliseconds if the clock wasn't set.
 
 ### `POST /api/sensors/rg15/test`
 

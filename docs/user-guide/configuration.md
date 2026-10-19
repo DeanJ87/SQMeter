@@ -121,7 +121,16 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "readIntervalMs": 5000,
     "i2cSDA": 21,
     "i2cSCL": 22,
-    "i2cFrequency": 100000
+    "i2cFrequency": 100000,
+    "i2c2SDA": 255,
+    "i2c2SCL": 255
+  },
+
+  "sky": {
+    "sqmEnabled": true,
+    "sqmlEnabled": false,
+    "authoritative": "sqm",
+    "showOther": true
   },
 
   "skyAveraging": {
@@ -354,9 +363,26 @@ The `auth.password` field is masked in `GET /api/config` responses. Send the mas
 | `readIntervalMs` | int | `5000` | How often sensors are polled (ms) |
 | `i2cSDA` | int | `21` | SDA GPIO pin |
 | `i2cSCL` | int | `22` | SCL GPIO pin |
-| `i2cFrequency` | int | `100000` | I2C clock speed (Hz) |
+| `i2cFrequency` | int | `100000` | I2C clock speed (Hz), both buses |
+| `i2c2SDA` | int | `255` | Second I2C bus SDA GPIO pin, for the SQM-L; `255` = not wired |
+| `i2c2SCL` | int | `255` | Second I2C bus SCL GPIO pin; `255` = not wired |
 
-The TSL2591 light sensor is sampled separately at approximately 600 ms cadence so dark-sky rolling averages are not limited by `readIntervalMs`.
+The second bus pins are both `255`, or two different valid GPIOs that no other bus uses (I2C, GPS and the rain sensor when they are on; the anemometer's own check covers its pins, and Settings shows that clash on **I2C-2 SDA** before you save). Changing the I2C pins or turning the SQM-L on or off takes effect after a restart.
+
+The TSL2591 sky sensors are sampled separately at approximately 650 ms cadence, side by side, so dark-sky rolling averages are not limited by `readIntervalMs`; a read never makes the device wait for an integration.
+
+### Sky sensors
+
+Two TSL2591 sky sensors, the wide **SQM** (first I2C bus) and the narrow-lens **SQM-L** (second I2C bus). See [Two sky sensors](../reference/sky-quality.md#two-sky-sensors-sqm-and-sqm-l).
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `sqmEnabled` | bool | `true` | Read the SQM |
+| `sqmlEnabled` | bool | `false` | Read the SQM-L; needs `sensor.i2c2SDA` and `sensor.i2c2SCL` |
+| `authoritative` | string | `"sqm"` | Whose reading counts: `"sqm"` or `"sqml"`. Only matters with both on. No fallback: if it is off or not answering there is no sky reading |
+| `showOther` | bool | `true` | The dashboard also shows the other sensor's reading and the difference (both on) |
+
+Settings saved before these keys existed load with the defaults above: one sensor, the SQM, exactly as before. In Settings these are **Use SQM**, **Use SQM-L**, **Authoritative reading** and **Show other reading** in **Settings → Sensors → Sky sensors**.
 
 ### Sky Averaging
 
@@ -377,6 +403,8 @@ The TSL2591 light sensor is sampled separately at approximately 600 ms cadence s
 | `darkCalibratedAt` | int | `0` | Epoch timestamp when available, otherwise device milliseconds |
 
 To set the dark floor, cover the lens/baffle aperture with an opaque cap, wait for `skyAveraging.windowSeconds`, then call `POST /api/sensors/tsl2591/calibrate-dark`.
+
+`skyAveraging` and `skyCalibration` are the SQM's. The SQM-L has the same two sections, `skyAveragingL` and `skyCalibrationL`, with the same fields, defaults and ranges (validation messages say "SQM-L ..."). Dark-calibrate it with `POST /api/sensors/tsl2591/calibrate-dark?sensor=sqml`; that writes `skyCalibrationL` only.
 
 ### Cloud Detection
 

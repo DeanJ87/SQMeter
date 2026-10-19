@@ -3,7 +3,8 @@
 // code) derives cloud cover, SQM, dew point, the verdict and alerts from
 // them, exactly as on the roof.
 
-export type SensorId = 'light' | 'environment' | 'infrared' | 'rain' | 'wind' | 'gps';
+// 'lightL' is the SQM-L, the second sky sensor (spec 030).
+export type SensorId = 'light' | 'lightL' | 'environment' | 'infrared' | 'rain' | 'wind' | 'gps';
 
 export interface Conditions {
   air: { temperature: number; humidity: number; pressure: number }; // BME280
@@ -59,7 +60,7 @@ export const DEFAULT_CONDITIONS: Conditions = {
   rain: { rate: 0, lensFault: false },
   wind: { speed: 3, gust: 5.9, direction: 240 },
   gps: { fix: true },
-  faults: { light: false, environment: false, infrared: false, rain: false, wind: false, gps: false },
+  faults: { light: false, lightL: false, environment: false, infrared: false, rain: false, wind: false, gps: false },
   steady: false,
 };
 
@@ -160,6 +161,9 @@ export function toCoreInputs(c: Conditions, nowMs: number, context: InputContext
       full: counts,
       nightMode: lux < 0.5,
     },
+    // The SQM-L sees the same sky through a narrow lens; the core works out
+    // its (darker) reading from the SQM's.
+    lightL: { present: true, failed: c.faults.lightL },
     environment: {
       present: true,
       failed: c.faults.environment,

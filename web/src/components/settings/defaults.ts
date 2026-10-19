@@ -138,4 +138,14 @@ export const defaultSkyCalibration: NonNullable<Config['skyCalibration']> = {
   darkCalibratedAt: 0,
 };
 
+export const defaultSkyConfig: NonNullable<Config['sky']> = {
+  sqmEnabled: true,
+  sqmlEnabled: false,
+  authoritative: 'sqm',
+  showOther: true,
+};
+
+// 255 = the second I2C bus is not wired.
+export const I2C2_PIN_UNSET = 255;
+
 export const defaultHomeAssistant = { enabled: false, discoveryPrefix: 'homeassistant' };

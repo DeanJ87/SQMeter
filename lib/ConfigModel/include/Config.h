@@ -5,6 +5,9 @@
 #include <cstdint>
 #include <cstddef>
 
+#include "BoardProfile.h"
+#include "SensorTypes.h"
+
 namespace SQM
 {
 
@@ -105,6 +108,22 @@ namespace SQM
         uint8_t i2cSDA;
         uint8_t i2cSCL;
         uint32_t i2cFrequency;
+        // Second I2C bus (Wire1) for the SQM-L (spec 030); 255 = not wired.
+        static constexpr uint8_t PIN_UNSET = 255;
+        uint8_t i2c2SDA = PIN_UNSET;
+        uint8_t i2c2SCL = PIN_UNSET;
+        bool i2c2Configured() const { return i2c2SDA != PIN_UNSET && i2c2SCL != PIN_UNSET; }
+    };
+
+    // Which sky sensors run and which one's reading counts (spec 030). The
+    // authoritative sensor feeds every single-value consumer (readings sky,
+    // safety, Alpaca, BLE, alerts, Home Assistant); there is no fallback.
+    struct SkyConfig
+    {
+        bool sqmEnabled = true;   // wide sensor on I2C-1
+        bool sqmlEnabled = false; // narrow sensor on I2C-2
+        SkyRole authoritative = SkyRole::Sqm;
+        bool showOther = true; // dashboard shows the other reading and the difference
     };
 
     struct SkyAveragingConfig
@@ -254,7 +273,7 @@ namespace SQM
         bool enabled;
         uint8_t speedPin; // reed-switch anemometer, internal pull-up
         bool directionEnabled;
-        uint8_t directionPin;     // resistor-ladder vane, must be an ADC1 pin (32-39)
+        uint8_t directionPin;     // resistor-ladder vane, must be an ADC1 pin (BoardProfile)
         float kmhPerHz;           // 2.4 Misol/Argent/SparkFun, 3.621 Davis 6410
         float directionOffsetDeg; // added to the vane reading to correct mounting
         float vanePullupOhms;     // vane divider pull-up to 3.3 V
@@ -293,6 +312,11 @@ namespace SQM
         SensorConfig sensor;
         SkyAveragingConfig skyAveraging;
         SkyCalibrationConfig skyCalibration;
+        // The SQM-L's own averaging and calibration (skyAveraging /
+        // skyCalibration stay the SQM's).
+        SkyConfig sky;
+        SkyAveragingConfig skyAveragingL;
+        SkyCalibrationConfig skyCalibrationL;
         CloudDetectionConfig cloudDetection;
         AlpacaConfig alpaca;
         AlertsConfig alerts;
@@ -306,6 +330,12 @@ namespace SQM
         TimeSource primaryTimeSource;   // Primary time source
         TimeSource secondaryTimeSource; // Fallback time source
 
+        const SkyAveragingConfig &averaging(SkyRole role) const { return role == SkyRole::Sqml ? skyAveragingL : skyAveraging; }
+        SkyAveragingConfig &averaging(SkyRole role) { return role == SkyRole::Sqml ? skyAveragingL : skyAveraging; }
+        const SkyCalibrationConfig &calibration(SkyRole role) const { return role == SkyRole::Sqml ? skyCalibrationL : skyCalibration; }
+        SkyCalibrationConfig &calibration(SkyRole role) { return role == SkyRole::Sqml ? skyCalibrationL : skyCalibration; }
+        bool skyEnabled(SkyRole role) const { return role == SkyRole::Sqml ? sky.sqmlEnabled : sky.sqmEnabled; }
+
         static constexpr const char *TAG = "Config";
         static constexpr size_t MAX_PERSISTED_JSON_BYTES = 5100;
 
@@ -314,7 +344,10 @@ namespace SQM
         // if nothing valid is stored.
         static bool load(Config &out);
         bool save() const;
+        // Defaults for the board this firmware is built for (BUILD_BOARD), or
+        // for another board (native tests).
         static Config createDefault();
+        static Config createDefault(Board board);
 
         std::string toJson(bool redactSecrets = false, bool includeAlerts = true) const;
         // The alerts settings as stored: Main under the "alerts" NVS key, Client
@@ -329,6 +362,8 @@ namespace SQM
         static constexpr size_t MAX_ALERTS_JSON_BYTES = 3900;
         std::string alertsToJson(bool redactSecrets = false, AlertsPart part = AlertsPart::All) const;
         bool validate(std::string *error = nullptr) const;
+        // Same, with another board's GPIO rules (native tests).
+        bool validate(const BoardProfile &board, std::string *error = nullptr) const;
         // `error` (if given) gets the reason a config is rejected - the same
         // message the web UI shows.
         static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr, std::string *error = nullptr);

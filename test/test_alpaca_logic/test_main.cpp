@@ -534,6 +534,8 @@ void test_watch_reset_forgets_everything(void)
     TEST_ASSERT_FALSE(rig.sm().silent);
 }
 
+void test_sky_sensor_descriptions();
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -577,6 +579,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_watch_devices_and_clients_are_separate);
     RUN_TEST(test_watch_off_when_alpaca_disabled);
     RUN_TEST(test_watch_reset_forgets_everything);
+    RUN_TEST(test_sky_sensor_descriptions);
 
     return UNITY_END();
 }

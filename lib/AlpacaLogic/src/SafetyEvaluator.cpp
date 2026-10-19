@@ -73,14 +73,30 @@ namespace SQM
                 }
             }
 
+            // Literal per sky role (spec 030 research D4), each passed straight
+            // to addReason so the device message catalogue finds it.
+            void addSkyFault(SafetyResult &result, const SafetyInputs &in)
+            {
+                if (in.skyRole == SkyRole::Sqml && in.irSkyFault)
+                    addReason(result, UnsafeSensorFault, "Sensor fault: SQM-L sensor and IR sky sensor");
+                else if (in.skyRole == SkyRole::Sqml)
+                    addReason(result, UnsafeSensorFault, "Sensor fault: SQM-L sensor");
+                else if (in.skyNamed && in.irSkyFault)
+                    addReason(result, UnsafeSensorFault, "Sensor fault: SQM sensor and IR sky sensor");
+                else if (in.skyNamed)
+                    addReason(result, UnsafeSensorFault, "Sensor fault: SQM sensor");
+                else if (in.irSkyFault)
+                    addReason(result, UnsafeSensorFault, "Sensor fault: light sensor and IR sky sensor");
+                else
+                    addReason(result, UnsafeSensorFault, "Sensor fault: light sensor");
+            }
+
             void checkSensorFaults(SafetyResult &result, const SafetyInputs &in)
             {
                 if (!in.requiredSensorFault)
                     return;
-                if (in.skyLightFault && in.irSkyFault)
-                    addReason(result, UnsafeSensorFault, "Sensor fault: light sensor and IR sky sensor");
-                else if (in.skyLightFault)
-                    addReason(result, UnsafeSensorFault, "Sensor fault: light sensor");
+                if (in.skyLightFault)
+                    addSkyFault(result, in);
                 else if (in.irSkyFault)
                     addReason(result, UnsafeSensorFault, "Sensor fault: IR sky sensor");
                 else
@@ -92,7 +108,12 @@ namespace SQM
                 if (t.cloudCoverEnabled && !in.irSkyFault && in.cloudCoverPercent >= t.cloudCoverUnsafePercent)
                     addReasonf(result, UnsafeCloudCover, "Cloud %.0f%% >= %.0f%%", in.cloudCoverPercent, t.cloudCoverUnsafePercent);
                 if (t.sqmMinEnabled && !in.skyLightFault && in.sqm < t.sqmMinSafe)
-                    addReasonf(result, UnsafeSkyBright, "SQM %.2f < %.2f", in.sqm, t.sqmMinSafe);
+                {
+                    if (in.skyRole == SkyRole::Sqml)
+                        addReasonf(result, UnsafeSkyBright, "SQM-L %.2f < %.2f", in.sqm, t.sqmMinSafe);
+                    else
+                        addReasonf(result, UnsafeSkyBright, "SQM %.2f < %.2f", in.sqm, t.sqmMinSafe);
+                }
             }
 
             void checkEnvironment(SafetyResult &result, const SafetyInputs &in, const SafetyThresholds &t)

@@ -20,20 +20,20 @@ namespace
     SensorSnapshot healthy(uint32_t now)
     {
         SensorSnapshot s;
-        s.tslInitialized = s.bmeInitialized = s.mlxInitialized = true;
-        s.tsl.status = s.bme.status = s.mlx.status = SensorStatus::Ok;
-        s.tsl.timestamp = s.bme.timestamp = s.mlx.timestamp = now - 500;
-        s.tslLastUpdate = s.bmeLastUpdate = s.mlxLastUpdate = now - 500;
+        s.skySensors[0].initialized = s.bmeInitialized = s.mlxInitialized = true;
+        s.skySensors[0].reading.status = s.bme.status = s.mlx.status = SensorStatus::Ok;
+        s.skySensors[0].reading.timestamp = s.bme.timestamp = s.mlx.timestamp = now - 500;
+        s.skySensors[0].lastUpdate = s.bmeLastUpdate = s.mlxLastUpdate = now - 500;
         s.dataTimestamp = now - 500;
-        s.tsl.lux = 0.0003f;
+        s.skySensors[0].reading.lux = 0.0003f;
         s.bme.temperature = 12.0f;
         s.bme.humidity = 60.0f;
         s.bme.pressure = 1013.0f;
         s.bme.dewpoint = 4.5f;
         s.mlx.objectTemp = -25.0f;
         s.mlx.ambientTemp = 12.0f;
-        s.tslDiagnostics.integrationMs = 600;
-        s.tslDiagnostics.averagingWindowSeconds = 90;
+        s.skySensors[0].diagnostics.integrationMs = 600;
+        s.skySensors[0].diagnostics.averagingWindowSeconds = 90;
         return s;
     }
 
@@ -200,7 +200,7 @@ void test_rain_makes_unsafe_even_when_stale()
     s.rg15.isRaining = true;
     s.rg15.rInt = 2.0f;
     s.dataTimestamp = now - 600000; // everything else stale
-    s.tslLastUpdate = s.mlxLastUpdate = now - 600000;
+    s.skySensors[0].lastUpdate = s.mlxLastUpdate = now - 600000;
     Core::derive(s, cfg);
     const auto result = Alpaca::evaluateSafety(Core::safetyInputs(s, cfg, now), Core::safetyThresholds(cfg));
     TEST_ASSERT_FALSE(result.isSafe);
@@ -236,8 +236,8 @@ void test_stale_when_a_required_sensor_stops_refreshing()
     const uint32_t now = 1000000;
     SensorSnapshot s = healthy(now);
     const Config cfg = defaults();
-    s.dataTimestamp = now - 100;    // the loop is running
-    s.tslLastUpdate = now - 600000; // but the TSL2591 hasn't read for 10 min
+    s.dataTimestamp = now - 100;               // the loop is running
+    s.skySensors[0].lastUpdate = now - 600000; // but the TSL2591 hasn't read for 10 min
     const auto result = verdict(s, cfg, now);
     TEST_ASSERT_FALSE(result.isSafe);
     TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeStaleData);
@@ -259,8 +259,8 @@ void test_readings_stale_matches_the_verdict()
     TEST_ASSERT_FALSE(Core::buildReadings(fresh, cfg, now, NIGHT_EPOCH).dataStale);
 
     SensorSnapshot s = healthy(now);
-    s.dataTimestamp = now - 100;    // the loop is running
-    s.tslLastUpdate = now - 600000; // but the TSL2591 hasn't read for 10 min
+    s.dataTimestamp = now - 100;               // the loop is running
+    s.skySensors[0].lastUpdate = now - 600000; // but the TSL2591 hasn't read for 10 min
     Core::derive(s, cfg);
     TEST_ASSERT_TRUE(Core::buildReadings(s, cfg, now, NIGHT_EPOCH).dataStale);
     TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UnsafeStaleData);
@@ -289,8 +289,8 @@ void test_missing_sensor_is_a_fault_not_stale()
     TEST_ASSERT_FALSE(result.reasonFlags & Alpaca::UnsafeStaleData);
     TEST_ASSERT_FALSE(result.reasonFlags & Alpaca::UnsafeNoData);
 
-    s.tslLastUpdate = 0;
-    s.tsl.status = SensorStatus::ReadError;
+    s.skySensors[0].lastUpdate = 0;
+    s.skySensors[0].reading.status = SensorStatus::ReadError;
     TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UnsafeNoData);
 }
 
@@ -467,6 +467,19 @@ void test_rainrate_not_implemented_when_rain_disabled()
     TEST_ASSERT_NOT_EQUAL(Alpaca::ALPACA_ERR_NOT_IMPLEMENTED, Alpaca::getObservingConditionsProperty("rainrate", on).errorNumber);
 }
 
+void test_sky_copy_follows_the_authoritative_role();
+void test_sky_copy_never_falls_back();
+void test_sky_copy_one_sensor_is_unchanged();
+void test_sky_readings_per_role_status();
+void test_sky_status_documents();
+void test_sky_safety_uses_the_authoritative_sensor_only();
+void test_sky_alpaca_follows_the_authoritative_sensor();
+void test_sky_dark_calibration_writes_one_role();
+void test_sky_alert_variables();
+void test_sky_alert_sensor_slots();
+void test_status_document_fits();
+void test_one_sensor_device_readings_document();
+
 int main()
 {
     UNITY_BEGIN();
@@ -486,5 +499,17 @@ int main()
     RUN_TEST(test_alert_vars_match_the_shared_list);
     RUN_TEST(test_iso_utc_and_window);
     RUN_TEST(test_rainrate_not_implemented_when_rain_disabled);
+    RUN_TEST(test_sky_copy_follows_the_authoritative_role);
+    RUN_TEST(test_sky_copy_never_falls_back);
+    RUN_TEST(test_sky_copy_one_sensor_is_unchanged);
+    RUN_TEST(test_sky_readings_per_role_status);
+    RUN_TEST(test_sky_status_documents);
+    RUN_TEST(test_sky_safety_uses_the_authoritative_sensor_only);
+    RUN_TEST(test_sky_alpaca_follows_the_authoritative_sensor);
+    RUN_TEST(test_sky_dark_calibration_writes_one_role);
+    RUN_TEST(test_sky_alert_variables);
+    RUN_TEST(test_sky_alert_sensor_slots);
+    RUN_TEST(test_status_document_fits);
+    RUN_TEST(test_one_sensor_device_readings_document);
     return UNITY_END();
 }

@@ -50,6 +50,7 @@ namespace SQM
                 JsonObject light = group(root, "light", s.light.status, s.light.ageMs);
                 JsonObject sky = root.createNestedObject("sky");
                 sky["status"] = statusName(s.light.status);
+                sky["source"] = skyRoleName(s.source);
                 if (s.light.status == Status::Ok)
                 {
                     light["lux"] = rounded(s.light.lux, 6);
@@ -70,6 +71,42 @@ namespace SQM
                     sky["calibrated"] = s.sky.calibrated;
                     sky["averagingWindowSeconds"] = s.sky.averagingWindowSeconds;
                 }
+            }
+
+            void writeSkySensor(JsonObject parent, const char *name, const SkySensorEntry &e)
+            {
+                JsonObject out = group(parent, name, e.status, e.ageMs);
+                if (e.status != Status::Ok)
+                    return;
+                out["sqm"] = rounded(e.sqm, 2);
+                out["rawSqm"] = rounded(e.rawSqm, 2);
+                out["nelm"] = rounded(e.nelm, 1);
+                out["bortle"] = e.bortle;
+                out["description"] = e.description;
+                out["calibrated"] = e.calibrated;
+                out["averagingWindowSeconds"] = e.averagingWindowSeconds;
+                out["lux"] = rounded(e.lux, 6);
+                out["gain"] = e.gain;
+                out["integrationMs"] = e.integrationMs;
+                out["saturated"] = e.saturated;
+                out["nightMode"] = e.nightMode;
+            }
+
+            // Each enabled sky sensor under its own name (spec 030 FR-008).
+            void writeSkySensors(JsonObject root, const Snapshot &s)
+            {
+                const SkySensorEntry &sqm = s.skySensors[skyRoleIndex(SkyRole::Sqm)];
+                const SkySensorEntry &sqml = s.skySensors[skyRoleIndex(SkyRole::Sqml)];
+                if (!sqm.present && !sqml.present)
+                    return;
+                JsonObject sensors = root.createNestedObject("skySensors");
+                if (sqm.present)
+                    writeSkySensor(sensors, skyRoleName(SkyRole::Sqm), sqm);
+                if (sqml.present)
+                    writeSkySensor(sensors, skyRoleName(SkyRole::Sqml), sqml);
+                const bool bothOk = sqm.present && sqml.present && sqm.status == Status::Ok && sqml.status == Status::Ok;
+                if (bothOk)
+                    sensors["deltaSqm"] = rounded(sqml.sqm - sqm.sqm, 2);
             }
 
             void writeEnvironment(JsonObject root, const Snapshot &s)
@@ -161,7 +198,10 @@ namespace SQM
             root["dataAgeMs"] = s.dataAgeMs;
             root["dataStale"] = s.dataStale;
             if (groups.sky)
+            {
                 writeSky(root, s);
+                writeSkySensors(root, s);
+            }
             if (groups.environment)
                 writeEnvironment(root, s);
             if (groups.clouds)
@@ -179,6 +219,9 @@ namespace SQM
             enum class Group : uint8_t
             {
                 Sky,
+                SkySqm,
+                SkySqml,
+                SkyPair,
                 Environment,
                 Clouds,
                 Rain,
@@ -205,6 +248,35 @@ namespace SQM
                 {"sensor", "nelm", "Limiting magnitude", Group::Sky, "sky", "value_json.sky.nelm", "mag", nullptr, "mdi:eye"},
                 {"sensor", "bortle", "Bortle class", Group::Sky, "sky", "value_json.sky.bortle", nullptr, nullptr, "mdi:weather-night"},
                 {"sensor", "illuminance", "Illuminance", Group::Sky, "light", "value_json.light.lux", "lx", "illuminance", nullptr},
+                // Each sky sensor and their difference (spec 030 D7); the
+                // difference is there exactly while both are ok.
+                {"sensor",
+                 "sqm_wide",
+                 "SQM (wide)",
+                 Group::SkySqm,
+                 "skySensors.sqm",
+                 "value_json.skySensors.sqm.sqm",
+                 "mag/arcsec²",
+                 nullptr,
+                 "mdi:star-four-points"},
+                {"sensor",
+                 "sqm_l",
+                 "SQM-L (narrow)",
+                 Group::SkySqml,
+                 "skySensors.sqml",
+                 "value_json.skySensors.sqml.sqm",
+                 "mag/arcsec²",
+                 nullptr,
+                 "mdi:star-four-points-outline"},
+                {"sensor",
+                 "sqm_delta",
+                 "SQM-L − SQM",
+                 Group::SkyPair,
+                 nullptr,
+                 "value_json.skySensors.deltaSqm",
+                 "mag/arcsec²",
+                 nullptr,
+                 "mdi:delta"},
                 {"sensor",
                  "temperature",
                  "Temperature",
@@ -290,6 +362,12 @@ namespace SQM
                 {
                 case Group::Sky:
                     return groups.sky;
+                case Group::SkySqm:
+                    return groups.sky && groups.skySqm;
+                case Group::SkySqml:
+                    return groups.sky && groups.skySqml;
+                case Group::SkyPair:
+                    return groups.sky && groups.skySqm && groups.skySqml;
                 case Group::Environment:
                     return groups.environment;
                 case Group::Clouds:
@@ -354,12 +432,14 @@ namespace SQM
                 JsonArray availability = doc.createNestedArray("availability");
                 JsonObject online = availability.createNestedObject();
                 online["topic"] = base + "/availability";
-                if (entity.jsonGroup != nullptr)
+                if (entity.jsonGroup != nullptr || entity.group == Group::SkyPair)
                 {
                     JsonObject groupOk = availability.createNestedObject();
                     groupOk["topic"] = base + "/state";
                     groupOk["value_template"] =
-                        std::string("{{ 'online' if value_json.") + entity.jsonGroup + ".status == 'ok' else 'offline' }}";
+                        entity.jsonGroup != nullptr
+                            ? std::string("{{ 'online' if value_json.") + entity.jsonGroup + ".status == 'ok' else 'offline' }}"
+                            : std::string("{{ 'online' if value_json.skySensors.deltaSqm is defined else 'offline' }}");
                     doc["availability_mode"] = "all";
                 }
 

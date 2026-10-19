@@ -40,7 +40,7 @@ namespace SQM
             cfg.auth.password = "";
         }
 
-        void defaultTime(Config &cfg)
+        void defaultTime(Config &cfg, const BoardProfile &board)
         {
             cfg.ntp.enabled = true;
             cfg.ntp.server1 = "pool.ntp.org";
@@ -49,8 +49,8 @@ namespace SQM
             cfg.ntp.syncIntervalMs = 600000; // 10 minutes
 
             cfg.gps.enabled = false;
-            cfg.gps.rxPin = 17;
-            cfg.gps.txPin = 16;
+            cfg.gps.rxPin = board.gpsRx;
+            cfg.gps.txPin = board.gpsTx;
             cfg.gps.baudRate = 9600;
 
             cfg.primaryTimeSource = TimeSource::NTP;
@@ -62,11 +62,11 @@ namespace SQM
             cfg.location.showSunMoon = true;
         }
 
-        void defaultRain(Config &cfg)
+        void defaultRain(Config &cfg, const BoardProfile &board)
         {
             cfg.rain.enabled = false;
-            cfg.rain.rxPin = 18;
-            cfg.rain.txPin = 19;
+            cfg.rain.rxPin = board.rainRx;
+            cfg.rain.txPin = board.rainTx;
             cfg.rain.baudRate = 9600;
             cfg.rain.debugUart = false;
             cfg.rain.mode = "polling";
@@ -79,31 +79,37 @@ namespace SQM
             cfg.rain.dailyResetMinute = 0;
         }
 
-        void defaultSensors(Config &cfg)
+        void defaultSensors(Config &cfg, const BoardProfile &board)
         {
             cfg.sensor.readIntervalMs = 5000; // 5 seconds
-            cfg.sensor.i2cSDA = 21;
-            cfg.sensor.i2cSCL = 22;
-            cfg.sensor.i2cFrequency = 100000; // 100kHz
+            cfg.sensor.i2cSDA = board.i2cSDA;
+            cfg.sensor.i2cSCL = board.i2cSCL;
+            cfg.sensor.i2cFrequency = 100000;   // 100kHz
+            cfg.sensor.i2c2SDA = board.i2c2SDA; // NONE == PIN_UNSET
+            cfg.sensor.i2c2SCL = board.i2c2SCL;
 
-            cfg.skyAveraging.windowSeconds = 90;
-
-            cfg.skyCalibration.enabled = false;
-            cfg.skyCalibration.sqmOffset = 0.0F;
-            cfg.skyCalibration.darkVisibleOffset = 0.0F;
-            cfg.skyCalibration.darkFullOffset = 0.0F;
-            cfg.skyCalibration.darkIrOffset = 0.0F;
-            cfg.skyCalibration.darkSampleCount = 0;
-            cfg.skyCalibration.darkCalibratedAt = 0;
+            cfg.sky = SkyConfig{};
+            for (SkyRole role : {SkyRole::Sqm, SkyRole::Sqml})
+            {
+                cfg.averaging(role).windowSeconds = 90;
+                SkyCalibrationConfig &cal = cfg.calibration(role);
+                cal.enabled = false;
+                cal.sqmOffset = 0.0F;
+                cal.darkVisibleOffset = 0.0F;
+                cal.darkFullOffset = 0.0F;
+                cal.darkIrOffset = 0.0F;
+                cal.darkSampleCount = 0;
+                cal.darkCalibratedAt = 0;
+            }
 
             cfg.cloudDetection.clearSkyThreshold = -13.0f;
             cfg.cloudDetection.cloudyThreshold = -3.0f;
             cfg.cloudDetection.humidityCorrection = 0.75f;
 
             cfg.wind.enabled = false;
-            cfg.wind.speedPin = 27;
+            cfg.wind.speedPin = board.windSpeed;
             cfg.wind.directionEnabled = false;
-            cfg.wind.directionPin = 35;
+            cfg.wind.directionPin = board.windDirection;
             cfg.wind.kmhPerHz = 2.4f;
             cfg.wind.directionOffsetDeg = 0.0f;
             cfg.wind.vanePullupOhms = 10000.0f;
@@ -168,15 +174,23 @@ namespace SQM
         }
     } // namespace
 
+    static_assert(BoardProfile::NONE == SensorConfig::PIN_UNSET, "an unwired I2C-2 bus must read as unset");
+
     Config Config::createDefault()
     {
+        return createDefault(BUILD_BOARD);
+    }
+
+    Config Config::createDefault(Board boardId)
+    {
+        const BoardProfile &board = boardProfile(boardId);
         Config cfg;
         cfg.deviceName = "SQM-ESP32";
         std::strncpy(cfg.language, Language::ENGLISH, sizeof(cfg.language) - 1);
         defaultNetwork(cfg);
-        defaultTime(cfg);
-        defaultRain(cfg);
-        defaultSensors(cfg);
+        defaultTime(cfg, board);
+        defaultRain(cfg, board);
+        defaultSensors(cfg, board);
         defaultAlpaca(cfg.alpaca);
         defaultAlerts(cfg.alerts);
         return cfg;

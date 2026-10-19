@@ -5,12 +5,59 @@
 // headers here.
 
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <optional>
 #include <string>
 
 namespace SQM
 {
+    // The two sky sensors (spec 030): the wide SQM on I2C-1 and the narrow SQM-L on I2C-2.
+    // The value is the index into per-role arrays.
+    enum class SkyRole : uint8_t
+    {
+        Sqm = 0,
+        Sqml = 1
+    };
+
+    constexpr size_t SKY_ROLE_COUNT = 2;
+
+    // JSON / config name ("sqm" / "sqml").
+    inline const char *skyRoleName(SkyRole role)
+    {
+        return role == SkyRole::Sqml ? "sqml" : "sqm";
+    }
+
+    // Display name ("SQM" / "SQM-L").
+    inline const char *skyRoleLabel(SkyRole role)
+    {
+        return role == SkyRole::Sqml ? "SQM-L" : "SQM";
+    }
+
+    // Exact names only; false (role untouched) on anything else.
+    inline bool parseSkyRole(const char *name, SkyRole &role)
+    {
+        if (name == nullptr)
+            return false;
+        if (std::strcmp(name, "sqm") == 0)
+        {
+            role = SkyRole::Sqm;
+            return true;
+        }
+        if (std::strcmp(name, "sqml") == 0)
+        {
+            role = SkyRole::Sqml;
+            return true;
+        }
+        return false;
+    }
+
+    inline size_t skyRoleIndex(SkyRole role)
+    {
+        return static_cast<size_t>(role);
+    }
+
     enum class SensorStatus
     {
         Ok,

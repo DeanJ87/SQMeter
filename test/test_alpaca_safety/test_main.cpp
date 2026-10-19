@@ -338,6 +338,9 @@ void test_wind_limit_without_sensor_is_unsafe(void)
 
 // --- AlpacaRouter ---
 
+void test_sky_fault_reasons_per_role();
+void test_sky_limit_reasons_per_role();
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -363,5 +366,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_safe_delay_filter_survives_millis_wrap);
     RUN_TEST(test_wind_limits);
     RUN_TEST(test_wind_limit_without_sensor_is_unsafe);
+    RUN_TEST(test_sky_fault_reasons_per_role);
+    RUN_TEST(test_sky_limit_reasons_per_role);
     return UNITY_END();
 }

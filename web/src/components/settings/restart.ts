@@ -14,7 +14,15 @@ const wifiFields = (c: Config) => [
   c.wifi.reconnectDelayMs,
   c.wifi.maxReconnectDelayMs,
 ];
-const i2cFields = (c: Config) => [c.sensor.i2cSDA, c.sensor.i2cSCL, c.sensor.i2cFrequency];
+// The second bus (Wire1) starts at boot, only while the SQM-L is on (spec 030).
+const i2cFields = (c: Config) => [
+  c.sensor.i2cSDA,
+  c.sensor.i2cSCL,
+  c.sensor.i2cFrequency,
+  c.sensor.i2c2SDA ?? 255,
+  c.sensor.i2c2SCL ?? 255,
+  c.sky?.sqmlEnabled ?? false,
+];
 const ipv6On = (c: Config) => c.wifi.ipv6 ?? true;
 const alpacaOn = (c: Config) => c.alpaca?.enabled ?? false;
 const bleChanged = (before: Config, after: Config) =>

@@ -16,6 +16,27 @@
       ]
     },
     {
+      "name": "SQM",
+      "keys": [
+        "sensor.sqm"
+      ],
+      "avoid": [
+        "SQM-W",
+        "wide SQM sensor"
+      ]
+    },
+    {
+      "name": "SQM-L",
+      "keys": [
+        "sensor.sqml"
+      ],
+      "avoid": [
+        "SQML",
+        "SQM L",
+        "narrow SQM sensor"
+      ]
+    },
+    {
       "name": "IR sky sensor",
       "keys": [
         "sensor.infrared",

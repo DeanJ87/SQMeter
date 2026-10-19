@@ -164,6 +164,27 @@ namespace SQM
             rain["dailyResetMinute"] = c.rain.dailyResetMinute;
         }
 
+        // One sky sensor's averaging and calibration sections (same shape for both).
+        void writeSkySections(
+            JsonDocument &doc,
+            const char *averagingKey,
+            const char *calibrationKey,
+            const SkyAveragingConfig &averaging,
+            const SkyCalibrationConfig &cal)
+        {
+            JsonObject avg = doc.createNestedObject(averagingKey);
+            avg["windowSeconds"] = averaging.windowSeconds;
+
+            JsonObject out = doc.createNestedObject(calibrationKey);
+            out["enabled"] = cal.enabled;
+            out["sqmOffset"] = cal.sqmOffset;
+            out["darkVisibleOffset"] = cal.darkVisibleOffset;
+            out["darkFullOffset"] = cal.darkFullOffset;
+            out["darkIrOffset"] = cal.darkIrOffset;
+            out["darkSampleCount"] = cal.darkSampleCount;
+            out["darkCalibratedAt"] = cal.darkCalibratedAt;
+        }
+
         void appendSky(JsonDocument &doc, const Config &c)
         {
             JsonObject sensor = doc.createNestedObject("sensor");
@@ -171,18 +192,17 @@ namespace SQM
             sensor["i2cSDA"] = c.sensor.i2cSDA;
             sensor["i2cSCL"] = c.sensor.i2cSCL;
             sensor["i2cFrequency"] = c.sensor.i2cFrequency;
+            sensor["i2c2SDA"] = c.sensor.i2c2SDA;
+            sensor["i2c2SCL"] = c.sensor.i2c2SCL;
 
-            JsonObject skyAveraging = doc.createNestedObject("skyAveraging");
-            skyAveraging["windowSeconds"] = c.skyAveraging.windowSeconds;
+            JsonObject sky = doc.createNestedObject("sky");
+            sky["sqmEnabled"] = c.sky.sqmEnabled;
+            sky["sqmlEnabled"] = c.sky.sqmlEnabled;
+            sky["authoritative"] = skyRoleName(c.sky.authoritative);
+            sky["showOther"] = c.sky.showOther;
 
-            JsonObject skyCalibration = doc.createNestedObject("skyCalibration");
-            skyCalibration["enabled"] = c.skyCalibration.enabled;
-            skyCalibration["sqmOffset"] = c.skyCalibration.sqmOffset;
-            skyCalibration["darkVisibleOffset"] = c.skyCalibration.darkVisibleOffset;
-            skyCalibration["darkFullOffset"] = c.skyCalibration.darkFullOffset;
-            skyCalibration["darkIrOffset"] = c.skyCalibration.darkIrOffset;
-            skyCalibration["darkSampleCount"] = c.skyCalibration.darkSampleCount;
-            skyCalibration["darkCalibratedAt"] = c.skyCalibration.darkCalibratedAt;
+            writeSkySections(doc, "skyAveraging", "skyCalibration", c.skyAveraging, c.skyCalibration);
+            writeSkySections(doc, "skyAveragingL", "skyCalibrationL", c.skyAveragingL, c.skyCalibrationL);
 
             JsonObject cloudDetection = doc.createNestedObject("cloudDetection");
             cloudDetection["clearSkyThreshold"] = c.cloudDetection.clearSkyThreshold;
@@ -248,7 +268,7 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
     {
-        DynamicJsonDocument doc(8192);
+        DynamicJsonDocument doc(8704); // +512 for the second sky sensor's sections (spec 030)
         doc["deviceName"] = deviceName;
         doc["language"] = language;
         doc["primaryTimeSource"] = static_cast<int>(primaryTimeSource);

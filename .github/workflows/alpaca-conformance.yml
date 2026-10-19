@@ -23,6 +23,7 @@ on:
       - 'src/WebServerLive.cpp'
       - 'include/WebServer.h'
       - 'lib/ConnectionBudget/**'
+      - 'lib/SensorTypes/**'
       - 'tools/alpaca-sim/**'
       - 'platformio.ini'
       - '.github/workflows/alpaca-conformance.yml'
@@ -39,6 +40,7 @@ on:
       - 'src/WebServerLive.cpp'
       - 'include/WebServer.h'
       - 'lib/ConnectionBudget/**'
+      - 'lib/SensorTypes/**'
       - 'tools/alpaca-sim/**'
       - 'platformio.ini'
       - '.github/workflows/alpaca-conformance.yml'
@@ -90,29 +92,36 @@ jobs:
       - name: Run ConformU
         run: |
           mkdir -p conformu-results
-          ./alpaca-sim 11111 > conformu-results/simulator.log 2>&1 &
-          sleep 1
           failed=0
           {
             echo "## ConformU $CONFORMU_VERSION against the Alpaca simulator"
             echo
-            echo "| Device | Check | Result |"
-            echo "|---|---|---|"
+            echo "| Sky sensors | Device | Check | Result |"
+            echo "|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
-          for device in safetymonitor observingconditions; do
-            url="http://127.0.0.1:11111/api/v1/$device/0"
-            for check in conformance alpacaprotocol; do
-              out="conformu-results/$device-$check.txt"
-              if "$RUNNER_TEMP/conformu/conformu" "$check" "$url" --resultsfile "conformu-results/$device-$check.json" > "$out" 2>&1; then
-                result="passed"
-              else
-                result="**failed** (exit $?)"
-                failed=1
-              fi
-              echo "| $device | $check | $result |" >> "$GITHUB_STEP_SUMMARY"
-              # Show what went wrong right in the job log.
-              grep -E " (ERROR|ISSUE|INFO) " "$out" || true
+          # One sky sensor (every existing device), then both with the SQM-L
+          # authoritative (spec 030 SC-001).
+          for sky in one two; do
+            ./alpaca-sim 11111 "$sky" > "conformu-results/simulator-$sky.log" 2>&1 &
+            sim=$!
+            sleep 1
+            for device in safetymonitor observingconditions; do
+              url="http://127.0.0.1:11111/api/v1/$device/0"
+              for check in conformance alpacaprotocol; do
+                out="conformu-results/$sky-$device-$check.txt"
+                if "$RUNNER_TEMP/conformu/conformu" "$check" "$url" --resultsfile "conformu-results/$sky-$device-$check.json" > "$out" 2>&1; then
+                  result="passed"
+                else
+                  result="**failed** (exit $?)"
+                  failed=1
+                fi
+                echo "| $sky | $device | $check | $result |" >> "$GITHUB_STEP_SUMMARY"
+                # Show what went wrong right in the job log.
+                grep -E " (ERROR|ISSUE|INFO) " "$out" || true
+              done
             done
+            kill "$sim"
+            wait "$sim" 2>/dev/null || true
           done
           exit $failed
 

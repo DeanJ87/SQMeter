@@ -1,4 +1,5 @@
 #include "DeviceCore.h"
+#include "DeviceCoreInternal.h"
 
 #include "SunPosition.h"
 #include "RainLogic.h"
@@ -20,18 +21,6 @@ namespace SQM
             {
                 const double scale = std::pow(10.0, decimals);
                 return std::round(value * scale) / scale;
-            }
-
-            // ok unless the driver reports a problem or the last good reading is too old.
-            Readings::Status readingStatus(SensorStatus status, bool initialized, uint32_t lastUpdate, uint32_t now, uint32_t staleAfter)
-            {
-                if (!initialized || status == SensorStatus::NotInitialized)
-                    return Readings::Status::Missing;
-                if (status != SensorStatus::Ok)
-                    return Readings::Status::Error;
-                if (lastUpdate == 0 || now - lastUpdate > staleAfter)
-                    return Readings::Status::Stale;
-                return Readings::Status::Ok;
             }
 
             const char *cloudConditionName(CloudCondition condition)
@@ -159,7 +148,7 @@ namespace SQM
 
         void derive(SensorSnapshot &snapshot, const Config &cfg)
         {
-            snapshot.sky = SkyQuality::calculate(snapshot.tsl.lux);
+            Detail::deriveSky(snapshot, cfg);
             snapshot.humidityMeasured = snapshot.bmeInitialized && snapshot.bme.status == SensorStatus::Ok;
             snapshot.cloudHumidity = snapshot.humidityMeasured ? snapshot.bme.humidity : ASSUMED_HUMIDITY_PERCENT;
             snapshot.cloud = CloudDetection::calculate(
@@ -176,7 +165,7 @@ namespace SQM
             {
                 // Light sensor + sky quality. The TSL2591 samples on its own ~600 ms cadence.
                 const TSL2591Reading &tsl = snapshot.tsl;
-                r.light.status = readingStatus(tsl.status, snapshot.tslInitialized, snapshot.tslLastUpdate, now, staleAfter);
+                r.light.status = Detail::readingStatus(tsl.status, snapshot.tslInitialized, snapshot.tslLastUpdate, now, staleAfter);
                 r.light.ageMs = ageMs(now, tsl.timestamp);
                 r.light.lux = tsl.lux;
                 r.light.visible = tsl.visible;
@@ -197,7 +186,7 @@ namespace SQM
                 r.sky.averagingWindowSeconds = snapshot.tslDiagnostics.averagingWindowSeconds;
 
                 const BME280Reading &bme = snapshot.bme;
-                r.environment.status = readingStatus(bme.status, snapshot.bmeInitialized, snapshot.bmeLastUpdate, now, staleAfter);
+                r.environment.status = Detail::readingStatus(bme.status, snapshot.bmeInitialized, snapshot.bmeLastUpdate, now, staleAfter);
                 r.environment.ageMs = ageMs(now, bme.timestamp);
                 r.environment.temperature = bme.temperature;
                 r.environment.humidity = bme.humidity;
@@ -205,7 +194,7 @@ namespace SQM
                 r.environment.dewpoint = bme.dewpoint;
 
                 const MLX90614Reading &mlx = snapshot.mlx;
-                r.infrared.status = readingStatus(mlx.status, snapshot.mlxInitialized, snapshot.mlxLastUpdate, now, staleAfter);
+                r.infrared.status = Detail::readingStatus(mlx.status, snapshot.mlxInitialized, snapshot.mlxLastUpdate, now, staleAfter);
                 r.infrared.ageMs = ageMs(now, mlx.timestamp);
                 r.infrared.skyTemperature = mlx.objectTemp;
                 r.infrared.ambientTemperature = mlx.ambientTemp;
@@ -345,6 +334,7 @@ namespace SQM
             const bool loopStale = snapshot.dataTimestamp == 0 || r.dataAgeMs > staleAfter;
             r.dataStale = loopStale || !required.everRead || required.ageMs > staleAfter;
             readSkyGroups(r, snapshot, now, staleAfter);
+            Detail::readSkySensors(r, snapshot, now, staleAfter);
             readGps(r, snapshot, cfg);
             readRain(r, snapshot, cfg, now);
             readWind(r, snapshot, cfg, now);
@@ -386,7 +376,11 @@ namespace SQM
         {
             // Found and answering; a stale reading still means it's there.
             auto detected = [](Readings::Status status) { return status == Readings::Status::Ok || status == Readings::Status::Stale; };
-            facts.lightDetected = detected(readings.light.status);
+            facts.lightDetected = detected(readings.light.status); // the authoritative sky sensor
+            facts.sqmDetected =
+                readings.skySensors[skyRoleIndex(SkyRole::Sqm)].present && detected(readings.skySensors[skyRoleIndex(SkyRole::Sqm)].status);
+            facts.sqmlDetected = readings.skySensors[skyRoleIndex(SkyRole::Sqml)].present &&
+                                 detected(readings.skySensors[skyRoleIndex(SkyRole::Sqml)].status);
             facts.infraredDetected = detected(readings.infrared.status);
             facts.environmentDetected = detected(readings.environment.status);
             facts.gpsRunning = snapshot.gpsInitialized;
@@ -402,6 +396,8 @@ namespace SQM
             in.skyLightFault = snapshot.tsl.status != SensorStatus::Ok;
             in.irSkyFault = snapshot.mlx.status != SensorStatus::Ok;
             in.requiredSensorFault = snapshot.tsl.status != SensorStatus::Ok || snapshot.mlx.status != SensorStatus::Ok;
+            in.skyRole = snapshot.skySource;
+            in.skyNamed = Detail::bothSkySensors(cfg);
 
             in.sqm = snapshot.sky.sqm;
             in.cloudCoverPercent = snapshot.cloud.cloudCoverPercent;
@@ -464,6 +460,8 @@ namespace SQM
             // (spec 007 FR-004).
             Alpaca::ObservingConditionsSnapshot snap;
             snap.skyLight = sourceState(snapshot.tslInitialized, snapshot.tsl.status, snapshot.tslLastUpdate);
+            snap.skyRole = snapshot.skySource;
+            snap.skyNamed = Detail::bothSkySensors(cfg);
             snap.irSky = sourceState(snapshot.mlxInitialized, snapshot.mlx.status, snapshot.mlxLastUpdate);
             snap.environment = sourceState(snapshot.bmeInitialized, snapshot.bme.status, snapshot.bmeLastUpdate);
 

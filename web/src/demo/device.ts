@@ -51,7 +51,7 @@ interface Core {
   testAlert(params: string): string;
   realTestAlert(): void;
   deliveryRequests(id: number, credentials: string): string;
-  calibrateDark(): string;
+  calibrateDark(sensor: string): string;
   alpaca(method: string, path: string, params: string): string;
   saveState(): string;
   loadState(json: string): boolean;
@@ -93,6 +93,7 @@ const LINKS: Record<string, { time?: TimePresetId; shortcut?: ShortcutId; rampMs
   clear: { shortcut: 'clear' },
   dawn: { time: 'dawn' },
   'fail-light': { fault: 'light' },
+  'fail-sqml': { fault: 'lightL' },
   'fail-ir': { fault: 'infrared' },
   'fail-environment': { fault: 'environment' },
   'fail-rain': { fault: 'rain' },
@@ -254,8 +255,8 @@ class DemoDevice {
     this.persist();
   }
 
-  calibrateDark(): Reply {
-    const reply = JSON.parse(this.core.calibrateDark());
+  calibrateDark(sensor = ''): Reply {
+    const reply = JSON.parse(this.core.calibrateDark(sensor));
     this.persist();
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }

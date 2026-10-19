@@ -102,7 +102,7 @@ namespace SQM
         const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
         seedAlertEngine();
         const Core::NightState night = computeNight(snapshot, cfg);
-        const Core::AlertSources sources{cfg, obs, night, status};
+        const Core::AlertSources sources{cfg, obs, night, status, Core::skyReadings(snapshot, cfg, millis())};
         Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, millis());
         Core::LocalClock clock;
         localClock(clock.time, clock.date);
@@ -167,13 +167,15 @@ namespace SQM
         bleState.sqmValid = obs.skyLight.valid;
         bleState.sqm = obs.skyQualityMagArcsec2;
 
-        StaticJsonDocument<256> summary;
+        StaticJsonDocument<320> summary; // + sqmSource (spec 030)
         auto put = [&summary](const char *key, bool valid, float value)
         {
             if (valid)
                 summary[key] = serialized(String(value, 2));
         };
         put("sqm", obs.skyLight.valid, obs.skyQualityMagArcsec2);
+        if (obs.skyLight.valid)
+            summary["sqmSource"] = skyRoleName(obs.skyRole); // which sky sensor `sqm` is
         put("cloud", obs.irSky.valid, obs.cloudCoverPercent);
         put("skyT", obs.irSky.valid, obs.skyTemperatureC);
         put("temp", obs.environment.valid, obs.temperatureC);

@@ -58,7 +58,8 @@ const SkyGroup: FunctionalComponent = () => {
         onChange={(on) => (on ? demoDevice.followSun() : demoDevice.setInput('light.lux', c.light.lux))}
       />
       <NotResponding sensor="infrared" name="IR sensor" />
-      <NotResponding sensor="light" name="Light sensor" />
+      <NotResponding sensor="light" name="SQM" />
+      <NotResponding sensor="lightL" name="SQM-L" />
     </Group>
   );
 };

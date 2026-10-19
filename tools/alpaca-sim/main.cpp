@@ -2,7 +2,10 @@
 // lib/AlpacaLogic) on a desktop machine with fixed, healthy sensor readings,
 // so ConformU can test the protocol in CI without an ESP32.
 //
-//   tools/alpaca-sim/build.sh && ./alpaca-sim [port]     (default 11111)
+//   tools/alpaca-sim/build.sh && ./alpaca-sim [port] [two]     (default 11111)
+//
+// `two` simulates both sky sensors configured with the SQM-L authoritative
+// (spec 030): the sky descriptions name the sensor.
 //
 // Deliberately tiny: one request per connection, GET query strings and
 // application/x-www-form-urlencoded PUT bodies, nothing else.
@@ -27,6 +30,10 @@ namespace
     class SimBackend : public Backend
     {
     public:
+        explicit SimBackend(bool twoSkySensors)
+            : twoSkySensors(twoSkySensors)
+        {
+        }
         bool alpacaEnabled() const override { return true; }
         bool isSafe() const override { return true; }
         ObservingConditionsSnapshot observingConditions() const override
@@ -46,6 +53,11 @@ namespace
             s.windDirectionDeg = 245.0f;
             s.windGustMs = 4.1f;
             s.windSpeedMs = 2.3f;
+            if (twoSkySensors)
+            {
+                s.skyRole = SQM::SkyRole::Sqml;
+                s.skyNamed = true;
+            }
             return s;
         }
         std::string serverName() const override { return "SQMeter simulator"; }
@@ -59,6 +71,9 @@ namespace
             strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &utc);
             return buffer;
         }
+
+    private:
+        bool twoSkySensors;
     };
 
     std::string urlDecode(const std::string &in)
@@ -193,7 +208,7 @@ int main(int argc, char **argv)
     std::printf("Alpaca simulator on http://127.0.0.1:%d\n", port);
     std::fflush(stdout);
 
-    SimBackend backend;
+    SimBackend backend(argc > 2 && std::string(argv[2]) == "two");
     Router router(backend, {"SQMeter (simulator)", "SQMeter", "sim", 0x0000AABBCCDDEEFFULL});
     for (;;)
     {

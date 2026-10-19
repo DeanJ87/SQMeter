@@ -29,4 +29,7 @@ You can use SQMeter right now without the custom PCB. Wire the sensors to your E
 
 All three sensors share the same I2C bus. Default pins are GPIO 21 (SDA) and GPIO 22 (SCL) — both are configurable in the web UI under Settings → Sensors.
 
+An optional second TSL2591 with a narrow lens (the SQM-L) needs its own bus, because its address
+is fixed: see [Second sky sensor](../getting-started/hardware.md#second-sky-sensor-sqm-l-optional).
+
 See [Hardware Setup](../getting-started/hardware.md) for the full wiring diagram.

@@ -6,7 +6,7 @@ using namespace DemoCore;
 
 std::string EmulatedDevice::readings() const
 {
-    DynamicJsonDocument doc(4096);
+    DynamicJsonDocument doc(Readings::DOC_CAPACITY + Readings::SAFETY_CAPACITY);
     Readings::write(doc.to<JsonObject>(), Core::buildReadings(snapshot, cfg, nowMs, epoch));
     Core::writeSafety(doc.createNestedObject("safety"), safety, cfg, nowMs);
     return serialize(doc);
@@ -14,10 +14,12 @@ std::string EmulatedDevice::readings() const
 
 std::string EmulatedDevice::statusParts() const
 {
-    DynamicJsonDocument doc(4096);
+    DynamicJsonDocument doc(4608);
     doc["uptime"] = (nowMs - bootMs) / 1000;
     Core::writeSky(doc.createNestedObject("sky"), Core::night(snapshot, cfg, epoch));
-    Core::writeSensorHealth(doc.createNestedObject("sensors"), Core::buildReadings(snapshot, cfg, nowMs, epoch), cfg);
+    const Readings::Snapshot readings = Core::buildReadings(snapshot, cfg, nowMs, epoch);
+    Core::writeSensorHealth(doc.createNestedObject("sensors"), readings, cfg);
+    Core::writeSkySensorStatus(doc.as<JsonObject>(), snapshot, readings);
     Core::writeDiagnostics(doc.createNestedObject("diagnostics"), snapshot, cfg, nowMs);
     Core::writeAlertSchedule(doc.createNestedObject("alerts"), schedule.state(), cfg, nowMs);
     Core::writeClientWatch(doc.createNestedObject("alpaca"), clientWatch, cfg, nowMs);

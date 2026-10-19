@@ -131,6 +131,29 @@ void test_v0_2_0_beta_3()
     loadRelease("v0.2.0-beta.3");
 }
 
+// Spec 030 (FR-014): settings from before the second sky sensor load with
+// the new keys at their defaults, and one sky sensor stays authoritative.
+void test_pre_030_config_gets_sky_defaults()
+{
+    for (const char *tag : {"v0.1.0", "v0.2.0-beta.3"})
+    {
+        const std::string stored = readFile(std::string("test/fixtures/config-releases/") + tag + ".json");
+        TEST_ASSERT_TRUE(stored.find("i2c2SDA") == std::string::npos);
+        Config loaded = Config::createDefault();
+        std::string reason;
+        TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(stored, loaded, false, &reason), reason.c_str());
+        TEST_ASSERT_EQUAL_UINT8(255, loaded.sensor.i2c2SDA);
+        TEST_ASSERT_EQUAL_UINT8(255, loaded.sensor.i2c2SCL);
+        TEST_ASSERT_TRUE(loaded.sky.sqmEnabled);
+        TEST_ASSERT_FALSE(loaded.sky.sqmlEnabled);
+        TEST_ASSERT_TRUE(loaded.sky.authoritative == SkyRole::Sqm);
+        TEST_ASSERT_TRUE(loaded.sky.showOther);
+        TEST_ASSERT_EQUAL_UINT16(90, loaded.skyAveragingL.windowSeconds);
+        TEST_ASSERT_FALSE(loaded.skyCalibrationL.enabled);
+        TEST_ASSERT_EQUAL_FLOAT(0.0F, loaded.skyCalibrationL.sqmOffset);
+    }
+}
+
 // Settings too big for their NVS entry are refused with a message that says
 // what to do, rather than saved and lost on the next boot.
 void test_oversized_alert_texts_are_refused_clearly()
@@ -165,5 +188,6 @@ int main(int, char **)
     RUN_TEST(test_v0_2_0_beta_1);
     RUN_TEST(test_v0_2_0_beta_2);
     RUN_TEST(test_v0_2_0_beta_3);
+    RUN_TEST(test_pre_030_config_gets_sky_defaults);
     return UNITY_END();
 }
