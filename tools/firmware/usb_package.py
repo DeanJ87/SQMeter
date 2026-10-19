@@ -20,6 +20,7 @@ import argparse
 import json
 import sys
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -81,14 +82,24 @@ def readme(build: str, version: str, csv: Path, chip: str = "esp32", board: str 
     )
 
 
-def build(
-    sources: dict[str, Path], build_name: str, version: str, csv: Path, out: Path, chip: str = "esp32", board: str = ""
-) -> None:
+@dataclass
+class Target:
+    """What a package is for: the build, version, partition table, chip and board."""
+
+    build: str
+    version: str
+    csv: Path
+    chip: str = "esp32"
+    board: str = ""
+
+
+def build(sources: dict[str, Path], target: Target, out: Path) -> None:
+    t = target
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
-        for part in parts(csv, chip):
+        for part in parts(t.csv, t.chip):
             z.write(sources[part["path"]], part["path"])
-        z.writestr("manifest.json", json.dumps(manifest(build_name, version, csv, chip, board), indent=2) + "\n")
-        z.writestr("FLASH.txt", readme(build_name, version, csv, chip, board))
+        z.writestr("manifest.json", json.dumps(manifest(t.build, t.version, t.csv, t.chip, t.board), indent=2) + "\n")
+        z.writestr("FLASH.txt", readme(t.build, t.version, t.csv, t.chip, t.board))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -114,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
     if missing:
         print(f"missing: {', '.join(missing)}", file=sys.stderr)
         return 2
-    build(sources, args.build, args.version, args.partitions, args.out, args.chip, args.board)
+    build(sources, Target(args.build, args.version, args.partitions, args.chip, args.board), args.out)
     print(f"Wrote {args.out}")
     return 0
 

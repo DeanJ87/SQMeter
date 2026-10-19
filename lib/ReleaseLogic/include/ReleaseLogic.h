@@ -64,11 +64,11 @@ namespace SQM
         // and a sqmeter-l2-littlefs-* image. A release missing either is
         // skipped: firmware and web UI are always installed as a matched pair.
         // `board` is the build's release board (include/BuildTarget.h).
-        std::vector<GithubRelease> parse(const JsonDocument &doc, const std::string &track, bool ble, const std::string &board = CLASSIC_BOARD);
+        std::vector<GithubRelease> parse(
+            const JsonDocument &doc, const std::string &track, bool ble, const std::string &board = CLASSIC_BOARD);
 
         // Same, from the raw body. Returns false (and sets `error`) when the
         // JSON can't be read.
-        bool parse(const std::string &json, const std::string &track, bool ble, std::vector<GithubRelease> &out, std::string &error,
-                   const std::string &board = CLASSIC_BOARD);
+        bool parse(const std::string &json, const std::string &track, bool ble, std::vector<GithubRelease> &out, std::string &error);
     } // namespace Releases
 } // namespace SQM

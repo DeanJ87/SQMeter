@@ -152,7 +152,8 @@ void test_firmware_embeds_the_same_marker()
     std::stringstream targetSource;
     targetSource << target.rdbuf();
     for (const char *layout : {FirmwareImage::LAYOUT, FirmwareImage::LAYOUT_S8, FirmwareImage::LAYOUT_S16})
-        TEST_ASSERT_TRUE_MESSAGE(targetSource.str().find(std::string("#define SQM_LAYOUT_ID \"") + layout + "\"") != std::string::npos, layout);
+        TEST_ASSERT_TRUE_MESSAGE(
+            targetSource.str().find(std::string("#define SQM_LAYOUT_ID \"") + layout + "\"") != std::string::npos, layout);
 }
 
 int main()

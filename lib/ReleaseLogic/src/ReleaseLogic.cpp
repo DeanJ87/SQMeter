@@ -87,8 +87,7 @@ namespace SQM
             return results;
         }
 
-        bool parse(const std::string &json, const std::string &track, bool ble, std::vector<GithubRelease> &out, std::string &error,
-                   const std::string &board)
+        bool parse(const std::string &json, const std::string &track, bool ble, std::vector<GithubRelease> &out, std::string &error)
         {
             StaticJsonDocument<512> filter; // 256 is too small on 64-bit hosts
             buildFilter(filter);
@@ -100,7 +99,7 @@ namespace SQM
                 out.clear();
                 return false;
             }
-            out = parse(doc, track, ble, board);
+            out = parse(doc, track, ble);
             return true;
         }
     } // namespace Releases

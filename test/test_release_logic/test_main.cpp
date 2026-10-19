@@ -161,26 +161,31 @@ void test_full_page_of_releases_fits()
 void test_s3_board_picks_its_own_files()
 {
     std::string assets;
-    for (const char *name : {"sqmeter-l2-firmware-v1.bin", "sqmeter-l2-ble-firmware-v1.bin", "sqmeter-l2-littlefs-v1.bin",
-                             "sqmeter-esp32s3-zero-firmware-v1.bin", "sqmeter-esp32s3-zero-littlefs-v1.bin",
-                             "sqmeter-esp32s3-zero8-firmware-v1.bin", "sqmeter-esp32s3-zero8-ble-firmware-v1.bin",
-                             "sqmeter-esp32s3-zero8-littlefs-v1.bin"})
+    for (const char *name :
+         {"sqmeter-l2-firmware-v1.bin",
+          "sqmeter-l2-ble-firmware-v1.bin",
+          "sqmeter-l2-littlefs-v1.bin",
+          "sqmeter-esp32s3-zero-firmware-v1.bin",
+          "sqmeter-esp32s3-zero-littlefs-v1.bin",
+          "sqmeter-esp32s3-zero8-firmware-v1.bin",
+          "sqmeter-esp32s3-zero8-ble-firmware-v1.bin",
+          "sqmeter-esp32s3-zero8-littlefs-v1.bin"})
         assets += std::string(assets.empty() ? "" : ",") + "{\"name\":\"" + name + "\",\"size\":1000}";
     const std::string json = "[{\"tag_name\":\"v1\",\"prerelease\":true,\"assets\":[" + assets + "]}]";
-    std::vector<GithubRelease> out;
-    std::string error;
-    TEST_ASSERT_TRUE(Releases::parse(json, "beta", false, out, error, "esp32s3-zero"));
+    DynamicJsonDocument doc(Releases::JSON_CAPACITY);
+    TEST_ASSERT_FALSE(deserializeJson(doc, json));
+    std::vector<GithubRelease> out = Releases::parse(doc, "beta", false, "esp32s3-zero");
     TEST_ASSERT_EQUAL(1, out.size());
     TEST_ASSERT_TRUE(out[0].firmwareAssetUrl.find("sqmeter-esp32s3-zero-firmware-v1.bin") != std::string::npos);
     TEST_ASSERT_TRUE(out[0].fsAssetUrl.find("sqmeter-esp32s3-zero-littlefs-v1.bin") != std::string::npos);
-    TEST_ASSERT_TRUE(Releases::parse(json, "beta", true, out, error, "esp32s3-zero"));
+    out = Releases::parse(doc, "beta", true, "esp32s3-zero");
     TEST_ASSERT_EQUAL(0, out.size()); // no Bluetooth image for the Zero in this release
-    TEST_ASSERT_TRUE(Releases::parse(json, "beta", true, out, error, "esp32s3-zero8"));
+    out = Releases::parse(doc, "beta", true, "esp32s3-zero8");
     TEST_ASSERT_EQUAL(1, out.size());
     TEST_ASSERT_TRUE(out[0].firmwareAssetUrl.find("sqmeter-esp32s3-zero8-ble-firmware-v1.bin") != std::string::npos);
-    TEST_ASSERT_TRUE(Releases::parse(json, "beta", false, out, error));
+    out = Releases::parse(doc, "beta", false);
     TEST_ASSERT_TRUE(out[0].firmwareAssetUrl.find("sqmeter-l2-firmware-v1.bin") != std::string::npos); // classic
-    TEST_ASSERT_TRUE(Releases::parse(json, "beta", false, out, error, "esp32s3-eth"));
+    out = Releases::parse(doc, "beta", false, "esp32s3-eth");
     TEST_ASSERT_EQUAL(0, out.size());
 }
 

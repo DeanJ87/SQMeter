@@ -4,23 +4,36 @@ All notable changes to SQMeter are documented here.
 
 ## [Unreleased]
 
-### Fixed
-
-- After a restart the device causes itself (a crash, the watchdog, an update) with an imaging app connected, an app that went away during the restart is now noticed: "Imaging app stopped checking" is sent once its **Silent for** time passes with no request, and "is back" when it checks again.
-
-### Added
-
-- Settings show when a language other than English can't be loaded: no file stored and no WiFi to download it (settings dependency D-38); a hand upload works offline.
-- The demo tour shows the Status card with the pretend imaging app connected, then gone quiet.
-- **Two sky sensors**: an optional second TSL2591 behind a narrow lens (the SQM-L) on a second I2C bus (`sensor.i2c2SDA`, `sensor.i2c2SCL`, `sky.sqmlEnabled`). Both are read without blocking and reported in `skySensors` (readings, `/api/status`, MQTT), with the difference between them; `sky.authoritative` picks the one that drives SQM, NELM, Bortle, safety, Alpaca, alerts and BLE (`sky.source`). If that sensor fails the device reports no sky reading rather than switching to the other. Each sensor has its own averaging, offset and dark calibration (`?sensor=sqml`), Home Assistant gets `sqm_wide`, `sqm_l` and `sqm_delta`, and alerts `{sqm_wide}`, `{sqm_l}`, `{sqm_delta}`, `{sqm_source}`. On devices with one sensor every existing field, entity and setting stays as it was; they gain `sky.source`, the SQM's own entry in `skySensors` (readings, MQTT state and `/api/status`) and a Home Assistant entity **SQM (wide)** (`sqm_wide`) that repeats **Sky quality**. Settings → Sensors lists the SQM and SQM-L with their switches, the second bus pins, the authoritative choice and a calibration card per sensor; the dashboard's Sky Quality card names the sensor and shows the other reading and the difference when both are on.
-- **OLED display**: an optional SSD1306 128 × 64 display at `0x3C` on the main I2C bus shows the sky reading and, as you choose, Environment, Cloud, Safety, GPS, Battery and Network pages in turn (`display.*`). Stale or faulted values show `--`. At night it uses one large value per page, the lowest brightness, and always turns off after its timeout unless **Stay on at night** is set. Wake it with **Wake** on Settings → Device → Display, `POST /api/display/wake` (and `/blank`), or a push button on a free GPIO. `/api/status` reports it under `display`, and System → Sensors shows whether it was found. Off by default: devices without a display are unchanged and never probe for one.
-- **Battery** (travel board): with a MAX17048 fuel gauge on the main I2C bus, a dashboard Battery card (charge, state, voltage, time left or to full), a Status-card tile when the pack is low, critical, faulted or about to sleep, and System rows for the gauge and charger pins (`battery.*`). Six alert events (Battery low, Battery critical, Going to sleep, Power restored, Battery charged, Charging fault), an optional safety rule ("Battery 8% < 10%", fail-safe "Battery data missing") that can also send an alert and ring paired phones, power saving below the critical level and deep sleep at the shutdown level until USB power returns. `battery` in readings, `/api/status`, MQTT and Home Assistant, `{battery*}` alert variables and the BLE summary. Boards without a gauge are unchanged.
-- **Settings → Device → Backup & restore**: back up every setting to a file, optionally with the passwords and keys encrypted under a passphrase, and restore it on this or a replacement device after a preview of exactly what changes, what can't apply on this board and whether it restarts. Also in the REST API (`/api/backup`, `/preview`, `/apply`) and the demo.
-
 ### Planned
 
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
+
+## [0.4.0-alpha.1] — 2026-10-19
+
+<!-- banner: Two sky sensors | ESP32-S3 boards, OLED and battery | Settings backup and restore -->
+
+An alpha for testers. The ESP32-S3 builds, the OLED display and the battery have not yet been checked on real hardware.
+
+### Added
+
+- **Two sky sensors (SQM and SQM-L)**: an optional second TSL2591 behind a narrow lens on a second I2C bus (`sensor.i2c2SDA`, `sensor.i2c2SCL`, `sky.sqmlEnabled`). Both are reported in `skySensors` (readings, `/api/status`, MQTT) with the difference between them; `sky.authoritative` picks the one that drives SQM, NELM, Bortle, safety, Alpaca, alerts and BLE (`sky.source`), with no fallback to the other if it fails. Each sensor has its own averaging, offset and dark calibration (`?sensor=sqml`); Home Assistant gets `sqm_wide`, `sqm_l` and `sqm_delta`, alerts `{sqm_wide}`, `{sqm_l}`, `{sqm_delta}`, `{sqm_source}`. Devices with one sensor keep every existing field, entity and setting.
+- **ESP32-S3 boards**: builds for the Waveshare ESP32-S3-ETH (16 MB) and ESP32-S3-Zero (4 MB) and Zero-N8R8 (8 MB), standard and Bluetooth, with each board's default pins and pin checks. Each board has its own release files (`sqmeter-esp32s3-<board>-*`) and partition layout, and only offers and installs its own. The first install is a USB flash from the board's `usb` package.
+- **OLED display** (ESP32-S3 boards): an optional SSD1306 128 × 64 display at `0x3C` shows the sky reading and, as chosen, Environment, Cloud, Safety, GPS, Battery and Network pages (`display.*`). Dim and minimal at night, off after its timeout unless **Stay on at night** is set. Wake it from Settings → Device → Display, `POST /api/display/wake` (and `/blank`) or a push button. Off by default.
+- **Battery** (ESP32-S3 travel board): with a MAX17048 fuel gauge, a dashboard Battery card (charge, state, voltage, time left or to full), a Status-card tile when low, critical, faulted or about to sleep, and System rows (`battery.*`). Six alert events, an optional safety rule ("Battery 8% < 10%", fail-safe "Battery data missing"), power saving below the critical level and deep sleep at the shutdown level until USB power returns. `battery` in readings, `/api/status`, MQTT, Home Assistant, alert variables and the BLE summary.
+- **Settings backup and restore** (Settings → Device): every setting to a file, optionally with passwords and keys encrypted under a passphrase; restore on this or a replacement device after a preview of what changes, what can't apply on this board and whether it restarts. Also `/api/backup`, `/preview` and `/apply`, and in the demo.
+- Settings show when a language other than English can't be loaded: no file stored and no WiFi to download it (D-38); a hand upload works offline.
+- The demo tour shows the Status card with the pretend imaging app connected, then gone quiet.
+
+### Changed
+
+- The firmware is built without C++ exceptions, about 55 KB smaller per build.
+- The OLED display and battery drivers are in the ESP32-S3 builds only; on the classic ESP32 they show as not detected.
+
+### Fixed
+
+- **MQTT password**: saving other settings no longer clears the saved MQTT password, and **Test connection** uses the saved one.
+- After a restart the device causes itself (a crash, the watchdog, an update) with an imaging app connected, an app that went away during the restart is now noticed: "Imaging app stopped checking" is sent once its **Silent for** time passes with no request, and "is back" when it checks again.
 
 ## [0.3.3-beta.1] — 2026-10-13
 

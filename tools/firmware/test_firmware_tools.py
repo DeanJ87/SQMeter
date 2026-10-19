@@ -108,7 +108,7 @@ class UsbPackageTest(unittest.TestCase):
                 sources[name] = tmp / name
                 sources[name].write_bytes(b"\x00" * 16)
             out = tmp / "pkg.zip"
-            usb_package.build(sources, "ble", "0.3.0-beta.1", ROOT / "partitions.csv", out)
+            usb_package.build(sources, usb_package.Target("ble", "0.3.0-beta.1", ROOT / "partitions.csv"), out)
             with zipfile.ZipFile(out) as z:
                 names = set(z.namelist())
                 manifest = json.loads(z.read("manifest.json"))
