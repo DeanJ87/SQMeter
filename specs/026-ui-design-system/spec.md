@@ -22,7 +22,7 @@ added UI that does not look or read like the rest of the app:
 - English copy that is long, repetitive and machine-sounding, faithfully translated into 13 languages.
 
 This spec writes the design system down as numbered, testable rules (DS-xx), audits the current UI
-against them ([audit.md](audit.md), screenshots in [audit/](audit/)), and proposes designs for the
+against them ([audit.md](audit.md); screenshots kept outside the repo), and proposes designs for the
 three worst offenders (mockups built on the throwaway branch `mock/026`, reviewed by the owner and
 kept outside the repo). Nothing here
 is built yet; the owner reviews the rules and mockups first.
