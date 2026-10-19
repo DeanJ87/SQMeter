@@ -20,7 +20,7 @@ import argparse
 import json
 import sys
 import zipfile
-from dataclasses import dataclass
+from typing import NamedTuple
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -82,8 +82,7 @@ def readme(build: str, version: str, csv: Path, chip: str = "esp32", board: str 
     )
 
 
-@dataclass
-class Target:
+class Target(NamedTuple):
     """What a package is for: the build, version, partition table, chip and board."""
 
     build: str
