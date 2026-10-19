@@ -142,7 +142,7 @@ through `applyJson` with placeholders preserved: the same validation and message
 
 - One card, **Backup & restore**, on Settings → Device after Security, built from `SettingsCard`, `Field`,
   `TextInput`, `ActionButton`, `Group`, `ReadingRow`, `Note` and `InfoTip` (DS-01, DS-03, DS-04, DS-06,
-  DS-07, DS-22, DS-23). Mockups first ([mockups/README.md](mockups/README.md)).
+  DS-07, DS-22, DS-23). Mockups first (reviewed outside the repo).
 - The download is made in the browser from the device's answer (pretty-printed, named
   `sqmeter-<device>-<YYYY-MM-DD>.json`). The device sends no `Content-Disposition` (flash, R7); curl
   users name the file with `-o`.

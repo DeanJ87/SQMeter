@@ -1,6 +1,8 @@
 #include "WebServer.h"
 #include "ConfigBackup.h"
+#include "LanguagePack.h"
 #include "Logger.h"
+#include "sensors/TSL2591Sensor.h"
 #include "version.h"
 
 #include <ArduinoJson.h>
@@ -100,6 +102,20 @@ namespace SQM
         device.bluetoothBuild = BleService::available();
         device.pins = Backup::buildBoardPins(); // this build's board profile (spec 034)
         return device;
+    }
+
+    // Saves a whole new configuration and applies what needs no restart (PUT
+    // /api/config and a restore).
+    bool WebServer::saveAndApply(const Config &next)
+    {
+        const std::string previousLanguage = getConfigCallback().language;
+        if (!saveConfigCallback(next))
+            return false;
+        for (SkyRole role : {SkyRole::Sqm, SkyRole::Sqml})
+            skySensor(role).configureSkyMeasurement(next.averaging(role), next.calibration(role));
+        if (previousLanguage != next.language)
+            languagePack->onLanguageChanged(next.language);
+        return true;
     }
 
     void WebServer::handleBackupStart(AsyncWebServerRequest *request, bool preview)

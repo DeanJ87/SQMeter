@@ -174,18 +174,6 @@ namespace SQM
         request->send(200, "application/json", "{\"success\":true}");
     }
 
-    bool WebServer::saveAndApply(const Config &next)
-    {
-        const std::string previousLanguage = getConfigCallback().language;
-        if (!saveConfigCallback(next))
-            return false;
-        for (SkyRole role : {SkyRole::Sqm, SkyRole::Sqml})
-            skySensor(role).configureSkyMeasurement(next.averaging(role), next.calibration(role));
-        if (previousLanguage != next.language)
-            languagePack->onLanguageChanged(next.language);
-        return true;
-    }
-
     void WebServer::handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json)
     {
         if (!requireAuth(request))

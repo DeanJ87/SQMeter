@@ -24,7 +24,7 @@ portable SHA-256/AES-GCM implementation in `lib/` for native tests and the demo 
 
 **Storage**: none new. The staged preview lives in RAM for at most 10 minutes.
 
-**Testing**: Unity native tests (`pio test -e native`), Vitest (+ MSW), Playwright for the mockups.
+**Testing**: Unity native tests (`pio test -e native`), Vitest (+ MSW), Playwright for the mockups (kept outside the repo).
 
 **Target Platform**: ESP32 (standard and Bluetooth builds), browsers, the WebAssembly demo.
 
@@ -61,8 +61,7 @@ No violations; Complexity Tracking is empty. Re-checked after Phase 1 design: un
 ```text
 specs/033-config-backup/
 ├── plan.md  research.md  data-model.md  quickstart.md  tasks.md
-├── contracts/  backup-file.md  rest-api.md  ui.md
-└── mockups/    README.md + *-desktop.png / *-phone.png
+└── contracts/  backup-file.md  rest-api.md  ui.md
 ```
 
 ### Source Code
@@ -102,7 +101,7 @@ web/src/i18n/en.json, en.context.json, locales/*.json
 1. **Library + tests**: crypto (portable + vectors), file make/read, preview, restart rules; native tests.
 2. **Firmware**: mbedTLS adapter, routes, job task, staging, shared save step; both builds, flash check.
 3. **Demo core**: EmulatedDevice methods, rebuild wasm, MSW demo handlers.
-4. **UI**: mockups (owner review pending), then card + hook + data module; Vitest.
+4. **UI**: mockups (reviewed outside the repo), then card + hook + data module; Vitest.
 5. **Contract and docs**: routes/operations/schemas, OpenAPI regenerate, REST and user docs.
 6. **i18n**: English + context, device catalogue, 13 translations, record, check.
 7. **Gate**: native, both builds, quality check, web tests/types/lint, demo core hash.

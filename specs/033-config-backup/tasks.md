@@ -45,7 +45,7 @@ success criteria SC-002, SC-003, SC-005.
 - [x] T020 [US2] `POST /api/backup/preview` (job, staged candidate + token + revision, 10-minute expiry) and `POST /api/backup/apply` (token, revision check, `saveAndApply`, restart when needed) in src/WebServerBackup.cpp
 - [x] T021 [P] [US2] Demo: `restorePreview`, `restoreApply` in tools/demo-core/emulated_device_backup.cpp and bridge.cpp; handlers in web/src/demo/handlers.ts, web/src/demo/device.ts (restart after apply)
 - [x] T022 [US2] Data module `readBackupFile` (64 KB limit, JSON parse, header), `previewRestore`, `applyRestore` in web/src/lib/backup.ts; state hook web/src/hooks/useBackup.ts
-- [x] T023 [US2] Mockups of every card state (desktop 1280 px, phone 390 px) in specs/033-config-backup/mockups/ with README (owner review pending)
+- [x] T023 [US2] Mockups of every card state (desktop 1280 px, phone 390 px). The mockup was reviewed outside the repo; mockup images are not committed
 - [x] T024 [US2] `BackupCard` per contracts/ui.md in web/src/components/settings/BackupCard.tsx; add it to web/src/components/settings/DeviceTab.tsx
 - [x] T025 [US2] MSW mocks for the three routes in web/src/mocks/handlers.ts; Vitest web/src/components/__tests__/BackupCard.test.tsx (backup, preview, apply, cancel, refusal)
 
@@ -65,6 +65,7 @@ success criteria SC-002, SC-003, SC-005.
 
 - [x] T029 [US4] Not-applicable pass (pins, analog pin, Bluetooth on the standard build) on the backup document before applying in lib/ConfigBackup/src/BackupPreview.cpp
 - [x] T030 [US4] Native tests: cross-board pins (an ESP32-S3-like `BoardPins`), Bluetooth on standard, Pushover without keys, format 0, newer format, damaged files, a body over 20,480 bytes refused before parsing (test/test_config_backup); older firmware (kept) and newer firmware (ignored + warning) in Vitest (T019)
+- [x] T038 [US4] Board pins from the build's board profile (`Backup::boardPins`, `buildBoardPins`, spec 034) instead of the classic ESP32 set, in the firmware and the demo; the I2C-2, display button and battery pins are checked too, with 255 (not wired) kept; native test with the ESP32-S3-ETH profile
 
 ## Phase 7: Polish & cross-cutting
 
@@ -97,6 +98,8 @@ All four ship in one PR.
 - Native: 314 tests pass (`pio test -e native`); both firmware builds pass with no warnings from the new code.
 - Flash: +24.2 KB standard (84.7% of the slot), +24.0 KB Bluetooth (95.3%: over the 95% line; reason
   recorded in tools/firmware/size-baseline.json for the owner to accept or reject).
+- After merging specs 030-032 and 034 (2026-10-19): every build under 95% with no waiver (C++ exceptions
+  off; OLED and battery drivers only in the S3 builds); see [budgets.md](budgets.md).
 - `tools/quality/check.py`: 0 findings. Web: 645 Vitest tests, `tsc`, ESLint clean; UI +4.4 KB gzipped
   (limit +10 KB). OpenAPI, routes, i18n (14 languages), copy, labels, dashboard inventory, demo core
   hash: OK. `mkdocs build --strict`: only the CI-generated screenshots are missing (as on main).
@@ -106,7 +109,7 @@ All four ship in one PR.
 | ID | Category | Severity | Finding | Resolution |
 |---|---|---|---|---|
 | A1 | Constitution IV | HIGH | Heap/stack use must be measured on a device; this work may not touch a device. | T037 left for the owner on the spare device; research R7 gives the expected figures. |
-| A2 | Workflow | HIGH | UI must follow an owner-reviewed mockup. | T023 before T024; README records "Owner review: pending" and any difference between build and mockup. |
+| A2 | Workflow | HIGH | UI must follow an owner-reviewed mockup. | T023 before T024; the mockup was reviewed outside the repo, with any difference between build and mockup. |
 | A3 | Coverage | MEDIUM | "File over the limit refused before parsing" had no test. | Added to T030. |
 | A4 | Coverage | MEDIUM | SC-001 needs real WiFi/MQTT. | T037. |
 | A5 | Inconsistency | LOW | T028 path. | Fixed. |

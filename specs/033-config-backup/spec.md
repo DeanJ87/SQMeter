@@ -210,8 +210,8 @@ settings and offers to keep this board's values; confirming applies everything e
 - The device's existing cryptography support provides authenticated encryption and slow key derivation;
   derivation cost is chosen so a backup or restore takes a few seconds at most on the slowest board.
 - File size stays within the current saved-settings and upload limits; no new storage is needed.
-- Board compatibility comes from the board profiles (separate work); until those exist, pins are checked
-  against the current board's valid pin set.
+- Board compatibility comes from the board profiles (spec 034, `lib/ConfigModel/include/BoardProfile.h`):
+  pins are checked against the usable GPIOs and ADC1 range of the board the firmware is built for.
 
 ## Dependencies
 
