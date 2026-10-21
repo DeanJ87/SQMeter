@@ -30,7 +30,7 @@
     "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.44.0",
     "@preact/preset-vite": "^2.7.0",
-    "@scalar/api-reference": "1.72.1",
+    "@scalar/api-reference": "1.73.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/preact": "^3.2.4",
     "@types/node": "^20.10.6",
