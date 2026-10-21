@@ -108,15 +108,16 @@
   For a change to the web UI:
   - Cite the DS rules the design relies on (e.g. DS-01 a card, DS-04 explanations behind "?",
     DS-06 progress in the card that started it).
-  - Include a mockup screenshot built from the existing components, and have the owner review
-    it before implementation starts.
+  - Mock it up from the existing components and have the owner review it before
+    implementation starts. Keep the mockup images outside the repo (never under specs/);
+    the spec records that the review happened.
   - Name new English strings with their type (label, pill, note, hint) and keep them within
     the DS-20..DS-25 limits.
   Remove this section for changes with no UI.
 -->
 
 - **DS rules**: [DS-xx, ...]
-- **Mockup**: [path to the reviewed screenshot]
+- **Mockup**: [reviewed by the owner on YYYY-MM-DD; images kept outside the repo]
 
 ## Success Criteria *(mandatory)*
 

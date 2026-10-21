@@ -1,5 +1,6 @@
 import { http, HttpResponse, ws } from 'msw';
 import { DEMO_VERSION, demoDevice, type Reply } from './device';
+import { backupReply } from './backup';
 import { existingRealSender, withRealResults } from './realSend';
 import { mockGithubReleases, mockStatus, mockWifiNetworks } from '../mocks/data';
 
@@ -121,6 +122,14 @@ export const demoHandlers = [
   http.get('/api/config', () => json(demoDevice.getConfig())),
   http.post('/api/config', async ({ request }) => reply(demoDevice.applyConfig(await request.text()))),
   http.put('/api/config', async ({ request }) => reply(demoDevice.applyConfig(await request.text()))),
+  // Settings backup and restore (specs/033); a restore that needs it restarts the demo device.
+  ...(['preview', 'apply', 'backup'] as const).map((route) =>
+    http.post(route === 'backup' ? '/api/backup' : `/api/backup/${route}`, async ({ request }) => {
+      const answer = backupReply(demoDevice.backupCore(), route, await request.text());
+      if (answer.restarting) demoDevice.restart();
+      return reply(answer.reply);
+    }),
+  ),
   http.post('/api/restart', () => {
     demoDevice.restart();
     ipv6AtBoot = null;
@@ -150,8 +159,14 @@ export const demoHandlers = [
   http.post('/api/ble/ack', () => HttpResponse.json({ error: 'No phone alarm is active' }, { status: 409 })),
   http.post('/api/ble/forget-bonds', () => HttpResponse.json({ error: 'Bluetooth is off' }, { status: 409 })),
 
+  // The OLED display (spec 031)
+  http.post('/api/display/wake', () => reply(demoDevice.displayRequest(true))),
+  http.post('/api/display/blank', () => reply(demoDevice.displayRequest(false))),
+
   // Sensors
-  http.post('/api/sensors/tsl2591/calibrate-dark', () => reply(demoDevice.calibrateDark())),
+  http.post('/api/sensors/tsl2591/calibrate-dark', ({ request }) =>
+    reply(demoDevice.calibrateDark(new URL(request.url).searchParams.get('sensor') ?? '')),
+  ),
   http.post('/api/sensors/rg15/test', () => {
     if (!demoDevice.rawConfig().rain?.enabled)
       return HttpResponse.json({ error: 'The rain sensor is switched off (Settings → Sensors → Rain sensor)' }, { status: 409 });

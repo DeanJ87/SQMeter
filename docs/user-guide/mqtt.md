@@ -53,7 +53,7 @@ Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 <!-- diagram: DIA-09
 sources: src/WebServerStatus.cpp#WebServer::publishMqttReadings src/WebServerAlerts.cpp#WebServer::publishMqttSafety src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: f9e2d263e55aa878
+fingerprint: 9784c504ea161289
 -->
 <figure class="diagram" markdown>
 
@@ -96,10 +96,11 @@ flowchart LR
 
 | Switch | Controls |
 |---|---|
-| Sky quality and light | `light` and `sky` in `<base>/state` |
+| Sky quality and light | `light`, `sky` and `skySensors` in `<base>/state` |
 | Temperature, humidity, pressure | `environment` |
 | IR and cloud cover | `infrared` and `clouds` |
 | GPS, Rain, Wind | `gps`, `rain`, `wind` (only when that hardware is enabled) |
+| Battery | `battery` (only does anything with a fuel gauge, D-49) |
 | Safe / unsafe | `<base>/safe` and `<base>/safety` |
 | Diagnostics | `<base>/diagnostics` (off by default) |
 
@@ -116,21 +117,29 @@ The same document as [`GET /api/sensors`](../api/rest.md#get-apisensors) and `/w
   "dataAgeMs": 412,
   "dataStale": false,
   "light": { "status": "ok", "ageMs": 400, "lux": 0.0003, "visible": 307, "infrared": 47, "full": 357, "gain": "MAX", "gainFactor": 9876, "integrationMs": 600, "saturated": false, "nightMode": true },
-  "sky": { "status": "ok", "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90 },
+  "sky": { "status": "ok", "source": "sqm", "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90 },
+  "skySensors": {
+    "sqm": { "status": "ok", "ageMs": 400, "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90, "lux": 0.000301, "gain": "MAX", "integrationMs": 600, "saturated": false, "nightMode": true },
+    "sqml": { "status": "ok", "ageMs": 380, "sqm": 21.73, "...": "the same fields" },
+    "deltaSqm": 0.25
+  },
   "environment": { "status": "ok", "ageMs": 3100, "temperature": 12.3, "humidity": 64.7, "pressure": 1013.4, "dewpoint": 6.1 },
   "infrared": { "status": "ok", "ageMs": 3100, "skyTemperature": -24.7, "ambientTemperature": 12.4 },
   "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "description": "Clear", "temperatureDelta": -37.1, "correctedDelta": -33.0, "humidity": 64.7, "humiditySource": "measured" },
   "gps": { "status": "ok", "ageMs": 750, "fix": true, "satellites": 9, "latitude": 51.5074, "longitude": -0.1278, "altitude": 42.0, "hdop": 1.1 },
   "rain": { "status": "ok", "ageMs": 40, "raining": false, "rainingNow": false, "intensity": 0.0, "eventAccumulation": 0.4, "sensorEventAccumulation": 0.4, "totalAccumulation": 12.6, "lensFault": false, "emitterSaturated": false },
-  "wind": { "status": "ok", "ageMs": 900, "speed": 3.3, "gust": 6.8, "direction": 246, "vaneFault": false }
+  "wind": { "status": "ok", "ageMs": 900, "speed": 3.3, "gust": 6.8, "direction": 246, "vaneFault": false },
+  "battery": { "present": true, "status": "ok", "ageMs": 1200, "estimating": false, "percent": 82.4, "voltage": 3.912, "ratePercentPerHour": -6.2, "state": "discharging", "usbPower": false, "fault": null, "timeToEmptyMinutes": 797, "timeToFullMinutes": null, "powerSaving": false }
 }
 ```
 
 - **`timestamp`** is Unix seconds; `timeValid` is `false` (and `timestamp` `0`) until the clock is set.
 - **`status`** is `ok`, `missing` (not detected or not responding), `error` or `stale`. A group whose status isn't `ok` carries only `status` and `ageMs` (no `ageMs` when `missing` - it has never answered) - never zeros that look like readings.
 - **`gps`, `rain`, `wind`** are only present when that hardware is enabled.
+- **`light` and `sky`** are the authoritative sky sensor; `sky.source` (`sqm` or `sqml`) says which. **`skySensors`** has each sky sensor that is switched on under its own name (`sqm`, the wide sensor; `sqml`, the narrow SQM-L), with the same `status` rules, and `deltaSqm` (SQM-L − SQM) while both are `ok`. It is left out when neither is on. See [Two sky sensors](../reference/sky-quality.md#two-sky-sensors-sqm-and-sqm-l).
 - **Units**: °C, %, hPa, lux, mag/arcsec², m/s, degrees (0 = north), mm and mm/h (an RG-15 set to inches is converted). `wind.direction` is left out when it's calm or there's no vane.
 - **`rain.raining`** is held for the rain clear delay after the last drop; `rainingNow` is instantaneous; while held, `clearInSeconds` says how long is left. `eventAccumulation` is cleared by the clear delay; `sensorEventAccumulation` is the RG-15's own event total.
+- **`battery`** (spec 032) is `{"present": false}` without a fuel gauge (or with **Monitor battery** off). With one: `percent` (null while `estimating`), `voltage` (V), `ratePercentPerHour` (positive when charging, null for the first minute), `state` (`discharging`, `charging`, `charged`, `fault`, `no-battery`), `usbPower` (null without the charger pins), `fault` (`temperature`), `timeToEmptyMinutes` / `timeToFullMinutes` (null when not known, at most 5940) and `powerSaving`. See [Battery](battery.md).
 - **`clouds.humiditySource`** is `assumed` when there's no humidity sensor (53% is used).
 
 !!! note "The same in every language"
@@ -143,10 +152,12 @@ The same document as [`GET /api/sensors`](../api/rest.md#get-apisensors) and `/w
 Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**. SQMeter then appears as a device with:
 
 - **Sensors**: sky quality, limiting magnitude, Bortle class, illuminance, temperature, humidity, pressure, dew point, sky temperature, cloud cover, rain intensity, wind speed, gust and direction - for the groups you publish
+- **Per sky sensor** (spec 030): *SQM (wide)* and *SQM-L (narrow)* for each sky sensor that is switched on, and *SQM-L − SQM* while both are; *Sky quality* stays the authoritative reading
+- **Battery** (spec 032, with a fuel gauge and the Battery group published): *Battery* (%), *Battery voltage*, *Battery state* (an enum: discharging, charging, charged, fault, no-battery) and *Battery time to empty* (minutes)
 - **Binary sensors**: *Raining* (moisture) and *Observatory* (safety: on = unsafe)
 - **Switch**: *Alerts* - on while sending, off while paused (see [When to send](alerts.md#when-to-send))
 
-Each entity is unavailable while the device is offline or its sensor isn't `ok`. Switching a group off removes its entities. The discovery prefix defaults to `homeassistant`.
+Each entity is unavailable while the device is offline or its sensor isn't `ok` (*SQM-L − SQM*: while either isn't). Switching a group or a sky sensor off removes its entities. The discovery prefix defaults to `homeassistant`.
 
 Without discovery, read `<base>/state` with a `value_template`:
 

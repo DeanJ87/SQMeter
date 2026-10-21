@@ -125,35 +125,37 @@ The safety verdict is re-evaluated every second from the current sensor readings
 3. **Rain sensor offline/faulty** - the rain sensor is enabled but not responding, its data is stale, or it reports a lens fault (fail safe; enabled by default)
 4. **Wind / gust** - the 2-minute mean wind speed or the 10-minute peak gust is at or above its limit (both disabled by default). If a wind limit is enabled but the [anemometer](../hardware/wind.md) is disabled or not reporting, that's unsafe too
 5. **No data yet** - the device hasn't completed a sensor read since boot
-6. **Stale data** - the last successful read is older than the stale-data threshold (default 30s)
-7. **Sensor fault** - the light sensor (TSL2591) or IR sky sensor (MLX90614) is reporting a non-OK status
+6. **Stale data** - the last successful read is older than the stale-data threshold (default 30s; while the battery is [saving power](battery.md#power-saving-and-deep-sleep) the limit grows by the slower read interval, and the reason shows the limit in use)
+7. **Sensor fault** - the light sensor (TSL2591) or IR sky sensor (MLX90614) is reporting a non-OK status. With two sky sensors only the authoritative one counts, and the reason names it: "Sensor fault: SQM sensor" or "Sensor fault: SQM-L sensor" ([no fallback](../reference/sky-quality.md#two-sky-sensors-sqm-and-sqm-l))
 8. **Cloud cover** - at or above the configured threshold (default 90%, if enabled)
-9. **Sky brightness (SQM)** - below the configured minimum (disabled by default)
+9. **Sky brightness (SQM)** - the authoritative sky sensor below the configured minimum (disabled by default): "SQM 18.21 < 19.50", or "SQM-L 18.21 < 19.50" when the SQM-L counts
 10. **Humidity** - above the configured maximum (disabled by default)
 11. **Temperature-dewpoint margin** - below the configured minimum (disabled by default)
 12. **Sensor fault: environment sensor** - the humidity or dew-point rule is enabled but the environment sensor (BME280) isn't reporting, so it can't be evaluated
+13. **Battery** - the battery charge is below the limit (default 10%, disabled by default): "Battery 8% < 10%". If the rule is on but there is no fuel gauge, or its data is stale or still estimating, that's unsafe too: "Battery data missing". A charging pack below the limit stays unsafe. See [Battery](battery.md#the-safety-rule)
+14. **Shutting down** - the battery has reached its shutdown level and the device is about to sleep, whether or not the battery rule is on: "Shutting down: battery 4% <= 5%"
 
-Rain and wind rules (2-4) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining or blowing a gale. Rules 8-12 only apply to fresh data.
+Rain, wind and battery rules (2-4, 13-14) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining, blowing a gale or about to switch off. Rules 8-12 only apply to fresh data.
 
 Each threshold has its own enable/disable toggle - a disabled threshold never contributes to the verdict.
 
 <!-- diagram: DIA-02
-sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceCore.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
+sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceSafety.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: true
-fingerprint: 8083e8f460d5ad85
+fingerprint: 37a95de6ca92a28c
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: How the safety verdict is decided
-    accDescr: Every second all enabled rules are checked and each failing rule adds a reason. Rain and wind are always checked, then data freshness and sensor health; the threshold rules only run on fresh data. Any reason makes the raw verdict unsafe, which then passes through the safe delay.
+    accDescr: Every second all enabled rules are checked and each failing rule adds a reason. Rain, wind and battery are always checked, then data freshness and sensor health; the threshold rules only run on fresh data. Any reason makes the raw verdict unsafe, which then passes through the safe delay.
     START(["Every second"]) --> ALWAYS
-    ALWAYS["<b>Always checked</b>, even on stale data<br/>Force unsafe on: <i>Manual override forces unsafe</i><br/>Raining, or within the rain clear delay: <i>Rain detected</i><br/>Rain sensor offline, stale or lens fault: <i>Rain sensor offline...</i><br/>Wind limit set but anemometer off or silent: <i>Wind limit set but...</i><br/>Wind or gust at or over its limit: <i>Wind ... / Gust ...</i>"]
+    ALWAYS["<b>Always checked</b>, even on stale data<br/>Force unsafe on: <i>Manual override forces unsafe</i><br/>Raining, or within the rain clear delay: <i>Rain detected</i><br/>Rain sensor offline, stale or lens fault: <i>Rain sensor offline...</i><br/>Wind limit set but anemometer off or silent: <i>Wind limit set but...</i><br/>Wind or gust at or over its limit: <i>Wind ... / Gust ...</i><br/>Battery rule on but no gauge data: <i>Battery data missing</i><br/>Battery below its limit: <i>Battery ...</i><br/>About to sleep at the shutdown level: <i>Shutting down: battery ...</i>"]
     ALWAYS --> FRESHNESS["<b>Data freshness</b><br/>No light or IR read since boot: <i>No successful sensor data yet</i><br/>Light or IR sensor's last successful read older than the stale limit, 30 s: <i>Sensor data is stale</i>"]
-    FRESHNESS --> HEALTH["<b>Sensor health</b><br/>Light sensor or IR sky sensor not OK: <i>Sensor fault: ...</i>"]
+    FRESHNESS --> HEALTH["<b>Sensor health</b><br/>Light sensor or IR sky sensor not OK: <i>Sensor fault: ...</i><br/>with two sky sensors only the authoritative one, SQM or SQM-L"]
     HEALTH --> FRESH{"Fresh data?"}
-    FRESH -->|yes| THRESHOLDS["<b>Thresholds</b><br/>Cloud cover at or over the limit, unless the IR sky sensor is faulted<br/>SQM below the minimum, unless the light sensor is faulted<br/>Humidity or dew rule on but no humidity reading: <i>Sensor fault: environment sensor</i><br/>otherwise humidity over its maximum, or air minus dew point below the margin"]
+    FRESH -->|yes| THRESHOLDS["<b>Thresholds</b><br/>Cloud cover at or over the limit, unless the IR sky sensor is faulted<br/>SQM or SQM-L below the minimum, unless that sensor is faulted<br/>Humidity or dew rule on but no humidity reading: <i>Sensor fault: environment sensor</i><br/>otherwise humidity over its maximum, or air minus dew point below the margin"]
     FRESH -->|"no: skip, already unsafe"| ANY
     THRESHOLDS --> ANY{"Any reasons?"}
     ANY -->|none| RAWSAFE["Raw verdict: safe"]
@@ -178,8 +180,10 @@ flowchart TB
         - The rain sensor reports rain, or rain within the rain clear delay: "Rain detected".
         - The rain sensor is enabled but offline, stale or reporting a lens fault: "Rain sensor offline, stale or reporting a lens fault".
         - A wind limit is set but the anemometer is disabled or not reporting: "Wind limit set but the anemometer is disabled or not reporting". Otherwise wind or gust at or over its limit: "Wind ..." / "Gust ...".
+        - The battery rule is on but there's no fuel gauge, or its data is stale or estimating: "Battery data missing". Otherwise the charge below the limit: "Battery ...".
+        - The device is about to sleep at the battery's shutdown level (rule on or not): "Shutting down: battery ...".
     2. **Data freshness**: no successful TSL2591 or MLX90614 read since boot gives "No successful sensor data yet". If either sensor is still answering but its last successful read is older than the stale limit (default 30 s), that gives "Sensor data is stale" - a sensor that keeps reporting OK without fresh readings counts as stale. A sensor that has stopped answering is reported under sensor health instead.
-    3. **Sensor health**: the light sensor or IR sky sensor not OK gives "Sensor fault: ..." naming which ("Sensor fault: IR sky sensor").
+    3. **Sensor health**: the light sensor or IR sky sensor not OK gives "Sensor fault: ..." naming which ("Sensor fault: IR sky sensor"). With two sky sensors the light sensor is the authoritative one, named "SQM sensor" or "SQM-L sensor"; the other one never changes the verdict.
     4. **Only with fresh data**, the threshold rules:
         - cloud cover at or over its limit (skipped if the IR sky sensor is faulted);
         - SQM below its minimum (skipped if the light sensor is faulted);
@@ -244,8 +248,8 @@ stateDiagram-v2
 | `humidity` | BME280 |
 | `pressure` | BME280 (hPa, station level) |
 | `rainrate` | Hydreon RG-15 rain intensity, in mm/h (converted if the RG-15 reports inches). `NotImplemented` when the rain sensor is disabled in Settings |
-| `skybrightness` | TSL2591 lux |
-| `skyquality` | Calculated SQM (mag/arcsec²) |
+| `skybrightness` | TSL2591 lux, from the authoritative sky sensor |
+| `skyquality` | Calculated SQM (mag/arcsec²), from the authoritative sky sensor. With two sky sensors `SensorDescription` names it: "TSL2591 SQM (wide), calibrated SQM" or "TSL2591 SQM-L (narrow), calibrated SQM" ("TSL2591 light sensor, calibrated SQM" with one). `NotImplemented` when the authoritative sensor is switched off; no data (driver error) while it isn't answering - never the other sensor's value |
 | `skytemperature` | MLX90614 IR object temperature |
 | `temperature` | BME280 |
 | `averageperiod` | Always `0`. `PUT` accepts only `0`; other values return `InvalidValue` (`0x401`) |

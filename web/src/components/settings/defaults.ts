@@ -1,4 +1,14 @@
-import type { AlertsConfig, AlpacaConfig, BleConfig, Config, LocationConfig, WindConfig, MQTTPublishGroups } from '../../types';
+import type {
+  AlertsConfig,
+  AlpacaConfig,
+  BatteryConfig,
+  BleConfig,
+  Config,
+  DisplayConfig,
+  LocationConfig,
+  WindConfig,
+  MQTTPublishGroups,
+} from '../../types';
 
 // Defaults for every settings section - used to fill in fields that configs
 // from older firmware don't have yet.
@@ -62,6 +72,34 @@ export const defaultWindConfig: WindConfig = {
   vanePullupOhms: 10000,
 };
 
+export const defaultDisplayConfig: DisplayConfig = {
+  enabled: false,
+  pages: ['sky'],
+  cycleSeconds: 5,
+  brightness: 'medium',
+  timeoutSeconds: 60,
+  wakeOnBoot: true,
+  stayOnAtNight: false,
+  rotate180: false,
+  buttonPin: 255,
+};
+
+// The Li-ion pack (spec 032, contracts/config.md); pins 255 = not wired.
+export const defaultBatteryConfig: BatteryConfig = {
+  enabled: true,
+  lowPercent: 20,
+  criticalPercent: 10,
+  shutdownPercent: 5,
+  capacityMah: 0,
+  powerSaving: true,
+  saveReadIntervalSeconds: 30,
+  shutdownGraceSeconds: 30,
+  alertPin: 255,
+  stat1Pin: 255,
+  stat2Pin: 255,
+  pgPin: 255,
+};
+
 export const defaultAlertsConfig: AlertsConfig = {
   enabled: false,
   events: {
@@ -77,6 +115,12 @@ export const defaultAlertsConfig: AlertsConfig = {
     client_lost: { level: 3, sound: '' },
     client_back: { level: 1, sound: '' },
     client_disconnected: { level: 0, sound: '' },
+    battery_low: { level: 2, sound: '' },
+    battery_critical: { level: 4, sound: '' },
+    battery_shutdown: { level: 4, sound: '' },
+    power_restored: { level: 0, sound: '' },
+    charge_complete: { level: 0, sound: '' },
+    charge_fault: { level: 2, sound: '' },
   },
   dewRiskMarginC: 2,
   clearSkyCloudPercent: 20,
@@ -122,6 +166,7 @@ export const defaultMqttPublish: MQTTPublishGroups = {
   gps: true,
   rain: true,
   wind: true,
+  battery: true,
   safety: true,
   diagnostics: false,
 };
@@ -137,5 +182,15 @@ export const defaultSkyCalibration: NonNullable<Config['skyCalibration']> = {
   darkSampleCount: 0,
   darkCalibratedAt: 0,
 };
+
+export const defaultSkyConfig: NonNullable<Config['sky']> = {
+  sqmEnabled: true,
+  sqmlEnabled: false,
+  authoritative: 'sqm',
+  showOther: true,
+};
+
+// 255 = the second I2C bus is not wired.
+export const I2C2_PIN_UNSET = 255;
 
 export const defaultHomeAssistant = { enabled: false, discoveryPrefix: 'homeassistant' };

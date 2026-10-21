@@ -28,7 +28,7 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-15 | `alpaca.rainUnsafeEnabled`, `alpaca.rainSensorRequired` | Rain sensor on | Dependency, inactive when unmet | Rain sensor is off (rain-off) |
 | D-16 | `alpaca.windSpeedUnsafeEnabled`, `alpaca.windGustUnsafeEnabled` | Anemometer on | Dependency, fail-safe when unmet | Anemometer is off (wind-off) |
 | D-17 | `alpaca.cloudCoverEnabled` | MLX90614 detected | Dependency, fail-safe when unmet, runtime | IR sky sensor not detected (infrared-missing) |
-| D-18 | `alpaca.sqmMinEnabled` | TSL2591 detected | Dependency, fail-safe when unmet, runtime | Light sensor not detected (light-missing) |
+| D-18 | `alpaca.sqmMinEnabled` | The authoritative sky sensor (TSL2591) detected; named SQM or SQM-L when both are on (spec 030) | Dependency, fail-safe when unmet, runtime | Light sensor not detected (light-missing); SQM not detected (sqm-missing); SQM-L not detected (sqml-missing) |
 | D-19 | `alpaca.humidityMaxEnabled`, `alpaca.dewpointMarginEnabled` | BME280 detected | Dependency, fail-safe when unmet, runtime | Environment sensor not detected (environment-missing) |
 | D-20 | `alpaca.enabled` | Alpaca on - IsSafe and ObservingConditions served; the Alpaca page explains when it is off | Dependency | - |
 | D-21 | `rain.enabled` | Rain sensor on - Alpaca RainRate is NotImplemented otherwise | Dependency | - |
@@ -39,7 +39,7 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-26 | `gps.enabled` | GPS running and a GPS fix (location source) | Dependency, runtime | No GPS fix - using the location in Settings (gps-no-fix) |
 | D-27 | `primaryTimeSource`, `secondaryTimeSource`, `ntp.enabled`, `gps.enabled` | At least one time source on; primary and secondary sources on and different | Constraint | - |
 | D-28 | `ntp.enabled` | WiFi connected to a network | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
-| D-29 | `skyCalibration.enabled` | TSL2591 detected | Dependency, runtime | Light sensor not detected (light-missing) |
+| D-29 | `skyCalibration.enabled` | SQM (TSL2591 on I2C-1) detected; named SQM when the SQM-L is on too (spec 030) | Dependency, runtime | Light sensor not detected (light-missing); SQM not detected (sqm-missing) |
 | D-30 | `ble.enabled`, `ble.phoneAlarm` | Bluetooth firmware build | Dependency | Needs the Bluetooth firmware build (ble-build) |
 | D-31 | `ble.phoneAlarm` | Bluetooth on and a passkey set (the alarm is on while a passkey is set) | Dependency | Bluetooth is off (ble-off) |
 | D-32 | `ota.enabled` | An OTA upload password set | Dependency | Set an upload password (ota-no-password) |
@@ -49,3 +49,16 @@ Some settings only work when something else is on: MQTT alerts need MQTT, rain a
 | D-37 | `alerts.events.client_lost.level`, `alerts.events.client_back.level`, `alerts.events.client_disconnected.level` | Alpaca on - imaging apps connect over Alpaca (spec 021) | Dependency | Alpaca is off (alpaca-off) |
 | D-36 | `wifi.mdns`, `wifi.ipv6` | WiFi connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
 | D-38 | `language` | A language other than English needs its file: downloaded over WiFi from the GitHub release (needs internet), or uploaded by hand (works offline) (spec 023) | Dependency, runtime | Needs WiFi to download - or upload the file (language-offline) |
+| D-39 | `sky.sqmlEnabled` | The second I2C bus pins set (spec 030) | Dependency | Second I2C bus pins not set (i2c2-unset) |
+| D-40 | `sky.authoritative`, `sky.showOther` | SQM and SQM-L both on (spec 030) | Dependency | SQM and SQM-L must both be on (sky-single) |
+| D-41 | `skyCalibrationL.enabled` | SQM-L (TSL2591 on I2C-2) detected (spec 030) | Dependency, runtime | SQM-L not detected (sqml-missing) |
+| D-42 | `sensor.i2c2SDA`, `sensor.i2c2SCL`, `sky.sqmlEnabled` | Second I2C bus pins: both unset, or two different valid GPIOs no other bus uses; the SQM-L can't be saved on without them (spec 030) | Constraint | - |
+| D-43 | `display.pages`, `display.cycleSeconds`, `display.brightness`, `display.timeoutSeconds`, `display.wakeOnBoot`, `display.stayOnAtNight`, `display.rotate180`, `display.buttonPin` | An OLED display answering at 0x3C on the main I2C bus; a display that's off in settings is never probed (spec 031) | Dependency, runtime | No display detected (display-missing) |
+| D-44 | `display.stayOnAtNight` | Location set or GPS fix, so the device can tell when it's night; until then the display always times out (spec 031) | Dependency | Needs your location (location-unknown) |
+| D-45 | `display.buttonPin` | Wake button pin: none (255), or a valid GPIO that I2C-1, I2C-2, GPS, the rain sensor, the anemometer and vane and the battery pins (gauge alert, STAT1, STAT2, PG) don't use while the display is on (specs 031, 032) | Constraint | - |
+| D-46 | `battery.enabled`, `battery.lowPercent`, `battery.criticalPercent`, `battery.shutdownPercent`, `battery.capacityMah`, `battery.powerSaving`, `battery.saveReadIntervalSeconds`, `battery.shutdownGraceSeconds` | A MAX17048 fuel gauge answering at 0x36 on the main I2C bus; monitoring ships on, so without a gauge these are shown muted (spec 032) | Dependency, runtime | No battery gauge detected (battery-missing) |
+| D-47 | `alpaca.batteryEnabled` | A fuel gauge; the battery rule without one (or with monitoring off) reports unsafe: Battery data missing (spec 032) | Dependency, fail-safe when unmet, runtime | No battery gauge detected (battery-missing) |
+| D-48 | `alerts.events.battery_low.level`, `alerts.events.battery_critical.level`, `alerts.events.battery_shutdown.level`, `alerts.events.power_restored.level`, `alerts.events.charge_complete.level`, `alerts.events.charge_fault.level` | Alerts on (Wake me: or paired phones that ring) and a fuel gauge (spec 032) | Dependency, runtime | Alerts are off (alerts-off); No battery gauge detected (battery-missing) |
+| D-49 | `mqtt.publish.battery` | MQTT on and a fuel gauge (spec 032) | Dependency | MQTT is off (mqtt-off); No battery gauge detected (battery-missing) |
+| D-50 | `alpaca.batteryPhoneAlarm` | Bluetooth build, Bluetooth on, passkey set, at least one paired phone, as D-08 (spec 032) | Dependency | Needs the Bluetooth firmware build (ble-build); Bluetooth is off (ble-off); No pairing passkey set (no-passkey); No phone paired (no-phones) |
+| D-51 | `battery.alertPin`, `battery.stat1Pin`, `battery.stat2Pin`, `battery.pgPin` | Battery pins: none (255) or valid, different GPIOs; the charger's STAT1, STAT2 and PG together or not at all; not used by I2C-1, I2C-2, GPS, the rain sensor, the anemometer and vane or the display button; PG able to wake the device (spec 032) | Constraint | - |

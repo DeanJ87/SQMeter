@@ -3,8 +3,8 @@ import { bodyOf, post } from '../lib/api';
 import { t } from '../i18n';
 import { deviceError } from '../i18n/deviceMessage';
 
-// The phone-alarm buttons in Settings > Device: acknowledge, unpair (with a
-// confirm step), and the result of the last one.
+// The action buttons in Settings > Device: the phone alarm's acknowledge and
+// unpair (with a confirm step), the display's Wake, and the result of the last one.
 
 export const useDeviceActions = () => {
   const [confirmUnpair, setConfirmUnpair] = useState(false);

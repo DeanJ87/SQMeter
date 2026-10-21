@@ -5,12 +5,61 @@
 // headers here.
 
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <optional>
 #include <string>
 
+#include "BatteryLogic.h"
+
 namespace SQM
 {
+    // The two sky sensors (spec 030): the wide SQM on I2C-1 and the narrow SQM-L on I2C-2.
+    // The value is the index into per-role arrays.
+    enum class SkyRole : uint8_t
+    {
+        Sqm = 0,
+        Sqml = 1
+    };
+
+    constexpr size_t SKY_ROLE_COUNT = 2;
+
+    // JSON / config name ("sqm" / "sqml").
+    inline const char *skyRoleName(SkyRole role)
+    {
+        return role == SkyRole::Sqml ? "sqml" : "sqm";
+    }
+
+    // Display name ("SQM" / "SQM-L").
+    inline const char *skyRoleLabel(SkyRole role)
+    {
+        return role == SkyRole::Sqml ? "SQM-L" : "SQM";
+    }
+
+    // Exact names only; false (role untouched) on anything else.
+    inline bool parseSkyRole(const char *name, SkyRole &role)
+    {
+        if (name == nullptr)
+            return false;
+        if (std::strcmp(name, "sqm") == 0)
+        {
+            role = SkyRole::Sqm;
+            return true;
+        }
+        if (std::strcmp(name, "sqml") == 0)
+        {
+            role = SkyRole::Sqml;
+            return true;
+        }
+        return false;
+    }
+
+    inline size_t skyRoleIndex(SkyRole role)
+    {
+        return static_cast<size_t>(role);
+    }
+
     enum class SensorStatus
     {
         Ok,
@@ -321,6 +370,45 @@ namespace SQM
         uint32_t samples = 0;   // seconds of history (up to 600)
 
         WindReading()
+        {
+            timestamp = 0;
+            status = SensorStatus::NotInitialized;
+        }
+    };
+
+    // MAX17048 fuel gauge and the MCP73871 charger's status lines (spec 032).
+    // The driver fills the raw registers and what the stateful decoders in
+    // lib/BatteryLogic say (estimating, smoothed rate, charger state);
+    // `status`/`timestamp` are the gauge's. Core::derive adds the estimates.
+    struct BatteryReading : public SensorReading
+    {
+        // Gauge registers as read.
+        uint16_t vcellRaw = 0;  // 78.125 uV per LSB
+        uint16_t socRaw = 0;    // 1/256 % per LSB
+        int16_t crateRaw = 0;   // 0.208 %/h per LSB, signed
+        uint16_t statusRaw = 0; // STATUS (0x1A)
+        uint16_t version = 0;   // VERSION (0x08), 0x001x for a MAX17048
+        bool resetSeen = false; // the gauge reported a reset (RI) since boot
+
+        // Decoded gauge values (Battery::GaugeDecoder).
+        float voltage = 0.0f;
+        float percent = 0.0f; // 0..100
+        bool estimating = true;
+        bool rateValid = false;
+        float ratePercentPerHour = 0.0f; // 10-minute average, positive when charging
+
+        // Charger lines (Battery::ChargerDecoder); levels true = high.
+        bool chargerPins = false; // STAT1/STAT2/PG wired
+        bool stat1 = true;
+        bool stat2 = true;
+        bool pg = true;
+        Battery::ChargeState chargeState = Battery::ChargeState::Unknown;
+        std::optional<bool> usbPower; // unknown without the PG pin
+        Battery::ChargeFault fault = Battery::ChargeFault::None;
+
+        std::optional<bool> gaugeAlert; // ALRT asserted; unknown without its pin
+
+        BatteryReading()
         {
             timestamp = 0;
             status = SensorStatus::NotInitialized;

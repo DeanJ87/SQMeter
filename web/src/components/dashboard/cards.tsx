@@ -5,10 +5,13 @@ import SunMoonCard from '../SunMoonCard';
 import DeviceCard from '../../dashboard/DeviceCard';
 import FaultCard from '../../dashboard/FaultCard';
 import { expectedSensors, type Sensor } from '../../dashboard/glance';
+import { authoritativeMissing, otherReading, otherSkyFault, skyChoice } from '../../dashboard/skySensors';
+import { skySensorName } from '../../lib/sensorNames';
 import { deviceTime } from '../../lib/deviceTime';
 import { t } from '../../i18n';
 import { CloudCard, IrCard, LightCard, SkyHero, SkyUnavailableCard, type Freshness } from './skyCards';
 import { EnvironmentCard, GpsCard, RainCard, WindCard } from './weatherCards';
+import { BatteryCard, BatteryStatePill } from './batteryCard';
 
 // What the dashboard's cards are drawn from, once readings have arrived.
 export interface CardContext {
@@ -47,20 +50,48 @@ const locationOf = ({ sensors, config }: CardContext) => {
   return config?.location?.set ? config.location : null;
 };
 
+// With the SQM-L in play a missing authoritative sensor is named, with a
+// switch to the other one (spec 030 FR-010); otherwise as before.
+const skyUnavailable = (ctx: CardContext, fault: Fault) => {
+  const missing = authoritativeMissing(ctx.sensors, ctx.config);
+  if (missing) return <SkyUnavailableCard missing={missing} />;
+  return faultCard(fault, 'light', t('dashboard.skyQuality'), 'star') ?? <SkyUnavailableCard />;
+};
+
 const skyCard = (ctx: CardContext, fault: Fault): Entry => {
-  const { sensors } = ctx;
+  const { sensors, config } = ctx;
   // Stale: the device says its data is old, or the stream has gone quiet.
   const freshness: Freshness = !ctx.connected ? 'offline' : ctx.quiet ? 'quiet' : sensors?.dataStale ? 'stale' : 'live';
+  const choice = skyChoice(config);
   return {
     id: 'sky',
     title: t('dashboard.skyQuality'),
     node:
       sensors?.light?.status !== 'ok' ? (
-        (faultCard(fault, 'light', t('dashboard.skyQuality'), 'star') ?? <SkyUnavailableCard />)
+        skyUnavailable(ctx, fault)
       ) : (
-        <SkyHero sensors={sensors} freshness={freshness} sqmHistory={ctx.sqmHistory} />
+        <SkyHero
+          sensors={sensors}
+          freshness={freshness}
+          sqmHistory={ctx.sqmHistory}
+          name={choice.both ? (sensors.sky.source ?? choice.authoritative) : undefined}
+          other={otherReading(sensors, config)}
+        />
       ),
   };
+};
+
+// The other sky sensor, once it has failed, keeps a card titled with its
+// name (spec 025 D6); while it reports, its reading is on the Sky card.
+const otherSkyCard = ({ sensors, status, config }: CardContext): Entry => {
+  const failed = otherSkyFault(sensors, status, config);
+  return (
+    failed && {
+      id: 'sky-other',
+      title: skySensorName(failed.role),
+      node: <FaultCard title={skySensorName(failed.role)} icon="star" health={failed.health} />,
+    }
+  );
 };
 
 const sunMoonCard = (ctx: CardContext): Entry => {
@@ -131,6 +162,21 @@ const rainCard = ({ sensors, config }: CardContext, fault: Fault): Entry => {
   );
 };
 
+// Only on a board with a fuel gauge (spec 032). A gauge that stops answering
+// keeps its card in the fault state, with the charger's state when it is wired.
+const batteryCard = ({ sensors }: CardContext): Entry => {
+  const battery = sensors?.battery;
+  if (!battery?.present) return null;
+  const title = t('dashboard.battery');
+  const node =
+    battery.status && battery.status !== 'ok' ? (
+      <FaultCard title={title} icon="battery" health={battery.status} extra={<BatteryStatePill state={battery.state} />} />
+    ) : (
+      <BatteryCard battery={battery} />
+    );
+  return { id: 'battery', title, node };
+};
+
 // Every card the readings allow, in no particular order (the order is the user's).
 export const dashboardCards = (ctx: CardContext): MasonryItem[] => {
   const fault = faultOf(ctx);
@@ -142,6 +188,7 @@ export const dashboardCards = (ctx: CardContext): MasonryItem[] => {
       node: <SafetyCard safety={ctx.sensors.safety} rainClearInSeconds={ctx.sensors?.rain?.clearInSeconds} />,
     },
     skyCard(ctx, fault),
+    otherSkyCard(ctx),
     sunMoonCard(ctx),
     cloud,
     environmentCard(ctx, fault),
@@ -151,6 +198,7 @@ export const dashboardCards = (ctx: CardContext): MasonryItem[] => {
     ir,
     windCard(ctx, fault),
     rainCard(ctx, fault),
+    batteryCard(ctx),
   ];
   return cards.filter((card): card is MasonryItem => Boolean(card));
 };

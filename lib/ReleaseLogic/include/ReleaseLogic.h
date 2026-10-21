@@ -31,12 +31,26 @@ namespace SQM
         constexpr const char *BLE_FIRMWARE_PREFIX = "sqmeter-l2-ble-firmware-";
         constexpr const char *FS_PREFIX = "sqmeter-l2-littlefs-";
 
+        // The classic ESP32 keeps the names above; each ESP32-S3 board has its
+        // own files (spec 034): sqmeter-<board>-firmware-, sqmeter-<board>-ble-firmware-
+        // and sqmeter-<board>-littlefs-, so a device is only offered its own.
+        constexpr const char *CLASSIC_BOARD = "esp32";
+        struct AssetPrefixes
+        {
+            std::string firmware;
+            std::string bleFirmware;
+            std::string fs;
+        };
+        AssetPrefixes prefixesFor(const std::string &board);
+
         // The update check asks GitHub for this many releases...
         constexpr int PER_PAGE = 8;
         // ...and reads them (filtered to each file's name and size) into a
         // document this big: 32 KB on the ESP32. Since v0.3 every release also
-        // carries ~27 language files; tested with 8 such releases of 34 files
-        // each. ArduinoJson's slots grow with the pointer size, so the 64-bit
+        // carries ~27 language files and since v0.4 the ESP32-S3 boards' 15;
+        // tested with 8 such releases of 51 files each (about 60 is the limit,
+        // and firmware already in the field has the same capacity, so keep the
+        // file count per release below that). ArduinoJson's slots grow with the pointer size, so the 64-bit
         // native tests get the same room in proportion.
         constexpr size_t JSON_CAPACITY = 8192 * sizeof(void *);
 
@@ -49,7 +63,9 @@ namespace SQM
         // firmware image for this build (`ble` picks sqmeter-l2-ble-firmware-*)
         // and a sqmeter-l2-littlefs-* image. A release missing either is
         // skipped: firmware and web UI are always installed as a matched pair.
-        std::vector<GithubRelease> parse(const JsonDocument &doc, const std::string &track, bool ble);
+        // `board` is the build's release board (include/BuildTarget.h).
+        std::vector<GithubRelease> parse(
+            const JsonDocument &doc, const std::string &track, bool ble, const std::string &board = CLASSIC_BOARD);
 
         // Same, from the raw body. Returns false (and sets `error`) when the
         // JSON can't be read.

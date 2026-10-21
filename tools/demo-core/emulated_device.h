@@ -20,7 +20,9 @@
 #include "AlertDelivery.h"
 #include "AlpacaRouter.h"
 #include "Config.h"
+#include "ConfigBackup.h"
 #include "DeviceCore.h"
+#include "DisplayController.h"
 #include "RainLogic.h"
 #include "SafetyHistoryLog.h"
 #include "SettingsDeps.h"
@@ -64,9 +66,25 @@ class EmulatedDevice : public Alpaca::Backend
 public:
     // identityJson: {"version": "...", "mac": "a1b2c3d4e5f6"}
     explicit EmulatedDevice(const std::string &identityJson)
-        : router(*this, identity(identityJson))
+        : router(*this, identity(identityJson)),
+          firmwareVersion(identity(identityJson).version)
     {
         cfg = Config::createDefault();
+        // The demo board has the second I2C bus wired and both sky sensors
+        // fitted, so the explorer shows the SQM and the SQM-L (spec 030).
+        cfg.sensor.i2c2SDA = 25;
+        cfg.sensor.i2c2SCL = 26;
+        cfg.sky.sqmlEnabled = true;
+        // ...and an OLED display (spec 031), cycling a few pages.
+        cfg.display.enabled = true;
+        const Display::Page pages[] = {Display::Page::Sky, Display::Page::Environment, Display::Page::Safety, Display::Page::Network};
+        cfg.display.pageCount = 4;
+        for (uint8_t i = 0; i < cfg.display.pageCount; ++i)
+            cfg.display.pages[i] = pages[i];
+        // ...and the travel board's battery with its charger pins wired (spec 032).
+        cfg.battery.stat1Pin = 13;
+        cfg.battery.stat2Pin = 14;
+        cfg.battery.pgPin = 32;
         bootConfig = cfg;
         history.magic = 0; // garbage -> cleared on the first boot
         SafetyHistory::startBoot(history, false);
@@ -151,11 +169,25 @@ public:
     std::string deliveryRequests(uint32_t id, const std::string &credentialsJson) const;
 
     // POST /api/sensors/tsl2591/calibrate-dark - the device's checks.
-    std::string calibrateDark();
+    std::string calibrateDark(const std::string &sensor);
+
+    // POST /api/display/wake (wake true) or /blank (spec 031): the demo
+    // board has an OLED; the next tick applies the request.
+    std::string displayRequest(bool wake);
 
     // --- Alpaca --------------------------------------------------------------
     // method "GET"/"PUT", path, params as [[name, value], ...].
     std::string alpaca(const std::string &method, const std::string &path, const std::string &paramsJson);
+
+    // --- Backup and restore (specs/033-config-backup) ---------------------------
+    // POST /api/backup. randomHex: 28 random bytes (salt, nonce). Returns {status, body}.
+    std::string backup(const std::string &body, const std::string &randomHex);
+    // POST /api/backup/preview. randomHex: 16 random bytes (the token).
+    std::string restorePreview(const std::string &body, const std::string &randomHex);
+    // POST /api/backup/apply. The demo restarts itself when "restarting" is true.
+    std::string restoreApply(const std::string &body);
+    // The three above by route ("backup", "preview", "apply"): one binding for the demo.
+    std::string backupRoute(const std::string &route, const std::string &body, const std::string &randomHex);
 
     // --- Persistence (sessionStorage) -----------------------------------------
     std::string saveState() const;
@@ -164,6 +196,17 @@ public:
 
 private:
     static Alpaca::ServerIdentity identity(const std::string &json);
+    Backup::DeviceInfo backupDevice() const;
+
+    // The previewed restore, until applied (the device's StagedRestore).
+    struct StagedRestore
+    {
+        std::string token;
+        Config candidate;
+        std::string from; // the settings it was previewed on
+        bool restart = false;
+    };
+    StagedRestore staged;
 
     static std::string serialize(const JsonDocument &doc);
 
@@ -184,6 +227,9 @@ private:
     void pushHistory(SafetyHistory::Kind kind, bool safe, bool held, uint32_t flags, uint8_t resetReason);
 
     void runAlerts();
+
+    // The OLED's controller, ticked with each sensor cycle (spec 031).
+    void tickDisplay();
 
     // The TSL2591 driver averages its samples over the sky averaging window
     // and, at night, reports the average (src/sensors/TSL2591Sensor.cpp);
@@ -206,6 +252,11 @@ private:
     std::string clockTime = "--:--";
     std::string clockDate = "--";
     Alpaca::Router router;
+    std::string firmwareVersion;
+    Display::Controller displayController;
+    Display::Output displayOut;
+    bool displayWake = false;
+    bool displayBlank = false;
     // Simulated sensors -> the readings the drivers would produce (sensor_feed.cpp).
     SensorFeed feed{snapshot, cfg, bootConfig, nowMs, bootMs};
 };

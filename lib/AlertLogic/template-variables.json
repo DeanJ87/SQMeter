@@ -8,6 +8,10 @@
     "date",
     "sqm",
     "sqm_min",
+    "sqm_wide",
+    "sqm_l",
+    "sqm_delta",
+    "sqm_source",
     "cloud",
     "cloud_max",
     "clear_below",
@@ -22,7 +26,11 @@
     "rain_rate",
     "wind",
     "gust",
-    "sun_alt"
+    "sun_alt",
+    "battery",
+    "battery_voltage",
+    "battery_state",
+    "battery_time_left"
   ],
   "events": {
     "unsafe": ["reasons", "reasons_inline", "reason_count"],

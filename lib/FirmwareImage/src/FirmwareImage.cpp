@@ -12,7 +12,7 @@ namespace SQM
             constexpr std::array<uint8_t, MAGIC_SIZE> SCRAMBLED = {
                 0xE6, 0xB4, 0x1D, 0x92, 0x5F, 0x0B, 0xC8, 0x37, 0x71, 0xAE, 0x24, 0xD9, 0x6C, 0x83, 0x3A, 0xF0};
 
-            const char *LEGACY = "legacy";
+            const char *LEGACY = LEGACY_LAYOUT;
         } // namespace
 
         const char *buildName(Build build)
@@ -22,7 +22,13 @@ namespace SQM
 
         std::string layoutOf(uint32_t appSlotSize, uint32_t fsSize)
         {
-            return appSlotSize == APP_SLOT_SIZE && fsSize == FS_SIZE ? LAYOUT : LEGACY;
+            if (appSlotSize == APP_SLOT_SIZE && fsSize == FS_SIZE)
+                return LAYOUT;
+            if (appSlotSize == S8_APP_SLOT_SIZE && fsSize == S8_FS_SIZE)
+                return LAYOUT_S8;
+            if (appSlotSize == S16_APP_SLOT_SIZE && fsSize == S16_FS_SIZE)
+                return LAYOUT_S16;
+            return LEGACY;
         }
 
         std::array<uint8_t, MAGIC_SIZE> magic()
@@ -33,11 +39,11 @@ namespace SQM
             return out;
         }
 
-        std::string marker(Build build)
+        std::string marker(Build build, const char *layout)
         {
             const auto bytes = magic();
             std::string out(bytes.begin(), bytes.end());
-            out += std::string("layout=") + LAYOUT + ";build=" + buildName(build) + ";";
+            out += std::string("layout=") + layout + ";build=" + buildName(build) + ";";
             out.push_back('\0');
             return out;
         }

@@ -25,6 +25,7 @@ const mockFacts: DepFacts = {
   infraredDetected: true,
   environmentDetected: true,
   languageInstalled: true,
+  batteryDetected: true, // spec 032: the mock board has a fuel gauge
 };
 
 // Demo-only: alerts switched on/off.
@@ -151,6 +152,29 @@ export const handlers = [
   http.post('/api/config', () => HttpResponse.json({ success: true })),
   http.put('/api/config', () => HttpResponse.json({ success: true })),
 
+  // REST — settings backup and restore (specs/033): a file without secrets, a preview that changes the MQTT broker
+  http.post('/api/backup/preview', () =>
+    HttpResponse.json({
+      token: '00112233445566778899aabbccddeeff',
+      backup: { format: 1, firmware: '0.3.4-beta.1', board: 'esp32', build: 'standard', deviceName: 'backyard-sqm' },
+      settings: { ...mockConfig, mqtt: { ...mockConfig.mqtt, broker: 'broker.lan' } },
+      secrets: { state: 'none', changed: [], unchanged: [] },
+      notApplicable: [],
+      restart: [],
+    }),
+  ),
+  http.post('/api/backup/apply', () => HttpResponse.json({ success: true, restarting: false })),
+  http.post('/api/backup', () =>
+    HttpResponse.json({
+      sqmeterBackup: 1,
+      firmware: '0.3.4-beta.1',
+      board: 'esp32',
+      build: 'standard',
+      deviceName: mockConfig.deviceName,
+      settings: mockConfig,
+    }),
+  ),
+
   // REST — wifi (returns { networks: [...] } to match firmware API shape)
   http.get('/api/wifi/scan', () => HttpResponse.json({ networks: mockWifiNetworks })),
   http.post('/api/wifi/connect', () => HttpResponse.json({ success: true, pending: true, message: 'Connection started' }, { status: 202 })),
@@ -187,6 +211,8 @@ export const handlers = [
 
   // REST — control
   http.post('/api/restart', () => HttpResponse.json({ ok: true })),
+  http.post('/api/display/wake', () => HttpResponse.json({ success: true })),
+  http.post('/api/display/blank', () => HttpResponse.json({ success: true })),
   http.post('/api/update', () => HttpResponse.json({ success: true })),
   http.post('/api/update/fs', () => HttpResponse.json({ success: true })),
 

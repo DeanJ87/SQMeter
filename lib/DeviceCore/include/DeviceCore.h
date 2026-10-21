@@ -16,6 +16,7 @@
 #include "AlertSchedule.h"
 #include "ClientWatch.h"
 #include "Config.h"
+#include "DisplayFrame.h"
 #include "ObservingConditionsMapper.h"
 #include "Readings.h"
 #include "SafetyEvaluator.h"
@@ -28,9 +29,52 @@
 
 namespace SQM
 {
+    // One sky sensor (TSL2591) as read by its driver (spec 030). `enabled`
+    // and `metrics` are filled by Core::derive.
+    struct SkySensorSnapshot
+    {
+        bool enabled = false;
+        bool initialized = false; // begun and answering
+        TSL2591Reading reading;
+        TSL2591Diagnostics diagnostics{};
+        uint32_t lastUpdate = 0; // millis() of the last good read, 0 = never
+        SkyQualityMetrics metrics;
+    };
+
+    // The fuel gauge and charger (spec 032). The driver fills `detected`,
+    // `initialized`, `lastUpdate` and `reading` (with monitoring off it only
+    // probes once at boot and reads nothing); the power manager `power` and
+    // `shutdownInSeconds`; Core::derive the rest.
+    struct BatterySnapshot
+    {
+        bool detected = false;    // a gauge answered at 0x36 (the boot probe counts)
+        bool initialized = false; // monitoring on and the gauge answering
+        uint32_t lastUpdate = 0;  // millis() of the last good gauge read, 0 = never
+        BatteryReading reading;
+        Battery::PowerState power = Battery::PowerState::Normal;
+        uint32_t shutdownInSeconds = 0; // while power == ShutdownPending
+
+        // Core::derive.
+        bool enabled = false; // battery.enabled
+        // Reported: monitoring on, and a gauge found or the charger wired (a
+        // pack pulled out on USB still reports "no battery" from the charger).
+        bool present = false;
+        std::optional<uint32_t> timeToEmptyMinutes;
+        std::optional<uint32_t> timeToFullMinutes;
+        std::optional<float> currentMa;
+    };
+
     // One consistent copy of every sensor's latest reading.
     struct SensorSnapshot
     {
+        // Both sky sensors, indexed by SkyRole. The drivers fill these.
+        SkySensorSnapshot skySensors[SKY_ROLE_COUNT];
+        // The authoritative sky sensor (cfg.sky.authoritative); set by Core::derive.
+        SkyRole skySource = SkyRole::Sqm;
+        // The authoritative copy (Core::derive): every single-value consumer
+        // (readings light/sky, safety, Alpaca, BLE, alerts, status) reads these.
+        // Empty and not initialised when the authoritative sensor is off - never
+        // the other sensor's values (FR-010).
         TSL2591Reading tsl;
         TSL2591Diagnostics tslDiagnostics;
         BME280Reading bme;
@@ -49,6 +93,10 @@ namespace SQM
         uint32_t gpsLastUpdate = 0;
         uint32_t rg15LastUpdate = 0;
         WindReading wind;
+        BatterySnapshot battery;
+        // The sensor read interval in use when longer than the setting:
+        // power saving slows reads (spec 032); 0 = the setting.
+        uint32_t readIntervalMs = 0;
         uint32_t dataTimestamp = 0;
         uint32_t capturedAt = 0;
 
@@ -66,13 +114,20 @@ namespace SQM
         constexpr int64_t CLOCK_VALID_EPOCH = 1704067200;
         // A reading is stale this long after the read interval.
         constexpr uint32_t SENSOR_STALE_GRACE_MS = 1000;
+        // ArduinoJson pool for /api/status (src/WebServerStatus.cpp): the
+        // sections this library writes plus the device's own (firmware,
+        // memory, partitions, time, WiFi, MQTT, connections), worst case with
+        // both sky sensors, pinned by test/test_device_core
+        // (test_status_document_fits).
+        constexpr size_t STATUS_DOC_CAPACITY = 7680;
 
         inline uint32_t ageMs(uint32_t now, uint32_t timestamp)
         {
             return timestamp == 0 ? 0 : now - timestamp;
         }
 
-        // Fills the derived fields (sky quality, cloud model) from the raw readings.
+        // Fills the derived fields (each sky sensor's metrics, the
+        // authoritative sky copy, cloud model) from the raw readings.
         void derive(SensorSnapshot &snapshot, const Config &cfg);
 
         // The readings document's content (lib/Readings writes it).
@@ -81,6 +136,19 @@ namespace SQM
         uint16_t windowSamples(const TSL2591Diagnostics &diag);
         // Bring-up diagnostics (/api/status "diagnostics", MQTT <base>/diagnostics).
         void writeDiagnostics(JsonObject root, const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
+        // /api/status "skySensors": health and diagnostics of each enabled sky
+        // sensor (spec 030); nothing when neither is enabled.
+        void writeSkySensorStatus(JsonObject root, const SensorSnapshot &snapshot, const Readings::Snapshot &readings);
+        // Dark calibration (POST /api/sensors/tsl2591/calibrate-dark): stores
+        // the covered window's average as `role`'s dark offset and touches no
+        // other setting (spec 030 US3). `at` is Unix seconds, or millis()
+        // before the clock is set.
+        void applyDarkCalibration(Config &cfg, SkyRole role, const TSL2591Diagnostics &diagnostics, int64_t at);
+        // /api/status "battery" (the readings object, plus shutdownInSeconds
+        // while a shutdown is pending) and "diagnostics.battery" (only with a
+        // gauge), spec 032.
+        void writeBatteryStatus(JsonObject root, const SensorSnapshot &snapshot, const Readings::Snapshot &readings);
+        void writeBatteryDiagnostics(JsonObject root, const SensorSnapshot &snapshot, const Config &cfg);
         // Per-sensor health (/api/status "sensors").
         void writeSensorHealth(JsonObject sensors, const Readings::Snapshot &readings, const Config &cfg);
 
@@ -122,13 +190,32 @@ namespace SQM
         // Alerts.
         // The device state an alert pass reads: settings, readings, darkness
         // and the safety verdict.
+        // Each sky sensor's own reading for the alert wording (spec 030):
+        // {sqm_wide}, {sqm_l}, {sqm_delta}, {sqm_source}.
+        struct SkyReadings
+        {
+            struct Role
+            {
+                bool valid = false; // on, ok and fresh
+                float sqm = 0.0F;
+            } roles[SKY_ROLE_COUNT];
+            SkyRole source = SkyRole::Sqm;
+        };
+        SkyReadings skyReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
+
         struct AlertSources
         {
             const Config &cfg;
             const Alpaca::ObservingConditionsSnapshot &obs;
             const NightState &night;
             const SafetyStatus &status;
+            SkyReadings sky{}; // none given: every per-sensor value reads "--"
+            // {battery}, {battery_voltage}, {battery_state}, {battery_time_left}
+            // (spec 032); none given: "--".
+            Readings::Battery battery{};
         };
+        // The battery as readings report it (for AlertSources::battery).
+        Readings::Battery batteryReadings(const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
         // The device's local time ("HH:MM") and date for {time} and {date}.
         struct LocalClock
         {
@@ -169,6 +256,9 @@ namespace SQM
         {
             std::vector<Alerts::Alert> outgoing;
             uint32_t alarmFlags = 0; // Bluetooth alarm reasons for Wake-level alerts
+            // The battery rule's "ring paired phones" (spec 032): ring with
+            // alarmFlags whatever the notification's level, alert sent or not.
+            bool ringPhones = false;
         };
         AlertStep runAlerts(
             Alerts::AlertEngine &engine,
@@ -201,7 +291,42 @@ namespace SQM
         Alerts::Alert buildTestAlert(
             const SampleAlert *sample, const TestWording &wording, const AlertSources &sources, const LocalClock &clock);
 
+        // The Bluetooth summary JSON (fits BLE_SUMMARY_CAPACITY): valid
+        // readings, plus battery (integer %) and batteryState (spec 032).
+        constexpr size_t BLE_SUMMARY_CAPACITY = 384;
+        void writeBleSummary(JsonObject out, const Alpaca::ObservingConditionsSnapshot &obs, const Readings::Battery &battery);
+
         // ISO 8601 UTC, or "" before the clock is set.
         std::string isoUtc(int64_t epoch);
+
+        // The OLED display (specs/031-oled-display, src/DeviceDisplay.cpp).
+        // The network as WiFiManager sees it.
+        struct DisplayNetwork
+        {
+            bool connected = false; // joined a network
+            bool apMode = false;    // the setup hotspot is up
+            std::string ip;         // the address in use
+            std::string apName;     // the hotspot's name
+        };
+        // What each page may show, from the readings snapshot every interface
+        // uses (research D4): a stale or faulted group is invalid, never a value.
+        Display::View displayView(
+            const SensorSnapshot &snapshot,
+            const Readings::Snapshot &readings,
+            const SafetyStatus &safety,
+            const Config &cfg,
+            const DisplayNetwork &network);
+        // The controller's state for /api/status.
+        struct DisplayStatus
+        {
+            bool detected = false;
+            bool on = false;
+            Display::Page page = Display::Page::Sky; // when on
+            bool nightMode = false;
+        };
+        // /api/status "display" (contracts/status-and-routes.md), always present.
+        void writeDisplayStatus(JsonObject root, const Config &cfg, const DisplayStatus &state);
+        // Deps::Facts.displayDetected: a display answered and it is on in settings.
+        void displayFacts(Deps::Facts &facts, const Config &cfg, bool detected);
     } // namespace Core
 } // namespace SQM

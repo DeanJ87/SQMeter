@@ -38,9 +38,11 @@ namespace SQM
 
     void WebServer::setupAPIRoutes()
     {
+        setupBackupRoutes();
         setupReadingRoutes();
         setupSettingsRoutes();
         setupNetworkRoutes();
+        setupDisplayRoutes();
     }
 
     void WebServer::setupReadingRoutes()
@@ -164,15 +166,11 @@ namespace SQM
             return;
         }
 
-        const std::string previousLanguage = currentConfig.language;
-        if (!saveConfigCallback(*configOpt))
+        if (!saveAndApply(*configOpt))
         {
             request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
             return;
         }
-        tslSensor.configureSkyMeasurement(configOpt->skyAveraging, configOpt->skyCalibration);
-        if (previousLanguage != configOpt->language)
-            languagePack->onLanguageChanged(configOpt->language);
         request->send(200, "application/json", "{\"success\":true}");
     }
 
@@ -328,51 +326,70 @@ namespace SQM
         request->send(success ? 200 : 502, "application/json", responseStr.c_str());
     }
 
+    namespace
+    {
+        // A dark offset is only good from a covered sensor with a full window:
+        // the 409 body that says why not, or "" when it is.
+        std::string darkCalibrationRefusal(const TSL2591Diagnostics &diagnostics)
+        {
+            DynamicJsonDocument error(256);
+            // A covered sensor reads near zero at maximum gain. Out of night mode
+            // it's seeing light, and the offset would wipe out real readings.
+            if (!diagnostics.nightMode)
+            {
+                error["error"] = "The sensor is seeing light. Cover it completely and wait for the averaging window to fill.";
+            }
+            else
+            {
+                // The offset is the window's average: wait until the window holds
+                // only covered readings, not a mix from before it was covered.
+                const uint16_t needed = Core::windowSamples(diagnostics);
+                if (diagnostics.sampleCount >= needed)
+                    return "";
+                error["error"] = "The averaging window isn't full yet (" + std::to_string(diagnostics.sampleCount) + " of " +
+                                 std::to_string(needed) + " samples). Keep the sensor covered and try again.";
+                error["sampleCount"] = diagnostics.sampleCount;
+                error["windowSamples"] = needed;
+            }
+            std::string body;
+            serializeJson(error, body);
+            return body;
+        }
+    } // namespace
+
     void WebServer::handleTSL2591DarkCalibration(AsyncWebServerRequest *request)
     {
         if (!requireAuth(request))
             return;
 
-        const TSL2591Diagnostics diagnostics = tslSensor.getDiagnostics();
-        if (!tslSensor.isInitialized() || diagnostics.sampleCount == 0)
+        // ?sensor=sqm|sqml (spec 030); none = the SQM, as before.
+        SkyRole role = SkyRole::Sqm;
+        if (request->hasParam("sensor") && !parseSkyRole(request->getParam("sensor")->value().c_str(), role))
+        {
+            request->send(400, "application/json", createErrorJson("Unknown sky sensor").c_str());
+            return;
+        }
+        TSL2591Sensor &sensor = skySensor(role);
+        const TSL2591Diagnostics diagnostics = sensor.getDiagnostics();
+        if (!getConfigCallback().skyEnabled(role) || !sensor.isInitialized() || diagnostics.sampleCount == 0)
         {
             request->send(409, "application/json", createErrorJson("No light-sensor readings to calibrate from").c_str());
             return;
         }
-        // A covered sensor reads near zero at maximum gain. Out of night mode
-        // it's seeing light, and the offset would wipe out real readings.
-        if (!diagnostics.nightMode)
+        const std::string refusal = darkCalibrationRefusal(diagnostics);
+        if (!refusal.empty())
         {
-            request->send(
-                409,
-                "application/json",
-                createErrorJson("The sensor is seeing light. Cover it completely and wait for the averaging window to fill.").c_str());
-            return;
-        }
-        // The offset is the window's average: wait until the window holds only
-        // covered readings, not a mix from before it was covered.
-        const uint16_t needed = Core::windowSamples(diagnostics);
-        if (diagnostics.sampleCount < needed)
-        {
-            DynamicJsonDocument error(256);
-            error["error"] = "The averaging window isn't full yet (" + std::to_string(diagnostics.sampleCount) + " of " +
-                             std::to_string(needed) + " samples). Keep the sensor covered and try again.";
-            error["sampleCount"] = diagnostics.sampleCount;
-            error["windowSamples"] = needed;
-            std::string body;
-            serializeJson(error, body);
-            request->send(409, "application/json", body.c_str());
+            request->send(409, "application/json", refusal.c_str());
             return;
         }
 
         Config updated = getConfigCallback();
-        updated.skyCalibration.darkVisibleOffset = diagnostics.rollingVisible;
-        updated.skyCalibration.darkFullOffset = 0.0F;
-        updated.skyCalibration.darkIrOffset = 0.0F;
-        updated.skyCalibration.darkSampleCount = diagnostics.sampleCount;
         const time_t epochSeconds = time(nullptr);
-        updated.skyCalibration.darkCalibratedAt =
-            epochSeconds >= 1704067200 ? static_cast<int64_t>(epochSeconds) : static_cast<int64_t>(millis());
+        Core::applyDarkCalibration(
+            updated,
+            role,
+            diagnostics,
+            epochSeconds >= Core::CLOCK_VALID_EPOCH ? static_cast<int64_t>(epochSeconds) : static_cast<int64_t>(millis()));
 
         if (!saveConfigCallback(updated))
         {
@@ -380,13 +397,15 @@ namespace SQM
             return;
         }
 
-        tslSensor.configureSkyMeasurement(updated.skyAveraging, updated.skyCalibration);
+        sensor.configureSkyMeasurement(updated.averaging(role), updated.calibration(role));
 
+        const SkyCalibrationConfig &cal = updated.calibration(role);
         StaticJsonDocument<384> response;
         response["success"] = true;
-        response["darkVisibleOffset"] = updated.skyCalibration.darkVisibleOffset;
-        response["sampleCount"] = updated.skyCalibration.darkSampleCount;
-        response["darkCalibratedAt"] = updated.skyCalibration.darkCalibratedAt;
+        response["sensor"] = skyRoleName(role);
+        response["darkVisibleOffset"] = cal.darkVisibleOffset;
+        response["sampleCount"] = cal.darkSampleCount;
+        response["darkCalibratedAt"] = cal.darkCalibratedAt;
 
         String responseStr;
         serializeJson(response, responseStr);
@@ -512,8 +531,18 @@ namespace SQM
         const char *broker = jsonObj["broker"];
         uint16_t port = jsonObj["port"];
         const char *username = jsonObj["username"] | "";
-        const char *password = jsonObj["password"] | "";
         const char *clientId = jsonObj["clientId"] | "SQM-Test";
+        // The form shows a saved password as the mask: test with the saved one, but only for the
+        // saved broker, port and user.
+        const auto passwordToTry =
+            Config::mqttTestPassword(getConfigCallback().mqtt, {broker != nullptr ? broker : "", port, username, jsonObj["password"] | ""});
+        if (!passwordToTry)
+        {
+            request->send(
+                400, "application/json", createErrorJson("Type the MQTT password to test a broker other than the saved one").c_str());
+            return;
+        }
+        const char *password = passwordToTry->c_str();
 
         // "[fd00::10]:1883" and bare IPv6 work as in the saved settings (spec 015).
         Net::Host host;

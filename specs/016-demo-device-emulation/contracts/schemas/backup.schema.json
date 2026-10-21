@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Backup",
+  "description": "POST /api/backup (src/WebServerBackup.cpp, lib/ConfigBackup): the settings backup file, format 1 (specs/033-config-backup/contracts/backup-file.md). Hand-written, not generated.",
+  "type": "object",
+  "properties": {
+    "sqmeterBackup": { "type": "integer", "const": 1, "description": "Format version." },
+    "firmware": { "type": "string", "description": "Firmware version that made it." },
+    "board": { "type": "string", "description": "Chip, e.g. esp32." },
+    "build": { "type": "string", "enum": ["standard", "ble"] },
+    "deviceName": { "type": "string" },
+    "createdAt": { "type": "string", "description": "ISO 8601 UTC; left out when the device clock wasn't set." },
+    "settings": { "type": "object", "description": "Every setting as GET /api/config shows it: a set secret is \"********\", an empty one \"\"." },
+    "secrets": {
+      "type": "object",
+      "description": "Only with a passphrase: the nine secrets, encrypted with AES-256-GCM under a PBKDF2-HMAC-SHA256 key.",
+      "properties": {
+        "kdf": { "type": "string", "const": "pbkdf2-sha256" },
+        "iterations": { "type": "integer", "minimum": 1000, "maximum": 100000 },
+        "salt": { "type": "string", "description": "Base64, 16 bytes." },
+        "cipher": { "type": "string", "const": "aes-256-gcm" },
+        "nonce": { "type": "string", "description": "Base64, 12 bytes." },
+        "data": { "type": "string", "description": "Base64 ciphertext followed by the 16-byte tag; associated data \"sqmeter-backup/1\"." }
+      },
+      "required": ["kdf", "iterations", "salt", "cipher", "nonce", "data"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["sqmeterBackup", "firmware", "board", "build", "deviceName", "settings"],
+  "additionalProperties": false
+}

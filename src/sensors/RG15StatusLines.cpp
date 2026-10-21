@@ -1,7 +1,6 @@
 #include "sensors/RG15StatusLines.h"
 
 #include <cctype>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
@@ -76,15 +75,32 @@ namespace SQM
                 d.powerOnDays = days;
         }
 
+        // The integers after a known prefix ("Emitters 12 34"), up to `count`;
+        // strtol, not sscanf, which would link libc's ~9 KB scanf engine.
+        int readInts(const std::string &line, size_t from, int *out, int count)
+        {
+            const char *cursor = line.c_str() + from;
+            int found = 0;
+            while (found < count)
+            {
+                char *end = nullptr;
+                const long parsed = std::strtol(cursor, &end, 10);
+                if (end == cursor)
+                    break;
+                out[found++] = static_cast<int>(parsed);
+                cursor = end;
+            }
+            return found;
+        }
+
         void recordEmitters(const std::string &line, RG15Diagnostics &d)
         {
-            int emitter1 = 0;
-            int emitter2 = 0;
+            int emitters[2] = {0, 0};
             int emitterTotal = 0;
-            if (std::sscanf(line.c_str(), "Emitters %d %d", &emitter1, &emitter2) >= 2)
+            if (readInts(line, 9, emitters, 2) == 2)
             {
-                d.emitter1 = emitter1;
-                d.emitter2 = emitter2;
+                d.emitter1 = emitters[0];
+                d.emitter2 = emitters[1];
             }
             if (extractIntField(line, "EmTotal", emitterTotal))
                 d.emitterTotal = emitterTotal;
@@ -93,7 +109,7 @@ namespace SQM
         void recordEmitterTotal(const std::string &line, RG15Diagnostics &d)
         {
             int total = 0;
-            if (std::sscanf(line.c_str(), "EmTotal %d", &total) == 1)
+            if (readInts(line, 8, &total, 1) == 1)
                 d.emitterTotal = total;
         }
     } // namespace

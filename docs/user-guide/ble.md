@@ -53,7 +53,7 @@ The characteristics below are read + notify and need no pairing; the phone alarm
 | Safety | `c5a10001-…` | `[safe u8][rawSafe u8][reasonFlags u32]` - reason bits as in [`/api/safety`](../api/rest.md#get-apisafety) | On change |
 | Rain | `c5a10002-…` | `[flags u8][rate u16, 0.01 mm/h]` - flags as advertisement bits 1, 2, 4 | On change |
 | Latest alert | `c5a10003-…` | JSON `{"event","title","message","level"}` | Each alert (when alerts are enabled) |
-| Sensor summary | `c5a10004-…` | JSON `{"sqm","cloud","skyT","temp","hum","dew","press"}` (fields omitted when unavailable) | Every 30 s |
+| Sensor summary | `c5a10004-…` | JSON `{"sqm","sqmSource","cloud","skyT","temp","hum","dew","press","battery","batteryState"}` (fields omitted when unavailable; `sqmSource` is `"sqm"` or `"sqml"`, the sky sensor `sqm` comes from; `battery` is the charge in whole percent and `batteryState` the charge state, with a fuel gauge only) | Every 30 s |
 
 The `…` suffix is `-7d1e-4b8a-9f3c-2e5d6a7b8c90` throughout.
 
@@ -72,6 +72,7 @@ Set a 6-digit **pairing passkey** in **Settings → Device → Bluetooth** (or p
 - **Pairing** uses LE Secure Connections with bonding and the static passkey (the device "displays" it via Settings; you type it on the phone). Bonds are stored on the device; **Unpair all phones** removes them. Links that aren't paired this way never receive alarm or heartbeat data - the device doesn't send them to unencrypted connections.
 - **Levels:** `2` = alarm (wake someone), `1` = information (e.g. safe again, rain cleared), `0` = nothing active / acknowledged.
 - **Which events alarm** is set on the Alerts tab: every event whose level is **Wake me** rings paired phones (by default rain starting and a sensor failing). Phones ring even when **Send alerts** is off (no push channels), but not while alerts are paused - with **Pause alerts** (Settings → Alerts, or the bell), or by **When to send: Only while an imaging app is connected** while no app is connected. Pausing silences everything.
+- **The battery** (spec 032) rings phones too: a battery event at **Wake me** (by default *Battery critical* and *Going to sleep: battery empty*), and the battery safety rule when its **Ring paired phones** option is on. The alarm's `reasonFlags` then carry bit 14 (battery below the limit or critical), 15 (battery data missing) or 16 (shutting down). See [Battery](battery.md#alerts).
 - **An alarm repeats** (re-indicated every 30 s) **until a phone writes its `seq` to Ack** - even if the condition clears meanwhile, since someone should still know it rained with the roof open. Information events never overwrite an active alarm. An ack with an old `seq` is ignored, so it can't cancel a newer alarm. After an ack the alarm is re-sent with level `0`, so every paired phone stops ringing.
 - An alarm can also be acknowledged from **Settings → Device → Bluetooth**. Acknowledgements appear in the recent alerts and are sent to the alert channels when alerts are on.
 - **Heartbeat:** if a phone hears nothing for a few minutes, the link or the device is down - an app should alarm on that too.

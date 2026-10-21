@@ -3,6 +3,8 @@
 #include "ConfigInternal.h"
 #include "LanguageLogic.h"
 #include "NetAddress.h"
+#include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <initializer_list>
@@ -110,7 +112,7 @@ namespace SQM
             return true;
         }
 
-        bool validateAuthAndNtp(const Config &c, std::string *error)
+        bool validateAuthAndNtp(const Config &c, const BoardProfile &b, std::string *error)
         {
             if (c.auth.enabled && c.auth.password.empty())
                 return setError(error, "HTTP auth password is required when auth is enabled");
@@ -120,7 +122,7 @@ namespace SQM
                 return setError(error, "Primary NTP server is required when NTP is enabled");
             if (c.ntp.syncIntervalMs < 600000 || c.ntp.syncIntervalMs > 86400000)
                 return setError(error, "NTP sync interval is invalid");
-            if (!isValidGpio(c.gps.rxPin) || !isValidGpio(c.gps.txPin) || c.gps.rxPin == c.gps.txPin)
+            if (!b.isValidGpio(c.gps.rxPin) || !b.isValidGpio(c.gps.txPin) || c.gps.rxPin == c.gps.txPin)
                 return setError(error, "GPS pins are invalid");
             if (!isValidBaudRate(c.gps.baudRate))
                 return setError(error, "GPS baud rate is invalid");
@@ -135,9 +137,9 @@ namespace SQM
             return false;
         }
 
-        bool validateRain(const RainConfig &r, std::string *error)
+        bool validateRain(const RainConfig &r, const BoardProfile &b, std::string *error)
         {
-            if (!isValidGpio(r.rxPin) || !isValidGpio(r.txPin) || (r.enabled && r.rxPin == r.txPin))
+            if (!b.isValidGpio(r.rxPin) || !b.isValidGpio(r.txPin) || (r.enabled && r.rxPin == r.txPin))
                 return setError(error, "Rain sensor pins are invalid");
             if (!isValidBaudRate(r.baudRate))
                 return setError(error, "Rain sensor baud rate is invalid");
@@ -156,12 +158,89 @@ namespace SQM
             return true;
         }
 
-        bool validateSky(const Config &c, std::string *error)
+        bool validDarkOffsets(const SkyCalibrationConfig &cal)
+        {
+            return inRange(cal.darkVisibleOffset, 0.0F, INFINITY) && inRange(cal.darkFullOffset, 0.0F, INFINITY) &&
+                   inRange(cal.darkIrOffset, 0.0F, INFINITY);
+        }
+
+        // Pins of the sensor buses that are in use; -1 = not in use. The
+        // I2C-2 pair only when asked for (and wired).
+        std::array<int, 8> busPins(const Config &c, bool withI2c2)
+        {
+            const bool i2c2 = withI2c2 && c.sensor.i2c2Configured();
+            const bool gps = c.gps.enabled;
+            const bool rain = c.rain.enabled;
+            return {
+                c.sensor.i2cSDA,
+                c.sensor.i2cSCL,
+                i2c2 ? c.sensor.i2c2SDA : -1,
+                i2c2 ? c.sensor.i2c2SCL : -1,
+                gps ? c.gps.rxPin : -1,
+                gps ? c.gps.txPin : -1,
+                rain ? c.rain.rxPin : -1,
+                rain ? c.rain.txPin : -1};
+        }
+
+        bool pinIn(const std::array<int, 8> &pins, int pin)
+        {
+            return std::find(pins.begin(), pins.end(), pin) != pins.end();
+        }
+
+        // The battery's wired pins (spec 032); -1 = not wired.
+        std::array<int, 4> batteryPins(const Config &c)
+        {
+            const BatteryConfig &b = c.battery;
+            auto pin = [](uint8_t p) { return p == BatteryConfig::PIN_UNSET ? -1 : static_cast<int>(p); };
+            return {pin(b.alertPin), pin(b.stat1Pin), pin(b.stat2Pin), pin(b.pgPin)};
+        }
+
+        bool batteryPinIn(const Config &c, int pin)
+        {
+            const std::array<int, 4> pins = batteryPins(c);
+            return pin >= 0 && std::find(pins.begin(), pins.end(), pin) != pins.end();
+        }
+
+        // The second I2C bus pins: both unset, or two different valid GPIOs
+        // no other bus uses (spec 030, contracts/config.md). The anemometer's
+        // own check reports a clash with these pins.
+        bool validateI2c2Pins(const Config &c, const BoardProfile &b, std::string *error)
+        {
+            const SensorConfig &s = c.sensor;
+            if (s.i2c2SDA == SensorConfig::PIN_UNSET && s.i2c2SCL == SensorConfig::PIN_UNSET)
+                return true;
+            if (!b.isValidGpio(s.i2c2SDA) || !b.isValidGpio(s.i2c2SCL) || s.i2c2SDA == s.i2c2SCL)
+                return setError(error, "Second I2C bus pins are invalid");
+            const std::array<int, 8> others = busPins(c, false);
+            if (pinIn(others, s.i2c2SDA) || pinIn(others, s.i2c2SCL))
+                return setError(error, "Second I2C bus pins are already in use");
+            return true;
+        }
+
+        // The SQM-L and the authoritative choice.
+        bool validateSecondSky(const Config &c, const BoardProfile &b, std::string *error)
+        {
+            if (!validateI2c2Pins(c, b, error))
+                return false;
+            if (c.sky.sqmlEnabled && !c.sensor.i2c2Configured())
+                return setError(error, "SQM-L needs the second I2C bus pins");
+            if (c.sky.authoritative != SkyRole::Sqm && c.sky.authoritative != SkyRole::Sqml)
+                return setError(error, "Authoritative sky reading must be sqm or sqml");
+            if (c.skyAveragingL.windowSeconds < 10 || c.skyAveragingL.windowSeconds > 300)
+                return setError(error, "SQM-L averaging window is invalid");
+            if (!inRange(c.skyCalibrationL.sqmOffset, -5.0F, 5.0F))
+                return setError(error, "SQM-L calibration offset is invalid");
+            if (!validDarkOffsets(c.skyCalibrationL))
+                return setError(error, "SQM-L dark calibration offsets are invalid");
+            return true;
+        }
+
+        bool validateSky(const Config &c, const BoardProfile &b, std::string *error)
         {
             const SensorConfig &s = c.sensor;
             if (s.readIntervalMs < 100 || s.readIntervalMs > 3600000)
                 return setError(error, "Sensor read interval is invalid");
-            if (!isValidGpio(s.i2cSDA) || !isValidGpio(s.i2cSCL) || s.i2cSDA == s.i2cSCL)
+            if (!b.isValidGpio(s.i2cSDA) || !b.isValidGpio(s.i2cSCL) || s.i2cSDA == s.i2cSCL)
                 return setError(error, "I2C pins are invalid");
             if (s.i2cFrequency < 10000 || s.i2cFrequency > 400000)
                 return setError(error, "I2C frequency is invalid");
@@ -170,10 +249,9 @@ namespace SQM
             const SkyCalibrationConfig &cal = c.skyCalibration;
             if (!inRange(cal.sqmOffset, -5.0F, 5.0F))
                 return setError(error, "Sky SQM calibration offset is invalid");
-            if (!inRange(cal.darkVisibleOffset, 0.0F, INFINITY) || !inRange(cal.darkFullOffset, 0.0F, INFINITY) ||
-                !inRange(cal.darkIrOffset, 0.0F, INFINITY))
+            if (!validDarkOffsets(cal))
                 return setError(error, "Sky dark calibration offsets are invalid");
-            return true;
+            return validateSecondSky(c, b, error);
         }
 
         bool validateCloudDetection(const CloudDetectionConfig &d, std::string *error)
@@ -213,36 +291,33 @@ namespace SQM
                 return setError(error, "Alpaca: wind speed threshold must be between 0 and 60 m/s");
             if (!positiveUpTo(a.windGustUnsafeMs, 80.0F))
                 return setError(error, "Alpaca: wind gust threshold must be between 0 and 80 m/s");
+            if (a.batteryMinPercent < 2 || a.batteryMinPercent > 50)
+                return setError(error, "Safety: battery limit must be 2 to 50%");
             return true;
         }
 
-        bool validateWindPins(const Config &c, std::string *error)
+        bool validateWindPins(const Config &c, const BoardProfile &b, std::string *error)
         {
             const WindConfig &w = c.wind;
-            if (!isValidGpio(w.speedPin))
+            if (!b.isValidGpio(w.speedPin))
                 return setError(error, "Wind: anemometer pin is not a valid GPIO");
-            if (w.directionEnabled && (w.directionPin < 32 || w.directionPin > 39))
-                return setError(error, "Wind: vane pin must be an ADC1 pin (GPIO 32-39)");
-            const int used[] = {
-                c.sensor.i2cSDA,
-                c.sensor.i2cSCL,
-                c.gps.enabled ? c.gps.rxPin : -1,
-                c.gps.enabled ? c.gps.txPin : -1,
-                c.rain.enabled ? c.rain.rxPin : -1,
-                c.rain.enabled ? c.rain.txPin : -1};
-            for (int pin : used)
+            if (w.directionEnabled && !b.isAdc1(w.directionPin))
+                return setError(error, std::string("Wind: vane pin must be an ADC1 pin (GPIO ") + b.adc1Pins + ")");
+            for (int pin : busPins(c, true))
             {
                 if (pin == w.speedPin || (w.directionEnabled && pin == w.directionPin))
                     return setError(error, "Wind: pin is already used by I2C, GPS or the rain sensor");
             }
+            if (batteryPinIn(c, w.speedPin) || (w.directionEnabled && batteryPinIn(c, w.directionPin)))
+                return setError(error, "Wind: pin is already used by I2C, GPS or the rain sensor");
             if (w.directionEnabled && w.directionPin == w.speedPin)
                 return setError(error, "Wind: anemometer and vane need different pins");
             return true;
         }
 
-        bool validateWindAndBle(const Config &c, std::string *error)
+        bool validateWindAndBle(const Config &c, const BoardProfile &b, std::string *error)
         {
-            if (c.wind.enabled && !validateWindPins(c, error))
+            if (c.wind.enabled && !validateWindPins(c, b, error))
                 return false;
             if (!positiveUpTo(c.wind.kmhPerHz, 20.0F))
                 return setError(error, "Wind: km/h per Hz must be between 0 and 20");
@@ -254,6 +329,131 @@ namespace SQM
             if (!c.ble.passkey.empty() && !Ble::parsePasskey(c.ble.passkey, passkey))
                 return setError(error, "Bluetooth: pairing passkey must be 6 digits (not 000000)");
             return true;
+        }
+
+        // The display settings and its optional wake button (spec 031,
+        // contracts/config.md).
+        bool displayPagesValid(const DisplayConfig &d)
+        {
+            if (d.pageCount < 1 || d.pageCount > Display::PAGE_COUNT)
+                return false;
+            uint8_t seen = 0;
+            for (uint8_t i = 0; i < d.pageCount; ++i)
+            {
+                const auto index = static_cast<size_t>(d.pages[i]);
+                if (index >= Display::PAGE_COUNT)
+                    return false;
+                const auto bit = static_cast<uint8_t>(1U << index);
+                if ((seen & bit) != 0)
+                    return false;
+                seen = static_cast<uint8_t>(seen | bit);
+            }
+            return true;
+        }
+
+        // A pin clash only matters while the display is on: the button isn't
+        // set up otherwise.
+        bool displayButtonClashes(const Config &c)
+        {
+            const DisplayConfig &d = c.display;
+            if (!d.enabled)
+                return false;
+            const bool windSpeed = c.wind.enabled && d.buttonPin == c.wind.speedPin;
+            const bool windVane = c.wind.enabled && c.wind.directionEnabled && d.buttonPin == c.wind.directionPin;
+            return pinIn(busPins(c, true), d.buttonPin) || windSpeed || windVane || batteryPinIn(c, d.buttonPin);
+        }
+
+        bool validateDisplay(const Config &c, const BoardProfile &board, std::string *error)
+        {
+            const DisplayConfig &d = c.display;
+            if (!displayPagesValid(d))
+                return setError(error, "Display: choose 1 to 7 different pages");
+            if (d.cycleSeconds < DisplayConfig::MIN_CYCLE_SECONDS || d.cycleSeconds > DisplayConfig::MAX_CYCLE_SECONDS)
+                return setError(error, "Display: cycle interval must be 2 to 60 seconds");
+            if (static_cast<uint8_t>(d.brightness) > static_cast<uint8_t>(Display::Brightness::High))
+                return setError(error, "Display: brightness must be low, medium or high");
+            const bool timeoutInRange =
+                d.timeoutSeconds >= DisplayConfig::MIN_TIMEOUT_SECONDS && d.timeoutSeconds <= DisplayConfig::MAX_TIMEOUT_SECONDS;
+            if (d.timeoutSeconds != 0 && !timeoutInRange)
+                return setError(error, "Display: timeout must be 10 seconds to 30 minutes, or never");
+            if (d.buttonPin == DisplayConfig::BUTTON_UNSET)
+                return true;
+            if (!board.isValidGpio(d.buttonPin))
+                return setError(error, "Display: wake button pin is not a valid GPIO");
+            if (displayButtonClashes(c))
+                return setError(error, "Display: wake button pin is already in use");
+            return true;
+        }
+
+        // The battery (spec 032, contracts/config.md).
+        bool between(int value, int min, int max)
+        {
+            return value >= min && value <= max;
+        }
+
+        bool validateBatteryLevels(const BatteryConfig &b, std::string *error)
+        {
+            if (!between(b.lowPercent, 5, 50))
+                return setError(error, "Battery: low level must be 5 to 50%");
+            if (!between(b.criticalPercent, 2, 25) || b.criticalPercent >= b.lowPercent)
+                return setError(error, "Battery: critical level must be 2 to 25% and below the low level");
+            if (!between(b.shutdownPercent, 2, 10) || b.shutdownPercent >= b.criticalPercent)
+                return setError(error, "Battery: shutdown level must be 2 to 10% and below the critical level");
+            return true;
+        }
+
+        bool validateBatteryTimes(const BatteryConfig &b, std::string *error)
+        {
+            if (b.capacityMah != 0 && !between(b.capacityMah, 500, 50000))
+                return setError(error, "Battery: capacity must be 500 to 50000 mAh, or 0 if unknown");
+            if (!between(b.saveReadIntervalSeconds, 10, 300))
+                return setError(error, "Battery: power-saving read interval must be 10 to 300 seconds");
+            if (!between(b.shutdownGraceSeconds, 10, 300))
+                return setError(error, "Battery: warning time before sleep must be 10 to 300 seconds");
+            return true;
+        }
+
+        // Another bus, the anemometer or the display button already has `pin`.
+        bool batteryPinClashes(const Config &c, int pin)
+        {
+            const bool windSpeed = c.wind.enabled && pin == c.wind.speedPin;
+            const bool windVane = c.wind.enabled && c.wind.directionEnabled && pin == c.wind.directionPin;
+            const bool button = c.display.enabled && c.display.buttonPin != DisplayConfig::BUTTON_UNSET && pin == c.display.buttonPin;
+            return pinIn(busPins(c, true), pin) || windSpeed || windVane || button;
+        }
+
+        // Each wired pin a valid GPIO, none twice.
+        bool batteryPinsDistinct(const std::array<int, 4> &pins, const BoardProfile &board)
+        {
+            for (size_t i = 0; i < pins.size(); ++i)
+            {
+                if (pins[i] < 0)
+                    continue;
+                if (!board.isValidGpio(pins[i]) || std::count(pins.begin() + static_cast<long>(i) + 1, pins.end(), pins[i]) != 0)
+                    return false;
+            }
+            return true;
+        }
+
+        bool validateBatteryPins(const Config &c, const BoardProfile &board, std::string *error)
+        {
+            const std::array<int, 4> pins = batteryPins(c);
+            if (!batteryPinsDistinct(pins, board))
+                return setError(error, "Battery: pins must be valid and different");
+            const auto charger = std::count_if(pins.begin() + 1, pins.end(), [](int pin) { return pin >= 0; });
+            if (charger != 0 && charger != 3)
+                return setError(error, "Battery: set all three charger pins or none");
+            if (std::any_of(pins.begin(), pins.end(), [&c](int pin) { return pin >= 0 && batteryPinClashes(c, pin); }))
+                return setError(error, "Battery: pin is already in use");
+            if (pins[3] >= 0 && !board.isRtcGpio(pins[3]))
+                return setError(error, "Battery: the USB power pin must be able to wake the device");
+            return true;
+        }
+
+        bool validateBattery(const Config &c, const BoardProfile &board, std::string *error)
+        {
+            return validateBatteryLevels(c.battery, error) && validateBatteryTimes(c.battery, error) &&
+                   validateBatteryPins(c, board, error);
         }
 
         bool validateAlertThresholds(const Config &c, std::string *error)
@@ -293,7 +493,8 @@ namespace SQM
                     return setError(error, "Alerts: silence times must be between 30 and 3600 seconds");
             // NVS strings top out just under 4000 bytes; each stored part has its own key.
             if (c.alertsToJson(false, Config::AlertsPart::Main).size() > Config::MAX_ALERTS_JSON_BYTES ||
-                c.alertsToJson(false, Config::AlertsPart::Client).size() > Config::MAX_ALERTS_JSON_BYTES)
+                c.alertsToJson(false, Config::AlertsPart::Client).size() > Config::MAX_ALERTS_JSON_BYTES ||
+                c.alertsToJson(false, Config::AlertsPart::Battery).size() > Config::MAX_ALERTS_JSON_BYTES)
                 return setError(error, "Alerts: the custom alert texts are too long in total - shorten some");
             return true;
         }
@@ -351,23 +552,30 @@ namespace SQM
 
     bool Config::validate(std::string *error) const
     {
-        using Check = bool (*)(const Config &, std::string *);
+        return validate(boardProfile(BUILD_BOARD), error);
+    }
+
+    bool Config::validate(const BoardProfile &board, std::string *error) const
+    {
+        using Check = bool (*)(const Config &, const BoardProfile &, std::string *);
         static const Check CHECKS[] = {
-            validateIdentity,
-            validateTimeSources,
-            validateWifiAndMqtt,
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateIdentity(c, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateTimeSources(c, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateWifiAndMqtt(c, e); },
             validateAuthAndNtp,
-            [](const Config &c, std::string *e) { return validateRain(c.rain, e); },
+            [](const Config &c, const BoardProfile &b, std::string *e) { return validateRain(c.rain, b, e); },
             validateSky,
-            [](const Config &c, std::string *e) { return validateCloudDetection(c.cloudDetection, e); },
-            [](const Config &c, std::string *e) { return validateAlpaca(c.alpaca, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateCloudDetection(c.cloudDetection, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateAlpaca(c.alpaca, e); },
             validateWindAndBle,
-            validateAlertThresholds,
-            validateAlertEvents,
-            [](const Config &c, std::string *e) { return validateAlertChannels(c.alerts, e); },
+            validateDisplay,
+            validateBattery,
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateAlertThresholds(c, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateAlertEvents(c, e); },
+            [](const Config &c, const BoardProfile &, std::string *e) { return validateAlertChannels(c.alerts, e); },
         };
         for (Check check : CHECKS)
-            if (!check(*this, error))
+            if (!check(*this, board, error))
                 return false;
         return true;
     }

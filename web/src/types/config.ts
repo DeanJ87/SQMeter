@@ -18,6 +18,7 @@ export interface MQTTPublishGroups {
   gps: boolean;
   rain: boolean;
   wind: boolean;
+  battery?: boolean; // spec 032; older firmware has none
   safety: boolean;
   diagnostics: boolean;
 }
@@ -65,6 +66,19 @@ export interface SensorConfig {
   i2cSDA: number;
   i2cSCL: number;
   i2cFrequency: number;
+  // Second I2C bus for the SQM-L (spec 030); 255 = not wired. Older firmware has none.
+  i2c2SDA?: number;
+  i2c2SCL?: number;
+}
+
+export type SkyRole = 'sqm' | 'sqml';
+
+// Which sky sensors run and whose reading counts (spec 030).
+export interface SkyConfig {
+  sqmEnabled: boolean;
+  sqmlEnabled: boolean;
+  authoritative: SkyRole;
+  showOther: boolean;
 }
 
 export interface SkyAveragingConfig {
@@ -106,6 +120,11 @@ export interface AlpacaConfig {
   windSpeedUnsafeMs: number;
   windGustUnsafeEnabled: boolean;
   windGustUnsafeMs: number;
+  // Battery rule (spec 032); older firmware has none.
+  batteryEnabled?: boolean;
+  batteryMinPercent?: number; // 2..50
+  batteryAlert?: boolean;
+  batteryPhoneAlarm?: boolean;
 }
 
 export interface BleConfig {
@@ -123,6 +142,41 @@ export interface WindConfig {
   vanePullupOhms: number;
 }
 
+// Optional OLED display (spec 031, contracts/config.md).
+export type DisplayPage = 'sky' | 'environment' | 'cloud' | 'safety' | 'gps' | 'battery' | 'network';
+export const DISPLAY_PAGES: DisplayPage[] = ['sky', 'environment', 'cloud', 'safety', 'gps', 'battery', 'network'];
+export const DISPLAY_BUTTON_UNSET = 255;
+
+export interface DisplayConfig {
+  enabled: boolean;
+  pages: DisplayPage[]; // 1..7, unique, in display order
+  cycleSeconds: number; // 2..60
+  brightness: 'low' | 'medium' | 'high';
+  timeoutSeconds: number; // 0 = never, or 10..1800
+  wakeOnBoot: boolean;
+  stayOnAtNight: boolean;
+  rotate180: boolean;
+  buttonPin: number; // 255 = none
+}
+
+// Li-ion pack with a fuel gauge (spec 032, contracts/config.md); pins 255 = not wired.
+export const BATTERY_PIN_UNSET = 255;
+
+export interface BatteryConfig {
+  enabled: boolean;
+  lowPercent: number; // 5..50
+  criticalPercent: number; // 2..25, below low
+  shutdownPercent: number; // 2..10, below critical
+  capacityMah: number; // 0 = unknown, or 500..50000
+  powerSaving: boolean;
+  saveReadIntervalSeconds: number; // 10..300
+  shutdownGraceSeconds: number; // 10..300
+  alertPin: number;
+  stat1Pin: number;
+  stat2Pin: number;
+  pgPin: number;
+}
+
 export interface Config {
   deviceName: string;
   language?: string; // "en" or a supported code (specs/023-i18n); older firmware has none
@@ -137,6 +191,9 @@ export interface Config {
   sensor: SensorConfig;
   skyAveraging?: SkyAveragingConfig;
   skyCalibration?: SkyCalibrationConfig;
+  sky?: SkyConfig;
+  skyAveragingL?: SkyAveragingConfig;
+  skyCalibrationL?: SkyCalibrationConfig;
   cloudDetection: CloudDetectionConfig;
   rain?: RainSensorConfig;
   alpaca?: AlpacaConfig;
@@ -144,6 +201,8 @@ export interface Config {
   ble?: BleConfig;
   wind?: WindConfig;
   location?: LocationConfig;
+  display?: DisplayConfig; // older firmware has none
+  battery?: BatteryConfig; // older firmware has none
 }
 
 export interface LocationConfig {

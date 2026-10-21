@@ -39,7 +39,16 @@ DOCS = "docs/reference/settings-dependencies.md"
 # test/test_settings_deps) and the numeric ranges (test/test_config_ranges).
 DEFAULT_CONFIG = "test/fixtures/settings-deps/default-config.json"
 RANGES = "test/fixtures/config-ranges.json"
-CONSTRAINT_SOURCES = ["lib/ConfigModel/src/ConfigValidate.cpp", "web/src/validation/configSchema.ts"]
+# The device's rules, and the UI's (configSchema.ts and the section schemas it imports).
+CONSTRAINT_SOURCES = {
+    "lib/ConfigModel/src/ConfigValidate.cpp": ["lib/ConfigModel/src/ConfigValidate.cpp"],
+    "web/src/validation/": [
+        "web/src/validation/configSchema.ts",
+        "web/src/validation/displaySchema.ts",
+        "web/src/validation/batterySchema.ts",
+        "web/src/validation/i2cSchema.ts",
+    ],
+}
 
 # Device code scanned for undeclared dependencies and markers.
 DEVICE_CODE = ["src/**/*.cpp", "src/**/*.h", "include/**/*.h", "lib/*/src/*.cpp", "lib/*/include/*.h", "tools/demo-core/bridge.cpp"]
@@ -159,7 +168,9 @@ def load_sources(root):
         "web": read(root, WEB_IMPL),
         "native_tests": "\n".join(read(root, f) for f in files(root, ["test/**/*.cpp"])),
         "web_tests": "\n".join(read(root, f) for f in files(root, web_test_patterns)),
-        "constraints": {source: with_english(root, read(root, source)) for source in CONSTRAINT_SOURCES},
+        "constraints": {
+            label: with_english(root, "\n".join(read(root, source) for source in sources)) for label, sources in CONSTRAINT_SOURCES.items()
+        },
     }
 
 

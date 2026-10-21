@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BackupPreview",
+  "description": "POST /api/backup/preview (src/WebServerBackup.cpp, lib/ConfigBackup): what restoring a backup would save, before anything is applied (specs/033-config-backup/contracts/rest-api.md). Hand-written, not generated.",
+  "type": "object",
+  "properties": {
+    "token": { "type": "string", "description": "32 hex characters; send it to POST /api/backup/apply." },
+    "backup": {
+      "type": "object",
+      "description": "The file's header, as far as it has one (format 0 is a plain settings export).",
+      "properties": {
+        "format": { "type": "integer" },
+        "firmware": { "type": "string" },
+        "board": { "type": "string" },
+        "build": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["format"],
+      "additionalProperties": false
+    },
+    "settings": { "type": "object", "description": "The settings applying would save, secrets masked as in GET /api/config." },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "state": { "type": "string", "enum": ["restored", "kept", "none"], "description": "restored: decrypted with the passphrase; kept: the file has secrets but no passphrase was given; none: the file has none." },
+        "changed": { "type": "array", "items": { "type": "string" }, "description": "Secret paths that will change (never values)." },
+        "unchanged": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["state", "changed", "unchanged"],
+      "additionalProperties": false
+    },
+    "notApplicable": {
+      "type": "array",
+      "description": "Settings in the backup this board can't use: not applied, this board's value is kept.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "value": { "description": "The backup's value (left out for a secret)." },
+          "reason": { "type": "string", "enum": ["pin", "analog", "bluetooth", "pushover-keys"] }
+        },
+        "required": ["path", "reason"],
+        "additionalProperties": false
+      }
+    },
+    "restart": {
+      "type": "array",
+      "description": "Why applying restarts the device; empty: no restart.",
+      "items": { "type": "string", "enum": ["wifi", "ota", "gps", "i2c", "ipv6", "alpaca", "ble"] }
+    }
+  },
+  "required": ["token", "backup", "settings", "secrets", "notApplicable", "restart"],
+  "additionalProperties": false
+}

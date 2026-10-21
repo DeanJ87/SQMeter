@@ -25,3 +25,9 @@ export const SENSOR_MODEL: Record<SensorId, string> = {
 };
 
 export const sensorName = (sensor: SensorId) => t(NAME[sensor]);
+
+// The two sky sensors' own names (spec 030), used where both are fitted;
+// sensorName('light') is the authoritative one.
+export type SkySensorId = 'sqm' | 'sqml';
+
+export const skySensorName = (sensor: SkySensorId) => t(sensor === 'sqml' ? 'sensor.sqml' : 'sensor.sqm');

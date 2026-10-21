@@ -2,6 +2,8 @@
 
 #include <cstdio>
 
+#include "DeviceCoreInternal.h"
+
 // The alert side of the device core: alert inputs from the device state,
 // the rules and wording from settings, the imaging-app (Alpaca client)
 // watch, the send schedule documents and test notifications. Readings and
@@ -23,13 +25,21 @@ namespace SQM
             in.safetySettling = (!status.isSafe && status.rawSafe) || (status.reasonFlags & Alpaca::UnsafeNoData) != 0;
             in.isSafe = status.isSafe;
             in.unsafeReasons = status.reasons;
+            in.unsafeFlags = status.reasonFlags;
 
             in.rainEnabled = cfg.rain.enabled;
             in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
             in.rainRateMmPerHour = obs.rainRateMmPerHour;
             in.lensFault = snapshot.rg15.lensBad;
 
-            in.sensors[0] = {"Light sensor", true, obs.skyLight.valid};
+            // Spec 030: slot 0 is the SQM ("Light sensor" while it is the
+            // only sky sensor), slot 5 the SQM-L.
+            // The authoritative one is judged as Alpaca judges it (obs).
+            const SkyReadings sky = skyReadings(snapshot, cfg, now);
+            auto skyValid = [&](SkyRole role)
+            { return role == snapshot.skySource ? obs.skyLight.valid : sky.roles[skyRoleIndex(role)].valid; };
+            in.sensors[0] = {cfg.sky.sqmlEnabled ? "SQM sensor" : "Light sensor", cfg.sky.sqmEnabled, skyValid(SkyRole::Sqm)};
+            in.sensors[5] = {"SQM-L sensor", cfg.sky.sqmlEnabled, skyValid(SkyRole::Sqml)};
             in.sensors[1] = {"IR sky sensor", true, obs.irSky.valid};
             in.sensors[2] = {"Environment sensor", true, obs.environment.valid};
             in.sensors[3] = {"Rain sensor", cfg.rain.enabled, obs.rain.valid};
@@ -42,6 +52,7 @@ namespace SQM
             in.cloudCoverPercent = obs.cloudCoverPercent;
             in.nightKnown = n.known;
             in.isNight = n.isNight;
+            Detail::batteryAlertInputs(in.battery, snapshot, cfg, now);
             return in;
         }
 
@@ -64,42 +75,92 @@ namespace SQM
             rules.onClientLost = a.clientLost.level != 0;
             rules.onClientBack = a.clientBack.level != 0;
             rules.onClientDisconnected = a.clientDisconnected.level != 0;
+            rules.onBatteryLow = a.batteryLow.level != 0;
+            rules.onBatteryCritical = a.batteryCritical.level != 0;
+            rules.onBatteryShutdown = a.batteryShutdown.level != 0;
+            rules.onPowerRestored = a.powerRestored.level != 0;
+            rules.onChargeComplete = a.chargeComplete.level != 0;
+            rules.onChargeFault = a.chargeFault.level != 0;
+            rules.onBatteryRule = cfg.alpaca.batteryEnabled && (cfg.alpaca.batteryAlert || cfg.alpaca.batteryPhoneAlarm);
+            rules.batteryLowPercent = cfg.battery.lowPercent;
+            rules.batteryCriticalPercent = cfg.battery.criticalPercent;
+            rules.batteryShutdownPercent = cfg.battery.shutdownPercent;
             return rules;
         }
 
         const AlertsConfig::EventSetting *eventSettingFor(const AlertsConfig &a, Alerts::AlertType type)
         {
-            switch (type)
-            {
-            case Alerts::AlertType::Unsafe:
-                return &a.unsafe;
-            case Alerts::AlertType::Safe:
-                return &a.safe;
-            case Alerts::AlertType::RainStarted:
-                return &a.rainStarted;
-            case Alerts::AlertType::RainStopped:
-                return &a.rainStopped;
-            case Alerts::AlertType::SensorFault:
-            case Alerts::AlertType::LensFault:
-                return &a.sensorFault;
-            case Alerts::AlertType::SensorRecovered:
-                return &a.sensorRecovered;
-            case Alerts::AlertType::DewRisk:
-                return &a.dewRisk;
-            case Alerts::AlertType::ClearSky:
-                return &a.clearSky;
-            case Alerts::AlertType::CloudedOver:
-                return &a.cloudedOver;
-            case Alerts::AlertType::ClientLost:
-                return &a.clientLost;
-            case Alerts::AlertType::ClientBack:
-                return &a.clientBack;
-            case Alerts::AlertType::ClientDisconnected:
-                return &a.clientDisconnected;
-            default:
-                return nullptr;
-            }
+            using Alerts::AlertType;
+            using Setting = AlertsConfig::EventSetting AlertsConfig::*;
+            // The lens fault is worded and levelled as a sensor fault.
+            static constexpr std::pair<AlertType, Setting> SETTINGS[] = {
+                {AlertType::Unsafe, &AlertsConfig::unsafe},
+                {AlertType::Safe, &AlertsConfig::safe},
+                {AlertType::RainStarted, &AlertsConfig::rainStarted},
+                {AlertType::RainStopped, &AlertsConfig::rainStopped},
+                {AlertType::SensorFault, &AlertsConfig::sensorFault},
+                {AlertType::LensFault, &AlertsConfig::sensorFault},
+                {AlertType::SensorRecovered, &AlertsConfig::sensorRecovered},
+                {AlertType::DewRisk, &AlertsConfig::dewRisk},
+                {AlertType::ClearSky, &AlertsConfig::clearSky},
+                {AlertType::CloudedOver, &AlertsConfig::cloudedOver},
+                {AlertType::ClientLost, &AlertsConfig::clientLost},
+                {AlertType::ClientBack, &AlertsConfig::clientBack},
+                {AlertType::ClientDisconnected, &AlertsConfig::clientDisconnected},
+                {AlertType::BatteryLow, &AlertsConfig::batteryLow},
+                {AlertType::BatteryCritical, &AlertsConfig::batteryCritical},
+                {AlertType::BatteryShutdown, &AlertsConfig::batteryShutdown},
+                {AlertType::PowerRestored, &AlertsConfig::powerRestored},
+                {AlertType::ChargeComplete, &AlertsConfig::chargeComplete},
+                {AlertType::ChargeFault, &AlertsConfig::chargeFault},
+            };
+            for (const auto &entry : SETTINGS)
+                if (entry.first == type)
+                    return &(a.*entry.second);
+            return nullptr;
         }
+
+        namespace
+        {
+            // {sqm_wide}, {sqm_l}, {sqm_delta} (SQM-L - SQM, signed), {sqm_source} (spec 030).
+            void appendSkyVars(std::vector<std::pair<std::string, std::string>> &vars, const SkyReadings &sky)
+            {
+                const SkyReadings::Role &wide = sky.roles[skyRoleIndex(SkyRole::Sqm)];
+                const SkyReadings::Role &narrow = sky.roles[skyRoleIndex(SkyRole::Sqml)];
+                auto fmt = [](bool valid, const char *format, double value) -> std::string
+                {
+                    if (!valid)
+                        return "--";
+                    char buffer[24];
+                    std::snprintf(buffer, sizeof(buffer), format, value);
+                    return buffer;
+                };
+                vars.emplace_back("sqm_wide", fmt(wide.valid, "%.2f", wide.sqm));
+                vars.emplace_back("sqm_l", fmt(narrow.valid, "%.2f", narrow.sqm));
+                vars.emplace_back("sqm_delta", fmt(wide.valid && narrow.valid, "%+.2f", narrow.sqm - wide.sqm));
+                vars.emplace_back("sqm_source", skyRoleLabel(sky.source));
+            }
+
+            // {battery} "82%", {battery_voltage} "3.91 V", {battery_state}
+            // "discharging" .. "no battery", {battery_time_left} "13 h 17 min"
+            // (spec 032, contracts/integrations.md); "--" without a value.
+            void appendBatteryVars(std::vector<std::pair<std::string, std::string>> &vars, const Readings::Battery &b)
+            {
+                const bool ok = b.present && b.status == Readings::Status::Ok;
+                char buffer[24] = "--";
+                if (ok && b.percent)
+                    std::snprintf(buffer, sizeof(buffer), "%.0f%%", *b.percent);
+                vars.emplace_back("battery", buffer);
+                std::snprintf(buffer, sizeof(buffer), ok ? "%.2f V" : "--", b.voltage);
+                vars.emplace_back("battery_voltage", buffer);
+                std::string state = b.present && b.state != nullptr ? b.state : "--";
+                if (state == "no-battery")
+                    state = "no battery";
+                vars.emplace_back("battery_state", state);
+                const std::optional<uint32_t> &minutes = b.timeToEmptyMinutes ? b.timeToEmptyMinutes : b.timeToFullMinutes;
+                vars.emplace_back("battery_time_left", ok && minutes ? formatDuration(*minutes * 60) : std::string("--"));
+            }
+        } // namespace
 
         std::vector<std::pair<std::string, std::string>> alertVars(
             const AlertSources &sources, const Alerts::Alert &alert, const LocalClock &clock)
@@ -144,6 +205,8 @@ namespace SQM
                 {"gust", num(obs.wind.valid, obs.windGustMs, 1)},
                 {"sun_alt", num(n.known, n.sunAltitudeDeg, 1)},
             };
+            appendSkyVars(vars, sources.sky);
+            appendBatteryVars(vars, sources.battery);
             vars.insert(vars.end(), alert.vars.begin(), alert.vars.end());
             return vars;
         }
@@ -280,6 +343,19 @@ namespace SQM
             AlertStep step;
             for (Alerts::Alert alert : engine.update(inputs, rules))
             {
+                if (alert.type == Alerts::AlertType::BatteryRule)
+                {
+                    // The battery rule's own options (spec 032 research D5): an
+                    // Urgent alert, and paired phones ring with the rule's bits.
+                    if (cfg.alpaca.batteryPhoneAlarm)
+                    {
+                        step.alarmFlags |= sources.status.reasonFlags & Alerts::BATTERY_RULE_FLAGS;
+                        step.ringPhones = true;
+                    }
+                    if (cfg.alpaca.batteryAlert)
+                        step.outgoing.push_back(std::move(alert));
+                    continue;
+                }
                 const AlertsConfig::EventSetting *setting = eventSettingFor(cfg.alerts, alert.type);
                 if (setting == nullptr || setting->level == 0)
                     continue;
@@ -291,7 +367,8 @@ namespace SQM
                                        (alert.type == Alerts::AlertType::RainStarted ? Alpaca::UnsafeRain : 0u) |
                                        (alert.type == Alerts::AlertType::SensorFault || alert.type == Alerts::AlertType::LensFault
                                             ? Alpaca::UnsafeSensorFault
-                                            : 0u);
+                                            : 0u) |
+                                       Detail::batteryAlarmFlag(alert.type);
                 step.outgoing.push_back(std::move(alert));
             }
             return step;
@@ -316,6 +393,21 @@ namespace SQM
                  "Imaging app disconnected",
                  "The imaging app disconnects",
                  0},
+                // Battery (spec 032).
+                {"battery_low", Alerts::AlertType::BatteryLow, "Battery low", "The battery runs low", Alpaca::UnsafeBatteryLow},
+                {"battery_critical",
+                 Alerts::AlertType::BatteryCritical,
+                 "Battery critical",
+                 "The battery is critical",
+                 Alpaca::UnsafeBatteryLow},
+                {"battery_shutdown",
+                 Alerts::AlertType::BatteryShutdown,
+                 "Going to sleep: battery empty",
+                 "The device goes to sleep",
+                 Alpaca::UnsafeShutdown},
+                {"power_restored", Alerts::AlertType::PowerRestored, "Power restored", "USB power returns", 0},
+                {"charge_complete", Alerts::AlertType::ChargeComplete, "Battery charged", "The battery is full", 0},
+                {"charge_fault", Alerts::AlertType::ChargeFault, "Charging fault", "Charging stops with a fault", 0},
             };
         } // namespace
 

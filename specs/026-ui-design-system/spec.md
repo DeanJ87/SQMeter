@@ -22,8 +22,9 @@ added UI that does not look or read like the rest of the app:
 - English copy that is long, repetitive and machine-sounding, faithfully translated into 13 languages.
 
 This spec writes the design system down as numbered, testable rules (DS-xx), audits the current UI
-against them ([audit.md](audit.md), screenshots in [audit/](audit/)), and proposes designs for the
-three worst offenders ([mockups/](mockups/), built on the throwaway branch `mock/026`). Nothing here
+against them ([audit.md](audit.md); screenshots kept outside the repo), and proposes designs for the
+three worst offenders (mockups built on the throwaway branch `mock/026`, reviewed by the owner and
+kept outside the repo). Nothing here
 is built yet; the owner reviews the rules and mockups first.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -195,8 +196,9 @@ mismatches; the audit's drift list is resolved.
   fail on mismatches.
 - **FR-014**: A layout check MUST fail if the dashboard renders any element between the header and
   the card grid other than the toolbar (Arrange), at 1280 and 390 px.
-- **FR-015**: Specs that add or change UI MUST cite the DS rules they rely on and include a mockup
-  screenshot reviewed before implementation (added to the spec template).
+- **FR-015**: Specs that add or change UI MUST cite the DS rules they rely on and record that a mockup
+  was reviewed by the owner before implementation (added to the spec template); mockup images are
+  kept outside the repo.
 
 ### Key Entities
 

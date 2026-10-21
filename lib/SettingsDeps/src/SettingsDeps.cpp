@@ -22,6 +22,10 @@ namespace SQM
                 {"gps-restart", "GPS starts after a restart", "restart"},
                 {"gps-no-fix", "No GPS fix - using the location in Settings", "time#location"},
                 {"light-missing", "Light sensor not detected", "sensors#sky-sensors"},
+                {"sqm-missing", "SQM not detected", "sensors#sky-sensors"},
+                {"sky-single", "SQM and SQM-L must both be on", "sensors#sky-sensors"},
+                {"sqml-missing", "SQM-L not detected", "sensors#sky-sensors"},
+                {"i2c2-unset", "Second I2C bus pins not set", "sensors#sky-sensors"},
                 {"infrared-missing", "IR sky sensor not detected", "sensors#sky-sensors"},
                 {"environment-missing", "Environment sensor not detected", "sensors#sky-sensors"},
                 {"location-unknown", "Needs your location", "time#location"},
@@ -34,6 +38,8 @@ namespace SQM
                 {"clock-unset", "The device doesn't know the time yet", "time#time-sources"},
                 {"ota-no-password", "Set an upload password", "device#security"},
                 {"language-offline", "Needs WiFi to download - or upload the file", "network#wifi"},
+                {"display-missing", "No display detected", "device#display"},
+                {"battery-missing", "No battery gauge detected", "device#battery"},
             };
 
             const Reason *reason(const char *code)
@@ -96,6 +102,15 @@ namespace SQM
                     out.push_back(e);
                 }
             };
+
+            // A missing sky sensor's reason: "Light sensor" with one sensor (as
+            // before spec 030), the sensor's own name with both on.
+            const char *skyMissing(const Config &cfg, SkyRole role)
+            {
+                if (!(cfg.sky.sqmEnabled && cfg.sky.sqmlEnabled))
+                    return "light-missing";
+                return role == SkyRole::Sqml ? "sqml-missing" : "sqm-missing";
+            }
 
             bool anyEventAt(const AlertsConfig &a, uint8_t level)
             {
@@ -228,10 +243,29 @@ namespace SQM
                     s.cloudCoverEnabled,
                     {{"D-17", "infrared-missing", c.f.infraredDetected}},
                     FAIL_SAFE);
-                c.add("alpaca.sqmMinEnabled", "D-18", s.sqmMinEnabled, {{"D-18", "light-missing", c.f.lightDetected}}, FAIL_SAFE);
+                // With both sky sensors on, the reason names the authoritative one (spec 030 FR-010).
+                c.add(
+                    "alpaca.sqmMinEnabled",
+                    "D-18",
+                    s.sqmMinEnabled,
+                    {{"D-18", skyMissing(c.cfg, c.cfg.sky.authoritative), c.f.lightDetected}},
+                    FAIL_SAFE);
                 const Link bme{"D-19", "environment-missing", c.f.environmentDetected};
                 c.add("alpaca.humidityMaxEnabled", "D-19", s.humidityMaxEnabled, {bme}, FAIL_SAFE);
                 c.add("alpaca.dewpointMarginEnabled", "D-19", s.dewpointMarginEnabled, {bme}, FAIL_SAFE);
+            }
+
+            // Two sky sensors (spec 030): the SQM-L needs the second bus; the
+            // choice between them only matters with both on; the SQM-L's
+            // calibration needs it found.
+            void addSkySensors(const Context &c)
+            {
+                const Config &cfg = c.cfg;
+                c.add("sky.sqmlEnabled", "D-39", cfg.sky.sqmlEnabled, {{"D-39", "i2c2-unset", cfg.sensor.i2c2Configured()}});
+                const Link bothOn{"D-40", "sky-single", cfg.sky.sqmEnabled && cfg.sky.sqmlEnabled};
+                c.add("sky.authoritative", "D-40", true, {bothOn}, NEUTRAL);
+                c.add("sky.showOther", "D-40", cfg.sky.showOther, {bothOn}, NEUTRAL);
+                c.add("skyCalibrationL.enabled", "D-41", cfg.skyCalibrationL.enabled, {{"D-41", "sqml-missing", c.f.sqmlDetected}});
             }
 
             void addSensorsAndTime(const Context &c)
@@ -244,7 +278,12 @@ namespace SQM
                 const Link gpsRunning{"D-35", "gps-restart", c.f.gpsRunning};
                 c.add("gps.enabled", "D-26", cfg.gps.enabled, {gpsRunning, {"D-26", "gps-no-fix", c.f.gpsFix}});
                 c.add("ntp.enabled", "D-28", cfg.ntp.enabled, {{"D-28", "wifi-disconnected", c.f.wifiConnected}});
-                c.add("skyCalibration.enabled", "D-29", cfg.skyCalibration.enabled, {{"D-29", "light-missing", c.f.lightDetected}});
+                c.add(
+                    "skyCalibration.enabled",
+                    "D-29",
+                    cfg.skyCalibration.enabled,
+                    {{"D-29", skyMissing(cfg, SkyRole::Sqm), c.f.sqmDetected}});
+                addSkySensors(c);
             }
 
             void addDevice(const Context &c)
@@ -265,12 +304,84 @@ namespace SQM
                     std::strcmp(cfg.language, "en") != 0,
                     {{"D-38", "language-offline", c.f.languageInstalled || c.f.wifiConnected}});
             }
+
+            // The OLED display (spec 031): every setting but its own switch
+            // needs a display that answers; staying on at night needs a night
+            // the device can work out.
+            void addDisplay(const Context &c)
+            {
+                const DisplayConfig &d = c.cfg.display;
+                const Link found{"D-43", "display-missing", c.f.displayDetected};
+                c.add("display.pages", "D-43", d.enabled, {found});
+                c.add("display.cycleSeconds", "D-43", d.enabled, {found});
+                c.add("display.brightness", "D-43", d.enabled, {found});
+                c.add("display.timeoutSeconds", "D-43", d.enabled, {found});
+                c.add("display.wakeOnBoot", "D-43", d.enabled && d.wakeOnBoot, {found});
+                c.add(
+                    "display.stayOnAtNight", "D-44", d.enabled && d.stayOnAtNight, {found, {"D-44", "location-unknown", c.locationKnown}});
+                c.add("display.rotate180", "D-43", d.enabled && d.rotate180, {found});
+                c.add("display.buttonPin", "D-43", d.enabled && d.buttonPin != DisplayConfig::BUTTON_UNSET, {found});
+            }
+
+            // The battery (spec 032): its settings, rule and events need a
+            // fuel gauge. Monitoring and the events ship on, so without a
+            // gauge they're shown muted; the safety rule is fail-safe.
+            void addBattery(const Context &c)
+            {
+                const BatteryConfig &b = c.cfg.battery;
+                const AlertsConfig &a = c.cfg.alerts;
+                const Link found{"D-46", "battery-missing", c.f.batteryDetected};
+                c.add("battery.enabled", "D-46", b.enabled, {found}, NEUTRAL);
+                c.add("battery.lowPercent", "D-46", b.enabled, {found}, NEUTRAL);
+                c.add("battery.criticalPercent", "D-46", b.enabled, {found}, NEUTRAL);
+                c.add("battery.shutdownPercent", "D-46", b.enabled, {found}, NEUTRAL);
+                c.add("battery.capacityMah", "D-46", b.enabled && b.capacityMah != 0, {found}, NEUTRAL);
+                c.add("battery.powerSaving", "D-46", b.enabled && b.powerSaving, {found}, NEUTRAL);
+                c.add("battery.saveReadIntervalSeconds", "D-46", b.enabled && b.powerSaving, {found}, NEUTRAL);
+                c.add("battery.shutdownGraceSeconds", "D-46", b.enabled && b.powerSaving, {found}, NEUTRAL);
+
+                const AlpacaConfig &s = c.cfg.alpaca;
+                c.add("alpaca.batteryEnabled", "D-47", s.batteryEnabled, {{"D-47", "battery-missing", c.f.batteryDetected}}, FAIL_SAFE);
+                const BleConfig &ble = c.cfg.ble;
+                c.add(
+                    "alpaca.batteryPhoneAlarm",
+                    "D-50",
+                    s.batteryPhoneAlarm,
+                    {{"D-50", "ble-build", c.f.bluetoothBuild},
+                     {"D-50", "ble-off", ble.enabled},
+                     {"D-35", "ble-restart", c.f.bluetoothRunning},
+                     {"D-50", "no-passkey", !ble.passkey.empty()},
+                     {"D-50", "no-phones", c.f.pairedPhones > 0}},
+                    NEUTRAL);
+
+                const Link gauge{"D-48", "battery-missing", c.f.batteryDetected};
+                auto event = [&](const AlertsConfig::EventSetting &e) -> Link
+                { return {"D-04", "alerts-off", a.enabled || (e.level == 4 && c.phonesRing)}; };
+                const std::pair<const char *, const AlertsConfig::EventSetting *> events[] = {
+                    {"alerts.events.battery_low.level", &a.batteryLow},
+                    {"alerts.events.battery_critical.level", &a.batteryCritical},
+                    {"alerts.events.battery_shutdown.level", &a.batteryShutdown},
+                    {"alerts.events.power_restored.level", &a.powerRestored},
+                    {"alerts.events.charge_complete.level", &a.chargeComplete},
+                    {"alerts.events.charge_fault.level", &a.chargeFault},
+                };
+                for (const auto &e : events)
+                    c.add(e.first, "D-48", e.second->level != 0, {event(*e.second), gauge}, NEUTRAL);
+
+                const Link publishMqtt{"D-49", "mqtt-off", c.cfg.mqtt.enabled};
+                c.add(
+                    "mqtt.publish.battery",
+                    "D-49",
+                    c.cfg.mqtt.publish.battery,
+                    {publishMqtt, {"D-49", "battery-missing", c.f.batteryDetected}},
+                    NEUTRAL);
+            }
         } // namespace
 
         std::vector<Entry> evaluate(const Config &cfg, const Facts &f)
         {
             std::vector<Entry> out;
-            out.reserve(44);
+            out.reserve(80);
             // Paired phones ring for Wake-level events even with push alerts off
             // (WebServer::processAlerts), so events, arming and the night-only
             // options still matter to them.
@@ -284,6 +395,8 @@ namespace SQM
             addSafetyRules(c);
             addSensorsAndTime(c);
             addDevice(c);
+            addDisplay(c);
+            addBattery(c);
             return out;
         }
 
@@ -361,14 +474,18 @@ namespace SQM
             target["bluetoothRunning"] = f.bluetoothRunning;
             target["pairedPhones"] = f.pairedPhones;
             target["lightDetected"] = f.lightDetected;
+            target["sqmDetected"] = f.sqmDetected;
+            target["sqmlDetected"] = f.sqmlDetected;
             target["infraredDetected"] = f.infraredDetected;
             target["environmentDetected"] = f.environmentDetected;
             target["languageInstalled"] = f.languageInstalled;
+            target["displayDetected"] = f.displayDetected;
+            target["batteryDetected"] = f.batteryDetected;
         }
 
         size_t reportCapacity(const std::vector<Entry> &entries)
         {
-            return JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(12) + JSON_ARRAY_SIZE(entries.size()) + entries.size() * JSON_OBJECT_SIZE(8);
+            return JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(16) + JSON_ARRAY_SIZE(entries.size()) + entries.size() * JSON_OBJECT_SIZE(8);
         }
 
         void writeReport(JsonObject root, const std::vector<Entry> &entries, const Facts &facts)

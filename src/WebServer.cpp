@@ -89,11 +89,13 @@ namespace SQM
           wsSensors("/ws/sensors"),
           wsStatus("/ws/status"),
           tslSensor(sensors.tsl),
+          tslSensorL(sensors.tslL),
           bmeSensor(sensors.bme),
           mlxSensor(sensors.mlx),
           gpsSensor(sensors.gps),
           rg15Sensor(sensors.rg15),
           windSensor(sensors.wind),
+          batterySensor(sensors.battery),
           timeManager(timeMgr),
           mqttClient(mqtt),
           getConfigCallback(getConfig),
@@ -329,9 +331,12 @@ namespace SQM
             localClock(clock.time, clock.date);
             const SafetyStatus safety = getSafetyStatus();
             const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
-            const Core::NightState night = computeNight(getSensorSnapshot(), cfg);
+            const SensorSnapshot snapshot = getSensorSnapshot();
+            const Core::NightState night = computeNight(snapshot, cfg);
             const Core::TestWording wording{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
-            const Alerts::Alert test = Core::buildTestAlert(sample, wording, Core::AlertSources{cfg, obs, night, safety}, clock);
+            const Core::AlertSources sources{
+                cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
+            const Alerts::Alert test = Core::buildTestAlert(sample, wording, sources, clock);
             if (sample != nullptr && test.level == Alerts::AlertLevel::Wake)
             {
                 const time_t wallClock = time(nullptr);
@@ -361,27 +366,48 @@ namespace SQM
         }
     }
 
+    bool WebServer::alertsIdle() const
+    {
+        return alertDispatcher == nullptr || alertDispatcher->idle();
+    }
+
     void WebServer::refreshSensorSnapshot(uint32_t dataTimestampMs)
     {
         SensorSnapshot next;
-        next.tsl = tslSensor.getReading();
-        next.tslDiagnostics = tslSensor.getDiagnostics();
+        // Both sky sensors; Core::derive picks the authoritative copy.
+        for (size_t i = 0; i < SKY_ROLE_COUNT; ++i)
+        {
+            const TSL2591Sensor &driver = skySensor(static_cast<SkyRole>(i));
+            SkySensorSnapshot &sky = next.skySensors[i];
+            sky.reading = driver.getReading();
+            sky.diagnostics = driver.getDiagnostics();
+            sky.initialized = driver.isInitialized();
+            sky.lastUpdate = driver.getLastUpdateTime();
+        }
         next.bme = bmeSensor.getReading();
         next.mlx = mlxSensor.getReading();
         next.gps = gpsSensor.getReading();
         next.rg15 = rg15Sensor.copyReading();
         next.rg15Diagnostics = rg15Sensor.getDiagnostics();
-        next.tslInitialized = tslSensor.isInitialized();
         next.bmeInitialized = bmeSensor.isInitialized();
         next.mlxInitialized = mlxSensor.isInitialized();
         next.gpsInitialized = gpsSensor.isInitialized();
         next.rg15Initialized = rg15Sensor.isInitialized();
-        next.tslLastUpdate = tslSensor.getLastUpdateTime();
         next.bmeLastUpdate = bmeSensor.getLastUpdateTime();
         next.mlxLastUpdate = mlxSensor.getLastUpdateTime();
         next.gpsLastUpdate = gpsSensor.getLastUpdateTime();
         next.rg15LastUpdate = rg15Sensor.getLastUpdateTime();
         next.wind = windSensor.getReading();
+        next.battery.detected = batterySensor.isDetected();
+        next.battery.initialized = batterySensor.isInitialized();
+        next.battery.lastUpdate = batterySensor.getLastUpdateTime();
+        next.battery.reading = batterySensor.getReading();
+        if (powerManager != nullptr)
+        {
+            next.battery.power = powerManager->state();
+            next.battery.shutdownInSeconds = powerManager->shutdownInSeconds();
+            next.readIntervalMs = powerManager->sensorIntervalMs(getConfigCallback());
+        }
         next.dataTimestamp = dataTimestampMs;
         next.capturedAt = millis();
 

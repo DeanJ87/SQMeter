@@ -1,6 +1,8 @@
-import type { AlertEventKey, Config } from '../types';
+import type { AlertEventKey, Config, SkyRole } from '../types';
 import { t } from '../i18n';
 import { deviceText } from '../i18n/deviceMessage';
+import { REASONS } from './settingsDepReasons';
+import { BATTERY_EVENT_DEFAULTS, and, blocker, decide, FAIL_SAFE, NEUTRAL, on, or, read, type Link, type Shown } from './settingsDepLinks';
 
 // Whether each setting that needs another setting (or hardware, or the
 // network) is in effect - the device's rules from lib/SettingsDeps, mirrored
@@ -21,10 +23,14 @@ export interface DepFacts {
   bluetoothBuild: boolean;
   bluetoothRunning: boolean;
   pairedPhones: number;
-  lightDetected: boolean;
+  lightDetected: boolean; // the authoritative sky sensor
+  sqmDetected?: boolean; // spec 030; older firmware doesn't report it
+  sqmlDetected?: boolean;
   infraredDetected: boolean;
   environmentDetected: boolean;
   languageInstalled?: boolean; // older firmware doesn't report it
+  displayDetected?: boolean; // spec 031; older firmware doesn't report it
+  batteryDetected?: boolean; // spec 032; older firmware doesn't report it
 }
 
 export interface DepEntry {
@@ -46,62 +52,8 @@ export interface EffectiveReport {
   settings: DepEntry[];
 }
 
-// Same codes, texts and fix targets as lib/SettingsDeps/catalogue.json (a
-// test compares them).
-export const REASONS: Record<string, { text: string; fix: string }> = {
-  'alerts-off': { text: t('settingsDeps.alertsAreOff'), fix: 'alerts#alerts' },
-  'mqtt-off': { text: t('settingsDeps.mqttIsOff'), fix: 'network#mqtt' },
-  'mqtt-disconnected': { text: t('settingsDeps.brokerNotConnected'), fix: 'network#mqtt' },
-  'wifi-disconnected': { text: t('settingsDeps.notConnectedToWifi'), fix: 'network#wifi' },
-  'rain-off': { text: t('settingsDeps.rainSensorIsOff'), fix: 'sensors#rain' },
-  'wind-off': { text: t('settingsDeps.anemometerIsOff'), fix: 'sensors#wind' },
-  'gps-off': { text: t('settingsDeps.gpsIsOff'), fix: 'time#time-sources' },
-  'gps-restart': { text: t('settingsDeps.gpsStartsAfterARestart'), fix: 'restart' },
-  'gps-no-fix': { text: t('settingsDeps.noGpsFixUsingThe'), fix: 'time#location' },
-  'light-missing': { text: t('settingsDeps.tsl2591NotDetected'), fix: 'sensors#sky-sensors' },
-  'infrared-missing': { text: t('settingsDeps.mlx90614NotDetected'), fix: 'sensors#sky-sensors' },
-  'environment-missing': { text: t('settingsDeps.bme280NotDetected'), fix: 'sensors#sky-sensors' },
-  'location-unknown': { text: t('settingsDeps.needsYourLocation'), fix: 'time#location' },
-  'alpaca-off': { text: t('settingsDeps.alpacaIsOff'), fix: 'safety#alpaca' },
-  'ble-build': { text: t('settingsDeps.needsTheBluetoothFirmwareBuild'), fix: 'device#ble' },
-  'ble-off': { text: t('settingsDeps.bluetoothIsOff'), fix: 'device#ble' },
-  'ble-restart': { text: t('settingsDeps.bluetoothStartsAfterARestart'), fix: 'restart' },
-  'no-passkey': { text: t('settingsDeps.noPairingPasskeySet'), fix: 'device#ble' },
-  'no-phones': { text: t('settingsDeps.noPhonePaired'), fix: 'device#ble' },
-  'clock-unset': { text: t('settingsDeps.theDeviceDoesnTKnow'), fix: 'time#time-sources' },
-  'ota-no-password': { text: t('settingsDeps.setAnUploadPassword'), fix: 'device#security' },
-  'language-offline': { text: t('settingsDeps.needsWifiToDownloadOr'), fix: 'network#wifi' },
-};
-
-// Label for the one-click fix of each reason.
-export const FIX_LABEL: Record<string, string> = {
-  'alerts-off': t('settingsDeps.turnOnAlerts'),
-  'mqtt-off': t('settingsDeps.turnOnMqtt'),
-  'mqtt-disconnected': t('settingsDeps.mqttSettings'),
-  'wifi-disconnected': t('settingsDeps.wifiSettings'),
-  'rain-off': t('settingsDeps.turnOn'),
-  'wind-off': t('settingsDeps.turnOn'),
-  'gps-off': t('settingsDeps.turnOnGps'),
-  'gps-restart': t('settingsDeps.restart'),
-  'gps-no-fix': t('settingsDeps.location'),
-  'light-missing': t('settingsDeps.skySensors'),
-  'infrared-missing': t('settingsDeps.skySensors'),
-  'environment-missing': t('settingsDeps.skySensors'),
-  'location-unknown': t('settingsDeps.setLocation'),
-  'alpaca-off': t('settingsDeps.turnOnAlpaca'),
-  'ble-build': t('settingsDeps.bluetooth'),
-  'ble-off': t('settingsDeps.turnOnBluetooth'),
-  'ble-restart': t('settingsDeps.restart'),
-  'no-passkey': t('settingsDeps.setAPasskey'),
-  'no-phones': t('settingsDeps.pairAPhone'),
-  'clock-unset': t('settingsDeps.timeSources'),
-  'ota-no-password': t('settingsDeps.setPassword'),
-  'language-offline': t('settingsDeps.wifiSettings'),
-};
-
-// One link of a dependency chain: met, or the catalogue ID and reason that
-// make the setting inactive. `met === null`: unknown (no facts yet).
-type Link = [id: string, reason: string, met: boolean | null];
+// The reasons' texts and fix targets (same as lib/SettingsDeps/catalogue.json) and fix labels.
+export { FIX_LABEL, REASONS } from './settingsDepReasons';
 
 const EVENT_KEYS: AlertEventKey[] = [
   'unsafe',
@@ -117,47 +69,6 @@ const EVENT_KEYS: AlertEventKey[] = [
   'client_back',
   'client_disconnected',
 ];
-
-// Three-valued logic for links whose facts may be unknown (null).
-const and = (...values: (boolean | null)[]): boolean | null => {
-  if (values.includes(false)) return false;
-  return values.includes(null) ? null : true;
-};
-const or = (...values: (boolean | null)[]): boolean | null => {
-  if (values.includes(true)) return true;
-  return values.includes(null) ? null : false;
-};
-
-// A setting from the config, or the device's default when the config
-// doesn't carry it (older firmware, partial mocks).
-const read = <T>(config: Config, path: string, fallback: T): T => {
-  let value: unknown = config;
-  for (const key of path.split('.')) value = value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined;
-  return value === undefined || value === null ? fallback : (value as T);
-};
-const on = (config: Config, path: string, fallback = false) => read(config, path, fallback);
-
-type Shown = { unmet?: Unmet; neutral?: boolean };
-const NEUTRAL: Shown = { neutral: true };
-const FAIL_SAFE: Shown = { unmet: 'fail-safe' };
-
-// The first unmet link makes an entry inactive; a link that's unknown makes
-// it unknown unless a later one is unmet.
-const decide = (entry: DepEntry, chain: Link[]) => {
-  entry.state = 'active';
-  for (const [linkId, reason, met] of chain) {
-    if (met === null) entry.state = 'unknown';
-    if (met !== false) continue;
-    Object.assign(entry, { state: 'inactive', id: linkId, reason, ...REASONS[reason] });
-    return;
-  }
-};
-
-// While off: what would make it inactive if it were switched on.
-const blocker = (chain: Link[]) => {
-  const unmet = chain.find(([, , met]) => met === false);
-  return unmet ? { id: unmet[0], reason: unmet[1], ...REASONS[unmet[1]] } : undefined;
-};
 
 // What every section needs, worked out once.
 interface Context {
@@ -287,7 +198,15 @@ const addSafetyRules = (c: Context) => {
     [['D-17', 'infrared-missing', c.fact('infraredDetected')]],
     FAIL_SAFE,
   );
-  c.add('alpaca.sqmMinEnabled', 'D-18', rule('sqmMinEnabled'), [['D-18', 'light-missing', c.fact('lightDetected')]], FAIL_SAFE);
+  // With both sky sensors on, the reason names the authoritative one (spec 030 FR-010).
+  const authoritative = read<SkyRole>(c.config, 'sky.authoritative', 'sqm');
+  c.add(
+    'alpaca.sqmMinEnabled',
+    'D-18',
+    rule('sqmMinEnabled'),
+    [['D-18', skyMissing(c.config, authoritative), c.fact('lightDetected')]],
+    FAIL_SAFE,
+  );
   const bme: Link = ['D-19', 'environment-missing', c.fact('environmentDetected')];
   c.add('alpaca.humidityMaxEnabled', 'D-19', rule('humidityMaxEnabled'), [bme], FAIL_SAFE);
   c.add('alpaca.dewpointMarginEnabled', 'D-19', rule('dewpointMarginEnabled'), [bme], FAIL_SAFE);
@@ -311,7 +230,32 @@ const addSensorsAndTime = (c: Context) => {
     ['D-26', 'gps-no-fix', c.fact('gpsFix')],
   ]);
   c.add('ntp.enabled', 'D-28', on(c.config, 'ntp.enabled'), [['D-28', 'wifi-disconnected', c.fact('wifiConnected')]]);
-  c.add('skyCalibration.enabled', 'D-29', on(c.config, 'skyCalibration.enabled'), [['D-29', 'light-missing', c.fact('lightDetected')]]);
+  // Older firmware reports only the one light sensor: the SQM.
+  const sqmFound = c.fact('sqmDetected') ?? c.fact('lightDetected');
+  c.add('skyCalibration.enabled', 'D-29', on(c.config, 'skyCalibration.enabled'), [['D-29', skyMissing(c.config, 'sqm'), sqmFound]]);
+  addSkySensors(c);
+};
+
+// Both sky sensors on (spec 030).
+const bothSky = (config: Config) => on(config, 'sky.sqmEnabled', true) && on(config, 'sky.sqmlEnabled');
+
+// A missing sky sensor's reason: "Light sensor" with one sensor (as before
+// spec 030), the sensor's own name with both on.
+const skyMissing = (config: Config, role: SkyRole) =>
+  !bothSky(config) ? 'light-missing' : role === 'sqml' ? 'sqml-missing' : 'sqm-missing';
+
+const i2c2Set = (config: Config) => read(config, 'sensor.i2c2SDA', 255) !== 255 && read(config, 'sensor.i2c2SCL', 255) !== 255;
+
+// Two sky sensors (spec 030): the SQM-L needs the second bus; the choice
+// between them only matters with both on; the SQM-L's calibration needs it found.
+const addSkySensors = (c: Context) => {
+  c.add('sky.sqmlEnabled', 'D-39', on(c.config, 'sky.sqmlEnabled'), [['D-39', 'i2c2-unset', i2c2Set(c.config)]]);
+  const bothOn: Link = ['D-40', 'sky-single', bothSky(c.config)];
+  c.add('sky.authoritative', 'D-40', true, [bothOn], NEUTRAL);
+  c.add('sky.showOther', 'D-40', on(c.config, 'sky.showOther', true), [bothOn], NEUTRAL);
+  c.add('skyCalibrationL.enabled', 'D-41', on(c.config, 'skyCalibrationL.enabled'), [
+    ['D-41', 'sqml-missing', c.fact('sqmlDetected') ?? null],
+  ]);
 };
 
 const addDevice = (c: Context) => {
@@ -327,6 +271,69 @@ const addDevice = (c: Context) => {
   c.add('language', 'D-38', read(c.config, 'language', 'en') !== 'en', [
     ['D-38', 'language-offline', or(c.fact('languageInstalled') ?? null, c.fact('wifiConnected'))],
   ]);
+};
+
+// The OLED display (spec 031): every setting but its own switch needs a
+// display that answers; staying on at night needs a night the device can work out.
+const addDisplay = (c: Context) => {
+  const enabled = on(c.config, 'display.enabled');
+  const found: Link = ['D-43', 'display-missing', c.fact('displayDetected') ?? null];
+  for (const key of ['pages', 'cycleSeconds', 'brightness', 'timeoutSeconds']) c.add(`display.${key}`, 'D-43', enabled, [found]);
+  c.add('display.wakeOnBoot', 'D-43', enabled && on(c.config, 'display.wakeOnBoot', true), [found]);
+  c.add('display.stayOnAtNight', 'D-44', enabled && on(c.config, 'display.stayOnAtNight'), [
+    found,
+    ['D-44', 'location-unknown', c.locationKnown],
+  ]);
+  c.add('display.rotate180', 'D-43', enabled && on(c.config, 'display.rotate180'), [found]);
+  c.add('display.buttonPin', 'D-43', enabled && read(c.config, 'display.buttonPin', 255) !== 255, [found]);
+};
+
+// The battery (spec 032): its settings, rule and events need a fuel gauge.
+// Monitoring and the events ship on, so without a gauge they're shown muted;
+// the safety rule is fail-safe. Older firmware (no fact) has no gauge.
+const addBattery = (c: Context) => {
+  const gauge = c.fact('batteryDetected') ?? (c.fact('wifiConnected') === null ? null : false);
+  const enabled = on(c.config, 'battery.enabled', true);
+  const powerSaving = enabled && on(c.config, 'battery.powerSaving', true);
+  const found: Link = ['D-46', 'battery-missing', gauge];
+  for (const key of ['enabled', 'lowPercent', 'criticalPercent', 'shutdownPercent'])
+    c.add(`battery.${key}`, 'D-46', enabled, [found], NEUTRAL);
+  c.add('battery.capacityMah', 'D-46', enabled && read(c.config, 'battery.capacityMah', 0) !== 0, [found], NEUTRAL);
+  for (const key of ['powerSaving', 'saveReadIntervalSeconds', 'shutdownGraceSeconds'])
+    c.add(`battery.${key}`, 'D-46', powerSaving, [found], NEUTRAL);
+
+  c.add('alpaca.batteryEnabled', 'D-47', on(c.config, 'alpaca.batteryEnabled'), [['D-47', 'battery-missing', gauge]], FAIL_SAFE);
+  c.add(
+    'alpaca.batteryPhoneAlarm',
+    'D-50',
+    on(c.config, 'alpaca.batteryPhoneAlarm', true),
+    [
+      ['D-50', 'ble-build', c.fact('bluetoothBuild')],
+      ['D-50', 'ble-off', on(c.config, 'ble.enabled')],
+      ['D-35', 'ble-restart', c.fact('bluetoothRunning')],
+      ['D-50', 'no-passkey', read(c.config, 'ble.passkey', '') !== ''],
+      ['D-50', 'no-phones', c.hasPhones],
+    ],
+    NEUTRAL,
+  );
+
+  const alertsEnabled = on(c.config, 'alerts.enabled');
+  for (const key of Object.keys(BATTERY_EVENT_DEFAULTS)) {
+    const eventLevel = read(c.config, `alerts.events.${key}.level`, BATTERY_EVENT_DEFAULTS[key]);
+    const event: Link = ['D-04', 'alerts-off', or(alertsEnabled, and(eventLevel === 4, c.phonesRing))];
+    c.add(`alerts.events.${key}.level`, 'D-48', eventLevel !== 0, [event, ['D-48', 'battery-missing', gauge]], NEUTRAL);
+  }
+
+  c.add(
+    'mqtt.publish.battery',
+    'D-49',
+    on(c.config, 'mqtt.publish.battery', true),
+    [
+      ['D-49', 'mqtt-off', on(c.config, 'mqtt.enabled')],
+      ['D-49', 'battery-missing', gauge],
+    ],
+    NEUTRAL,
+  );
 };
 
 /**
@@ -355,9 +362,17 @@ export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
       out.push(entry);
     },
   };
-  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafetyRules, addSensorsAndTime, addDevice].forEach((section) =>
-    section(context),
-  );
+  [
+    addAlertChannels,
+    addAlertEvents,
+    addAlertOptions,
+    addMqtt,
+    addSafetyRules,
+    addSensorsAndTime,
+    addDevice,
+    addDisplay,
+    addBattery,
+  ].forEach((section) => section(context));
   return out;
 }
 

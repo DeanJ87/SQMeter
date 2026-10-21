@@ -2,7 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useQuiet } from '../hooks/useQuiet';
-import type { Config, SensorData, SystemStatus } from '../types';
+import type { Config, SensorData, SkyRole, SystemStatus } from '../types';
 import { Button } from './ui';
 import { useAnnounceChange } from '../lib/a11y';
 import { getJson } from '../lib/api';
@@ -10,6 +10,7 @@ import Masonry, { MasonryItem, mergeOrder, moveInOrder } from './Masonry';
 import { t } from '../i18n';
 import StatusCard from '../dashboard/StatusCard';
 import { glanceItems } from '../dashboard/glance';
+import { nextSqmHistory, type SqmHistory } from '../dashboard/skySensors';
 import { useEffectiveReport } from '../dashboard/useGlanceData';
 import { useAlertSchedule } from '../hooks/useAlertSchedule';
 import { acknowledgePhoneAlarm } from '../lib/phoneAlarm';
@@ -51,14 +52,12 @@ const Toolbar: FunctionalComponent<{ arranging: boolean; setArranging: (on: bool
   </div>
 );
 
-// The last 24 real SQM readings: the trend draws once there are two.
-const useSqmHistory = (sqm: number | undefined) => {
-  const [sqmHistory, setSqmHistory] = useState<number[]>([]);
-  useEffect(() => {
-    if (typeof sqm !== 'number' || !Number.isFinite(sqm)) return;
-    setSqmHistory((history) => [...history.slice(-23), sqm]);
-  }, [sqm]);
-  return sqmHistory;
+// The last 24 real SQM readings: the trend draws once there are two. It
+// restarts when the authoritative sky sensor changes (spec 030).
+const useSqmHistory = (sqm: number | undefined, source: SkyRole) => {
+  const [history, setHistory] = useState<SqmHistory>({ source, values: [] });
+  useEffect(() => setHistory((previous) => nextSqmHistory(previous, source, sqm)), [sqm, source]);
+  return history.source === source ? history.values : [];
 };
 
 const Dashboard: FunctionalComponent = () => {
@@ -80,7 +79,7 @@ const Dashboard: FunctionalComponent = () => {
       .catch(() => undefined);
   }, [configRevision]);
 
-  const sqmHistory = useSqmHistory(sensors?.sky?.sqm);
+  const sqmHistory = useSqmHistory(sensors?.sky?.sqm, sensors?.sky?.source ?? 'sqm');
 
   useAnnounceChange(sensors?.safety?.safe, (safe) => verdictText(safe, sensors?.safety?.reasons));
 

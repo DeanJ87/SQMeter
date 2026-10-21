@@ -66,6 +66,18 @@ namespace SQM
                 {"windspeed", &ObservingConditionsSnapshot::wind, "Cup anemometer, 2 min mean"},
             };
 
+            // The sky sensor by name once two are fitted (spec 030); the
+            // one-sensor text is unchanged.
+            const char *skyDescription(const char *property, const ObservingConditionsSnapshot &snapshot)
+            {
+                const bool quality = std::string(property) == "skyquality";
+                if (snapshot.skyRole == SkyRole::Sqml)
+                    return quality ? "TSL2591 SQM-L (narrow), calibrated SQM" : "TSL2591 SQM-L (narrow)";
+                if (snapshot.skyNamed)
+                    return quality ? "TSL2591 SQM (wide), calibrated SQM" : "TSL2591 SQM (wide)";
+                return quality ? "TSL2591 light sensor, calibrated SQM" : "TSL2591 light sensor";
+            }
+
             const PropertyInfo *findProperty(const std::string &lowerName)
             {
                 for (const PropertyInfo &info : PROPERTIES)
@@ -149,7 +161,7 @@ namespace SQM
                 return r;
             }
             r.ok = true;
-            r.value = info->description;
+            r.value = info->source == &ObservingConditionsSnapshot::skyLight ? skyDescription(info->name, snapshot) : info->description;
             return r;
         }
 

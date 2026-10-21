@@ -67,6 +67,7 @@ const PRIORITY: Record<string, number> = {
   'alerts-mode-not-in-effect': 3,
   'no-channel': 3,
   'imaging-app': 4,
+  battery: 5,
   language: 6,
   'clock-location': 7,
   'phone-alarm': 8,
@@ -235,6 +236,31 @@ const alarmItem = ({ status }: GlanceInput): GlanceItem | null =>
       })
     : null;
 
+// The pack running low (spec 032): warn below the low level; bad below the
+// critical level, on a charging fault or while the device is about to sleep.
+// No tile otherwise, or without a gauge.
+const aboutToSleep = (status: SystemStatus | null) =>
+  typeof status?.battery?.shutdownInSeconds === 'number' || status?.diagnostics?.battery?.policy === 'shutdown';
+
+// The charge, only when the gauge's reading can be trusted.
+const trustedPercent = (battery: NonNullable<SensorData['battery']>) =>
+  battery.status === 'ok' && !battery.estimating && typeof battery.percent === 'number' ? battery.percent : null;
+
+const batteryItem = ({ sensors, status, config }: GlanceInput): GlanceItem | null => {
+  const battery = sensors?.battery;
+  if (!battery?.present) return null;
+  const label = t('dashboard.battery');
+  if (aboutToSleep(status)) return item('battery', 'problem', { label, state: t('glance.goingToSleep') });
+  if (battery.state === 'fault')
+    return item('battery', 'problem', { label, state: t('dashboard.batteryFault'), detail: t('dashboard.batteryFaultHint') });
+  const percent = trustedPercent(battery);
+  if (percent === null) return null;
+  const limits = { ...{ lowPercent: 20, criticalPercent: 10 }, ...config?.battery };
+  const state = `${Math.round(percent)}%`;
+  if (percent < limits.criticalPercent) return item('battery', 'problem', { label, state });
+  return percent < limits.lowPercent ? item('battery', 'note', { label, state }) : null;
+};
+
 /** Everything the Status card shows, most important first. */
 export const glanceItems = (input: GlanceInput): GlanceItem[] => {
   const items = [
@@ -243,6 +269,7 @@ export const glanceItems = (input: GlanceInput): GlanceItem[] => {
     sendModeItem(input),
     channelsItem(input),
     ...imagingAppItems(input),
+    batteryItem(input),
     languageItem(),
     clockItem(input),
     alarmItem(input),

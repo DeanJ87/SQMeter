@@ -320,6 +320,150 @@
                 "title"
               ],
               "additionalProperties": false
+            },
+            "battery_low": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "battery_critical": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "battery_shutdown": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "power_restored": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "charge_complete": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "charge_fault": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -516,6 +660,18 @@
         },
         "windSpeedUnsafeMs": {
           "type": "number"
+        },
+        "batteryEnabled": {
+          "type": "boolean"
+        },
+        "batteryAlert": {
+          "type": "boolean"
+        },
+        "batteryPhoneAlarm": {
+          "type": "boolean"
+        },
+        "batteryMinPercent": {
+          "type": "number"
         }
       },
       "required": [
@@ -707,6 +863,9 @@
             },
             "wind": {
               "type": "boolean"
+            },
+            "battery": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -857,6 +1016,12 @@
     "sensor": {
       "type": "object",
       "properties": {
+        "i2c2SCL": {
+          "type": "number"
+        },
+        "i2c2SDA": {
+          "type": "number"
+        },
         "i2cFrequency": {
           "type": "number"
         },
@@ -878,6 +1043,34 @@
       ],
       "additionalProperties": false
     },
+    "sky": {
+      "type": "object",
+      "properties": {
+        "authoritative": {
+          "type": "string",
+          "enum": [
+            "sqm",
+            "sqml"
+          ]
+        },
+        "showOther": {
+          "type": "boolean"
+        },
+        "sqmEnabled": {
+          "type": "boolean"
+        },
+        "sqmlEnabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "authoritative",
+        "showOther",
+        "sqmEnabled",
+        "sqmlEnabled"
+      ],
+      "additionalProperties": false
+    },
     "skyAveraging": {
       "type": "object",
       "properties": {
@@ -890,7 +1083,55 @@
       ],
       "additionalProperties": false
     },
+    "skyAveragingL": {
+      "type": "object",
+      "properties": {
+        "windowSeconds": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "windowSeconds"
+      ],
+      "additionalProperties": false
+    },
     "skyCalibration": {
+      "type": "object",
+      "properties": {
+        "darkCalibratedAt": {
+          "type": "number"
+        },
+        "darkFullOffset": {
+          "type": "number"
+        },
+        "darkIrOffset": {
+          "type": "number"
+        },
+        "darkSampleCount": {
+          "type": "number"
+        },
+        "darkVisibleOffset": {
+          "type": "number"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "sqmOffset": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "darkCalibratedAt",
+        "darkFullOffset",
+        "darkIrOffset",
+        "darkSampleCount",
+        "darkVisibleOffset",
+        "enabled",
+        "sqmOffset"
+      ],
+      "additionalProperties": false
+    },
+    "skyCalibrationL": {
       "type": "object",
       "properties": {
         "darkCalibratedAt": {
@@ -999,6 +1240,130 @@
         "kmhPerHz",
         "speedPin",
         "vanePullupOhms"
+      ],
+      "additionalProperties": false
+    },
+    "display": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "sky",
+              "environment",
+              "cloud",
+              "safety",
+              "gps",
+              "battery",
+              "network"
+            ]
+          }
+        },
+        "cycleSeconds": {
+          "type": "number",
+          "minimum": 2,
+          "maximum": 60
+        },
+        "brightness": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "timeoutSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1800
+        },
+        "wakeOnBoot": {
+          "type": "boolean"
+        },
+        "stayOnAtNight": {
+          "type": "boolean"
+        },
+        "rotate180": {
+          "type": "boolean"
+        },
+        "buttonPin": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "enabled",
+        "pages",
+        "cycleSeconds",
+        "brightness",
+        "timeoutSeconds",
+        "wakeOnBoot",
+        "stayOnAtNight",
+        "rotate180",
+        "buttonPin"
+      ],
+      "additionalProperties": false
+    },
+    "battery": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "lowPercent": {
+          "type": "number"
+        },
+        "criticalPercent": {
+          "type": "number"
+        },
+        "shutdownPercent": {
+          "type": "number"
+        },
+        "capacityMah": {
+          "type": "number"
+        },
+        "powerSaving": {
+          "type": "boolean"
+        },
+        "saveReadIntervalSeconds": {
+          "type": "number"
+        },
+        "shutdownGraceSeconds": {
+          "type": "number"
+        },
+        "alertPin": {
+          "type": "number"
+        },
+        "stat1Pin": {
+          "type": "number"
+        },
+        "stat2Pin": {
+          "type": "number"
+        },
+        "pgPin": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "enabled",
+        "lowPercent",
+        "criticalPercent",
+        "shutdownPercent",
+        "capacityMah",
+        "powerSaving",
+        "saveReadIntervalSeconds",
+        "shutdownGraceSeconds",
+        "alertPin",
+        "stat1Pin",
+        "stat2Pin",
+        "pgPin"
       ],
       "additionalProperties": false
     }

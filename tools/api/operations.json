@@ -10,7 +10,7 @@
     { "name": "Updates", "description": "Firmware and web UI updates." },
     { "name": "Language", "description": "The device-wide UI language." },
     { "name": "Bluetooth", "description": "Phone alarm (Bluetooth firmware build only)." },
-    { "name": "Device", "description": "Restart." }
+    { "name": "Device", "description": "Restart, and the optional OLED display." }
   ],
   "operations": {
     "GET /api/status": {
@@ -73,17 +73,77 @@
       "requestBody": { "schema": "config-update" },
       "responses": { "200": "action", "400": "error" }
     },
+    "POST /api/backup": {
+      "tag": "Settings",
+      "summary": "Back up the settings",
+      "description": "The backup file: every setting as `GET /api/config` shows it, with a header. With a `passphrase` (8 characters or more) the passwords, keys and tokens are included encrypted (AES-256-GCM, PBKDF2-HMAC-SHA256); without one the file holds no secret. Answered from a background task: a second or two with a passphrase. Refusals carry a `code`: 400 `passphrase-short`, 409 `busy` while another backup or preview runs, 413 `too-large`.",
+      "requestBody": {
+        "inline": { "type": "object", "properties": { "passphrase": { "type": "string", "minLength": 8 } }, "additionalProperties": false },
+        "example": { "passphrase": "correct horse battery" }
+      },
+      "responses": { "200": "backup", "400": "error", "409": "error", "413": "error", "503": "error" }
+    },
+    "POST /api/backup/preview": {
+      "tag": "Settings",
+      "summary": "Preview a restore",
+      "description": "Reads a backup file (`backup`, its text or its JSON) and, with its `passphrase`, its secrets, and answers what applying would save: the settings (masked), which secrets change, settings this board can't use and why it would restart. Nothing is applied; the `token` binds this preview to `POST /api/backup/apply`. Refused with `code` `not-backup`, `damaged`, `newer-format`, `wrong-passphrase` or `invalid` (the save's own reason in `error`).",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": { "backup": { "description": "The backup file's text, or its JSON." }, "passphrase": { "type": "string" } },
+          "required": ["backup"],
+          "additionalProperties": false
+        },
+        "example": { "backup": "{\"sqmeterBackup\":1,\"firmware\":\"0.3.4-beta.1\",\"board\":\"esp32\",\"build\":\"standard\",\"deviceName\":\"backyard-sqm\",\"settings\":{\"deviceName\":\"backyard-sqm\"}}" }
+      },
+      "responses": { "200": "backup-preview", "400": "error", "409": "error", "413": "error" }
+    },
+    "POST /api/backup/apply": {
+      "tag": "Settings",
+      "summary": "Apply a previewed restore",
+      "description": "Saves exactly the settings the preview with this `token` showed, as one settings save, and restarts the device about 2 s later when `restarting` is true. 409 `stale` when the preview was already applied or replaced, is older than 10 minutes, or the settings changed since: preview again.",
+      "requestBody": {
+        "inline": { "type": "object", "properties": { "token": { "type": "string" } }, "required": ["token"], "additionalProperties": false },
+        "example": { "token": "00112233445566778899aabbccddeeff" }
+      },
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": { "success": { "type": "boolean" }, "restarting": { "type": "boolean" } },
+            "required": ["success", "restarting"]
+          }
+        },
+        "409": "error",
+        "500": "error"
+      }
+    },
     "POST /api/restart": {
       "tag": "Device",
       "summary": "Restart",
       "description": "Restarts the device after answering.",
       "responses": { "200": "action" }
     },
+    "POST /api/display/wake": {
+      "tag": "Device",
+      "summary": "Wake the display",
+      "description": "Turns the OLED display on for its switch-off time (applied within one loop pass). 409 when the display is off in settings, not detected, or off to save power.",
+      "responses": { "200": "action", "409": "error" }
+    },
+    "POST /api/display/blank": {
+      "tag": "Device",
+      "summary": "Blank the display",
+      "description": "Turns the OLED display off now, until the next wake (a restart, a wake request or the wake button). 409 when the display is off in settings or not detected.",
+      "responses": { "200": "action", "409": "error" }
+    },
     "POST /api/sensors/tsl2591/calibrate-dark": {
       "tag": "Sensors",
-      "summary": "Calibrate the light sensor's dark offset",
-      "description": "Stores the current rolling visible count as the dark offset. Cover the sensor first and wait for the averaging window to fill. 409 while it can't give a good offset (no readings yet, not in night mode, window not full).",
-      "responses": { "200": "action", "409": "error" }
+      "summary": "Calibrate a sky sensor's dark offset",
+      "description": "Stores the current rolling visible count as the dark offset of one sky sensor (`sensor`, default the SQM) and writes only that sensor's calibration (`skyCalibration` or `skyCalibrationL`). Cover the sensor first and wait for the averaging window to fill. The answer names the `sensor`. 400 for an unknown `sensor`; 409 while it can't give a good offset (sensor off or not found, no readings yet, not in night mode, window not full).",
+      "parameters": [
+        { "name": "sensor", "in": "query", "description": "`sqm` (default, the wide sensor on I2C-1) or `sqml` (the narrow SQM-L on I2C-2).", "schema": { "type": "string", "enum": ["sqm", "sqml"], "default": "sqm" } }
+      ],
+      "responses": { "200": "action", "400": "error", "409": "error" }
     },
     "POST /api/sensors/rg15/test": {
       "tag": "Sensors",
@@ -127,7 +187,7 @@
     "POST /api/mqtt/test": {
       "tag": "Network",
       "summary": "Test an MQTT broker",
-      "description": "Tries to connect with the given details without saving them.",
+      "description": "Tries to connect with the given details without saving them. A `password` of `********` (the mask settings return) or empty means the saved password, which is only used when broker, port and username match the saved ones; for any other broker a masked password is refused with 400.",
       "requestBody": {
         "inline": {
           "type": "object",
@@ -142,7 +202,7 @@
         },
         "example": { "broker": "192.168.1.10", "port": 1883, "username": "", "password": "", "clientId": "SQM-Test" }
       },
-      "responses": { "200": "action", "502": "error" }
+      "responses": { "200": "action", "400": "error", "502": "error" }
     },
     "POST /api/update": {
       "tag": "Updates",

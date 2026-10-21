@@ -102,8 +102,16 @@ namespace SQM
         const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
         seedAlertEngine();
         const Core::NightState night = computeNight(snapshot, cfg);
-        const Core::AlertSources sources{cfg, obs, night, status};
+        const Core::AlertSources sources{
+            cfg, obs, night, status, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
         Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, millis());
+        if (powerManager != nullptr)
+        {
+            // The power policy's one-shots (spec 032): going to sleep, power restored.
+            in.battery.shutdownStarted = powerManager->takeShutdownStarted();
+            in.battery.powerRestored = powerManager->takePowerRestored();
+            in.battery.recovered = powerManager->takeRecovered();
+        }
         Core::LocalClock clock;
         localClock(clock.time, clock.date);
         watchClients(in, cfg, clock.time);
@@ -167,21 +175,8 @@ namespace SQM
         bleState.sqmValid = obs.skyLight.valid;
         bleState.sqm = obs.skyQualityMagArcsec2;
 
-        StaticJsonDocument<256> summary;
-        auto put = [&summary](const char *key, bool valid, float value)
-        {
-            if (valid)
-                summary[key] = serialized(String(value, 2));
-        };
-        put("sqm", obs.skyLight.valid, obs.skyQualityMagArcsec2);
-        put("cloud", obs.irSky.valid, obs.cloudCoverPercent);
-        put("skyT", obs.irSky.valid, obs.skyTemperatureC);
-        put("temp", obs.environment.valid, obs.temperatureC);
-        put("hum", obs.environment.valid, obs.humidityPercent);
-        put("dew", obs.environment.valid, obs.dewpointC);
-        put("press", obs.environment.valid, obs.pressureHPa);
-        put("wind", obs.wind.valid, obs.windSpeedMs);
-        put("gust", obs.wind.valid, obs.windGustMs);
+        StaticJsonDocument<Core::BLE_SUMMARY_CAPACITY> summary; // + sqmSource (spec 030), battery (spec 032)
+        Core::writeBleSummary(summary.to<JsonObject>(), obs, sources.battery);
         std::string summaryJson;
         serializeJson(summary, summaryJson);
         ble.update(bleState, summaryJson);
@@ -192,8 +187,15 @@ namespace SQM
     void WebServer::sendAlerts(
         const Core::AlertStep &step, const Core::AlertSources &sources, const SensorSnapshot &snapshot, uint32_t epoch)
     {
-        if (step.outgoing.empty() || !alertSchedule.state().sending)
+        if (!alertSchedule.state().sending)
             return;
+        if (step.outgoing.empty())
+        {
+            // The battery rule rings paired phones even with its alert off (spec 032).
+            if (step.ringPhones)
+                ble.raiseAlarm(step.alarmFlags, epoch);
+            return;
+        }
         const Config &cfg = sources.cfg;
         const Alerts::Alert notification = Alerts::stackAlerts(step.outgoing);
         if (cfg.alerts.enabled)
@@ -204,7 +206,7 @@ namespace SQM
                 if (sent.type == Alerts::AlertType::Unsafe || sent.type == Alerts::AlertType::Safe)
                     SafetyHistory::recordAlert(sent.type == Alerts::AlertType::Safe);
         }
-        if (notification.level == Alerts::AlertLevel::Wake)
+        if (notification.level == Alerts::AlertLevel::Wake || step.ringPhones)
             ble.raiseAlarm(step.alarmFlags, epoch);
         else
             ble.raiseInfo(sources.status.reasonFlags, epoch);

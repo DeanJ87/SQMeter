@@ -28,7 +28,7 @@ In the list, the release you're running is marked **installed** and older ones *
 
 Only releases for this device's partition layout are listed: v0.3 and later (files named `sqmeter-l2-*`). A device on v0.2 doesn't see v0.3 here; it moves to it with the [one-time USB flash](../getting-started/usb-flash.md).
 
-The device downloads `sqmeter-l2-firmware-<tag>.bin` and `sqmeter-l2-littlefs-<tag>.bin` from GitHub over HTTPS and flashes both before rebooting - firmware and web UI are updated together as a matched pair. The web UI is written first; the device only switches to the new firmware once that's written and checked, so a failure keeps the old firmware running. A failure after the web UI is written can leave the new web UI with the old firmware until you retry. A release only appears in the list if both files exist for it. On the Bluetooth build the device fetches `sqmeter-l2-ble-firmware-<tag>.bin` instead, so it stays on the Bluetooth build.
+The device downloads `sqmeter-l2-firmware-<tag>.bin` and `sqmeter-l2-littlefs-<tag>.bin` from GitHub over HTTPS and flashes both before rebooting - firmware and web UI are updated together as a matched pair. The web UI is written first; the device only switches to the new firmware once that's written and checked, so a failure keeps the old firmware running. A failure after the web UI is written can leave the new web UI with the old firmware until you retry. A release only appears in the list if both files exist for it. On the Bluetooth build the device fetches `sqmeter-l2-ble-firmware-<tag>.bin` instead, so it stays on the Bluetooth build. An ESP32-S3 board fetches its own files instead: `sqmeter-esp32s3-eth-*`, `sqmeter-esp32s3-zero-*` or `sqmeter-esp32s3-zero8-*` (with `-ble-firmware-` on the Bluetooth build), and refuses an image built for another board's partition layout.
 
 Progress and errors are pushed to the page over the status WebSocket; if the connection to GitHub fails partway through (no internet, DNS, etc.), the device aborts cleanly and keeps running exactly what it was running before - see [How self-update failure handling works](#how-self-update-failure-handling-works) below.
 
@@ -128,7 +128,7 @@ A new firmware is only kept once it has started properly: WiFi, the web server a
 <!-- diagram: DIA-08
 sources: src/OtaUpdater.cpp#OtaUpdater::runApply src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFirmware src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFilesystem lib/ReleaseLogic/ src/OtaUpdater.cpp#OtaUpdater::checkForUpdate
 blocking: false
-fingerprint: 4b6865d62f2e1b9d
+fingerprint: 746988c989546d80
 -->
 <figure class="diagram" markdown>
 

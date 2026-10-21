@@ -3,8 +3,10 @@ import { t } from '../i18n';
 import { alertsConfigSchema } from './alertsSchema';
 import { isIpv6Literal, ntpIpv6Text, parseHost } from '../lib/netAddress';
 
-// Valid ESP32 GPIO pins
-const validGPIOs = [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39];
+import { checkDisplayButton, displayConfigSchema } from './displaySchema';
+import { checkSecondI2c } from './i2cSchema';
+import { batteryConfigSchema, batteryRuleFields, checkBatteryPins } from './batterySchema';
+import { validGPIOs } from './gpio';
 
 export const wifiConfigSchema = z.object({
   // The device refuses a blank network while one is saved (spec 011 FR-009).
@@ -45,6 +47,7 @@ export const mqttConfigSchema = z
         gps: z.boolean(),
         rain: z.boolean(),
         wind: z.boolean(),
+        battery: z.boolean().optional(),
         safety: z.boolean(),
         diagnostics: z.boolean(),
       })
@@ -161,6 +164,8 @@ export const sensorConfigSchema = z
       .int()
       .min(10000, t('validation.configSchema.i2cFrequencyMustBeAt'))
       .max(400000, t('validation.configSchema.i2cFrequencyMustBeAt2')),
+    i2c2SDA: z.number().int().min(0).max(255).optional(),
+    i2c2SCL: z.number().int().min(0).max(255).optional(),
   })
   .refine((data) => data.i2cSDA !== data.i2cSCL, {
     message: t('validation.configSchema.sdaAndSclPinsMust'),
@@ -223,6 +228,7 @@ export const alpacaConfigSchema = z.object({
   windSpeedUnsafeMs: z.number().gt(0, t('validation.configSchema.mustBeAbove0')).max(60, t('validation.configSchema.mustBeAtMost60')),
   windGustUnsafeEnabled: z.boolean(),
   windGustUnsafeMs: z.number().gt(0, t('validation.configSchema.mustBeAbove0')).max(80, t('validation.configSchema.mustBeAtMost80')),
+  ...batteryRuleFields,
 });
 
 export const windConfigSchema = z
@@ -308,6 +314,16 @@ export const configSchema = z
     sensor: sensorConfigSchema,
     skyAveraging: skyAveragingConfigSchema.optional(),
     skyCalibration: skyCalibrationConfigSchema.optional(),
+    sky: z
+      .object({
+        sqmEnabled: z.boolean(),
+        sqmlEnabled: z.boolean(),
+        authoritative: z.enum(['sqm', 'sqml']),
+        showOther: z.boolean(),
+      })
+      .optional(),
+    skyAveragingL: skyAveragingConfigSchema.optional(),
+    skyCalibrationL: skyCalibrationConfigSchema.optional(),
     rain: rainSensorConfigSchema.optional(),
     cloudDetection: cloudDetectionConfigSchema,
     alpaca: alpacaConfigSchema.optional(),
@@ -334,6 +350,8 @@ export const configSchema = z
         showSunMoon: z.boolean().optional(),
       })
       .optional(),
+    display: displayConfigSchema.optional(),
+    battery: batteryConfigSchema.optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.ntp.enabled && !data.gps.enabled) {
@@ -370,7 +388,10 @@ export const configSchema = z
         path: ['secondaryTimeSource'],
       });
     }
-  });
+  })
+  .superRefine((data, ctx) => checkSecondI2c(data, ctx))
+  .superRefine((data, ctx) => checkDisplayButton(data, ctx))
+  .superRefine((data, ctx) => checkBatteryPins(data, ctx));
 
 export type ConfigSchema = z.infer<typeof configSchema>;
 export type ValidationErrors = Record<string, string>;

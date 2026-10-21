@@ -344,6 +344,89 @@
             "uartPort"
           ],
           "additionalProperties": false
+        },
+        "battery": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string"
+            },
+            "vcellRaw": {
+              "type": "number"
+            },
+            "socRaw": {
+              "type": "number"
+            },
+            "crateRaw": {
+              "type": "number"
+            },
+            "statusRaw": {
+              "type": "number"
+            },
+            "resetSeen": {
+              "type": "boolean"
+            },
+            "estimating": {
+              "type": "boolean"
+            },
+            "charger": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "properties": {
+                "stat1": {
+                  "type": "boolean"
+                },
+                "stat2": {
+                  "type": "boolean"
+                },
+                "pg": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "stat1",
+                "stat2",
+                "pg"
+              ],
+              "additionalProperties": false
+            },
+            "gaugeAlert": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "policy": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "saving",
+                "shutdown"
+              ]
+            },
+            "currentMa": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "version",
+            "vcellRaw",
+            "socRaw",
+            "crateRaw",
+            "statusRaw",
+            "resetSeen",
+            "estimating",
+            "charger",
+            "gaugeAlert",
+            "policy",
+            "currentMa"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -709,6 +792,21 @@
             "vaneStatus"
           ],
           "additionalProperties": false
+        },
+        "battery": {
+          "type": "object",
+          "properties": {
+            "ageMs": {
+              "type": "number"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -747,6 +845,92 @@
         "locationSource",
         "nightKnown"
       ],
+      "additionalProperties": false
+    },
+    "skySensors": {
+      "type": "object",
+      "properties": {
+        "sqm": {
+          "type": "object",
+          "properties": {
+            "ageMs": {
+              "type": "number"
+            },
+            "darkVisibleOffset": {
+              "type": "number"
+            },
+            "detected": {
+              "type": "boolean"
+            },
+            "gain": {
+              "type": "string"
+            },
+            "integrationMs": {
+              "type": "number"
+            },
+            "nightMode": {
+              "type": "boolean"
+            },
+            "sampleCount": {
+              "type": "number"
+            },
+            "saturated": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": "string"
+            },
+            "windowSamples": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "detected",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "sqml": {
+          "type": "object",
+          "properties": {
+            "ageMs": {
+              "type": "number"
+            },
+            "darkVisibleOffset": {
+              "type": "number"
+            },
+            "detected": {
+              "type": "boolean"
+            },
+            "gain": {
+              "type": "string"
+            },
+            "integrationMs": {
+              "type": "number"
+            },
+            "nightMode": {
+              "type": "boolean"
+            },
+            "sampleCount": {
+              "type": "number"
+            },
+            "saturated": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": "string"
+            },
+            "windowSamples": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "detected",
+            "status"
+          ],
+          "additionalProperties": false
+        }
+      },
       "additionalProperties": false
     },
     "stackFree": {
@@ -916,6 +1100,131 @@
         "tcpLimit",
         "liveUpdates",
         "alpacaRestoredAfterRestart"
+      ],
+      "additionalProperties": false
+    },
+    "display": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "detected": {
+          "type": "boolean"
+        },
+        "on": {
+          "type": "boolean"
+        },
+        "page": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "sky",
+            "environment",
+            "cloud",
+            "safety",
+            "gps",
+            "battery",
+            "network",
+            null
+          ]
+        },
+        "nightMode": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled",
+        "detected",
+        "on",
+        "page",
+        "nightMode"
+      ],
+      "additionalProperties": false
+    },
+    "battery": {
+      "type": "object",
+      "properties": {
+        "present": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "ageMs": {
+          "type": "number"
+        },
+        "estimating": {
+          "type": "boolean"
+        },
+        "percent": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "voltage": {
+          "type": "number"
+        },
+        "ratePercentPerHour": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "discharging",
+            "charging",
+            "charged",
+            "fault",
+            "no-battery",
+            null
+          ]
+        },
+        "usbPower": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "fault": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "temperature",
+            null
+          ]
+        },
+        "timeToEmptyMinutes": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "timeToFullMinutes": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "powerSaving": {
+          "type": "boolean"
+        },
+        "shutdownInSeconds": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "present"
       ],
       "additionalProperties": false
     }

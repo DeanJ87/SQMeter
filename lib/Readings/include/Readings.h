@@ -4,7 +4,10 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
+
+#include "SensorTypes.h"
 
 namespace SQM
 {
@@ -48,6 +51,26 @@ namespace SQM
             const char *description = "";
             bool calibrated = false;
             uint32_t averagingWindowSeconds = 0;
+        };
+
+        // One sky sensor's own reading (spec 030 FR-008): `skySensors.sqm` / `.sqml`.
+        struct SkySensorEntry
+        {
+            bool present = false; // sensor enabled
+            Status status = Status::Missing;
+            uint32_t ageMs = 0;
+            double sqm = 0.0;
+            double rawSqm = 0.0;
+            double nelm = 0.0;
+            int bortle = 0;
+            const char *description = "";
+            bool calibrated = false;
+            uint32_t averagingWindowSeconds = 0;
+            double lux = 0.0;
+            const char *gain = "";
+            uint32_t integrationMs = 0;
+            bool saturated = false;
+            bool nightMode = false;
         };
 
         struct Environment
@@ -121,39 +144,84 @@ namespace SQM
             bool vaneFault = false;
         };
 
+        // The Li-ion pack (spec 032, contracts/readings.md). Always written in
+        // REST/WebSocket: {"present": false} without a gauge.
+        struct Battery
+        {
+            bool present = false;
+            Status status = Status::Missing; // the gauge's
+            uint32_t ageMs = 0;
+            bool chargerPins = false; // state and usbPower come from the charger, gauge or not
+            bool estimating = false;
+            std::optional<double> percent; // null while estimating
+            double voltage = 0.0;
+            std::optional<double> ratePercentPerHour; // null until 60 s of samples
+            const char *state = nullptr;              // chargeStateName, null when unknown
+            std::optional<bool> usbPower;             // null without the charger pins
+            const char *fault = nullptr;              // "temperature" with state fault
+            std::optional<uint32_t> timeToEmptyMinutes;
+            std::optional<uint32_t> timeToFullMinutes;
+            bool powerSaving = false;
+        };
+
         struct Snapshot
         {
             int64_t timestamp = 0; // Unix seconds, 0 when the clock isn't set
             bool timeValid = false;
             uint32_t dataAgeMs = 0;
             bool dataStale = true;
-            Light light;
-            Sky sky;
+            Light light;                   // the authoritative sky sensor
+            Sky sky;                       // the authoritative sky sensor
+            SkyRole source = SkyRole::Sqm; // sky.source
+            // Each enabled sky sensor, indexed by SkyRole; skySensors.deltaSqm
+            // (SQM-L - SQM) is written when both are ok.
+            SkySensorEntry skySensors[SKY_ROLE_COUNT];
             Environment environment;
             Infrared infrared;
             Clouds clouds;
             Gps gps;
             Rain rain;
             Wind wind;
+            Battery battery;
         };
 
         // Which groups to include (MQTT publish settings). REST/WebSocket use all.
         struct Groups
         {
-            bool sky = true; // light + sky
+            bool sky = true; // light + sky (+ skySensors)
+            // Home Assistant's per-sensor entities (spec 030): that sky
+            // sensor is on. Off by default so a caller that doesn't know the
+            // settings announces only what it always did.
+            bool skySqm = false;
+            bool skySqml = false;
             bool environment = true;
             bool clouds = true; // infrared + clouds
             bool gps = true;
             bool rain = true;
             bool wind = true;
+            bool battery = true; // MQTT: mqtt.publish.battery
+            // Home Assistant's battery entities (spec 032): a gauge present
+            // and mqtt.publish.battery on. Off by default, like skySqm.
+            bool batteryEntities = false;
             // Home Assistant's Alerts switch: only while alerts can go out
             // (specs/020-settings-dependencies D-13).
             bool alertsSwitch = true;
         };
 
+        // ArduinoJson pool for the readings document (REST, WebSocket, MQTT
+        // state): the worst case (every group ok, both sky sensors, the
+        // battery) with 20% headroom, pinned by test/test_readings. REST and
+        // WebSocket add the safety document on top (SAFETY_CAPACITY).
+        constexpr size_t DOC_CAPACITY = 5120;
+        constexpr size_t SAFETY_CAPACITY = 2048;
+        // The MQTT client's buffer: the serialised state must stay below it.
+        constexpr size_t MQTT_PAYLOAD_LIMIT = 3072;
+
         // Writes the document's fields into `root`. Groups of a sensor that isn't
         // ok carry only status (and ageMs) - never zeros that look like readings.
         void write(JsonObject root, const Snapshot &snapshot, const Groups &groups = Groups{});
+        // `parent["battery"]` alone (also /api/status "battery", spec 032).
+        JsonObject writeBattery(JsonObject parent, const Battery &battery);
 
         // Home Assistant MQTT discovery.
         struct DiscoveryDevice

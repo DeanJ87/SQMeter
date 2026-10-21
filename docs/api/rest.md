@@ -76,6 +76,34 @@ curl http://sqmeter.local/api/status
 
 `sensors` lists the built-in sensors (`light`, `environment`, `infrared`) and, when enabled, `gps`, `rain` and `wind`. `status` is `ok`, `missing`, `error` or `stale`. `diagnostics.rain` is only present while the rain sensor is enabled. Readings are in `/api/sensors`.
 
+`sensors.light` and `diagnostics.light` are the authoritative sky sensor (`sky.authoritative`). `skySensors` has an entry per sky sensor that is switched on (spec 030), and is left out when neither is:
+
+```json
+"skySensors": {
+  "sqm":  { "status": "ok", "ageMs": 412, "detected": true, "gain": "MAX", "integrationMs": 600,
+            "saturated": false, "nightMode": true, "sampleCount": 150, "windowSamples": 150, "darkVisibleOffset": 0.0 },
+  "sqml": { "status": "missing", "detected": false }
+}
+```
+
+`detected` means found and answering (`ok` or `stale`); the gain and calibration fields are only there while it is. `ageMs` is left out while `missing`.
+
+`display` is the optional [OLED display](../user-guide/display.md), always present:
+
+```json
+"display": { "enabled": true, "detected": true, "on": true, "page": "sky", "nightMode": false }
+```
+
+`battery` is the travel board's pack (spec 032): the same object as in `/api/sensors`, plus `shutdownInSeconds` while the device is about to sleep. With a fuel gauge, `sensors.battery` has its health (`status`, `ageMs`) and `diagnostics.battery` the raw gauge registers (`version`, `vcellRaw`, `socRaw`, `crateRaw`, `statusRaw`), `resetSeen`, `estimating`, the charger pin levels (`charger: {stat1, stat2, pg}`, `true` = high, `null` without the pins), `gaugeAlert`, the power `policy` (`normal`, `saving`, `shutdown`) and `currentMa` (with a pack capacity set). See [Battery](../user-guide/battery.md).
+
+```json
+"battery": { "present": true, "status": "ok", "ageMs": 1200, "estimating": false, "percent": 4.2, "voltage": 3.412,
+             "ratePercentPerHour": -6.2, "state": "discharging", "usbPower": false, "fault": null,
+             "timeToEmptyMinutes": 41, "timeToFullMinutes": null, "powerSaving": true, "shutdownInSeconds": 18 }
+```
+
+`enabled` is the setting; `detected` means a display answered at `0x3C` (always `false` while it is off in settings, since it isn't probed then); `on` means it is lit now; `page` is the page shown (`sky`, `environment`, `cloud`, `safety`, `gps`, `battery`, `network`), `null` while it is off; `nightMode` means the night layout and minimum brightness are in use (at night, or while night can't be worked out).
+
 ---
 
 ### `GET /api/sensors`
@@ -93,36 +121,47 @@ curl http://sqmeter.local/api/sensors
   "dataAgeMs": 412,
   "dataStale": false,
   "light": { "status": "ok", "ageMs": 400, "lux": 0.0003, "visible": 307, "infrared": 47, "full": 357, "gain": "MAX", "gainFactor": 9876, "integrationMs": 600, "saturated": false, "nightMode": true },
-  "sky": { "status": "ok", "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90 },
+  "sky": { "status": "ok", "source": "sqm", "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90 },
+  "skySensors": {
+    "sqm": { "status": "ok", "ageMs": 400, "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90, "lux": 0.000301, "gain": "MAX", "integrationMs": 600, "saturated": false, "nightMode": true },
+    "sqml": { "status": "ok", "ageMs": 380, "sqm": 21.73, "...": "the same fields" },
+    "deltaSqm": 0.25
+  },
   "environment": { "status": "error", "ageMs": 61000 },
   "infrared": { "status": "ok", "ageMs": 3100, "skyTemperature": -24.7, "ambientTemperature": 12.4 },
   "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "description": "Clear", "temperatureDelta": -37.1, "correctedDelta": -33.0, "humidity": 53, "humiditySource": "assumed" },
+  "battery": { "present": false },
   "safety": { "safe": true, "rawSafe": true, "reasons": [], "reasonFlags": 0, "secondsUntilSafe": 0, "rulesNotInEffect": [], "alpacaEnabled": true, "evaluatedAgeMs": 412, "changedAgeMs": 3600000 }
 }
 ```
 
+`battery` is always there: `{"present": false}` on a board without a fuel gauge (as above), the full group with one ([MQTT → Readings](../user-guide/mqtt.md#readings-basestate), [Battery](../user-guide/battery.md)).
+
 A group whose sensor isn't `ok` carries only `status` and `ageMs` - just `status` when `missing` (like `environment` above).
+
+`light` and `sky` are the authoritative sky sensor; `sky.source` (`sqm` or `sqml`) says which. If it is switched off or not answering they report that sensor's state, never the other sensor's reading. `skySensors` (two sky sensors, spec 030) has each sensor that is switched on under its own name, with the same rules, and `deltaSqm` (SQM-L − SQM) while both are `ok`.
 
 ---
 
 ### `POST /api/sensors/tsl2591/calibrate-dark`
 
-Stores the current rolling TSL2591 visible count as the dark visible offset. Cover the aperture with an opaque cap, wait for the rolling window to fill, then call this endpoint.
+Stores the current rolling TSL2591 visible count as the dark visible offset. Cover the aperture with an opaque cap, wait for the rolling window to fill, then call this endpoint. `?sensor=sqm` (the default) calibrates the SQM and writes `skyCalibration`; `?sensor=sqml` calibrates the SQM-L and writes `skyCalibrationL` only. Any other `sensor` is refused with `400 {"error": "Unknown sky sensor"}`.
 
 ```bash
-curl -X POST http://sqmeter.local/api/sensors/tsl2591/calibrate-dark
+curl -X POST "http://sqmeter.local/api/sensors/tsl2591/calibrate-dark?sensor=sqml"
 ```
 
 ```json
 {
   "success": true,
+  "sensor": "sqml",
   "darkVisibleOffset": 1.5,
   "sampleCount": 138,
   "darkCalibratedAt": 1778171234
 }
 ```
 
-It's refused with `409 {"error": "..."}` while it can't give a good offset: no light-sensor readings yet, the sensor isn't in night mode (it's seeing light), or the averaging window isn't full - then the body also has `sampleCount` and `windowSamples`. `/api/status` → `diagnostics.light` shows `sampleCount`, `windowSamples` and `nightMode` so you can wait for it. `darkCalibratedAt` is Unix seconds, or uptime milliseconds if the clock wasn't set.
+It's refused with `409 {"error": "..."}` while it can't give a good offset: the sensor is switched off or not found, no light-sensor readings yet, the sensor isn't in night mode (it's seeing light), or the averaging window isn't full - then the body also has `sampleCount` and `windowSamples`. `/api/status` → `skySensors.<sensor>` (or `diagnostics.light` for the authoritative one) shows `sampleCount`, `windowSamples` and `nightMode` so you can wait for it. `darkCalibratedAt` is Unix seconds, or uptime milliseconds if the clock wasn't set.
 
 ### `POST /api/sensors/rg15/test`
 
@@ -181,6 +220,61 @@ Successful saves return:
     `POST` is the primary method. The firmware also accepts `PUT` for compatibility with full-resource settings clients.
 
 A setting whose dependency is off is saved as sent and reported inactive by `GET /api/settings/effective`; it isn't rejected. Only combinations that can never work are refused, with the reason in `error` (see [Settings dependencies](../reference/settings-dependencies.md)).
+
+---
+
+### `POST /api/backup`
+
+The settings backup file ([format](../user-guide/configuration.md#backup-restore)): a header and every setting as `GET /api/config` shows it. With `{"passphrase": "..."}` (8 characters or more) the passwords, keys and tokens are added encrypted (AES-256-GCM, PBKDF2-HMAC-SHA256, 20,000 iterations); without one the file holds no secret. An empty body is fine. Needs the password when protection is on.
+
+```bash
+curl -X POST http://sqmeter.local/api/backup -H "Content-Type: application/json" \
+  -d '{"passphrase": "correct horse battery"}' -o backup.json
+```
+
+The key derivation takes a second or two, in a background task: the web server keeps answering. One backup or preview runs at a time (`409`, `"code": "busy"`). Refusals add a `code`: `passphrase-short` (400), `too-large` (413, bodies over 20,480 bytes).
+
+---
+
+### `POST /api/backup/preview`
+
+What restoring a backup would save. Nothing is applied.
+
+```json
+{ "backup": "<the backup file's text, or its JSON>", "passphrase": "correct horse battery" }
+```
+
+```json
+{
+  "token": "4f1c0d7e9a2b3c4d5e6f708192a3b4c5",
+  "backup": { "format": 1, "firmware": "0.3.4-beta.1", "board": "esp32", "build": "ble", "deviceName": "backyard-sqm", "createdAt": "2026-10-18T21:04:05Z" },
+  "settings": { "deviceName": "backyard-sqm", "wifi": { "ssid": "Observatory", "password": "********" } },
+  "secrets": { "state": "restored", "changed": ["wifi.password"], "unchanged": ["mqtt.password"] },
+  "notApplicable": [ { "path": "gps.rxPin", "value": 44, "reason": "pin" } ],
+  "restart": ["wifi"]
+}
+```
+
+`settings` is what applying saves, masked like `GET /api/config` (shortened above). `secrets.state` is `restored` (passphrase right), `kept` (the file has secrets, no passphrase given: this device keeps its own) or `none`. `notApplicable` lists settings this board can't use (`pin`, `analog`, `bluetooth`, `pushover-keys`); they keep this device's values. `restart` says why applying restarts the device (empty: it doesn't). The web UI works out the per-setting differences from `settings`.
+
+Refused with `400` and a `code`: `not-backup`, `damaged`, `newer-format`, `wrong-passphrase` (also when the encrypted part was changed), or `invalid` with the same message a settings save gives. A new preview replaces the previous one.
+
+---
+
+### `POST /api/backup/apply`
+
+Saves exactly what the preview with this token showed, as one settings save.
+
+```bash
+curl -X POST http://sqmeter.local/api/backup/apply -H "Content-Type: application/json" \
+  -d '{"token": "4f1c0d7e9a2b3c4d5e6f708192a3b4c5"}'
+```
+
+```json
+{ "success": true, "restarting": true }
+```
+
+With `restarting`, the device restarts about 2 s later. `409` with `"code": "stale"` when the token was already used or replaced, is more than 10 minutes old, or the settings changed after the preview: preview again.
 
 ---
 
@@ -262,6 +356,18 @@ curl -X POST http://sqmeter.local/api/restart
 
 ---
 
+### `POST /api/display/wake`, `POST /api/display/blank`
+
+Wake the [OLED display](../user-guide/display.md) for its switch-off time, or blank it until the next wake (a restart, a wake request or the wake button). No body; answers `200 {"success": true}` and the display follows within one loop pass. Requires HTTP auth when enabled.
+
+`409 {"error": "Display is off in settings"}`, `409 {"error": "Display not detected"}`, or (wake only, with power saving from spec 032) `409 {"error": "Display is off to save power"}`.
+
+```bash
+curl -X POST http://sqmeter.local/api/display/wake
+```
+
+---
+
 ### `POST /api/update`
 
 OTA firmware update. Send a raw `.bin` file as `multipart/form-data`.
@@ -293,6 +399,8 @@ Both upload endpoints need the password when protection is on. Keep SQMeter on a
 ### `POST /api/mqtt/test`
 
 Tries to connect to a broker with the given details, without saving them: `{"broker": "192.168.1.10", "port": 1883, "username": "", "password": "", "clientId": "SQM-Test"}`. Returns 200 `{"success": true, "message": "Connection successful"}`, or 502 `{"error": "Connection timeout", "state": -4}`.
+
+A `password` of `********` (what `GET /api/config` returns for a saved password) or an empty one means "the saved password", so testing an unchanged form works. The saved password is only used when `broker`, `port` and `username` match the saved settings; a masked password for any other broker returns 400 `{"error": "Type the MQTT password to test a broker other than the saved one"}`, so a saved secret is never sent to another host.
 
 ---
 
@@ -373,7 +481,7 @@ The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clie
 |---|---|
 | `safe` | Reported verdict, after the safe delay |
 | `rawSafe` | Instantaneous rule evaluation, before the safe delay |
-| `reasons` / `reasonFlags` | Why it's unsafe (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault) |
+| `reasons` / `reasonFlags` | Why it's unsafe (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault, 14 battery below the limit, 15 battery data missing, 16 shutting down: battery empty) |
 | `secondsUntilSafe` | Remaining safe-delay countdown while `rawSafe` is true but `safe` isn't yet |
 | `rulesNotInEffect` | Rules switched on but ignored because what they need is off, e.g. `"Unsafe while raining"` (they are listed only while the rain sensor is off). Rules that can't measure their limit (wind, cloud, SQM, humidity) report unsafe instead |
 | `changedAgeMs` | Time since `safe` last changed |
