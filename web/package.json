@@ -34,7 +34,7 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/preact": "^3.2.4",
     "@types/node": "^20.10.6",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.12",
     "ajv": "^8.20.0",
     "autoprefixer": "^10.4.16",
     "eslint": "^9.39.5",
@@ -51,7 +51,7 @@
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.71.1",
     "vite": "8.3.4",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "msw": {
     "workerDirectory": [
