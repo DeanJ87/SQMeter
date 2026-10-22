@@ -96,8 +96,12 @@ jobs:
         run: npx playwright test tests/i18n.spec.ts
         working-directory: web
 
+      # Only on failure: these ran on every push regardless of outcome and
+      # were the single biggest consumer of the account's shared Actions
+      # storage quota (~49MB per run, every run). Nobody looks at a passing
+      # run's screenshots.
       - name: Language screenshots
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v6
         with:
           name: i18n-screenshots
