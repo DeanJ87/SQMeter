@@ -9,7 +9,7 @@ All notable changes to SQMeter are documented here.
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
 
-## [0.4.0-alpha.1] — 2026-10-19
+## [0.4.0-alpha.1] — 2026-11-05
 
 <!-- banner: Two sky sensors | ESP32-S3 boards, OLED and battery | Settings backup and restore -->
 
@@ -32,6 +32,8 @@ An alpha for testers. The ESP32-S3 builds, the OLED display and the battery have
 
 ### Fixed
 
+- **Cloud cover**: the sky delta now uses the BME280's air temperature instead of the MLX90614's own, which the enclosure warms several degrees above the air, so overcast skies no longer read as part clear. The MLX90614's own temperature is the fallback when the BME280 isn't working. If you tuned **Clear below** / **Overcast above**, check them again.
+- **GPS time**: the GPS is now read continuously, so its time and date are parsed (it showed "No GPS time" even with a fix), and GPS time sets the clock correctly in any timezone.
 - **MQTT password**: saving other settings no longer clears the saved MQTT password, and **Test connection** uses the saved one.
 - After a restart the device causes itself (a crash, the watchdog, an update) with an imaging app connected, an app that went away during the restart is now noticed: "Imaging app stopped checking" is sent once its **Silent for** time passes with no request, and "is back" when it checks again.
 
