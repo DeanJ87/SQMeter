@@ -5,6 +5,24 @@
 
 namespace SQM
 {
+    namespace
+    {
+        // Seconds since 1970 for a UTC calendar time. mktime() would read it as
+        // local time and shift it by the configured timezone.
+        time_t utcEpoch(const struct tm &t)
+        {
+            int y = t.tm_year + 1900;
+            const int m = t.tm_mon + 1;
+            y -= m <= 2;
+            const int era = (y >= 0 ? y : y - 399) / 400;
+            const int yoe = y - era * 400;
+            const int doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + t.tm_mday - 1;
+            const int doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+            const int64_t days = static_cast<int64_t>(era) * 146097 + doe - 719468;
+            return static_cast<time_t>(days * 86400 + t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec);
+        }
+    } // namespace
+
     TimeManager::TimeManager(const NTPConfig &ntpCfg, const GPSConfig &gpsCfg, TimeSource primary, TimeSource secondary, GPSSensor *gps)
         : ntpConfig(ntpCfg),
           gpsConfig(gpsCfg),
@@ -172,7 +190,7 @@ namespace SQM
         }
 
         // Set system time from GPS
-        time_t gpsTime = mktime(&timeinfo);
+        time_t gpsTime = utcEpoch(timeinfo);
         struct timeval tv = {.tv_sec = gpsTime, .tv_usec = 0};
         settimeofday(&tv, nullptr);
 

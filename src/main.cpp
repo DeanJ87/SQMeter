@@ -500,6 +500,9 @@ void loop()
     // A change of power state reaches the verdict at once, not at the next (slow) read.
     const bool powerChanged = powerManager->state() != powerBefore;
 
+    // NMEA arrives continuously; drain it every pass, not only at the sensor read.
+    gpsSensor->poll();
+
     // Update slower sensors and publish periodically.
     if (powerChanged || now - lastSensorUpdate >= powerManager->sensorIntervalMs(config))
     {
