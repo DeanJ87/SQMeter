@@ -121,7 +121,7 @@ jobs:
 
       # pioarduino (Arduino-ESP32 3.x) needs PlatformIO Core 6.2 or newer.
       - name: Install PlatformIO and esptool
-        run: pip install "platformio>=6.2" esptool
+        run: pip install "platformio==6.2.0" esptool
 
       # Stamp version.h with the git tag so the firmware reports its release version
       - name: Inject release version
@@ -356,7 +356,7 @@ jobs:
           node-version: '24'
 
       - name: Install PlatformIO
-        run: pip install "platformio>=6.2"
+        run: pip install "platformio==6.2.0"
 
       - name: Inject release version
         if: startsWith(github.ref, 'refs/tags/v')
