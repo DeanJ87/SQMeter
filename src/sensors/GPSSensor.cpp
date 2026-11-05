@@ -18,7 +18,8 @@ namespace SQM
     {
         Logger::info(TAG, "Initializing GPS module (RX: %d, TX: %d, Baud: %d)", rxPin, txPin, baudRate);
 
-        // Initialize hardware serial for GPS
+        // Initialize hardware serial for GPS (the buffer size must be set before begin)
+        serial->setRxBufferSize(RX_BUFFER_BYTES);
         serial->begin(baudRate, SERIAL_8N1, rxPin, txPin);
 
         if (!serial)
@@ -41,40 +42,16 @@ namespace SQM
             return;
         }
 
-        // Read and parse GPS data
-        if (readGPS())
-        {
-            updateReading();
-        }
-        else
-        {
-            reading.status = SensorStatus::ReadError;
-        }
+        poll();
+        updateReading();
     }
 
-    bool GPSSensor::readGPS()
+    void GPSSensor::poll()
     {
-        // Feed TinyGPS with available serial data
-        bool newData = false;
-        unsigned long start = millis();
-
-        // Read for up to 100ms to get fresh data
-        while (millis() - start < 100)
-        {
-            while (serial->available() > 0)
-            {
-                char c = serial->read();
-                if (gps->encode(c))
-                {
-                    newData = true;
-                }
-            }
-
-            if (newData)
-                break;
-        }
-
-        return newData;
+        if (!initialized)
+            return;
+        while (serial->available() > 0)
+            gps->encode(static_cast<char>(serial->read()));
     }
 
     void GPSSensor::updateReading()
@@ -82,7 +59,7 @@ namespace SQM
         reading.timestamp = millis();
 
         // Check if we have a valid location fix
-        if (gps->location.isValid())
+        if (gps->location.isValid() && gps->location.age() < GPS_TIMEOUT_MS)
         {
             reading.hasFix = true;
             reading.latitude = gps->location.lat();
