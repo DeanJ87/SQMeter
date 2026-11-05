@@ -109,6 +109,23 @@ void test_derive_and_readings()
     TEST_ASSERT_FALSE(r.rain.present);
 }
 
+// The cloud delta uses the BME280's air temperature; the MLX's own (case)
+// temperature only when the BME280 isn't working.
+void test_cloud_delta_uses_air_temperature()
+{
+    const uint32_t now = 100000;
+    SensorSnapshot s = healthy(now);
+    s.bme.temperature = 9.4f;
+    s.mlx.objectTemp = 7.5f;
+    s.mlx.ambientTemp = 16.1f;
+    Core::derive(s, defaults());
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, -1.9f, s.cloud.temperatureDelta);
+
+    s.bme.status = SensorStatus::ReadError;
+    Core::derive(s, defaults());
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, -8.6f, s.cloud.temperatureDelta);
+}
+
 void test_missing_stale_and_clock()
 {
     const uint32_t now = 100000;
@@ -505,6 +522,7 @@ int main()
 {
     UNITY_BEGIN();
     RUN_TEST(test_derive_and_readings);
+    RUN_TEST(test_cloud_delta_uses_air_temperature);
     RUN_TEST(test_missing_stale_and_clock);
     RUN_TEST(test_safety_with_safe_delay);
     RUN_TEST(test_safety_lists_rules_not_in_effect);

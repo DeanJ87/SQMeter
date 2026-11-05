@@ -151,9 +151,11 @@ namespace SQM
             Detail::deriveSky(snapshot, cfg);
             snapshot.humidityMeasured = snapshot.bmeInitialized && snapshot.bme.status == SensorStatus::Ok;
             snapshot.cloudHumidity = snapshot.humidityMeasured ? snapshot.bme.humidity : ASSUMED_HUMIDITY_PERCENT;
+            // Sky minus the air temperature: the MLX's own temperature is its case's, which the
+            // enclosure warms, so it is only the fallback when the BME280 isn't working.
             snapshot.cloud = CloudDetection::calculate(
                 snapshot.mlx.objectTemp,
-                snapshot.mlx.ambientTemp,
+                snapshot.humidityMeasured ? snapshot.bme.temperature : snapshot.mlx.ambientTemp,
                 snapshot.cloudHumidity,
                 {cfg.cloudDetection.clearSkyThreshold, cfg.cloudDetection.cloudyThreshold, cfg.cloudDetection.humidityCorrection});
             Detail::deriveBattery(snapshot.battery, cfg);

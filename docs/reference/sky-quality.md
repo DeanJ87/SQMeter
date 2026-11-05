@@ -21,8 +21,9 @@ flowchart TB
     LUXAVG --> SQM["SQM = 12.6 - 2.5 log10 lux"]
     SQM --> NELM["NELM"]
     SQM --> BORTLE["Bortle class"]
-    MLX["MLX90614<br/>sky and its own temperature"] --> DELTA["delta = sky - ambient"]
+    MLX["MLX90614<br/>sky temperature"] --> DELTA["delta = sky - air"]
     BME["BME280<br/>temperature, humidity, pressure"] -->|humidity, or 53% assumed| CORR
+    BME -->|air temperature| DELTA
     DELTA --> CORR["corrected = delta - k/100 x humidity"]
     CORR --> CLOUD["Cloud cover % and condition<br/>from the Clear below and Overcast above limits"]
     BME --> DEW["Dew point, Magnus formula"]
@@ -42,7 +43,7 @@ flowchart TB
         - Visible counts are averaged over the averaging window, the dark offset is subtracted, the result is converted to lux, and the SQM calibration offset is applied if one is set. This is the same in every mode; the average restarts whenever the gain or integration time changes, so it never mixes ranges.
         - Night mode (maximum gain and integration) is reported separately; it changes sensitivity, not the calculation.
     2. **Sky quality**: SQM = 12.6 - 2.5 × log₁₀(lux). NELM and the Bortle class are worked out from the SQM.
-    3. **Cloud**: the MLX90614's sky temperature minus its own (ambient) temperature, corrected for humidity: corrected = delta - (k / 100) × humidity. The BME280's humidity is used, or 53 % when it isn't working. The corrected delta, against the **Clear below** and **Overcast above** limits, gives the cloud cover % and condition.
+    3. **Cloud**: the MLX90614's sky temperature minus the BME280's air temperature (the MLX90614's own temperature when the BME280 isn't working), corrected for humidity: corrected = delta - (k / 100) × humidity. The BME280's humidity is used, or 53 % when it isn't working. The corrected delta, against the **Clear below** and **Overcast above** limits, gives the cloud cover % and condition.
     4. **Dew point**: from the BME280's temperature and humidity (Magnus formula).
     5. Everything goes into **one readings document**, with a status per sensor group. With two sky sensors (SQM and SQM-L) each runs the light chain on its own bus; both values are in the document and the authoritative one is used by Alpaca and the safety rules. The dashboard, REST and WebSocket, MQTT `<base>/state`, the Alpaca ObservingConditions properties, the safety rules and the alerts all use it, so they always agree.
 
@@ -150,12 +151,12 @@ Each class starts at its lower bound (inclusive): SQM 21.99 is class 1, 21.98 cl
 
 ## Cloud Detection (MLX90614)
 
-When an MLX90614 IR thermometer is present, SQMeter estimates cloud cover by comparing sky IR temperature to ambient temperature. A large negative delta (sky much colder than ambient) indicates clear sky. A small delta indicates cloud cover blocking the sky's thermal emission.
+When an MLX90614 IR thermometer is present, SQMeter estimates cloud cover by comparing sky IR temperature to the air temperature from the BME280. The MLX90614's own temperature is used only when the BME280 isn't working: it is the sensor's case temperature, which the enclosure warms. A large negative delta (sky much colder than ambient) indicates clear sky. A small delta indicates cloud cover blocking the sky's thermal emission.
 
 Humid air radiates more, making a clear sky look warmer, so the delta is corrected for humidity before it's classified:
 
 ```
-delta     = sky temperature − ambient temperature
+delta     = sky temperature − air temperature
 corrected = delta − (k / 100) × humidity          (humidity clamped to 0–100 %)
 ```
 
