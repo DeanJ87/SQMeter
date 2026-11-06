@@ -1,6 +1,8 @@
 #include "sensors/GPSSensor.h"
+#include "GpsTime.h"
 #include "Logger.h"
 #include <ArduinoJson.h>
+#include <ctime>
 
 namespace SQM
 {
@@ -153,14 +155,10 @@ namespace SQM
             return false;
         }
 
-        // GPS provides UTC time
-        timeinfo->tm_year = gps->date.year() - 1900; // tm_year is years since 1900
-        timeinfo->tm_mon = gps->date.month() - 1;    // tm_mon is 0-11
-        timeinfo->tm_mday = gps->date.day();
-        timeinfo->tm_hour = gps->time.hour();
-        timeinfo->tm_min = gps->time.minute();
-        timeinfo->tm_sec = gps->time.second();
-        timeinfo->tm_isdst = 0; // GPS time is UTC, no DST
+        // GPS provides UTC time; older receivers report it on a date 1024 weeks early.
+        const time_t epoch = static_cast<time_t>(GpsTime::undoRollover(GpsTime::utcEpoch(
+            {gps->date.year(), gps->date.month(), gps->date.day(), gps->time.hour(), gps->time.minute(), gps->time.second()})));
+        gmtime_r(&epoch, timeinfo);
 
         return true;
     }

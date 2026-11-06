@@ -1,0 +1,46 @@
+#pragma once
+
+// GPS date and time to Unix seconds, with the week-number rollover undone.
+// No hardware headers: shared by the GPS driver and the native tests.
+
+#include <cstdint>
+
+namespace SQM
+{
+    namespace GpsTime
+    {
+        // GPS counts weeks in 10 bits, so its dates repeat every 1024 weeks.
+        // Older receivers (the NEO-6M among them) pick the wrong 1024-week
+        // span and report the right time of day on a date 19.6 years early.
+        constexpr int64_t ROLLOVER_SECONDS = 1024LL * 7 * 86400;
+        // No real fix is older than this (2024-01-01); earlier dates are rolled forward.
+        constexpr int64_t EARLIEST_EPOCH = 1704067200;
+
+        // A UTC calendar date and time (month 1-12, day 1-31), as GPS reports it.
+        struct UtcDateTime
+        {
+            int year, month, day, hour, minute, second;
+        };
+
+        // Seconds since 1970 for a UTC calendar date and time.
+        inline int64_t utcEpoch(const UtcDateTime &t)
+        {
+            const int month = t.month;
+            const int year = t.year - (month <= 2);
+            const int64_t era = (year >= 0 ? year : year - 399) / 400;
+            const int64_t yoe = year - era * 400;
+            const int64_t doy = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + t.day - 1;
+            const int64_t doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+            const int64_t days = era * 146097 + doe - 719468;
+            return days * 86400 + t.hour * 3600 + t.minute * 60 + t.second;
+        }
+
+        // The epoch moved forward in 1024-week steps until it isn't before EARLIEST_EPOCH.
+        inline int64_t undoRollover(int64_t epoch)
+        {
+            while (epoch < EARLIEST_EPOCH)
+                epoch += ROLLOVER_SECONDS;
+            return epoch;
+        }
+    } // namespace GpsTime
+} // namespace SQM
