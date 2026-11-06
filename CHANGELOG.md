@@ -9,6 +9,10 @@ All notable changes to SQMeter are documented here.
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
 
+### Fixed
+
+- **Bluetooth start-up**: Bluetooth now starts 5 seconds after WiFi instead of with it, so their combined start-up current no longer browns out a marginal supply. A new firmware is only kept once Bluetooth has started too; one that restarts before then rolls back.
+
 ## [0.4.0-alpha.2] — 2026-11-06
 
 <!-- banner: Fixed: settings save after upgrading | Fixed: GPS date 19 years early | Security updates -->
