@@ -7,7 +7,7 @@
   sensor didn't answer 502) with `{"error": "message"}`. Never 200 with a failure flag.
 - `GET /api/status` → `sensors`: `{ "<sensor>": { "status", "ageMs" } }` for each present sensor
   (`light`, `environment`, `infrared`, plus `gps`, `rain`, `wind` when enabled; `wind` adds
-  `vaneStatus`). → `diagnostics`: `{ "light": {...}, "rain": {...} }` camelCase, `rain` only when
+  `vaneStatus`, and with the vane on `vaneMagnet` and `vaneAgc`). → `diagnostics`: `{ "light": {...}, "rain": {...} }` camelCase, `rain` only when
   enabled. No duplicated readings (`gpsData` removed).
 - Safety object: `safe` (boolean), `rawSafe`, `reasons`, `reasonFlags`, `secondsUntilSafe`,
   `alpacaEnabled`, `evaluatedAgeMs`, `changedAgeMs`. `GET /api/safe` stays plain `1`/`0`.

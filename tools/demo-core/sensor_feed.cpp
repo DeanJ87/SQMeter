@@ -286,6 +286,8 @@ namespace SQM
             wind.directionValid = cfg.wind.directionEnabled && wind.speedMs > 0.2f;
             wind.directionDeg = w["direction"] | 0.0f;
             wind.vaneFault = false;
+            wind.vaneMagnet = cfg.wind.directionEnabled ? As5600::Magnet::Ok : As5600::Magnet::Off;
+            wind.vaneAgc = 128;
             wind.samples = std::min<uint32_t>(600, (now - bootMs) / 1000);
         }
         else

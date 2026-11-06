@@ -343,10 +343,9 @@ void test_restart_rules_match_the_shared_cases()
 void test_s3_board_pins_from_its_profile()
 {
     // A classic-ESP32 backup restored on an ESP32-S3-ETH (spec 034): its
-    // GPS pins 16/17 exist there, but vane pin 35 is not ADC1 and the W5500
-    // owns 9-14; an unwired SQM-L bus (255) is kept as it is.
+    // GPS pins 16/17 exist there, but the W5500 owns 9-14; an unwired SQM-L
+    // bus (255) is kept as it is.
     Config other = configured();
-    other.wind.directionPin = 35;
     other.display.buttonPin = 12;
     Backup::DeviceInfo s3 = device();
     s3.board = "esp32s3";
@@ -357,7 +356,6 @@ void test_s3_board_pins_from_its_profile()
     for (const auto &n : r.preview.notApplicable)
         paths.push_back(n.path);
     auto has = [&paths](const char *path) { return std::find(paths.begin(), paths.end(), path) != paths.end(); };
-    TEST_ASSERT_TRUE(has("wind.directionPin"));
     TEST_ASSERT_TRUE(has("display.buttonPin"));
     TEST_ASSERT_TRUE(has("sensor.i2cSDA") == !ESP32S3_ETH_PROFILE.isValidGpio(other.sensor.i2cSDA));
     TEST_ASSERT_FALSE(has("sensor.i2c2SDA"));
@@ -369,18 +367,14 @@ void test_pins_this_board_lacks_are_not_applied()
     Config other = configured();
     other.gps.rxPin = 25;
     other.gps.txPin = 26;
-    other.wind.directionPin = 34;
     Backup::DeviceInfo s3 = device();
     s3.pins.validPins &= ~((1ULL << 25) | (1ULL << 26));
-    s3.pins.analogPins &= ~(1ULL << 34);
     const Restore r = restore(configured(), backupOf(other), nullptr, s3);
     TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
-    TEST_ASSERT_EQUAL(3, r.preview.notApplicable.size());
+    TEST_ASSERT_EQUAL(2, r.preview.notApplicable.size());
     TEST_ASSERT_EQUAL_STRING("gps.rxPin", r.preview.notApplicable[0].path.c_str());
     TEST_ASSERT_EQUAL_STRING("25", r.preview.notApplicable[0].value.c_str());
-    TEST_ASSERT_EQUAL(Backup::NotApplicableReason::Analog, r.preview.notApplicable[2].reason);
     TEST_ASSERT_EQUAL(17, r.preview.candidate.gps.rxPin); // this board's value
-    TEST_ASSERT_EQUAL(35, r.preview.candidate.wind.directionPin);
 }
 
 void test_bluetooth_settings_are_not_applied_on_the_standard_build()

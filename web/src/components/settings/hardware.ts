@@ -1,4 +1,4 @@
-import type { Config, SystemStatus } from '../../types';
+import type { Config, SystemStatus, VaneMagnet } from '../../types';
 
 // What the device can actually do right now, derived from the (unsaved)
 // config plus the live /api/status. Settings use this to grey out options
@@ -21,7 +21,7 @@ export interface Hardware {
   environment: SensorAvailability; // BME280
   rain: SensorAvailability; // RG-15
   wind: SensorAvailability; // anemometer
-  windVane: SensorAvailability;
+  windVane: SensorAvailability & { magnet: VaneMagnet | null }; // AS5600 magnet check, null = unknown
   gps: SensorAvailability;
   mqtt: { enabled: boolean; connected: boolean | null };
   bleAvailable: boolean | null;
@@ -48,16 +48,19 @@ const rainAvailability = (config: Config, sensors: Sensors): SensorAvailability 
   };
 };
 
+const vaneAvailability = (config: Config, sensors: Sensors, running: boolean | null): Hardware['windVane'] => ({
+  enabled: (config.wind?.enabled ?? false) && (config.wind?.directionEnabled ?? false),
+  detected: running ? sensors?.wind?.vaneStatus !== 'fault' : null,
+  savedEnabled: running,
+  magnet: running ? (sensors?.wind?.vaneMagnet ?? null) : null,
+});
+
 const windAvailability = (config: Config, sensors: Sensors): Pick<Hardware, 'wind' | 'windVane'> => {
   const running = runningIn(sensors, sensors?.wind);
   const enabled = config.wind?.enabled ?? false;
   return {
     wind: { enabled, detected: running ? sensors?.wind?.status === 'ok' : null, savedEnabled: running },
-    windVane: {
-      enabled: enabled && (config.wind?.directionEnabled ?? false),
-      detected: running ? sensors?.wind?.vaneStatus !== 'fault' : null,
-      savedEnabled: running,
-    },
+    windVane: vaneAvailability(config, sensors, running),
   };
 };
 

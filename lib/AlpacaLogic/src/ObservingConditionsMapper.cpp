@@ -61,7 +61,7 @@ namespace SQM
                 {"skytemperature", &ObservingConditionsSnapshot::irSky, "MLX90614 IR thermometer"},
                 {"starfwhm", nullptr, ""},
                 {"temperature", &ObservingConditionsSnapshot::environment, "BME280 ambient temperature"},
-                {"winddirection", &ObservingConditionsSnapshot::windVane, "Resistor-ladder wind vane, speed-weighted 2 min mean"},
+                {"winddirection", &ObservingConditionsSnapshot::windVane, "AS5600 wind vane, speed-weighted 2 min mean"},
                 {"windgust", &ObservingConditionsSnapshot::wind, "Cup anemometer, peak 3 s mean over 10 min"},
                 {"windspeed", &ObservingConditionsSnapshot::wind, "Cup anemometer, 2 min mean"},
             };

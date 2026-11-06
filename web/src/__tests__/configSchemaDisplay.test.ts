@@ -25,8 +25,9 @@ describe('display settings', () => {
     expect(withDisplay({ buttonPin: 33 })).toEqual({});
     expect(withDisplay({ buttonPin: 7 })['display.buttonPin']).toBe('Display: wake button pin is not a valid GPIO');
     expect(withDisplay({ buttonPin: 21 })['display.buttonPin']).toBe('Display: wake button pin is already in use');
-    // mockConfig has the anemometer on 27 and the vane on 35.
-    expect(withDisplay({ buttonPin: 35 })['display.buttonPin']).toBe('Display: wake button pin is already in use');
+    // mockConfig has the anemometer on 27; the vane is on I2C.
+    expect(withDisplay({ buttonPin: 27 })['display.buttonPin']).toBe('Display: wake button pin is already in use');
+    expect(withDisplay({ buttonPin: 35 })).toEqual({});
     // A clash doesn't matter while the display is off.
     expect(withDisplay({ enabled: false, buttonPin: 21 })).toEqual({});
   });

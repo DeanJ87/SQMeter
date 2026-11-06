@@ -76,6 +76,8 @@ export interface SkySensorHealth {
   darkVisibleOffset?: number;
 }
 
+export type VaneMagnet = 'ok' | 'weak' | 'strong' | 'none' | 'noAnswer';
+
 export interface SystemStatus {
   firmware?: {
     name: string;
@@ -209,7 +211,8 @@ export interface SystemStatus {
     infrared: SensorStatusEntry;
     gps?: SensorStatusEntry;
     rain?: SensorStatusEntry;
-    wind?: SensorStatusEntry & { vaneStatus: 'ok' | 'fault' | 'off' };
+    // vaneMagnet and vaneAgc (the AS5600's gain) only while the vane is on.
+    wind?: SensorStatusEntry & { vaneStatus: 'ok' | 'fault' | 'off'; vaneMagnet?: VaneMagnet; vaneAgc?: number };
     battery?: SensorStatusEntry; // with a gauge (spec 032)
   };
   skySensors?: { sqm?: SkySensorHealth; sqml?: SkySensorHealth };

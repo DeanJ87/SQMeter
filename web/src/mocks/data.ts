@@ -268,7 +268,7 @@ export const mockStatus: SystemStatus = {
     infrared: { status: 'ok', ageMs: 3100 },
     gps: { status: 'ok', ageMs: 800 },
     rain: { status: 'ok', ageMs: 40 },
-    wind: { status: 'ok', ageMs: 900, vaneStatus: 'ok' },
+    wind: { status: 'ok', ageMs: 900, vaneStatus: 'ok', vaneMagnet: 'ok', vaneAgc: 128 },
     battery: { status: 'ok', ageMs: 1200 },
   },
   skySensors: {

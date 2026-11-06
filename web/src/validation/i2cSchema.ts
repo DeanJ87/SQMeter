@@ -11,14 +11,14 @@ interface SecondI2cInput {
   sensor: { i2cSDA: number; i2cSCL: number; i2c2SDA?: number; i2c2SCL?: number };
   gps: { enabled: boolean; rxPin: number; txPin: number };
   rain?: { enabled: boolean; rxPin: number; txPin: number };
-  wind?: { enabled: boolean; speedPin: number; directionEnabled: boolean; directionPin: number };
+  wind?: { enabled: boolean; speedPin: number };
   sky?: { sqmlEnabled: boolean };
 }
 const secondI2cPinsInUse = (data: SecondI2cInput, sda: number, scl: number) => {
   const used = [data.sensor.i2cSDA, data.sensor.i2cSCL];
   if (data.gps.enabled) used.push(data.gps.rxPin, data.gps.txPin);
   if (data.rain?.enabled) used.push(data.rain.rxPin, data.rain.txPin);
-  if (data.wind?.enabled) used.push(data.wind.speedPin, ...(data.wind.directionEnabled ? [data.wind.directionPin] : []));
+  if (data.wind?.enabled) used.push(data.wind.speedPin);
   return used.includes(sda) || used.includes(scl);
 };
 const secondI2cIssue = (data: SecondI2cInput, sda: number, scl: number) => {

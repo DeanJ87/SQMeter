@@ -301,17 +301,8 @@ namespace SQM
             const WindConfig &w = c.wind;
             if (!b.isValidGpio(w.speedPin))
                 return setError(error, "Wind: anemometer pin is not a valid GPIO");
-            if (w.directionEnabled && !b.isAdc1(w.directionPin))
-                return setError(error, std::string("Wind: vane pin must be an ADC1 pin (GPIO ") + b.adc1Pins + ")");
-            for (int pin : busPins(c, true))
-            {
-                if (pin == w.speedPin || (w.directionEnabled && pin == w.directionPin))
-                    return setError(error, "Wind: pin is already used by I2C, GPS or the rain sensor");
-            }
-            if (batteryPinIn(c, w.speedPin) || (w.directionEnabled && batteryPinIn(c, w.directionPin)))
+            if (pinIn(busPins(c, true), w.speedPin) || batteryPinIn(c, w.speedPin))
                 return setError(error, "Wind: pin is already used by I2C, GPS or the rain sensor");
-            if (w.directionEnabled && w.directionPin == w.speedPin)
-                return setError(error, "Wind: anemometer and vane need different pins");
             return true;
         }
 
@@ -323,8 +314,6 @@ namespace SQM
                 return setError(error, "Wind: km/h per Hz must be between 0 and 20");
             if (!inRange(c.wind.directionOffsetDeg, -360.0F, 360.0F))
                 return setError(error, "Wind: direction offset must be between -360 and 360 degrees");
-            if (!inRange(c.wind.vanePullupOhms, 1000.0F, 100000.0F))
-                return setError(error, "Wind: vane pull-up must be between 1k and 100k ohms");
             uint32_t passkey = 0;
             if (!c.ble.passkey.empty() && !Ble::parsePasskey(c.ble.passkey, passkey))
                 return setError(error, "Bluetooth: pairing passkey must be 6 digits (not 000000)");
@@ -359,8 +348,7 @@ namespace SQM
             if (!d.enabled)
                 return false;
             const bool windSpeed = c.wind.enabled && d.buttonPin == c.wind.speedPin;
-            const bool windVane = c.wind.enabled && c.wind.directionEnabled && d.buttonPin == c.wind.directionPin;
-            return pinIn(busPins(c, true), d.buttonPin) || windSpeed || windVane || batteryPinIn(c, d.buttonPin);
+            return pinIn(busPins(c, true), d.buttonPin) || windSpeed || batteryPinIn(c, d.buttonPin);
         }
 
         bool validateDisplay(const Config &c, const BoardProfile &board, std::string *error)
@@ -417,9 +405,8 @@ namespace SQM
         bool batteryPinClashes(const Config &c, int pin)
         {
             const bool windSpeed = c.wind.enabled && pin == c.wind.speedPin;
-            const bool windVane = c.wind.enabled && c.wind.directionEnabled && pin == c.wind.directionPin;
             const bool button = c.display.enabled && c.display.buttonPin != DisplayConfig::BUTTON_UNSET && pin == c.display.buttonPin;
-            return pinIn(busPins(c, true), pin) || windSpeed || windVane || button;
+            return pinIn(busPins(c, true), pin) || windSpeed || button;
         }
 
         // Each wired pin a valid GPIO, none twice.

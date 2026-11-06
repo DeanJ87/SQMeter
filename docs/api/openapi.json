@@ -292,7 +292,9 @@
                     "wind": {
                       "status": "ok",
                       "ageMs": 0,
-                      "vaneStatus": "ok"
+                      "vaneStatus": "ok",
+                      "vaneMagnet": "ok",
+                      "vaneAgc": 128
                     }
                   },
                   "diagnostics": {
@@ -4009,9 +4011,6 @@
               "directionOffsetDeg": {
                 "type": "number"
               },
-              "directionPin": {
-                "type": "number"
-              },
               "enabled": {
                 "type": "boolean"
               },
@@ -4020,19 +4019,14 @@
               },
               "speedPin": {
                 "type": "number"
-              },
-              "vanePullupOhms": {
-                "type": "number"
               }
             },
             "required": [
               "directionEnabled",
               "directionOffsetDeg",
-              "directionPin",
               "enabled",
               "kmhPerHz",
-              "speedPin",
-              "vanePullupOhms"
+              "speedPin"
             ],
             "additionalProperties": false
           },
@@ -5096,9 +5090,6 @@
               "directionOffsetDeg": {
                 "type": "number"
               },
-              "directionPin": {
-                "type": "number"
-              },
               "enabled": {
                 "type": "boolean"
               },
@@ -5106,9 +5097,6 @@
                 "type": "number"
               },
               "speedPin": {
-                "type": "number"
-              },
-              "vanePullupOhms": {
                 "type": "number"
               }
             },
@@ -6878,6 +6866,18 @@
                   },
                   "vaneStatus": {
                     "type": "string"
+                  },
+                  "vaneMagnet": {
+                    "enum": [
+                      "ok",
+                      "weak",
+                      "strong",
+                      "none",
+                      "noAnswer"
+                    ]
+                  },
+                  "vaneAgc": {
+                    "type": "number"
                   }
                 },
                 "required": [

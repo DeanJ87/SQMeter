@@ -259,10 +259,8 @@ namespace SQM
             wind["enabled"] = c.wind.enabled;
             wind["speedPin"] = c.wind.speedPin;
             wind["directionEnabled"] = c.wind.directionEnabled;
-            wind["directionPin"] = c.wind.directionPin;
             wind["kmhPerHz"] = c.wind.kmhPerHz;
             wind["directionOffsetDeg"] = c.wind.directionOffsetDeg;
-            wind["vanePullupOhms"] = c.wind.vanePullupOhms;
         }
 
         void appendDisplay(JsonDocument &doc, const DisplayConfig &d)

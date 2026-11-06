@@ -274,6 +274,8 @@ namespace SQM
                     r.wind.directionValid = cfg.wind.directionEnabled && wind.directionValid;
                     r.wind.direction = wind.directionDeg;
                     r.wind.vaneFault = wind.vaneFault;
+                    r.wind.vaneMagnet = wind.vaneMagnet;
+                    r.wind.vaneAgc = wind.vaneAgc;
                 }
             }
         } // namespace
@@ -374,6 +376,12 @@ namespace SQM
             {
                 JsonObject wind = health("wind", readings.wind.status, readings.wind.ageMs);
                 wind["vaneStatus"] = !cfg.wind.directionEnabled ? "off" : readings.wind.vaneFault ? "fault" : "ok";
+                if (cfg.wind.directionEnabled)
+                {
+                    wind["vaneMagnet"] = As5600::magnetName(readings.wind.vaneMagnet);
+                    if (As5600::hasAngle(readings.wind.vaneMagnet))
+                        wind["vaneAgc"] = readings.wind.vaneAgc;
+                }
             }
             if (readings.battery.present)
                 health("battery", readings.battery.status, readings.battery.ageMs);

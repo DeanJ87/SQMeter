@@ -57,6 +57,10 @@ namespace
             ".timezone",
             ".ntp.gmtOffsetSec",
             ".ntp.daylightOffsetSec",
+            // Dropped in v0.4.0: the vane is an AS5600 on I2C, not a
+            // resistor ladder on an analog pin.
+            ".wind.directionPin",
+            ".wind.vanePullupOhms",
         };
         for (const char *p : PATHS)
             if (path == p)

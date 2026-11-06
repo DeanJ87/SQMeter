@@ -231,27 +231,16 @@ export const alpacaConfigSchema = z.object({
   ...batteryRuleFields,
 });
 
-export const windConfigSchema = z
-  .object({
-    enabled: z.boolean(),
-    speedPin: z
-      .number()
-      .int()
-      .refine((pin) => validGPIOs.includes(pin), { message: t('validation.configSchema.mustBeAValidGpio') }),
-    directionEnabled: z.boolean(),
-    directionPin: z
-      .number()
-      .int()
-      .min(32, t('validation.configSchema.vaneNeedsAnAdc1Pin'))
-      .max(39, t('validation.configSchema.vaneNeedsAnAdc1Pin')),
-    kmhPerHz: z.number().gt(0).max(20),
-    directionOffsetDeg: z.number().min(-360).max(360),
-    vanePullupOhms: z.number().min(1000).max(100000),
-  })
-  .refine((data) => !data.enabled || !data.directionEnabled || data.speedPin !== data.directionPin, {
-    message: t('validation.configSchema.anemometerAndVaneNeedDifferent'),
-    path: ['directionPin'],
-  });
+export const windConfigSchema = z.object({
+  enabled: z.boolean(),
+  speedPin: z
+    .number()
+    .int()
+    .refine((pin) => validGPIOs.includes(pin), { message: t('validation.configSchema.mustBeAValidGpio') }),
+  directionEnabled: z.boolean(),
+  kmhPerHz: z.number().gt(0).max(20),
+  directionOffsetDeg: z.number().min(-360).max(360),
+});
 
 export const rainSensorConfigSchema = z
   .object({

@@ -33,7 +33,6 @@ namespace SQM::Backup
             {"sensor", "i2c2SDA", false, true}, // spec 030
             {"sensor", "i2c2SCL", false, true},
             {"wind", "speedPin", false, false},
-            {"wind", "directionPin", true, false},
             {"display", "buttonPin", false, true}, // spec 031
             {"battery", "alertPin", false, true},  // spec 032
             {"battery", "stat1Pin", false, true},

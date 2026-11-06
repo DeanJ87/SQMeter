@@ -577,6 +577,16 @@
   ],
   "notShown": [
     {
+      "match": "status.sensors.wind.vaneMagnet",
+      "reason": "Wind vane magnet check: the dashboard shows a vane fault, Settings the magnet warnings",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "status.sensors.wind.vaneAgc",
+      "reason": "Wind vane magnet gain, for checking the magnet gap",
+      "shownOn": "API only"
+    },
+    {
       "match": "status.diagnostics.**",
       "reason": "Sensor troubleshooting counters",
       "shownOn": "System"

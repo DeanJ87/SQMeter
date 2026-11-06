@@ -142,6 +142,8 @@ namespace SQM
             bool directionValid = false;
             double direction = 0.0; // degrees, 0 = north
             bool vaneFault = false;
+            As5600::Magnet vaneMagnet = As5600::Magnet::Off; // status only, not in the readings
+            uint8_t vaneAgc = 0;
         };
 
         // The Li-ion pack (spec 032, contracts/readings.md). Always written in

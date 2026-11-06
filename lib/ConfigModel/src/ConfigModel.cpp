@@ -109,10 +109,8 @@ namespace SQM
             cfg.wind.enabled = false;
             cfg.wind.speedPin = board.windSpeed;
             cfg.wind.directionEnabled = false;
-            cfg.wind.directionPin = board.windDirection;
             cfg.wind.kmhPerHz = 2.4f;
             cfg.wind.directionOffsetDeg = 0.0f;
-            cfg.wind.vanePullupOhms = 10000.0f;
 
             cfg.ble.enabled = false;
         }

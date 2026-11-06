@@ -9,6 +9,10 @@ All notable changes to SQMeter are documented here.
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
 
+### Changed
+
+- **Wind vane**: the vane is now an AS5600 magnetic angle sensor on the I²C bus (address `0x36`), replacing the resistor-ladder vane on an analog pin. It reads the exact angle rather than one of 16 positions, and reports a missing, weak or strong magnet: a vane fault when there's no magnet or no answer, a warning in Settings when the magnet is too far or too close. The vane pin and pull-up settings are gone; the north offset is kept. Readings, MQTT, Home Assistant and Alpaca are unchanged.
+
 ### Fixed
 
 - **Bluetooth start-up**: Bluetooth now starts 5 seconds after WiFi instead of with it, so their combined start-up current no longer browns out a marginal supply. A new firmware is only kept once Bluetooth has started too; one that restarts before then rolls back.

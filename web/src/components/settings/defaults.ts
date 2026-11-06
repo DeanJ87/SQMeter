@@ -66,10 +66,8 @@ export const defaultWindConfig: WindConfig = {
   enabled: false,
   speedPin: 27,
   directionEnabled: false,
-  directionPin: 35,
   kmhPerHz: 2.4,
   directionOffsetDeg: 0,
-  vanePullupOhms: 10000,
 };
 
 export const defaultDisplayConfig: DisplayConfig = {

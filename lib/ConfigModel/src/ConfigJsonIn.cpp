@@ -461,10 +461,8 @@ namespace SQM
             wind.take("enabled", cfg.wind.enabled);
             wind.take("speedPin", cfg.wind.speedPin);
             wind.take("directionEnabled", cfg.wind.directionEnabled);
-            wind.take("directionPin", cfg.wind.directionPin);
             wind.take("kmhPerHz", cfg.wind.kmhPerHz);
             wind.take("directionOffsetDeg", cfg.wind.directionOffsetDeg);
-            wind.take("vanePullupOhms", cfg.wind.vanePullupOhms);
 
             const Section ble = doc.child("ble");
             ble.take("enabled", cfg.ble.enabled);

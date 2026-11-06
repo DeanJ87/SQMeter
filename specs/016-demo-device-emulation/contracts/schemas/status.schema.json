@@ -784,6 +784,12 @@
             },
             "vaneStatus": {
               "type": "string"
+            },
+            "vaneMagnet": {
+              "enum": ["ok", "weak", "strong", "none", "noAnswer"]
+            },
+            "vaneAgc": {
+              "type": "number"
             }
           },
           "required": [

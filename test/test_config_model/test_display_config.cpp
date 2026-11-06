@@ -198,11 +198,9 @@ void test_display_button_pin_validation()
     TEST_ASSERT_EQUAL_STRING("", displayReject("{\"gps\":{\"enabled\":false},\"display\":{\"buttonPin\":17}}", on).c_str());
     TEST_ASSERT_EQUAL_STRING(PIN_USED_MSG, displayReject("{\"gps\":{\"enabled\":true},\"display\":{\"buttonPin\":17}}", on).c_str());
     TEST_ASSERT_EQUAL_STRING(PIN_USED_MSG, displayReject("{\"rain\":{\"enabled\":true},\"display\":{\"buttonPin\":19}}", on).c_str());
-    // Anemometer and vane.
+    // The anemometer (the vane is on I2C-1).
     TEST_ASSERT_EQUAL_STRING("", displayReject("{\"wind\":{\"enabled\":false},\"display\":{\"buttonPin\":27}}", on).c_str());
     TEST_ASSERT_EQUAL_STRING(PIN_USED_MSG, displayReject("{\"wind\":{\"enabled\":true},\"display\":{\"buttonPin\":27}}", on).c_str());
-    TEST_ASSERT_EQUAL_STRING(
-        PIN_USED_MSG, displayReject("{\"wind\":{\"enabled\":true,\"directionEnabled\":true},\"display\":{\"buttonPin\":35}}", on).c_str());
     // A clash doesn't matter while the display is off.
     TEST_ASSERT_EQUAL_STRING("", displayReject("{\"display\":{\"buttonPin\":21}}").c_str());
 }

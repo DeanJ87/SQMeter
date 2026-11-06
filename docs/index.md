@@ -55,7 +55,7 @@ flowchart LR
     - **Sensors** (into the ESP32):
         - TSL2591 sky brightness, MLX90614 IR sky temperature and BME280 air temperature, humidity and pressure, on the I²C bus.
         - Optional GPS (location and time) and RG-15 rain gauge on serial (UART).
-        - Optional anemometer (pulses) and wind vane (analogue).
+        - Optional anemometer (pulses) and AS5600 wind vane (I²C).
         - On the ESP32-S3 boards: an optional OLED display and Li-ion battery fuel gauge on I²C.
     - **The ESP32** works out the readings, cloud cover, the safety verdict and alerts. It keeps its settings in NVS and the web UI's files in LittleFS.
     - **Outputs:**
