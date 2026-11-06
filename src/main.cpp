@@ -429,10 +429,6 @@ void setup()
     // while starting must fall back to the previous one.
     abort();
 #endif
-    // Spec 027 FR-021: a new firmware is only kept once it has started
-    // properly; one that fails before this point rolls back on its next boot.
-    esp_ota_mark_app_valid_cancel_rollback();
-
     Logger::info("Main", "=== Setup complete ===");
     Logger::info("Main", "IP Address: %s", wifiManager->getIPAddress().c_str());
     Logger::info("Main", "MAC Address: %s", wifiManager->getMACAddress().c_str());
@@ -471,6 +467,16 @@ void loop()
 
     // Handle web server
     webServer->handle();
+
+    // Spec 027 FR-021: a new firmware is only kept once it has started
+    // properly, Bluetooth included (it starts a few seconds after setup);
+    // one that fails before this point rolls back on its next boot.
+    static bool firmwareConfirmed = false;
+    if (!firmwareConfirmed && !webServer->isBleStartPending())
+    {
+        esp_ota_mark_app_valid_cancel_rollback();
+        firmwareConfirmed = true;
+    }
 
     // Handle MQTT
     if (mqttClient)
