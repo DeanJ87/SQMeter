@@ -19,6 +19,21 @@ namespace SQM
     // The battery events (Config::AlertsPart::Battery, spec 032).
     static const char *NVS_ALERTS_BATTERY_KEY = "alertsBatt";
 
+    // Each document is stored as a blob under these keys. An NVS string must
+    // fit in one 4 KB page, and on a device whose pages are already part used
+    // (any device upgraded from older firmware) there's often no single page
+    // with room for the ~3 KB config, so the save failed; a blob can span
+    // pages. The string keys above are only read, to carry older settings over.
+    struct StoredDoc
+    {
+        const char *blobKey;
+        const char *legacyKey;
+    };
+    static const StoredDoc DOC_CONFIG{"configB", NVS_CONFIG_KEY};
+    static const StoredDoc DOC_ALERTS{"alertsB", NVS_ALERTS_KEY};
+    static const StoredDoc DOC_ALERTS_CLIENT{"alertclientB", NVS_ALERTS_CLIENT_KEY};
+    static const StoredDoc DOC_ALERTS_BATTERY{"alertsBattB", NVS_ALERTS_BATTERY_KEY};
+
     namespace
     {
         // Reads an NVS string straight into heap memory. Preferences::getString()
@@ -41,22 +56,52 @@ namespace SQM
             return ok;
         }
 
-        size_t nvsStringLength(const char *key)
+        // Reads a blob straight into heap memory, like readNvsString.
+        bool readNvsBlob(const char *key, std::string &out)
         {
             nvs_handle_t handle;
             if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK)
-                return 0;
+                return false;
             size_t length = 0;
-            if (nvs_get_str(handle, key, nullptr, &length) != ESP_OK)
-                length = 0;
+            bool ok = nvs_get_blob(handle, key, nullptr, &length) == ESP_OK && length > 0;
+            if (ok)
+            {
+                out.assign(length, '\0');
+                ok = nvs_get_blob(handle, key, &out[0], &length) == ESP_OK;
+                out.resize(length);
+            }
             nvs_close(handle);
-            return length > 0 ? length - 1 : 0;
+            return ok;
         }
+
+        // The stored document: the blob, or the string older firmware wrote.
+        bool readDoc(const StoredDoc &doc, std::string &out)
+        {
+            return readNvsBlob(doc.blobKey, out) || readNvsString(doc.legacyKey, out);
+        }
+
+        // Writes the document as a blob and drops the string older firmware
+        // wrote, freeing its page space. An empty document removes both.
+        bool writeDoc(Preferences &prefs, const StoredDoc &doc, const std::string &json)
+        {
+            bool ok;
+            if (json.empty())
+            {
+                prefs.remove(doc.blobKey);
+                ok = true;
+            }
+            else
+                ok = prefs.putBytes(doc.blobKey, json.data(), json.size()) == json.size();
+            if (ok && prefs.isKey(doc.legacyKey))
+                prefs.remove(doc.legacyKey);
+            return ok;
+        }
+
         // A stored alerts part, or "" when there is none.
-        std::string readStoredPart(const char *key)
+        std::string readStoredPart(const StoredDoc &doc)
         {
             std::string part;
-            if (!readNvsString(key, part))
+            if (!readDoc(doc, part))
                 part.clear();
             return part;
         }
@@ -67,7 +112,7 @@ namespace SQM
         Logger::info(TAG, "Loading configuration from NVS");
 
         std::string json;
-        if (!readNvsString(NVS_CONFIG_KEY, json) || json.empty())
+        if (!readDoc(DOC_CONFIG, json) || json.empty())
         {
             Logger::warn(TAG, "No config found in NVS, creating default");
             out = createDefault();
@@ -84,9 +129,9 @@ namespace SQM
 
         // Alerts live under their own NVS keys; splice them into the main
         // document and parse once, straight into the caller's Config.
-        const std::string alertsJson = readStoredPart(NVS_ALERTS_KEY);
-        const std::string clientJson = readStoredPart(NVS_ALERTS_CLIENT_KEY);
-        const std::string batteryJson = readStoredPart(NVS_ALERTS_BATTERY_KEY);
+        const std::string alertsJson = readStoredPart(DOC_ALERTS);
+        const std::string clientJson = readStoredPart(DOC_ALERTS_CLIENT);
+        const std::string batteryJson = readStoredPart(DOC_ALERTS_BATTERY);
         const bool haveParts = !alertsJson.empty() || !clientJson.empty() || !batteryJson.empty();
         const std::string spliced = spliceStored(json, alertsJson, clientJson, batteryJson);
 
@@ -149,27 +194,24 @@ namespace SQM
             return false;
         }
 
-        size_t written = prefs.putString(NVS_CONFIG_KEY, json.c_str());
-        const size_t alertsWritten = prefs.putString(NVS_ALERTS_KEY, alertsJson.c_str());
-        const size_t clientWritten = prefs.putString(NVS_ALERTS_CLIENT_KEY, clientJson.c_str());
-        const size_t batteryWritten = prefs.putString(NVS_ALERTS_BATTERY_KEY, batteryJson.c_str());
+        const bool alertsOk = writeDoc(prefs, DOC_ALERTS, alertsJson) && writeDoc(prefs, DOC_ALERTS_CLIENT, clientJson) &&
+                              writeDoc(prefs, DOC_ALERTS_BATTERY, batteryJson);
+        const bool configOk = writeDoc(prefs, DOC_CONFIG, json);
         prefs.end();
 
-        if (alertsWritten == 0 || clientWritten == 0 || batteryWritten == 0)
+        if (!alertsOk)
         {
             Logger::error(TAG, "Failed to write alerts config to NVS");
             return false;
         }
 
-        if (written == 0)
+        if (!configOk)
         {
             Logger::error(TAG, "Failed to write config to NVS");
             return false;
         }
 
-        Logger::info(TAG, "Configuration saved successfully to NVS (%u bytes)", static_cast<unsigned>(written));
-
-        Logger::info(TAG, "Verification: NVS contains %u bytes", static_cast<unsigned>(nvsStringLength(NVS_CONFIG_KEY)));
+        Logger::info(TAG, "Configuration saved successfully to NVS (%u bytes)", static_cast<unsigned>(json.size()));
 
         return true;
     }
