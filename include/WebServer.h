@@ -100,6 +100,8 @@ namespace SQM
 
         // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
         bool isWifiConnectPending() const { return wifiConnectActive; }
+        // Bluetooth is switched on but hasn't started yet (see startBle()).
+        bool isBleStartPending() const { return bleStartPending; }
         static bool scheduleRestart(uint32_t delayMs);
 
     private:
@@ -164,6 +166,8 @@ namespace SQM
         void restoreAlertSchedule();
         void subscribeArmCommands();
         void startBle();
+        void startPendingBle(uint32_t now);
+        void sendPendingAlertTest();
         void startAlpacaDiscovery();
         static void handleNotFound(AsyncWebServerRequest *request);
         // The Alpaca HTTP API lives in lib/AlpacaLogic (Alpaca::Router) so the
@@ -194,6 +198,11 @@ namespace SQM
         SemaphoreHandle_t safetyMutex = xSemaphoreCreateMutex();
         TaskHandle_t loopTaskHandle = nullptr;
         uint32_t lastSafetyEvaluation = 0;
+        // Bluetooth starts this long after begin(), not alongside WiFi: their
+        // combined start-up current browns out a marginal supply.
+        static constexpr uint32_t BLE_START_DELAY_MS = 5000;
+        bool bleStartPending = false;
+        uint32_t bleStartAt = 0;
         static constexpr uint32_t SAFETY_EVALUATION_INTERVAL_MS = 1000;
         void updateSafetyStatus();
 

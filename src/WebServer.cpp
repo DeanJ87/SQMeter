@@ -225,6 +225,15 @@ namespace SQM
             HeapTrace::mark("bluetooth memory released");
             return;
         }
+        bleStartPending = true;
+        bleStartAt = millis();
+    }
+
+    void WebServer::startPendingBle(uint32_t now)
+    {
+        if (!bleStartPending || now - bleStartAt < BLE_START_DELAY_MS)
+            return;
+        bleStartPending = false;
         ble.begin(getConfigCallback().deviceName, getConfigCallback().ble.passkey);
         HeapTrace::mark("bluetooth");
     }
@@ -296,6 +305,38 @@ namespace SQM
         alpacaIpv6Pending = !Ipv6Network::joinAlpacaDiscoveryGroup();
     }
 
+    // Sends the test alert an HTTP handler queued (loop task).
+    void WebServer::sendPendingAlertTest()
+    {
+        PendingAlertTest pendingTest;
+        portENTER_CRITICAL(&pendingAlertTestLock);
+        pendingTest = pendingAlertTest;
+        pendingAlertTest.mask = 0;
+        portEXIT_CRITICAL(&pendingAlertTestLock);
+        if (pendingTest.mask == 0)
+            return;
+
+        const Config &cfg = getConfigCallback();
+        const Core::SampleAlert *sample = pendingTest.sample;
+        Core::LocalClock clock;
+        localClock(clock.time, clock.date);
+        const SafetyStatus safety = getSafetyStatus();
+        const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
+        const SensorSnapshot snapshot = getSensorSnapshot();
+        const Core::NightState night = computeNight(snapshot, cfg);
+        const Core::TestWording wording{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
+        const Core::AlertSources sources{
+            cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
+        const Alerts::Alert test = Core::buildTestAlert(sample, wording, sources, clock);
+        if (sample != nullptr && test.level == Alerts::AlertLevel::Wake)
+        {
+            const time_t wallClock = time(nullptr);
+            ble.raiseAlarm(sample->bleFlags, wallClock >= Core::CLOCK_VALID_EPOCH ? static_cast<uint32_t>(wallClock) : 0);
+        }
+        if (pendingTest.mask != BLE_ONLY_TEST)
+            alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, pendingTest.mask, channelBlocks(getSensorSnapshot()));
+    }
+
     void WebServer::handle()
     {
         capWebSocketClients(wsSensors);
@@ -307,6 +348,7 @@ namespace SQM
         const uint32_t now = millis();
 
         applyPendingArm();
+        startPendingBle(now);
         retryAlpacaIpv6Discovery(now);
         if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
             publishArmedState();
@@ -318,33 +360,7 @@ namespace SQM
             lastSafetyEvaluation = now;
         }
 
-        PendingAlertTest pendingTest;
-        portENTER_CRITICAL(&pendingAlertTestLock);
-        pendingTest = pendingAlertTest;
-        pendingAlertTest.mask = 0;
-        portEXIT_CRITICAL(&pendingAlertTestLock);
-        if (pendingTest.mask != 0)
-        {
-            const Config &cfg = getConfigCallback();
-            const Core::SampleAlert *sample = pendingTest.sample;
-            Core::LocalClock clock;
-            localClock(clock.time, clock.date);
-            const SafetyStatus safety = getSafetyStatus();
-            const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
-            const SensorSnapshot snapshot = getSensorSnapshot();
-            const Core::NightState night = computeNight(snapshot, cfg);
-            const Core::TestWording wording{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
-            const Core::AlertSources sources{
-                cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
-            const Alerts::Alert test = Core::buildTestAlert(sample, wording, sources, clock);
-            if (sample != nullptr && test.level == Alerts::AlertLevel::Wake)
-            {
-                const time_t wallClock = time(nullptr);
-                ble.raiseAlarm(sample->bleFlags, wallClock >= Core::CLOCK_VALID_EPOCH ? static_cast<uint32_t>(wallClock) : 0);
-            }
-            if (pendingTest.mask != BLE_ONLY_TEST)
-                alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, pendingTest.mask, channelBlocks(getSensorSnapshot()));
-        }
+        sendPendingAlertTest();
 
         // Broadcast sensor data every 1 second (for Dashboard)
         if (now - lastSensorBroadcast >= WS_SENSOR_BROADCAST_INTERVAL_MS)
