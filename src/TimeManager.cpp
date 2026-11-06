@@ -174,7 +174,7 @@ namespace SQM
 
         // Set system time from GPS
         time_t gpsTime = static_cast<time_t>(GpsTime::utcEpoch(
-            timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec));
+            {timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec}));
         struct timeval tv = {.tv_sec = gpsTime, .tv_usec = 0};
         settimeofday(&tv, nullptr);
 

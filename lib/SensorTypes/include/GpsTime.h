@@ -16,16 +16,23 @@ namespace SQM
         // No real fix is older than this (2024-01-01); earlier dates are rolled forward.
         constexpr int64_t EARLIEST_EPOCH = 1704067200;
 
-        // Seconds since 1970 for a UTC calendar date (month 1-12, day 1-31).
-        inline int64_t utcEpoch(int year, int month, int day, int hour, int minute, int second)
+        // A UTC calendar date and time (month 1-12, day 1-31), as GPS reports it.
+        struct UtcDateTime
         {
-            year -= month <= 2;
+            int year, month, day, hour, minute, second;
+        };
+
+        // Seconds since 1970 for a UTC calendar date and time.
+        inline int64_t utcEpoch(const UtcDateTime &t)
+        {
+            const int month = t.month;
+            const int year = t.year - (month <= 2);
             const int64_t era = (year >= 0 ? year : year - 399) / 400;
             const int64_t yoe = year - era * 400;
-            const int64_t doy = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + day - 1;
+            const int64_t doy = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + t.day - 1;
             const int64_t doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
             const int64_t days = era * 146097 + doe - 719468;
-            return days * 86400 + hour * 3600 + minute * 60 + second;
+            return days * 86400 + t.hour * 3600 + t.minute * 60 + t.second;
         }
 
         // The epoch moved forward in 1024-week steps until it isn't before EARLIEST_EPOCH.

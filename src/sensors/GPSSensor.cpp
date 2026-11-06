@@ -157,7 +157,7 @@ namespace SQM
 
         // GPS provides UTC time; older receivers report it on a date 1024 weeks early.
         const time_t epoch = static_cast<time_t>(GpsTime::undoRollover(GpsTime::utcEpoch(
-            gps->date.year(), gps->date.month(), gps->date.day(), gps->time.hour(), gps->time.minute(), gps->time.second())));
+            {gps->date.year(), gps->date.month(), gps->date.day(), gps->time.hour(), gps->time.minute(), gps->time.second()})));
         gmtime_r(&epoch, timeinfo);
 
         return true;
