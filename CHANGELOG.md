@@ -9,6 +9,21 @@ All notable changes to SQMeter are documented here.
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
 
+## [0.4.0-alpha.2] — 2026-11-06
+
+<!-- banner: Fixed: settings save after upgrading | Fixed: GPS date 19 years early | Security updates -->
+
+An alpha for testers, replacing 0.4.0-alpha.1: on a device upgraded from 0.3 or earlier, alpha.1 couldn't save settings.
+
+### Fixed
+
+- **Settings save after upgrading**: on a device with a lot of saved settings (typically one upgraded from 0.3 or earlier), saving failed with "Failed to save configuration". Settings are now stored in a format without the size limit, and existing settings are moved over on the first save.
+- **GPS date**: older GPS receivers (the NEO-6M among them) report the right time of day on a date 1024 weeks (19.6 years) early, such as 2007 instead of 2026. The date is now corrected, so GPS time and the clock it sets are right.
+
+### Security
+
+- Updated web UI dependencies with published security advisories (zod, DOMPurify, undici, fast-uri, minimatch). Most are only used to build and test the web UI and docs; zod is part of the device's web UI.
+
 ## [0.4.0-alpha.1] — 2026-11-05
 
 <!-- banner: Two sky sensors | ESP32-S3 boards, OLED and battery | Settings backup and restore -->
