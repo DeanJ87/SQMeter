@@ -1,6 +1,8 @@
 #include <unity.h>
+#include "As5600.h"
 #include "WindAggregator.h"
 
+using namespace SQM;
 using namespace SQM::Wind;
 
 void setUp(void) {}
@@ -70,19 +72,26 @@ void test_direction_ignores_calm_and_missing_vane(void)
     TEST_ASSERT_FLOAT_WITHIN(0.1f, 270.0f, dir);
 }
 
-void test_vane_lookup(void)
+void test_as5600_angle(void)
 {
-    float dir = -1.0f;
-    // 10k pull-up: 120k (270 deg) -> 120/130
-    TEST_ASSERT_TRUE(vaneDirectionFromRatio(120.0f / 130.0f, 10000.0f, dir));
-    TEST_ASSERT_EQUAL_FLOAT(270.0f, dir);
-    // 3.9k (180 deg)
-    TEST_ASSERT_TRUE(vaneDirectionFromRatio(3.9f / 13.9f, 10000.0f, dir));
-    TEST_ASSERT_EQUAL_FLOAT(180.0f, dir);
-    // Open circuit reads ~full scale - not a vane position
-    TEST_ASSERT_FALSE(vaneDirectionFromRatio(0.995f, 10000.0f, dir));
-    // Short to ground
-    TEST_ASSERT_FALSE(vaneDirectionFromRatio(0.0f, 10000.0f, dir));
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, As5600::angleDeg(0x00, 0x00));
+    TEST_ASSERT_EQUAL_FLOAT(90.0f, As5600::angleDeg(0x04, 0x00));
+    TEST_ASSERT_EQUAL_FLOAT(180.0f, As5600::angleDeg(0x08, 0x00));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 359.912f, As5600::angleDeg(0x0F, 0xFF));
+    // The unused top bits of the high byte are ignored
+    TEST_ASSERT_EQUAL_FLOAT(90.0f, As5600::angleDeg(0xF4, 0x00));
+}
+
+void test_as5600_magnet_status(void)
+{
+    TEST_ASSERT_EQUAL(As5600::Magnet::None, As5600::magnetFromStatus(0x00));
+    TEST_ASSERT_EQUAL(As5600::Magnet::None, As5600::magnetFromStatus(0x10)); // weak bit without a magnet
+    TEST_ASSERT_EQUAL(As5600::Magnet::Ok, As5600::magnetFromStatus(0x20));
+    TEST_ASSERT_EQUAL(As5600::Magnet::Weak, As5600::magnetFromStatus(0x30));
+    TEST_ASSERT_EQUAL(As5600::Magnet::Strong, As5600::magnetFromStatus(0x28));
+    TEST_ASSERT_TRUE(As5600::hasAngle(As5600::Magnet::Weak));
+    TEST_ASSERT_FALSE(As5600::hasAngle(As5600::Magnet::None));
+    TEST_ASSERT_FALSE(As5600::hasAngle(As5600::Magnet::NoAnswer));
 }
 
 int main(int argc, char **argv)
@@ -94,6 +103,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_gust_window_expires_after_ten_minutes);
     RUN_TEST(test_direction_circular_mean_wraps_north);
     RUN_TEST(test_direction_ignores_calm_and_missing_vane);
-    RUN_TEST(test_vane_lookup);
+    RUN_TEST(test_as5600_angle);
+    RUN_TEST(test_as5600_magnet_status);
     return UNITY_END();
 }

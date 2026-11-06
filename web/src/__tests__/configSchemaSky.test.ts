@@ -30,12 +30,10 @@ describe('second I2C bus and SQM-L', () => {
     const gps = { ...mockConfig.gps, enabled: true, rxPin: 17, txPin: 16 };
     expect(withSky({ i2c2SDA: 17, i2c2SCL: 26 }, false, { gps })['sensor.i2c2SDA']).toBe('Second I2C bus pins are already in use');
   });
-  it('rejects pins the anemometer or vane uses, as the device does', () => {
-    const wind = { ...mockConfig.wind!, enabled: true, speedPin: 27, directionEnabled: true, directionPin: 34 };
+  it('rejects the anemometer pin, as the device does', () => {
+    const wind = { ...mockConfig.wind!, enabled: true, speedPin: 27 };
     expect(withSky({ i2c2SDA: 27, i2c2SCL: 26 }, false, { wind })['sensor.i2c2SDA']).toBe('Second I2C bus pins are already in use');
-    expect(withSky({ i2c2SDA: 25, i2c2SCL: 34 }, false, { wind })['sensor.i2c2SDA']).toBe('Second I2C bus pins are already in use');
-    // A switched-off anemometer or vane frees its pins.
-    expect(withSky({ i2c2SDA: 25, i2c2SCL: 34 }, false, { wind: { ...wind, directionEnabled: false } })).toEqual({});
+    // A switched-off anemometer frees its pin.
     expect(withSky({ i2c2SDA: 27, i2c2SCL: 26 }, false, { wind: { ...wind, enabled: false } })).toEqual({});
   });
   it('needs the pins for the SQM-L', () => {

@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 
+#include "As5600.h"
 #include "BatteryLogic.h"
 
 namespace SQM
@@ -366,8 +367,10 @@ namespace SQM
         float instantMs = 0.0f;    // last 1 s
         float directionDeg = 0.0f; // 0 = North, clockwise; valid only when directionValid
         bool directionValid = false;
-        bool vaneFault = false; // vane enabled but its reading matches no position
-        uint32_t samples = 0;   // seconds of history (up to 600)
+        bool vaneFault = false; // vane enabled but no angle for 10 s (no answer, no magnet)
+        As5600::Magnet vaneMagnet = As5600::Magnet::Off;
+        uint8_t vaneAgc = 0;  // AS5600 gain: rises as the magnet moves away
+        uint32_t samples = 0; // seconds of history (up to 600)
 
         WindReading()
         {

@@ -49,11 +49,5 @@ namespace SQM
             size_t indexBack(size_t i) const { return (head + HISTORY_SECONDS - 1 - i) % HISTORY_SECONDS; }
         };
 
-        // Misol/Argent-style resistor-ladder vane with a pull-up to the ADC
-        // reference: maps the measured ratio V/Vref to the nearest of its 16
-        // directions. Returns false when the ratio matches nothing (open or
-        // shorted vane).
-        bool vaneDirectionFromRatio(float ratio, float pullupOhms, float &directionDeg);
-
     } // namespace Wind
 } // namespace SQM

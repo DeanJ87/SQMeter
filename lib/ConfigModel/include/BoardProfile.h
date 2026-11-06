@@ -31,7 +31,6 @@ namespace SQM
         uint8_t rainRx = NONE; // ESP side
         uint8_t rainTx = NONE;
         uint8_t windSpeed = NONE;
-        uint8_t windDirection = NONE;
         uint8_t aux1 = NONE;
         uint8_t aux2 = NONE;
         // Travel board power monitoring (MAX17048 ALRT, charger STAT1/STAT2/PG;
@@ -84,7 +83,6 @@ namespace SQM
             p.rainRx = 18;
             p.rainTx = 19;
             p.windSpeed = 27;
-            p.windDirection = 35;
             p.validGpios = ESP32_GPIOS;
             p.rtcGpios = ESP32_RTC_GPIOS;
             p.adc1First = 32;
@@ -106,7 +104,6 @@ namespace SQM
             p.rainRx = 16;
             p.rainTx = 15;
             p.windSpeed = 2;
-            p.windDirection = 1;
             p.aux1 = 39;
             p.aux2 = 40;
             p.statusLed = 21;
@@ -133,7 +130,6 @@ namespace SQM
             p.rainRx = 2;
             p.rainTx = 1;
             p.windSpeed = 5;
-            p.windDirection = 4;
             p.aux1 = 6;
             p.aux2 = 7;
             p.batteryAlert = 1;

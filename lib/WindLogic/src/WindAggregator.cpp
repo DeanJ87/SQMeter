@@ -10,33 +10,6 @@ namespace SQM
         namespace
         {
             constexpr float PI_F = 3.14159265358979f;
-            constexpr float MAX_RATIO_ERROR = 0.04f;
-
-            struct VanePosition
-            {
-                float degrees;
-                float ohms;
-            };
-
-            // Misol WH-SP-WD / Argent 80422 / SparkFun SEN-15901 datasheet values.
-            constexpr VanePosition VANE[] = {
-                {0.0f, 33000.0f},
-                {22.5f, 6570.0f},
-                {45.0f, 8200.0f},
-                {67.5f, 891.0f},
-                {90.0f, 1000.0f},
-                {112.5f, 688.0f},
-                {135.0f, 2200.0f},
-                {157.5f, 1410.0f},
-                {180.0f, 3900.0f},
-                {202.5f, 3140.0f},
-                {225.0f, 16000.0f},
-                {247.5f, 14120.0f},
-                {270.0f, 120000.0f},
-                {292.5f, 42120.0f},
-                {315.0f, 64900.0f},
-                {337.5f, 21880.0f},
-            };
         } // namespace
 
         void WindAggregator::addSample(float speedMs, float directionDeg)
@@ -113,26 +86,6 @@ namespace SQM
                 deg += 360.0f;
             out = deg >= 359.95f ? 0.0f : deg;
             return true;
-        }
-
-        bool vaneDirectionFromRatio(float ratio, float pullupOhms, float &directionDeg)
-        {
-            if (!std::isfinite(ratio) || pullupOhms <= 0.0f)
-                return false;
-            float bestError = MAX_RATIO_ERROR;
-            bool found = false;
-            for (const VanePosition &pos : VANE)
-            {
-                const float expected = pos.ohms / (pos.ohms + pullupOhms);
-                const float error = std::fabs(expected - ratio);
-                if (error < bestError)
-                {
-                    bestError = error;
-                    directionDeg = pos.degrees;
-                    found = true;
-                }
-            }
-            return found;
         }
 
     } // namespace Wind

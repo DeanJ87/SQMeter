@@ -173,10 +173,8 @@ export const mockConfig: Config = {
     enabled: true,
     speedPin: 27,
     directionEnabled: true,
-    directionPin: 35,
     kmhPerHz: 2.4,
     directionOffsetDeg: 0,
-    vanePullupOhms: 10000,
   },
   rain: {
     enabled: true,

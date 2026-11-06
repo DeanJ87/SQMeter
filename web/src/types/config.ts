@@ -136,10 +136,8 @@ export interface WindConfig {
   enabled: boolean;
   speedPin: number;
   directionEnabled: boolean;
-  directionPin: number;
   kmhPerHz: number;
   directionOffsetDeg: number;
-  vanePullupOhms: number;
 }
 
 // Optional OLED display (spec 031, contracts/config.md).

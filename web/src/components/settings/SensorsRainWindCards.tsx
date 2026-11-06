@@ -1,7 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import type { SettingsTabProps } from './context';
 import { defaultRainConfig, defaultWindConfig } from './defaults';
-import type { SensorAvailability } from './hardware';
+import type { Hardware, SensorAvailability } from './hardware';
 import { useRainTest } from '../../hooks/useSensorActions';
 import {
   ActionButton,
@@ -173,6 +173,17 @@ export const RainCard: FunctionalComponent<SettingsTabProps> = (props) => {
   );
 };
 
+// The AS5600's magnet check: a fault stops the direction, a weak or strong
+// magnet still gives one but the gap needs adjusting.
+const VaneBadge: FunctionalComponent<{ vane: Hardware['windVane'] }> = ({ vane }) => {
+  if (vane.magnet === 'weak') return <StatusBadge tone="warn" label={t('settings.sensors.magnetTooFar')} />;
+  if (vane.magnet === 'strong') return <StatusBadge tone="warn" label={t('settings.sensors.magnetTooClose')} />;
+  if (vane.detected !== false) return null;
+  if (vane.magnet === 'noAnswer') return <StatusBadge tone="bad" label={t('settings.sensors.notResponding')} />;
+  if (vane.magnet === 'none') return <StatusBadge tone="bad" label={t('settings.sensors.noMagnet')} />;
+  return <StatusBadge tone="bad" label={t('settings.sensors.vaneFault')} />;
+};
+
 // The cup anemometer and the wind vane.
 export const WindCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, deps, fix }) => {
   const wind = { ...defaultWindConfig, ...config.wind };
@@ -210,40 +221,17 @@ export const WindCard: FunctionalComponent<SettingsTabProps> = ({ config, update
               />
             </Field>
           </div>
-          <Group
-            title={t('settings.sensors.windVane')}
-            aside={
-              wind.directionEnabled && hw.windVane.detected === false ? (
-                <StatusBadge tone="bad" label={t('settings.sensors.vaneFault')} />
-              ) : undefined
-            }
-          >
+          <Group title={t('settings.sensors.windVane')} aside={wind.directionEnabled ? <VaneBadge vane={hw.windVane} /> : undefined}>
             <DepToggle
               entry={deps.get('wind.directionEnabled')}
               onFix={fix}
               label={t('settings.sensors.windVane')}
+              hint={t('settings.sensors.as5600OnTheI2cBus')}
               checked={wind.directionEnabled}
               onChange={(v) => update(['wind', 'directionEnabled'], v)}
             />
             {wind.directionEnabled && (
               <div class="form-grid">
-                <Field label={t('settings.sensors.pin')} error={error('wind.directionPin')} hint={t('settings.sensors.gpio3239OnlyAdc2')}>
-                  <NumberInput
-                    dataField="wind.directionPin"
-                    integer
-                    min={32}
-                    max={39}
-                    value={wind.directionPin}
-                    onChange={(v) => update(['wind', 'directionPin'], v)}
-                  />
-                </Field>
-                <Field
-                  label={t('settings.sensors.pullUp')}
-                  error={error('wind.vanePullupOhms')}
-                  hint={t('settings.sensors.resistorFromTheVanePin')}
-                >
-                  <NumberInput step={100} unit="Ω" value={wind.vanePullupOhms} onChange={(v) => update(['wind', 'vanePullupOhms'], v)} />
-                </Field>
                 <Field
                   label={t('settings.sensors.northOffset')}
                   error={error('wind.directionOffsetDeg')}

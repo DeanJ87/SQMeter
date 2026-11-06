@@ -9,6 +9,10 @@ All notable changes to SQMeter are documented here.
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
 
+### Changed
+
+- **Wind vane**: the vane is now an AS5600 magnetic angle sensor on the I²C bus (address `0x36`), replacing the resistor-ladder vane on an analog pin. It reads the exact angle rather than one of 16 positions, and reports a missing, weak or strong magnet: a vane fault when there's no magnet or no answer, a warning in Settings when the magnet is too far or too close. The vane pin and pull-up settings are gone; the north offset is kept. Readings, MQTT, Home Assistant and Alpaca are unchanged.
+
 ## [0.4.0-alpha.2] — 2026-11-06
 
 <!-- banner: Fixed: settings save after upgrading | Fixed: GPS date 19 years early | Security updates -->

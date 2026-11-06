@@ -59,10 +59,8 @@ static WindSensorSettings toWindSettings(const WindConfig &wind)
     settings.enabled = wind.enabled;
     settings.speedPin = wind.speedPin;
     settings.directionEnabled = wind.directionEnabled;
-    settings.directionPin = wind.directionPin;
     settings.kmhPerHz = wind.kmhPerHz;
     settings.directionOffsetDeg = wind.directionOffsetDeg;
-    settings.vanePullupOhms = wind.vanePullupOhms;
     return settings;
 }
 
@@ -221,7 +219,7 @@ void setupSensors()
 
     setupSerialSensors();
 
-    windSensor = std::make_unique<WindSensor>();
+    windSensor = std::make_unique<WindSensor>(Wire);
     windSensor->configure(toWindSettings(config.wind));
     windSensor->begin();
 }

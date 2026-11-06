@@ -25,7 +25,6 @@
     { "path": "alpaca.windGustUnsafeMs", "gt": 0, "max": 80 },
     { "path": "wind.kmhPerHz", "gt": 0, "max": 20 },
     { "path": "wind.directionOffsetDeg", "min": -360, "max": 360 },
-    { "path": "wind.vanePullupOhms", "min": 1000, "max": 100000 },
     { "path": "display.cycleSeconds", "int": true, "min": 2, "max": 60 },
     { "path": "display.timeoutSeconds", "int": true, "min": 10, "max": 1800 },
     { "path": "battery.lowPercent", "int": true, "min": 5, "max": 50, "with": { "battery.criticalPercent": 3, "battery.shutdownPercent": 2 } },

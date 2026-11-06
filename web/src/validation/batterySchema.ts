@@ -42,7 +42,7 @@ interface BatteryPinInput {
   sensor: { i2cSDA: number; i2cSCL: number; i2c2SDA?: number; i2c2SCL?: number };
   gps: { enabled: boolean; rxPin: number; txPin: number };
   rain?: { enabled: boolean; rxPin: number; txPin: number };
-  wind?: { enabled: boolean; speedPin: number; directionEnabled: boolean; directionPin: number };
+  wind?: { enabled: boolean; speedPin: number };
   display?: { enabled: boolean; buttonPin: number };
   battery?: { alertPin: number; stat1Pin: number; stat2Pin: number; pgPin: number };
 }
@@ -53,7 +53,7 @@ const batteryPinsInUse = (data: BatteryPinInput) => {
   if (sda !== BATTERY_PIN_UNSET && scl !== BATTERY_PIN_UNSET) used.push(sda, scl);
   if (data.gps.enabled) used.push(data.gps.rxPin, data.gps.txPin);
   if (data.rain?.enabled) used.push(data.rain.rxPin, data.rain.txPin);
-  if (data.wind?.enabled) used.push(data.wind.speedPin, ...(data.wind.directionEnabled ? [data.wind.directionPin] : []));
+  if (data.wind?.enabled) used.push(data.wind.speedPin);
   if (data.display?.enabled && data.display.buttonPin !== BATTERY_PIN_UNSET) used.push(data.display.buttonPin);
   return used;
 };

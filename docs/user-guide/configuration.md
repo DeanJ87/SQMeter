@@ -220,10 +220,8 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "enabled": false,
     "speedPin": 27,
     "directionEnabled": false,
-    "directionPin": 35,
     "kmhPerHz": 2.4,
-    "directionOffsetDeg": 0,
-    "vanePullupOhms": 10000
+    "directionOffsetDeg": 0
   },
   "display": {
     "enabled": false,
@@ -504,11 +502,9 @@ See [Wind (anemometer)](../hardware/wind.md).
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Anemometer fitted |
 | `speedPin` | int | `27` | Anemometer pulse input |
-| `directionEnabled` | bool | `false` | Wind vane fitted |
-| `directionPin` | int | `35` | Vane input - must be an ADC1 pin |
+| `directionEnabled` | bool | `false` | AS5600 wind vane fitted, on the I2C bus at `0x36` |
 | `kmhPerHz` | float | `2.4` | Anemometer calibration (2.4 km/h per Hz for the common Misol/Davis-style cups) |
-| `directionOffsetDeg` | float | `0` | Rotate the vane reading to true north |
-| `vanePullupOhms` | float | `10000` | Pull-up resistor in the vane divider |
+| `directionOffsetDeg` | float | `0` | Added to the vane reading, to correct for mounting: north must read 0 |
 
 ### Display
 
@@ -525,7 +521,7 @@ existed load with it off.
 | `wakeOnBoot` | bool | `true` | Light up after a restart |
 | `stayOnAtNight` | bool | `false` | Stay lit at night; needs a location or a GPS fix (D-44) |
 | `rotate180` | bool | `false` | Turn the picture upside down |
-| `buttonPin` | int | `255` | Wake button GPIO, `255` for none. While the display is on it can't be an I2C, I2C-2, GPS, rain sensor, anemometer or vane pin |
+| `buttonPin` | int | `255` | Wake button GPIO, `255` for none. While the display is on it can't be an I2C, I2C-2, GPS, rain sensor or anemometer pin |
 
 Messages when a value is refused: `Display: choose 1 to 7 different pages`, `Display: cycle interval
 must be 2 to 60 seconds`, `Display: brightness must be low, medium or high`, `Display: timeout must be
@@ -556,7 +552,7 @@ be 2 to 25% and below the low level`, `Battery: shutdown level must be 2 to 10% 
 level`, `Battery: capacity must be 500 to 50000 mAh, or 0 if unknown`, `Battery: power-saving read
 interval must be 10 to 300 seconds`, `Battery: warning time before sleep must be 10 to 300 seconds`,
 `Battery: pins must be valid and different`, `Battery: set all three charger pins or none`, `Battery:
-pin is already in use` (I2C, I2C-2, GPS, rain sensor, anemometer, vane or display button), `Battery: the
+pin is already in use` (I2C, I2C-2, GPS, rain sensor, anemometer or display button), `Battery: the
 USB power pin must be able to wake the device`, and for the safety rule `Safety: battery limit must be 2
 to 50%` (D-51).
 

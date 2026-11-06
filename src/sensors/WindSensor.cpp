@@ -2,6 +2,7 @@
 #include "Logger.h"
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <Wire.h>
 #include <cmath>
 
 namespace SQM
@@ -72,8 +73,6 @@ namespace SQM
         pinMode(settings.speedPin, INPUT_PULLUP);
         takePulses();
         attachInterrupt(digitalPinToInterrupt(settings.speedPin), onAnemometerPulse, FALLING);
-        if (settings.directionEnabled)
-            analogSetPinAttenuation(settings.directionPin, ADC_11db);
         attached = true;
         lastSampleAt = millis();
         reading.status = SensorStatus::Ok;
@@ -82,7 +81,7 @@ namespace SQM
             "Anemometer on GPIO%u (%.3f km/h per Hz)%s",
             settings.speedPin,
             settings.kmhPerHz,
-            settings.directionEnabled ? ", vane enabled" : "");
+            settings.directionEnabled ? ", AS5600 vane enabled" : "");
     }
 
     void WindSensor::detach()
@@ -111,22 +110,9 @@ namespace SQM
         const float hz = static_cast<float>(pulses) * 1000.0f / static_cast<float>(elapsed);
         const float speedMs = hz * settings.kmhPerHz / 3.6f;
 
-        float direction = -1.0f;
-        if (settings.directionEnabled)
-        {
-            const float ratio = static_cast<float>(analogReadMilliVolts(settings.directionPin)) / ADC_REFERENCE_MV;
-            float vane = 0.0f;
-            if (Wind::vaneDirectionFromRatio(ratio, settings.vanePullupOhms, vane))
-            {
-                direction = std::fmod(vane + settings.directionOffsetDeg + 360.0f, 360.0f);
-                vaneMisses = 0;
-            }
-            else if (vaneMisses < VANE_FAULT_SECONDS)
-            {
-                ++vaneMisses;
-            }
-        }
-
+        const float direction = settings.directionEnabled ? readVane() : -1.0f;
+        if (!settings.directionEnabled)
+            reading.vaneMagnet = As5600::Magnet::Off;
         aggregator->addSample(speedMs, direction);
 
         reading.instantMs = speedMs;
@@ -140,6 +126,31 @@ namespace SQM
         reading.timestamp = now;
         reading.status = SensorStatus::Ok;
         lastUpdateTime = now;
+    }
+
+    float WindSensor::readVane()
+    {
+        uint8_t bytes[3] = {}; // STATUS, RAW ANGLE high, low
+        wire.beginTransmission(As5600::ADDRESS);
+        wire.write(As5600::REG_STATUS);
+        bool answered = wire.endTransmission(false) == 0 && wire.requestFrom(As5600::ADDRESS, static_cast<uint8_t>(3)) == 3;
+        for (uint8_t &b : bytes)
+            b = answered ? static_cast<uint8_t>(wire.read()) : 0;
+
+        reading.vaneMagnet = answered ? As5600::magnetFromStatus(bytes[0]) : As5600::Magnet::NoAnswer;
+        if (!As5600::hasAngle(reading.vaneMagnet))
+        {
+            if (vaneMisses < VANE_FAULT_SECONDS)
+                ++vaneMisses;
+            return -1.0f;
+        }
+        vaneMisses = 0;
+
+        wire.beginTransmission(As5600::ADDRESS);
+        wire.write(As5600::REG_AGC);
+        if (wire.endTransmission(false) == 0 && wire.requestFrom(As5600::ADDRESS, static_cast<uint8_t>(1)) == 1)
+            reading.vaneAgc = static_cast<uint8_t>(wire.read());
+        return std::fmod(As5600::angleDeg(bytes[1], bytes[2]) + settings.directionOffsetDeg + 360.0f, 360.0f);
     }
 
     std::string WindSensor::toJson() const

@@ -47,7 +47,6 @@ void test_classic_defaults_unchanged()
     TEST_ASSERT_EQUAL_UINT8(18, cfg.rain.rxPin);
     TEST_ASSERT_EQUAL_UINT8(19, cfg.rain.txPin);
     TEST_ASSERT_EQUAL_UINT8(27, cfg.wind.speedPin);
-    TEST_ASSERT_EQUAL_UINT8(35, cfg.wind.directionPin);
     assertValidFor(Board::Esp32Dev);
 }
 
@@ -70,7 +69,6 @@ void test_eth_defaults()
     TEST_ASSERT_EQUAL_UINT8(16, cfg.rain.rxPin);
     TEST_ASSERT_EQUAL_UINT8(15, cfg.rain.txPin);
     TEST_ASSERT_EQUAL_UINT8(2, cfg.wind.speedPin);
-    TEST_ASSERT_EQUAL_UINT8(1, cfg.wind.directionPin);
     const BoardProfile &eth = boardProfile(Board::Esp32S3Eth);
     TEST_ASSERT_EQUAL_UINT8(39, eth.aux1);
     TEST_ASSERT_EQUAL_UINT8(40, eth.aux2);
@@ -122,21 +120,6 @@ void test_gpio_rules_follow_the_board()
     std::string error;
     TEST_ASSERT_FALSE(cfg.validate(classic, &error));
     TEST_ASSERT_EQUAL_STRING("I2C pins are invalid", error.c_str());
-
-    // The vane needs ADC1: GPIO 1-10 on the S3.
-    cfg = Config::createDefault(Board::Esp32S3Eth);
-    cfg.wind.enabled = true;
-    cfg.wind.directionEnabled = true;
-    cfg.wind.directionPin = 39;
-    TEST_ASSERT_FALSE(cfg.validate(eth, &error));
-    TEST_ASSERT_EQUAL_STRING("Wind: vane pin must be an ADC1 pin (GPIO 1-10)", error.c_str());
-
-    Config classicCfg = Config::createDefault(Board::Esp32Dev);
-    classicCfg.wind.enabled = true;
-    classicCfg.wind.directionEnabled = true;
-    classicCfg.wind.directionPin = 4;
-    TEST_ASSERT_FALSE(classicCfg.validate(classic, &error));
-    TEST_ASSERT_EQUAL_STRING("Wind: vane pin must be an ADC1 pin (GPIO 32-39)", error.c_str());
 }
 
 int main()

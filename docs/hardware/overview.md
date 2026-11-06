@@ -20,7 +20,7 @@ SQMeter is built around an ESP32 development board and a small set of I2C sensor
 | SSD1306 128 × 64 OLED (optional) | Readings at the pier | I2C `0x3C` | Optional — the OLED port (J6) on Rev A, or the main I2C pins; see [OLED display](../user-guide/display.md) |
 | GPS module (optional) | Location and precise time | UART | Optional |
 | RG-15 (optional) | Rain detection | UART | Optional — active development |
-| Anemometer and wind vane (optional) | Wind speed, gust, direction | Pulse input + ADC1 | Optional — see [Wind](wind.md) |
+| Anemometer and wind vane (optional) | Wind speed, gust, direction | Pulse input + I²C (AS5600) | Optional — see [Wind](wind.md) |
 | Li-ion pack, charger and MAX17048 fuel gauge (travel board) | Battery power in the field | I2C `0x36` + charger STAT1/STAT2/PG | Optional — see [Travel board](#travel-board-battery) and [Battery](../user-guide/battery.md) |
 
 The ESP32 is the only component with WiFi. The core sensors talk to it over I²C; the optional GPS and RG-15 use serial (UART) and the wind sensors a pulse input and an analogue pin. The GPS module is optional — NTP can be used for time sync without it. See the [wiring overview](../getting-started/hardware.md) for the default pins.

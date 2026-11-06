@@ -287,12 +287,10 @@ namespace SQM
     struct WindConfig
     {
         bool enabled;
-        uint8_t speedPin; // reed-switch anemometer, internal pull-up
-        bool directionEnabled;
-        uint8_t directionPin;     // resistor-ladder vane, must be an ADC1 pin (BoardProfile)
+        uint8_t speedPin;         // reed-switch anemometer, internal pull-up
+        bool directionEnabled;    // AS5600 vane on the main I2C bus (0x36)
         float kmhPerHz;           // 2.4 Misol/Argent/SparkFun, 3.621 Davis 6410
         float directionOffsetDeg; // added to the vane reading to correct mounting
-        float vanePullupOhms;     // vane divider pull-up to 3.3 V
     };
 
     // Observing site, for working out when it's dark. A GPS fix takes

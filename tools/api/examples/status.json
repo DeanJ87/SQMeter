@@ -197,7 +197,9 @@
     "wind": {
       "status": "ok",
       "ageMs": 0,
-      "vaneStatus": "ok"
+      "vaneStatus": "ok",
+      "vaneMagnet": "ok",
+      "vaneAgc": 128
     }
   },
   "diagnostics": {

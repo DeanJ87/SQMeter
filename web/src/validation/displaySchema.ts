@@ -37,7 +37,7 @@ export interface DisplayPinInput {
   sensor: { i2cSDA: number; i2cSCL: number; i2c2SDA?: number; i2c2SCL?: number };
   gps: { enabled: boolean; rxPin: number; txPin: number };
   rain?: { enabled: boolean; rxPin: number; txPin: number };
-  wind?: { enabled: boolean; speedPin: number; directionEnabled: boolean; directionPin: number };
+  wind?: { enabled: boolean; speedPin: number };
   display?: { enabled: boolean; buttonPin: number };
   battery?: { alertPin: number; stat1Pin: number; stat2Pin: number; pgPin: number };
 }
@@ -49,7 +49,6 @@ const serialAndWind = (data: DisplayPinInput) => [
   ...(data.gps.enabled ? [data.gps.rxPin, data.gps.txPin] : []),
   ...(data.rain?.enabled ? [data.rain.rxPin, data.rain.txPin] : []),
   ...(data.wind?.enabled ? [data.wind.speedPin] : []),
-  ...(data.wind?.enabled && data.wind.directionEnabled ? [data.wind.directionPin] : []),
   // The battery's wired pins (spec 032).
   ...(data.battery ? [data.battery.alertPin, data.battery.stat1Pin, data.battery.stat2Pin, data.battery.pgPin] : []).filter(
     (pin) => pin !== DISPLAY_BUTTON_UNSET,

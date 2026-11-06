@@ -414,22 +414,16 @@ describe('windConfigSchema', () => {
     enabled: true,
     speedPin: 27,
     directionEnabled: true,
-    directionPin: 35,
     kmhPerHz: 2.4,
     directionOffsetDeg: 0,
-    vanePullupOhms: 10000,
   };
 
   it('passes with valid defaults', () => {
     expect(windConfigSchema.safeParse(validWind).success).toBe(true);
   });
 
-  it('requires the vane on an ADC1 pin', () => {
-    expect(windConfigSchema.safeParse({ ...validWind, directionPin: 25 }).success).toBe(false);
-  });
-
-  it('rejects the same pin for anemometer and vane', () => {
-    expect(windConfigSchema.safeParse({ ...validWind, speedPin: 34, directionPin: 34 }).success).toBe(false);
+  it('rejects a north offset beyond a full turn', () => {
+    expect(windConfigSchema.safeParse({ ...validWind, directionOffsetDeg: 361 }).success).toBe(false);
   });
 });
 
