@@ -198,12 +198,33 @@ namespace SQM
             return result;
         }
 
-        bool SafeDelayFilter::update(bool rawSafe, uint32_t nowMs, uint32_t delaySeconds)
+        bool SafeDelayFilter::update(
+            bool rawSafe, uint32_t nowMs, uint32_t safeDelaySeconds, uint32_t unsafeDelaySeconds, uint32_t reasonFlags)
         {
+            unsafeRemaining = 0;
+            if (rawSafe || !reportedSafe || (reasonFlags & UNSAFE_IMMEDIATE_FLAGS) != 0)
+                rawUnsafeRunning = false;
+            else
+            {
+                // Reported safe, raw unsafe: hold safe for the unsafe delay.
+                if (!rawUnsafeRunning)
+                {
+                    rawUnsafeRunning = true;
+                    unsafeSinceMs = nowMs;
+                }
+                const uint32_t elapsed = (nowMs - unsafeSinceMs) / 1000;
+                if (elapsed < unsafeDelaySeconds)
+                {
+                    unsafeRemaining = unsafeDelaySeconds - elapsed;
+                    return true;
+                }
+                rawUnsafeRunning = false;
+            }
             if (!rawSafe)
             {
                 rawSafeRunning = false;
                 remaining = 0;
+                reportedSafe = false;
                 return false;
             }
             if (!rawSafeRunning)
@@ -212,8 +233,9 @@ namespace SQM
                 safeSinceMs = nowMs;
             }
             const uint32_t elapsed = (nowMs - safeSinceMs) / 1000;
-            remaining = elapsed >= delaySeconds ? 0 : delaySeconds - elapsed;
-            return remaining == 0;
+            remaining = elapsed >= safeDelaySeconds ? 0 : safeDelaySeconds - elapsed;
+            reportedSafe = remaining == 0;
+            return reportedSafe;
         }
 
     } // namespace Alpaca

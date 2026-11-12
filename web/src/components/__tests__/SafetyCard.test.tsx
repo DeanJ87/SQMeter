@@ -32,6 +32,12 @@ describe('SafetyCard', () => {
     expect(screen.getByText('Safe in 42s')).toBeInTheDocument();
   });
 
+  it('shows the countdown while the unsafe delay holds', () => {
+    render(<SafetyCard safety={{ ...base, rawSafe: false, reasonFlags: 16, reasons: ['Cloud 35% >= 30%'], secondsUntilUnsafe: 25 }} />);
+    expect(screen.getByText('Unsafe in 25s')).toBeInTheDocument();
+    expect(screen.getByText(/Cloud 35%/)).toBeInTheDocument();
+  });
+
   // Alpaca off is the Status card's Imaging app tile, and rules not in effect are
   // in Settings → Safety: the card shows only the verdict (DS-08).
   it('shows only the verdict, not Alpaca or rules not in effect', () => {

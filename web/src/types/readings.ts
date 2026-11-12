@@ -155,6 +155,7 @@ export interface SafetyStatus {
   reasonFlags: number;
   reasons: string[];
   secondsUntilSafe: number;
+  secondsUntilUnsafe?: number; // unsafe delay running: rawSafe false, safe still true (older firmware has none)
   evaluatedAgeMs: number;
   changedAgeMs: number;
   rulesNotInEffect?: string[]; // safety rules on but not evaluated, e.g. rain sensor off (spec 020)

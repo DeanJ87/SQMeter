@@ -116,6 +116,7 @@ export interface AlpacaConfig {
   rainUnsafeEnabled: boolean;
   rainSensorRequired: boolean;
   safeDelaySeconds: number;
+  unsafeDelaySeconds?: number; // 0..600; older firmware has none
   windSpeedUnsafeEnabled: boolean;
   windSpeedUnsafeMs: number;
   windGustUnsafeEnabled: boolean;

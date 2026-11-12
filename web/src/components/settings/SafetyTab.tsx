@@ -144,6 +144,21 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
                 onChange={(v) => set('safeDelaySeconds', v)}
               />
             </Field>
+            <Field
+              label={t('settings.safety.unsafeDelay')}
+              error={error('alpaca.unsafeDelaySeconds')}
+              hint={t('settings.safety.mustStayUnsafeThisLong')}
+            >
+              <NumberInput
+                dataField="alpaca.unsafeDelaySeconds"
+                integer
+                min={0}
+                max={600}
+                unit="s"
+                value={alpaca.unsafeDelaySeconds ?? 0}
+                onChange={(v) => set('unsafeDelaySeconds', v)}
+              />
+            </Field>
           </div>
         </Group>
 

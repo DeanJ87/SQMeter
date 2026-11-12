@@ -224,6 +224,12 @@ export const alpacaConfigSchema = z.object({
     .int()
     .min(0, t('validation.configSchema.mustBe0OrMore'))
     .max(3600, t('validation.configSchema.mustBeAtMost1')),
+  unsafeDelaySeconds: z
+    .number()
+    .int()
+    .min(0, t('validation.configSchema.mustBe0OrMore'))
+    .max(600, t('validation.configSchema.mustBeAtMost10'))
+    .optional(),
   windSpeedUnsafeEnabled: z.boolean(),
   windSpeedUnsafeMs: z.number().gt(0, t('validation.configSchema.mustBeAbove0')).max(60, t('validation.configSchema.mustBeAtMost60')),
   windGustUnsafeEnabled: z.boolean(),

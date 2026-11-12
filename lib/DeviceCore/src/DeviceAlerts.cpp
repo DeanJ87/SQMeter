@@ -24,8 +24,12 @@ namespace SQM
             in.safetyKnown = status.evaluatedAtMs != 0;
             in.safetySettling = (!status.isSafe && status.rawSafe) || (status.reasonFlags & Alpaca::UnsafeNoData) != 0;
             in.isSafe = status.isSafe;
-            in.unsafeReasons = status.reasons;
-            in.unsafeFlags = status.reasonFlags;
+            // Reasons held back by the unsafe delay don't alert (the battery rule) yet.
+            if (!status.isSafe)
+            {
+                in.unsafeReasons = status.reasons;
+                in.unsafeFlags = status.reasonFlags;
+            }
 
             in.rainEnabled = cfg.rain.enabled;
             in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;

@@ -125,6 +125,7 @@ const fieldReadings = (): Pick<SensorData, 'gps' | 'wind' | 'rain' | 'battery' |
     reasonFlags: 1 << 9,
     reasons: ['Rain detected'],
     secondsUntilSafe: 0,
+    secondsUntilUnsafe: 0,
     evaluatedAgeMs: 400,
     changedAgeMs: 1260000,
   },
