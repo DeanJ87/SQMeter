@@ -3,7 +3,7 @@
 #include <cstddef>
 
 // How the device's TCP connections are shared (spec 011 FR-008, spec 013
-// FR-012). lwIP allows CONFIG_LWIP_MAX_ACTIVE_TCP (16) at once; every HTTP
+// FR-012). lwIP allows CONFIG_LWIP_MAX_ACTIVE_TCP (20) at once; every HTTP
 // request uses a fresh one (the server sends Connection: close), so an imaging
 // app polling the device needs free ones all the time. Live-update sockets are
 // capped so browsers can never take them all.
@@ -12,7 +12,7 @@ namespace SQM
 {
     namespace ConnectionBudget
     {
-        constexpr size_t TCP_CONNECTIONS = 16; // CONFIG_LWIP_MAX_ACTIVE_TCP
+        constexpr size_t TCP_CONNECTIONS = 20; // CONFIG_LWIP_MAX_ACTIVE_TCP (platformio.ini)
 
         // WebSocket clients per endpoint (/ws/sensors, /ws/status). A new one
         // past the limit replaces the oldest.

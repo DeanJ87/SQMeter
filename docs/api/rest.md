@@ -64,7 +64,7 @@ curl http://sqmeter.local/api/status
     "rain": { "state": "online", "uartOpened": true, "rxPin": 18, "txPin": 19, "baudRate": 9600, "uartPort": 1, "lastCommand": "R", "lastResponse": "Acc 0.01 mm, ...", "timeouts": 0, "parseErrors": 0, "successfulReads": 1424, "lastPollAgeMs": 40, "lastResponseAgeMs": 40, "lastSuccessfulReadAgeMs": 40 }
   },
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "sqmeter", "availabilityTopic": "sqmeter/availability" },
-  "connections": { "tcpLimit": 16, "liveUpdates": { "sensors": 1, "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false }
+  "connections": { "tcpLimit": 20, "liveUpdates": { "sensors": 1, "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false }
 }
 ```
 
