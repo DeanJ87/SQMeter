@@ -300,6 +300,116 @@ void test_safe_delay_filter_survives_millis_wrap(void)
     TEST_ASSERT_TRUE(f.update(true, beforeWrap + 60000, 60));
 }
 
+// --- Unsafe delay ---
+
+namespace
+{
+    // Reported safe at nowMs, with no safe delay.
+    SafeDelayFilter reportedSafe(uint32_t nowMs)
+    {
+        SafeDelayFilter f;
+        TEST_ASSERT_TRUE(f.update(true, nowMs, 0, 30));
+        return f;
+    }
+} // namespace
+
+void test_unsafe_delay_off_is_immediate(void)
+{
+    SafeDelayFilter f = reportedSafe(1000);
+    TEST_ASSERT_FALSE(f.update(false, 2000, 0, 0, UnsafeCloudCover));
+    TEST_ASSERT_EQUAL_UINT32(0, f.secondsUntilUnsafe());
+}
+
+void test_unsafe_delay_ignores_a_brief_unsafe(void)
+{
+    SafeDelayFilter f = reportedSafe(1000);
+    TEST_ASSERT_TRUE(f.update(false, 2000, 0, 30, UnsafeCloudCover));
+    TEST_ASSERT_EQUAL_UINT32(30, f.secondsUntilUnsafe());
+    TEST_ASSERT_TRUE(f.update(false, 12000, 0, 30, UnsafeCloudCover));
+    TEST_ASSERT_EQUAL_UINT32(20, f.secondsUntilUnsafe());
+    TEST_ASSERT_TRUE(f.update(true, 13000, 0, 30)); // cleared: never reported unsafe
+    TEST_ASSERT_EQUAL_UINT32(0, f.secondsUntilUnsafe());
+}
+
+void test_unsafe_delay_reports_after_the_delay(void)
+{
+    SafeDelayFilter f = reportedSafe(1000);
+    TEST_ASSERT_TRUE(f.update(false, 2000, 0, 30, UnsafeCloudCover));
+    TEST_ASSERT_TRUE(f.update(false, 31000, 0, 30, UnsafeCloudCover));
+    TEST_ASSERT_EQUAL_UINT32(1, f.secondsUntilUnsafe());
+    TEST_ASSERT_FALSE(f.update(false, 32000, 0, 30, UnsafeCloudCover));
+    TEST_ASSERT_EQUAL_UINT32(0, f.secondsUntilUnsafe());
+    TEST_ASSERT_FALSE(f.update(false, 40000, 0, 30, UnsafeCloudCover)); // stays unsafe
+}
+
+void test_unsafe_delay_resets_when_safe_again(void)
+{
+    SafeDelayFilter f = reportedSafe(1000);
+    TEST_ASSERT_TRUE(f.update(false, 2000, 0, 30, UnsafeHumidity));
+    TEST_ASSERT_TRUE(f.update(false, 25000, 0, 30, UnsafeHumidity));
+    TEST_ASSERT_TRUE(f.update(true, 26000, 0, 30));
+    TEST_ASSERT_TRUE(f.update(false, 27000, 0, 30, UnsafeHumidity)); // starts again
+    TEST_ASSERT_EQUAL_UINT32(30, f.secondsUntilUnsafe());
+    TEST_ASSERT_TRUE(f.update(false, 56000, 0, 30, UnsafeHumidity));
+    TEST_ASSERT_FALSE(f.update(false, 57000, 0, 30, UnsafeHumidity));
+}
+
+void test_unsafe_delay_bypassed_by_rain_override_and_shutdown(void)
+{
+    const uint32_t immediate[] = {UnsafeRain, UnsafeManualOverride, UnsafeShutdown, UnsafeCloudCover | UnsafeRain};
+    for (uint32_t flags : immediate)
+    {
+        SafeDelayFilter f = reportedSafe(1000);
+        TEST_ASSERT_FALSE(f.update(false, 2000, 0, 30, flags));
+        TEST_ASSERT_EQUAL_UINT32(0, f.secondsUntilUnsafe());
+    }
+    // Rain arriving while a cloud reading is being held back.
+    SafeDelayFilter f = reportedSafe(1000);
+    TEST_ASSERT_TRUE(f.update(false, 2000, 0, 30, UnsafeCloudCover));
+    TEST_ASSERT_FALSE(f.update(false, 3000, 0, 30, UnsafeCloudCover | UnsafeRain));
+}
+
+void test_unsafe_delay_then_safe_delay(void)
+{
+    SafeDelayFilter f;
+    TEST_ASSERT_FALSE(f.update(true, 0, 60, 30));
+    TEST_ASSERT_TRUE(f.update(true, 60000, 60, 30));
+    // A brief unsafe inside the unsafe delay doesn't restart the safe delay.
+    TEST_ASSERT_TRUE(f.update(false, 61000, 60, 30, UnsafeCloudCover));
+    TEST_ASSERT_TRUE(f.update(true, 62000, 60, 30));
+    TEST_ASSERT_EQUAL_UINT32(0, f.secondsUntilSafe());
+    // Once reported unsafe, the safe delay applies as before.
+    TEST_ASSERT_TRUE(f.update(false, 63000, 60, 30, UnsafeCloudCover));
+    TEST_ASSERT_FALSE(f.update(false, 93000, 60, 30, UnsafeCloudCover));
+    TEST_ASSERT_FALSE(f.update(true, 94000, 60, 30));
+    TEST_ASSERT_EQUAL_UINT32(60, f.secondsUntilSafe());
+    TEST_ASSERT_TRUE(f.update(true, 154000, 60, 30));
+}
+
+// The unsafe delay only holds a reported safe: a booting device is unsafe
+// until the safe delay has run, whatever the unsafe delay.
+void test_unsafe_delay_never_reports_safe_at_boot(void)
+{
+    SafeDelayFilter f;
+    TEST_ASSERT_FALSE(f.update(false, 1000, 60, 30, UnsafeNoData));
+    TEST_ASSERT_EQUAL_UINT32(0, f.secondsUntilUnsafe());
+    TEST_ASSERT_FALSE(f.update(true, 2000, 60, 30));
+    TEST_ASSERT_FALSE(f.update(false, 3000, 60, 30, UnsafeCloudCover)); // still unsafe, delay restarts
+    TEST_ASSERT_FALSE(f.update(true, 4000, 60, 30));
+    TEST_ASSERT_EQUAL_UINT32(60, f.secondsUntilSafe());
+}
+
+void test_unsafe_delay_survives_millis_wrap(void)
+{
+    const uint32_t beforeWrap = 0xFFFFFFFFu - 10000; // 10 s before the wrap
+    SafeDelayFilter f = reportedSafe(beforeWrap - 1000);
+    TEST_ASSERT_TRUE(f.update(false, beforeWrap, 0, 30, UnsafeCloudCover));
+    TEST_ASSERT_TRUE(f.update(false, beforeWrap + 20000, 0, 30, UnsafeCloudCover)); // wrapped
+    TEST_ASSERT_EQUAL_UINT32(10, f.secondsUntilUnsafe());
+    TEST_ASSERT_TRUE(f.update(false, beforeWrap + 29000, 0, 30, UnsafeCloudCover));
+    TEST_ASSERT_FALSE(f.update(false, beforeWrap + 30000, 0, 30, UnsafeCloudCover));
+}
+
 // --- Wind safety ---
 
 void test_wind_limits(void)
@@ -365,6 +475,14 @@ int main(int argc, char **argv)
     RUN_TEST(test_faulted_sensor_skips_its_threshold);
     RUN_TEST(test_safe_delay_filter);
     RUN_TEST(test_safe_delay_filter_survives_millis_wrap);
+    RUN_TEST(test_unsafe_delay_off_is_immediate);
+    RUN_TEST(test_unsafe_delay_ignores_a_brief_unsafe);
+    RUN_TEST(test_unsafe_delay_reports_after_the_delay);
+    RUN_TEST(test_unsafe_delay_resets_when_safe_again);
+    RUN_TEST(test_unsafe_delay_bypassed_by_rain_override_and_shutdown);
+    RUN_TEST(test_unsafe_delay_then_safe_delay);
+    RUN_TEST(test_unsafe_delay_never_reports_safe_at_boot);
+    RUN_TEST(test_unsafe_delay_survives_millis_wrap);
     RUN_TEST(test_wind_limits);
     RUN_TEST(test_wind_limit_without_sensor_is_unsafe);
     RUN_TEST(test_sky_fault_reasons_per_role);

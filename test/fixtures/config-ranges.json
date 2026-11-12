@@ -21,6 +21,7 @@
     { "path": "alpaca.humidityMaxSafe", "min": 0, "max": 100 },
     { "path": "alpaca.dewpointMarginMinC", "min": 0, "max": 20 },
     { "path": "alpaca.safeDelaySeconds", "int": true, "min": 0, "max": 3600 },
+    { "path": "alpaca.unsafeDelaySeconds", "int": true, "min": 0, "max": 600 },
     { "path": "alpaca.windSpeedUnsafeMs", "gt": 0, "max": 60 },
     { "path": "alpaca.windGustUnsafeMs", "gt": 0, "max": 80 },
     { "path": "wind.kmhPerHz", "gt": 0, "max": 20 },

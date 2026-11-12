@@ -165,6 +165,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "manualOverrideUnsafe": false,
     "staleAfterSeconds": 30,
     "safeDelaySeconds": 0,
+    "unsafeDelaySeconds": 0,
     "cloudCoverEnabled": true,
     "cloudCoverUnsafePercent": 90,
     "sqmMinEnabled": false,
@@ -449,6 +450,7 @@ The SafetyMonitor verdict served to N.I.N.A., shown on the dashboard and used fo
 | `manualOverrideUnsafe` | bool | `false` | Force unsafe |
 | `staleAfterSeconds` | int | `30` | Sensor data older than this is unsafe (1-3600) |
 | `safeDelaySeconds` | int | `0` | Conditions must stay safe this long before reporting safe; also runs from boot (0-3600) |
+| `unsafeDelaySeconds` | int | `0` | While safe, conditions must stay unsafe this long before reporting unsafe; rain, `manualOverrideUnsafe` and a battery shutdown are always immediate (0-600) |
 | `cloudCoverEnabled` / `cloudCoverUnsafePercent` | bool / float | `true` / `90` | Unsafe at or above this cloud cover (0-100) |
 | `sqmMinEnabled` / `sqmMinSafe` | bool / float | `false` / `0` | Unsafe below this SQM (0-30) |
 | `humidityMaxEnabled` / `humidityMaxSafe` | bool / float | `false` / `100` | Unsafe above this humidity (0-100) |

@@ -72,6 +72,7 @@ namespace SQM
                 {"skyCalibrationL", "darkSampleCount"},
                 {"alpaca", "staleAfterSeconds"},
                 {"alpaca", "safeDelaySeconds"},
+                {"alpaca", "unsafeDelaySeconds"},
                 {"rain", "pollIntervalMs"},
                 {"rain", "rainClearDelayMs"},
                 {"rain", "dailyResetHour"},
@@ -307,6 +308,7 @@ namespace SQM
             alpaca.take("rainUnsafeEnabled", a.rainUnsafeEnabled);
             alpaca.take("rainSensorRequired", a.rainSensorRequired);
             alpaca.take("safeDelaySeconds", a.safeDelaySeconds);
+            alpaca.take("unsafeDelaySeconds", a.unsafeDelaySeconds);
             alpaca.take("windSpeedUnsafeEnabled", a.windSpeedUnsafeEnabled);
             alpaca.take("windSpeedUnsafeMs", a.windSpeedUnsafeMs);
             alpaca.take("windGustUnsafeEnabled", a.windGustUnsafeEnabled);

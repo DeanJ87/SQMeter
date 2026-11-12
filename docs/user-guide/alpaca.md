@@ -67,7 +67,7 @@ sequenceDiagram
     1. N.I.N.A. broadcasts `alpacadiscovery1` on UDP port 32227. SQMeter answers `{"AlpacaPort": 80}` - only when **Serve Alpaca devices** was on when it started, since the listener starts at boot.
     2. N.I.N.A. asks the management API (`/management/apiversions`, `/management/v1/configureddevices`) and gets **SafetyMonitor 0** and **ObservingConditions 0**.
     3. Connecting sends `PUT .../connected` with `Connected=true`.
-    4. While connected, N.I.N.A. polls `safetymonitor/0/issafe` (the reported verdict, after the safe delay) and the ObservingConditions properties; a property whose sensor isn't reporting returns an error instead of a value.
+    4. While connected, N.I.N.A. polls `safetymonitor/0/issafe` (the reported verdict, after the safe and unsafe delays) and the ObservingConditions properties; a property whose sensor isn't reporting returns an error instead of a value.
     5. If SQMeter restarts on its own (a crash, the watchdog, an update) while N.I.N.A. is connected, it still reports `Connected=true` afterwards, so N.I.N.A. carries on. After a power cut it starts with nothing connected. See [N.I.N.A. loses the Safety Monitor](../reference/troubleshooting.md#nina-loses-the-safety-monitor).
     6. The Setup button opens `/setup/v1/<device>/0/setup`, which redirects to **Settings → Safety** in the web UI.
     7. Disconnecting sends `Connected=false`.
@@ -142,14 +142,14 @@ Each threshold has its own enable/disable toggle - a disabled threshold never co
 <!-- diagram: DIA-02
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceSafety.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: true
-fingerprint: 37a95de6ca92a28c
+fingerprint: a197383137f42194
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: How the safety verdict is decided
-    accDescr: Every second all enabled rules are checked and each failing rule adds a reason. Rain, wind and battery are always checked, then data freshness and sensor health; the threshold rules only run on fresh data. Any reason makes the raw verdict unsafe, which then passes through the safe delay.
+    accDescr: Every second all enabled rules are checked and each failing rule adds a reason. Rain, wind and battery are always checked, then data freshness and sensor health; the threshold rules only run on fresh data. Any reason makes the raw verdict unsafe, which then passes through the safe and unsafe delays.
     START(["Every second"]) --> ALWAYS
     ALWAYS["<b>Always checked</b>, even on stale data<br/>Force unsafe on: <i>Manual override forces unsafe</i><br/>Raining, or within the rain clear delay: <i>Rain detected</i><br/>Rain sensor offline, stale or lens fault: <i>Rain sensor offline...</i><br/>Wind limit set but anemometer off or silent: <i>Wind limit set but...</i><br/>Wind or gust at or over its limit: <i>Wind ... / Gust ...</i><br/>Battery rule on but no gauge data: <i>Battery data missing</i><br/>Battery below its limit: <i>Battery ...</i><br/>About to sleep at the shutdown level: <i>Shutting down: battery ...</i>"]
     ALWAYS --> FRESHNESS["<b>Data freshness</b><br/>No light or IR read since boot: <i>No successful sensor data yet</i><br/>Light or IR sensor's last successful read older than the stale limit, 30 s: <i>Sensor data is stale</i>"]
@@ -160,7 +160,7 @@ flowchart TB
     THRESHOLDS --> ANY{"Any reasons?"}
     ANY -->|none| RAWSAFE["Raw verdict: safe"]
     ANY -->|one or more| RAWUNSAFE["Raw verdict: unsafe, with every reason"]
-    RAWSAFE --> DELAY["Safe delay"]
+    RAWSAFE --> DELAY["Safe and unsafe delays"]
     RAWUNSAFE --> DELAY
     DELAY --> REPORTED["Reported verdict<br/>dashboard, /api/safety, /api/safe,<br/>MQTT safe, Alpaca IsSafe"]
     REPORTED --> ALPACA{"Alpaca switched on?"}
@@ -189,7 +189,7 @@ flowchart TB
         - SQM below its minimum (skipped if the light sensor is faulted);
         - if the humidity or dew-point rule is on but there's no humidity reading, "Sensor fault: environment sensor"; otherwise humidity above its maximum, or air temperature minus dew point below the margin.
     5. No reasons: the raw verdict is safe. Any reason: unsafe, with all the reasons.
-    6. The raw verdict passes through the [safe delay](#safe-delay), and the result is what the dashboard, `/api/safety`, `/api/safe`, MQTT `<base>/safe` and Alpaca `IsSafe` report.
+    6. The raw verdict passes through the [safe delay](#safe-delay) and [unsafe delay](#unsafe-delay), and the result is what the dashboard, `/api/safety`, `/api/safe`, MQTT `<base>/safe` and Alpaca `IsSafe` report.
     7. With Alpaca switched off, `IsSafe` returns false with a NotConnected error instead (see [Connecting from N.I.N.A.](#connecting-from-nina)).
 
 ### Reasons
@@ -203,39 +203,59 @@ The Safety Monitor card's **History** lists recent safe/unsafe changes, restarts
 
 ### Safe delay
 
-**Safe delay** (seconds, default `0`) holds a "safe" verdict back until conditions have been continuously safe for that long, so a brief gap in the clouds doesn't reopen the roof. Unsafe is always reported immediately, and the delay also applies after a reboot. While the delay is running, the Safety Monitor card shows "Safe in Ns".
+**Safe delay** (seconds, default `0`) holds a "safe" verdict back until conditions have been continuously safe for that long, so a brief gap in the clouds doesn't reopen the roof. The delay also applies after a reboot. While the delay is running, the Safety Monitor card shows "Safe in Ns".
+
+### Unsafe delay
+
+**Unsafe delay** (seconds, default `0`, at most 600) is the other direction: while the device reports safe, a failing rule must keep failing for that long before it reports unsafe, so one odd cloud or humidity reading doesn't park the scope. If every rule passes again before the delay runs out, the device stays safe and the countdown starts from zero next time. While it runs, the Safety Monitor card shows "Unsafe in Ns" with the reasons, and `/api/safety` shows `safe: true`, `rawSafe: false` and `secondsUntilUnsafe`. Alerts, MQTT, Bluetooth and Alpaca `IsSafe` follow the reported verdict, so nothing is announced until the delay runs out.
+
+Three reasons are never delayed:
+
+- **Rain** (only when the rain rule is on), the moment the rain sensor reports it.
+- **Force unsafe**, a deliberate choice.
+- **Shutting down**: the battery is about to sleep.
+
+With `0` every failing rule is reported at once. 30-60 s is a sensible value: long enough to ride out a single odd reading, short enough to close before real cloud matters. It adds to the stale limit: with a 30 s stale limit and a 60 s unsafe delay, sensors that stop updating are reported unsafe after about 90 s. A reboot always starts unsafe and waits for the safe delay; the unsafe delay only holds a verdict that is already safe.
 
 <!-- diagram: DIA-03
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#SafeDelayFilter::update lib/DeviceCore/src/DeviceCore.cpp#updateSafety
 blocking: true
-fingerprint: 3649aff0aec71fb0
+fingerprint: 6f94a3aaeb11817d
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 stateDiagram-v2
-    accTitle: The safe delay
-    accDescr: Unsafe is reported at once. When the raw verdict turns safe the device waits for the safe delay, reporting unsafe meanwhile; any failing rule during the wait restarts it from zero.
+    accTitle: The safe and unsafe delays
+    accDescr: The device starts unsafe. When the raw verdict turns safe it waits for the safe delay, reporting unsafe meanwhile; any failing rule restarts the wait. From safe, a failing rule waits for the unsafe delay, reporting safe meanwhile; passing again cancels it. Rain, force unsafe and a battery shutdown are reported unsafe at once.
     state "Reported unsafe" as Unsafe
     state "Waiting: raw safe, reported unsafe" as Waiting
     state "Reported safe" as Safe
+    state "Holding: raw unsafe, reported safe" as Holding
     [*] --> Unsafe: device starts
     Unsafe --> Waiting: every rule passes
     Waiting --> Unsafe: a rule fails, the countdown resets
-    Waiting --> Safe: safe for the whole delay
-    Safe --> Unsafe: a rule fails, reported at once
+    Waiting --> Safe: safe for the whole safe delay
+    Safe --> Holding: a rule fails, unsafe delay set
+    Holding --> Safe: every rule passes again
+    Holding --> Unsafe: unsafe for the whole unsafe delay
+    Safe --> Unsafe: a rule fails, no unsafe delay, or rain, force unsafe, shutdown
+    Holding --> Unsafe: rain, force unsafe or shutdown
 ```
 
-<figcaption>The safe delay. The raw verdict and the reported verdict differ only while waiting; with a delay of 0 there's no wait.</figcaption>
+<figcaption>The safe and unsafe delays. The raw verdict and the reported verdict differ only while waiting or holding; with both delays at 0 there's neither.</figcaption>
 </figure>
 
 ??? info "Diagram in words"
 
     - The device starts reporting **unsafe** (it has no data yet, and the countdown only starts once the rules pass).
-    - When every rule passes, the raw verdict is safe and the countdown starts. The device still reports **unsafe**; `/api/safety` shows `rawSafe: true` and `secondsUntilSafe`, and the dashboard shows "Safe in Ns".
+    - When every rule passes, the raw verdict is safe and the safe-delay countdown starts. The device still reports **unsafe**; `/api/safety` shows `rawSafe: true` and `secondsUntilSafe`, and the dashboard shows "Safe in Ns".
     - If any rule fails during the wait, the device stays unsafe and the countdown starts again from zero the next time every rule passes.
-    - After the raw verdict has been safe for the whole delay, the device reports **safe**. With a delay of 0 this happens immediately.
-    - From safe, any failing rule is reported as **unsafe at once** - unsafe is never delayed.
+    - After the raw verdict has been safe for the whole safe delay, the device reports **safe**. With a delay of 0 this happens immediately.
+    - From safe, a failing rule starts the unsafe-delay countdown. The device still reports **safe**; `/api/safety` shows `rawSafe: false` and `secondsUntilUnsafe`, and the dashboard shows "Unsafe in Ns".
+    - If every rule passes again during that countdown, the device stays safe, with no safe delay to wait out.
+    - After the raw verdict has been unsafe for the whole unsafe delay, the device reports **unsafe**. With a delay of 0 (the default) this happens immediately.
+    - Rain, force unsafe and a battery shutdown are always reported **unsafe at once**, from safe or while the unsafe delay is running.
 
 ---
 
