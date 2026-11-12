@@ -709,6 +709,16 @@
       "shownOn": "API (docs: troubleshooting)"
     },
     {
+      "match": "status.connections.tcp.**",
+      "reason": "Web server stall diagnostics (TCP connections by state, peak since boot); read from the API",
+      "shownOn": "API (docs: REST API)"
+    },
+    {
+      "match": "status.connections.stalls.**",
+      "reason": "Web server stall diagnostics (recent stalls); read from the API",
+      "shownOn": "API (docs: REST API)"
+    },
+    {
       "match": "status.connections.alpacaRestoredAfterRestart",
       "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
       "shownOn": "API (docs: troubleshooting)"

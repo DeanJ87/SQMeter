@@ -1,6 +1,7 @@
 #include "WebServer.h"
 #include "OledDisplay.h"
 #include "ConnectionBudget.h"
+#include "WebHealthJson.h"
 #include "WebServerShared.h"
 #include "Logger.h"
 #include "version.h"
@@ -390,7 +391,7 @@ namespace SQM
         mqtt["clientId"] = mqttStatus.clientId;
     }
 
-    void WebServer::appendConnections(JsonDocument &doc) const
+    void WebServer::appendConnections(JsonDocument &doc, StatusScope scope) const
     {
         // Who holds the device's connections (spec 011 FR-008, 013 FR-012).
         JsonObject connections = doc.createNestedObject("connections");
@@ -402,13 +403,16 @@ namespace SQM
         live["replaced"] = wsReplaced;
         live["stalledClosed"] = wsStalled;
         connections["alpacaRestoredAfterRestart"] = alpacaConnectionsRestored;
+        if (scope == StatusScope::Api)
+            appendWebHealth(connections);
     }
 
-    std::string WebServer::createStatusJson() const
+    std::string WebServer::createStatusJson(StatusScope scope) const
     {
         // Includes MQTT, partition, boot, sensor (both sky sensors), BLE and
-        // alert-schedule diagnostics; sized by test_status_document_fits.
-        DynamicJsonDocument doc(Core::STATUS_DOC_CAPACITY);
+        // alert-schedule diagnostics; sized by test_status_document_fits and
+        // (the web-stall sections) test_web_health.
+        DynamicJsonDocument doc(Core::STATUS_DOC_CAPACITY + (scope == StatusScope::Api ? WebHealth::DOC_CAPACITY : 0));
         const SensorSnapshot snapshot = getSensorSnapshot();
         appendFirmware(doc);
         appendRuntime(doc);
@@ -431,7 +435,7 @@ namespace SQM
         JsonObject diagnostics = doc.createNestedObject("diagnostics");
         appendDiagnostics(diagnostics, snapshot);
         appendMqttStatus(doc);
-        appendConnections(doc);
+        appendConnections(doc, scope);
         appendDisplayStatus(doc);
         // A full pool drops the trailing sections silently: say so.
         if (doc.overflowed())

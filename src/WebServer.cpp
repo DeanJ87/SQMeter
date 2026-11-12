@@ -347,6 +347,7 @@ namespace SQM
 
         const uint32_t now = millis();
 
+        sampleWebHealth(now);
         applyPendingArm();
         startPendingBle(now);
         retryAlpacaIpv6Discovery(now);

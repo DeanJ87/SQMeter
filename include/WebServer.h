@@ -25,6 +25,7 @@
 #include "SafetyStatus.h"
 #include "BleService.h"
 #include "ConfigBackup.h"
+#include "WebStallMonitor.h"
 #include <atomic>
 #include <ESPAsyncWebServer.h>
 #include <AsyncWebSocket.h>
@@ -126,6 +127,13 @@ namespace SQM
         std::mutex wsClientsLock;
         // Imaging-app connections restored after a restart the device caused.
         bool alpacaConnectionsRestored = false;
+        // Web-stall diagnostics (lib/WebHealth): sampled by the loop task,
+        // read by /api/status on the network task.
+        static constexpr uint32_t WEB_HEALTH_SAMPLE_MS = 1000;
+        WebHealth::WebStallMonitor webStalls;
+        mutable std::mutex webHealthLock;
+        uint32_t lastWebHealthSample = 0;
+        void sampleWebHealth(uint32_t now);
 
         TSL2591Sensor &tslSensor;
         TSL2591Sensor &tslSensorL;
@@ -368,7 +376,15 @@ namespace SQM
         void capWebSocketClients(AsyncWebSocket &socket);
         void noteWebSocketClosed(std::map<uint32_t, uint32_t> &clients, AsyncWebSocketClient *client);
         void closeStalledClients(AsyncWebSocket &socket, std::map<uint32_t, uint32_t> &clients, uint32_t now);
-        void appendConnections(JsonDocument &doc) const;
+        // /api/status gets connections.tcp and connections.stalls; the
+        // /ws/status pushes (every 2 s, nothing reads them there) don't.
+        enum class StatusScope
+        {
+            Api,
+            Live,
+        };
+        void appendConnections(JsonDocument &doc, StatusScope scope) const;
+        void appendWebHealth(JsonObject connections) const;
         void restoreAlpacaConnections();
         void rememberAlpacaConnections();
         void onSensorWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
@@ -385,7 +401,7 @@ namespace SQM
         SensorSnapshot getSensorSnapshot() const;
         std::string createSensorDataJson() const;
         void appendSafetyStatus(JsonObject target) const;
-        std::string createStatusJson() const;
+        std::string createStatusJson(StatusScope scope) const;
         // createStatusJson() sections, in document order.
         void appendFirmware(JsonDocument &doc) const;
         void appendRuntime(JsonDocument &doc) const;

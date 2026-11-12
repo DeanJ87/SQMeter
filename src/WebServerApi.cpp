@@ -209,7 +209,7 @@ namespace SQM
 
     void WebServer::handleGetStatus(AsyncWebServerRequest *request)
     {
-        std::string json = createStatusJson();
+        std::string json = createStatusJson(StatusScope::Api);
         request->send(200, "application/json", json.c_str());
     }
 

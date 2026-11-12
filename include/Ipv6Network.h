@@ -22,6 +22,9 @@ namespace SQM
         // data arrives) runs for it. IPv4 peers are always served.
         void listen(AsyncWebServer &server, uint16_t port);
 
+        // Connections the listener has accepted since boot.
+        uint32_t acceptedConnections();
+
         // Joins the Alpaca discovery group once the station has an IPv6
         // address; true once joined (call until it is).
         bool joinAlpacaDiscoveryGroup();

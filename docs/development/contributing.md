@@ -37,6 +37,7 @@ Decision logic lives in `lib/` with a native test suite under `test/`, so it can
 | `DeviceCore` | Per-reading decisions and documents: readings, safety, darkness, alerts, Alpaca snapshot |
 | `SensorTypes` | The sensor reading structs |
 | `CaptiveDns` | DNS for the setup hotspot |
+| `WebHealth` | Web server stall detection and TCP connection counts (`/api/status` diagnostics) |
 
 **The demo's device core.** The live demo runs the code in `lib/` compiled to WebAssembly (`web/src/demo/core/`, committed). After changing anything in `lib/` or `tools/demo-core/`, rebuild it:
 

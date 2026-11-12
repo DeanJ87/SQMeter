@@ -103,7 +103,7 @@ namespace SQM
             return;
 
         // Send only status data to System page clients
-        std::string json = createStatusJson();
+        std::string json = createStatusJson(StatusScope::Live);
         wsStatus.textAll(json.c_str());
     }
 
@@ -136,7 +136,7 @@ namespace SQM
             prepareWebSocketClient(wsStatusClients, client);
             Logger::info(TAG, "Status WebSocket client connected: %u", client->id());
             // Send initial status data
-            client->text(createStatusJson().c_str());
+            client->text(createStatusJson(StatusScope::Live).c_str());
             break;
 
         case WS_EVT_DISCONNECT:
