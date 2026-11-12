@@ -220,7 +220,7 @@ With `0` every failing rule is reported at once. 30-60 s is a sensible value: lo
 <!-- diagram: DIA-03
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#SafeDelayFilter::update lib/DeviceCore/src/DeviceCore.cpp#updateSafety
 blocking: true
-fingerprint: 6f94a3aaeb11817d
+fingerprint: 981a006a881d2595
 -->
 <figure class="diagram" markdown>
 
