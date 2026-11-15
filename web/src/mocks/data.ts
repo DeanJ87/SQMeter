@@ -390,7 +390,7 @@ export const mockRecentAlerts: AlertRecord[] = [
     id: 1,
     event: 'rain_started',
     title: 'Rain detected',
-    message: 'The rain sensor reports rain (2.4 mm/h).',
+    message: 'The rain sensor reports rain (2.40 mm/h).',
     level: 'urgent',
     ageSeconds: 1261,
     channels: { pushover: { status: 'sent', detail: 'HTTP 200' } },

@@ -204,7 +204,7 @@ namespace SQM
                 {"dewpoint", num(obs.environment.valid, obs.dewpointC, 1)},
                 {"dew_margin", num(obs.environment.valid, obs.temperatureC - obs.dewpointC, 1)},
                 {"pressure", num(obs.environment.valid, obs.pressureHPa, 0)},
-                {"rain_rate", num(obs.rain.valid, obs.rainRateMmPerHour, 1)},
+                {"rain_rate", num(obs.rain.valid, obs.rainRateMmPerHour, 2)},
                 {"wind", num(obs.wind.valid, obs.windSpeedMs, 1)},
                 {"gust", num(obs.wind.valid, obs.windGustMs, 1)},
                 {"sun_alt", num(n.known, n.sunAltitudeDeg, 1)},

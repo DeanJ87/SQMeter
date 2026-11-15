@@ -134,9 +134,10 @@ void test_rain_started_and_stopped(void)
 
     AlertInputs wet = safeInputs(5);
     wet.raining = true;
-    wet.rainRateMmPerHour = 1.2f;
+    wet.rainRateMmPerHour = 0.02f; // drizzle, the RG-15's 0.01 mm/h step: not "0.0"
     std::vector<Alert> alerts = engine.update(wet, rules);
     TEST_ASSERT_TRUE(hasType(alerts, AlertType::RainStarted));
+    TEST_ASSERT_EQUAL_STRING("The rain sensor reports rain (0.02 mm/h).", alerts[0].message.c_str());
 
     alerts = engine.update(safeInputs(900), rules);
     TEST_ASSERT_TRUE(hasType(alerts, AlertType::RainStopped));
