@@ -277,8 +277,8 @@ namespace SQM
                         alerts.push_back(make(
                             AlertType::RainStarted,
                             "Rain detected",
-                            format("The rain sensor reports rain (%.1f mm/h).", in.rainRateMmPerHour)));
-                        alerts.back().vars = {{"rain_rate", format("%.1f", in.rainRateMmPerHour)}};
+                            format("The rain sensor reports rain (%.2f mm/h).", in.rainRateMmPerHour)));
+                        alerts.back().vars = {{"rain_rate", format("%.2f", in.rainRateMmPerHour)}};
                     }
                     else
                         alerts.push_back(make(AlertType::RainStopped, "Rain cleared", "No rain for the configured rain clear delay."));

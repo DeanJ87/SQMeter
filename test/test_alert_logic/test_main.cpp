@@ -142,6 +142,23 @@ void test_rain_started_and_stopped(void)
     TEST_ASSERT_TRUE(hasType(alerts, AlertType::RainStopped));
 }
 
+void test_rain_started_shows_drizzle_rate(void)
+{
+    // The RG-15 in high resolution reports 0.01 mm/h steps; drizzle at
+    // 0.02 mm/h must not read "0.0 mm/h" in the alert.
+    AlertEngine engine;
+    AlertRules rules = noGraceRules();
+    engine.update(safeInputs(0), rules);
+
+    AlertInputs wet = safeInputs(5);
+    wet.raining = true;
+    wet.rainRateMmPerHour = 0.02f;
+    std::vector<Alert> alerts = engine.update(wet, rules);
+    TEST_ASSERT_EQUAL(1, alerts.size());
+    TEST_ASSERT_EQUAL_STRING("The rain sensor reports rain (0.02 mm/h).", alerts[0].message.c_str());
+    TEST_ASSERT_EQUAL_STRING("0.02", alerts[0].vars.at(0).second.c_str());
+}
+
 void test_disabled_rule_is_silent_and_does_not_fire_on_enable(void)
 {
     AlertEngine engine;
@@ -570,6 +587,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_flap_within_cooldown_sends_nothing_extra);
     RUN_TEST(test_startup_grace);
     RUN_TEST(test_rain_started_and_stopped);
+    RUN_TEST(test_rain_started_shows_drizzle_rate);
     RUN_TEST(test_disabled_rule_is_silent_and_does_not_fire_on_enable);
     RUN_TEST(test_sensor_fault_and_recovery);
     RUN_TEST(test_disabled_sensor_never_alerts);

@@ -20,6 +20,7 @@ All notable changes to SQMeter are documented here.
 ### Fixed
 
 - **Bluetooth start-up**: Bluetooth now starts 5 seconds after WiFi instead of with it, so their combined start-up current no longer browns out a marginal supply. A new firmware is only kept once Bluetooth has started too; one that restarts before then rolls back.
+- **Rain alert rate**: the "Rain detected" alert and the `{rain_rate}` alert variable now show the rain rate to two decimals, the RG-15's own step in high resolution. Drizzle at 0.02 mm/h used to read "0.0 mm/h".
 
 ## [0.4.0-alpha.2] — 2026-11-06
 
