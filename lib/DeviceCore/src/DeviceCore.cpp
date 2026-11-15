@@ -501,7 +501,8 @@ namespace SQM
         bool updateSafety(
             SafetyStatus &status, Alpaca::SafeDelayFilter &filter, const Alpaca::SafetyResult &result, const Config &cfg, uint32_t now)
         {
-            const bool reportedSafe = filter.update(result.isSafe, now, cfg.alpaca.safeDelaySeconds);
+            const bool reportedSafe =
+                filter.update(result.isSafe, now, cfg.alpaca.safeDelaySeconds, cfg.alpaca.unsafeDelaySeconds, result.reasonFlags);
             const bool changed = reportedSafe != status.isSafe || status.evaluatedAtMs == 0;
             if (changed)
                 status.changedAtMs = now;
@@ -510,6 +511,7 @@ namespace SQM
             status.reasonFlags = result.reasonFlags;
             status.reasons = result.unsafeReasons;
             status.secondsUntilSafe = filter.secondsUntilSafe();
+            status.secondsUntilUnsafe = filter.secondsUntilUnsafe();
             status.evaluatedAtMs = now;
             return changed;
         }
@@ -524,6 +526,7 @@ namespace SQM
             for (const std::string &reason : status.reasons)
                 reasons.add(reason);
             target["secondsUntilSafe"] = status.secondsUntilSafe;
+            target["secondsUntilUnsafe"] = status.secondsUntilUnsafe;
             // Rules switched on but ignored because their sensor is off
             // (specs/020-settings-dependencies FR-009).
             JsonArray notInEffect = target.createNestedArray("rulesNotInEffect");

@@ -244,6 +244,9 @@
         },
         "secondsUntilSafe": {
           "type": "number"
+        },
+        "secondsUntilUnsafe": {
+          "type": "number"
         }
       },
       "required": [

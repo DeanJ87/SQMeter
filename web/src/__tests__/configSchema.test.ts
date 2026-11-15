@@ -270,6 +270,12 @@ describe('alpacaConfigSchema', () => {
     expect(alpacaConfigSchema.safeParse({ ...validAlpaca, safeDelaySeconds: 600 }).success).toBe(true);
   });
 
+  it('rejects an unsafe delay outside 0-600 seconds', () => {
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, unsafeDelaySeconds: -1 }).success).toBe(false);
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, unsafeDelaySeconds: 601 }).success).toBe(false);
+    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, unsafeDelaySeconds: 60 }).success).toBe(true);
+  });
+
   it('passes with valid defaults', () => {
     expect(alpacaConfigSchema.safeParse(validAlpaca).success).toBe(true);
   });

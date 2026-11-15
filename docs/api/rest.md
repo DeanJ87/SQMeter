@@ -131,7 +131,7 @@ curl http://sqmeter.local/api/sensors
   "infrared": { "status": "ok", "ageMs": 3100, "skyTemperature": -24.7, "ambientTemperature": 12.4 },
   "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "description": "Clear", "temperatureDelta": -37.1, "correctedDelta": -33.0, "humidity": 53, "humiditySource": "assumed" },
   "battery": { "present": false },
-  "safety": { "safe": true, "rawSafe": true, "reasons": [], "reasonFlags": 0, "secondsUntilSafe": 0, "rulesNotInEffect": [], "alpacaEnabled": true, "evaluatedAgeMs": 412, "changedAgeMs": 3600000 }
+  "safety": { "safe": true, "rawSafe": true, "reasons": [], "reasonFlags": 0, "secondsUntilSafe": 0, "secondsUntilUnsafe": 0, "rulesNotInEffect": [], "alpacaEnabled": true, "evaluatedAgeMs": 412, "changedAgeMs": 3600000 }
 }
 ```
 
@@ -471,6 +471,7 @@ The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clie
   "reasonFlags": 512,
   "reasons": ["Rain detected"],
   "secondsUntilSafe": 0,
+  "secondsUntilUnsafe": 0,
   "rulesNotInEffect": [],
   "evaluatedAgeMs": 412,
   "changedAgeMs": 1260000
@@ -479,10 +480,11 @@ The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clie
 
 | Field | Meaning |
 |---|---|
-| `safe` | Reported verdict, after the safe delay |
-| `rawSafe` | Instantaneous rule evaluation, before the safe delay |
-| `reasons` / `reasonFlags` | Why it's unsafe (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault, 14 battery below the limit, 15 battery data missing, 16 shutting down: battery empty) |
+| `safe` | Reported verdict, after the safe and unsafe delays |
+| `rawSafe` | Instantaneous rule evaluation, before the safe and unsafe delays |
+| `reasons` / `reasonFlags` | Why the raw verdict is unsafe, also while the unsafe delay still reports `safe` (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault, 14 battery below the limit, 15 battery data missing, 16 shutting down: battery empty) |
 | `secondsUntilSafe` | Remaining safe-delay countdown while `rawSafe` is true but `safe` isn't yet |
+| `secondsUntilUnsafe` | Remaining unsafe-delay countdown while `rawSafe` is false but `safe` is still true |
 | `rulesNotInEffect` | Rules switched on but ignored because what they need is off, e.g. `"Unsafe while raining"` (they are listed only while the rain sensor is off). Rules that can't measure their limit (wind, cloud, SQM, humidity) report unsafe instead |
 | `changedAgeMs` | Time since `safe` last changed |
 

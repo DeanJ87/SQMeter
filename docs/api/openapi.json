@@ -435,6 +435,7 @@
                     "reasonFlags": 0,
                     "reasons": [],
                     "secondsUntilSafe": 0,
+                    "secondsUntilUnsafe": 0,
                     "rulesNotInEffect": [],
                     "evaluatedAgeMs": 0,
                     "changedAgeMs": 2005
@@ -544,6 +545,7 @@
                   "reasonFlags": 0,
                   "reasons": [],
                   "secondsUntilSafe": 0,
+                  "secondsUntilUnsafe": 0,
                   "rulesNotInEffect": [],
                   "evaluatedAgeMs": 0,
                   "changedAgeMs": 2005
@@ -3435,6 +3437,9 @@
               "safeDelaySeconds": {
                 "type": "number"
               },
+              "unsafeDelaySeconds": {
+                "type": "number"
+              },
               "sqmMinEnabled": {
                 "type": "boolean"
               },
@@ -4657,6 +4662,9 @@
               "safeDelaySeconds": {
                 "type": "number"
               },
+              "unsafeDelaySeconds": {
+                "type": "number"
+              },
               "sqmMinEnabled": {
                 "type": "boolean"
               },
@@ -5517,6 +5525,9 @@
               },
               "secondsUntilSafe": {
                 "type": "number"
+              },
+              "secondsUntilUnsafe": {
+                "type": "number"
               }
             },
             "required": [
@@ -5892,6 +5903,9 @@
             "type": "boolean"
           },
           "secondsUntilSafe": {
+            "type": "number"
+          },
+          "secondsUntilUnsafe": {
             "type": "number"
           }
         },

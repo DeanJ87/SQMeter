@@ -9,6 +9,10 @@ All notable changes to SQMeter are documented here.
 - Hardware PCB design (planned — SQMeter-Hardware repo)
 - 3D-printed enclosure (planned — Printables)
 
+### Added
+
+- **Unsafe delay** (`alpaca.unsafeDelaySeconds`, Settings → Safety): while the SafetyMonitor reports safe, a failing rule must keep failing this long (0-600 s) before it reports unsafe, so a single odd cloud or humidity reading no longer parks the scope. Rain, Force unsafe and a battery shutdown are still reported at once. The dashboard shows "Unsafe in Ns" and `/api/safety` reports `secondsUntilUnsafe`. Off (`0`) by default, so nothing changes until you set it.
+
 ### Changed
 
 - **Wind vane**: the vane is now an AS5600 magnetic angle sensor on the I²C bus (address `0x36`), replacing the resistor-ladder vane on an analog pin. It reads the exact angle rather than one of 16 positions, and reports a missing, weak or strong magnet: a vane fault when there's no magnet or no answer, a warning in Settings when the magnet is too far or too close. The vane pin and pull-up settings are gone; the north offset is kept. Readings, MQTT, Home Assistant and Alpaca are unchanged.

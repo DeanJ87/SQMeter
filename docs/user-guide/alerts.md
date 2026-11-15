@@ -75,7 +75,7 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 
 | Event | When | Default level |
 |---|---|---|
-| It turns unsafe / safe again | The SafetyMonitor verdict changes (after the safe delay). Unsafe alerts list the reasons | Urgent / Normal |
+| It turns unsafe / safe again | The SafetyMonitor verdict changes (after the safe and unsafe delays). Unsafe alerts list the reasons | Urgent / Normal |
 | Rain starts / stops | The RG-15 starts reporting rain / the rain clear delay passes with no rain | Wake me / Normal |
 | A sensor fails / recovers | A sensor (TSL2591, MLX90614, BME280, RG-15) goes offline or stale, or recovers. Also the RG-15 lens-fault flag | Wake me / Quiet |
 | Dew risk | Temperature comes within the configured margin of the dew point | Off |

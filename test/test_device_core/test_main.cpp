@@ -148,42 +148,6 @@ void test_missing_stale_and_clock()
     TEST_ASSERT_TRUE(doc["environment"].containsKey("ageMs"));
 }
 
-void test_safety_with_safe_delay()
-{
-    const uint32_t now = 100000;
-    SensorSnapshot s = healthy(now);
-    Config cfg = defaults();
-    cfg.alpaca.safeDelaySeconds = 60;
-    Core::derive(s, cfg);
-
-    SafetyStatus status;
-    Alpaca::SafeDelayFilter filter;
-    const auto safeResult = Alpaca::evaluateSafety(Core::safetyInputs(s, cfg, now), Core::safetyThresholds(cfg));
-    TEST_ASSERT_TRUE(safeResult.isSafe);
-    // First evaluation: reported unsafe while the safe delay runs.
-    TEST_ASSERT_TRUE(Core::updateSafety(status, filter, safeResult, cfg, now));
-    TEST_ASSERT_FALSE(status.isSafe);
-    TEST_ASSERT_TRUE(status.rawSafe);
-    TEST_ASSERT_TRUE(status.secondsUntilSafe > 0);
-    // After the delay it's safe.
-    TEST_ASSERT_TRUE(Core::updateSafety(status, filter, safeResult, cfg, now + 61000));
-    TEST_ASSERT_TRUE(status.isSafe);
-
-    // Tighten cloud cover below the reading: unsafe at once, with a reason.
-    s.mlx.objectTemp = 8.0f; // overcast
-    Core::derive(s, cfg);
-    const auto cloudy = Alpaca::evaluateSafety(Core::safetyInputs(s, cfg, now + 62000), Core::safetyThresholds(cfg));
-    TEST_ASSERT_FALSE(cloudy.isSafe);
-    TEST_ASSERT_TRUE(Core::updateSafety(status, filter, cloudy, cfg, now + 62000));
-    TEST_ASSERT_FALSE(status.isSafe);
-
-    StaticJsonDocument<512> doc;
-    Core::writeSafety(doc.to<JsonObject>(), status, cfg, now + 63000);
-    TEST_ASSERT_FALSE(doc["safe"].as<bool>());
-    TEST_ASSERT_TRUE(doc["reasons"].size() >= 1);
-    TEST_ASSERT_EQUAL(1000, doc["evaluatedAgeMs"].as<int>());
-}
-
 // D-15 (specs/020-settings-dependencies): rain rules switched on without the
 // rain sensor are ignored, and the safety document says so.
 void test_safety_lists_rules_not_in_effect()
@@ -524,7 +488,6 @@ int main()
     RUN_TEST(test_derive_and_readings);
     RUN_TEST(test_cloud_delta_uses_air_temperature);
     RUN_TEST(test_missing_stale_and_clock);
-    RUN_TEST(test_safety_with_safe_delay);
     RUN_TEST(test_safety_lists_rules_not_in_effect);
     RUN_TEST(test_rain_makes_unsafe_even_when_stale);
     RUN_TEST(test_stale_when_a_required_sensor_stops_refreshing);

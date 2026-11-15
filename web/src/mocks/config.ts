@@ -95,6 +95,7 @@ export const mockConfig: Config = {
     rainUnsafeEnabled: true,
     rainSensorRequired: true,
     safeDelaySeconds: 0,
+    unsafeDelaySeconds: 0,
     windSpeedUnsafeEnabled: true,
     windSpeedUnsafeMs: 10,
     windGustUnsafeEnabled: true,

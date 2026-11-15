@@ -5,6 +5,7 @@
   "reasonFlags": 0,
   "reasons": [],
   "secondsUntilSafe": 0,
+  "secondsUntilUnsafe": 0,
   "rulesNotInEffect": [],
   "evaluatedAgeMs": 0,
   "changedAgeMs": 2005

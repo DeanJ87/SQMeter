@@ -195,6 +195,10 @@ namespace SQM
         // Conditions must stay continuously safe this long before IsSafe
         // flips back to true (0 = report safe immediately).
         uint32_t safeDelaySeconds;
+        // While safe, an unsafe verdict must last this long before IsSafe
+        // flips to false (0 = at once). Rain, manual override and a battery
+        // shutdown are always reported at once.
+        uint32_t unsafeDelaySeconds;
     };
 
     // Push notifications for safety/rain/sensor events. Persisted under its

@@ -287,6 +287,8 @@ namespace SQM
                 return setError(error, "Alpaca: dewpoint margin threshold must be between 0 and 20 degrees C");
             if (a.safeDelaySeconds > 3600)
                 return setError(error, "Alpaca: safe delay must be between 0 and 3600 seconds");
+            if (a.unsafeDelaySeconds > 600)
+                return setError(error, "Alpaca: unsafe delay must be between 0 and 600 seconds");
             if (!positiveUpTo(a.windSpeedUnsafeMs, 60.0F))
                 return setError(error, "Alpaca: wind speed threshold must be between 0 and 60 m/s");
             if (!positiveUpTo(a.windGustUnsafeMs, 80.0F))

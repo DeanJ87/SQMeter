@@ -56,6 +56,7 @@ export const defaultAlpacaConfig: AlpacaConfig = {
   rainUnsafeEnabled: true,
   rainSensorRequired: true,
   safeDelaySeconds: 0,
+  unsafeDelaySeconds: 0,
   windSpeedUnsafeEnabled: false,
   windSpeedUnsafeMs: 10,
   windGustUnsafeEnabled: false,

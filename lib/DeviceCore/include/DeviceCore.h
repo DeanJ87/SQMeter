@@ -162,7 +162,7 @@ namespace SQM
         // What Alpaca ObservingConditions reports.
         Alpaca::ObservingConditionsSnapshot observingConditions(const SensorSnapshot &snapshot, const Config &cfg, uint32_t nowMs);
 
-        // Applies the safe delay to a fresh evaluation and updates `status`.
+        // Applies the safe and unsafe delays to a fresh evaluation and updates `status`.
         // Returns true if the reported verdict changed (or this is the first).
         bool updateSafety(
             SafetyStatus &status, Alpaca::SafeDelayFilter &filter, const Alpaca::SafetyResult &result, const Config &cfg, uint32_t nowMs);

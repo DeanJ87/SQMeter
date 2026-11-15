@@ -15,7 +15,7 @@
     "sky.sqmEnabled", "skyAveragingL.windowSeconds",
     "skyCalibrationL.sqmOffset", "skyCalibrationL.darkVisibleOffset", "skyCalibrationL.darkFullOffset", "skyCalibrationL.darkIrOffset", "skyCalibrationL.darkSampleCount", "skyCalibrationL.darkCalibratedAt",
     "cloudDetection.clearSkyThreshold", "cloudDetection.cloudyThreshold", "cloudDetection.humidityCorrection",
-    "alpaca.manualOverrideUnsafe", "alpaca.staleAfterSeconds", "alpaca.cloudCoverUnsafePercent", "alpaca.sqmMinSafe", "alpaca.humidityMaxSafe", "alpaca.dewpointMarginMinC", "alpaca.safeDelaySeconds", "alpaca.windSpeedUnsafeMs", "alpaca.windGustUnsafeMs", "alpaca.batteryMinPercent", "alpaca.batteryAlert",
+    "alpaca.manualOverrideUnsafe", "alpaca.staleAfterSeconds", "alpaca.cloudCoverUnsafePercent", "alpaca.sqmMinSafe", "alpaca.humidityMaxSafe", "alpaca.dewpointMarginMinC", "alpaca.safeDelaySeconds", "alpaca.unsafeDelaySeconds", "alpaca.windSpeedUnsafeMs", "alpaca.windGustUnsafeMs", "alpaca.batteryMinPercent", "alpaca.batteryAlert",
     "ble.passkey",
     "location.set", "location.latitude", "location.longitude",
     "wind.speedPin", "wind.kmhPerHz", "wind.directionOffsetDeg",

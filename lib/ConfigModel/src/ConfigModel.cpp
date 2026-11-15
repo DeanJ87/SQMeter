@@ -131,6 +131,7 @@ namespace SQM
             alpaca.rainUnsafeEnabled = true;
             alpaca.rainSensorRequired = true;
             alpaca.safeDelaySeconds = 0;
+            alpaca.unsafeDelaySeconds = 0;
             alpaca.windSpeedUnsafeEnabled = false;
             alpaca.windSpeedUnsafeMs = 10.0f;
             alpaca.windGustUnsafeEnabled = false;

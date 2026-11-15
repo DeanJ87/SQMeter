@@ -233,6 +233,7 @@ namespace SQM
             alpaca["rainUnsafeEnabled"] = a.rainUnsafeEnabled;
             alpaca["rainSensorRequired"] = a.rainSensorRequired;
             alpaca["safeDelaySeconds"] = a.safeDelaySeconds;
+            alpaca["unsafeDelaySeconds"] = a.unsafeDelaySeconds;
             alpaca["windSpeedUnsafeEnabled"] = a.windSpeedUnsafeEnabled;
             alpaca["windSpeedUnsafeMs"] = a.windSpeedUnsafeMs;
             alpaca["windGustUnsafeEnabled"] = a.windGustUnsafeEnabled;

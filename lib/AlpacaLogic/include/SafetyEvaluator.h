@@ -138,24 +138,38 @@ namespace SQM
         // endpoint can show everything that's wrong at once.
         SafetyResult evaluateSafety(const SafetyInputs &inputs, const SafetyThresholds &thresholds);
 
+        // Reasons reported unsafe at once, past the unsafe delay: rain, a
+        // deliberate override, and the battery about to sleep.
+        constexpr uint32_t UNSAFE_IMMEDIATE_FLAGS = UnsafeRain | UnsafeManualOverride | UnsafeShutdown;
+
         // Holds a "safe" verdict back until conditions have been continuously
-        // safe for delaySeconds, so a roof doesn't open on a momentary gap in
-        // the clouds. Unsafe is always reported immediately. The timer also
-        // starts at boot, so a reboot never reports safe early.
+        // safe for safeDelaySeconds, so a roof doesn't open on a momentary gap
+        // in the clouds. The timer also starts at boot, so a reboot never
+        // reports safe early. While reported safe, an unsafe verdict is held
+        // back until it has lasted unsafeDelaySeconds (0 = at once), so one
+        // odd reading doesn't park the scope; UNSAFE_IMMEDIATE_FLAGS reasons
+        // skip that wait.
         class SafeDelayFilter
         {
         public:
             // nowMs is the device's millisecond clock (millis()); elapsed time
             // is unsigned subtraction, so the ~49.7-day wrap is harmless.
-            bool update(bool rawSafe, uint32_t nowMs, uint32_t delaySeconds);
+            bool update(bool rawSafe, uint32_t nowMs, uint32_t safeDelaySeconds, uint32_t unsafeDelaySeconds = 0, uint32_t reasonFlags = 0);
             // Seconds left before a currently-safe raw verdict is reported
             // safe; 0 when already reported safe or currently unsafe.
             uint32_t secondsUntilSafe() const { return remaining; }
+            // Seconds left before a currently-unsafe raw verdict is reported
+            // unsafe; 0 unless the unsafe delay is running.
+            uint32_t secondsUntilUnsafe() const { return unsafeRemaining; }
 
         private:
             bool rawSafeRunning = false;
+            bool reportedSafe = false;
+            bool rawUnsafeRunning = false;
             uint32_t safeSinceMs = 0;
+            uint32_t unsafeSinceMs = 0;
             uint32_t remaining = 0;
+            uint32_t unsafeRemaining = 0;
         };
 
     } // namespace Alpaca

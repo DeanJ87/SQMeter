@@ -10,6 +10,9 @@ import { deviceText } from '../i18n/deviceMessage';
 import { formatDuration } from '../lib/astro';
 
 const verdict = (safety: SafetyStatus) => {
+  if (safety.safe && (safety.secondsUntilUnsafe ?? 0) > 0) {
+    return { text: t('safetyCard.unsafeInSecondsuntilunsafeS', { secondsUntilUnsafe: safety.secondsUntilUnsafe }), tone: 'pill-amber' };
+  }
   if (safety.safe) return { text: t('safetyCard.safe'), tone: 'pill-green' };
   if (safety.rawSafe && safety.secondsUntilSafe > 0) {
     return { text: t('safetyCard.safeInSecondsuntilsafeS', { secondsUntilSafe: safety.secondsUntilSafe }), tone: 'pill-amber' };

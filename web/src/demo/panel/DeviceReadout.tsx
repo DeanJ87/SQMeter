@@ -26,6 +26,7 @@ interface Safety {
   safe: boolean;
   reasons: string[];
   secondsUntilSafe?: number;
+  secondsUntilUnsafe?: number;
 }
 
 const Row: FunctionalComponent<{ label: string; value: string }> = ({ label, value }) => (
@@ -47,6 +48,15 @@ const ALERT_NAMES: Record<string, string> = {
 const alertName = (condition: string) =>
   condition.startsWith('sensor:') ? `${condition.slice('sensor:'.length)} fault alert` : (ALERT_NAMES[condition] ?? 'Alert');
 
+/** The safe and unsafe delays' countdowns. */
+const safetyWaits = (safety: Safety): string[] => {
+  const untilSafe = safety.secondsUntilSafe ?? 0;
+  const untilUnsafe = safety.secondsUntilUnsafe ?? 0;
+  if (!safety.safe && untilSafe > 0) return [`Safe delay - safe in ${formatRemaining(untilSafe)}`];
+  if (safety.safe && untilUnsafe > 0) return [`Unsafe delay - unsafe in ${formatRemaining(untilUnsafe)}`];
+  return [];
+};
+
 /** The device's waits, worded for people (FR-007). */
 export function describeWaits(pending: Pending, safety: Safety): string[] {
   const waits: string[] = [];
@@ -55,8 +65,7 @@ export function describeWaits(pending: Pending, safety: Safety): string[] {
     waits.push(`Sky brightness averages over ${sky.windowSeconds} s - settled in ${formatRemaining(sky.settlingSeconds)}`);
   if (pending.rainClear.latched && !pending.rainClear.rainingNow && (pending.rainClear.remainingSeconds ?? 0) > 0)
     waits.push(`Rain clear delay - ${formatRemaining(pending.rainClear.remainingSeconds ?? 0)} until rain is cleared`);
-  if (!safety.safe && (safety.secondsUntilSafe ?? 0) > 0)
-    waits.push(`Safe delay - safe in ${formatRemaining(safety.secondsUntilSafe ?? 0)}`);
+  waits.push(...safetyWaits(safety));
   for (const alert of pending.alerts) {
     if (alert.kind === 'grace') waits.push(`No alerts for ${formatRemaining(alert.remainingSeconds)} after start-up`);
     else if (alert.kind === 'settle')
