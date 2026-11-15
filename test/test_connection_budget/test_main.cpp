@@ -50,9 +50,9 @@ namespace
 
 void test_live_updates_leave_room_for_imaging_apps()
 {
-    TEST_ASSERT_EQUAL(16, Budget::TCP_CONNECTIONS);
+    TEST_ASSERT_EQUAL(20, Budget::TCP_CONNECTIONS);
     TEST_ASSERT_TRUE(Budget::httpReserve() >= Budget::MIN_HTTP_RESERVE);
-    TEST_ASSERT_EQUAL(8, Budget::httpReserve());
+    TEST_ASSERT_EQUAL(12, Budget::httpReserve());
 }
 
 void test_oldest_client_is_replaced_past_the_limit()

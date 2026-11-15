@@ -81,7 +81,7 @@ N.I.N.A. shows the SafetyMonitor (or weather device) as disconnected, and connec
 
 ```json
 "connections": {
-  "tcpLimit": 16,
+  "tcpLimit": 20,
   "liveUpdates": { "sensors": 1, "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 2 },
   "alpacaRestoredAfterRestart": false
 }
@@ -95,7 +95,7 @@ To be told when it happens rather than the next morning, turn on the **Imaging a
 
 ## A Connection Is Refused Under Heavy Use
 
-The ESP32's network stack holds at most **16 TCP connections** at once, including ones that have just closed (they linger for a short while). That limit is built into the ESP32 Arduino framework the firmware uses.
+The ESP32's network stack holds at most **20 TCP connections** at once, including ones that have just closed (they linger for up to 20 seconds). The firmware sets that limit when it builds the ESP32 framework.
 
 What uses connections:
 
@@ -104,7 +104,7 @@ What uses connections:
 - an imaging app: 1-2 per request burst (each Alpaca request is a short connection)
 - update checks and internet alerts: 1 while sending
 
-That leaves at least 8 for imaging apps and page loads.
+That leaves at least 12 for imaging apps and page loads.
 
 A conformance checker such as ASCOM ConformU fires hundreds of requests in quick succession; running it while other clients poll the device can briefly exhaust the connections, and one request is refused. The device doesn't restart and the next request works. Imaging apps retry on their own.
 

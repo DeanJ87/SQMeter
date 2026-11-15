@@ -1100,6 +1100,277 @@
         },
         "alpacaRestoredAfterRestart": {
           "type": "boolean"
+        },
+        "tcp": {
+          "type": "object",
+          "properties": {
+            "closed": {
+              "type": "number"
+            },
+            "listen": {
+              "type": "number"
+            },
+            "synSent": {
+              "type": "number"
+            },
+            "synRcvd": {
+              "type": "number"
+            },
+            "established": {
+              "type": "number"
+            },
+            "finWait1": {
+              "type": "number"
+            },
+            "finWait2": {
+              "type": "number"
+            },
+            "closeWait": {
+              "type": "number"
+            },
+            "closing": {
+              "type": "number"
+            },
+            "lastAck": {
+              "type": "number"
+            },
+            "timeWait": {
+              "type": "number"
+            },
+            "total": {
+              "type": "number"
+            },
+            "listenBacklog": {
+              "type": "number"
+            },
+            "accepted": {
+              "type": "number"
+            },
+            "peak": {
+              "type": "object",
+              "properties": {
+                "closed": {
+                  "type": "number"
+                },
+                "listen": {
+                  "type": "number"
+                },
+                "synSent": {
+                  "type": "number"
+                },
+                "synRcvd": {
+                  "type": "number"
+                },
+                "established": {
+                  "type": "number"
+                },
+                "finWait1": {
+                  "type": "number"
+                },
+                "finWait2": {
+                  "type": "number"
+                },
+                "closeWait": {
+                  "type": "number"
+                },
+                "closing": {
+                  "type": "number"
+                },
+                "lastAck": {
+                  "type": "number"
+                },
+                "timeWait": {
+                  "type": "number"
+                },
+                "total": {
+                  "type": "number"
+                },
+                "listenBacklog": {
+                  "type": "number"
+                },
+                "uptimeMs": {
+                  "type": "number"
+                },
+                "epoch": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "total",
+                "listenBacklog",
+                "uptimeMs",
+                "epoch"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "total",
+            "listenBacklog",
+            "accepted",
+            "peak"
+          ],
+          "additionalProperties": false
+        },
+        "stalls": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "number"
+            },
+            "ongoing": {
+              "type": "boolean"
+            },
+            "recent": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "startEpoch": {
+                    "type": "number"
+                  },
+                  "startUptimeMs": {
+                    "type": "number"
+                  },
+                  "durationMs": {
+                    "type": "number"
+                  },
+                  "resumed": {
+                    "type": "boolean"
+                  },
+                  "atDetection": {
+                    "type": "object",
+                    "properties": {
+                      "closed": {
+                        "type": "number"
+                      },
+                      "listen": {
+                        "type": "number"
+                      },
+                      "synSent": {
+                        "type": "number"
+                      },
+                      "synRcvd": {
+                        "type": "number"
+                      },
+                      "established": {
+                        "type": "number"
+                      },
+                      "finWait1": {
+                        "type": "number"
+                      },
+                      "finWait2": {
+                        "type": "number"
+                      },
+                      "closeWait": {
+                        "type": "number"
+                      },
+                      "closing": {
+                        "type": "number"
+                      },
+                      "lastAck": {
+                        "type": "number"
+                      },
+                      "timeWait": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      },
+                      "listenBacklog": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "total",
+                      "listenBacklog"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "worst": {
+                    "type": "object",
+                    "properties": {
+                      "closed": {
+                        "type": "number"
+                      },
+                      "listen": {
+                        "type": "number"
+                      },
+                      "synSent": {
+                        "type": "number"
+                      },
+                      "synRcvd": {
+                        "type": "number"
+                      },
+                      "established": {
+                        "type": "number"
+                      },
+                      "finWait1": {
+                        "type": "number"
+                      },
+                      "finWait2": {
+                        "type": "number"
+                      },
+                      "closeWait": {
+                        "type": "number"
+                      },
+                      "closing": {
+                        "type": "number"
+                      },
+                      "lastAck": {
+                        "type": "number"
+                      },
+                      "timeWait": {
+                        "type": "number"
+                      },
+                      "total": {
+                        "type": "number"
+                      },
+                      "listenBacklog": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "total",
+                      "listenBacklog"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "minFreeHeap": {
+                    "type": "number"
+                  },
+                  "asyncTcpStackFree": {
+                    "type": "number"
+                  },
+                  "samples": {
+                    "type": "number"
+                  },
+                  "asyncTcpIdle": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "startEpoch",
+                  "startUptimeMs",
+                  "durationMs",
+                  "resumed",
+                  "atDetection",
+                  "worst",
+                  "minFreeHeap",
+                  "asyncTcpStackFree",
+                  "samples",
+                  "asyncTcpIdle"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "count",
+            "ongoing",
+            "recent"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [

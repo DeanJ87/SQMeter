@@ -4,6 +4,7 @@
 #include "NetAddress.h"
 #include "WiFiManager.h"
 
+#include <atomic>
 #include <cstring>
 #include <lwip/mld6.h>
 #include <lwip/tcpip.h>
@@ -17,6 +18,10 @@ namespace SQM
             constexpr const char *TAG = "IPv6";
             constexpr char REFUSED[] = "HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
                                        "IPv6 requests are only accepted from the local network";
+
+            // Connections accepted since boot: every HTTP request is a new
+            // one (Connection: close), so the web-stall detector watches it.
+            std::atomic<uint32_t> acceptedTotal{0};
 
             // MLD state lives in the TCP/IP task; join from there.
             void joinOnTcpipTask(void *arg)
@@ -47,6 +52,7 @@ namespace SQM
                 {
                     if (client == nullptr)
                         return;
+                    acceptedTotal.fetch_add(1, std::memory_order_relaxed);
                     if (client->remoteIP().type() == IPv6)
                     {
                         const ip6_addr_t remote = client->getRemoteAddress6();
@@ -71,6 +77,11 @@ namespace SQM
                 &server);
             listener->begin();
             Logger::info(TAG, "Web server listening on port %u (IPv4 and IPv6)", port);
+        }
+
+        uint32_t acceptedConnections()
+        {
+            return acceptedTotal.load(std::memory_order_relaxed);
         }
 
         bool joinAlpacaDiscoveryGroup()

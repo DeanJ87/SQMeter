@@ -64,11 +64,27 @@ curl http://sqmeter.local/api/status
     "rain": { "state": "online", "uartOpened": true, "rxPin": 18, "txPin": 19, "baudRate": 9600, "uartPort": 1, "lastCommand": "R", "lastResponse": "Acc 0.01 mm, ...", "timeouts": 0, "parseErrors": 0, "successfulReads": 1424, "lastPollAgeMs": 40, "lastResponseAgeMs": 40, "lastSuccessfulReadAgeMs": 40 }
   },
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "sqmeter", "availabilityTopic": "sqmeter/availability" },
-  "connections": { "tcpLimit": 16, "liveUpdates": { "sensors": 1, "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false }
+  "connections": { "tcpLimit": 20, "liveUpdates": { "sensors": 1, "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false }
 }
 ```
 
 `connections` shows who holds the device's TCP connections: the live-update clients per endpoint (`/ws/sensors`, `/ws/status`), the most each takes, and how many were closed since the restart because a newer one replaced them (`replaced`) or they stopped reading (`stalledClosed`). `alpacaRestoredAfterRestart` is `true` when an imaging app's connection was kept across a restart the device caused itself. See [N.I.N.A. loses the Safety Monitor](../reference/troubleshooting.md#nina-loses-the-safety-monitor).
+
+`connections.tcp` and `connections.stalls` are web server diagnostics, in `/api/status` only (not the `/ws/status` pushes):
+
+```json
+"tcp": { "listen": 1, "established": 2, "timeWait": 6, "total": 8, "listenBacklog": 0, "accepted": 41210,
+         "peak": { "established": 1, "finWait2": 9, "timeWait": 6, "total": 16, "listenBacklog": 5, "uptimeMs": 3512000, "epoch": 1791494565 } },
+"stalls": { "count": 1, "ongoing": false, "recent": [
+  { "startEpoch": 1791494560, "startUptimeMs": 3507000, "durationMs": 21000, "resumed": true,
+    "atDetection": { "listen": 1, "finWait2": 9, "timeWait": 6, "total": 15, "listenBacklog": 5 },
+    "worst": { "listen": 1, "established": 1, "finWait2": 9, "timeWait": 6, "total": 16, "listenBacklog": 5 },
+    "minFreeHeap": 151000, "asyncTcpStackFree": 960, "samples": 16, "asyncTcpIdle": 14 } ] }
+```
+
+`tcp` counts the TCP connections by lwIP state now (`listen`, `synRcvd`, `established`, `finWait1`, `finWait2`, `closeWait`, `closing`, `lastAck`, `timeWait`, ...; states with none are left out). `total` is every connection but listeners, out of `tcpLimit`; `listenBacklog` is handshakes not yet taken by the server (at most 5); `accepted` is connections accepted since the restart. `peak` is the moment with the highest `total` since the restart (`uptimeMs`, `epoch`, `0` if the clock wasn't set).
+
+A stall is no new connection for 5 s while an imaging app polled Alpaca in the last minute; the device checks once a second. `stalls.count` is stalls since the restart and `recent` the last 8, newest first: when the last connection before it was accepted (`startEpoch`, `startUptimeMs`), how long until the next one (`durationMs`; `resumed: false` means given up after 60 s, e.g. the app went away), the connections when it was detected and at their most (`atDetection`, `worst`), the lowest free heap, the async_tcp task's stack headroom, and in how many of the `samples` that task was waiting for work (`asyncTcpIdle`).
 
 `alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object, plus `recentRevision`, which goes up whenever [`/api/alerts/recent`](#get-apialertsrecent) would answer differently. `configRevision` goes up whenever the settings are saved. Both only say *that* something changed, so a page fetches the details then; they restart from 0 after a restart. `alpaca.clients` says, per Alpaca device, whether an imaging app has it `connected`, whether one is `watching` (connected, or polling since the restart), whether it has gone `silent` (no request for the alert's **Silent for** time), how long ago it last checked (`lastCheckedAgeMs`, `null` if never since the restart) and the last Alpaca `clientId` (`null` if none); the web UI's own requests aren't counted ([The imaging app](../user-guide/alerts.md#the-imaging-app)).
 
