@@ -450,6 +450,8 @@ namespace SQM
             const AlertsConfig &a = c.alerts;
             if (a.cooldownSeconds > 86400)
                 return setError(error, "Alerts: cooldown must be between 0 and 86400 seconds");
+            if (a.sensorFaultDelaySeconds > AlertsConfig::MAX_SENSOR_FAULT_DELAY_SECONDS)
+                return setError(error, "Alerts: sensor fault delay must be between 0 and 600 seconds");
             if (!inRange(a.dewRiskMarginC, 0.0F, 10.0F))
                 return setError(error, "Alerts: dew risk margin must be between 0 and 10 degrees C");
             if (!inRange(a.clearSkyCloudPercent, 0.0F, 100.0F))

@@ -246,6 +246,22 @@ export const AlertsEventsCard: FunctionalComponent<{ view: AlertsView; status: S
               onChange={(v) => set(['cooldownSeconds'], v)}
             />
           </Field>
+          <Field
+            label={t('settings.alerts.sensorFaultDelay')}
+            error={err('sensorFaultDelaySeconds')}
+            hint={t('settings.alerts.aSensorFaultOrIts')}
+          >
+            <NumberInput
+              dataField="alerts.sensorFaultDelaySeconds"
+              integer
+              min={0}
+              max={600}
+              unit="s"
+              value={alerts.sensorFaultDelaySeconds ?? 120}
+              disabled={off}
+              onChange={(v) => set(['sensorFaultDelaySeconds'], v)}
+            />
+          </Field>
         </div>
       </fieldset>
     </SettingsCard>

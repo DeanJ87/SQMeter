@@ -20,7 +20,7 @@ namespace
         AlertRules rules;
         rules.startupGraceSeconds = 0;
         rules.cooldownSeconds = 60;
-        rules.sensorSettleSeconds = 0;
+        rules.sensorFaultDelaySeconds = 0;
         rules.skySettleSeconds = 0;
         rules.skyNightOnly = false;
         return rules;

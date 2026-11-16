@@ -14,7 +14,7 @@ namespace
         AlertRules rules;
         rules.startupGraceSeconds = 0;
         rules.cooldownSeconds = 60;
-        rules.sensorSettleSeconds = 0;
+        rules.sensorFaultDelaySeconds = 0;
         rules.skySettleSeconds = 0;
         rules.skyNightOnly = false;
         return rules;
@@ -309,7 +309,7 @@ void test_sensor_blip_is_not_announced(void)
 {
     AlertEngine engine;
     AlertRules rules = noGraceRules();
-    rules.sensorSettleSeconds = 30;
+    rules.sensorFaultDelaySeconds = 30;
     engine.update(safeInputs(0), rules);
 
     AlertInputs blip = safeInputs(10);
@@ -510,7 +510,7 @@ void test_waits_cooldown_and_settle(void)
     AlertEngine engine;
     AlertRules rules = noGraceRules();
     rules.cooldownSeconds = 60;
-    rules.sensorSettleSeconds = 30;
+    rules.sensorFaultDelaySeconds = 30;
     engine.update(safeInputs(0), rules);
     TEST_ASSERT_EQUAL(0, engine.waits(0, rules).size()); // nothing pending
 
@@ -560,11 +560,13 @@ void test_waits_does_not_change_what_is_sent(void)
 }
 
 void run_battery_alert_tests(void);
+void run_sensor_fault_delay_tests(void);
 
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
     run_battery_alert_tests();
+    run_sensor_fault_delay_tests();
     RUN_TEST(test_first_update_sets_baseline_without_alerts);
     RUN_TEST(test_unsafe_then_safe);
     RUN_TEST(test_cooldown_defers_but_does_not_lose_final_state);

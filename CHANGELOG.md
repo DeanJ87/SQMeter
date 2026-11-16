@@ -11,10 +11,13 @@ All notable changes to SQMeter are documented here.
 
 ### Added
 
+- **Sensor fault delay** (`alerts.sensorFaultDelaySeconds`, Settings → Alerts): a sensor fault, and its recovery, must last this long (0-600 s) before it's alerted. The default is now 2 minutes (it was a fixed 30 s), so a sensor dropping out briefly no longer wakes you with a fault followed by a recovery. A recovery is only sent after its fault alert was. Alerts only: the safety verdict still sees a fault at once.
 - **Unsafe delay** (`alpaca.unsafeDelaySeconds`, Settings → Safety): while the SafetyMonitor reports safe, a failing rule must keep failing this long (0-600 s) before it reports unsafe, so a single odd cloud or humidity reading no longer parks the scope. Rain, Force unsafe and a battery shutdown are still reported at once. The dashboard shows "Unsafe in Ns" and `/api/safety` reports `secondsUntilUnsafe`. Off (`0`) by default, so nothing changes until you set it.
 
 ### Changed
 
+- **Sensor fault alerts**: when several sensors fail together (usually the power supply or the I2C bus), one "Sensor fault: several sensors" alert lists them all, and one "Sensors recovered" follows, instead of one alert per sensor. `{sensor}` lists the names.
+- **Rain alert**: on the first drops, before the RG-15 reports a rate, the rain alert says "The rain sensor reports the first drops of rain." instead of "rain (0.00 mm/h)". It is still sent at once; `{rain_rate}` is `0.00` then.
 - **Wind vane**: the vane is now an AS5600 magnetic angle sensor on the I²C bus (address `0x36`), replacing the resistor-ladder vane on an analog pin. It reads the exact angle rather than one of 16 positions, and reports a missing, weak or strong magnet: a vane fault when there's no magnet or no answer, a warning in Settings when the magnet is too far or too close. The vane pin and pull-up settings are gone; the north offset is kept. Readings, MQTT, Home Assistant and Alpaca are unchanged.
 
 ### Fixed

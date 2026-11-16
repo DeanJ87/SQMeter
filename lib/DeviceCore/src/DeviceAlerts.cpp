@@ -76,6 +76,7 @@ namespace SQM
             rules.skyNightOnly = a.skyNightOnly;
             rules.safetyNightOnly = a.safetyNightOnly;
             rules.cooldownSeconds = a.cooldownSeconds;
+            rules.sensorFaultDelaySeconds = a.sensorFaultDelaySeconds;
             rules.onClientLost = a.clientLost.level != 0;
             rules.onClientBack = a.clientBack.level != 0;
             rules.onClientDisconnected = a.clientDisconnected.level != 0;

@@ -206,6 +206,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "clientSilentSafetySeconds": 120,
     "clientSilentWeatherSeconds": 600,
     "cooldownSeconds": 300,
+    "sensorFaultDelaySeconds": 120,
     "pushover": { "enabled": false, "userKey": "", "appToken": "", "sound": "" },
     "ntfy": { "enabled": false, "server": "https://ntfy.sh", "topic": "", "token": "" },
     "webhook": { "enabled": false, "url": "", "authHeader": "", "insecureTls": false },
@@ -481,6 +482,7 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `armWithAlpaca` | bool | `false` | The older form of `sendMode` (`true` = `whileConnected`): still written for older firmware, and read when `sendMode` is missing |
 | `clientSilentSafetySeconds` / `clientSilentWeatherSeconds` | int | `120` / `600` | "The imaging app stops checking" after this long without a request to the safety monitor / weather device (30-3600) |
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
+| `sensorFaultDelaySeconds` | int | `120` | A sensor fault (or the rain sensor's lens fault), and a recovery, must last this long before it's alerted; alerts only, the safety verdict sees a fault at once (0-600) |
 | `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
 
 Events: `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `dew_risk`, `clear_sky`, `clouded_over`, `client_lost`, `client_back`, `client_disconnected`, and the battery events `battery_low`, `battery_critical`, `battery_shutdown`, `power_restored`, `charge_complete`, `charge_fault` (see [Battery](battery.md#alerts)). The imaging-app events and the silence times are stored under their own NVS key, and the battery events under a third, so neither counts towards the 3900-byte limit on the rest of the alert settings.

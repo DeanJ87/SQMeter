@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 #include "Config.h"
@@ -223,8 +224,9 @@ void test_battery_alerts_part()
     Config c = Config::createDefault();
     const std::string main = c.alertsToJson(false, Config::AlertsPart::Main);
     const std::string client = c.alertsToJson(false, Config::AlertsPart::Client);
-    // The stored parts as before spec 032 (sizes measured at 3bc6f6a).
-    TEST_ASSERT_EQUAL(995, main.size());
+    // The stored parts as before spec 032 (sizes measured at 3bc6f6a), plus
+    // the sensor fault delay added since.
+    TEST_ASSERT_EQUAL(995 + std::strlen(",\"sensorFaultDelaySeconds\":120"), main.size());
     TEST_ASSERT_EQUAL(285, client.size());
     TEST_ASSERT_TRUE(main.find("battery") == std::string::npos);
     TEST_ASSERT_TRUE(client.find("battery") == std::string::npos);

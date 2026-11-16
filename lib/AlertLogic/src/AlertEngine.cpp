@@ -13,6 +13,9 @@ namespace SQM
             // Hysteresis bands so a reading hovering on a threshold doesn't
             // re-trigger the same condition.
             constexpr float DEW_HYSTERESIS_C = 0.5f;
+            // Below this the rate prints as 0.00 mm/h: the RG-15 latches rain
+            // on its first drops (accumulation) before it reports a rate.
+            constexpr float RAIN_RATE_SHOWN_MM_PER_HOUR = 0.005f;
 
             Alert make(AlertType type, std::string title, std::string message)
             {
@@ -21,6 +24,15 @@ namespace SQM
                 alert.title = std::move(title);
                 alert.message = std::move(message);
                 return alert;
+            }
+
+            // "A, B, C" - the {sensor} value of a grouped sensor alert.
+            std::string joinNames(const std::vector<std::string> &names)
+            {
+                std::string out;
+                for (const std::string &name : names)
+                    out += (out.empty() ? "" : ", ") + name;
+                return out;
             }
 
             std::string format(const char *fmt, double a, double b = 0.0, double c = 0.0)
@@ -274,17 +286,24 @@ namespace SQM
                 {
                     if (in.raining)
                     {
-                        alerts.push_back(make(
-                            AlertType::RainStarted,
-                            "Rain detected",
-                            format("The rain sensor reports rain (%.2f mm/h).", in.rainRateMmPerHour)));
-                        alerts.back().vars = {{"rain_rate", format("%.2f", in.rainRateMmPerHour)}};
+                        // Sent at once, with or without a rate yet: rain is the
+                        // most urgent alert.
+                        const bool firstDrops = in.rainRateMmPerHour < RAIN_RATE_SHOWN_MM_PER_HOUR;
+                        alerts.push_back(
+                            firstDrops ? make(AlertType::RainStarted, "Rain detected", "The rain sensor reports the first drops of rain.")
+                                       : make(
+                                             AlertType::RainStarted,
+                                             "Rain detected",
+                                             format("The rain sensor reports rain (%.2f mm/h).", in.rainRateMmPerHour)));
+                        // {rain_rate} stays a number ("0.00" on the first drops)
+                        // so custom templates still read.
+                        alerts.back().vars = {{"rain_rate", format("%.2f", firstDrops ? 0.0 : in.rainRateMmPerHour)}};
                     }
                     else
                         alerts.push_back(make(AlertType::RainStopped, "Rain cleared", "No rain for the configured rain clear delay."));
                 }
 
-                if (sync(lens, in.lensFault, step.emit(rules.onSensorFault, rules.sensorSettleSeconds)) && in.lensFault)
+                if (sync(lens, in.lensFault, step.emit(rules.onSensorFault, rules.sensorFaultDelaySeconds)) && in.lensFault)
                 {
                     alerts.push_back(make(
                         AlertType::LensFault,
@@ -297,7 +316,10 @@ namespace SQM
 
         void AlertEngine::updateSensors(const AlertInputs &in, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts)
         {
-            // Sensor health
+            // Sensor health: the sensors crossing into fault (or back) this
+            // pass, announced together.
+            std::vector<std::string> failed;
+            std::vector<std::string> recovered;
             for (size_t i = 0; i < SENSOR_COUNT; ++i)
             {
                 const SensorHealth &sensor = in.sensors[i];
@@ -305,23 +327,51 @@ namespace SQM
                 if (!sensor.enabled)
                 {
                     sensors[i] = Tracker{};
+                    faultAnnounced[i] = false;
                     continue;
                 }
                 const bool faulted = !sensor.healthy;
-                if (sync(sensors[i], faulted, step.emit(rules.onSensorFault, rules.sensorSettleSeconds)))
+                const bool changed = sync(sensors[i], faulted, step.emit(rules.onSensorFault, rules.sensorFaultDelaySeconds));
+                if (changed && faulted)
                 {
-                    if (faulted)
-                        alerts.push_back(make(
-                            AlertType::SensorFault,
-                            "Sensor fault: " + std::string(sensor.name),
-                            std::string(sensor.name) + " is offline or reporting errors."));
-                    else
-                        alerts.push_back(make(
-                            AlertType::SensorRecovered,
-                            "Sensor recovered: " + std::string(sensor.name),
-                            std::string(sensor.name) + " is reporting normally again."));
-                    alerts.back().vars = {{"sensor", sensor.name}};
+                    faultAnnounced[i] = true;
+                    failed.emplace_back(sensor.name);
                 }
+                else if (changed && faultAnnounced[i])
+                    recovered.emplace_back(sensor.name);
+                // A fault taken over silently (at boot, while the rule was
+                // off) was never announced, so its recovery isn't either.
+                if (!sensors[i].notified)
+                    faultAnnounced[i] = false;
+            }
+            sensorAlerts(failed, recovered, alerts);
+        }
+
+        void AlertEngine::sensorAlerts(
+            const std::vector<std::string> &failed, const std::vector<std::string> &recovered, std::vector<Alert> &alerts)
+        {
+            // Several sensors failing together is one event - usually the
+            // supply or the I2C bus - so it's one alert, not one per sensor.
+            if (!failed.empty())
+            {
+                const std::string name = joinNames(failed);
+                alerts.push_back(
+                    failed.size() == 1
+                        ? make(AlertType::SensorFault, "Sensor fault: " + name, name + " is offline or reporting errors.")
+                        : make(
+                              AlertType::SensorFault,
+                              "Sensor fault: several sensors",
+                              name + " are offline or reporting errors. Several at once usually means a power or I2C bus problem."));
+                alerts.back().vars = {{"sensor", name}};
+            }
+            if (!recovered.empty())
+            {
+                const std::string name = joinNames(recovered);
+                alerts.push_back(
+                    recovered.size() == 1
+                        ? make(AlertType::SensorRecovered, "Sensor recovered: " + name, name + " is reporting normally again.")
+                        : make(AlertType::SensorRecovered, "Sensors recovered", name + " are reporting normally again."));
+                alerts.back().vars = {{"sensor", name}};
             }
         }
 
@@ -525,9 +575,9 @@ namespace SQM
             };
             add("safety", safety, 0);
             add("rain", rain, 0);
-            add("lens", lens, rules.sensorSettleSeconds);
+            add("lens", lens, rules.sensorFaultDelaySeconds);
             for (size_t i = 0; i < SENSOR_COUNT; ++i)
-                add(std::string("sensor:") + (sensorNames[i] != nullptr ? sensorNames[i] : ""), sensors[i], rules.sensorSettleSeconds);
+                add(std::string("sensor:") + (sensorNames[i] != nullptr ? sensorNames[i] : ""), sensors[i], rules.sensorFaultDelaySeconds);
             add("dew", dew, 0);
             add("sky", sky, rules.skySettleSeconds);
             add("client:safetymonitor", clients[0], 0);

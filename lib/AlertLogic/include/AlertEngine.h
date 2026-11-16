@@ -111,8 +111,10 @@ namespace SQM
             uint32_t cooldownSeconds = 300;
             // A sensor fault (or recovery) must hold this long before it's
             // announced, so blips - saving settings, reconfiguring a sensor,
-            // an OTA upload stalling the loop - don't page anyone.
-            uint32_t sensorSettleSeconds = 30;
+            // an OTA upload stalling the loop, a sensor dropping out for a
+            // minute - don't page anyone (alerts.sensorFaultDelaySeconds).
+            // The rain sensor's lens fault waits the same time.
+            uint32_t sensorFaultDelaySeconds = 120;
             // Nothing is sent this soon after boot; state is still tracked,
             // so a reboot doesn't announce whatever the startup state is.
             // Imaging-app events don't wait for it: they need a request
@@ -290,6 +292,8 @@ namespace SQM
             void updateSafety(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
             void updateRain(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
             void updateSensors(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
+            static void sensorAlerts(
+                const std::vector<std::string> &failed, const std::vector<std::string> &recovered, std::vector<Alert> &alerts);
             void updateDew(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
             void updateSky(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
             void updateBattery(const AlertInputs &inputs, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts);
@@ -307,6 +311,9 @@ namespace SQM
             Tracker dew;
             Tracker sky; // notified value = "clear"
             Tracker sensors[SENSOR_COUNT];
+            // A "sensor fault" sent and not yet answered: "recovered" only
+            // follows a fault that was announced.
+            bool faultAnnounced[SENSOR_COUNT] = {};
             const char *sensorNames[SENSOR_COUNT] = {};
 
             // Observed (hysteresis) state for threshold conditions.

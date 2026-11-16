@@ -11,7 +11,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: fd2a81c8bd0eeac7
+fingerprint: f3aa6beee0a5d2fa
 -->
 <figure class="diagram" markdown>
 
@@ -22,7 +22,7 @@ flowchart TB
     CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky,<br/>the imaging app, the battery"]) --> SILENT{"Ignored?"}
     SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>first minute after boot (not the imaging app<br/>or going to sleep), the event's rule off,<br/>the sensor switched off, or no imaging app since boot"]
     SILENT -->|no| HELD{"Held back?"}
-    HELD -->|yes| LATER["<b>Sent later if it still differs</b><br/>safety or sky changes while it's light,<br/>safety still settling,<br/>a fault not yet 30 s old,<br/>a sky change not yet 2 min old,<br/>within the 5 min cooldown<br/>(except &quot;imaging app is back&quot;,<br/>going to sleep and power restored)"]
+    HELD -->|yes| LATER["<b>Sent later if it still differs</b><br/>safety or sky changes while it's light,<br/>safety still settling,<br/>a fault not yet past the<br/>sensor fault delay (2 min),<br/>a sky change not yet 2 min old,<br/>within the 5 min cooldown<br/>(except &quot;imaging app is back&quot;,<br/>going to sleep and power restored)"]
     HELD -->|no| LEVEL{"Event level Off?"}
     LEVEL -->|yes| DROPPED["Not sent"]
     LEVEL -->|no| WORDING["Default or your own wording;<br/>events raised together become one notification"]
@@ -54,7 +54,7 @@ flowchart TB
     3. **Held back for now, sent later if still true**:
         - safe/unsafe while it's light (with "Safety alerts only when it's dark"), or while the verdict is still settling (no data yet, or waiting out the safe delay);
         - sky changes while it's light (with sky alerts limited to darkness): at nightfall a clear sky is announced once;
-        - a sensor fault or recovery not yet 30 seconds old;
+        - a sensor fault or recovery not yet as old as the sensor fault delay (default 2 minutes);
         - a sky change not yet 2 minutes old;
         - within the 5-minute cooldown since that condition's last alert (not "the imaging app is back", going to sleep or power restored).
     4. **Not sent**: an event whose level is Off.
@@ -76,8 +76,8 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | Event | When | Default level |
 |---|---|---|
 | It turns unsafe / safe again | The SafetyMonitor verdict changes (after the safe and unsafe delays). Unsafe alerts list the reasons | Urgent / Normal |
-| Rain starts / stops | The RG-15 starts reporting rain / the rain clear delay passes with no rain | Wake me / Normal |
-| A sensor fails / recovers | A sensor (TSL2591, MLX90614, BME280, RG-15) goes offline or stale, or recovers. Also the RG-15 lens-fault flag | Wake me / Quiet |
+| Rain starts / stops | The RG-15 starts reporting rain / the rain clear delay passes with no rain. Sent at once; on the first drops, before the RG-15 has a rate, it says "the first drops of rain" | Wake me / Normal |
+| A sensor fails / recovers | A sensor (TSL2591, MLX90614, BME280, RG-15) goes offline or stale, or recovers, and stays that way for the **Sensor fault delay**. Also the RG-15 lens-fault flag. Several sensors failing together send one alert ("Sensor fault: several sensors"), and their recovery one "Sensors recovered" | Wake me / Quiet |
 | Dew risk | Temperature comes within the configured margin of the dew point | Off |
 | Skies clear up / cloud over | Cloud cover drops below the "clear" percentage (default 20%) / rises above the "clouded over" percentage (default 70%). Between the two nothing changes, and a change has to hold for 2 minutes | Off |
 | The imaging app stops checking / is back | No request reached the safety monitor or weather device for its **Silent for** time / it started checking again. See [The imaging app](#the-imaging-app) | Urgent / Quiet |
@@ -125,7 +125,7 @@ Alerts raised at the same moment - rain starting usually makes the observatory u
 | Variable | Value |
 |---|---|
 | `{reasons}`, `{reasons_inline}`, `{reason_count}` | Unsafe only: each failing rule with value and limit (one per line / on one line), and how many |
-| `{sensor}` | Sensor events: which sensor ("Light sensor", or "SQM sensor" and "SQM-L sensor" with two sky sensors) |
+| `{sensor}` | Sensor events: which sensor ("Light sensor", or "SQM sensor" and "SQM-L sensor" with two sky sensors); several at once are listed with commas |
 | `{event}` | The event name, as in webhook payloads: `unsafe`, `rain_started`, ... |
 | `{device}`, `{time}`, `{date}`, `{level}` | Device name, local time and date, alert level |
 | `{sqm}`, `{cloud}`, `{sky_temp}`, `{temp}`, `{humidity}`, `{dewpoint}`, `{dew_margin}`, `{pressure}`, `{rain_rate}`, `{wind}`, `{gust}`, `{sun_alt}` | Current readings (`--` if that sensor isn't reporting) |
@@ -147,7 +147,7 @@ While the device starts up it reports unsafe (no data yet, then the safe delay, 
 
 **History** on the dashboard's safety card lists the last 32 safety changes, restarts (and why the device restarted) and the safe/unsafe alerts actually sent. It survives restarts, crashes and updates, but not a power cut - so when an alert seems missing, it shows whether the device restarted, was only waiting out the safe delay, or held the alert back for the cooldown.
 
-Nothing is sent in the first minute after boot, so a restart doesn't announce the device's startup state. Sensor faults and recoveries must also last 30 seconds before they're sent, so brief blips (saving settings, a sensor being reconfigured, an OTA upload) don't page anyone.
+Nothing is sent in the first minute after boot, so a restart doesn't announce the device's startup state. Sensor faults and recoveries must also last for the **Sensor fault delay** (Settings → Alerts, default 2 min, 0-600 s) before they're sent, so brief blips (saving settings, a sensor being reconfigured, an OTA upload, a sensor dropping out for a minute) don't page anyone. A recovery is only sent after its fault alert was. The delay applies to alerts only: the safety verdict still sees a fault at once.
 
 ---
 

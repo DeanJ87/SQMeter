@@ -175,6 +175,22 @@ void test_client_silence_boundaries()
     TEST_ASSERT_TRUE(rejectReason("{\"alerts\":{\"clientSilentWeatherSeconds\":3601}}").size() > 0);
 }
 
+void test_sensor_fault_delay_bounds_and_stored_part()
+{
+    TEST_ASSERT_EQUAL_UINT32(120, Config::createDefault().alerts.sensorFaultDelaySeconds);
+    TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"alerts\":{\"sensorFaultDelaySeconds\":0}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"alerts\":{\"sensorFaultDelaySeconds\":600}}").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "Alerts: sensor fault delay must be between 0 and 600 seconds",
+        rejectReason("{\"alerts\":{\"sensorFaultDelaySeconds\":601}}").c_str());
+    // Kept in the main stored part (NVS), which every firmware reads.
+    Config cfg = Config::createDefault();
+    cfg.alerts.sensorFaultDelaySeconds = 45;
+    const auto loaded = Config::fromJson(std::string("{\"alerts\":") + cfg.alertsToJson(false, Config::AlertsPart::Main) + "}");
+    TEST_ASSERT_TRUE(loaded.has_value());
+    TEST_ASSERT_EQUAL_UINT32(45, loaded->alerts.sensorFaultDelaySeconds);
+}
+
 void test_stored_parts_round_trip()
 {
     Config cfg = Config::createDefault();
@@ -445,6 +461,7 @@ int main()
     RUN_TEST(test_alert_schedule_defaults);
     RUN_TEST(test_arm_with_alpaca_migrates_and_is_still_written);
     RUN_TEST(test_client_silence_boundaries);
+    RUN_TEST(test_sensor_fault_delay_bounds_and_stored_part);
     RUN_TEST(test_stored_parts_round_trip);
     RUN_TEST(test_full_client_templates_fit_and_add_nothing_to_main);
     RUN_TEST(test_alert_wording_limits_count_characters_not_bytes);

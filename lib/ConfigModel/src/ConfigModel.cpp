@@ -174,6 +174,7 @@ namespace SQM
             a.armWithAlpaca = false;
             a.nightSunAltitudeDeg = -12.0f;
             a.cooldownSeconds = 300;
+            a.sensorFaultDelaySeconds = 120;
             a.pushoverEnabled = false;
             a.ntfyEnabled = false;
             a.ntfyServer = "https://ntfy.sh";
