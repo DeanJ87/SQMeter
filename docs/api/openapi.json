@@ -2821,6 +2821,9 @@
               "cooldownSeconds": {
                 "type": "number"
               },
+              "sensorFaultDelaySeconds": {
+                "type": "number"
+              },
               "dewRiskMarginC": {
                 "type": "number"
               },
@@ -4206,6 +4209,9 @@
                 "type": "number"
               },
               "cooldownSeconds": {
+                "type": "number"
+              },
+              "sensorFaultDelaySeconds": {
                 "type": "number"
               },
               "dewRiskMarginC": {

@@ -267,6 +267,11 @@ namespace SQM
         static constexpr uint32_t MAX_CLIENT_SILENT_SECONDS = 3600;
         float nightSunAltitudeDeg; // -0.833 sunset, -12 nautical, -18 astronomical
         uint32_t cooldownSeconds;  // min time between notifications of the same kind
+        // A sensor fault (and its recovery) must last this long before it's
+        // alerted, so a sensor that drops out briefly doesn't page anyone.
+        // Alerts only: the safety verdict still sees the fault at once.
+        uint32_t sensorFaultDelaySeconds;
+        static constexpr uint32_t MAX_SENSOR_FAULT_DELAY_SECONDS = 600;
 
         // Channels
         bool pushoverEnabled;

@@ -16,6 +16,16 @@ describe('device text in the UI language', () => {
     expect(deviceText('Demo: nothing was sent')).toBe('Demo: no se envió nada');
   });
 
+  it('translates the grouped sensor fault and the first drops of rain', () => {
+    setLanguage('es', spanish);
+    expect(deviceText('Sensor fault: several sensors')).toBe(es['device.alert.sensorFaultSeveralSensors']);
+    expect(deviceText('Sensor fault: MLX90614')).toBe(es['device.alert.sensorFaultName'].replace('{name}', 'MLX90614'));
+    expect(deviceText('TSL2591, MLX90614 are reporting normally again.')).toBe(
+      es['device.alert.nameAreReportingNormallyAgain'].replace('{name}', 'TSL2591, MLX90614'),
+    );
+    expect(deviceText('The rain sensor reports the first drops of rain.')).toBe(es['device.alert.theRainSensorReportsTheFirst']);
+  });
+
   it('leaves text it does not know as sent', () => {
     setLanguage('es', spanish);
     expect(deviceText('My own title')).toBe('My own title');

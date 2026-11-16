@@ -40,6 +40,12 @@ export const alertsConfigSchema = z
       .optional(),
     nightSunAltitudeDeg: z.number().min(-20).max(0),
     cooldownSeconds: z.number().int().min(0).max(86400, t('validation.configSchema.mustBeAtMost24')),
+    sensorFaultDelaySeconds: z
+      .number()
+      .int()
+      .min(0, t('validation.configSchema.mustBe0OrMore'))
+      .max(600, t('validation.configSchema.mustBeAtMost10'))
+      .optional(),
     pushover: z.object({
       enabled: z.boolean(),
       userKey: z.string(),

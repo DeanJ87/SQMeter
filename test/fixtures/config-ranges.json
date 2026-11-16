@@ -44,6 +44,7 @@
     { "path": "alerts.cloudedOverCloudPercent", "gt": 0, "max": 100, "with": { "alerts.clearSkyCloudPercent": 0 } },
     { "path": "alerts.nightSunAltitudeDeg", "min": -20, "max": 0 },
     { "path": "alerts.cooldownSeconds", "int": true, "min": 0, "max": 86400 },
+    { "path": "alerts.sensorFaultDelaySeconds", "int": true, "min": 0, "max": 600 },
     { "path": "alerts.clientSilentSafetySeconds", "int": true, "min": 30, "max": 3600 },
     { "path": "alerts.clientSilentWeatherSeconds", "int": true, "min": 30, "max": 3600 },
     { "path": "location.latitude", "min": -90, "max": 90, "with": { "location.set": true } },

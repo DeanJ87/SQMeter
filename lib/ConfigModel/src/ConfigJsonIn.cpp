@@ -78,6 +78,7 @@ namespace SQM
                 {"rain", "dailyResetHour"},
                 {"rain", "dailyResetMinute"},
                 {"alerts", "cooldownSeconds"},
+                {"alerts", "sensorFaultDelaySeconds"},
                 {"alerts", "clientSilentSafetySeconds"},
                 {"alerts", "clientSilentWeatherSeconds"},
             };
@@ -429,6 +430,7 @@ namespace SQM
             applyClientSilence(alerts, a);
             alerts.take("nightSunAltitudeDeg", a.nightSunAltitudeDeg);
             alerts.take("cooldownSeconds", a.cooldownSeconds);
+            alerts.take("sensorFaultDelaySeconds", a.sensorFaultDelaySeconds);
             applyAlertChannels(alerts, a, keepSecrets);
             return true;
         }

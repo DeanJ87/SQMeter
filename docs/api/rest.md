@@ -559,6 +559,8 @@ Whether alerts are on, and the last 20 alerts since boot, newest first:
 
 `status` is `pending`, `sent`, `failed` or `skipped`.
 
+`sensor_fault` and `sensor_recovered` are sent once a fault or recovery has lasted `alerts.sensorFaultDelaySeconds` (default 120); several sensors crossing together give one alert ("Sensor fault: several sensors", "Sensors recovered"). A `rain_started` on the first drops, before the RG-15 reports a rate, reads "The rain sensor reports the first drops of rain."
+
 ---
 
 ## Language

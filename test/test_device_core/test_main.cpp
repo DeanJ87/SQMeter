@@ -389,6 +389,15 @@ void test_alert_wording_and_levels()
     TEST_ASSERT_EQUAL(0, quiet.outgoing.size());
 }
 
+// The sensor fault delay setting is the engine's sensor (and lens) settle time.
+void test_alert_rules_take_the_sensor_fault_delay()
+{
+    Config cfg = defaults();
+    TEST_ASSERT_EQUAL_UINT32(120, Core::alertRules(cfg).sensorFaultDelaySeconds);
+    cfg.alerts.sensorFaultDelaySeconds = 0;
+    TEST_ASSERT_EQUAL_UINT32(0, Core::alertRules(cfg).sensorFaultDelaySeconds);
+}
+
 // specs/008 FR-006: the device fills exactly the common variables the web UI
 // offers (lib/AlertLogic/template-variables.json).
 void test_alert_vars_match_the_shared_list()
@@ -498,6 +507,7 @@ int main()
     RUN_TEST(test_alpaca_location);
     RUN_TEST(test_alert_wording_and_levels);
     RUN_TEST(test_observing_conditions_missing_vs_failed_sensors);
+    RUN_TEST(test_alert_rules_take_the_sensor_fault_delay);
     RUN_TEST(test_alert_vars_match_the_shared_list);
     RUN_TEST(test_iso_utc_and_window);
     RUN_TEST(test_rainrate_not_implemented_when_rain_disabled);

@@ -413,6 +413,13 @@ describe('alertsConfigSchema', () => {
   it('caps the cooldown at 24 hours', () => {
     expect(alertsConfigSchema.safeParse({ ...validAlerts, cooldownSeconds: 86401 }).success).toBe(false);
   });
+
+  it('rejects a sensor fault delay outside 0-600 seconds', () => {
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, sensorFaultDelaySeconds: -1 }).success).toBe(false);
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, sensorFaultDelaySeconds: 601 }).success).toBe(false);
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, sensorFaultDelaySeconds: 0 }).success).toBe(true);
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, sensorFaultDelaySeconds: 600 }).success).toBe(true);
+  });
 });
 
 describe('windConfigSchema', () => {

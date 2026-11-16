@@ -20,7 +20,7 @@
     "location.set", "location.latitude", "location.longitude",
     "wind.speedPin", "wind.kmhPerHz", "wind.directionOffsetDeg",
     "display.enabled",
-    "alerts.enabled", "alerts.clientSilentSafetySeconds", "alerts.clientSilentWeatherSeconds", "alerts.dewRiskMarginC", "alerts.clearSkyCloudPercent", "alerts.cloudedOverCloudPercent", "alerts.armWithAlpaca", "alerts.cooldownSeconds", "alerts.pushover.userKey", "alerts.pushover.appToken", "alerts.pushover.sound", "alerts.ntfy.server", "alerts.ntfy.topic", "alerts.ntfy.token", "alerts.webhook.url", "alerts.webhook.authHeader", "alerts.webhook.insecureTls",
+    "alerts.enabled", "alerts.clientSilentSafetySeconds", "alerts.clientSilentWeatherSeconds", "alerts.dewRiskMarginC", "alerts.clearSkyCloudPercent", "alerts.cloudedOverCloudPercent", "alerts.armWithAlpaca", "alerts.cooldownSeconds", "alerts.sensorFaultDelaySeconds", "alerts.pushover.userKey", "alerts.pushover.appToken", "alerts.pushover.sound", "alerts.ntfy.server", "alerts.ntfy.topic", "alerts.ntfy.token", "alerts.webhook.url", "alerts.webhook.authHeader", "alerts.webhook.insecureTls",
     "alerts.events.*.sound", "alerts.events.*.title", "alerts.events.*.message"
   ],
   "reasons": {

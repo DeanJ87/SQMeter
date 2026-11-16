@@ -92,6 +92,7 @@ namespace SQM
             alerts["armWithAlpaca"] = a.sendMode == AlertsConfig::SendMode::WhileConnected;
             alerts["nightSunAltitudeDeg"] = a.nightSunAltitudeDeg;
             alerts["cooldownSeconds"] = a.cooldownSeconds;
+            alerts["sensorFaultDelaySeconds"] = a.sensorFaultDelaySeconds;
             appendAlertChannels(alerts, a, redactSecrets);
         }
 

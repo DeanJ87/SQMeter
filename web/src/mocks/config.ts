@@ -138,6 +138,7 @@ export const mockConfig: Config = {
     clientSilentWeatherSeconds: 600,
     nightSunAltitudeDeg: -12,
     cooldownSeconds: 300,
+    sensorFaultDelaySeconds: 120,
     pushover: { enabled: true, userKey: '********', appToken: '********', sound: '' },
     ntfy: { enabled: false, server: 'https://ntfy.sh', topic: '', token: '' },
     webhook: { enabled: false, url: '', authHeader: '', insecureTls: false },

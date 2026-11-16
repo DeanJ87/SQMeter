@@ -46,6 +46,7 @@ export interface AlertsConfig {
   clientSilentWeatherSeconds?: number;
   nightSunAltitudeDeg: number;
   cooldownSeconds: number;
+  sensorFaultDelaySeconds?: number; // 0..600; older firmware has none (fixed 30 s)
   pushover: { enabled: boolean; userKey: string; appToken: string; sound: string };
   ntfy: { enabled: boolean; server: string; topic: string; token: string };
   webhook: { enabled: boolean; url: string; authHeader: string; insecureTls: boolean };
