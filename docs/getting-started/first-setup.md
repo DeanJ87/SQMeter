@@ -9,7 +9,7 @@ SQMeter ships with no WiFi credentials. On first power-on it starts in **hotspot
 <!-- diagram: DIA-07
 sources: src/WiFiManager.cpp#WiFiManager::begin src/WiFiManager.cpp#WiFiManager::startCaptivePortal src/WiFiManager.cpp#WiFiManager::updateCredentials lib/CaptiveDns/ src/WebServerApi.cpp#WebServer::pollWiFiConnect src/WebServer.cpp#WebServer::setupStaticRoutes src/main.cpp#loop
 blocking: false
-fingerprint: a351ce938e50f049
+fingerprint: 01f937b5a79b5f21
 -->
 <figure class="diagram" markdown>
 
@@ -129,6 +129,8 @@ Open the web UI. You should see live sensor readings on the Dashboard within a f
 ## If the WiFi is Down at Startup
 
 If the saved network can't be joined within 45 seconds of power-on (for example the router is slower to start after a power cut), SQMeter also opens the **SQM-Setup** hotspot so you can change the network, and keeps retrying the saved one in the background. As soon as it reconnects, it restarts onto your network. A shorter outage at boot, or any outage later on, only reconnects: the hotspot stays closed.
+
+If nobody joins the hotspot within 3 minutes it closes again, so the device can retry your network on its own, and it reopens 2 minutes later if the network still isn't back. Whenever the network is missing, SQMeter retries it at least once a minute and restarts its WiFi every 3 minutes (every 15 minutes while the network is out of range). If the network is in range but still not joined after 15 minutes (and nobody is on the hotspot), the device restarts itself; away from your network, out of range, it never restarts for WiFi. So when your access point restarts or drops out for a while, SQMeter rejoins by itself once it's back.
 
 ---
 

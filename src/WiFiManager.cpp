@@ -3,7 +3,6 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include "CaptiveDns.h"
-#include "CaptivePortal.h"
 #include <esp_netif.h>
 
 namespace SQM
@@ -13,8 +12,7 @@ namespace SQM
     WiFiManager::WiFiManager(const WiFiConfig &config)
         : config(config),
           apMode(false),
-          lastReconnectAttempt(0),
-          currentReconnectDelay(config.reconnectDelayMs)
+          recovery(config.reconnectDelayMs, config.maxReconnectDelayMs)
     {
     }
 
@@ -33,7 +31,7 @@ namespace SQM
         // router advertisements) for the station only if asked before connecting.
         WiFi.enableIPv6(ipv6Wanted);
         WiFi.onEvent(onWiFiEvent);
-        startedTryingAt = millis();
+        recovery.begin(millis());
 
         if (!config.ssid.empty())
         {
@@ -49,11 +47,11 @@ namespace SQM
 
     void WiFiManager::handle()
     {
-        if (isConnected())
+        const bool connected = isConnected();
+        if (connected)
         {
             if (stationConnectedAt == 0)
                 stationConnectedAt = millis() | 1;
-            connectedSinceBoot = true;
             startMdns();
         }
         else
@@ -61,43 +59,75 @@ namespace SQM
             stationConnectedAt = 0;
         }
 
-        // Saved network not joined since boot: open the hotspot too, but only
-        // after a fair wait - a slow router or weak signal at boot shouldn't
-        // put the device into setup mode. A later outage just reconnects.
-        if (!apMode && !connectedSinceBoot &&
-            CaptivePortal::shouldOpenHotspot(!config.ssid.empty(), isConnected(), millis() - startedTryingAt))
+        noteRange();
+        WifiRecovery::State state;
+        state.now = millis();
+        state.hasCredentials = !config.ssid.empty();
+        state.connected = connected;
+        state.hotspotOpen = apMode;
+        state.hotspotInUse = apMode && WiFi.softAPgetStationNum() > 0;
+        state.busy = retryPaused || updateRunning;
+        state.autoReconnect = config.autoReconnect;
+        state.networkInRange = networkInRange;
+        act(recovery.next(state));
+    }
+
+    // Out of range only when the last attempt didn't find the network
+    // (WL_NO_SSID_AVAIL); seen when an attempt got further. WL_DISCONNECTED
+    // and WL_STOPPED (between attempts, after a reset) keep the last answer.
+    void WiFiManager::noteRange()
+    {
+        switch (WiFi.status())
         {
+        case WL_NO_SSID_AVAIL:
+            networkInRange = false;
+            break;
+        case WL_CONNECT_FAILED:
+        case WL_CONNECTION_LOST:
+        case WL_IDLE_STATUS:
+        case WL_CONNECTED:
+            networkInRange = true;
+            break;
+        default:
+            break;
+        }
+    }
+
+    // Carries out what WifiRecovery decided (specs/014-wifi-setup).
+    void WiFiManager::act(WifiRecovery::Action action)
+    {
+        const unsigned long downSeconds = recovery.downForMs(millis()) / 1000;
+        switch (action)
+        {
+        case WifiRecovery::Action::None:
+            break;
+        case WifiRecovery::Action::Retry:
+            Logger::info(TAG, "Attempting to reconnect to WiFi (off %lu s)...", downSeconds);
+            connectToWiFi();
+            break;
+        case WifiRecovery::Action::ResetStack:
+            Logger::warn(TAG, "WiFi not joined for %lu s; restarting the WiFi stack", downSeconds);
+            resetStack();
+            break;
+        case WifiRecovery::Action::OpenHotspot:
+            if (config.ssid.empty())
+                Logger::warn(TAG, "No saved network, opening the setup hotspot");
+            else
+                Logger::warn(TAG, "Saved network not joined since boot, opening the setup hotspot too");
+            startCaptivePortal();
+            break;
+        case WifiRecovery::Action::CloseHotspot:
             Logger::warn(
                 TAG,
-                "Saved network not joined after %lu s, opening the setup hotspot too",
-                static_cast<unsigned long>(CaptivePortal::FALLBACK_AFTER_MS / 1000));
-            startCaptivePortal();
-        }
-
-        if (apMode)
-        {
-            // Keep trying the saved network (e.g. the router came up after the
-            // device after a power cut) so the device doesn't sit in setup mode.
-            if (!config.ssid.empty() && !retryPaused && !isConnected())
-                handleReconnect();
-            return;
-        }
-
-        if (!config.autoReconnect)
-        {
-            return;
-        }
-
-        if (isConnected())
-        {
-            // Reset backoff once healthy, so the next outage starts from the
-            // short base delay again instead of resuming at whatever the
-            // previous outage had escalated to.
-            currentReconnectDelay = config.reconnectDelayMs;
-        }
-        else
-        {
-            handleReconnect();
+                "Setup hotspot unused for %lu s; closing it to retry the saved network alone",
+                static_cast<unsigned long>(WifiRecovery::HOTSPOT_IDLE_CLOSE_MS / 1000));
+            stopCaptivePortal();
+            resetStack();
+            break;
+        case WifiRecovery::Action::Restart:
+            Logger::error(TAG, "WiFi not joined for %lu s; restarting the device to recover", downSeconds);
+            restartDue = true;
+            break;
         }
     }
 
@@ -169,8 +199,6 @@ namespace SQM
         // network keeps being retried.
         WiFi.mode(WIFI_AP_STA);
         WiFi.softAP(AP_SSID);
-        currentReconnectDelay = std::max<uint32_t>(config.reconnectDelayMs, 30000);
-        lastReconnectAttempt = millis();
 
         dnsServer.emplace();
         if (dnsServer->listen(CaptiveDns::PORT))
@@ -219,7 +247,8 @@ namespace SQM
 
         stopCaptivePortal();
         WiFi.mode(WIFI_STA);
-        currentReconnectDelay = config.reconnectDelayMs; // fresh credentials get a fresh backoff
+        recovery.credentialsChanged(millis()); // fresh credentials get a fresh backoff
+        networkInRange = true;
         connectToWiFi();
 
         return true;
@@ -228,21 +257,27 @@ namespace SQM
     void WiFiManager::connectToWiFi()
     {
         WiFi.begin(config.ssid.c_str(), config.password.c_str());
-        lastReconnectAttempt = millis();
     }
 
-    void WiFiManager::handleReconnect()
+    // WiFi.begin() alone has been seen not to rejoin after the access point
+    // came back; switching WiFi off and on again starts the driver afresh
+    // (as a restart does). Only with the hotspot closed.
+    void WiFiManager::resetStack()
     {
-        const uint32_t now = millis();
-
-        if (now - lastReconnectAttempt >= currentReconnectDelay)
+        if (mdnsStarted)
         {
-            Logger::info(TAG, "Attempting to reconnect to WiFi...");
-            connectToWiFi();
-
-            // Exponential backoff
-            currentReconnectDelay = std::min(currentReconnectDelay * 2, config.maxReconnectDelayMs);
+            MDNS.end(); // its interface goes; started again once joined
+            mdnsStarted = false;
         }
+        // Station off - the whole driver, with the hotspot closed. The saved
+        // network isn't erased (it lives in our config anyway).
+        WiFi.disconnect(true, false);
+        WiFi.mode(WIFI_OFF);
+        delay(100);
+        WiFi.mode(WIFI_STA);
+        // The station interface was recreated: IPv6 must be asked for again.
+        WiFi.enableIPv6(ipv6Wanted);
+        connectToWiFi();
     }
 
     void WiFiManager::startAPMode()

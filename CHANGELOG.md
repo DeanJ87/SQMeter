@@ -22,6 +22,7 @@ All notable changes to SQMeter are documented here.
 
 ### Fixed
 
+- **WiFi after an access point outage**: when the access point restarted, the device could stay off the network, or sit in its SQM-Setup hotspot, until it was rebooted. It now retries the saved network at least once a minute (the 5-minute maximum back-off is capped), restarts its WiFi every 3 minutes while the network is in range but not joined (every 15 minutes while it's out of range), closes a setup hotspot nobody has joined for 3 minutes (it reopens 2 minutes later if still needed) and, when the network has been in range for 15 minutes without being joined and nobody is on the hotspot, restarts itself. A unit away from its network (out of range) never restarts for WiFi, and there's no restart while a firmware update or WiFi setup is running.
 - **Bluetooth start-up**: Bluetooth now starts 5 seconds after WiFi instead of with it, so their combined start-up current no longer browns out a marginal supply. A new firmware is only kept once Bluetooth has started too; one that restarts before then rolls back.
 - **Rain alert rate**: the "Rain detected" alert and the `{rain_rate}` alert variable now show the rain rate to two decimals, the RG-15's own step in high resolution. Drizzle at 0.02 mm/h used to read "0.0 mm/h".
 
