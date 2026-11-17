@@ -41,4 +41,4 @@ description: "As-built task list (backfill) for WiFi Setup and Network Presence"
 
 ## Phase 7: Recover after an access point outage
 
-- [X] T012 Cap the retry at 60 s, reset the WiFi stack every 3 min, close an unused hotspot after 3 min and restart after 15 min off the network, in lib/CaptiveDns/src/WifiRecovery.cpp (tested in test/test_wifi_recovery) and src/WiFiManager.cpp, per FR-010 to FR-012
+- [X] T012 Cap the retry at 60 s, reset the WiFi stack every 3 min (15 min out of range), close an unused hotspot after 3 min and restart after 15 min in range but not joined (never out of range), in lib/CaptiveDns/src/WifiRecovery.cpp (tested in test/test_wifi_recovery) and src/WiFiManager.cpp, per FR-010 to FR-012

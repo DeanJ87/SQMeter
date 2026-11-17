@@ -79,6 +79,8 @@ namespace SQM
         bool retryPaused = false;
         bool updateRunning = false;
         bool restartDue = false;
+        // Whether the last attempt found the saved network (see noteRange()).
+        bool networkInRange = true;
         bool mdnsStarted = false;
         uint32_t stationConnectedAt = 0;
 
@@ -90,6 +92,7 @@ namespace SQM
 
         void connectToWiFi();
         void resetStack();
+        void noteRange();
         void act(WifiRecovery::Action action);
         void startAPMode();
         void stopAPMode();

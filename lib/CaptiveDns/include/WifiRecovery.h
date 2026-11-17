@@ -22,11 +22,16 @@ namespace SQM
         // After closing an idle hotspot the station gets this long on its own
         // before the hotspot may open again.
         static constexpr uint32_t HOTSPOT_REOPEN_AFTER_MS = 2 * 60000;
-        // Every this long without the network, restart the WiFi stack instead
-        // of only asking it to connect again.
+        // Every this long without the network while it's in range, restart the
+        // WiFi stack instead of only asking it to connect again.
         static constexpr uint32_t STACK_RESET_EVERY_MS = 3 * 60000;
-        // Without the network this long (and nobody on the hotspot, no setup or
-        // update running): restart the device. A restart has always recovered.
+        // The same while the network isn't in range (away in the field): rarely,
+        // in case the driver no longer sees a network that is back.
+        static constexpr uint32_t OUT_OF_RANGE_RESET_EVERY_MS = 15 * 60000;
+        // The network in range (seen) but not joined for this long, and nobody
+        // on the hotspot, no setup or update running: restart the device. A
+        // restart has always recovered. Never while the network is out of
+        // range: a unit away from its network keeps running.
         static constexpr uint32_t RESTART_AFTER_MS = 15 * 60000;
         // Someone on the hotspot, or a setup or update, holds the restart off
         // until this long after it ends.
@@ -48,9 +53,10 @@ namespace SQM
             bool hasCredentials = false;
             bool connected = false;
             bool hotspotOpen = false;
-            bool hotspotInUse = false; // a phone or laptop is on the hotspot
-            bool busy = false;         // the setup screen is trying a network, or a firmware update runs
-            bool autoReconnect = true; // off: the station isn't retried while the hotspot is closed
+            bool hotspotInUse = false;  // a phone or laptop is on the hotspot
+            bool busy = false;          // the setup screen is trying a network, or a firmware update runs
+            bool autoReconnect = true;  // off: the station isn't retried while the hotspot is closed
+            bool networkInRange = true; // false: the last attempt didn't find the saved network
         };
 
         WifiRecovery(uint32_t baseDelayMs, uint32_t maxDelayMs);
@@ -77,6 +83,8 @@ namespace SQM
         uint32_t downSince = 0;
         uint32_t lastResetAt = 0;
         uint32_t lastUseAt = 0; // hotspot opened or used, setup or update running
+        bool wasInRange = false;
+        uint32_t inRangeSince = 0; // in range without a break since (within this outage)
         bool hotspotWasOpen = false;
         bool closedIdle = false;
         uint32_t closedAt = 0;

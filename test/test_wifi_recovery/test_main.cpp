@@ -318,6 +318,67 @@ void test_new_credentials_restart_backoff()
     TEST_ASSERT_EQUAL_UINT32(1000, device.recovery.retryDelayMs());
 }
 
+void test_out_of_range_never_restarts()
+{
+    // A travel unit in the field: the saved network isn't there for an hour.
+    Device device;
+    device.joinedFor(MINUTE);
+    device.state.networkInRange = false;
+    const uint32_t from = device.state.now;
+    device.runTo(from + 60 * MINUTE);
+    TEST_ASSERT_EQUAL(0, device.count(Action::Restart));
+    TEST_ASSERT_TRUE(device.longestAttemptGap(from, device.state.now) <= WifiRecovery::RETRY_CAP_MS);
+    // WiFi is restarted only rarely while there's nothing to join.
+    uint32_t at = 0;
+    TEST_ASSERT_TRUE(device.firstAt(Action::ResetStack, at, from));
+    TEST_ASSERT_EQUAL_UINT32(from + SECOND + WifiRecovery::OUT_OF_RANGE_RESET_EVERY_MS, at);
+    TEST_ASSERT_EQUAL(3, device.count(Action::ResetStack, from)); // 15, 30, 45 min
+}
+
+void test_field_boot_without_network_never_restarts()
+{
+    // Never joined since boot and out of range: the hotspot comes and goes,
+    // but the device keeps running (logging, Bluetooth, Alpaca).
+    Device device;
+    device.state.networkInRange = false;
+    device.runTo(60 * MINUTE);
+    TEST_ASSERT_TRUE(device.count(Action::OpenHotspot) >= 2);
+    TEST_ASSERT_EQUAL(0, device.count(Action::Restart));
+}
+
+void test_back_in_range_but_not_joined_restarts_fifteen_minutes_later()
+{
+    // The access point restarts: lost (seen), gone for 10 min, back - but the
+    // device doesn't rejoin. Restart 15 min after the network came back.
+    Device device;
+    device.joinedFor(MINUTE);
+    device.runTo(device.state.now + 5 * SECOND); // beacon lost: still counted as seen
+    device.state.networkInRange = false;
+    device.runTo(device.state.now + 10 * MINUTE);
+    TEST_ASSERT_EQUAL(0, device.count(Action::Restart));
+    device.state.networkInRange = true;
+    const uint32_t back = device.state.now + SECOND;
+    device.runTo(back + WifiRecovery::RESTART_AFTER_MS - 2 * SECOND);
+    TEST_ASSERT_EQUAL(0, device.count(Action::Restart));
+    device.runTo(back + WifiRecovery::RESTART_AFTER_MS);
+    uint32_t at = 0;
+    TEST_ASSERT_TRUE(device.firstAt(Action::Restart, at));
+    TEST_ASSERT_EQUAL_UINT32(back + WifiRecovery::RESTART_AFTER_MS, at);
+}
+
+void test_stack_resets_resume_every_few_minutes_in_range()
+{
+    Device device;
+    device.joinedFor(MINUTE);
+    device.state.networkInRange = false;
+    const uint32_t from = device.state.now;
+    device.runTo(from + 10 * MINUTE);
+    TEST_ASSERT_EQUAL(0, device.count(Action::ResetStack, from));
+    device.state.networkInRange = true; // the last reset was 10 min ago
+    device.runTo(from + 10 * MINUTE + 1 * SECOND);
+    TEST_ASSERT_EQUAL(1, device.count(Action::ResetStack, from));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -339,5 +400,9 @@ int main(int, char **)
     RUN_TEST(test_auto_reconnect_off_leaves_station_alone);
     RUN_TEST(test_short_configured_maximum_is_kept);
     RUN_TEST(test_new_credentials_restart_backoff);
+    RUN_TEST(test_out_of_range_never_restarts);
+    RUN_TEST(test_field_boot_without_network_never_restarts);
+    RUN_TEST(test_back_in_range_but_not_joined_restarts_fifteen_minutes_later);
+    RUN_TEST(test_stack_resets_resume_every_few_minutes_in_range);
     return UNITY_END();
 }

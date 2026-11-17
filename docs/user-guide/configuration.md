@@ -276,7 +276,7 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
 | `hostname` | string | `"sqmeter"` | Network name: `hostname.local` via mDNS and the DHCP host name. Letters, numbers and hyphens, up to 32 |
 | `mdns` | bool | `true` | Advertise `hostname.local` and the web service via mDNS |
 | `ipv6` | bool | `true` | IPv6 alongside IPv4 on the joined network; applies after a restart - see [IPv6](ipv6.md) |
-| `autoReconnect` | bool | `true` | Reconnect on WiFi drop: retry, restart the WiFi every 3 min, and restart the device after 15 min off the network |
+| `autoReconnect` | bool | `true` | Reconnect on WiFi drop: retry, restart the WiFi every 3 min, and restart the device after 15 min with the network in range but not joined |
 | `reconnectDelayMs` | int | `1000` | Initial reconnect delay (ms) |
 | `maxReconnectDelayMs` | int | `300000` | Max reconnect backoff; the device retries at least every 60 s whatever this says |
 

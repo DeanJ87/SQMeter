@@ -68,7 +68,13 @@ namespace SQM
             downSince = state.now;
             lastResetAt = state.now;
             lastUseAt = state.now;
+            inRangeSince = state.now;
         }
+        else if (state.networkInRange && !wasInRange)
+        {
+            inRangeSince = state.now; // came into range during the outage
+        }
+        wasInRange = state.networkInRange;
         if (state.hotspotInUse || state.busy)
             lastUseAt = state.now;
     }
@@ -76,8 +82,10 @@ namespace SQM
     bool WifiRecovery::restartDue(const State &state) const
     {
         const uint32_t now = state.now;
-        return state.autoReconnect && !restartSent && now - downSince >= RESTART_AFTER_MS && !state.hotspotInUse && !state.busy &&
-               now - lastUseAt >= IN_USE_GRACE_MS;
+        // Seen but not joinable for the whole time: the stuck case a restart
+        // fixes. Counted from the outage start, or from coming into range.
+        const bool stuck = state.networkInRange && now - inRangeSince >= RESTART_AFTER_MS;
+        return state.autoReconnect && !restartSent && stuck && !state.hotspotInUse && !state.busy && now - lastUseAt >= IN_USE_GRACE_MS;
     }
 
     WifiRecovery::Action WifiRecovery::next(const State &state)
@@ -141,7 +149,7 @@ namespace SQM
             return opening(now);
         if (!state.autoReconnect || state.busy)
             return Action::None;
-        if (now - lastResetAt >= STACK_RESET_EVERY_MS)
+        if (now - lastResetAt >= (state.networkInRange ? STACK_RESET_EVERY_MS : OUT_OF_RANGE_RESET_EVERY_MS))
         {
             lastResetAt = now;
             attempted(now);

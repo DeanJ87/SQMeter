@@ -59,6 +59,7 @@ namespace SQM
             stationConnectedAt = 0;
         }
 
+        noteRange();
         WifiRecovery::State state;
         state.now = millis();
         state.hasCredentials = !config.ssid.empty();
@@ -67,7 +68,29 @@ namespace SQM
         state.hotspotInUse = apMode && WiFi.softAPgetStationNum() > 0;
         state.busy = retryPaused || updateRunning;
         state.autoReconnect = config.autoReconnect;
+        state.networkInRange = networkInRange;
         act(recovery.next(state));
+    }
+
+    // Out of range only when the last attempt didn't find the network
+    // (WL_NO_SSID_AVAIL); seen when an attempt got further. WL_DISCONNECTED
+    // and WL_STOPPED (between attempts, after a reset) keep the last answer.
+    void WiFiManager::noteRange()
+    {
+        switch (WiFi.status())
+        {
+        case WL_NO_SSID_AVAIL:
+            networkInRange = false;
+            break;
+        case WL_CONNECT_FAILED:
+        case WL_CONNECTION_LOST:
+        case WL_IDLE_STATUS:
+        case WL_CONNECTED:
+            networkInRange = true;
+            break;
+        default:
+            break;
+        }
     }
 
     // Carries out what WifiRecovery decided (specs/014-wifi-setup).
@@ -225,6 +248,7 @@ namespace SQM
         stopCaptivePortal();
         WiFi.mode(WIFI_STA);
         recovery.credentialsChanged(millis()); // fresh credentials get a fresh backoff
+        networkInRange = true;
         connectToWiFi();
 
         return true;
