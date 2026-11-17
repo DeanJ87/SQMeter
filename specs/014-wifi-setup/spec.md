@@ -57,7 +57,10 @@ from Settings.
 **Acceptance Scenarios**:
 
 1. **Given** WiFi drops, **When** auto-reconnect is on, **Then** the device retries with
-   exponential back-off up to the configured maximum.
+   exponential back-off up to the configured maximum, but at least once a minute (FR-010).
+4. **Given** the access point restarts and is gone for a few minutes, **When** it comes back,
+   **Then** the device rejoins by itself, whether or not it restarted (e.g. browned out) during the
+   outage; it never waits in setup mode for a human (FR-010 to FR-012).
 2. **Given** Settings → Network, **When** the user scans and picks another network, **Then** the
    new network is saved and applied with a restart prompt.
 3. **Given** a saved network, **When** a settings save sends an empty network name, **Then** it is
@@ -87,6 +90,20 @@ from Settings.
   the hotspot only if it hasn't joined within 45 s of boot (`CaptivePortal::FALLBACK_AFTER_MS`). A
   later outage only reconnects; it never opens the hotspot. *Why: the old 10 s fallback opened the
   hotspot on slow or weak-signal boots, which then restarted the device once it joined.*
+- **FR-010** *(added 2026-11-17)*: While the saved network isn't joined the device MUST retry it at
+  least every 60 s (`WifiRecovery::RETRY_CAP_MS`), whatever `maxReconnectDelayMs` says, and with the
+  hotspot closed MUST switch WiFi off and on again every 3 min (`STACK_RESET_EVERY_MS`) rather than
+  only asking it to connect again.
+- **FR-011** *(added 2026-11-17)*: With saved WiFi, a hotspot nobody has joined for 3 min
+  (`HOTSPOT_IDLE_CLOSE_MS`) MUST close so the station retries alone; it MAY open again, by FR-007,
+  after 2 min more (`HOTSPOT_REOPEN_AFTER_MS`). Someone on the hotspot keeps it open.
+- **FR-012** *(added 2026-11-17)*: Off the saved network for 15 min continuously
+  (`RESTART_AFTER_MS`), with nobody on the hotspot for the last minute and no setup attempt or
+  firmware update running, the device MUST restart (logged). With auto-reconnect off, FR-010 to
+  FR-012 don't apply (the hotspot still retries the saved network, as before).
+  *Why (FR-010 to FR-012): after an access point restart the device stayed off the network, or sat in
+  its hotspot, for 7 hours until a reboot; retrying with `WiFi.begin()` every 5 min never rejoined,
+  while a restart always did. The decisions are in `WifiRecovery` (lib/CaptiveDns), unit-tested.*
 - **FR-008** *(added 2026-10-09)*: Only requests that arrive over the hotspot, for another site's name,
   MAY be redirected to the setup screen (including the phone "is there internet?" probes). Requests
   over the home network MUST NOT be redirected, even while the hotspot is open; an unknown file

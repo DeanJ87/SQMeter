@@ -2,6 +2,7 @@
 
 #include "Config.h"
 #include "NetAddress.h"
+#include "WifiRecovery.h"
 #include <WiFi.h>
 #include <AsyncUDP.h>
 #include <functional>
@@ -46,6 +47,11 @@ namespace SQM
         // While the setup hotspot is up, the saved network is retried in the
         // background; pause that while the setup screen tries new credentials.
         void setRetryPaused(bool paused) { retryPaused = paused; }
+        // A firmware update is running: no WiFi reset and no recovery restart.
+        void setUpdateRunning(bool running) { updateRunning = running; }
+        // Off the saved network so long that only a restart will do
+        // (WifiRecovery::RESTART_AFTER_MS); set once, the caller restarts.
+        bool recoveryRestartDue() const { return restartDue; }
         // True once the station has been connected for `ms` while the hotspot
         // is still up - time to restart into normal operation.
         bool connectedFromHotspotFor(uint32_t ms) const;
@@ -68,15 +74,13 @@ namespace SQM
 
         WiFiConfig config;
         bool apMode;
-        uint32_t lastReconnectAttempt;
-        uint32_t currentReconnectDelay;
+        // Retries, WiFi resets, the hotspot and the last-resort restart.
+        WifiRecovery recovery;
         bool retryPaused = false;
+        bool updateRunning = false;
+        bool restartDue = false;
         bool mdnsStarted = false;
         uint32_t stationConnectedAt = 0;
-        // Boot fallback (spec 014): when trying started, and whether the saved
-        // network has been joined since boot.
-        uint32_t startedTryingAt = 0;
-        bool connectedSinceBoot = false;
 
         // Answers DNS from the network task, so phones get replies at once
         // even while the main loop is busy (a light-sensor read takes ~0.7 s).
@@ -85,7 +89,8 @@ namespace SQM
         OnDisconnectedCallback onDisconnectedCallback;
 
         void connectToWiFi();
-        void handleReconnect();
+        void resetStack();
+        void act(WifiRecovery::Action action);
         void startAPMode();
         void stopAPMode();
 

@@ -5,6 +5,7 @@
 #include <ArduinoOTA.h>
 #include <esp_ota_ops.h>
 #include <ESPmDNS.h>
+#include <Update.h>
 #include "Logger.h"
 #include "SafetyHistory.h"
 #include "HeapTrace.h"
@@ -432,14 +433,21 @@ void setup()
     Logger::info("Main", "MAC Address: %s", wifiManager->getMACAddress().c_str());
 }
 
-void loop()
+// WiFi upkeep (spec 014), and the restarts it asks for.
+void handleWifi()
 {
-    // Feed watchdog
-    esp_task_wdt_reset();
-
-    // Handle WiFi
     wifiManager->setRetryPaused(webServer->isWifiConnectPending());
+    wifiManager->setUpdateRunning(Update.isRunning());
     wifiManager->handle();
+
+    // Off the saved network for 15 minutes despite retries and WiFi resets,
+    // with nobody on the setup hotspot: a restart has always brought it back.
+    static bool restartingForWifi = false;
+    if (!restartingForWifi && wifiManager->recoveryRestartDue())
+    {
+        Logger::error("Main", "Restarting: the saved WiFi network could not be rejoined");
+        restartingForWifi = WebServer::scheduleRestart(1000);
+    }
 
     // Joined a network from the setup hotspot: restart so time, MQTT, Alpaca
     // discovery and OTA start normally. The delay lets the setup screen show
@@ -450,6 +458,14 @@ void loop()
         Logger::info("Main", "Connected to WiFi from the setup hotspot; restarting");
         restartingFromHotspot = WebServer::scheduleRestart(1000);
     }
+}
+
+void loop()
+{
+    // Feed watchdog
+    esp_task_wdt_reset();
+
+    handleWifi();
 
     // Handle ArduinoOTA
     if (arduinoOTAEnabled)
