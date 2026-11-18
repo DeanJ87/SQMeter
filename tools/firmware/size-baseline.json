@@ -1,10 +1,11 @@
 {
-  "esp32dev": 1537136,
-  "esp32dev-ble": 1729984,
-  "esp32s3-eth": 1552704,
+  "esp32dev": 1557888,
+  "esp32dev-ble": 1750288,
+  "esp32s3-eth": 1571024,
   "esp32s3-eth-ble": 1742976,
   "esp32s3-zero": 1550704,
   "esp32s3-zero-ble": 1740960,
   "esp32s3-zero8": 1552704,
-  "esp32s3-zero8-ble": 1742992
+  "esp32s3-zero8-ble": 1742992,
+  "overBudgetReason": "Safety holds (spec 035, PR for feat/safety-holds): about 14 KB of route/MQTT parsing, NVS storage and history for other systems' unsafe holds; the classic BLE build goes to 95.4% of its app slot."
 }
