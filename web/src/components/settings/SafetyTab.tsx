@@ -5,7 +5,7 @@ import type { AlpacaConfig, SafetyStatus } from '../../types';
 import SafetyCard from '../SafetyCard';
 import type { SettingsTabProps } from './context';
 import { defaultAlpacaConfig, defaultRainConfig } from './defaults';
-import { Button } from '../ui';
+import { Button, InfoTip } from '../ui';
 import { DepToggle, Field, Group, NumberInput, SettingsCard, StatusBadge, Toggle } from './controls';
 import { t } from '../../i18n';
 import { getJson } from '../../lib/api';
@@ -113,6 +113,10 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
             onChange={(v) => set('manualOverrideUnsafe', v)}
             hint={t('settings.safety.manualOverrideEGWhile')}
           />
+          <p class="note note-muted">
+            {t('settings.safety.holdsFromOtherSystems')}{' '}
+            <InfoTip text={t('settings.safety.holdsTip', { topic: config.mqtt?.topic || 'sqmeter' })} />
+          </p>
           <div class="form-grid">
             <Field
               label={t('settings.safety.staleAfter')}

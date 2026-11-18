@@ -44,6 +44,7 @@ HTTP_STATUS = {
     "202": "Accepted",
     "400": "Bad request",
     "401": "The password is needed",
+    "404": "No such thing",
     "409": "Not now",
     "413": "The request body is too large",
     "500": "Device failure",
@@ -171,7 +172,9 @@ def operation(method, path, entry, op, examples):
         description += "\n\nNeeds the password when protection is on."
     example = examples.get(op.get("example")) if op.get("example") else None
     out = {
-        "operationId": (method.lower() + "_" + path.removeprefix("/api/").replace("/", "_").replace("-", "_")),
+        "operationId": (
+            method.lower() + "_" + path.removeprefix("/api/").replace("/", "_").replace("-", "_").replace("{", "").replace("}", "")
+        ),
         "tags": [op["tag"]],
         "summary": op["summary"],
         "description": description,
@@ -249,7 +252,9 @@ def build(version=None):
     paths = {}
     for method, path, entry in api_routes(registry):
         op = operations["operations"][f"{method} {path}"]
-        paths.setdefault(path, {})[method.lower()] = operation(method, path, entry, op, examples)
+        # A route that matches longer paths (DELETE /api/safety/hold serves /api/safety/hold/{id}) is documented at that path.
+        documented = op.get("path", path)
+        paths.setdefault(documented, {})[method.lower()] = operation(method, documented, entry, op, examples)
 
     alpaca_tag = {"name": "Alpaca", "description": "ASCOM Alpaca: see the standard.", "externalDocs": {"url": ALPACA_DOCS}}
     document = {

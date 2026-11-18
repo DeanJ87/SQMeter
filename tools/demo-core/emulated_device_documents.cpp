@@ -2,13 +2,16 @@
 
 #include "emulated_device.h"
 
+#include <cstring>
+
 using namespace DemoCore;
 
 std::string EmulatedDevice::readings() const
 {
     DynamicJsonDocument doc(Readings::DOC_CAPACITY + Readings::SAFETY_CAPACITY);
     Readings::write(doc.to<JsonObject>(), Core::buildReadings(snapshot, cfg, nowMs, epoch));
-    Core::writeSafety(doc.createNestedObject("safety"), safety, cfg, nowMs);
+    const Core::HeldBy heldBy{holds, validEpoch()};
+    Core::writeSafety(doc.createNestedObject("safety"), safety, cfg, nowMs, &heldBy);
     return serialize(doc);
 }
 
@@ -78,8 +81,9 @@ std::string EmulatedDevice::pending() const
 
 std::string EmulatedDevice::safetyDocument() const
 {
-    DynamicJsonDocument doc(1536);
-    Core::writeSafety(doc.to<JsonObject>(), safety, cfg, nowMs);
+    DynamicJsonDocument doc(Readings::SAFETY_CAPACITY);
+    const Core::HeldBy heldBy{holds, validEpoch()};
+    Core::writeSafety(doc.to<JsonObject>(), safety, cfg, nowMs, &heldBy);
     return serialize(doc);
 }
 
@@ -88,30 +92,12 @@ std::string EmulatedDevice::safetyHistory() const
     SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
     const size_t n = SafetyHistory::copy(history, entries, SafetyHistory::CAPACITY);
     SafetyHistory::backfillEpochs(entries, n, history.boot, static_cast<uint32_t>(epoch > 0 ? epoch : 0), uptimeSeconds());
-    static const char *const KIND[] = {"boot", "change", "alert", "armed"};
-    DynamicJsonDocument doc(256 + n * 160);
+    DynamicJsonDocument doc(256 + n * 256);
     doc["boot"] = history.boot;
     doc["uptime"] = uptimeSeconds();
     JsonArray list = doc.createNestedArray("entries");
     for (size_t i = n; i-- > 0;) // newest first
-    {
-        const SafetyHistory::Entry &e = entries[i];
-        JsonObject item = list.createNestedObject();
-        item["kind"] = KIND[static_cast<uint8_t>(e.kind) <= 3 ? static_cast<uint8_t>(e.kind) : 1];
-        item["boot"] = e.boot;
-        item["uptime"] = e.uptimeS;
-        if (e.epoch != 0)
-            item["timestamp"] = e.epoch;
-        if (e.kind == SafetyHistory::Kind::Boot)
-            item["resetReason"] = e.resetReason;
-        else
-            item["safe"] = static_cast<bool>(e.safe);
-        if (e.kind == SafetyHistory::Kind::Change)
-        {
-            item["held"] = static_cast<bool>(e.held);
-            item["reasonFlags"] = e.flags;
-        }
-    }
+        SafetyHistory::writeEntry(list.createNestedObject(), entries[i]);
     return serialize(doc);
 }
 
@@ -217,8 +203,11 @@ std::string EmulatedDevice::saveState() const
         e.add(entries[i].safe);
         e.add(entries[i].held);
         e.add(entries[i].resetReason);
+        e.add(SafetyHistory::holdId(entries[i]));
+        e.add(std::string(entries[i].holdText, strnlen(entries[i].holdText, SafetyHistory::HOLD_TEXT_BYTES)));
     }
     doc["boot"] = history.boot;
+    doc["holds"] = holds.serialize();
     return serialize(doc);
 }
 
@@ -247,8 +236,13 @@ bool EmulatedDevice::loadState(const std::string &json)
         entry.safe = e[5] | 0;
         entry.held = e[6] | 0;
         entry.resetReason = e[7] | 0;
+        SafetyHistory::setHoldId(entry, e[8] | "");
+        const std::string labels = e[9] | "";
+        std::memcpy(entry.holdText, labels.data(), std::min(labels.size(), SafetyHistory::HOLD_TEXT_BYTES - 1));
         SafetyHistory::push(history, entry);
     }
     history.boot = doc["boot"] | 1;
+    holds.restore(doc["holds"] | "", nowMs);
+    Core::syncManualHold(holds, cfg.alpaca.manualOverrideUnsafe, nowMs, validEpoch());
     return true;
 }

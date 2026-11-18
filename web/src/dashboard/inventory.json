@@ -66,6 +66,20 @@
       "test": "rain-hold"
     },
     {
+      "id": "safety-holds",
+      "label": "settings.safety.holdsFromOtherSystems",
+      "sources": ["readings.safety.holds.**", "safety.holds.**"],
+      "requiredBy": "035 FR-011",
+      "visibility": {
+        "rule": "when",
+        "when": "another system (or Force unsafe) holds the verdict unsafe"
+      },
+      "priority": 2,
+      "location": "card:safety",
+      "test": "safety-holds",
+      "note": "Each hold under the other reasons: its reason, Hold \"id\" · source · since [· lifts], and Clear."
+    },
+    {
       "id": "alerts-state",
       "label": "settings.alertSchedule.sendingAlerts",
       "sources": [

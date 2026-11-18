@@ -490,7 +490,8 @@ The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clie
   "secondsUntilUnsafe": 0,
   "rulesNotInEffect": [],
   "evaluatedAgeMs": 412,
-  "changedAgeMs": 1260000
+  "changedAgeMs": 1260000,
+  "holds": []
 }
 ```
 
@@ -498,11 +499,12 @@ The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clie
 |---|---|
 | `safe` | Reported verdict, after the safe and unsafe delays |
 | `rawSafe` | Instantaneous rule evaluation, before the safe and unsafe delays |
-| `reasons` / `reasonFlags` | Why the raw verdict is unsafe, also while the unsafe delay still reports `safe` (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault, 14 battery below the limit, 15 battery data missing, 16 shutting down: battery empty) |
+| `reasons` / `reasonFlags` | Why the raw verdict is unsafe, also while the unsafe delay still reports `safe` (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault, 14 battery below the limit, 15 battery data missing, 16 shutting down: battery empty, 17 a safety hold set by another system). Bit 0 is also the `manual` hold |
 | `secondsUntilSafe` | Remaining safe-delay countdown while `rawSafe` is true but `safe` isn't yet |
 | `secondsUntilUnsafe` | Remaining unsafe-delay countdown while `rawSafe` is false but `safe` is still true |
 | `rulesNotInEffect` | Rules switched on but ignored because what they need is off, e.g. `"Unsafe while raining"` (they are listed only while the rain sensor is off). Rules that can't measure their limit (wind, cloud, SQM, humidity) report unsafe instead |
 | `changedAgeMs` | Time since `safe` last changed |
+| `holds` | The [safety holds](#safety-holds) in effect, oldest first: `id`, `reason`, `source`, `sinceEpoch` (Unix seconds; `sinceAgeMs` instead when it was set before the clock was), and with an expiry `expiresEpoch` (when known) and `expiresInMs`. Each hold's reason is also in `reasons` |
 
 ---
 
@@ -518,6 +520,35 @@ The last 32 safety changes, device restarts and safe/unsafe alerts sent, newest 
 ```
 
 `held` marks unsafe only because of the safe delay. `resetReason` is ESP-IDF's `esp_reset_reason_t` (1 power on, 3 software restart, 4 crash, 5-7 watchdog, 9 brownout). `timestamp` is missing for entries from before the clock was set.
+
+Safety holds add two kinds: `holdSet` (a hold set while it was already unsafe - a hold set while safe is the `change` it causes) and `holdCleared` (cleared, or lifted at its time), each with `holdId`. `holds` lists the holds' short names (a hold's reason up to its first colon: "Smoke: neighbour's fire" is "Smoke"); on `change` and `holdSet` every hold set by another system, on `holdCleared` the one cleared. On `holdCleared`, `reasonFlags` is what it is still unsafe for, so `{"kind":"holdCleared","holdId":"smoke","holds":["Smoke"],"reasonFlags":16}` reads "Hold cleared: Smoke (still unsafe: cloud)".
+
+### Safety holds
+
+Other systems - Home Assistant, a roll-off-roof controller - hold the SafetyMonitor unsafe for a named event and later clear **that event only**. While any hold exists the verdict is unsafe (at once, past the [unsafe delay](../user-guide/alpaca.md#unsafe-delay)); clearing a hold never forces safe - the other rules still decide, and the safe delay applies. Holds survive restarts. **Force unsafe** (Settings → Safety) is the built-in hold `manual`. See [Safety holds](../user-guide/alpaca.md#safety-holds) for a Home Assistant example.
+
+**`POST /api/safety/hold`** sets one:
+
+```json
+{"id": "smoke", "reason": "Smoke: neighbour's fire, PM2.5 85 µg/m³", "source": "Home Assistant", "expiresMin": 240}
+```
+
+- `id`: 1-24 characters `a-z`, `0-9`, `_`, `-`. Setting an id again replaces its reason, source and expiry, and keeps `since`.
+- `reason`: 1-96 characters, shown on the dashboard, in `reasons`, in alerts and to Alpaca clients' logs.
+- `source` (optional, up to 32 characters): who set it; else `?source=`, else `API`.
+- `expiresMin` (optional, 1-10080): lifts the hold by itself after that many minutes. With the clock set it lifts at that time, also after a restart; after a restart before the clock is set it lifts once the full time has passed since the restart - never early.
+
+Answers 200 with the hold (as in `holds` above), or 400 `{"error": "..."}` for a bad id, reason, source or expiry, or when 8 holds are already set.
+
+**`DELETE /api/safety/hold/<id>`** (or **`POST /api/safety/hold/<id>/clear`** for clients that can't send DELETE) clears one: 200 `{"cleared": true}`, or 404 `{"cleared": false, "reason": "no such hold"}` when there is none (already cleared, never set) - nothing changes. Clearing `manual` switches Force unsafe off.
+
+```bash
+curl -X POST http://sqmeter.local/api/safety/hold -H 'Content-Type: application/json' \
+  -d '{"id":"smoke","reason":"Smoke: PM2.5 85","source":"Home Assistant"}'
+curl -X DELETE http://sqmeter.local/api/safety/hold/smoke
+```
+
+Both need the password when protection is on, like every route that changes something. The same over MQTT: [`<base>/safety/hold/set`](../user-guide/mqtt.md#safety-holds).
 
 ## Alerts
 

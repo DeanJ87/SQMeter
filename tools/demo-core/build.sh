@@ -17,7 +17,7 @@ if [ -z "$AJ" ]; then
 fi
 
 SOURCES=(tools/demo-core/bridge.cpp tools/demo-core/emulated_device.cpp tools/demo-core/emulated_device_documents.cpp
-  tools/demo-core/sensor_feed.cpp tools/demo-core/emulated_device_backup.cpp
+  tools/demo-core/sensor_feed.cpp tools/demo-core/emulated_device_backup.cpp tools/demo-core/emulated_device_holds.cpp
   lib/DeviceCore/src/*.cpp lib/ConfigModel/src/*.cpp lib/SkyLogic/src/*.cpp lib/RainLogic/src/*.cpp
   lib/AlertLogic/src/*.cpp lib/AlpacaLogic/src/*.cpp lib/Readings/src/*.cpp lib/SafetyHistoryLogic/src/*.cpp
   lib/BleLogic/src/*.cpp lib/SettingsDeps/src/*.cpp lib/LanguageLogic/src/*.cpp lib/NetAddress/src/*.cpp

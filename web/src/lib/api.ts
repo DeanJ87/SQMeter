@@ -19,5 +19,8 @@ export const post = (path: string): Promise<Response> => fetch(path, { method: '
 export const postJson = (path: string, body: unknown): Promise<Response> =>
   fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
+/** Clear one safety hold (spec 035): 200 cleared, 404 there was no such hold. */
+export const clearHold = (id: string): Promise<Response> => fetch(`/api/safety/hold/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
 /** A response body as JSON, or {} when it isn't JSON (error bodies, empty replies). */
 export const bodyOf = (response: Response): Promise<Record<string, unknown>> => response.json().catch(() => ({}));

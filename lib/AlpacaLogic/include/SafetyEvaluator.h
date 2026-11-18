@@ -99,6 +99,10 @@ namespace SQM
             // unsafe, rule on or off (research D7).
             bool shutdownPending = false;
             float shutdownPercent = 5.0f;
+
+            // The reasons of the safety holds other systems set (spec 035),
+            // not the manual one (manualOverrideUnsafe above). Each is unsafe.
+            std::vector<std::string> holdReasons;
         };
 
         // One bit per distinct unsafe reason, so callers (alerts, BLE) can
@@ -119,9 +123,10 @@ namespace SQM
             UnsafeWind = 1u << 11,
             UnsafeWindGust = 1u << 12,
             UnsafeWindSensorFault = 1u << 13,
-            UnsafeBatteryLow = 1u << 14,  // spec 032
-            UnsafeBatteryData = 1u << 15, // battery rule on, no valid battery data
-            UnsafeShutdown = 1u << 16,    // about to sleep for an empty battery
+            UnsafeBatteryLow = 1u << 14,   // spec 032
+            UnsafeBatteryData = 1u << 15,  // battery rule on, no valid battery data
+            UnsafeShutdown = 1u << 16,     // about to sleep for an empty battery
+            UnsafeExternalHold = 1u << 17, // a safety hold another system set (spec 035)
         };
 
         struct SafetyResult
@@ -139,8 +144,8 @@ namespace SQM
         SafetyResult evaluateSafety(const SafetyInputs &inputs, const SafetyThresholds &thresholds);
 
         // Reasons reported unsafe at once, past the unsafe delay: rain, a
-        // deliberate override, and the battery about to sleep.
-        constexpr uint32_t UNSAFE_IMMEDIATE_FLAGS = UnsafeRain | UnsafeManualOverride | UnsafeShutdown;
+        // deliberate override or hold, and the battery about to sleep.
+        constexpr uint32_t UNSAFE_IMMEDIATE_FLAGS = UnsafeRain | UnsafeManualOverride | UnsafeShutdown | UnsafeExternalHold;
 
         // Holds a "safe" verdict back until conditions have been continuously
         // safe for safeDelaySeconds, so a roof doesn't open on a momentary gap

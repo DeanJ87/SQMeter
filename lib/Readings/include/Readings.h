@@ -215,7 +215,8 @@ namespace SQM
         // battery) with 20% headroom, pinned by test/test_readings. REST and
         // WebSocket add the safety document on top (SAFETY_CAPACITY).
         constexpr size_t DOC_CAPACITY = 5120;
-        constexpr size_t SAFETY_CAPACITY = 2048;
+        // +2.5 KB for 8 safety holds (spec 035).
+        constexpr size_t SAFETY_CAPACITY = 4608;
         // The MQTT client's buffer: the serialised state must stay below it.
         constexpr size_t MQTT_PAYLOAD_LIMIT = 3072;
 

@@ -120,7 +120,7 @@ The **Setup** (cog) button next to either device in N.I.N.A. opens `http://<devi
 
 The safety verdict is re-evaluated every second from the current sensor readings against the rules in **Settings → Safety → Safety rules**. It is shown on the Dashboard's **Safety Monitor** card, on the **Alpaca** page, from `GET /api/safety`, and served to Alpaca clients as `SafetyMonitor.IsSafe`. Any of the following makes it unsafe:
 
-1. **Manual override** - the **Force unsafe** toggle is on
+1. **Manual override and safety holds** - the **Force unsafe** toggle is on (the built-in hold `manual`: "Manual override forces unsafe"), or another system holds it unsafe with a [safety hold](#safety-holds) (the hold's own reason, e.g. "Smoke: neighbour's fire, PM2.5 85 µg/m³")
 2. **Rain** - the RG-15 reports rain, *or* it rained within the rain sensor's "rain clear delay" (default 15 min; see [the rain latch](../hardware/rg15.md#the-rain-latch)). Enabled by default whenever the rain sensor is enabled
 3. **Rain sensor offline/faulty** - the rain sensor is enabled but not responding, its data is stale, or it reports a lens fault (fail safe; enabled by default)
 4. **Wind / gust** - the 2-minute mean wind speed or the 10-minute peak gust is at or above its limit (both disabled by default). If a wind limit is enabled but the [anemometer](../hardware/wind.md) is disabled or not reporting, that's unsafe too
@@ -135,23 +135,23 @@ The safety verdict is re-evaluated every second from the current sensor readings
 13. **Battery** - the battery charge is below the limit (default 10%, disabled by default): "Battery 8% < 10%". If the rule is on but there is no fuel gauge, or its data is stale or still estimating, that's unsafe too: "Battery data missing". A charging pack below the limit stays unsafe. See [Battery](battery.md#the-safety-rule)
 14. **Shutting down** - the battery has reached its shutdown level and the device is about to sleep, whether or not the battery rule is on: "Shutting down: battery 4% <= 5%"
 
-Rain, wind and battery rules (2-4, 13-14) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining, blowing a gale or about to switch off. Rules 8-12 only apply to fresh data.
+Holds, rain, wind and battery rules (1-4, 13-14) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining, blowing a gale or about to switch off. Rules 8-12 only apply to fresh data.
 
 Each threshold has its own enable/disable toggle - a disabled threshold never contributes to the verdict.
 
 <!-- diagram: DIA-02
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceSafety.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: true
-fingerprint: a197383137f42194
+fingerprint: a127e7de8bdfaac4
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: How the safety verdict is decided
-    accDescr: Every second all enabled rules are checked and each failing rule adds a reason. Rain, wind and battery are always checked, then data freshness and sensor health; the threshold rules only run on fresh data. Any reason makes the raw verdict unsafe, which then passes through the safe and unsafe delays.
+    accDescr: Every second all enabled rules are checked and each failing rule adds a reason. Force unsafe, safety holds, rain, wind and battery are always checked, then data freshness and sensor health; the threshold rules only run on fresh data. Any reason makes the raw verdict unsafe, which then passes through the safe and unsafe delays.
     START(["Every second"]) --> ALWAYS
-    ALWAYS["<b>Always checked</b>, even on stale data<br/>Force unsafe on: <i>Manual override forces unsafe</i><br/>Raining, or within the rain clear delay: <i>Rain detected</i><br/>Rain sensor offline, stale or lens fault: <i>Rain sensor offline...</i><br/>Wind limit set but anemometer off or silent: <i>Wind limit set but...</i><br/>Wind or gust at or over its limit: <i>Wind ... / Gust ...</i><br/>Battery rule on but no gauge data: <i>Battery data missing</i><br/>Battery below its limit: <i>Battery ...</i><br/>About to sleep at the shutdown level: <i>Shutting down: battery ...</i>"]
+    ALWAYS["<b>Always checked</b>, even on stale data<br/>Force unsafe on, the manual hold: <i>Manual override forces unsafe</i><br/>Each safety hold another system set: <i>its reason</i><br/>Raining, or within the rain clear delay: <i>Rain detected</i><br/>Rain sensor offline, stale or lens fault: <i>Rain sensor offline...</i><br/>Wind limit set but anemometer off or silent: <i>Wind limit set but...</i><br/>Wind or gust at or over its limit: <i>Wind ... / Gust ...</i><br/>Battery rule on but no gauge data: <i>Battery data missing</i><br/>Battery below its limit: <i>Battery ...</i><br/>About to sleep at the shutdown level: <i>Shutting down: battery ...</i>"]
     ALWAYS --> FRESHNESS["<b>Data freshness</b><br/>No light or IR read since boot: <i>No successful sensor data yet</i><br/>Light or IR sensor's last successful read older than the stale limit, 30 s: <i>Sensor data is stale</i>"]
     FRESHNESS --> HEALTH["<b>Sensor health</b><br/>Light sensor or IR sky sensor not OK: <i>Sensor fault: ...</i><br/>with two sky sensors only the authoritative one, SQM or SQM-L"]
     HEALTH --> FRESH{"Fresh data?"}
@@ -176,7 +176,8 @@ flowchart TB
     Every second the device checks all enabled rules and collects a reason for each one that fails:
 
     1. **Always checked**, even when the other data is stale or missing:
-        - Force unsafe is on: "Manual override forces unsafe".
+        - Force unsafe is on (the built-in hold `manual`): "Manual override forces unsafe".
+        - Each [safety hold](#safety-holds) another system set: its own reason, e.g. "Smoke: neighbour's fire".
         - The rain sensor reports rain, or rain within the rain clear delay: "Rain detected".
         - The rain sensor is enabled but offline, stale or reporting a lens fault: "Rain sensor offline, stale or reporting a lens fault".
         - A wind limit is set but the anemometer is disabled or not reporting: "Wind limit set but the anemometer is disabled or not reporting". Otherwise wind or gust at or over its limit: "Wind ..." / "Gust ...".
@@ -201,6 +202,68 @@ Every failing rule is listed as a reason with the measured value and the limit, 
 
 The Safety Monitor card's **History** lists recent safe/unsafe changes, restarts and the safety alerts that were sent - kept across restarts (not power cuts) - which answers "it went unsafe and I got no alert: why?".
 
+### Safety holds
+
+A **safety hold** lets another system keep the SafetyMonitor unsafe for something SQMeter can't measure - smoke from a neighbour's fire on Home Assistant's PM2.5 sensor, a roof controller whose roof didn't open fully - and clear **that event only** later. Each hold has an id (`smoke`, `roof`), a reason people read and who set it:
+
+- While any hold exists the verdict is unsafe, at once (no [unsafe delay](#unsafe-delay)). Several can be set at once; up to 8.
+- Clearing a hold never forces safe: the other rules still decide. Clear `smoke` while it's cloudy and it stays unsafe for cloud; the [safe delay](#safe-delay) applies as usual.
+- Clearing an id that has no hold (already cleared, never set) changes nothing.
+- Holds survive restarts. One set with `expiresMin` lifts by itself at that time, also after a restart (until the clock is set after a restart, it waits the full time from the restart - never less).
+- **Force unsafe** is the built-in hold `manual`: switching it on sets it, off clears it, and clearing `manual` from another system switches the toggle off.
+
+The Safety Monitor card lists each hold under the other reasons - its reason, then `Hold "smoke" · Home Assistant · since 21:14` (and `· lifts 01:14` with an expiry) and **Clear**. The history shows "Hold cleared: Smoke (still unsafe: cloud)". The unsafe alert and Alpaca clients see the hold's reason like any other.
+
+Set and clear holds with [`POST /api/safety/hold` and `DELETE /api/safety/hold/<id>`](../api/rest.md#safety-holds), or MQTT [`<base>/safety/hold/set`](mqtt.md#safety-holds). With password protection on, HTTP calls need the device's username and password.
+
+**Home Assistant example** - a PM2.5 sensor holds the observatory unsafe while the air is smoky (`configuration.yaml`):
+
+```yaml
+rest_command:
+  sqmeter_smoke_on:
+    url: "http://sqmeter.local/api/safety/hold"
+    method: POST
+    content_type: "application/json"
+    payload: '{"id": "smoke", "reason": "Smoke: PM2.5 {{ states(''sensor.pm25'') }} µg/m³", "source": "Home Assistant", "expiresMin": 720}'
+  sqmeter_smoke_off:
+    url: "http://sqmeter.local/api/safety/hold/smoke"
+    method: DELETE
+
+automation:
+  - alias: "Smoke holds the observatory unsafe"
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.pm25
+        above: 35
+        for: "00:05:00"
+    actions:
+      - action: rest_command.sqmeter_smoke_on
+  - alias: "Smoke gone: clear the hold"
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.pm25
+        below: 15
+        for: "00:30:00"
+    actions:
+      - action: rest_command.sqmeter_smoke_off
+```
+
+Add `username:` and `password:` to each `rest_command` when protection is on. Over MQTT instead (no password needed on the device; the broker's own rules apply):
+
+```yaml
+      - action: mqtt.publish
+        data:
+          topic: "sqmeter/safety/hold/set"
+          payload: '{"id": "smoke", "reason": "Smoke: PM2.5 high", "source": "Home Assistant"}'
+      # and to clear it:
+      - action: mqtt.publish
+        data:
+          topic: "sqmeter/safety/hold/set"
+          payload: '{"id": "smoke", "clear": true}'
+```
+
+The `expiresMin` of 720 (12 hours) is a backstop: if Home Assistant goes down with the hold set, it lifts by itself.
+
 ### Safe delay
 
 **Safe delay** (seconds, default `0`) holds a "safe" verdict back until conditions have been continuously safe for that long, so a brief gap in the clouds doesn't reopen the roof. The delay also applies after a reboot. While the delay is running, the Safety Monitor card shows "Safe in Ns".
@@ -212,7 +275,7 @@ The Safety Monitor card's **History** lists recent safe/unsafe changes, restarts
 Three reasons are never delayed:
 
 - **Rain** (only when the rain rule is on), the moment the rain sensor reports it.
-- **Force unsafe**, a deliberate choice.
+- **Force unsafe** and **safety holds**, a deliberate choice. Clearing a hold is not: the safe delay still applies.
 - **Shutting down**: the battery is about to sleep.
 
 With `0` every failing rule is reported at once. 30-60 s is a sensible value: long enough to ride out a single odd reading, short enough to close before real cloud matters. It adds to the stale limit: with a 30 s stale limit and a 60 s unsafe delay, sensors that stop updating are reported unsafe after about 90 s. A reboot always starts unsafe and waits for the safe delay; the unsafe delay only holds a verdict that is already safe.
@@ -227,7 +290,7 @@ fingerprint: 981a006a881d2595
 ```mermaid
 stateDiagram-v2
     accTitle: The safe and unsafe delays
-    accDescr: The device starts unsafe. When the raw verdict turns safe it waits for the safe delay, reporting unsafe meanwhile; any failing rule restarts the wait. From safe, a failing rule waits for the unsafe delay, reporting safe meanwhile; passing again cancels it. Rain, force unsafe and a battery shutdown are reported unsafe at once.
+    accDescr: The device starts unsafe. When the raw verdict turns safe it waits for the safe delay, reporting unsafe meanwhile; any failing rule restarts the wait. From safe, a failing rule waits for the unsafe delay, reporting safe meanwhile; passing again cancels it. Rain, force unsafe, a safety hold and a battery shutdown are reported unsafe at once.
     state "Reported unsafe" as Unsafe
     state "Waiting: raw safe, reported unsafe" as Waiting
     state "Reported safe" as Safe
@@ -239,8 +302,8 @@ stateDiagram-v2
     Safe --> Holding: a rule fails, unsafe delay set
     Holding --> Safe: every rule passes again
     Holding --> Unsafe: unsafe for the whole unsafe delay
-    Safe --> Unsafe: a rule fails, no unsafe delay, or rain, force unsafe, shutdown
-    Holding --> Unsafe: rain, force unsafe or shutdown
+    Safe --> Unsafe: a rule fails, no unsafe delay, or rain, force unsafe, a hold, shutdown
+    Holding --> Unsafe: rain, force unsafe, a hold or shutdown
 ```
 
 <figcaption>The safe and unsafe delays. The raw verdict and the reported verdict differ only while waiting or holding; with both delays at 0 there's neither.</figcaption>
@@ -255,7 +318,7 @@ stateDiagram-v2
     - From safe, a failing rule starts the unsafe-delay countdown. The device still reports **safe**; `/api/safety` shows `rawSafe: false` and `secondsUntilUnsafe`, and the dashboard shows "Unsafe in Ns".
     - If every rule passes again during that countdown, the device stays safe, with no safe delay to wait out.
     - After the raw verdict has been unsafe for the whole unsafe delay, the device reports **unsafe**. With a delay of 0 (the default) this happens immediately.
-    - Rain, force unsafe and a battery shutdown are always reported **unsafe at once**, from safe or while the unsafe delay is running.
+    - Rain, force unsafe, a safety hold and a battery shutdown are always reported **unsafe at once**, from safe or while the unsafe delay is running.
 
 ---
 

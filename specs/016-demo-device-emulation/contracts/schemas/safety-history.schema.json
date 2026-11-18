@@ -17,6 +17,15 @@
           "held": {
             "type": "boolean"
           },
+          "holdId": {
+            "type": "string"
+          },
+          "holds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "kind": {
             "type": "string"
           },

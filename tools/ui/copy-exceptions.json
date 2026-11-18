@@ -1,3 +1,5 @@
 {
-  "settings.alertSchedule.onlyWhileAnImagingApp": "EXC-01: the option's name is fixed by spec 021 FR-017 and quoted elsewhere (the Status card's send-mode hint, alert docs); shortening it would break that link."
+  "settings.alertSchedule.onlyWhileAnImagingApp": "EXC-01: the option's name is fixed by spec 021 FR-017 and quoted elsewhere (the Status card's send-mode hint, alert docs); shortening it would break that link.",
+  "safetyCard.holdMeta": "EXC-01: the hold's muted line (Hold \"id\" · source · since · lifts) is the owner-approved design of spec 035 FR-011: facts about one hold on one line, under its reason.",
+  "settings.safety.holdsTip": "EXC-01: the tip has to carry the HTTP set and clear calls and the MQTT topic (spec 035 FR-011) - the paths alone are half the length; the wording is the owner-approved mockup's."
 }

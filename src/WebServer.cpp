@@ -105,7 +105,10 @@ namespace SQM
               {
                   const bool saved = saveConfig(cfg);
                   if (saved)
+                  {
                       ++configRevision;
+                      syncManualHold(cfg.alpaca.manualOverrideUnsafe); // Force unsafe is the manual hold (spec 035)
+                  }
                   return saved;
               }),
           lastSensorBroadcast(0),
@@ -154,6 +157,8 @@ namespace SQM
         loopTaskHandle = xTaskGetCurrentTaskHandle();
         restoreAlertSchedule();
         subscribeArmCommands();
+        restoreHolds();
+        subscribeHoldCommands();
         Logger::info(TAG, "Starting web server on port %d", PORT);
 
         // CRITICAL: Register API routes BEFORE static file serving

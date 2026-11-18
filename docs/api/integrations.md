@@ -66,7 +66,7 @@ Real-time streaming over persistent connections. Connect to `/ws/sensors` for li
 
 ### MQTT
 
-Configure SQMeter to publish to an MQTT broker on a schedule, plus a retained safe/unsafe flag (`<topic>/safe`) and an alerts pause/resume switch for Home Assistant. See [MQTT Integration](../user-guide/mqtt.md) for setup.
+Configure SQMeter to publish to an MQTT broker on a schedule, plus a retained safe/unsafe flag (`<topic>/safe`), an alerts pause/resume switch for Home Assistant, and `<topic>/safety/hold/set` for other systems to hold the observatory unsafe ([safety holds](../user-guide/alpaca.md#safety-holds)). See [MQTT Integration](../user-guide/mqtt.md) for setup.
 
 ### ASCOM Alpaca
 

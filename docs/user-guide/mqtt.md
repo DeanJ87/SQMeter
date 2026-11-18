@@ -42,10 +42,11 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels.
 | `<base>/availability` | Yes | `online` / `offline` (last will) | On connect / disconnect |
 | `<base>/state` | Yes | The readings document (below) | Every publish interval, and on reconnect |
 | `<base>/safe` | Yes | `1` safe, `0` unsafe | On every change, refreshed every minute |
-| `<base>/safety` | Yes | The safety object - same as [`GET /api/safety`](../api/rest.md#get-apisafety) | With `<base>/safe` |
+| `<base>/safety` | Yes | The safety object - same as [`GET /api/safety`](../api/rest.md#get-apisafety), with the `holds` in effect | With `<base>/safe` |
 | `<base>/alerts` | No | One message per alert (with **Settings → Alerts → MQTT** on): `{"event","events"?,"title","message","level","device","timestamp"}` | Each alert |
 | `<base>/alerts/armed` | Yes | `1` sending alerts, `0` paused | On change and reconnect |
 | `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` resume or pause alerts | Command |
+| `<base>/safety/hold/set` | - | Subscribed: `{"id","reason","source"?,"expiresMin"?}` sets a [safety hold](#safety-holds), `{"id","clear":true}` clears it | Command |
 | `<base>/diagnostics` | No | Light-sensor sample counts and RG-15 serial counters - same as `/api/status` → `diagnostics` | Every publish interval, when enabled |
 
 Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
@@ -53,18 +54,19 @@ Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 <!-- diagram: DIA-09
 sources: src/WebServerStatus.cpp#WebServer::publishMqttReadings src/WebServerAlerts.cpp#WebServer::publishMqttSafety src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: 9784c504ea161289
+fingerprint: 21b88f8378333479
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart LR
     accTitle: MQTT topic map
-    accDescr: SQMeter listens on alerts/armed/set and publishes state, safe, safety, availability, alerts, alerts/armed and diagnostics under its base topic, plus Home Assistant discovery under the discovery prefix.
+    accDescr: SQMeter listens on alerts/armed/set and safety/hold/set and publishes state, safe, safety, availability, alerts, alerts/armed and diagnostics under its base topic, plus Home Assistant discovery under the discovery prefix.
     SET["alerts/armed/set<br/>1/0, on/off, true/false"] -->|command| D["SQMeter"]
+    HOLD["safety/hold/set<br/>JSON: set or clear a hold"] -->|command| D
     D --> STATE["state<br/>retained, every publish interval<br/>and on reconnect"]
     D --> SAFE["safe: 1 or 0<br/>retained, on change and every minute"]
-    D --> SAFETY["safety: verdict and reasons<br/>retained, with safe"]
+    D --> SAFETY["safety: verdict, reasons and holds<br/>retained, with safe"]
     D --> AVAIL["availability: online or offline<br/>retained, last will"]
     D --> ALERTS["alerts<br/>not retained, one message per alert"]
     D --> ARMED["alerts/armed: 1 sending, 0 paused<br/>retained, on change and reconnect"]
@@ -72,7 +74,7 @@ flowchart LR
     D --> DISC["homeassistant/.../config<br/>retained, when discovery is on;<br/>the Alerts switch only while alerts can go out"]
 ```
 
-<figcaption>MQTT topic map: the one topic SQMeter listens to (left) and what it publishes (right). All but the discovery topics sit under the base topic, default <code>sqmeter</code>.</figcaption>
+<figcaption>MQTT topic map: the two topics SQMeter listens to (left) and what it publishes (right). All but the discovery topics sit under the base topic, default <code>sqmeter</code>.</figcaption>
 </figure>
 
 ??? info "Diagram in words"
@@ -80,15 +82,29 @@ flowchart LR
     Under the base topic (default `sqmeter`), SQMeter publishes:
 
     - `state` - the readings document, retained, every publish interval and on reconnect;
-    - `safe` (`1`/`0`) and `safety` (the verdict with its reasons), retained, on every change and refreshed every minute;
+    - `safe` (`1`/`0`) and `safety` (the verdict with its reasons and safety holds), retained, on every change and refreshed every minute;
     - `availability` - `online`, or `offline` as the last will, retained;
     - `alerts` - one message per alert, not retained (with the MQTT alert channel on);
     - `alerts/armed` - `1` sending / `0` paused, retained, on change and on reconnect;
     - `diagnostics` - not retained, every publish interval, only when switched on.
 
-    It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to resume or pause alerts.
+    It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to resume or pause alerts, and on `safety/hold/set` (JSON) to set or clear a safety hold.
 
     With Home Assistant discovery on, it also publishes retained `config` topics under the discovery prefix (default `homeassistant`), and clears them when discovery is switched off or moved. The Alerts switch is only announced while alerts can go out (Send alerts on, or paired phones that can ring), and is removed otherwise.
+
+### Safety holds
+
+`<base>/safety/hold/set` sets or clears a [safety hold](alpaca.md#safety-holds) - the same as [`POST /api/safety/hold`](../api/rest.md#safety-holds), for automations that already talk MQTT. The payload is JSON:
+
+- **Set** (or update): `{"id": "smoke", "reason": "Smoke: PM2.5 85 µg/m³", "source": "Home Assistant", "expiresMin": 240}` - `source` defaults to `MQTT`, `expiresMin` (1-10080) is optional.
+- **Clear**: `{"id": "smoke", "clear": true}` - that hold only; the other rules still decide.
+
+Don't retain these messages: a retained set would set the hold again after every reconnect, even after it was cleared. A bad payload, or clearing a hold that doesn't exist, changes nothing and is only logged. The holds in effect are in `<base>/safety` → `holds`. MQTT has no device password: anyone who can publish to your broker can set holds, so use the broker's own access control.
+
+```bash
+mosquitto_pub -h <broker-ip> -t sqmeter/safety/hold/set -m '{"id":"smoke","reason":"Smoke: PM2.5 high"}'
+mosquitto_pub -h <broker-ip> -t sqmeter/safety/hold/set -m '{"id":"smoke","clear":true}'
+```
 
 ### Choosing what's published
 

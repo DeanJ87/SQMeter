@@ -386,6 +386,14 @@ void startServices()
     webServer = std::make_unique<WebServer>(sensors, timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
     webServer->setDisplay(oled.get());
     webServer->setPowerManager(powerManager.get());
+    // The manual safety hold set or cleared over the API (spec 035): just the
+    // setting, saved without re-applying the rest.
+    webServer->setManualOverrideCallback(
+        [](bool forceUnsafe)
+        {
+            config.alpaca.manualOverrideUnsafe = forceUnsafe;
+            return config.save();
+        });
     webServer->begin();
     webServer->refreshSensorSnapshot(lastSensorUpdate);
     feedDisplay();

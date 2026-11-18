@@ -448,10 +448,10 @@ The SafetyMonitor verdict served to N.I.N.A., shown on the dashboard and used fo
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Serve the Alpaca SafetyMonitor and ObservingConditions devices |
-| `manualOverrideUnsafe` | bool | `false` | Force unsafe |
+| `manualOverrideUnsafe` | bool | `false` | Force unsafe: the built-in [safety hold](alpaca.md#safety-holds) `manual`. Setting or clearing the `manual` hold over the API changes this setting too |
 | `staleAfterSeconds` | int | `30` | Sensor data older than this is unsafe (1-3600) |
 | `safeDelaySeconds` | int | `0` | Conditions must stay safe this long before reporting safe; also runs from boot (0-3600) |
-| `unsafeDelaySeconds` | int | `0` | While safe, conditions must stay unsafe this long before reporting unsafe; rain, `manualOverrideUnsafe` and a battery shutdown are always immediate (0-600) |
+| `unsafeDelaySeconds` | int | `0` | While safe, conditions must stay unsafe this long before reporting unsafe; rain, `manualOverrideUnsafe`, safety holds and a battery shutdown are always immediate (0-600) |
 | `cloudCoverEnabled` / `cloudCoverUnsafePercent` | bool / float | `true` / `90` | Unsafe at or above this cloud cover (0-100) |
 | `sqmMinEnabled` / `sqmMinSafe` | bool / float | `false` / `0` | Unsafe below this SQM (0-30) |
 | `humidityMaxEnabled` / `humidityMaxSafe` | bool / float | `false` / `100` | Unsafe above this humidity (0-100) |

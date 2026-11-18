@@ -6,6 +6,8 @@
 #include "DualStackClient.h"
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace SQM
 {
@@ -55,7 +57,7 @@ namespace SQM
 
         // Commands from the broker: `<topic>/<subtopic>` messages go to
         // `handler` (on the task that runs handle()). Subscribed on every
-        // (re)connect.
+        // (re)connect. One handler per subtopic; several subtopics.
         using CommandHandler = std::function<void(const std::string &payload)>;
         void onCommand(const std::string &subtopic, CommandHandler handler);
         // Bumped on every successful connect, so retained state can be
@@ -63,8 +65,8 @@ namespace SQM
         uint32_t connectionCount() const { return connections; }
 
     private:
-        std::string commandSubtopic;
-        CommandHandler commandHandler;
+        std::vector<std::pair<std::string, CommandHandler>> commands;
+        void subscribeCommands();
         uint32_t connections = 0;
         static constexpr const char *TAG = "MQTT";
         static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
