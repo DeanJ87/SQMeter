@@ -117,7 +117,7 @@ A conformance checker such as ASCOM ConformU fires hundreds of requests in quick
 Open **History** on the dashboard's Safety card. It lists safety changes, restarts (and why) and every safe/unsafe alert actually sent, and survives restarts. Common reasons for no alert:
 
 - Alerts are paused (the bell in the header is crossed out) or **Send alerts** is off
-- It isn't dark yet and **Safety alerts only when it's dark** is on
+- It isn't dark yet and **Safety alerts only after dark** is on
 - The device restarted - start-up and the safe delay aren't announced, see [Alerts](../user-guide/alerts.md#restarts)
 - The cooldown held it back; it's sent when the cooldown ends if things haven't changed back
 - The channel failed - the bell's list shows each channel's result, e.g. Pushover "user identifier is not a valid user" means the user key (not the app token) is wrong

@@ -52,7 +52,7 @@ flowchart TB
     1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, each sensor, dew risk, the sky, whether the imaging app is still checking, the battery) with what you were last told, every second.
     2. **Tracked silently, never announced**: changes in the first minute after boot (imaging-app events, going to sleep and power restored excepted), changes while that event's rule is switched off, anything from a sensor that is switched off, and imaging-app events for a device no app has used since boot (a connection kept across a restart the device caused itself counts as used).
     3. **Held back for now, sent later if still true**:
-        - safe/unsafe while it's light (with "Safety alerts only when it's dark"), or while the verdict is still settling (no data yet, or waiting out the safe delay);
+        - safe/unsafe while it's light (with "Safety alerts only after dark"), or while the verdict is still settling (no data yet, or waiting out the safe delay);
         - sky changes while it's light (with sky alerts limited to darkness): at nightfall a clear sky is announced once;
         - a sensor fault or recovery not yet as old as the sensor fault delay (default 2 minutes);
         - a sky change not yet 2 minutes old;
@@ -153,7 +153,7 @@ Nothing is sent in the first minute after boot, so a restart doesn't announce th
 
 ### Only when it's dark
 
-**Safety alerts only when it's dark** (on by default) does the same for safe/unsafe: at dawn the brightening sky fails the SQM rule, and without this you'd be woken by "Observatory UNSAFE: SQM 17.24 < 17.25" every clear morning. While it's light, changes aren't announced; at nightfall the verdict is compared with the last safe/unsafe alert, so you hear "unsafe" if it's dark but cloudy and nothing if nothing changed. Rain and sensor alerts are separate events and still come at any time. N.I.N.A. still sees the real verdict all day.
+**Safety alerts only after dark** (on by default) does the same for safe/unsafe: at dawn the brightening sky fails the SQM rule, and without this you'd be woken by "Observatory UNSAFE: SQM 17.24 < 17.25" every clear morning. While it's light, changes aren't announced; at nightfall the verdict is compared with the last safe/unsafe alert, so you hear "unsafe" if it's dark but cloudy and nothing if nothing changed. Rain and sensor alerts are separate events and still come at any time. N.I.N.A. still sees the real verdict all day.
 
 
 Sky alerts are limited to darkness by default: **after sunset**, **nautical dark** (sun 12° below the horizon, the default) or **astronomical dark** (18°). Darkness comes from the sun's position, so the device needs to know where it is - a GPS fix if there is one, otherwise the coordinates under **Settings → Time & Location → Location** (paste "latitude, longitude" from any maps app). If the sky is already clear when it gets dark, you get one "Dark and clear" alert (titled "Skies clear" when sky alerts aren't limited to darkness). Without a clock or a location, sky alerts aren't held back.
@@ -195,7 +195,7 @@ The device notices when an imaging app - anything that talks to its Alpaca devic
 
 **Silent for** is set per device: **safety monitor** (default 2 min - imaging apps check it every few seconds) and **weather device** (default 10 min - keep it longer than your app's weather interval). 30 seconds to 60 minutes.
 
-Nothing is sent about a device no app has used since the device restarted. The exception is a restart the device causes itself (a crash, the watchdog, an update) while an app had a device connected: the device still reports it connected, so if the app doesn't check it again within its **Silent for** time after boot, you're told it stopped checking. Requests from the device's own web page (the Alpaca page's live state) don't count. Alpaca requests don't name the application, so alerts name the device, not the app. The Alpaca page shows each device's state ("Connected, last checked 3 s ago"). These events need Alpaca switched on, and are sent at any hour (the "only when it's dark" limits don't apply).
+Nothing is sent about a device no app has used since the device restarted. The exception is a restart the device causes itself (a crash, the watchdog, an update) while an app had a device connected: the device still reports it connected, so if the app doesn't check it again within its **Silent for** time after boot, you're told it stopped checking. Requests from the device's own web page (the Alpaca page's live state) don't count. Alpaca requests don't name the application, so alerts name the device, not the app. The Alpaca page shows each device's state ("Connected, last checked 3 s ago"). These events need Alpaca switched on, and are sent at any hour (the "only when it's dark" and "only after dark" limits don't apply).
 
 ### Automating pause and resume
 
@@ -248,7 +248,22 @@ POSTs a JSON body to any `http://` or `https://` URL - e.g. a Home Assistant web
 {"device":"SQM-ESP32","event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.40 mm/h).","level":"wake","timestamp":1759500000}
 ```
 
-`event` is one of `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `lens_fault`, `dew_risk`, `clear_sky`, `clouded_over`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
+`event` is one of:
+
+| Event | Sent for |
+|---|---|
+| `unsafe`, `safe` | The safety verdict changes |
+| `rain_started`, `rain_stopped` | Rain starts / stops |
+| `sensor_fault`, `sensor_recovered`, `lens_fault` | A sensor fails / recovers; the RG-15 lens fault (set with the `sensor_fault` level) |
+| `dew_risk`, `clear_sky`, `clouded_over` | Dew risk, skies clear up / cloud over |
+| `client_lost`, `client_back`, `client_disconnected` | [The imaging app](#the-imaging-app) stops checking / is back / disconnects |
+| `battery_low`, `battery_critical`, `battery_shutdown`, `power_restored`, `charge_complete`, `charge_fault` | [Battery](battery.md#alerts) events |
+| `battery_rule` | **Battery: unsafe**, the battery safety rule's own Urgent alert |
+| `acknowledged` | Quiet: a phone alarm was acknowledged, on the phone or in the web UI |
+| `alerts_on` | Quiet: **Alerts resumed**, with the current verdict |
+| `test` | **Send test** on a channel; **Test** on an event row sends that event's own name |
+
+When several events go out as one notification, `event` is the lead one and `events` lists them all, lead first. `timestamp` is Unix seconds, left out until the device's clock is set. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
 
 HTTPS webhooks are verified against a built-in set of common root CAs (Let's Encrypt, DigiCert, Sectigo/USERTrust, Google Trust Services, Amazon). For a self-signed server on your own network, either use `http://` or turn on **Skip certificate checks** - only do that on a network you trust.
 
@@ -256,7 +271,7 @@ HTTPS webhooks are verified against a built-in set of common root CAs (Let's Enc
 
 Uses the broker from the MQTT settings. Publishes:
 
-- `<base>/alerts` - each alert as JSON (`event`, `events` when several are stacked, `title`, `message`, `level`, `device`, `timestamp`), not retained
+- `<base>/alerts` - each alert as JSON, the same document as the webhook's (`event`, `events` when several are stacked, `title`, `message`, `level`, `device`, and `timestamp` once the clock is set), not retained
 
 The safe/unsafe flag (`<base>/safe`, `<base>/safety`) is published whenever MQTT is on - see [MQTT](mqtt.md#topics).
 

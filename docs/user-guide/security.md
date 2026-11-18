@@ -54,6 +54,8 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/ble/ack`, `/api/ble/forget-bonds` | POST | Acknowledge the phone alarm / unpair phones |
 | `/api/sensors/tsl2591/calibrate-dark` | POST | Store the light sensor dark offset |
 | `/api/sensors/rg15/test`, `/reset-total`, `/reboot` | POST | RG-15 commands |
+| `/api/display/wake`, `/api/display/blank` | POST | Wake or blank the OLED display |
+| `/api/i18n/install`, `/api/i18n/upload` | POST | Install a language pack (from the release or a file) |
 
 ### Unprotected endpoints (always accessible)
 
@@ -65,6 +67,9 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/safe`, `/api/safety`, `/api/safety/history` | GET | Safety verdict, reasons and history |
 | `/api/alerts/recent`, `/api/alerts/armed` | GET | Recent alerts, sending or paused and why |
 | `/api/settings/effective` | GET | Which settings are in effect, and why not (no secrets) |
+| `/api/i18n` | GET | The device language and installed packs (the UI needs it before it can ask for the password) |
+| `/setup` | GET | Alpaca setup pages: a redirect to Settings, which asks for the password on save |
+| `/generate_204`, `/hotspot-detect.html` and other captive-portal probes | GET | On the SQM-Setup hotspot, a redirect to the WiFi setup screen; changes nothing |
 | `/api/v1/...`, `/management/...` | GET / PUT | ASCOM Alpaca (the Alpaca spec has no auth) |
 | `/ws/sensors` | WS | Live sensor stream |
 | `/ws/status` | WS | Live status stream |
