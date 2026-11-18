@@ -12,6 +12,41 @@
     "evaluatedAgeMs": {
       "type": "number"
     },
+    "holds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "expiresEpoch": {
+            "type": "number"
+          },
+          "expiresInMs": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "sinceAgeMs": {
+            "type": "number"
+          },
+          "sinceEpoch": {
+            "type": "number"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reason",
+          "source"
+        ],
+        "additionalProperties": false
+      }
+    },
     "rawSafe": {
       "type": "boolean"
     },

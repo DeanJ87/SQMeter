@@ -104,6 +104,14 @@ export function statusDocument() {
 // The network the WiFi setup screen "joined" (simulated).
 let joinedSsid: string | null = null;
 
+// POST /api/safety/hold (set), DELETE /api/safety/hold/<id> and POST /api/safety/hold/<id>/clear.
+const HOLD_ROUTE = /\/api\/safety\/hold(\/.*)?$/;
+const holdReply = async ({ request }: { request: Request }) => {
+  const url = new URL(request.url);
+  const body = request.method === 'POST' ? await request.text() : '';
+  return reply(demoDevice.holdRequest(request.method, url.pathname, body, url.searchParams.get('source') ?? ''));
+};
+
 const simulated = (extra: Record<string, unknown> = {}) => HttpResponse.json({ success: true, demo: true, ...extra });
 
 export const demoHandlers = [
@@ -117,6 +125,9 @@ export const demoHandlers = [
   http.get('/api/safety/history', () => json(demoDevice.safetyHistory())),
   http.get('/api/safety', () => json(demoDevice.safety())),
   http.get('/api/settings/effective', () => json(demoDevice.effective())),
+  // Safety holds (spec 035): set, and clear one by id.
+  http.post(HOLD_ROUTE, holdReply),
+  http.delete(HOLD_ROUTE, holdReply),
 
   // Settings
   http.get('/api/config', () => json(demoDevice.getConfig())),

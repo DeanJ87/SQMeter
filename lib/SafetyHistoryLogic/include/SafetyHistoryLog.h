@@ -1,7 +1,11 @@
 #pragma once
 
+#include <ArduinoJson.h>
+
 #include <cstddef>
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace SQM
 {
@@ -13,7 +17,15 @@ namespace SQM
             Change = 1, // reported verdict changed; flags = reasons
             Alert = 2,  // a safe/unsafe alert was sent
             Armed = 3,  // alerts switched on (safe=1) or off (safe=0)
+            // Safety holds (spec 035 FR-009): flags = the other reasons it was
+            // (still) unsafe for, holdLabels = the external holds' labels.
+            HoldSet = 4,     // a hold set while already unsafe (else the Change records it)
+            HoldCleared = 5, // a hold cleared or lifted at its time
         };
+
+        constexpr size_t HOLD_ID_BYTES = 24;   // a hold id, not NUL-terminated at full length
+        constexpr size_t HOLD_TEXT_BYTES = 40; // labels separated by HOLD_LABEL_SEPARATOR, NUL-terminated
+        constexpr char HOLD_LABEL_SEPARATOR = '\x1f';
 
         struct Entry
         {
@@ -25,10 +37,12 @@ namespace SQM
             uint8_t safe : 1;
             uint8_t held : 1; // unsafe only because of the safe delay
             uint8_t resetReason : 6;
+            char holdId[HOLD_ID_BYTES];     // HoldSet/HoldCleared: which hold
+            char holdText[HOLD_TEXT_BYTES]; // Change/HoldSet: every external hold; HoldCleared: that one
         };
 
         constexpr size_t CAPACITY = 32;
-        constexpr uint32_t MAGIC = 0x53484931; // "SHI1"
+        constexpr uint32_t MAGIC = 0x53484932; // "SHI2" (spec 035 added the hold fields)
 
         // The ring buffer itself - plain data so it can live in RTC memory,
         // which keeps whatever was there before a restart (garbage after a
@@ -53,5 +67,13 @@ namespace SQM
         // Dates entries from boot `boot` made before the clock was set, from
         // their uptime, now that it's `epochNow` at uptime `uptimeS`.
         void backfillEpochs(Entry *entries, size_t n, uint16_t boot, uint32_t epochNow, uint32_t uptimeS);
+
+        // An entry's hold id, and its hold labels: whole labels only, as many as fit.
+        void setHoldId(Entry &entry, const std::string &id);
+        void setHoldLabels(Entry &entry, const std::vector<std::string> &labels);
+        std::string holdId(const Entry &entry);
+        std::vector<std::string> holdLabels(const Entry &entry);
+        // One /api/safety/history entry.
+        void writeEntry(JsonObject item, const Entry &entry);
     } // namespace SafetyHistory
 } // namespace SQM

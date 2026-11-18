@@ -90,8 +90,11 @@ class RealDocument(unittest.TestCase):
     def test_every_registry_api_route_is_an_operation(self):
         document, _ = openapi.build()
         registry = openapi.load(openapi.REGISTRY)
+        operations = openapi.load(openapi.OPERATIONS)["operations"]
         for method, path, _entry in openapi.api_routes(registry):
-            self.assertIn(method.lower(), document["paths"].get(path, {}), f"{method} {path}")
+            # An operation can be documented at the longer path its route serves (/api/safety/hold/{id}).
+            documented = operations[f"{method} {path}"].get("path", path)
+            self.assertIn(method.lower(), document["paths"].get(documented, {}), f"{method} {path}")
 
     def test_alpaca_is_linked_not_described(self):
         document, _ = openapi.build()

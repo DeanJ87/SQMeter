@@ -88,6 +88,25 @@ test('unsafe verdict and a held rain countdown are the Safety monitor card', asy
   await expect(item(page, 'rain-hold')).toContainText(/Rain held, clears in/, { timeout: 15_000 });
 });
 
+test('a safety hold from another system is listed on the Safety monitor card, and Clear clears it', async ({ page }) => {
+  // inventory: safety-holds
+  await open(page);
+  await expect(item(page, 'safety-holds')).toHaveCount(0);
+  await page.evaluate(() =>
+    fetch('/api/safety/hold?source=Home%20Assistant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 'smoke', reason: 'Smoke: neighbour fire' }),
+    }),
+  );
+  const hold = item(page, 'safety-holds');
+  await expect(hold).toContainText('Smoke: neighbour fire', { timeout: 15_000 });
+  await expect(hold).toContainText('Hold "smoke" · Home Assistant');
+  await expect(card(page, 'Safety Monitor').locator('.card-actions .pill')).toHaveText('Unsafe');
+  await hold.getByRole('button', { name: 'Clear' }).click();
+  await expect(item(page, 'safety-holds')).toHaveCount(0, { timeout: 15_000 });
+});
+
 test('paused alerts show on the Alerts tile with Resume, then go', async ({ page }) => {
   // inventory: alerts-state
   await open(page);

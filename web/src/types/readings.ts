@@ -159,4 +159,16 @@ export interface SafetyStatus {
   evaluatedAgeMs: number;
   changedAgeMs: number;
   rulesNotInEffect?: string[]; // safety rules on but not evaluated, e.g. rain sensor off (spec 020)
+  holds?: SafetyHold[]; // other systems' holds and the manual one (spec 035; older firmware has none)
+}
+
+// A safety hold (spec 035): unsafe until cleared or its time.
+export interface SafetyHold {
+  id: string;
+  reason: string;
+  source: string;
+  sinceEpoch?: number; // Unix seconds, when the device clock was set
+  sinceAgeMs?: number; // else how long ago (set since this boot)
+  expiresEpoch?: number;
+  expiresInMs?: number;
 }

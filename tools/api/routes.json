@@ -5,6 +5,7 @@
     { "path": "/api/status", "method": "GET", "auth": "open", "why": "Read-only status for integrations" },
     { "path": "/api/sensors", "method": "GET", "auth": "open", "why": "Read-only readings for integrations" },
     { "path": "/api/safe", "method": "GET", "auth": "open", "why": "Read-only verdict for scripts" },
+    { "path": "/api/safety/hold", "method": "DELETE|POST", "auth": "required" },
     { "path": "/api/safety/history", "method": "GET", "auth": "open", "why": "Read-only history" },
     { "path": "/api/settings/effective", "method": "GET", "auth": "open", "why": "Read-only effective-settings report (no secrets)" },
     { "path": "/api/safety", "method": "GET", "auth": "open", "why": "Read-only verdict and reasons" },

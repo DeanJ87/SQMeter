@@ -516,7 +516,7 @@ namespace SQM
             return changed;
         }
 
-        void writeSafety(JsonObject target, const SafetyStatus &status, const Config &cfg, uint32_t now)
+        void writeSafety(JsonObject target, const SafetyStatus &status, const Config &cfg, uint32_t now, const HeldBy *heldBy)
         {
             target["safe"] = status.isSafe;
             target["rawSafe"] = status.rawSafe;
@@ -534,6 +534,9 @@ namespace SQM
                 notInEffect.add(rule);
             target["evaluatedAgeMs"] = ageMs(now, status.evaluatedAtMs);
             target["changedAgeMs"] = ageMs(now, status.changedAtMs);
+            JsonArray holdList = target.createNestedArray("holds");
+            if (heldBy != nullptr)
+                heldBy->holds.writeJson(holdList, now, heldBy->epoch);
         }
 
         NightState night(const SensorSnapshot &snapshot, const Config &cfg, int64_t epoch)

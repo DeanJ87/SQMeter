@@ -11,6 +11,7 @@ std::string EmulatedDevice::applyConfig(const std::string &json)
     if (!next)
         return errorJson(reason.empty() ? "Invalid configuration" : reason);
     cfg = *next;
+    Core::syncManualHold(holds, cfg.alpaca.manualOverrideUnsafe, nowMs, validEpoch()); // spec 035 FR-008
     return "{\"success\":true}";
 }
 
@@ -21,6 +22,7 @@ bool EmulatedDevice::loadConfig(const std::string &json)
         return false;
     cfg = *next;
     bootConfig = cfg;
+    Core::syncManualHold(holds, cfg.alpaca.manualOverrideUnsafe, nowMs, validEpoch());
     return true;
 }
 
@@ -66,9 +68,20 @@ void EmulatedDevice::tick(
     feed.read(in.as<JsonObjectConst>());
     Core::derive(snapshot, cfg);
 
-    const Alpaca::SafetyResult result = Alpaca::evaluateSafety(Core::safetyInputs(snapshot, cfg, nowMs), Core::safetyThresholds(cfg));
+    tickHolds();
+    Alpaca::SafetyInputs inputs = Core::safetyInputs(snapshot, cfg, nowMs);
+    inputs.holdReasons = holds.externalReasons();
+    const Alpaca::SafetyResult result = Alpaca::evaluateSafety(inputs, Core::safetyThresholds(cfg));
     if (Core::updateSafety(safety, delayFilter, result, cfg, nowMs))
-        pushHistory(SafetyHistory::Kind::Change, safety.isSafe, !safety.isSafe && result.isSafe, result.reasonFlags, 0);
+    {
+        SafetyHistory::Entry change{};
+        change.kind = SafetyHistory::Kind::Change;
+        change.safe = safety.isSafe;
+        change.held = !safety.isSafe && result.isSafe;
+        change.flags = result.reasonFlags;
+        Core::changeHoldLabels(change, holds);
+        pushEntry(change);
+    }
 
     runAlerts();
     tickDisplay();
@@ -348,14 +361,19 @@ void EmulatedDevice::record(const Alerts::Alert &alert, uint8_t mask)
 void EmulatedDevice::pushHistory(SafetyHistory::Kind kind, bool safe, bool held, uint32_t flags, uint8_t resetReason)
 {
     SafetyHistory::Entry e{};
-    e.epoch = epoch >= Core::CLOCK_VALID_EPOCH ? static_cast<uint32_t>(epoch) : 0;
-    e.uptimeS = uptimeSeconds();
     e.flags = flags;
-    e.boot = history.boot;
     e.kind = kind;
     e.safe = safe;
     e.held = held;
     e.resetReason = resetReason & 0x3F;
+    pushEntry(e);
+}
+
+void EmulatedDevice::pushEntry(SafetyHistory::Entry e)
+{
+    e.epoch = epoch >= Core::CLOCK_VALID_EPOCH ? static_cast<uint32_t>(epoch) : 0;
+    e.uptimeS = uptimeSeconds();
+    e.boot = history.boot;
     SafetyHistory::push(history, e);
 }
 

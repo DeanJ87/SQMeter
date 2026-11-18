@@ -124,7 +124,7 @@ Alerts raised at the same moment - rain starting usually makes the observatory u
 
 | Variable | Value |
 |---|---|
-| `{reasons}`, `{reasons_inline}`, `{reason_count}` | Unsafe only: each failing rule with value and limit (one per line / on one line), and how many |
+| `{reasons}`, `{reasons_inline}`, `{reason_count}` | Unsafe only: each failing rule with value and limit (one per line / on one line), and how many. A [safety hold](alpaca.md#safety-holds) is listed by its own reason |
 | `{sensor}` | Sensor events: which sensor ("Light sensor", or "SQM sensor" and "SQM-L sensor" with two sky sensors); several at once are listed with commas |
 | `{event}` | The event name, as in webhook payloads: `unsafe`, `rain_started`, ... |
 | `{device}`, `{time}`, `{date}`, `{level}` | Device name, local time and date, alert level |

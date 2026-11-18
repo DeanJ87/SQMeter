@@ -177,6 +177,8 @@ namespace SQM
             SafetyResult result;
             if (t.manualOverrideUnsafe)
                 addReason(result, UnsafeManualOverride, "Manual override forces unsafe");
+            for (const std::string &hold : in.holdReasons)
+                addReason(result, UnsafeExternalHold, hold.c_str());
             checkRain(result, in, t);
             checkWind(result, in, t);
             checkBattery(result, in, t);

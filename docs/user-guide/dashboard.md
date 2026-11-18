@@ -40,7 +40,7 @@ What's shown, and where each piece of device state appears (or why it doesn't), 
 
 | Card | Shows | When it's there |
 |---|---|---|
-| **Safety Monitor** | Safe or unsafe, with each failing rule's value and limit, how long it's been that way, while rain is held how long until it clears, a **Rules** link and the **History** of recent changes, restarts and alerts | Always |
+| **Safety Monitor** | Safe or unsafe, with each failing rule's value and limit, each [safety hold](alpaca.md#safety-holds) with who set it, since when (and when it lifts) and a **Clear** link, how long it's been that way, while rain is held how long until it clears, a **Rules** link and the **History** of recent changes, restarts and alerts | Always |
 | **Sky Quality** | SQM (mag/arcsec²), its description and Bortle class, a trend of recent readings, NELM and illuminance; its first pill is data freshness: **Live**, **Stale**, **No updates** or **Offline**. With two sky sensors on, a pill names the authoritative one (**SQM** or **SQM-L**) and, with **Show other reading** on, two more tiles show the other sensor's reading and the **Difference** (SQM-L − SQM, amber above 1.5 mag/arcsec²) | Always |
 | **Sun & Moon** | Moon phase, tonight's astronomical darkness, moonrise/moonset and a chart of sun and moon altitude through the night - hover (or tap) the chart for the time, altitudes and sky phase | When the device knows its location (GPS fix or **Settings → Time & Location → Location**) and **Sun & Moon card on the dashboard** is on |
 | **Cloud Conditions** | The device's verdict (Clear / Cloudy / Overcast), cloud cover and the sky−ambient temperature delta before and after humidity correction. Notes when humidity is assumed because there's no BME280 reading | Always |

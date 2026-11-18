@@ -475,6 +475,178 @@
         }
       }
     },
+    "/api/safety/hold/{id}": {
+      "delete": {
+        "operationId": "delete_safety_hold_id",
+        "tags": [
+          "Safety"
+        ],
+        "summary": "Clear a safety hold",
+        "description": "Clears that hold only. The other rules still decide: if the sky is cloudy it stays unsafe, and the safe delay applies. An id with no hold (already cleared, never set) changes nothing and answers 404 `{\"cleared\": false, \"reason\": \"no such hold\"}`. Clearing `manual` switches Force unsafe off.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cleared": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "cleared"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cleared": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "cleared"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9_-]{1,24}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/safety/hold": {
+      "post": {
+        "operationId": "post_safety_hold",
+        "tags": [
+          "Safety"
+        ],
+        "summary": "Set a safety hold",
+        "description": "Holds the SafetyMonitor unsafe for a named event (smoke, the roof not open) until that hold is cleared or its `expiresMin` passes. Unsafe at once, past the unsafe delay. Setting an id again replaces its reason, source and expiry and keeps its `since`. At most 8 holds. Survives restarts. `POST /api/safety/hold/<id>/clear` clears a hold, for clients that can't send DELETE.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Safety/properties/holds/items"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/source"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9_-]{1,24}$",
+                    "description": "Names the event; `manual` is Force unsafe."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 96,
+                    "description": "Shown to people and in `reasons`; ignored for `manual`."
+                  },
+                  "source": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "description": "Who set it; default `?source=`, else `API`."
+                  },
+                  "expiresMin": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10080,
+                    "description": "Lifts by itself after this many minutes; none = until cleared."
+                  }
+                },
+                "required": [
+                  "id",
+                  "reason"
+                ]
+              },
+              "example": {
+                "id": "smoke",
+                "reason": "Smoke: neighbour's fire, PM2.5 85 µg/m³",
+                "source": "Home Assistant",
+                "expiresMin": 240
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/safety/history": {
       "get": {
         "operationId": "get_safety_history",
@@ -548,7 +720,8 @@
                   "secondsUntilUnsafe": 0,
                   "rulesNotInEffect": [],
                   "evaluatedAgeMs": 0,
-                  "changedAgeMs": 2005
+                  "changedAgeMs": 2005,
+                  "holds": []
                 }
               }
             }
@@ -5508,6 +5681,41 @@
               "evaluatedAgeMs": {
                 "type": "number"
               },
+              "holds": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "expiresEpoch": {
+                      "type": "number"
+                    },
+                    "expiresInMs": {
+                      "type": "number"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "sinceAgeMs": {
+                      "type": "number"
+                    },
+                    "sinceEpoch": {
+                      "type": "number"
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "reason",
+                    "source"
+                  ],
+                  "additionalProperties": false
+                }
+              },
               "rawSafe": {
                 "type": "boolean"
               },
@@ -5887,6 +6095,41 @@
           "evaluatedAgeMs": {
             "type": "number"
           },
+          "holds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "expiresEpoch": {
+                  "type": "number"
+                },
+                "expiresInMs": {
+                  "type": "number"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "sinceAgeMs": {
+                  "type": "number"
+                },
+                "sinceEpoch": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "reason",
+                "source"
+              ],
+              "additionalProperties": false
+            }
+          },
           "rawSafe": {
             "type": "boolean"
           },
@@ -5945,6 +6188,15 @@
                 },
                 "held": {
                   "type": "boolean"
+                },
+                "holdId": {
+                  "type": "string"
+                },
+                "holds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "kind": {
                   "type": "string"

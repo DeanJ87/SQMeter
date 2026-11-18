@@ -2754,3 +2754,15 @@ main:focus {
 [dir='rtl'] .reading-value {
   text-align: inherit;
 }
+
+/* Safety holds in the Safety Monitor card's reasons (spec 035). */
+.reason-list .hold-item .hold-meta {
+  display: block;
+  margin-left: 0.9rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.reason-list .hold-item .note-action {
+  margin-left: 0.5rem;
+}

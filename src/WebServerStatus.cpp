@@ -171,7 +171,12 @@ namespace SQM
 
     void WebServer::appendSafetyStatus(JsonObject target) const
     {
-        Core::writeSafety(target, getSafetyStatus(), getConfigCallback(), millis());
+        const SafetyStatus status = getSafetyStatus();
+        // The holds' lock after the verdict's, never inside it (lock order).
+        xSemaphoreTake(holdsMutex, portMAX_DELAY);
+        const Core::HeldBy heldBy{holds, static_cast<int64_t>(time(nullptr))};
+        Core::writeSafety(target, status, getConfigCallback(), millis(), &heldBy);
+        xSemaphoreGive(holdsMutex);
     }
 
     Readings::Snapshot WebServer::buildReadings() const

@@ -8,5 +8,6 @@
   "secondsUntilUnsafe": 0,
   "rulesNotInEffect": [],
   "evaluatedAgeMs": 0,
-  "changedAgeMs": 2005
+  "changedAgeMs": 2005,
+  "holds": []
 }

@@ -49,6 +49,7 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/mqtt/test` | POST | Test MQTT broker connection |
 | `/api/alerts/test` | POST | Send a test alert |
 | `/api/alerts/arm`, `/api/alerts/disarm` | POST | Resume / pause alerts |
+| `/api/safety/hold`, `/api/safety/hold/<id>`, `/api/safety/hold/<id>/clear` | POST / DELETE | Set or clear a [safety hold](alpaca.md#safety-holds) (MQTT `<base>/safety/hold/set` relies on the broker's access control) |
 | `/api/alerts/clear` | POST | Clear the recent-alerts list |
 | `/api/ble/ack`, `/api/ble/forget-bonds` | POST | Acknowledge the phone alarm / unpair phones |
 | `/api/sensors/tsl2591/calibrate-dark` | POST | Store the light sensor dark offset |

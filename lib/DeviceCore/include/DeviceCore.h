@@ -20,6 +20,8 @@
 #include "ObservingConditionsMapper.h"
 #include "Readings.h"
 #include "SafetyEvaluator.h"
+#include "SafetyHistoryLog.h"
+#include "SafetyHolds.h"
 #include "SafetyStatus.h"
 #include "SettingsDeps.h"
 #include "SensorTypes.h"
@@ -166,8 +168,60 @@ namespace SQM
         // Returns true if the reported verdict changed (or this is the first).
         bool updateSafety(
             SafetyStatus &status, Alpaca::SafeDelayFilter &filter, const Alpaca::SafetyResult &result, const Config &cfg, uint32_t nowMs);
-        // The safety document (/api/safety, readings "safety", MQTT <base>/safety).
-        void writeSafety(JsonObject target, const SafetyStatus &status, const Config &cfg, uint32_t nowMs);
+        // The safety holds in effect (spec 035) and the wall clock to date them by.
+        struct HeldBy
+        {
+            const Alpaca::SafetyHolds &holds;
+            int64_t epoch;
+        };
+        // The safety document (/api/safety, readings "safety", MQTT <base>/safety),
+        // with the safety holds when given.
+        void writeSafety(JsonObject target, const SafetyStatus &status, const Config &cfg, uint32_t nowMs, const HeldBy *heldBy = nullptr);
+
+        // Safety holds (specs/035-safety-holds, src/WebServerHolds.cpp, the demo).
+        struct HoldCommand
+        {
+            enum class Kind : uint8_t
+            {
+                Set,
+                Clear,
+            };
+            Kind kind = Kind::Set;
+            Alpaca::HoldRequest request;
+            Alpaca::HoldError error = Alpaca::HoldError::None;
+        };
+        // POST /api/safety/hold (set, JSON body), DELETE /api/safety/hold/<id>
+        // and POST /api/safety/hold/<id>/clear. false: no such route (404).
+        // The source is the body's, else querySource, else "API".
+        bool holdCommandFromHttp(
+            bool isDelete, const std::string &path, const std::string &body, const std::string &querySource, HoldCommand &out);
+        // MQTT <base>/safety/hold/set: {"id","reason",...} sets, {"id","clear":true} clears.
+        HoldCommand holdCommandFromMqtt(const std::string &payload);
+
+        // What a command did, and the HTTP answer to it.
+        struct HoldOutcome
+        {
+            int status = 200;
+            std::string body;
+            bool changed = false;       // store the holds
+            bool added = false;         // a new hold (not an update)
+            bool cleared = false;       // `removed` is the hold that went
+            Alpaca::SafetyHold removed; // when cleared
+            bool manualChanged = false; // the manual hold came or went: save alpaca.manualOverrideUnsafe
+        };
+        HoldOutcome applyHold(Alpaca::SafetyHolds &holds, const HoldCommand &command, uint32_t nowMs, int64_t epoch);
+        // The manual hold follows alpaca.manualOverrideUnsafe (FR-008); true if the holds changed.
+        bool syncManualHold(Alpaca::SafetyHolds &holds, bool forceUnsafe, uint32_t nowMs, int64_t epoch);
+
+        // Safety history for holds (FR-009); the caller stamps time and boot.
+        // A hold set: true (and `entry` filled) only while already reported
+        // unsafe - otherwise the verdict change it causes records it.
+        bool holdSetEntry(SafetyHistory::Entry &entry, const std::string &id, const SafetyStatus &status, const Alpaca::SafetyHolds &holds);
+        // A hold cleared or lifted: what it is still unsafe for without it.
+        void holdClearedEntry(
+            SafetyHistory::Entry &entry, const Alpaca::SafetyHold &cleared, const SafetyStatus &status, const Alpaca::SafetyHolds &holds);
+        // A verdict change: the external holds' labels.
+        void changeHoldLabels(SafetyHistory::Entry &entry, const Alpaca::SafetyHolds &holds);
 
         // Darkness at the device: GPS fix, else the location in settings.
         struct NightState

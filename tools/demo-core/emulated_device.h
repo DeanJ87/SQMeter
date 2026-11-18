@@ -25,6 +25,7 @@
 #include "DisplayController.h"
 #include "RainLogic.h"
 #include "SafetyHistoryLog.h"
+#include "SafetyHolds.h"
 #include "SettingsDeps.h"
 #include "sensor_feed.h"
 #include "calculations/Dewpoint.h"
@@ -149,6 +150,12 @@ public:
     // POST /api/alerts/arm|disarm (source "ui" or "rest") and MQTT ("mqtt").
     void setArmed(bool on, const std::string &source);
 
+    // --- Safety holds (specs/035-safety-holds) ---------------------------------
+    // POST /api/safety/hold, DELETE /api/safety/hold/<id>, POST
+    // /api/safety/hold/<id>/clear (method "POST"/"DELETE"; source: ?source=).
+    // Returns {status, body} like the device.
+    std::string holdRequest(const std::string &method, const std::string &path, const std::string &body, const std::string &source);
+
 private:
     int64_t validEpoch() const { return epoch >= Core::CLOCK_VALID_EPOCH ? epoch : 0; }
 
@@ -225,6 +232,11 @@ private:
     void record(const Alerts::Alert &alert, uint8_t mask);
 
     void pushHistory(SafetyHistory::Kind kind, bool safe, bool held, uint32_t flags, uint8_t resetReason);
+    // Stamps an entry described elsewhere (time, uptime, boot) and keeps it.
+    void pushEntry(SafetyHistory::Entry entry);
+
+    // Lifts holds whose time has come, as the device does each evaluation.
+    void tickHolds();
 
     void runAlerts();
 
@@ -244,6 +256,7 @@ private:
     Alerts::AlertSchedule schedule;
     Alpaca::ClientWatch clientWatch;
     SafetyHistory::Log history{};
+    Alpaca::SafetyHolds holds; // kept across a restart, like the device's NVS
     std::deque<Record> records;
     uint32_t nextId = 1;
     uint32_t nowMs = 0;

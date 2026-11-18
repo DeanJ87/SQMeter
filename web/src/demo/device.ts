@@ -238,6 +238,13 @@ class DemoDevice {
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 
+  /** POST /api/safety/hold, DELETE /api/safety/hold/<id>, POST /api/safety/hold/<id>/clear (spec 035). */
+  holdRequest(method: string, path: string, body: string, source: string): Reply {
+    const reply = JSON.parse(this.core.holdRequest(method, path, body, source));
+    this.persist();
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
   /** POST /api/display/wake or /blank (spec 031). */
   displayRequest(wake: boolean): Reply {
     const reply = JSON.parse(this.core.displayRequest(wake));

@@ -46,15 +46,13 @@ namespace SQM
         return Core::safetyThresholds(cfg);
     }
 
-    Alpaca::SafetyResult WebServer::evaluateAlpacaSafety() const
-    {
-        return Alpaca::evaluateSafety(buildAlpacaSafetyInputs(), buildAlpacaSafetyThresholds(getConfigCallback()));
-    }
-
     void WebServer::updateSafetyStatus()
     {
-        const Alpaca::SafetyResult result = evaluateAlpacaSafety();
         const uint32_t now = millis();
+        HoldsView heldBy = tickHolds(now);
+        Alpaca::SafetyInputs inputs = buildAlpacaSafetyInputs();
+        inputs.holdReasons = std::move(heldBy.reasons);
+        const Alpaca::SafetyResult result = Alpaca::evaluateSafety(inputs, buildAlpacaSafetyThresholds(getConfigCallback()));
 
         if (safetyMutex && xSemaphoreTake(safetyMutex, pdMS_TO_TICKS(100)) == pdTRUE)
         {
@@ -63,7 +61,7 @@ namespace SQM
             {
                 if (!first)
                     Logger::info(TAG, "SafetyMonitor now %s", safetyStatus.isSafe ? "SAFE" : "UNSAFE");
-                SafetyHistory::recordChange(safetyStatus.isSafe, !safetyStatus.isSafe && result.isSafe, result.reasonFlags);
+                SafetyHistory::recordChange(safetyStatus.isSafe, !safetyStatus.isSafe && result.isSafe, result.reasonFlags, heldBy.labels);
             }
             xSemaphoreGive(safetyMutex);
         }
@@ -325,7 +323,7 @@ namespace SQM
 
         // Same object as GET /api/safety; <base>/safe is the bare 1/0 for
         // loggers, simple automations and the Home Assistant binary sensor.
-        DynamicJsonDocument doc(1024);
+        DynamicJsonDocument doc(Readings::SAFETY_CAPACITY);
         appendSafetyStatus(doc.to<JsonObject>());
         std::string payload;
         serializeJson(doc, payload);

@@ -49,12 +49,23 @@ namespace SQM
             record(entry);
         }
 
-        void recordChange(bool safe, bool held, uint32_t flags)
+        void recordChange(bool safe, bool held, uint32_t flags, const std::vector<std::string> &holdLabels)
         {
             Entry entry = make(Kind::Change);
             entry.safe = safe;
             entry.held = held;
             entry.flags = flags;
+            setHoldLabels(entry, holdLabels);
+            record(entry);
+        }
+
+        void recordHold(const Entry &described)
+        {
+            Entry entry = described;
+            const Entry stamp = make(described.kind);
+            entry.epoch = stamp.epoch;
+            entry.uptimeS = stamp.uptimeS;
+            entry.boot = stamp.boot;
             record(entry);
         }
 

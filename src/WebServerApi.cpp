@@ -39,6 +39,7 @@ namespace SQM
     void WebServer::setupAPIRoutes()
     {
         setupBackupRoutes();
+        setupHoldRoutes();
         setupReadingRoutes();
         setupSettingsRoutes();
         setupNetworkRoutes();
@@ -98,32 +99,15 @@ namespace SQM
 
     void WebServer::handleSafetyHistory(AsyncWebServerRequest *request)
     {
-        static SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
-        const size_t n = SafetyHistory::entries(entries, SafetyHistory::CAPACITY);
-        static const char *const KIND[] = {"boot", "change", "alert", "armed"};
-        DynamicJsonDocument doc(256 + n * 160);
+        // On the heap while the request lasts (2.5 KB; not kept in RAM).
+        std::vector<SafetyHistory::Entry> entries(SafetyHistory::CAPACITY);
+        const size_t n = SafetyHistory::entries(entries.data(), SafetyHistory::CAPACITY);
+        DynamicJsonDocument doc(256 + n * 256);
         doc["boot"] = SafetyHistory::currentBoot();
         doc["uptime"] = millis() / 1000;
         JsonArray list = doc.createNestedArray("entries");
         for (size_t i = n; i-- > 0;) // newest first
-        {
-            const SafetyHistory::Entry &e = entries[i];
-            JsonObject item = list.createNestedObject();
-            item["kind"] = KIND[static_cast<uint8_t>(e.kind) <= 3 ? static_cast<uint8_t>(e.kind) : 1];
-            item["boot"] = e.boot;
-            item["uptime"] = e.uptimeS;
-            if (e.epoch != 0)
-                item["timestamp"] = e.epoch;
-            if (e.kind == SafetyHistory::Kind::Boot)
-                item["resetReason"] = e.resetReason;
-            else
-                item["safe"] = static_cast<bool>(e.safe);
-            if (e.kind == SafetyHistory::Kind::Change)
-            {
-                item["held"] = static_cast<bool>(e.held);
-                item["reasonFlags"] = e.flags;
-            }
-        }
+            SafetyHistory::writeEntry(list.createNestedObject(), entries[i]);
         std::string json;
         serializeJson(doc, json);
         request->send(200, "application/json", json.c_str());
@@ -142,7 +126,7 @@ namespace SQM
 
     void WebServer::handleGetSafety(AsyncWebServerRequest *request)
     {
-        DynamicJsonDocument doc(1536);
+        DynamicJsonDocument doc(Readings::SAFETY_CAPACITY);
         appendSafetyStatus(doc.to<JsonObject>());
         std::string json;
         serializeJson(doc, json);

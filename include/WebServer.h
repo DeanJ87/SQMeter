@@ -50,6 +50,9 @@ namespace SQM
     public:
         using GetConfigCallback = std::function<const Config &()>;
         using SaveConfigCallback = std::function<bool(const Config &)>;
+        // Saves alpaca.manualOverrideUnsafe alone (no MQTT reconnect or sensor
+        // reconfigure): the manual safety hold set or cleared (spec 035 FR-008).
+        using ManualOverrideCallback = std::function<bool(bool forceUnsafe)>;
 
         // The sensors the server reads and acts on (calibration, RG-15 commands).
         struct Sensors
@@ -78,6 +81,8 @@ namespace SQM
         // The battery power policy (spec 032): its state for the snapshot and
         // its one-shots for the alerts. Set once at start-up.
         void setPowerManager(PowerManager *manager) { powerManager = manager; }
+        // Set once at start-up, before begin().
+        void setManualOverrideCallback(ManualOverrideCallback callback) { manualOverrideCallback = std::move(callback); }
         // No alert queued or being delivered (the shutdown waits for it).
         bool alertsIdle() const;
         // The driver of a sky sensor (spec 030).
@@ -213,6 +218,29 @@ namespace SQM
         uint32_t bleStartAt = 0;
         static constexpr uint32_t SAFETY_EVALUATION_INTERVAL_MS = 1000;
         void updateSafetyStatus();
+
+        // Safety holds (specs/035-safety-holds, src/WebServerHolds.cpp). Set
+        // and cleared from HTTP (AsyncTCP task) and MQTT (loop task); stored
+        // in NVS on every change.
+        Alpaca::SafetyHolds holds;
+        SemaphoreHandle_t holdsMutex = xSemaphoreCreateMutex();
+        ManualOverrideCallback manualOverrideCallback;
+        struct HoldsView
+        {
+            std::vector<std::string> reasons; // for the evaluation
+            std::vector<std::string> labels;  // for the history
+        };
+        void restoreHolds();
+        static void storeHolds(const std::string &stored);
+        void setupHoldRoutes();
+        void subscribeHoldCommands();
+        void handleHold(AsyncWebServerRequest *request);
+        Core::HoldOutcome runHoldCommand(const Core::HoldCommand &command);
+        void recordHoldEvent(const Core::HoldCommand &command, const Core::HoldOutcome &outcome, const SafetyStatus &status);
+        void applyManualOverride(bool forceUnsafe);
+        void syncManualHold(bool forceUnsafe);
+        // Lifts holds whose time has come; the holds as the evaluation needs them.
+        HoldsView tickHolds(uint32_t now);
 
         // Alerts
         Alerts::AlertEngine alertEngine;
@@ -414,7 +442,6 @@ namespace SQM
         // Alpaca helpers
         Alpaca::SafetyInputs buildAlpacaSafetyInputs() const;
         static Alpaca::SafetyThresholds buildAlpacaSafetyThresholds(const Config &cfg);
-        Alpaca::SafetyResult evaluateAlpacaSafety() const;
         Alpaca::ObservingConditionsSnapshot buildAlpacaObservingConditionsSnapshot() const;
     };
 

@@ -1,10 +1,11 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { route } from 'preact-router';
-import type { SafetyStatus } from '../types';
+import type { SafetyHold, SafetyStatus } from '../types';
 import { Button, Card, Note, Pill } from './ui';
 import { t } from '../i18n';
-import { request } from '../lib/api';
+import { clearHold, request } from '../lib/api';
+import { showToast } from './toast';
 import { formatDateTime, formatTime } from '../i18n/format';
 import { deviceText } from '../i18n/deviceMessage';
 import { formatDuration } from '../lib/astro';
@@ -28,7 +29,7 @@ const formatSince = (ms: number) => {
 };
 
 interface HistoryEntry {
-  kind: 'boot' | 'change' | 'alert' | 'armed';
+  kind: 'boot' | 'change' | 'alert' | 'armed' | 'holdSet' | 'holdCleared';
   boot: number;
   uptime: number;
   timestamp?: number;
@@ -36,7 +37,12 @@ interface HistoryEntry {
   held?: boolean;
   reasonFlags?: number;
   resetReason?: number;
+  holdId?: string; // holdSet, holdCleared (spec 035)
+  holds?: string[]; // the external holds' labels
 }
+
+// Another system's safety hold (spec 035), named in the history by its label.
+const HOLD_FLAG = 1 << 17;
 
 const REASON_LABELS: [number, string][] = [
   [1 << 0, t('safetyCard.reason.manualOverride')],
@@ -67,6 +73,23 @@ const RESET_LABELS: Record<number, string> = {
   9: t('safetyCard.boot.brownout'),
 };
 
+// The reasons a history entry names: the rules' labels, then each hold by name.
+const reasonLabels = (entry: HistoryEntry) => {
+  const flags = entry.reasonFlags ?? 0;
+  const labels = REASON_LABELS.filter(([bit]) => flags & bit).map(([, label]) => label);
+  if (entry.kind !== 'holdCleared' && entry.holds?.length)
+    return [...labels, ...entry.holds.map((name) => t('safetyCard.reason.holdNamed', { name }))];
+  return flags & HOLD_FLAG ? [...labels, t('safetyCard.reason.hold')] : labels;
+};
+
+const describeHoldCleared = (entry: HistoryEntry) => {
+  const name = entry.holdId === 'manual' ? t('safetyCard.reason.manualOverride') : (entry.holds?.[0] ?? entry.holdId ?? '');
+  const still = reasonLabels(entry);
+  return still.length
+    ? t('safetyCard.holdClearedStillUnsafe', { name, reasons: still.join(t('common.listSeparator')) })
+    : t('safetyCard.holdCleared', { name });
+};
+
 export const describeHistoryEntry = (entry: HistoryEntry) => {
   if (entry.kind === 'boot')
     return t('safetyCard.deviceValue', {
@@ -74,9 +97,10 @@ export const describeHistoryEntry = (entry: HistoryEntry) => {
     });
   if (entry.kind === 'alert') return entry.safe ? t('safetyCard.alertSentSafe') : t('safetyCard.alertSentUnsafe');
   if (entry.kind === 'armed') return entry.safe ? t('safetyCard.alertsResumed') : t('safetyCard.alertsPaused');
-  if (entry.safe) return t('safetyCard.safe');
+  if (entry.kind === 'holdCleared') return describeHoldCleared(entry);
+  if (entry.kind === 'change' && entry.safe) return t('safetyCard.safe');
   if (entry.held) return t('safetyCard.unsafeWaitingOutTheSafe');
-  const reasons = REASON_LABELS.filter(([bit]) => (entry.reasonFlags ?? 0) & bit).map(([, label]) => label);
+  const reasons = reasonLabels(entry);
   return reasons.length ? t('safetyCard.unsafeBecause', { reasons: reasons.join(t('common.listSeparator')) }) : t('safetyCard.unsafe');
 };
 
@@ -87,6 +111,13 @@ const historyTime = (entry: HistoryEntry, currentBoot: number) => {
     return sameDay ? formatTime(date) : formatDateTime(date, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
   }
   return entry.boot === currentBoot ? `${entry.uptime}s after start` : 'earlier';
+};
+
+// A hold set reads like the unsafe change it adds to; a hold cleared like a note.
+const historyClass = (entry: HistoryEntry) => {
+  if (entry.kind === 'holdSet') return 'history-change is-unsafe';
+  if (entry.kind === 'holdCleared') return 'history-alert';
+  return `history-${entry.kind}${entry.kind === 'change' ? (entry.safe ? ' is-safe' : ' is-unsafe') : ''}`;
 };
 
 const SafetyHistoryList: FunctionalComponent = () => {
@@ -102,7 +133,7 @@ const SafetyHistoryList: FunctionalComponent = () => {
   return (
     <ul class="history-list" aria-label={t('safetyCard.safetyHistory')}>
       {data.entries.map((entry, index) => (
-        <li key={index} class={`history-${entry.kind}${entry.kind === 'change' ? (entry.safe ? ' is-safe' : ' is-unsafe') : ''}`}>
+        <li key={index} class={historyClass(entry)}>
           <span class="history-time">{historyTime(entry, data.boot)}</span>
           <span>{describeHistoryEntry(entry)}</span>
         </li>
@@ -110,6 +141,51 @@ const SafetyHistoryList: FunctionalComponent = () => {
     </ul>
   );
 };
+
+// `Hold "smoke" · Home Assistant · since 21:14 · lifts 01:14` (spec 035 FR-011).
+const holdMeta = (hold: SafetyHold) => {
+  const since =
+    hold.sinceEpoch !== undefined
+      ? new Date(hold.sinceEpoch * 1000)
+      : hold.sinceAgeMs !== undefined
+        ? new Date(Date.now() - hold.sinceAgeMs)
+        : null;
+  const lifts =
+    hold.expiresEpoch !== undefined
+      ? new Date(hold.expiresEpoch * 1000)
+      : hold.expiresInMs !== undefined
+        ? new Date(Date.now() + hold.expiresInMs)
+        : null;
+  return [
+    t('safetyCard.holdMeta', { id: hold.id, source: hold.source }),
+    ...(since ? [t('safetyCard.holdSince', { time: formatTime(since) })] : []),
+    ...(lifts ? [t('safetyCard.holdLifts', { time: formatTime(lifts) })] : []),
+  ].join(' · '); // i18n-ignore: a separator, the same in every language
+};
+
+const clear = (id: string) =>
+  clearHold(id)
+    .then((response) => {
+      if (!response.ok && response.status !== 404) throw new Error(String(response.status));
+    })
+    .catch(() => showToast({ message: t('safetyCard.couldNotClearHold'), tone: 'bad' }));
+
+// Each hold under the other reasons: its reason, who set it and when, and Clear.
+const HoldItems: FunctionalComponent<{ holds: SafetyHold[] }> = ({ holds }) => (
+  <>
+    {holds.map((hold) => (
+      <li key={hold.id} class="hold-item" data-inventory="safety-holds">
+        {deviceText(hold.reason)}
+        <span class="hold-meta">
+          {holdMeta(hold)}
+          <button type="button" class="note-action" onClick={() => void clear(hold.id)}>
+            {t('safetyCard.clearHold')}
+          </button>
+        </span>
+      </li>
+    ))}
+  </>
+);
 
 // Rain that has stopped but still holds the verdict, and when it lets go (specs/025 FR-012).
 // Rules that aren't in effect are shown in Settings → Safety, not here (spec 025 amended).
@@ -128,6 +204,10 @@ const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null; showRulesL
   const [showHistory, setShowHistory] = useState(false);
   if (!safety) return null;
   const state = verdict(safety);
+  const holds = safety.holds ?? [];
+  // A hold's reason is in `reasons` too: said once, with the hold.
+  const holdReasons = new Set(holds.map((hold) => hold.reason));
+  const reasons = safety.reasons.filter((reason) => !holdReasons.has(reason));
 
   return (
     <Card
@@ -137,11 +217,12 @@ const SafetyCard: FunctionalComponent<{ safety?: SafetyStatus | null; showRulesL
       actions={<Pill tone={state.tone}>{state.text}</Pill>}
     >
       <div class="card-body">
-        {safety.reasons.length > 0 ? (
+        {reasons.length > 0 || holds.length > 0 ? (
           <ul class="reason-list" aria-label={t('safetyCard.unsafeReasons')}>
-            {safety.reasons.map((reason) => (
+            {reasons.map((reason) => (
               <li key={reason}>{deviceText(reason)}</li>
             ))}
+            <HoldItems holds={holds} />
           </ul>
         ) : safety.safe ? (
           <Note>{t('safetyCard.allRulesPass')}</Note>
