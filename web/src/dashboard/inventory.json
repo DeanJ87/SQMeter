@@ -16,10 +16,7 @@
     {
       "id": "freshness",
       "label": "dashboard.live",
-      "sources": [
-        "readings.dataStale",
-        "readings.dataAgeMs"
-      ],
+      "sources": ["readings.dataStale", "readings.dataAgeMs"],
       "requiredBy": "025 FR-014, 010, 026 FR-002 (amended: Status card shows only what no other card does)",
       "visibility": {
         "rule": "always"
@@ -58,10 +55,7 @@
     {
       "id": "rain-hold",
       "label": "glance.rainHeld",
-      "sources": [
-        "readings.rain.clearInSeconds",
-        "readings.rain.rainingNow"
-      ],
+      "sources": ["readings.rain.clearInSeconds", "readings.rain.rainingNow"],
       "requiredBy": "025 FR-012, 003",
       "visibility": {
         "rule": "when",
@@ -74,10 +68,7 @@
     {
       "id": "safety-holds",
       "label": "settings.safety.holdsFromOtherSystems",
-      "sources": [
-        "readings.safety.holds.**",
-        "safety.holds.**"
-      ],
+      "sources": ["readings.safety.holds.**", "safety.holds.**"],
       "requiredBy": "035 FR-011",
       "visibility": {
         "rule": "when",
@@ -117,11 +108,7 @@
     {
       "id": "alerts-mode-not-in-effect",
       "label": "status.sendMode",
-      "sources": [
-        "deps.D-12",
-        "status.alpaca.enabled",
-        "status.alpaca"
-      ],
+      "sources": ["deps.D-12", "status.alpaca.enabled", "status.alpaca"],
       "requiredBy": "025 FR-010, 020 D-12, 026 FR-002",
       "visibility": {
         "rule": "when",
@@ -134,12 +121,7 @@
     {
       "id": "no-channel",
       "label": "status.channels",
-      "sources": [
-        "deps.D-01",
-        "deps.D-02",
-        "deps.D-03",
-        "deps.D-04"
-      ],
+      "sources": ["deps.D-01", "deps.D-02", "deps.D-03", "deps.D-04"],
       "requiredBy": "025 FR-011, US1-6, 026 FR-002",
       "visibility": {
         "rule": "when",
@@ -303,13 +285,7 @@
     {
       "id": "sky-card",
       "label": "dashboard.skyQuality",
-      "sources": [
-        "readings.sky.sqm",
-        "readings.sky.bortle",
-        "readings.sky.nelm",
-        "readings.sky.description",
-        "readings.sky"
-      ],
+      "sources": ["readings.sky.sqm", "readings.sky.bortle", "readings.sky.nelm", "readings.sky.description", "readings.sky"],
       "requiredBy": "001, 010",
       "visibility": {
         "rule": "always"
@@ -321,9 +297,7 @@
     {
       "id": "sky-source",
       "label": "sensor.sqml",
-      "sources": [
-        "readings.sky.source"
-      ],
+      "sources": ["readings.sky.source"],
       "requiredBy": "030 FR-007, FR-012",
       "visibility": {
         "rule": "when",
@@ -396,13 +370,7 @@
     {
       "id": "light-card",
       "label": "dashboard.lightSensor",
-      "sources": [
-        "readings.light.lux",
-        "readings.light.visible",
-        "readings.light.infrared",
-        "readings.light.full",
-        "readings.light"
-      ],
+      "sources": ["readings.light.lux", "readings.light.visible", "readings.light.infrared", "readings.light.full", "readings.light"],
       "requiredBy": "001, 010",
       "visibility": {
         "rule": "always"
@@ -478,13 +446,7 @@
     {
       "id": "wind-card",
       "label": "dashboard.wind",
-      "sources": [
-        "readings.wind.speed",
-        "readings.wind.gust",
-        "readings.wind.direction",
-        "readings.wind.vaneFault",
-        "readings.wind"
-      ],
+      "sources": ["readings.wind.speed", "readings.wind.gust", "readings.wind.direction", "readings.wind.vaneFault", "readings.wind"],
       "requiredBy": "004, 010",
       "visibility": {
         "rule": "when",
@@ -605,10 +567,7 @@
     {
       "id": "mdns",
       "label": "glance.localName",
-      "sources": [
-        "status.wifi.hostname",
-        "status.wifi.mdns"
-      ],
+      "sources": ["status.wifi.hostname", "status.wifi.mdns"],
       "requiredBy": "025 FR-015, 013",
       "visibility": {
         "rule": "when",
@@ -621,12 +580,7 @@
     {
       "id": "mqtt-state",
       "label": "glance.mqtt",
-      "sources": [
-        "status.mqtt.enabled",
-        "status.mqtt.connected",
-        "status.mqtt.state",
-        "status.mqtt"
-      ],
+      "sources": ["status.mqtt.enabled", "status.mqtt.connected", "status.mqtt.state", "status.mqtt"],
       "requiredBy": "025 FR-015, 013",
       "visibility": {
         "rule": "when",

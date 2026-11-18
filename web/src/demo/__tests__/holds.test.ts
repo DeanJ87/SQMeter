@@ -16,7 +16,12 @@ describe('demo safety holds', () => {
   afterAll(() => demoDevice.stop());
 
   it('a hold makes it unsafe and is listed with its reason', async () => {
-    const set = demoDevice.holdRequest('POST', '/api/safety/hold', JSON.stringify({ id: 'smoke', reason: 'Smoke: test' }), 'Home Assistant');
+    const set = demoDevice.holdRequest(
+      'POST',
+      '/api/safety/hold',
+      JSON.stringify({ id: 'smoke', reason: 'Smoke: test' }),
+      'Home Assistant',
+    );
     expect(set.status).toBe(200);
     expect(JSON.parse(set.body)).toMatchObject({ id: 'smoke', reason: 'Smoke: test', source: 'Home Assistant' });
     await tick();
