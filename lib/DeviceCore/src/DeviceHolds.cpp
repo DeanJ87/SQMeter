@@ -159,8 +159,14 @@ namespace SQM::Core
         entry.flags = still;
         entry.safe = still == 0;
         SafetyHistory::setHoldId(entry, cleared.id);
+        // Labels: the cleared hold first (a manual hold has none), then the holds still set,
+        // so the history can say which ones it is still unsafe for.
+        std::vector<std::string> labels;
         if (!cleared.manual())
-            SafetyHistory::setHoldLabels(entry, {Alpaca::holdLabel(cleared.reason, SafetyHistory::HOLD_TEXT_BYTES - 1)});
+            labels.push_back(Alpaca::holdLabel(cleared.reason, SafetyHistory::HOLD_TEXT_BYTES - 1));
+        for (const std::string &label : holds.externalLabels(SafetyHistory::HOLD_TEXT_BYTES - 1))
+            labels.push_back(label);
+        SafetyHistory::setHoldLabels(entry, labels);
     }
 
     void changeHoldLabels(SafetyHistory::Entry &entry, const Alpaca::SafetyHolds &holds)

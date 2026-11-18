@@ -82,9 +82,16 @@ const reasonLabels = (entry: HistoryEntry) => {
   return flags & HOLD_FLAG ? [...labels, t('safetyCard.reason.hold')] : labels;
 };
 
+// holds: the cleared hold's label first (none for the manual hold), then the holds still set.
 const describeHoldCleared = (entry: HistoryEntry) => {
-  const name = entry.holdId === 'manual' ? t('safetyCard.reason.manualOverride') : (entry.holds?.[0] ?? entry.holdId ?? '');
-  const still = reasonLabels(entry);
+  const manual = entry.holdId === 'manual';
+  const name = manual ? t('safetyCard.reason.manualOverride') : (entry.holds?.[0] ?? entry.holdId ?? '');
+  const remaining = (manual ? entry.holds : entry.holds?.slice(1)) ?? [];
+  const flags = entry.reasonFlags ?? 0;
+  const rules = REASON_LABELS.filter(([bit]) => flags & bit).map(([, label]) => label);
+  const still = remaining.length
+    ? [...rules, ...remaining.map((label) => t('safetyCard.reason.holdNamed', { name: label }))]
+    : reasonLabels(entry);
   return still.length
     ? t('safetyCard.holdClearedStillUnsafe', { name, reasons: still.join(t('common.listSeparator')) })
     : t('safetyCard.holdCleared', { name });

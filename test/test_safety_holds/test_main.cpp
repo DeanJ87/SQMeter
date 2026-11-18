@@ -1,6 +1,7 @@
 #include <unity.h>
 
 #include <string>
+#include <vector>
 
 #include "DeviceCore.h"
 #include "SafetyEvaluator.h"
@@ -371,6 +372,18 @@ void test_history_hold_cleared_still_unsafe_for_cloud()
     status.reasonFlags = UnsafeExternalHold;
     Core::holdClearedEntry(e, cleared, status, holds);
     TEST_ASSERT_EQUAL_UINT32(UnsafeExternalHold, e.flags);
+    // The cleared hold first, then the ones still set, so the history can name them.
+    const std::vector<std::string> labels = SafetyHistory::holdLabels(e);
+    TEST_ASSERT_EQUAL(2, labels.size());
+    TEST_ASSERT_EQUAL_STRING("Smoke", labels[0].c_str());
+    TEST_ASSERT_EQUAL_STRING("Roof not fully open", labels[1].c_str());
+
+    // The manual hold has no label: only the holds still set.
+    SafetyHold manual;
+    manual.id = MANUAL_HOLD_ID;
+    Core::holdClearedEntry(e, manual, status, holds);
+    TEST_ASSERT_EQUAL(1, SafetyHistory::holdLabels(e).size());
+    TEST_ASSERT_EQUAL_STRING("Roof not fully open", SafetyHistory::holdLabels(e)[0].c_str());
 }
 
 void test_history_hold_set_only_while_unsafe()

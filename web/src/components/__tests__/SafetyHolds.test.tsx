@@ -54,6 +54,19 @@ describe('Safety holds', () => {
     expect(describeHistoryEntry({ kind: 'holdCleared', boot: 1, uptime: 1, reasonFlags: 1 << 4, holdId: 'smoke', holds: ['Smoke'] })).toBe(
       'Hold cleared: Smoke (still unsafe: cloud)',
     );
+    expect(
+      describeHistoryEntry({ kind: 'holdCleared', boot: 1, uptime: 1, reasonFlags: 1 << 17, holdId: 'smoke', holds: ['Smoke', 'Roof'] }),
+    ).toBe('Hold cleared: Smoke (still unsafe: hold: Roof)');
+    expect(
+      describeHistoryEntry({
+        kind: 'holdCleared',
+        boot: 1,
+        uptime: 1,
+        reasonFlags: (1 << 17) | (1 << 4),
+        holdId: 'manual',
+        holds: ['Roof'],
+      }),
+    ).toBe('Hold cleared: manual override (still unsafe: cloud, hold: Roof)');
     expect(describeHistoryEntry({ kind: 'holdCleared', boot: 1, uptime: 1, reasonFlags: 0, holdId: 'manual' })).toBe(
       'Hold cleared: manual override',
     );
