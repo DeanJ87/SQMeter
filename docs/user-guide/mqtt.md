@@ -22,7 +22,7 @@ In **Settings → Network → MQTT**, turn on **Publish to a broker** and set th
     "password": "mqttpass",
     "topic": "sqmeter",
     "publishIntervalMs": 60000,
-    "publish": { "sky": true, "environment": true, "clouds": true, "gps": true, "rain": true, "wind": true, "safety": true, "diagnostics": false },
+    "publish": { "sky": true, "environment": true, "clouds": true, "gps": true, "rain": true, "wind": true, "battery": true, "safety": true, "diagnostics": false },
     "homeAssistant": { "enabled": true, "discoveryPrefix": "homeassistant" }
   }
 }
@@ -47,7 +47,7 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels.
 | `<base>/alerts/armed` | Yes | `1` sending alerts, `0` paused | On change and reconnect |
 | `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` resume or pause alerts | Command |
 | `<base>/safety/hold/set` | - | Subscribed: `{"id","reason","source"?,"expiresMin"?}` sets a [safety hold](#safety-holds), `{"id","clear":true}` clears it | Command |
-| `<base>/diagnostics` | No | Light-sensor sample counts and RG-15 serial counters - same as `/api/status` → `diagnostics` | Every publish interval, when enabled |
+| `<base>/diagnostics` | No | Light-sensor sample counts, RG-15 serial counters (rain sensor on) and the fuel gauge's registers and power policy (with a gauge) - same as `/api/status` → `diagnostics` | Every publish interval, when enabled |
 
 Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 
@@ -169,7 +169,7 @@ Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**.
 
 - **Sensors**: sky quality, limiting magnitude, Bortle class, illuminance, temperature, humidity, pressure, dew point, sky temperature, cloud cover, rain intensity, wind speed, gust and direction - for the groups you publish
 - **Per sky sensor** (spec 030): *SQM (wide)* and *SQM-L (narrow)* for each sky sensor that is switched on, and *SQM-L − SQM* while both are; *Sky quality* stays the authoritative reading
-- **Battery** (spec 032, with a fuel gauge and the Battery group published): *Battery* (%), *Battery voltage*, *Battery state* (an enum: discharging, charging, charged, fault, no-battery) and *Battery time to empty* (minutes)
+- **Battery** (spec 032, with a fuel gauge and the Battery group published): *Battery* (%), *Battery voltage*, *Charging state* (an enum: discharging, charging, charged, fault, no-battery) and *Battery time to empty* (minutes)
 - **Binary sensors**: *Raining* (moisture) and *Observatory* (safety: on = unsafe)
 - **Switch**: *Alerts* - on while sending, off while paused (see [When to send](alerts.md#when-to-send))
 

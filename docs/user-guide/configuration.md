@@ -13,7 +13,7 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
 Some settings only work when something else is on - MQTT alerts need MQTT, rain alerts need the rain sensor, night-only alerts need your location. Such a setting can't be switched on while what it needs is off, and if you switch the other thing off later the setting is kept exactly as it was but marked **Inactive** with the reason and a button that takes you to the fix. The device doesn't act on it until then, and nothing has to be set up again when you switch the other thing back on. Before you save, a note lists anything the change would make inactive. Every such setting is listed in [Settings dependencies](../reference/settings-dependencies.md).
 
 === "Device"
-    Name, password protection, command-line uploads (ArduinoOTA), Bluetooth, the OLED display, the battery.
+    Name, language, password protection, command-line uploads (ArduinoOTA), Bluetooth, the OLED display, the battery, backup and restore.
 
     ![Device settings](../assets/screenshots/settings-device.png)
 
@@ -49,6 +49,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
 ```json
 {
   "deviceName": "SQM-ESP32",
+  "language": "en",
   "primaryTimeSource": 0,
   "secondaryTimeSource": 1,
 
@@ -86,7 +87,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "password": "",
     "topic": "sqmeter",
     "publishIntervalMs": 60000,
-    "publish": { "sky": true, "environment": true, "clouds": true, "gps": true, "rain": true, "wind": true, "safety": true, "diagnostics": false },
+    "publish": { "sky": true, "environment": true, "clouds": true, "gps": true, "rain": true, "wind": true, "battery": true, "safety": true, "diagnostics": false },
     "homeAssistant": { "enabled": false, "discoveryPrefix": "homeassistant" }
   },
 
@@ -147,6 +148,9 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "darkCalibratedAt": 0
   },
 
+  "skyAveragingL": { "windowSeconds": 90 },
+  "skyCalibrationL": { "enabled": false, "sqmOffset": 0, "darkVisibleOffset": 0, "darkFullOffset": 0, "darkIrOffset": 0, "darkSampleCount": 0, "darkCalibratedAt": 0 },
+
   "cloudDetection": {
     "clearSkyThreshold": -13,
     "cloudyThreshold": -3,
@@ -179,7 +183,11 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "windSpeedUnsafeEnabled": false,
     "windSpeedUnsafeMs": 10,
     "windGustUnsafeEnabled": false,
-    "windGustUnsafeMs": 15
+    "windGustUnsafeMs": 15,
+    "batteryEnabled": false,
+    "batteryMinPercent": 10,
+    "batteryAlert": true,
+    "batteryPhoneAlarm": true
   },
 
   "alerts": {
@@ -193,7 +201,16 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
       "sensor_recovered": { "level": 1, "sound": "", "title": "", "message": "" },
       "dew_risk": { "level": 0, "sound": "", "title": "", "message": "" },
       "clear_sky": { "level": 0, "sound": "", "title": "", "message": "" },
-      "clouded_over": { "level": 0, "sound": "", "title": "", "message": "" }
+      "clouded_over": { "level": 0, "sound": "", "title": "", "message": "" },
+      "client_lost": { "level": 3, "sound": "", "title": "", "message": "" },
+      "client_back": { "level": 1, "sound": "", "title": "", "message": "" },
+      "client_disconnected": { "level": 0, "sound": "", "title": "", "message": "" },
+      "battery_low": { "level": 2, "sound": "", "title": "", "message": "" },
+      "battery_critical": { "level": 4, "sound": "", "title": "", "message": "" },
+      "battery_shutdown": { "level": 4, "sound": "", "title": "", "message": "" },
+      "power_restored": { "level": 0, "sound": "", "title": "", "message": "" },
+      "charge_complete": { "level": 0, "sound": "", "title": "", "message": "" },
+      "charge_fault": { "level": 2, "sound": "", "title": "", "message": "" }
     },
     "dewRiskMarginC": 2,
     "clearSkyCloudPercent": 20,
@@ -253,7 +270,32 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
 }
 ```
 
-In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth, display, battery), Network (WiFi, MQTT), Time & Location, Sensors (sensors, rain, wind, calibration), Safety (`alpaca`) and Alerts.
+In the web UI these live on **Settings** tabs: Device (name, language, security, Bluetooth, display, battery), Network (WiFi, MQTT), Time & Location, Sensors (sensors, rain, wind, calibration), Safety (`alpaca`) and Alerts.
+
+The pins above are the classic ESP32 DevKit's defaults. A fresh ESP32-S3 device starts with its own board's wiring:
+
+| Setting | ESP32 DevKit | ESP32-S3-ETH | ESP32-S3-Zero (travel) |
+|---|---|---|---|
+| `sensor.i2cSDA` / `i2cSCL` | 21 / 22 | 17 / 18 | 8 / 9 |
+| `sensor.i2c2SDA` / `i2c2SCL` | 255 / 255 (not wired) | 41 / 42 | 10 / 11 |
+| `gps.rxPin` / `txPin` | 17 / 16 | 48 / 47 | 13 / 12 |
+| `rain.rxPin` / `txPin` | 18 / 19 | 16 / 15 | 2 / 1 |
+| `wind.speedPin` | 27 | 2 | 5 |
+
+A pin must be a GPIO the board can use for a sensor: 0-5, 12-19, 21-23, 25-27, 32-36 or 39 on the classic ESP32; 0-18 or 38-48 on the ESP32-S3 (not 9-14 on the S3-ETH, which its Ethernet chip uses). On the travel board the RG-15 and anemometer defaults share pins with the fuel gauge and charger, so leave those off there.
+
+Settings → Time & Location:
+
+| In Settings | Setting |
+|---|---|
+| **Time zone** (a list, or **Custom** → **POSIX time zone**) | `ntp.timezone` |
+| **Location → Coordinates** ("latitude, longitude"; **Use my location** only over HTTPS) | `location.set`, `location.latitude`, `location.longitude` |
+| **Sun & Moon card on the dashboard** | `location.showSunMoon` |
+| **Time sources → Internet time (NTP)**, **Server**, **Fallback server**, **Sync every** (minutes) | `ntp.enabled`, `ntp.server1`, `ntp.server2`, `ntp.syncIntervalMs` |
+| **GPS receiver**, **RX pin**, **TX pin**, **Baud rate** | `gps.enabled`, `gps.rxPin`, `gps.txPin`, `gps.baudRate` |
+| **Priority → Use first** (both sources on) | `primaryTimeSource`, `secondaryTimeSource` |
+
+At least one time source has to stay on, so the last one's switch is greyed out.
 
 ---
 
@@ -263,9 +305,10 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `deviceName` | string | `"SQM-ESP32"` | Friendly name shown in the web UI |
-| `primaryTimeSource` | int | `0` | Primary time source: `0` = NTP, `1` = GPS |
-| `secondaryTimeSource` | int | `1` | Fallback time source: `0` = NTP, `1` = GPS |
+| `deviceName` | string | `"SQM-ESP32"` | Friendly name shown in the web UI and alerts; can't be empty |
+| `language` | string | `"en"` | Web UI language for everyone: `en`, `id`, `de`, `es`, `fr`, `it`, `nl`, `pl`, `pt-BR`, `tr`, `ar`, `ja`, `ko`, `zh-Hans` - see [Languages](languages.md) |
+| `primaryTimeSource` | int | `0` | Primary time source: `0` = NTP, `1` = GPS. Must be switched on |
+| `secondaryTimeSource` | int | `1` | Fallback time source: `0` = NTP, `1` = GPS. With both on, the two must differ |
 
 ### WiFi
 
@@ -277,7 +320,7 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
 | `mdns` | bool | `true` | Advertise `hostname.local` and the web service via mDNS |
 | `ipv6` | bool | `true` | IPv6 alongside IPv4 on the joined network; applies after a restart - see [IPv6](ipv6.md) |
 | `autoReconnect` | bool | `true` | Reconnect on WiFi drop: retry, restart the WiFi every 3 min, and restart the device after 15 min with the network in range but not joined |
-| `reconnectDelayMs` | int | `1000` | Initial reconnect delay (ms) |
+| `reconnectDelayMs` | int | `1000` | Initial reconnect delay (ms); 1 ms to 24 h and not above `maxReconnectDelayMs` |
 | `maxReconnectDelayMs` | int | `300000` | Max reconnect backoff; the device retries at least every 60 s whatever this says |
 
 ### NTP
@@ -285,10 +328,12 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Enable NTP time sync |
-| `server1` | string | `"pool.ntp.org"` | Primary NTP server |
+| `server1` | string | `"pool.ntp.org"` | Primary NTP server; needed while NTP is on |
 | `server2` | string | `"time.nist.gov"` | Fallback NTP server |
 | `timezone` | string | `"UTC0"` | POSIX timezone string |
-| `syncIntervalMs` | int | `600000` | Re-sync interval — default 10 minutes |
+| `syncIntervalMs` | int | `600000` | Re-sync interval, 10 minutes (the default) to 24 hours |
+
+A server must be a host name or an IPv4 address: "NTP over IPv6 isn't supported yet - use a host name or an IPv4 address".
 
 !!! tip "POSIX timezone strings"
     Examples: `GMT0`, `EST5EDT,M3.2.0,M11.1.0`, `PST8PDT,M3.2.0,M11.1.0`, `CET-1CEST,M3.5.0,M10.5.0/3`.
@@ -300,8 +345,8 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Enable GPS module |
 | `rxPin` | int | `17` | ESP32 RX pin (connects to GPS TX) |
-| `txPin` | int | `16` | ESP32 TX pin (connects to GPS RX) |
-| `baudRate` | int | `9600` | GPS module baud rate (typically 9600) |
+| `txPin` | int | `16` | ESP32 TX pin (connects to GPS RX); not the same as `rxPin` |
+| `baudRate` | int | `9600` | GPS module baud rate (typically 9600): 2400, 4800, 9600, 19200, 38400, 57600 or 115200 |
 
 When GPS is enabled and has a fix, it can serve as the primary time source for accurate timestamps independent of network connectivity.
 
@@ -310,7 +355,7 @@ When GPS is enabled and has a fix, it can serve as the primary time source for a
 | Field | Default | Description |
 |---|---|---|
 | `location.set` | `false` | Whether coordinates have been entered. A GPS fix takes precedence |
-| `location.latitude` / `location.longitude` | `0` | Decimal degrees, used for darkness (sky alerts) and the Sun & Moon card |
+| `location.latitude` / `location.longitude` | `0` | Decimal degrees (-90 to 90 / -180 to 180), used for darkness (sky alerts) and the Sun & Moon card |
 | `location.showSunMoon` | `true` | Show the Sun & Moon card on the dashboard: twilight phase, tonight's astronomical dark, moon phase and illumination, and the next sunrise/sunset and moonrise/moonset. Computed in the browser |
 
 ### MQTT
@@ -318,8 +363,8 @@ When GPS is enabled and has a fix, it can serve as the primary time source for a
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Enable MQTT publishing |
-| `broker` | string | — | Broker hostname, IPv4 address, or IPv6 address (`fd00::10`, or `[fd00::10]:1883` to give the port here) - see [IPv6](ipv6.md) |
-| `port` | int | `1883` | Broker port |
+| `broker` | string | — | Broker hostname, IPv4 address, or IPv6 address (`fd00::10`, or `[fd00::10]:1883` to give the port here) - see [IPv6](ipv6.md). Needed while MQTT is on |
+| `port` | int | `1883` | Broker port (not 0) |
 | `username` | string | `""` | Auth username (leave empty if none) |
 | `password` | string | `""` | Auth password |
 | `topic` | string | `"sqmeter"` | Base topic: letters, numbers, `_`, `-`, with `/` between levels. See [MQTT](mqtt.md#topics) |
@@ -328,7 +373,7 @@ When GPS is enabled and has a fix, it can serve as the primary time source for a
 | `publish.safety` | bool | `true` | Publish `<topic>/safe` and `<topic>/safety` |
 | `publish.diagnostics` | bool | `false` | Publish `<topic>/diagnostics` |
 | `homeAssistant.enabled` | bool | `false` | Home Assistant MQTT discovery |
-| `homeAssistant.discoveryPrefix` | string | `"homeassistant"` | Discovery prefix |
+| `homeAssistant.discoveryPrefix` | string | `"homeassistant"` | Discovery prefix, same rule as `topic` |
 
 ### ArduinoOTA
 
@@ -347,19 +392,7 @@ ArduinoOTA only runs when `ota.enabled` is `true` and `ota.password` is set. Swi
 | `username` | string | `"admin"` | Username for HTTP Basic Auth |
 | `password` | string | `""` | Password - a save with auth on and no password is refused: "HTTP auth password is required when auth is enabled" |
 
-When `auth.enabled` is `true`, the following endpoints require HTTP Basic Auth credentials:
-
-- `POST /api/config` — save configuration
-- `POST /api/restart` — restart device
-- `POST /api/update` — firmware OTA upload
-- `POST /api/update/fs` — filesystem OTA upload
-- `POST /api/wifi/connect` — change WiFi network
-- `POST /api/mqtt/test` — test MQTT connection
-
-Read-only endpoints remain accessible without credentials:
-
-- `GET /api/sensors`, `GET /api/status`, `GET /api/config`
-- WebSocket streams (`/ws/sensors`, `/ws/status`)
+When `auth.enabled` is `true`, every endpoint that changes something needs HTTP Basic Auth credentials; readings, status, the masked settings, the WebSocket streams and ASCOM Alpaca stay open. [Security](security.md#http-authentication) lists every endpoint both ways.
 
 The `auth.password` field is masked in `GET /api/config` responses. Send the mask placeholder or an empty string to preserve the stored password; send `null` to clear it.
 
@@ -369,26 +402,26 @@ The `auth.password` field is masked in `GET /api/config` responses. Send the mas
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Enable Hydreon RG-15 rain sensor |
 | `rxPin` | int | `18` | ESP32 RX pin (connects to RG-15 TX) |
-| `txPin` | int | `19` | ESP32 TX pin (connects to RG-15 RX) |
-| `baudRate` | int | `9600` | RG-15 serial baud rate |
+| `txPin` | int | `19` | ESP32 TX pin (connects to RG-15 RX); not the same as `rxPin` while the sensor is on |
+| `baudRate` | int | `9600` | RG-15 serial baud rate (the same choices as GPS) |
 | `debugUart` | bool | `false` | Log RG-15 UART command/response traffic |
-| `mode` | string | `"polling"` | Compatibility field; RG-15 communication is polling-only |
+| `mode` | string | `"polling"` | Compatibility field; RG-15 communication is polling-only, and nothing else is accepted |
 | `resolution` | string | `"high"` | `"high"`, `"low"`, or `"switch"` |
 | `units` | string | `"metric"` | `"metric"`, `"imperial"`, or `"switch"` |
-| `pollIntervalMs` | int | `5000` | Interval between RG-15 `R` commands in polling mode |
-| `rainClearDelayMs` | int | `900000` | Local rain latch clear delay after intensity returns to zero |
+| `pollIntervalMs` | int | `5000` | Interval between RG-15 `R` commands, 1 s to 1 h |
+| `rainClearDelayMs` | int | `900000` | Local rain latch clear delay after intensity returns to zero, 1 min to 24 h |
 | `dailyResetEnabled` | bool | `false` | Reset RG-15 total accumulation once per day |
-| `dailyResetHour` | int | `0` | Local hour for scheduled total reset |
-| `dailyResetMinute` | int | `0` | Local minute for scheduled total reset |
+| `dailyResetHour` | int | `0` | Local hour for scheduled total reset (0-23) |
+| `dailyResetMinute` | int | `0` | Local minute for scheduled total reset (0-59) |
 
 ### Sensor
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `readIntervalMs` | int | `5000` | How often sensors are polled (ms) |
+| `readIntervalMs` | int | `5000` | How often sensors are polled (ms), 100 ms to 1 h |
 | `i2cSDA` | int | `21` | SDA GPIO pin |
-| `i2cSCL` | int | `22` | SCL GPIO pin |
-| `i2cFrequency` | int | `100000` | I2C clock speed (Hz), both buses |
+| `i2cSCL` | int | `22` | SCL GPIO pin; not the same as `i2cSDA` |
+| `i2cFrequency` | int | `100000` | I2C clock speed (Hz), both buses, 10000 to 400000 |
 | `i2c2SDA` | int | `255` | Second I2C bus SDA GPIO pin, for the SQM-L; `255` = not wired |
 | `i2c2SCL` | int | `255` | Second I2C bus SCL GPIO pin; `255` = not wired |
 
@@ -420,8 +453,8 @@ Settings saved before these keys existed load with the defaults above: one senso
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Apply `sqmOffset` to the rolling SQM result |
-| `sqmOffset` | float | `0` | Absolute SQM correction after comparison with a reference SQM/SQM-L |
-| `darkVisibleOffset` | float | `0` | Saved dark visible-count floor subtracted before lux/SQM conversion |
+| `sqmOffset` | float | `0` | Absolute SQM correction after comparison with a reference SQM/SQM-L, -5 to 5 |
+| `darkVisibleOffset` | float | `0` | Saved dark visible-count floor subtracted before lux/SQM conversion; the three dark offsets can't be negative |
 | `darkFullOffset` | float | `0` | Reserved dark full-channel statistic |
 | `darkIrOffset` | float | `0` | Reserved dark IR-channel statistic |
 | `darkSampleCount` | int | `0` | Number of rolling samples used when dark calibration was stored |
@@ -429,7 +462,7 @@ Settings saved before these keys existed load with the defaults above: one senso
 
 To set the dark floor, cover the lens/baffle aperture with an opaque cap, wait for `skyAveraging.windowSeconds`, then call `POST /api/sensors/tsl2591/calibrate-dark`.
 
-`skyAveraging` and `skyCalibration` are the SQM's. The SQM-L has the same two sections, `skyAveragingL` and `skyCalibrationL`, with the same fields, defaults and ranges (validation messages say "SQM-L ..."). Dark-calibrate it with `POST /api/sensors/tsl2591/calibrate-dark?sensor=sqml`; that writes `skyCalibrationL` only.
+`skyAveraging` and `skyCalibration` are the SQM's. The SQM-L has the same two sections, `skyAveragingL` and `skyCalibrationL` (in the example above), with the same fields, defaults and ranges (validation messages say "SQM-L ..."). Dark-calibrate it with `POST /api/sensors/tsl2591/calibrate-dark?sensor=sqml`; that writes `skyCalibrationL` only.
 
 ### Cloud Detection
 
@@ -437,9 +470,9 @@ Cloud cover comes from the MLX90614: how much colder the sky is than the air (sk
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `clearSkyThreshold` | float | `-13` | Corrected delta below this is clear (0%) |
-| `cloudyThreshold` | float | `-3` | Corrected delta at or above this is overcast (100%); linear in between |
-| `humidityCorrection` | float | `0.75` | How strongly humidity is corrected for |
+| `clearSkyThreshold` | float | `-13` | Corrected delta below this is clear (0%); -30 to 0 °C, below `cloudyThreshold` |
+| `cloudyThreshold` | float | `-3` | Corrected delta at or above this is overcast (100%); linear in between; -20 to 10 °C |
+| `humidityCorrection` | float | `0.75` | How strongly humidity is corrected for, 0 to 2 |
 
 ### Safety rules (`alpaca`)
 
@@ -474,16 +507,33 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `events.<event>.level` | int | see above | 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me |
 | `events.<event>.sound` | string | `""` | Pushover sound; empty uses `pushover.sound` |
 | `events.<event>.title` / `.message` | string | `""` | Your own wording with `{variables}` (up to 80 / 240 characters); empty uses the default |
-| `dewRiskMarginC` | float | `2` | Dew risk when temperature is within this of the dew point |
-| `clearSkyCloudPercent` / `cloudedOverCloudPercent` | float | `20` / `70` | "Skies clear up" below / "cloud over" above |
-| `skyNightOnly` / `safetyNightOnly` | bool | `true` / `true` | Sky / safe-unsafe alerts only while it's dark |
-| `nightSunAltitudeDeg` | float | `-12` | "Dark" means the sun below this (-0.833 sunset, -12 nautical, -18 astronomical) |
+| `dewRiskMarginC` | float | `2` | Dew risk when temperature is within this of the dew point (0-10 °C) |
+| `clearSkyCloudPercent` / `cloudedOverCloudPercent` | float | `20` / `70` | "Skies clear up" below / "cloud over" above (0-100 %, clouded over above clear) |
+| `skyNightOnly` / `safetyNightOnly` | bool | `true` / `true` | **Sky alerts only when it's dark** / **Safety alerts only after dark** |
+| `nightSunAltitudeDeg` | float | `-12` | **Dark means** the sun below this (-0.833 after sunset, -12 nautical, -18 astronomical; 0 to -20) |
 | `sendMode` | string | `"any"` | When to send: `any` (any time, unless paused) or `whileConnected` (only while an imaging app has an Alpaca device connected) |
 | `armWithAlpaca` | bool | `false` | The older form of `sendMode` (`true` = `whileConnected`): still written for older firmware, and read when `sendMode` is missing |
 | `clientSilentSafetySeconds` / `clientSilentWeatherSeconds` | int | `120` / `600` | "The imaging app stops checking" after this long without a request to the safety monitor / weather device (30-3600) |
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
 | `sensorFaultDelaySeconds` | int | `120` | A sensor fault (or the rain sensor's lens fault), and a recovery, must last this long before it's alerted; alerts only, the safety verdict sees a fault at once (0-600) |
-| `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
+| `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings (below); secrets are masked in `GET /api/config` |
+
+Each event's `level` is 0-4. All the custom titles and messages together have to fit the device's storage: a save that doesn't fails with "Alerts: the custom alert texts are too long in total - shorten some".
+
+| Channel field | Default | Description |
+|---|---|---|
+| `pushover.enabled` | `false` | Send over [Pushover](alerts.md#pushover); needs both keys |
+| `pushover.userKey` / `.appToken` | `""` | Your user key and the application's API token (masked) |
+| `pushover.sound` | `""` | Default sound for events left on **Default**; empty is Pushover's own default |
+| `ntfy.enabled` | `false` | Send over [ntfy](alerts.md#ntfy); needs a server and a topic |
+| `ntfy.server` | `"https://ntfy.sh"` | `http://` or `https://` server URL |
+| `ntfy.topic` | `""` | The topic to publish to |
+| `ntfy.token` | `""` | Access token for a server that needs one (masked) |
+| `webhook.enabled` | `false` | POST each alert as JSON ([Webhook](alerts.md#webhook)) |
+| `webhook.url` | `""` | `http://` or `https://` URL |
+| `webhook.authHeader` | `""` | Sent as the `Authorization` header, as-is (masked) |
+| `webhook.insecureTls` | `false` | **Skip certificate checks** for an `https://` URL |
+| `mqtt.enabled` | `false` | Publish alerts on `<topic>/alerts`; needs MQTT on |
 
 Events: `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `dew_risk`, `clear_sky`, `clouded_over`, `client_lost`, `client_back`, `client_disconnected`, and the battery events `battery_low`, `battery_critical`, `battery_shutdown`, `power_restored`, `charge_complete`, `charge_fault` (see [Battery](battery.md#alerts)). The imaging-app events and the silence times are stored under their own NVS key, and the battery events under a third, so neither counts towards the 3900-byte limit on the rest of the alert settings.
 
@@ -496,7 +546,7 @@ Only used by the Bluetooth firmware build. See [Bluetooth](ble.md).
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Turn on Bluetooth (slows WiFi - one shared radio) |
-| `passkey` | string | `""` | 6-digit pairing passkey for the phone alarm; empty turns the alarm off. Masked in `GET /api/config` |
+| `passkey` | string | `""` | 6-digit pairing passkey for the phone alarm (digits only, not `000000`); empty turns the alarm off. Masked in `GET /api/config` |
 
 ### Wind
 
@@ -505,10 +555,10 @@ See [Wind (anemometer)](../hardware/wind.md).
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Anemometer fitted |
-| `speedPin` | int | `27` | Anemometer pulse input |
+| `speedPin` | int | `27` | Anemometer pulse input; while the anemometer is on, a valid GPIO that isn't an I2C, I2C-2, GPS, rain sensor or battery pin |
 | `directionEnabled` | bool | `false` | AS5600 wind vane fitted, on the I2C bus at `0x36` |
-| `kmhPerHz` | float | `2.4` | Anemometer calibration (2.4 km/h per Hz for the common Misol/Davis-style cups) |
-| `directionOffsetDeg` | float | `0` | Added to the vane reading, to correct for mounting: north must read 0 |
+| `kmhPerHz` | float | `2.4` | Anemometer calibration (2.4 km/h per Hz for the common Misol/Davis-style cups); above 0, up to 20 |
+| `directionOffsetDeg` | float | `0` | Added to the vane reading, to correct for mounting: north must read 0 (-360 to 360) |
 
 ### Display
 
@@ -568,7 +618,7 @@ SQMeter is designed for a trusted LAN environment. See the [Security Guide](secu
 
 - By default there is no HTTP authentication; read-only and mutation endpoints are both accessible to any LAN device.
 - Enable `auth.enabled` with a strong password to protect mutation endpoints (config save, OTA, restart, WiFi change).
-- `GET /api/config` redacts stored secrets (WiFi, MQTT, OTA, and auth passwords), but still exposes non-secret settings.
+- `GET /api/config` masks stored secrets (WiFi, MQTT, OTA and device passwords, the Bluetooth passkey, the Pushover keys, the ntfy token and the webhook authorization), but still exposes non-secret settings.
 - HTTP traffic is plaintext, so credentials sent via config updates are visible to LAN observers. TLS is not supported on the ESP32 in this firmware.
 - Command-line ArduinoOTA is disabled unless `ota.enabled` is `true` and `ota.password` is set.
 - `rain.debugUart` only affects serial logging for RG-15 command/response traffic. It does not log WiFi, MQTT, or OTA secrets.

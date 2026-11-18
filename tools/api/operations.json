@@ -650,7 +650,6 @@
         {
           "name": "channel",
           "in": "query",
-          "required": true,
           "schema": {
             "type": "string",
             "enum": [
@@ -659,7 +658,8 @@
               "ntfy",
               "webhook",
               "all"
-            ]
+            ],
+            "default": "all"
           }
         },
         {
@@ -679,7 +679,13 @@
               "clouded_over",
               "client_lost",
               "client_back",
-              "client_disconnected"
+              "client_disconnected",
+              "battery_low",
+              "battery_critical",
+              "battery_shutdown",
+              "power_restored",
+              "charge_complete",
+              "charge_fault"
             ]
           }
         },

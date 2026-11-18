@@ -77,4 +77,13 @@ Set a 6-digit **pairing passkey** in **Settings → Device → Bluetooth** (or p
 - An alarm can also be acknowledged from **Settings → Device → Bluetooth**. Acknowledgements appear in the recent alerts and are sent to the alert channels when alerts are on.
 - **Heartbeat:** if a phone hears nothing for a few minutes, the link or the device is down - an app should alarm on that too.
 
-`GET /api/status` reports `ble.alarm` (`serviceActive`, `active`, `sequence`, `acknowledgedSequence`, `bondedPhones`). `POST /api/ble/ack` acknowledges the active alarm and `POST /api/ble/forget-bonds` unpairs all phones (both require HTTP auth when it's enabled).
+`GET /api/status` reports `ble`:
+
+| Field | Meaning |
+|---|---|
+| `available` | This is the Bluetooth build (`false` on the standard build, where everything else is `false` or `0`) |
+| `active` | Bluetooth is running and advertising. It starts 5 s after WiFi, after a restart with Bluetooth turned on |
+| `clients` | Phones or scanners connected now (up to two) |
+| `alarm` | The phone alarm: `serviceActive` (passkey set, alarm characteristics offered), `active` (an alarm not yet acknowledged), `sequence` and `acknowledgedSequence`, `bondedPhones` |
+
+`POST /api/ble/ack` acknowledges the active alarm and `POST /api/ble/forget-bonds` unpairs all phones (both require HTTP auth when it's enabled).

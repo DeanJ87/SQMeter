@@ -63,10 +63,28 @@ curl http://sqmeter.local/api/status
     "light": { "rollingVisible": 3.1, "correctedVisible": 3.1, "darkVisibleOffset": 0, "sampleCount": 150, "windowSamples": 150, "nightMode": true, "rejectedSamples": 0, "consecutiveSaturatedSamples": 0, "consecutiveLowSamples": 0 },
     "rain": { "state": "online", "uartOpened": true, "rxPin": 18, "txPin": 19, "baudRate": 9600, "uartPort": 1, "lastCommand": "R", "lastResponse": "Acc 0.01 mm, ...", "timeouts": 0, "parseErrors": 0, "successfulReads": 1424, "lastPollAgeMs": 40, "lastResponseAgeMs": 40, "lastSuccessfulReadAgeMs": 40 }
   },
-  "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "sqmeter", "availabilityTopic": "sqmeter/availability" },
+  "mqtt": { "enabled": true, "connected": true, "state": 0, "lastPublish": 3541200, "lastReconnectAttempt": 12400, "broker": "192.168.1.10", "port": 1883, "topic": "sqmeter", "availabilityTopic": "sqmeter/availability", "clientId": "SQMeter-A1B2C3" },
   "connections": { "tcpLimit": 20, "liveUpdates": { "sensors": 1, "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false }
 }
 ```
+
+The rest of the document, for diagnostics:
+
+| Field | Meaning |
+|---|---|
+| `uptime` | Seconds since the restart |
+| `freeHeap`, `minFreeHeap`, `maxAllocHeap`, `heapSize` | Free heap now, its lowest since the restart, the largest block that can be allocated, and the heap's size (bytes) |
+| `heapStages` | Free heap (`free`) and largest block (`largest`) at each start-up `stage` (`config loaded`, `wifi`, ... `setup complete`) |
+| `stackFree` | Stack never used (bytes) by the web server task (`asyncTcp`) and the main `loop` |
+| `cpuFreqMHz`, `flashSize`, `sketchSize`, `freeSketchSpace` | CPU clock, flash chip size, the running firmware's size and the space for the next one (bytes) |
+| `fsTotal`, `fsUsed` | The web UI filesystem (LittleFS), bytes |
+| `partitions` | `runningSlot`, `runningAddress`, `runningSize`, `bootSlot` (the slot the next boot uses), `nextSlot`, `nextSize` (where an update goes), `fsAddress`, `fsSize`, and `nvs` (settings storage: `usedEntries`, `freeEntries`, `totalEntries`, `namespaceCount`) |
+| `resetReason` | Why the device last restarted, ESP-IDF's `esp_reset_reason_t` (1 power on, 3 software restart, 4 crash, 5-7 watchdog, 8 deep sleep, 9 brownout) |
+| `bootCount` | Starts since the last power-up (kept across restarts and deep sleep, not a power cut) |
+| `sensorSnapshotBytes` | Size of the internal readings snapshot, for development |
+| `ntp` | Time sync: `enabled`, `synced`, `status` (0 not synced, 1 in progress, 2 synced, 3 failed), `lastSync` (uptime ms of the last sync), `nextSync` (ms until the next one, `0` when not synced or due), `drift` (always `0`), `server`, `activeSource` (0 none, 1 NTP, 2 GPS), `gpsEnabled`, `gpsHasFix`, `gpsTimeUTC`, `gpsSatellites` |
+| `ble` | Bluetooth: `available` (the Bluetooth build), `active` (running), `clients` (connected now) and the phone `alarm` - see [Bluetooth](../user-guide/ble.md) |
+| `mqtt` | `state` is the MQTT library's connection state (0 connected, negative: not connected, positive: refused by the broker); `lastPublish` and `lastReconnectAttempt` are uptime ms (`0` never) |
 
 `connections` shows who holds the device's TCP connections: the live-update clients per endpoint (`/ws/sensors`, `/ws/status`), the most each takes, and how many were closed since the restart because a newer one replaced them (`replaced`) or they stopped reading (`stalledClosed`). `alpacaRestoredAfterRestart` is `true` when an imaging app's connection was kept across a restart the device caused itself. See [N.I.N.A. loses the Safety Monitor](../reference/troubleshooting.md#nina-loses-the-safety-monitor).
 
@@ -302,7 +320,8 @@ Whether each setting that depends on another setting, on hardware or on the netw
 {
   "facts": { "wifiConnected": true, "mqttConnected": false, "clockSet": true, "gpsRunning": false, "gpsFix": false,
              "bluetoothBuild": false, "bluetoothRunning": false, "pairedPhones": 0,
-             "lightDetected": true, "infraredDetected": true, "environmentDetected": true, "languageInstalled": false },
+             "lightDetected": true, "sqmDetected": true, "sqmlDetected": false, "infraredDetected": true, "environmentDetected": true,
+             "languageInstalled": false, "displayDetected": false, "batteryDetected": false },
   "settings": [
     { "id": "D-01", "setting": "alerts.mqtt.enabled", "state": "inactive", "reason": "mqtt-off", "text": "MQTT is off", "fix": "network#mqtt" },
     { "id": "D-15", "setting": "alpaca.rainUnsafeEnabled", "state": "inactive", "reason": "rain-off", "text": "Rain sensor is off", "fix": "sensors#rain", "unmet": "inactive" },
@@ -313,7 +332,7 @@ Whether each setting that depends on another setting, on hardware or on the netw
 
 | Field | Meaning |
 |---|---|
-| `facts` | What the device knows at run time: network, broker, clock, GPS, Bluetooth, and which sky sensors answer |
+| `facts` | What the device knows at run time: network, broker, clock, GPS, Bluetooth, which sensors answer (`lightDetected` is the authoritative sky sensor, `sqmDetected`/`sqmlDetected` each one), whether the language file is installed, and whether an OLED display and a fuel gauge were found |
 | `id` | [Catalogue](../reference/settings-dependencies.md) entry that decides the state (the first unmet one when inactive) |
 | `setting` | Path of the setting in `/api/config` (a few are derived, e.g. `alerts.wakePhones`: an event at Wake me) |
 | `state` | `off` (switched off), `active`, or `inactive` (on, but something it needs is missing) |
@@ -467,6 +486,8 @@ curl -X POST http://sqmeter.local/api/updates/apply \
 
 Returns immediately with `{"success":true,"message":"Update started"}` - the download and flash happen on a background task. Progress and errors are pushed over `/ws/status` as `{"type":"ota_progress","progress":N}` messages (or `{"error":"..."}` on failure). The device reboots automatically once both assets are flashed successfully.
 
+`400 {"error": "firmwareAssetUrl and fsAssetUrl are required"}`; `409 {"error": "Update already in progress"}` while another update is running.
+
 ---
 
 ## Safety
@@ -556,9 +577,11 @@ See [Alerts](../user-guide/alerts.md) for setup.
 
 ### `POST /api/alerts/test?channel=<mqtt|pushover|ntfy|webhook|all>`
 
-Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. `400` if the channel is unknown or not enabled. A channel that is switched on but can't deliver right now (MQTT off, no WiFi) is recorded as `skipped` with the reason, never `failed`. Requires HTTP auth when enabled.
+Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. A channel that is switched on but can't deliver right now (MQTT off, no WiFi) is recorded as `skipped` with the reason, never `failed`. Requires HTTP auth when enabled.
 
-Add `event=<unsafe|safe|rain_started|rain_stopped|sensor_fault|sensor_recovered|dew_risk|clear_sky|clouded_over|client_lost|client_back|client_disconnected>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Level 4 (wake me) also rings paired Bluetooth phones; with no push channel enabled, it only rings the phones. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`, filled in from current readings.
+Add `event=<name>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. `event` is one of `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `dew_risk`, `clear_sky`, `clouded_over`, `client_lost`, `client_back`, `client_disconnected`, `battery_low`, `battery_critical`, `battery_shutdown`, `power_restored`, `charge_complete`, `charge_fault`. Level 4 (wake me) also rings paired Bluetooth phones; with no push channel enabled, it only rings the phones. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`, filled in from current readings.
+
+`400 {"error": "..."}`, nothing sent: `Unknown channel (expected mqtt, pushover, ntfy, webhook or all)`, `Unknown event`, `Level must be 1-4`, `Sound name too long` (over 32 characters), `Title is up to 80 characters and message up to 240`, or `That channel isn't enabled - enable it and save settings first` (and no phone would ring).
 
 ### `GET /api/alerts/armed`, `POST /api/alerts/arm`, `POST /api/alerts/disarm`
 

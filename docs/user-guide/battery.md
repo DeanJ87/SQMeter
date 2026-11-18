@@ -152,7 +152,7 @@ Check the polarity before connecting the pack. See the [travel board](../hardwar
 
 - REST, WebSocket and MQTT `<base>/state`: the `battery` group ([MQTT → Readings](mqtt.md#readings-basestate),
   [REST](../api/rest.md#get-apistatus)); MQTT only with **Battery** on in the MQTT publish switches.
-- Home Assistant: *Battery*, *Battery voltage*, *Battery state* and *Battery time to empty* entities
+- Home Assistant: *Battery*, *Battery voltage*, *Charging state* and *Battery time to empty* entities
   ([MQTT → Home Assistant](mqtt.md#home-assistant)).
 - Bluetooth: `battery` and `batteryState` in the sensor summary ([Bluetooth](ble.md)).
 - OLED display: the *Battery* page ([OLED display](display.md#pages)).
