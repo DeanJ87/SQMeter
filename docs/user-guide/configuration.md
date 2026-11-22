@@ -180,6 +180,8 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "dewpointMarginMinC": 0,
     "rainUnsafeEnabled": true,
     "rainSensorRequired": true,
+    "rainNeedsCloud": false,
+    "rainNeedsCloudPercent": 10,
     "windSpeedUnsafeEnabled": false,
     "windSpeedUnsafeMs": 10,
     "windGustUnsafeEnabled": false,
@@ -210,7 +212,8 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
       "battery_shutdown": { "level": 4, "sound": "", "title": "", "message": "" },
       "power_restored": { "level": 0, "sound": "", "title": "", "message": "" },
       "charge_complete": { "level": 0, "sound": "", "title": "", "message": "" },
-      "charge_fault": { "level": 2, "sound": "", "title": "", "message": "" }
+      "charge_fault": { "level": 2, "sound": "", "title": "", "message": "" },
+      "dew_suspected": { "level": 0, "sound": "", "title": "", "message": "" }
     },
     "dewRiskMarginC": 2,
     "clearSkyCloudPercent": 20,
@@ -491,6 +494,7 @@ The SafetyMonitor verdict served to N.I.N.A., shown on the dashboard and used fo
 | `dewpointMarginEnabled` / `dewpointMarginMinC` | bool / float | `false` / `0` | Unsafe when temperature minus dew point is below this (0-20 °C) |
 | `rainUnsafeEnabled` | bool | `true` | Unsafe while the RG-15 reports rain, and until `rain.rainClearDelayMs` after it stops |
 | `rainSensorRequired` | bool | `true` | Unsafe if the enabled RG-15 is offline, stale or reports a lens fault |
+| `rainNeedsCloud` / `rainNeedsCloudPercent` | bool / int | `false` / `10` | **Rain needs cloud**: rain only counts when the IR sky sensor's cloud cover is at or above this level (1-100 %), or the sky sensor can't be trusted; rain under a healthy clear sky is reported as dew suspected. See [Rain needs cloud](alpaca.md#rain-needs-cloud) (D-52) |
 | `windSpeedUnsafeEnabled` / `windSpeedUnsafeMs` | bool / float | `false` / `10` | Unsafe at or above this wind speed (m/s, up to 60) |
 | `windGustUnsafeEnabled` / `windGustUnsafeMs` | bool / float | `false` / `15` | Unsafe at or above this gust (m/s, up to 80) |
 | `batteryEnabled` / `batteryMinPercent` | bool / int | `false` / `10` | Unsafe below this battery charge (2-50 %); without a fuel gauge, or with stale or estimating data, unsafe with *Battery data missing* (D-47). See [Battery](battery.md#the-safety-rule) |
@@ -535,7 +539,7 @@ Each event's `level` is 0-4. All the custom titles and messages together have to
 | `webhook.insecureTls` | `false` | **Skip certificate checks** for an `https://` URL |
 | `mqtt.enabled` | `false` | Publish alerts on `<topic>/alerts`; needs MQTT on |
 
-Events: `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `dew_risk`, `clear_sky`, `clouded_over`, `client_lost`, `client_back`, `client_disconnected`, and the battery events `battery_low`, `battery_critical`, `battery_shutdown`, `power_restored`, `charge_complete`, `charge_fault` (see [Battery](battery.md#alerts)). The imaging-app events and the silence times are stored under their own NVS key, and the battery events under a third, so neither counts towards the 3900-byte limit on the rest of the alert settings.
+Events: `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `dew_risk`, `clear_sky`, `clouded_over`, `client_lost`, `client_back`, `client_disconnected`, and the battery events `battery_low`, `battery_critical`, `battery_shutdown`, `power_restored`, `charge_complete`, `charge_fault` (see [Battery](battery.md#alerts)), and `dew_suspected` ([Rain needs cloud](alpaca.md#rain-needs-cloud), off by default). The imaging-app events and the silence times are stored under their own NVS key, and the battery events and `dew_suspected` under a third, so neither counts towards the 3900-byte limit on the rest of the alert settings.
 
 Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
 

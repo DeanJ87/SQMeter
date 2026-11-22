@@ -160,6 +160,9 @@ export interface SafetyStatus {
   changedAgeMs: number;
   rulesNotInEffect?: string[]; // safety rules on but not evaluated, e.g. rain sensor off (spec 020)
   holds?: SafetyHold[]; // other systems' holds and the manual one (spec 035; older firmware has none)
+  // Rain needs cloud (spec 036): rain under a clear sky, not an unsafe reason. Older firmware has none.
+  dewSuspected?: boolean;
+  dew?: { rainIntensity: number; cloudCoverPercent: number; sinceAgeMs: number }; // while dewSuspected
 }
 
 // A safety hold (spec 035): unsafe until cleared or its time.

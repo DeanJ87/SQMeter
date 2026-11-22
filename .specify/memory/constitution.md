@@ -1,5 +1,9 @@
 <!--
 Sync Impact Report
+- 1.3.1 -> 1.4.0 (MINOR, spec 036): Principle I allows one owner opt-in rain corroboration rule
+  ("Rain needs cloud"): rain is always trusted unless the sky sensor is enabled, fresh, healthy
+  and its cloud cover computable and below the level; trusted rain stays trusted until the rain
+  sensor's hold-off ends
 - 1.3.0 -> 1.3.1 (PATCH): UI specs record the owner's mockup review; mockup images are kept
   outside the repo and never committed (spec template updated)
 - 1.2.0 -> 1.3.0 (MINOR, spec 027): platform Arduino-ESP32 3.x / ESP-IDF 5.5 (pioarduino); one
@@ -26,7 +30,10 @@ The SafetyMonitor verdict protects equipment, so doubt MUST resolve to "unsafe".
 - Missing, stale or faulted data MUST make the verdict unsafe; a zeroed or stale reading MUST
   NOT be compared against a threshold as if it were real.
 - Rain MUST be evaluated independently of every other sensor's freshness, so a stale or faulted
-  sky sensor can never hide rain.
+  sky sensor can never hide rain. The one exception is an owner opt-in corroboration rule (off by
+  default): rain then counts as dew only while the sky sensor is enabled, fresh, healthy, its
+  cloud cover computable and below the owner's level; in every other case rain is trusted, and
+  rain once trusted stays trusted until the rain sensor reports dry and its hold-off has ended.
 - A limit that can't be measured (e.g. a wind limit with no working anemometer) MUST count as
   unsafe.
 - Every unsafe reason MUST state the measured value and the configured limit
@@ -183,4 +190,4 @@ Code is read far more often than it's written, by people and by AI agents workin
   Tracking section.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 1.3.1 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-19
+**Version**: 1.4.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-11-22

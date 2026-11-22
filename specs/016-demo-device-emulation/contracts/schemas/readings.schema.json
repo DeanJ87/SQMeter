@@ -218,6 +218,29 @@
         "changedAgeMs": {
           "type": "number"
         },
+        "dew": {
+          "type": "object",
+          "properties": {
+            "cloudCoverPercent": {
+              "type": "number"
+            },
+            "rainIntensity": {
+              "type": "number"
+            },
+            "sinceAgeMs": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "cloudCoverPercent",
+            "rainIntensity",
+            "sinceAgeMs"
+          ],
+          "additionalProperties": false
+        },
+        "dewSuspected": {
+          "type": "boolean"
+        },
         "evaluatedAgeMs": {
           "type": "number"
         },

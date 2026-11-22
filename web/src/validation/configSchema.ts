@@ -219,6 +219,8 @@ export const alpacaConfigSchema = z.object({
   dewpointMarginMinC: z.number().min(0).max(20),
   rainUnsafeEnabled: z.boolean(),
   rainSensorRequired: z.boolean(),
+  rainNeedsCloud: z.boolean().optional(),
+  rainNeedsCloudPercent: z.number().int().min(1).max(100).optional(),
   safeDelaySeconds: z
     .number()
     .int()

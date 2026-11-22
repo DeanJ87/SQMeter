@@ -561,12 +561,14 @@ void test_waits_does_not_change_what_is_sent(void)
 
 void run_battery_alert_tests(void);
 void run_sensor_fault_delay_tests(void);
+void run_dew_suspected_tests(void);
 
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
     run_battery_alert_tests();
     run_sensor_fault_delay_tests();
+    run_dew_suspected_tests();
     RUN_TEST(test_first_update_sets_baseline_without_alerts);
     RUN_TEST(test_unsafe_then_safe);
     RUN_TEST(test_cooldown_defers_but_does_not_lose_final_state);

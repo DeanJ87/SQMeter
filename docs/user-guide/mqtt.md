@@ -42,7 +42,7 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels.
 | `<base>/availability` | Yes | `online` / `offline` (last will) | On connect / disconnect |
 | `<base>/state` | Yes | The readings document (below) | Every publish interval, and on reconnect |
 | `<base>/safe` | Yes | `1` safe, `0` unsafe | On every change, refreshed every minute |
-| `<base>/safety` | Yes | The safety object - same as [`GET /api/safety`](../api/rest.md#get-apisafety), with the `holds` in effect | With `<base>/safe` |
+| `<base>/safety` | Yes | The safety object - same as [`GET /api/safety`](../api/rest.md#get-apisafety), with the `holds` in effect and `dewSuspected` ([Rain needs cloud](alpaca.md#rain-needs-cloud)) | With `<base>/safe` |
 | `<base>/alerts` | No | One message per alert (with **Settings → Alerts → MQTT** on): `{"event","events"?,"title","message","level","device","timestamp"}` | Each alert |
 | `<base>/alerts/armed` | Yes | `1` sending alerts, `0` paused | On change and reconnect |
 | `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` resume or pause alerts | Command |
@@ -170,7 +170,7 @@ Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**.
 - **Sensors**: sky quality, limiting magnitude, Bortle class, illuminance, temperature, humidity, pressure, dew point, sky temperature, cloud cover, rain intensity, wind speed, gust and direction - for the groups you publish
 - **Per sky sensor** (spec 030): *SQM (wide)* and *SQM-L (narrow)* for each sky sensor that is switched on, and *SQM-L − SQM* while both are; *Sky quality* stays the authoritative reading
 - **Battery** (spec 032, with a fuel gauge and the Battery group published): *Battery* (%), *Battery voltage*, *Charging state* (an enum: discharging, charging, charged, fault, no-battery) and *Battery time to empty* (minutes)
-- **Binary sensors**: *Raining* (moisture) and *Observatory* (safety: on = unsafe)
+- **Binary sensors**: *Raining* (moisture), *Observatory* (safety: on = unsafe) and *Dew suspected* (problem: on while [Rain needs cloud](alpaca.md#rain-needs-cloud) treats the rain sensor's rain as dew under a clear sky; read from `<base>/safety` → `dewSuspected`, so it needs the rain group and the safety topic published). *Dew suspected* is never unsafe: *Observatory* stays the verdict
 - **Switch**: *Alerts* - on while sending, off while paused (see [When to send](alerts.md#when-to-send))
 
 Each entity is unavailable while the device is offline or its sensor isn't `ok` (*SQM-L − SQM*: while either isn't). Switching a group or a sky sensor off removes its entities. The discovery prefix defaults to `homeassistant`.

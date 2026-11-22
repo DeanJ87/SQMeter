@@ -1990,6 +1990,96 @@
           "neutral": true
         }
       }
+    },
+    {
+      "name": "D-52 Rain needs cloud is not in effect with the rain sensor off",
+      "config": {
+        "alpaca": {
+          "rainNeedsCloud": true
+        }
+      },
+      "expect": {
+        "alpaca.rainNeedsCloud": {
+          "state": "inactive",
+          "id": "D-52",
+          "reason": "rain-off",
+          "text": "Rain sensor is off",
+          "fix": "sensors#rain",
+          "unmet": "inactive"
+        }
+      }
+    },
+    {
+      "name": "D-52 Rain needs cloud is not in effect without the IR sky sensor",
+      "config": {
+        "rain": {
+          "enabled": true
+        },
+        "alpaca": {
+          "rainNeedsCloud": true
+        }
+      },
+      "facts": {
+        "infraredDetected": false
+      },
+      "expect": {
+        "alpaca.rainNeedsCloud": {
+          "state": "inactive",
+          "id": "D-52",
+          "reason": "infrared-missing",
+          "unmet": "inactive"
+        }
+      }
+    },
+    {
+      "name": "D-52 met, and the dew-suspected alert follows the rain sensor (D-05)",
+      "config": {
+        "rain": {
+          "enabled": true
+        },
+        "alpaca": {
+          "rainNeedsCloud": true
+        },
+        "alerts": {
+          "enabled": true,
+          "events": {
+            "dew_suspected": {
+              "level": 2
+            }
+          }
+        }
+      },
+      "expect": {
+        "alpaca.rainNeedsCloud": {
+          "state": "active",
+          "id": "D-52",
+          "unmet": "inactive"
+        },
+        "alerts.events.dew_suspected.level": {
+          "state": "active",
+          "id": "D-05"
+        }
+      }
+    },
+    {
+      "name": "D-05 the dew-suspected alert with the rain sensor off",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "events": {
+            "dew_suspected": {
+              "level": 2
+            }
+          }
+        }
+      },
+      "expect": {
+        "alerts.events.dew_suspected.level": {
+          "state": "inactive",
+          "id": "D-05",
+          "reason": "rain-off"
+        }
+      }
     }
   ]
 }

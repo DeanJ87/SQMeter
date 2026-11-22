@@ -40,6 +40,8 @@ const EventRows: FunctionalComponent<{ view: AlertsView; battery: boolean }> = (
       {row('safe', t('settings.alerts.itSSafeAgain'))}
       {row('rain_started', t('settings.alerts.rainStarts'))}
       {row('rain_stopped', t('settings.alerts.rainStops'))}
+      {alerts.events.dew_suspected &&
+        row('dew_suspected', t('settings.alerts.dewSuspectedRow'), { hint: t('settings.alerts.dewSuspectedHint') })}
       {row('sensor_fault', t('settings.alerts.aSensorFails'), { hint: t('settings.alerts.includesTheRg15Lens') })}
       {row('sensor_recovered', t('settings.alerts.aSensorRecovers'))}
       {row('dew_risk', t('settings.alerts.dewRiskWithin'), {

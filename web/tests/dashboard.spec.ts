@@ -88,6 +88,24 @@ test('unsafe verdict and a held rain countdown are the Safety monitor card', asy
   await expect(item(page, 'rain-hold')).toContainText(/Rain held, clears in/, { timeout: 15_000 });
 });
 
+test('rain under a clear sky with Rain needs cloud on is a dew note on the rain card, not unsafe', async ({ page }) => {
+  // inventory: rain-dew
+  await open(page, '?scenario=clear');
+  await setConfig(page, { 'rain.enabled': true, 'alpaca.rainNeedsCloud': true });
+  await expect(item(page, 'rain-dew')).toHaveCount(0);
+  await openPanel(page);
+  await page.locator('summary', { hasText: 'Rain (RG-15)' }).click();
+  const rate = page.getByLabel('Rain rate (mm/h)', { exact: true });
+  await rate.fill('0.2');
+  await rate.press('Enter');
+  await expect(item(page, 'rain-dew')).toContainText('Rain under a clear sky: dew suspected', { timeout: 15_000 });
+  await expect(card(page, 'Safety Monitor').locator('.card-actions .pill')).not.toHaveText('Unsafe');
+  // With the setting off, the same rain is unsafe and there is no note.
+  await setConfig(page, { 'alpaca.rainNeedsCloud': false });
+  await expect(card(page, 'Safety Monitor').locator('.card-actions .pill')).toHaveText('Unsafe', { timeout: 15_000 });
+  await expect(item(page, 'rain-dew')).toHaveCount(0);
+});
+
 test('a safety hold from another system is listed on the Safety monitor card, and Clear clears it', async ({ page }) => {
   // inventory: safety-holds
   await open(page);

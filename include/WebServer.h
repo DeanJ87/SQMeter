@@ -208,6 +208,7 @@ namespace SQM
 
         SafetyStatus safetyStatus;
         Alpaca::SafeDelayFilter safeDelayFilter;
+        Alpaca::RainTrustLatch rainTrust; // Rain needs cloud (spec 036); the safety pass only
         SemaphoreHandle_t safetyMutex = xSemaphoreCreateMutex();
         TaskHandle_t loopTaskHandle = nullptr;
         uint32_t lastSafetyEvaluation = 0;

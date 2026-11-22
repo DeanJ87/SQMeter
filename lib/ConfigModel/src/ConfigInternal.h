@@ -16,10 +16,10 @@ namespace SQM::ConfigDetail
 {
     inline constexpr const char *SECRET_MASK = "********";
 
-    constexpr size_t EVENT_COUNT = 18;
+    constexpr size_t EVENT_COUNT = 19;
     // Events from here on are the imaging-app events, persisted separately.
     constexpr size_t FIRST_CLIENT_EVENT = 9;
-    // And from here on the battery events (spec 032), under a third key.
+    // And from here on the battery events (spec 032) and later ones (spec 036), under a third key.
     constexpr size_t FIRST_BATTERY_EVENT = 12;
 
     inline bool setError(std::string *error, const std::string &message)
@@ -69,7 +69,8 @@ namespace SQM::ConfigDetail
              {"battery_shutdown", &a.batteryShutdown},
              {"power_restored", &a.powerRestored},
              {"charge_complete", &a.chargeComplete},
-             {"charge_fault", &a.chargeFault}}};
+             {"charge_fault", &a.chargeFault},
+             {"dew_suspected", &a.dewSuspected}}};
     }
     inline std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, EVENT_COUNT> eventSettings(const AlertsConfig &a)
     {

@@ -20,7 +20,9 @@ export type AlertEventKey =
   | 'battery_shutdown'
   | 'power_restored'
   | 'charge_complete'
-  | 'charge_fault';
+  | 'charge_fault'
+  // Rain needs cloud (spec 036); older firmware has none.
+  | 'dew_suspected';
 
 // sound: Pushover sound name; empty uses the Pushover default.
 export interface AlertEventSetting {

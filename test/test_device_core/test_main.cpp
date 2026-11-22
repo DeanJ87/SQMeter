@@ -491,6 +491,11 @@ void test_power_saving_keeps_the_verdict_fresh();
 void test_battery_alert_variables();
 void test_ble_summary_battery_fields_fit();
 
+void test_rain_inputs_healthy_clear_sky_is_usable();
+void test_rain_inputs_ir_missing_faulted_stale_or_uncomputable_not_usable();
+void test_rain_device_pass_dew_then_document();
+void test_rain_document_without_dew_has_flag_only();
+
 int main()
 {
     UNITY_BEGIN();
@@ -543,5 +548,9 @@ int main()
     RUN_TEST(test_power_saving_keeps_the_verdict_fresh);
     RUN_TEST(test_battery_alert_variables);
     RUN_TEST(test_ble_summary_battery_fields_fit);
+    RUN_TEST(test_rain_inputs_healthy_clear_sky_is_usable);
+    RUN_TEST(test_rain_inputs_ir_missing_faulted_stale_or_uncomputable_not_usable);
+    RUN_TEST(test_rain_device_pass_dew_then_document);
+    RUN_TEST(test_rain_document_without_dew_has_flag_only);
     return UNITY_END();
 }

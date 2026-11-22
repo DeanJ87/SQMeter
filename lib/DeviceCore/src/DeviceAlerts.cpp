@@ -35,6 +35,9 @@ namespace SQM
             in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
             in.rainRateMmPerHour = obs.rainRateMmPerHour;
             in.lensFault = snapshot.rg15.lensBad;
+            // Read from the verdict, so an alert can never change it (Principle I).
+            in.dewSuspected = status.dewSuspected;
+            in.dewCloudCoverPercent = status.dewCloudCoverPercent;
 
             // Spec 030: slot 0 is the SQM ("Light sensor" while it is the
             // only sky sensor), slot 5 the SQM-L.
@@ -68,6 +71,7 @@ namespace SQM
             rules.onRain = a.rainStarted.level || a.rainStopped.level;
             rules.onSensorFault = a.sensorFault.level || a.sensorRecovered.level;
             rules.onDewRisk = a.dewRisk.level != 0;
+            rules.onDewSuspected = a.dewSuspected.level != 0;
             rules.dewRiskMarginC = a.dewRiskMarginC;
             rules.onClearSky = a.clearSky.level != 0;
             rules.clearSkyCloudPercent = a.clearSkyCloudPercent;
@@ -118,6 +122,7 @@ namespace SQM
                 {AlertType::PowerRestored, &AlertsConfig::powerRestored},
                 {AlertType::ChargeComplete, &AlertsConfig::chargeComplete},
                 {AlertType::ChargeFault, &AlertsConfig::chargeFault},
+                {AlertType::DewSuspected, &AlertsConfig::dewSuspected},
             };
             for (const auto &entry : SETTINGS)
                 if (entry.first == type)
@@ -413,6 +418,8 @@ namespace SQM
                 {"power_restored", Alerts::AlertType::PowerRestored, "Power restored", "USB power returns", 0},
                 {"charge_complete", Alerts::AlertType::ChargeComplete, "Battery charged", "The battery is full", 0},
                 {"charge_fault", Alerts::AlertType::ChargeFault, "Charging fault", "Charging stops with a fault", 0},
+                // Rain needs cloud (spec 036).
+                {"dew_suspected", Alerts::AlertType::DewSuspected, "Rain sensor: dew suspected", "Rain under a clear sky", 0},
             };
         } // namespace
 

@@ -130,6 +130,8 @@ namespace SQM
             alpaca.dewpointMarginMinC = 0.0f;
             alpaca.rainUnsafeEnabled = true;
             alpaca.rainSensorRequired = true;
+            alpaca.rainNeedsCloud = false;
+            alpaca.rainNeedsCloudPercent = 10;
             alpaca.safeDelaySeconds = 0;
             alpaca.unsafeDelaySeconds = 0;
             alpaca.windSpeedUnsafeEnabled = false;
@@ -163,6 +165,7 @@ namespace SQM
             a.powerRestored = {0, "", "", ""};
             a.chargeComplete = {0, "", "", ""};
             a.chargeFault = {2, "", "", ""};
+            a.dewSuspected = {0, "", "", ""}; // spec 036: off until the owner wants it
             a.sendMode = AlertsConfig::SendMode::Any;
             a.clientSilentSafetySeconds = 120;
             a.clientSilentWeatherSeconds = 600;

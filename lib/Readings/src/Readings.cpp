@@ -278,6 +278,7 @@ namespace SQM
                 Battery,
                 Safety,
                 AlertsSwitch,
+                RainSafety, // the rain sensor's state in the safety document (spec 036)
             };
 
             struct Entity
@@ -433,6 +434,8 @@ namespace SQM
                  nullptr},
                 {"binary_sensor", "safety", "Observatory", Group::Safety, nullptr, nullptr, nullptr, "safety", nullptr},
                 {"switch", "alerts", "Alerts", Group::AlertsSwitch, nullptr, nullptr, nullptr, nullptr, "mdi:bell-ring"},
+                // Rain needs cloud (spec 036): rain under a clear sky. Not unsafe.
+                {"binary_sensor", "dew_suspected", "Dew suspected", Group::RainSafety, nullptr, nullptr, nullptr, "problem", nullptr},
             };
 
             bool enabled(Group group, const Groups &groups, bool safety)
@@ -450,6 +453,7 @@ namespace SQM
                     groups.battery && groups.batteryEntities,      // Battery (spec 032)
                     safety,                                        // Safety
                     groups.alertsSwitch,                           // AlertsSwitch
+                    groups.rain && safety,                         // RainSafety
                 };
                 const auto index = static_cast<size_t>(group);
                 return index < sizeof(on) / sizeof(on[0]) ? on[index] : true;
@@ -476,6 +480,11 @@ namespace SQM
                     doc["payload_off"] = "0";
                     doc["state_on"] = "1";
                     doc["state_off"] = "0";
+                }
+                else if (entity.group == Group::RainSafety)
+                {
+                    doc["state_topic"] = base + "/safety";
+                    doc["value_template"] = "{{ 'ON' if value_json.dewSuspected else 'OFF' }}";
                 }
                 else if (entity.value == nullptr) // raining
                 {

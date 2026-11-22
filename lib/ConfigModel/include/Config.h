@@ -177,6 +177,11 @@ namespace SQM
         // stale - nothing should ever mask "it's raining".
         bool rainUnsafeEnabled;  // raining (incl. the rainClearDelayMs hold-off) => unsafe
         bool rainSensorRequired; // rain sensor enabled but offline/stale/lens fault => unsafe
+        // Rain needs cloud (spec 036): rain under a fresh, healthy clear-sky
+        // reading below this cloud cover is treated as dew, not unsafe. Rain
+        // is always trusted when the IR sky sensor can't be.
+        bool rainNeedsCloud;
+        uint8_t rainNeedsCloudPercent; // 1-100: at or above it, rain is confirmed
 
         // Wind (anemometer). Like rain, checked regardless of the other
         // sensors' freshness.
@@ -244,6 +249,8 @@ namespace SQM
         EventSetting powerRestored;
         EventSetting chargeComplete;
         EventSetting chargeFault;
+        // Rain needs cloud (spec 036): stored with the battery events.
+        EventSetting dewSuspected;
 
         float dewRiskMarginC;          // temperature within this of the dew point
         float clearSkyCloudPercent;    // clear below this
