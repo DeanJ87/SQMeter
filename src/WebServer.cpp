@@ -176,9 +176,7 @@ namespace SQM
         HeapTrace::mark("web server routes");
         alertDispatcher->begin();
         HeapTrace::mark("alert dispatcher");
-        startBle();
-        if (getConfigCallback().alpaca.enabled)
-            startAlpacaDiscovery();
+        releaseUnusedBle();
 
         // SPA fallback - serve index.html for any non-API routes
         server.onNotFound([](AsyncWebServerRequest *request) { handleNotFound(request); });
@@ -220,25 +218,22 @@ namespace SQM
             });
     }
 
-    void WebServer::startBle()
+    void WebServer::releaseUnusedBle()
     {
         if (!BleService::available())
             return;
-        if (!getConfigCallback().ble.enabled)
-        {
-            BleService::releaseControllerMemory();
-            HeapTrace::mark("bluetooth memory released");
+        bleWanted = getConfigCallback().ble.enabled;
+        if (bleWanted)
             return;
-        }
-        bleStartPending = true;
-        bleStartAt = millis();
+        BleService::releaseControllerMemory();
+        HeapTrace::mark("bluetooth memory released");
     }
 
-    void WebServer::startPendingBle(uint32_t now)
+    void WebServer::startBluetooth()
     {
-        if (!bleStartPending || now - bleStartAt < BLE_START_DELAY_MS)
+        if (!bleWanted || bleStarted)
             return;
-        bleStartPending = false;
+        bleStarted = true;
         ble.begin(getConfigCallback().deviceName, getConfigCallback().ble.passkey);
         HeapTrace::mark("bluetooth");
     }
@@ -354,7 +349,6 @@ namespace SQM
 
         sampleWebHealth(now);
         applyPendingArm();
-        startPendingBle(now);
         retryAlpacaIpv6Discovery(now);
         if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
             publishArmedState();

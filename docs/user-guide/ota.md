@@ -123,7 +123,9 @@ For everything at once (settings kept), use the release's USB package - see [One
 
 The partition table has two app slots (`app0` at `0x10000`, `app1` at `0x1D0000`, 1.75 MB each). OTA writes the new firmware to the slot that isn't running; the image is verified when the write finishes, and only then is the bootloader pointed at it for the next boot. A partial or corrupt download is therefore never booted.
 
-A new firmware is only kept once it has started properly: WiFi, the web server and every other service up (since v0.3). If it crashes or restarts before then, the bootloader goes back to the previous slot on the next boot. Once it has started it is kept, even if it misbehaves later, so the way back from a bad release is to install another one (or the previous one) from **Updates**, or over USB.
+A new firmware is only kept once it has started properly: its settings loaded, WiFi started and the web server and update endpoints up (since v0.3). If it crashes or restarts before then, the bootloader goes back to the previous slot on the next boot. Once it has started it is kept, even if it misbehaves later, so the way back from a bad release is to install another one (or the previous one) from **Updates**, or over USB.
+
+The sensors, time, MQTT, mDNS, Alpaca discovery and Bluetooth start after that, one at a time about a quarter of a second apart (Bluetooth a second after the rest), and WiFi joins at a reduced transmit power until they have all started. Their start-up currents then don't add up, which on a marginal power supply could brown the device out before a new firmware was kept. Readings arrive about 2.5 seconds after the web server is up, and everything has started about 5 seconds after it.
 
 <!-- diagram: DIA-08
 sources: src/OtaUpdater.cpp#OtaUpdater::runApply src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFirmware src/OtaUpdater.cpp#OtaUpdater::downloadAndFlashFilesystem lib/ReleaseLogic/ src/OtaUpdater.cpp#OtaUpdater::checkForUpdate
