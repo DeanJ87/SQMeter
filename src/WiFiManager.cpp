@@ -25,6 +25,7 @@ namespace SQM
     void WiFiManager::begin()
     {
         WiFi.mode(WIFI_STA);
+        reduceTxPower();
         WiFi.setHostname(config.hostname.c_str());
         ipv6Wanted = config.ipv6;
         // Arduino 3.x starts IPv6 (link-local, then SLAAC addresses from
@@ -175,9 +176,37 @@ namespace SQM
         return apMode && stationConnectedAt != 0 && isConnected() && millis() - stationConnectedAt >= ms;
     }
 
+    // Only possible once the driver has started (after WiFi.mode()).
+    void WiFiManager::reduceTxPower()
+    {
+        normalTxPower = WiFi.getTxPower();
+        if (normalTxPower <= BOOT_TX_POWER)
+            return;
+        txPowerReduced = WiFi.setTxPower(BOOT_TX_POWER);
+        if (!txPowerReduced)
+            Logger::warn(TAG, "Couldn't lower the WiFi transmit power for start-up");
+    }
+
+    void WiFiManager::restoreTxPower()
+    {
+        if (!txPowerReduced)
+            return;
+        txPowerReduced = false;
+        if (WiFi.setTxPower(normalTxPower))
+            Logger::info(TAG, "WiFi transmit power back to %.1f dBm", static_cast<int>(normalTxPower) / 4.0);
+        else
+            Logger::warn(TAG, "Couldn't restore the WiFi transmit power");
+    }
+
+    void WiFiManager::allowMdns()
+    {
+        mdnsAllowed = true;
+        startMdns();
+    }
+
     void WiFiManager::startMdns()
     {
-        if (mdnsStarted || !config.mdns || !isConnected())
+        if (mdnsStarted || !mdnsAllowed || !config.mdns || !isConnected())
             return;
         if (!MDNS.begin(config.hostname.c_str()))
         {

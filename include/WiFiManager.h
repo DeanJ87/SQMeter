@@ -56,8 +56,13 @@ namespace SQM
         // is still up - time to restart into normal operation.
         bool connectedFromHotspotFor(uint32_t ms) const;
 
-        // Starts mDNS (<hostname>.local + HTTP service) if enabled; idempotent.
+        // Starts mDNS (<hostname>.local + HTTP service) if enabled, once
+        // allowed (staged start-up) and joined; idempotent.
         void startMdns();
+        void allowMdns();
+        // begin() joins at a reduced transmit power (a smaller current peak
+        // on a marginal supply); this puts the normal power back. Idempotent.
+        void restoreTxPower();
         bool isMdnsRunning() const { return mdnsStarted; }
 
         // IPv6 on the joined network (spec 015): on when the setting is, from
@@ -71,6 +76,9 @@ namespace SQM
     private:
         static constexpr const char *TAG = "WiFiManager";
         static constexpr const char *AP_SSID = "SQM-Setup";
+        // While the device starts: enough for a LAN access point, well under
+        // the default ~20 dBm.
+        static constexpr wifi_power_t BOOT_TX_POWER = WIFI_POWER_13dBm;
 
         WiFiConfig config;
         bool apMode;
@@ -82,6 +90,9 @@ namespace SQM
         // Whether the last attempt found the saved network (see noteRange()).
         bool networkInRange = true;
         bool mdnsStarted = false;
+        bool mdnsAllowed = false;
+        bool txPowerReduced = false;
+        wifi_power_t normalTxPower = WIFI_POWER_19_5dBm;
         uint32_t stationConnectedAt = 0;
 
         // Answers DNS from the network task, so phones get replies at once
@@ -91,6 +102,7 @@ namespace SQM
         OnDisconnectedCallback onDisconnectedCallback;
 
         void connectToWiFi();
+        void reduceTxPower();
         void resetStack();
         void noteRange();
         void act(WifiRecovery::Action action);

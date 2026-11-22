@@ -1,11 +1,11 @@
 {
-  "esp32dev": 1557888,
-  "esp32dev-ble": 1750288,
-  "esp32s3-eth": 1571024,
-  "esp32s3-eth-ble": 1761152,
-  "esp32s3-zero": 1568992,
-  "esp32s3-zero-ble": 1759168,
-  "esp32s3-zero8": 1571024,
-  "esp32s3-zero8-ble": 1761168,
-  "overBudgetReason": "Safety holds (spec 035): about 14-20 KB of hold routes, MQTT command, NVS storage and history; the 4 MB Bluetooth builds go over 95% of their app slot (esp32dev-ble 95.4%, esp32s3-zero-ble 95.8%)."
+  "esp32dev": 1560336,
+  "esp32dev-ble": 1752752,
+  "esp32s3-eth": 1573520,
+  "esp32s3-eth-ble": 1763648,
+  "esp32s3-zero": 1571488,
+  "esp32s3-zero-ble": 1761632,
+  "esp32s3-zero8": 1573520,
+  "esp32s3-zero8-ble": 1763648,
+  "overBudgetReason": "Safety holds (spec 035): about 14-20 KB of hold routes, MQTT command, NVS storage and history; staged start-up against boot brownouts: about 2.5 KB. The 4 MB Bluetooth builds go over 95% of their app slot (esp32dev-ble 95.5%, esp32s3-zero-ble 96.0%)."
 }

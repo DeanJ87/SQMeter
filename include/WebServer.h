@@ -75,8 +75,15 @@ namespace SQM
         WebServer(const WebServer &) = delete;
         WebServer &operator=(const WebServer &) = delete;
 
+        // Routes, the update endpoints and the listener. Alpaca discovery and
+        // Bluetooth start later, from the staged start-up (lib/BootLogic).
         void begin();
         void handle();
+        void startAlpacaDiscovery();
+        // Bluetooth, when it was on at begin(); its controller memory is
+        // released there otherwise.
+        void startBluetooth();
+        bool bluetoothWanted() const { return bleWanted; }
         void refreshSensorSnapshot(uint32_t dataTimestampMs);
         // The battery power policy (spec 032): its state for the snapshot and
         // its one-shots for the alerts. Set once at start-up.
@@ -106,8 +113,6 @@ namespace SQM
 
         // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
         bool isWifiConnectPending() const { return wifiConnectActive; }
-        // Bluetooth is switched on but hasn't started yet (see startBle()).
-        bool isBleStartPending() const { return bleStartPending; }
         static bool scheduleRestart(uint32_t delayMs);
 
     private:
@@ -178,10 +183,8 @@ namespace SQM
         // begin(), step by step.
         void restoreAlertSchedule();
         void subscribeArmCommands();
-        void startBle();
-        void startPendingBle(uint32_t now);
+        void releaseUnusedBle();
         void sendPendingAlertTest();
-        void startAlpacaDiscovery();
         static void handleNotFound(AsyncWebServerRequest *request);
         // The Alpaca HTTP API lives in lib/AlpacaLogic (Alpaca::Router) so the
         // CI simulator runs the same code; this feeds it the device's state.
@@ -211,11 +214,11 @@ namespace SQM
         SemaphoreHandle_t safetyMutex = xSemaphoreCreateMutex();
         TaskHandle_t loopTaskHandle = nullptr;
         uint32_t lastSafetyEvaluation = 0;
-        // Bluetooth starts this long after begin(), not alongside WiFi: their
-        // combined start-up current browns out a marginal supply.
-        static constexpr uint32_t BLE_START_DELAY_MS = 5000;
-        bool bleStartPending = false;
-        uint32_t bleStartAt = 0;
+        // Bluetooth on at begin(): it starts last in the staged start-up, not
+        // alongside WiFi, as their combined start-up current browns out a
+        // marginal supply.
+        bool bleWanted = false;
+        bool bleStarted = false;
         static constexpr uint32_t SAFETY_EVALUATION_INTERVAL_MS = 1000;
         void updateSafetyStatus();
 
