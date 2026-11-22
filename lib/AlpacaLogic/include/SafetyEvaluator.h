@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdint>
 
+#include "RainTrust.h"
 #include "SensorTypes.h"
 
 namespace SQM
@@ -36,6 +37,9 @@ namespace SQM
 
             bool rainUnsafeEnabled = true;
             bool rainSensorRequired = true;
+            // Rain needs cloud (spec 036, RainTrust.h): off = rain always counts.
+            bool rainNeedsCloud = false;
+            float rainNeedsCloudPercent = 10.0f;
 
             bool windSpeedUnsafeEnabled = false;
             float windSpeedUnsafeMs = 10.0f;
@@ -84,6 +88,13 @@ namespace SQM
             bool rainSensorEnabled = false;
             bool rainSensorHealthy = false; // online, fresh, no lens fault
             bool raining = false;           // includes the post-rain hold-off latch
+            float rainRateMmPerHour = 0.0f; // for the reason
+            // Rain needs cloud (spec 036): whether the IR sky sensor's cloud
+            // cover can overrule rain (found, OK, fresh, computable), and the
+            // class applyRainTrust() gave this pass's rain. Unchecked (rain
+            // counts) unless a caller classifies it.
+            bool skyCloudUsable = false;
+            RainClass rainClass = RainClass::Unchecked;
 
             // Anemometer. Like rain, evaluated independently of the others.
             bool windSensorEnabled = false;
@@ -134,7 +145,18 @@ namespace SQM
             bool isSafe = false;
             std::vector<std::string> unsafeReasons; // empty when isSafe is true
             uint32_t reasonFlags = 0;               // UnsafeReasonFlag bits, 0 when safe
+            // Rain under a healthy clear sky with Rain needs cloud on (spec
+            // 036): reported, never an unsafe reason. The values are the
+            // pass's rain rate and cloud cover.
+            bool dewSuspected = false;
+            float rainRateMmPerHour = 0.0f;
+            float cloudCoverPercent = 0.0f;
         };
+
+        // Classifies this pass's rain with the owner's Rain needs cloud
+        // setting and updates the latch (RainTrust.h); call once per safety
+        // pass, before evaluateSafety.
+        void applyRainTrust(SafetyInputs &inputs, const SafetyThresholds &thresholds, RainTrustLatch &latch);
 
         // Pure evaluation, no I/O - matches the Go bridge's rule precedence:
         // manual override, then data freshness/availability, then sensor

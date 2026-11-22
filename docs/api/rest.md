@@ -253,6 +253,16 @@ Successful saves return:
 !!! note
     `POST` is the primary method. The firmware also accepts `PUT` for compatibility with full-resource settings clients.
 
+For example, turning on [Rain needs cloud](../user-guide/alpaca.md#rain-needs-cloud) with rain confirmed at 15% cloud:
+
+```bash
+curl -X POST http://sqmeter.local/api/config \
+  -H "Content-Type: application/json" \
+  -d '{"alpaca": {"rainNeedsCloud": true, "rainNeedsCloudPercent": 15}}'
+```
+
+`rainNeedsCloudPercent` must be a whole number from 1 to 100 (`400` `"Safety: cloud to confirm rain must be 1 to 100%"` otherwise). Every setting is listed in the [configuration reference](../user-guide/configuration.md#safety-rules-alpaca).
+
 A setting whose dependency is off is saved as sent and reported inactive by `GET /api/settings/effective`; it isn't rejected. Only combinations that can never work are refused, with the reason in `error` (see [Settings dependencies](../reference/settings-dependencies.md)).
 
 ---
@@ -506,12 +516,13 @@ The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clie
   "rawSafe": false,
   "alpacaEnabled": true,
   "reasonFlags": 512,
-  "reasons": ["Rain detected"],
+  "reasons": ["Rain 0.40 mm/h"],
   "secondsUntilSafe": 0,
   "secondsUntilUnsafe": 0,
   "rulesNotInEffect": [],
   "evaluatedAgeMs": 412,
   "changedAgeMs": 1260000,
+  "dewSuspected": false,
   "holds": []
 }
 ```
@@ -525,6 +536,7 @@ The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clie
 | `secondsUntilUnsafe` | Remaining unsafe-delay countdown while `rawSafe` is false but `safe` is still true |
 | `rulesNotInEffect` | Rules switched on but ignored because what they need is off, e.g. `"Unsafe while raining"` (they are listed only while the rain sensor is off). Rules that can't measure their limit (wind, cloud, SQM, humidity) report unsafe instead |
 | `changedAgeMs` | Time since `safe` last changed |
+| `dewSuspected` / `dew` | [Rain needs cloud](../user-guide/alpaca.md#rain-needs-cloud) is on and the rain sensor reports rain under a fresh, healthy clear-sky reading: probably dew on the sensor's lens. Not an unsafe reason - `safe`, `reasons` and `reasonFlags` don't change for it. While it is `true`, `dew` has `rainIntensity` (mm/h), `cloudCoverPercent` and `sinceAgeMs` (how long dew has been suspected). Older firmware has neither |
 | `holds` | The [safety holds](#safety-holds) in effect, oldest first: `id`, `reason`, `source`, `sinceEpoch` (Unix seconds; `sinceAgeMs` instead when it was set before the clock was), and with an expiry `expiresEpoch` (when known) and `expiresInMs`. Each hold's reason is also in `reasons` |
 
 ---

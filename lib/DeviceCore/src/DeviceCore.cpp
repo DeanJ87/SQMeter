@@ -16,11 +16,9 @@ namespace SQM
     {
         namespace
         {
-            // Rounded so documents read 51.4779, not 51.47790146.
             double rounded(double value, int decimals)
             {
-                const double scale = std::pow(10.0, decimals);
-                return std::round(value * scale) / scale;
+                return Detail::roundTo(value, decimals);
             }
 
             const char *cloudConditionName(CloudCondition condition)
@@ -433,6 +431,8 @@ namespace SQM
             // rainLatched holds for rain.rainClearDelayMs after the last drop -
             // the hold-off before a roof should re-open.
             in.raining = snapshot.rg15.isRaining || snapshot.rg15.rainLatched;
+            in.rainRateMmPerHour = Alpaca::rainRateToMmPerHour(snapshot.rg15.rInt, snapshot.rg15.imperial);
+            in.skyCloudUsable = Detail::skyCloudUsable(snapshot, cfg, now); // Rain needs cloud (spec 036)
 
             in.windSensorEnabled = cfg.wind.enabled;
             in.windSensorHealthy = windFresh(snapshot.wind, now);
@@ -496,47 +496,6 @@ namespace SQM
             snap.pressureHPa = snapshot.bme.pressure;
             snap.rainRateMmPerHour = Alpaca::rainRateToMmPerHour(snapshot.rg15.rInt, snapshot.rg15.imperial);
             return snap;
-        }
-
-        bool updateSafety(
-            SafetyStatus &status, Alpaca::SafeDelayFilter &filter, const Alpaca::SafetyResult &result, const Config &cfg, uint32_t now)
-        {
-            const bool reportedSafe =
-                filter.update(result.isSafe, now, cfg.alpaca.safeDelaySeconds, cfg.alpaca.unsafeDelaySeconds, result.reasonFlags);
-            const bool changed = reportedSafe != status.isSafe || status.evaluatedAtMs == 0;
-            if (changed)
-                status.changedAtMs = now;
-            status.isSafe = reportedSafe;
-            status.rawSafe = result.isSafe;
-            status.reasonFlags = result.reasonFlags;
-            status.reasons = result.unsafeReasons;
-            status.secondsUntilSafe = filter.secondsUntilSafe();
-            status.secondsUntilUnsafe = filter.secondsUntilUnsafe();
-            status.evaluatedAtMs = now;
-            return changed;
-        }
-
-        void writeSafety(JsonObject target, const SafetyStatus &status, const Config &cfg, uint32_t now, const HeldBy *heldBy)
-        {
-            target["safe"] = status.isSafe;
-            target["rawSafe"] = status.rawSafe;
-            target["alpacaEnabled"] = cfg.alpaca.enabled;
-            target["reasonFlags"] = status.reasonFlags;
-            JsonArray reasons = target.createNestedArray("reasons");
-            for (const std::string &reason : status.reasons)
-                reasons.add(reason);
-            target["secondsUntilSafe"] = status.secondsUntilSafe;
-            target["secondsUntilUnsafe"] = status.secondsUntilUnsafe;
-            // Rules switched on but ignored because their sensor is off
-            // (specs/020-settings-dependencies FR-009).
-            JsonArray notInEffect = target.createNestedArray("rulesNotInEffect");
-            for (const std::string &rule : Deps::rulesNotInEffect(cfg))
-                notInEffect.add(rule);
-            target["evaluatedAgeMs"] = ageMs(now, status.evaluatedAtMs);
-            target["changedAgeMs"] = ageMs(now, status.changedAtMs);
-            JsonArray holdList = target.createNestedArray("holds");
-            if (heldBy != nullptr)
-                heldBy->holds.writeJson(holdList, now, heldBy->epoch);
         }
 
         NightState night(const SensorSnapshot &snapshot, const Config &cfg, int64_t epoch)

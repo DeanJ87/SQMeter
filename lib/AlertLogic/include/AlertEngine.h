@@ -40,9 +40,12 @@ namespace SQM
             ChargeComplete,
             ChargeFault,
             BatteryRule,
+            // Rain needs cloud (specs/036): rain under a clear sky, the rain
+            // sensor's lens probably dewed. Never changes the verdict.
+            DewSuspected,
         };
         // Keep in step with the enum: alertTypeName() is a table indexed by it.
-        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::BatteryRule) + 1;
+        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::DewSuspected) + 1;
 
         // The safety verdict's battery rule bits (Alpaca::UnsafeBatteryLow,
         // UnsafeBatteryData; DeviceCore checks they match).
@@ -92,6 +95,9 @@ namespace SQM
             bool onRain = true;
             bool onSensorFault = true;
             bool onDewRisk = false;
+            // Dew suspected on the rain sensor (spec 036): after it has held
+            // for sensorFaultDelaySeconds, once per spell.
+            bool onDewSuspected = false;
             float dewRiskMarginC = 2.0f;
             // Sky changes. Clear below clearSkyCloudPercent, clouded over
             // above cloudedOverCloudPercent; in between nothing changes, so a
@@ -192,6 +198,9 @@ namespace SQM
             bool raining = false; // includes the rain-clear hold-off
             float rainRateMmPerHour = 0.0f;
             bool lensFault = false;
+            // From the safety verdict (spec 036): rain under a clear sky.
+            bool dewSuspected = false;
+            float dewCloudCoverPercent = 0.0f;
 
             SensorHealth sensors[SENSOR_COUNT];
 
@@ -222,7 +231,7 @@ namespace SQM
 
         struct Wait
         {
-            std::string condition; // "safety", "rain", "lens", "dew", "sky", "sensor:<name>", "startup"
+            std::string condition; // "safety", "rain", "lens", "dew_suspected", "dew", "sky", "sensor:<name>", "startup"
             WaitKind kind = WaitKind::Settle;
             uint32_t remainingSeconds = 0;
         };
@@ -308,6 +317,7 @@ namespace SQM
             bool safetySeeded = false;
             Tracker rain;
             Tracker lens;
+            Tracker dewSuspected; // spec 036
             Tracker dew;
             Tracker sky; // notified value = "clear"
             Tracker sensors[SENSOR_COUNT];

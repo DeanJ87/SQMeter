@@ -251,6 +251,7 @@ private:
     SensorSnapshot snapshot;
     SafetyStatus safety;
     Alpaca::SafeDelayFilter delayFilter;
+    Alpaca::RainTrustLatch rainTrust; // Rain needs cloud (spec 036)
     Alerts::AlertEngine engine;
     bool engineSeeded = false;
     Alerts::AlertSchedule schedule;

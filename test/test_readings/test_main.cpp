@@ -234,8 +234,9 @@ void test_discovery_messages(void)
     forEachDiscovery(
         device, groups, true, [&](const std::string &topic, const std::string &payload) { messages.emplace_back(topic, payload); });
 
-    TEST_ASSERT_EQUAL(24, messages.size()); // + the sky sensors' three (spec 030) and the battery's four (spec 032), removed here
-    bool sawSqm = false, sawWindRemoval = false, sawSafety = false, sawSwitch = false;
+    // + the sky sensors' three (spec 030), the battery's four (spec 032), removed here, and dew suspected (spec 036)
+    TEST_ASSERT_EQUAL(25, messages.size());
+    bool sawSqm = false, sawWindRemoval = false, sawSafety = false, sawSwitch = false, sawDew = false;
     for (const auto &m : messages)
     {
         if (m.first == "homeassistant/sensor/sqmeter_aabbccddeeff/sqm/config")
@@ -253,7 +254,16 @@ void test_discovery_messages(void)
             sawSafety = m.second.find("\"payload_on\":\"0\"") != std::string::npos;
         if (m.first == "homeassistant/switch/sqmeter_aabbccddeeff/alerts/config")
             sawSwitch = m.second.find("sqmeter/alerts/armed/set") != std::string::npos;
+        if (m.first == "homeassistant/binary_sensor/sqmeter_aabbccddeeff/dew_suspected/config")
+        {
+            DynamicJsonDocument doc(2048);
+            TEST_ASSERT_FALSE(deserializeJson(doc, m.second));
+            sawDew = std::string(doc["state_topic"].as<const char *>()) == "sqmeter/safety" &&
+                     std::string(doc["value_template"].as<const char *>()).find("value_json.dewSuspected") != std::string::npos &&
+                     std::string(doc["device_class"].as<const char *>()) == "problem";
+        }
     }
+    TEST_ASSERT_TRUE(sawDew);
     TEST_ASSERT_TRUE(sawSqm);
     TEST_ASSERT_TRUE(sawWindRemoval);
     TEST_ASSERT_TRUE(sawSafety);
@@ -278,6 +288,33 @@ void test_discovery_alerts_switch_needs_alerts(void)
                 switchPayload = payload;
         });
     TEST_ASSERT_EQUAL_STRING("", switchPayload.c_str());
+}
+
+// Spec 036: the dew-suspected entity needs the rain sensor and the safety
+// document; otherwise its config topic is cleared.
+void test_discovery_dew_suspected_needs_rain_and_safety(void)
+{
+    DiscoveryDevice device{"sqmeter_aabbccddeeff", "Roof SQM", "0.3.0", "sqmeter", "homeassistant"};
+    const std::string topic = "homeassistant/binary_sensor/sqmeter_aabbccddeeff/dew_suspected/config";
+    auto payloadFor = [&](bool rain, bool safety)
+    {
+        Groups groups;
+        groups.rain = rain;
+        std::string payload = "unset";
+        forEachDiscovery(
+            device,
+            groups,
+            safety,
+            [&](const std::string &t, const std::string &p)
+            {
+                if (t == topic)
+                    payload = p;
+            });
+        return payload;
+    };
+    TEST_ASSERT_TRUE(payloadFor(true, true).size() > 10);
+    TEST_ASSERT_EQUAL_STRING("", payloadFor(false, true).c_str());
+    TEST_ASSERT_EQUAL_STRING("", payloadFor(true, false).c_str());
 }
 
 // specs/023-i18n FR-015: readings are serialised with '.' decimals whatever
@@ -337,6 +374,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_every_key_is_camel_case);
     RUN_TEST(test_discovery_messages);
     RUN_TEST(test_discovery_alerts_switch_needs_alerts);
+    RUN_TEST(test_discovery_dew_suspected_needs_rain_and_safety);
     RUN_TEST(test_readings_use_a_decimal_point_under_any_locale);
     RUN_TEST(test_sky_source_always_written_with_the_sky_group);
     RUN_TEST(test_sky_group_unchanged_but_source);

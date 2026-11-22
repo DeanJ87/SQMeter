@@ -9,5 +9,6 @@
   "rulesNotInEffect": [],
   "evaluatedAgeMs": 0,
   "changedAgeMs": 2005,
+  "dewSuspected": false,
   "holds": []
 }

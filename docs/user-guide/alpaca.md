@@ -121,7 +121,7 @@ The **Setup** (cog) button next to either device in N.I.N.A. opens `http://<devi
 The safety verdict is re-evaluated every second from the current sensor readings against the rules in **Settings → Safety → Safety rules**. It is shown on the Dashboard's **Safety Monitor** card, on the **Alpaca** page, from `GET /api/safety`, and served to Alpaca clients as `SafetyMonitor.IsSafe`. Any of the following makes it unsafe:
 
 1. **Manual override and safety holds** - the **Force unsafe** toggle is on (the built-in hold `manual`: "Manual override forces unsafe"), or another system holds it unsafe with a [safety hold](#safety-holds) (the hold's own reason, e.g. "Smoke: neighbour's fire, PM2.5 85 µg/m³")
-2. **Rain** - the RG-15 reports rain, *or* it rained within the rain sensor's "rain clear delay" (default 15 min; see [the rain latch](../hardware/rg15.md#the-rain-latch)). Enabled by default whenever the rain sensor is enabled
+2. **Rain** - the RG-15 reports rain, *or* it rained within the rain sensor's "rain clear delay" (default 15 min; see [the rain latch](../hardware/rg15.md#the-rain-latch)). Enabled by default whenever the rain sensor is enabled. The reason gives the intensity: "Rain 0.40 mm/h" ("Rain detected" while the sensor reports no rate). With [Rain needs cloud](#rain-needs-cloud) on, rain under a healthy clear sky counts as dew instead
 3. **Rain sensor offline/faulty** - the rain sensor is enabled but not responding, its data is stale, or it reports a lens fault (fail safe; enabled by default)
 4. **Wind / gust** - the 2-minute mean wind speed or the 10-minute peak gust is at or above its limit (both disabled by default). If a wind limit is enabled but the [anemometer](../hardware/wind.md) is disabled or not reporting, that's unsafe too
 5. **No data yet** - the device hasn't completed a sensor read since boot
@@ -135,14 +135,14 @@ The safety verdict is re-evaluated every second from the current sensor readings
 13. **Battery** - the battery charge is below the limit (default 10%, disabled by default): "Battery 8% < 10%". If the rule is on but there is no fuel gauge, or its data is stale or still estimating, that's unsafe too: "Battery data missing". A charging pack below the limit stays unsafe. See [Battery](battery.md#the-safety-rule)
 14. **Shutting down** - the battery has reached its shutdown level and the device is about to sleep, whether or not the battery rule is on: "Shutting down: battery 4% <= 5%"
 
-Holds, rain, wind and battery rules (1-4, 13-14) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining, blowing a gale or about to switch off. Rules 8-12 only apply to fresh data.
+Holds, rain, wind and battery rules (1-4, 13-14) are checked even when the other sensors' data is stale or missing - nothing should hide the fact that it's raining, blowing a gale or about to switch off. Rules 8-12 only apply to fresh data. The one case where another sensor changes the rain outcome is [Rain needs cloud](#rain-needs-cloud), which you switch on yourself, and even then only a fresh, healthy clear-sky reading can do it.
 
 Each threshold has its own enable/disable toggle - a disabled threshold never contributes to the verdict.
 
 <!-- diagram: DIA-02
 sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp lib/DeviceCore/src/DeviceCore.cpp#safetyInputs lib/DeviceCore/src/DeviceSafety.cpp#safetyThresholds lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: true
-fingerprint: a127e7de8bdfaac4
+fingerprint: 0e0ce88bb6b535d5
 -->
 <figure class="diagram" markdown>
 
@@ -151,7 +151,7 @@ flowchart TB
     accTitle: How the safety verdict is decided
     accDescr: Every second all enabled rules are checked and each failing rule adds a reason. Force unsafe, safety holds, rain, wind and battery are always checked, then data freshness and sensor health; the threshold rules only run on fresh data. Any reason makes the raw verdict unsafe, which then passes through the safe and unsafe delays.
     START(["Every second"]) --> ALWAYS
-    ALWAYS["<b>Always checked</b>, even on stale data<br/>Force unsafe on, the manual hold: <i>Manual override forces unsafe</i><br/>Each safety hold another system set: <i>its reason</i><br/>Raining, or within the rain clear delay: <i>Rain detected</i><br/>Rain sensor offline, stale or lens fault: <i>Rain sensor offline...</i><br/>Wind limit set but anemometer off or silent: <i>Wind limit set but...</i><br/>Wind or gust at or over its limit: <i>Wind ... / Gust ...</i><br/>Battery rule on but no gauge data: <i>Battery data missing</i><br/>Battery below its limit: <i>Battery ...</i><br/>About to sleep at the shutdown level: <i>Shutting down: battery ...</i>"]
+    ALWAYS["<b>Always checked</b>, even on stale data<br/>Force unsafe on, the manual hold: <i>Manual override forces unsafe</i><br/>Each safety hold another system set: <i>its reason</i><br/>Raining, or within the rain clear delay, unless Rain needs cloud classes it as dew: <i>Rain ...</i><br/>Rain sensor offline, stale or lens fault: <i>Rain sensor offline...</i><br/>Wind limit set but anemometer off or silent: <i>Wind limit set but...</i><br/>Wind or gust at or over its limit: <i>Wind ... / Gust ...</i><br/>Battery rule on but no gauge data: <i>Battery data missing</i><br/>Battery below its limit: <i>Battery ...</i><br/>About to sleep at the shutdown level: <i>Shutting down: battery ...</i>"]
     ALWAYS --> FRESHNESS["<b>Data freshness</b><br/>No light or IR read since boot: <i>No successful sensor data yet</i><br/>Light or IR sensor's last successful read older than the stale limit, 30 s: <i>Sensor data is stale</i>"]
     FRESHNESS --> HEALTH["<b>Sensor health</b><br/>Light sensor or IR sky sensor not OK: <i>Sensor fault: ...</i><br/>with two sky sensors only the authoritative one, SQM or SQM-L"]
     HEALTH --> FRESH{"Fresh data?"}
@@ -178,7 +178,7 @@ flowchart TB
     1. **Always checked**, even when the other data is stale or missing:
         - Force unsafe is on (the built-in hold `manual`): "Manual override forces unsafe".
         - Each [safety hold](#safety-holds) another system set: its own reason, e.g. "Smoke: neighbour's fire".
-        - The rain sensor reports rain, or rain within the rain clear delay: "Rain detected".
+        - The rain sensor reports rain, or rain within the rain clear delay: "Rain 0.40 mm/h", or "Rain detected" without a rate. With [Rain needs cloud](#rain-needs-cloud) on, rain under a fresh, healthy clear-sky reading is dew suspected instead, not a reason; otherwise the reason says why the rain counts ("... with cloud 35% >= 10%", "... with no cloud reading", "... held until dry").
         - The rain sensor is enabled but offline, stale or reporting a lens fault: "Rain sensor offline, stale or reporting a lens fault".
         - A wind limit is set but the anemometer is disabled or not reporting: "Wind limit set but the anemometer is disabled or not reporting". Otherwise wind or gust at or over its limit: "Wind ..." / "Gust ...".
         - The battery rule is on but there's no fuel gauge, or its data is stale or estimating: "Battery data missing". Otherwise the charge below the limit: "Battery ...".
@@ -192,6 +192,19 @@ flowchart TB
     5. No reasons: the raw verdict is safe. Any reason: unsafe, with all the reasons.
     6. The raw verdict passes through the [safe delay](#safe-delay) and [unsafe delay](#unsafe-delay), and the result is what the dashboard, `/api/safety`, `/api/safe`, MQTT `<base>/safe` and Alpaca `IsSafe` report.
     7. With Alpaca switched off, `IsSafe` returns false with a NotConnected error instead (see [Connecting from N.I.N.A.](#connecting-from-nina)).
+
+### Rain needs cloud
+
+An optical rain sensor such as the RG-15 can dew or frost over on a clear, cold night and report light rain from a starry sky. **Settings → Safety → Safety rules → Rain needs cloud** (off by default) stops that parking the telescope: rain then only makes the observatory unsafe when the IR sky sensor sees cloud, or when the sky sensor can't be trusted.
+
+- **Cloud to confirm rain** (default 10%, 1-100%): cloud cover at or above it confirms the rain, and the reason says so: "Rain 0.40 mm/h with cloud 35% >= 10%". It is separate from the cloud cover rule's limit, and works whether that rule is on or off.
+- Rain under a clear sky is **dew suspected**: not an unsafe reason. The dashboard's **Rain Sensor** card shows "Rain under a clear sky: dew suspected", `GET /api/safety` and MQTT `<base>/safety` carry `dewSuspected` with the rain intensity and cloud cover, Home Assistant gets a **Dew suspected** binary sensor, and you can choose an [alert](alerts.md) for it, so you know to clean or heat the lens.
+- **Fail-safe**: rain is always trusted unless the IR sky sensor is detected, OK, fresh and its cloud cover can be worked out. A missing, faulted or stale sky sensor never hides rain: "Rain 0.40 mm/h with no cloud reading".
+- **Once trusted, rain stays trusted** until the rain sensor reports dry and its rain clear delay has ended, so a gap in the cloud mid-shower doesn't open the roof: "Rain 0.40 mm/h, held until dry".
+- The rain sensor fault rule, safety holds and Force unsafe are not affected. With the rain rule itself off, dew suspected is still reported.
+- The setting is disabled while the rain sensor is off or the IR sky sensor isn't detected (rain would always count).
+
+Leave it off if you don't trust your sky sensor's cloud reading. A restart forgets that rain was already trusted, so for the first evaluation after a restart a clear-sky reading can class ongoing rain as dew.
 
 ### Reasons
 
@@ -281,9 +294,9 @@ Three reasons are never delayed:
 With `0` every failing rule is reported at once. 30-60 s is a sensible value: long enough to ride out a single odd reading, short enough to close before real cloud matters. It adds to the stale limit: with a 30 s stale limit and a 60 s unsafe delay, sensors that stop updating are reported unsafe after about 90 s. A reboot always starts unsafe and waits for the safe delay; the unsafe delay only holds a verdict that is already safe.
 
 <!-- diagram: DIA-03
-sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#SafeDelayFilter::update lib/DeviceCore/src/DeviceCore.cpp#updateSafety
+sources: lib/AlpacaLogic/src/SafetyEvaluator.cpp#SafeDelayFilter::update lib/DeviceCore/src/DeviceSafety.cpp#updateSafety
 blocking: true
-fingerprint: 981a006a881d2595
+fingerprint: a200bbdcd94d9f0b
 -->
 <figure class="diagram" markdown>
 

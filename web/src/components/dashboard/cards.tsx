@@ -157,7 +157,9 @@ const rainCard = ({ sensors, config }: CardContext, fault: Fault): Entry => {
     (rain || fault('rain')) && {
       id: 'rain',
       title: t('dashboard.rainSensor'),
-      node: faultCard(fault, 'rain', t('dashboard.rainSensor'), 'rain') || (rain && <RainCard rain={rain} config={config} />),
+      node:
+        faultCard(fault, 'rain', t('dashboard.rainSensor'), 'rain') ||
+        (rain && <RainCard rain={rain} config={config} dewSuspected={Boolean(sensors.safety?.dewSuspected)} />),
     }
   );
 };

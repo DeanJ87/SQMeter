@@ -308,6 +308,8 @@ namespace SQM
             alpaca.take("dewpointMarginMinC", a.dewpointMarginMinC);
             alpaca.take("rainUnsafeEnabled", a.rainUnsafeEnabled);
             alpaca.take("rainSensorRequired", a.rainSensorRequired);
+            alpaca.take("rainNeedsCloud", a.rainNeedsCloud);
+            alpaca.take("rainNeedsCloudPercent", a.rainNeedsCloudPercent);
             alpaca.take("safeDelaySeconds", a.safeDelaySeconds);
             alpaca.take("unsafeDelaySeconds", a.unsafeDelaySeconds);
             alpaca.take("windSpeedUnsafeEnabled", a.windSpeedUnsafeEnabled);

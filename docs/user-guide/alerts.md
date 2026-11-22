@@ -9,9 +9,9 @@ SQMeter can send push notifications itself - over Pushover, ntfy, a webhook, or 
 Configure everything in **Settings → Alerts**: turn on **Send alerts** (the master switch for every channel), pick your channels, **Save**, then use **Send test** next to each channel. With **Send alerts** off nothing is sent to any channel, though Bluetooth phone alarms still ring (see [Bluetooth](ble.md)).
 
 <!-- diagram: DIA-06
-sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
+sources: lib/AlertLogic/src/AlertEngine.cpp lib/AlertLogic/src/AlertRain.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: f3aa6beee0a5d2fa
+fingerprint: df17d58924399045
 -->
 <figure class="diagram" markdown>
 
@@ -19,10 +19,10 @@ fingerprint: f3aa6beee0a5d2fa
 flowchart TB
     accTitle: Why an alert does or doesn't arrive
     accDescr: Each second the device compares every condition with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on, sent to every enabled channel unless alerts are paused, with each channel's result recorded.
-    CHANGE(["A condition changes<br/>safety, rain, lens, a sensor, dew, sky,<br/>the imaging app, the battery"]) --> SILENT{"Ignored?"}
+    CHANGE(["A condition changes<br/>safety, rain, lens, dew suspected, a sensor, dew, sky,<br/>the imaging app, the battery"]) --> SILENT{"Ignored?"}
     SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>first minute after boot (not the imaging app<br/>or going to sleep), the event's rule off,<br/>the sensor switched off, or no imaging app since boot"]
     SILENT -->|no| HELD{"Held back?"}
-    HELD -->|yes| LATER["<b>Sent later if it still differs</b><br/>safety or sky changes while it's light,<br/>safety still settling,<br/>a fault not yet past the<br/>sensor fault delay (2 min),<br/>a sky change not yet 2 min old,<br/>within the 5 min cooldown<br/>(except &quot;imaging app is back&quot;,<br/>going to sleep and power restored)"]
+    HELD -->|yes| LATER["<b>Sent later if it still differs</b><br/>safety or sky changes while it's light,<br/>safety still settling,<br/>a fault or dew suspected not yet past the<br/>sensor fault delay (2 min),<br/>a sky change not yet 2 min old,<br/>within the 5 min cooldown<br/>(except &quot;imaging app is back&quot;,<br/>going to sleep and power restored)"]
     HELD -->|no| LEVEL{"Event level Off?"}
     LEVEL -->|yes| DROPPED["Not sent"]
     LEVEL -->|no| WORDING["Default or your own wording;<br/>events raised together become one notification"]
@@ -49,12 +49,12 @@ flowchart TB
 
 ??? info "Diagram in words"
 
-    1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, each sensor, dew risk, the sky, whether the imaging app is still checking, the battery) with what you were last told, every second.
+    1. The device compares every condition (the safety verdict, rain, the rain sensor's lens, dew suspected on the rain sensor, each sensor, dew risk, the sky, whether the imaging app is still checking, the battery) with what you were last told, every second.
     2. **Tracked silently, never announced**: changes in the first minute after boot (imaging-app events, going to sleep and power restored excepted), changes while that event's rule is switched off, anything from a sensor that is switched off, and imaging-app events for a device no app has used since boot (a connection kept across a restart the device caused itself counts as used).
     3. **Held back for now, sent later if still true**:
         - safe/unsafe while it's light (with "Safety alerts only after dark"), or while the verdict is still settling (no data yet, or waiting out the safe delay);
         - sky changes while it's light (with sky alerts limited to darkness): at nightfall a clear sky is announced once;
-        - a sensor fault or recovery not yet as old as the sensor fault delay (default 2 minutes);
+        - a sensor fault or recovery, or dew suspected on the rain sensor, not yet as old as the sensor fault delay (default 2 minutes);
         - a sky change not yet 2 minutes old;
         - within the 5-minute cooldown since that condition's last alert (not "the imaging app is back", going to sleep or power restored).
     4. **Not sent**: an event whose level is Off.
@@ -77,6 +77,7 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 |---|---|---|
 | It turns unsafe / safe again | The SafetyMonitor verdict changes (after the safe and unsafe delays). Unsafe alerts list the reasons | Urgent / Normal |
 | Rain starts / stops | The RG-15 starts reporting rain / the rain clear delay passes with no rain. Sent at once; on the first drops, before the RG-15 has a rate, it says "the first drops of rain" | Wake me / Normal |
+| Rain under a clear sky | With [Rain needs cloud](alpaca.md#rain-needs-cloud) on, the rain sensor reports rain while the IR sky sensor sees a clear sky: dew suspected ("Rain sensor: dew suspected"). Sent once it has lasted the **Sensor fault delay**, then not again until it has cleared. Never changes the verdict | Off |
 | A sensor fails / recovers | A sensor (TSL2591, MLX90614, BME280, RG-15) goes offline or stale, or recovers, and stays that way for the **Sensor fault delay**. Also the RG-15 lens-fault flag. Several sensors failing together send one alert ("Sensor fault: several sensors"), and their recovery one "Sensors recovered" | Wake me / Quiet |
 | Dew risk | Temperature comes within the configured margin of the dew point | Off |
 | Skies clear up / cloud over | Cloud cover drops below the "clear" percentage (default 20%) / rises above the "clouded over" percentage (default 70%). Between the two nothing changes, and a change has to hold for 2 minutes | Off |
@@ -256,6 +257,7 @@ POSTs a JSON body to any `http://` or `https://` URL - e.g. a Home Assistant web
 | `rain_started`, `rain_stopped` | Rain starts / stops |
 | `sensor_fault`, `sensor_recovered`, `lens_fault` | A sensor fails / recovers; the RG-15 lens fault (set with the `sensor_fault` level) |
 | `dew_risk`, `clear_sky`, `clouded_over` | Dew risk, skies clear up / cloud over |
+| `dew_suspected` | Rain under a clear sky: dew suspected on the rain sensor ([Rain needs cloud](alpaca.md#rain-needs-cloud)) |
 | `client_lost`, `client_back`, `client_disconnected` | [The imaging app](#the-imaging-app) stops checking / is back / disconnects |
 | `battery_low`, `battery_critical`, `battery_shutdown`, `power_restored`, `charge_complete`, `charge_fault` | [Battery](battery.md#alerts) events |
 | `battery_rule` | **Battery: unsafe**, the battery safety rule's own Urgent alert |

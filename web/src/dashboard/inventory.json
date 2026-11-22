@@ -444,6 +444,20 @@
       "test": "rain-card"
     },
     {
+      "id": "rain-dew",
+      "label": "dashboard.dewSuspected",
+      "sources": ["readings.safety.dewSuspected", "readings.safety.dew.**", "safety.dewSuspected", "safety.dew.**"],
+      "requiredBy": "036 FR-009",
+      "visibility": {
+        "rule": "when",
+        "when": "Rain needs cloud is on and the rain sensor reports rain under a healthy clear sky"
+      },
+      "priority": 10,
+      "location": "card:rain",
+      "test": "rain-dew",
+      "note": "A note in the rain card's warning list; the rain rate and cloud cover are on the same card and the Cloud Conditions card."
+    },
+    {
       "id": "wind-card",
       "label": "dashboard.wind",
       "sources": ["readings.wind.speed", "readings.wind.gust", "readings.wind.direction", "readings.wind.vaneFault", "readings.wind"],
@@ -1044,6 +1058,11 @@
     {
       "match": "deps.D-19",
       "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-52",
+      "reason": "Rain needs cloud without the rain sensor or the IR sky sensor is shown with the rule (disabled or Not in effect, with the reason)",
       "shownOn": "Settings → Safety"
     },
     {

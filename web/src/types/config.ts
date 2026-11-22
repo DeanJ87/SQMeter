@@ -115,6 +115,9 @@ export interface AlpacaConfig {
   dewpointMarginMinC: number;
   rainUnsafeEnabled: boolean;
   rainSensorRequired: boolean;
+  // Rain needs cloud (spec 036); older firmware has none.
+  rainNeedsCloud?: boolean;
+  rainNeedsCloudPercent?: number; // 1..100
   safeDelaySeconds: number;
   unsafeDelaySeconds?: number; // 0..600; older firmware has none
   windSpeedUnsafeEnabled: boolean;

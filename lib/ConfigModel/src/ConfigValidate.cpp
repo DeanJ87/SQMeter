@@ -295,6 +295,8 @@ namespace SQM
                 return setError(error, "Alpaca: wind gust threshold must be between 0 and 80 m/s");
             if (a.batteryMinPercent < 2 || a.batteryMinPercent > 50)
                 return setError(error, "Safety: battery limit must be 2 to 50%");
+            if (a.rainNeedsCloudPercent < 1 || a.rainNeedsCloudPercent > 100)
+                return setError(error, "Safety: cloud to confirm rain must be 1 to 100%");
             return true;
         }
 

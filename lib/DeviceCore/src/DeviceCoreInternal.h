@@ -4,6 +4,8 @@
 
 #include "DeviceCore.h"
 
+#include <cmath>
+
 namespace SQM::Core::Detail
 {
     // A reading is stale this long after the read interval in use (power
@@ -44,6 +46,16 @@ namespace SQM::Core::Detail
     void batteryAlertInputs(Alerts::BatteryInputs &in, const SensorSnapshot &snapshot, const Config &cfg, uint32_t now);
     // The Bluetooth alarm bit a Wake-level battery event rings phones with.
     uint32_t batteryAlarmFlag(Alerts::AlertType type);
+
+    // Rounded so documents read 51.4779, not 51.47790146.
+    inline double roundTo(double value, int decimals)
+    {
+        const double scale = std::pow(10.0, decimals);
+        return std::round(value * scale) / scale;
+    }
+
+    // Whether the IR sky sensor's cloud cover may overrule rain (Rain needs cloud, spec 036).
+    bool skyCloudUsable(const SensorSnapshot &snapshot, const Config &cfg, uint32_t now);
 
     // readings sky.source and skySensors (spec 030 FR-008).
     void readSkySensors(Readings::Snapshot &r, const SensorSnapshot &snapshot, uint32_t now, uint32_t staleAfter);

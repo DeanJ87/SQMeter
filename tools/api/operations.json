@@ -78,7 +78,7 @@
     "GET /api/safety": {
       "tag": "Safety",
       "summary": "Safety verdict",
-      "description": "The verdict served to Alpaca clients as `IsSafe`, with the reasons and the safe-delay countdown. Key on `safe` and `reasonFlags`; `reasons` is English text that may be reworded.",
+      "description": "The verdict served to Alpaca clients as `IsSafe`, with the reasons and the safe-delay countdown. Key on `safe` and `reasonFlags`; `reasons` is English text that may be reworded. `dewSuspected` (spec 036): with Rain needs cloud on, the rain sensor reports rain under a healthy clear sky; it is not an unsafe reason, and `dew` gives the rain intensity, cloud cover and age while it lasts.",
       "responses": {
         "200": "safety"
       },
@@ -685,7 +685,8 @@
               "battery_shutdown",
               "power_restored",
               "charge_complete",
-              "charge_fault"
+              "charge_fault",
+              "dew_suspected"
             ]
           }
         },

@@ -68,6 +68,7 @@ const EVENT_KEYS: AlertEventKey[] = [
   'client_lost',
   'client_back',
   'client_disconnected',
+  'dew_suspected',
 ];
 
 // What every section needs, worked out once.
@@ -113,6 +114,7 @@ const addAlertEvents = (c: Context) => {
     client_lost: ['D-37', [alpacaOn]],
     client_back: ['D-37', [alpacaOn]],
     client_disconnected: ['D-37', [alpacaOn]],
+    dew_suspected: ['D-05', [rainOn]], // spec 036
   };
   for (const key of EVENT_KEYS) {
     const [id, links] = eventLinks[key] ?? ['D-04', []];
@@ -188,6 +190,10 @@ const addSafetyRules = (c: Context) => {
   const ignored: Shown = { unmet: 'inactive', neutral: true };
   c.add('alpaca.rainUnsafeEnabled', 'D-15', rule('rainUnsafeEnabled'), [rainOn], ignored);
   c.add('alpaca.rainSensorRequired', 'D-15', rule('rainSensorRequired'), [rainOn], ignored);
+  // Rain needs cloud (spec 036): nothing to confirm without the rain sensor; without the IR sky sensor rain always counts.
+  const rainToConfirm: Link = ['D-52', 'rain-off', on(c.config, 'rain.enabled')];
+  const skyToConfirm: Link = ['D-52', 'infrared-missing', c.fact('infraredDetected')];
+  c.add('alpaca.rainNeedsCloud', 'D-52', rule('rainNeedsCloud'), [rainToConfirm, skyToConfirm], { unmet: 'inactive' });
   const windOn: Link = ['D-16', 'wind-off', on(c.config, 'wind.enabled')];
   c.add('alpaca.windSpeedUnsafeEnabled', 'D-16', rule('windSpeedUnsafeEnabled'), [windOn], FAIL_SAFE);
   c.add('alpaca.windGustUnsafeEnabled', 'D-16', rule('windGustUnsafeEnabled'), [windOn], FAIL_SAFE);

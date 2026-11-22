@@ -34,6 +34,7 @@ void EmulatedDevice::restart(double nowMsIn)
     snapshot = SensorSnapshot{};
     safety = SafetyStatus{};
     delayFilter = Alpaca::SafeDelayFilter{};
+    rainTrust = Alpaca::RainTrustLatch{};
     engine = Alerts::AlertEngine{};
     engineSeeded = false;
     records.clear();
@@ -71,7 +72,9 @@ void EmulatedDevice::tick(
     tickHolds();
     Alpaca::SafetyInputs inputs = Core::safetyInputs(snapshot, cfg, nowMs);
     inputs.holdReasons = holds.externalReasons();
-    const Alpaca::SafetyResult result = Alpaca::evaluateSafety(inputs, Core::safetyThresholds(cfg));
+    const Alpaca::SafetyThresholds thresholds = Core::safetyThresholds(cfg);
+    Alpaca::applyRainTrust(inputs, thresholds, rainTrust);
+    const Alpaca::SafetyResult result = Alpaca::evaluateSafety(inputs, thresholds);
     if (Core::updateSafety(safety, delayFilter, result, cfg, nowMs))
     {
         SafetyHistory::Entry change{};

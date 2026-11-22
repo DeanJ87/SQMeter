@@ -52,7 +52,9 @@ namespace SQM
         HoldsView heldBy = tickHolds(now);
         Alpaca::SafetyInputs inputs = buildAlpacaSafetyInputs();
         inputs.holdReasons = std::move(heldBy.reasons);
-        const Alpaca::SafetyResult result = Alpaca::evaluateSafety(inputs, buildAlpacaSafetyThresholds(getConfigCallback()));
+        const Alpaca::SafetyThresholds thresholds = buildAlpacaSafetyThresholds(getConfigCallback());
+        Alpaca::applyRainTrust(inputs, thresholds, rainTrust);
+        const Alpaca::SafetyResult result = Alpaca::evaluateSafety(inputs, thresholds);
 
         if (safetyMutex && xSemaphoreTake(safetyMutex, pdMS_TO_TICKS(100)) == pdTRUE)
         {

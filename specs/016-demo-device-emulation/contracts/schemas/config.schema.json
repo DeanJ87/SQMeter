@@ -467,6 +467,30 @@
                 "title"
               ],
               "additionalProperties": false
+            },
+            "dew_suspected": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -636,6 +660,14 @@
         },
         "rainSensorRequired": {
           "type": "boolean"
+        },
+        "rainNeedsCloud": {
+          "type": "boolean"
+        },
+        "rainNeedsCloudPercent": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
         },
         "rainUnsafeEnabled": {
           "type": "boolean"

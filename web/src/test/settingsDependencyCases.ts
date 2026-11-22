@@ -1,5 +1,6 @@
 import { mockConfig } from '../mocks/data';
 import type { DepFacts } from '../lib/settingsDeps';
+import { RAIN_NEEDS_CLOUD_CASES } from './rainNeedsCloudCases';
 
 // One row per catalogued dependency the Settings UI shows (specs/020-settings-dependencies, FR-013b);
 // used by components/__tests__/SettingsDependencies.test.tsx.
@@ -393,4 +394,5 @@ export const CASES: Case[] = [
     fixLabel: 'WiFi settings',
     fixTab: 'Network',
   },
+  ...RAIN_NEEDS_CLOUD_CASES,
 ];

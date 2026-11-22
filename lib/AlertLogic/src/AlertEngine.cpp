@@ -13,9 +13,6 @@ namespace SQM
             // Hysteresis bands so a reading hovering on a threshold doesn't
             // re-trigger the same condition.
             constexpr float DEW_HYSTERESIS_C = 0.5f;
-            // Below this the rate prints as 0.00 mm/h: the RG-15 latches rain
-            // on its first drops (accumulation) before it reports a rate.
-            constexpr float RAIN_RATE_SHOWN_MM_PER_HOUR = 0.005f;
 
             Alert make(AlertType type, std::string title, std::string message)
             {
@@ -120,6 +117,7 @@ namespace SQM
                 "charge_complete",
                 "charge_fault",
                 "battery_rule",
+                "dew_suspected",
             };
             static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == ALERT_TYPE_COUNT, "a name for every AlertType");
             const size_t index = static_cast<size_t>(type);
@@ -273,43 +271,6 @@ namespace SQM
                     }
                     else
                         alerts.push_back(make(AlertType::Safe, "Observatory safe", "All enabled safety rules pass."));
-                }
-            }
-        }
-
-        void AlertEngine::updateRain(const AlertInputs &in, const AlertRules &rules, const Step &step, std::vector<Alert> &alerts)
-        {
-            // Rain
-            if (in.rainEnabled)
-            {
-                if (sync(rain, in.raining, step.emit(rules.onRain)))
-                {
-                    if (in.raining)
-                    {
-                        // Sent at once, with or without a rate yet: rain is the
-                        // most urgent alert.
-                        const bool firstDrops = in.rainRateMmPerHour < RAIN_RATE_SHOWN_MM_PER_HOUR;
-                        alerts.push_back(
-                            firstDrops ? make(AlertType::RainStarted, "Rain detected", "The rain sensor reports the first drops of rain.")
-                                       : make(
-                                             AlertType::RainStarted,
-                                             "Rain detected",
-                                             format("The rain sensor reports rain (%.2f mm/h).", in.rainRateMmPerHour)));
-                        // {rain_rate} stays a number ("0.00" on the first drops)
-                        // so custom templates still read.
-                        alerts.back().vars = {{"rain_rate", format("%.2f", firstDrops ? 0.0 : in.rainRateMmPerHour)}};
-                    }
-                    else
-                        alerts.push_back(make(AlertType::RainStopped, "Rain cleared", "No rain for the configured rain clear delay."));
-                }
-
-                if (sync(lens, in.lensFault, step.emit(rules.onSensorFault, rules.sensorFaultDelaySeconds)) && in.lensFault)
-                {
-                    alerts.push_back(make(
-                        AlertType::LensFault,
-                        "Rain sensor lens fault",
-                        "The rain sensor reports a lens fault. Clean or inspect the lens."));
-                    alerts.back().vars = {{"sensor", "RG-15 lens"}};
                 }
             }
         }
@@ -576,6 +537,7 @@ namespace SQM
             add("safety", safety, 0);
             add("rain", rain, 0);
             add("lens", lens, rules.sensorFaultDelaySeconds);
+            add("dew_suspected", dewSuspected, rules.sensorFaultDelaySeconds);
             for (size_t i = 0; i < SENSOR_COUNT; ++i)
                 add(std::string("sensor:") + (sensorNames[i] != nullptr ? sensorNames[i] : ""), sensors[i], rules.sensorFaultDelaySeconds);
             add("dew", dew, 0);

@@ -12,10 +12,10 @@ import { getJson } from '../../lib/api';
 import SafetyBatteryGroup from './SafetyBatteryGroup';
 
 type NumericKey = {
-  [K in keyof AlpacaConfig]-?: AlpacaConfig[K] extends number ? K : never;
+  [K in keyof AlpacaConfig]-?: NonNullable<AlpacaConfig[K]> extends number ? K : never;
 }[keyof AlpacaConfig];
 type BoolKey = {
-  [K in keyof AlpacaConfig]-?: AlpacaConfig[K] extends boolean ? K : never;
+  [K in keyof AlpacaConfig]-?: NonNullable<AlpacaConfig[K]> extends boolean ? K : never;
 }[keyof AlpacaConfig];
 
 const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, error, hw, status, deps, fix }) => {
@@ -42,6 +42,7 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
     enabledKey,
     valueKey,
     label,
+    valueLabel,
     unit,
     min,
     max,
@@ -51,13 +52,14 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
     enabledKey: BoolKey;
     valueKey?: NumericKey;
     label: string;
+    valueLabel?: string; // the limit's own name, when it isn't the rule's
     unit?: string;
     min?: number;
     max?: number;
     step?: number;
     hint?: ComponentChildren;
   }) => {
-    const on = alpaca[enabledKey];
+    const on = Boolean(alpaca[enabledKey]);
     const entry = deps.get(`alpaca.${enabledKey}`);
     return (
       <div class="rule-row">
@@ -73,14 +75,14 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
         {valueKey && (
           <NumberInput
             dataField={`alpaca.${valueKey}`}
-            value={alpaca[valueKey]}
+            value={alpaca[valueKey] ?? 0}
             min={min}
             max={max}
             step={step}
             unit={unit}
             disabled={!on}
             error={error(`alpaca.${valueKey}`)}
-            ariaLabel={label}
+            ariaLabel={valueLabel ?? label}
             onChange={(v) => set(valueKey, v)}
           />
         )}
@@ -184,6 +186,19 @@ const SafetyTab: FunctionalComponent<SettingsTabProps> = ({ config, update, erro
             label: t('settings.safety.unsafeIfTheRainSensor'),
             hint: t('settings.safety.noReplyStaleReadingsOr'),
           })}
+          {/* Rain needs cloud (spec 036): needs the rain sensor and the IR sky sensor (D-52). */}
+          {config.alpaca?.rainNeedsCloud !== undefined &&
+            rule({
+              enabledKey: 'rainNeedsCloud',
+              valueKey: 'rainNeedsCloudPercent',
+              label: t('settings.safety.rainNeedsCloud'),
+              valueLabel: t('settings.safety.cloudToConfirmRain'),
+              unit: '%',
+              min: 1,
+              max: 100,
+              step: 1,
+              hint: t('settings.safety.rainNeedsCloudHint'),
+            })}
         </Group>
 
         <Group title={t('settings.safety.wind')}>

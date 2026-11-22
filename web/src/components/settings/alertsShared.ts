@@ -100,6 +100,7 @@ const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = 
   power_restored: { title: t('settings.alerts.powerRestoredTitle'), message: t('settings.alerts.powerRestoredMessage') },
   charge_complete: { title: t('settings.alerts.chargeCompleteTitle'), message: t('settings.alerts.chargeCompleteMessage') },
   charge_fault: { title: t('settings.alerts.chargeFaultTitle'), message: t('settings.alerts.chargeFaultMessage') },
+  dew_suspected: { title: t('settings.alerts.dewSuspectedTitle'), message: t('settings.alerts.dewSuspectedMessage') },
 };
 
 // "Dark and clear" only when sky alerts wait for darkness, as on the device.

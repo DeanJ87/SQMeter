@@ -29,14 +29,55 @@ namespace SQM
                 addReason(result, flag, buffer);
             }
 
+            // The RG-15 reports no rate for the first drops and the hold-off.
+            constexpr float RAIN_RATE_SHOWN_MM_PER_HOUR = 0.005f;
+
+            // Each reason says why the rain counts, with the values (spec 036 FR-008).
+            void addRainReason(SafetyResult &result, const SafetyInputs &in, const SafetyThresholds &t)
+            {
+                switch (in.rainClass)
+                {
+                case RainClass::Cloud:
+                    addReasonf(
+                        result,
+                        UnsafeRain,
+                        "Rain %.2f mm/h with cloud %.0f%% >= %.0f%%",
+                        in.rainRateMmPerHour,
+                        in.cloudCoverPercent,
+                        t.rainNeedsCloudPercent);
+                    break;
+                case RainClass::NoSkyReading:
+                    addReasonf(result, UnsafeRain, "Rain %.2f mm/h with no cloud reading", in.rainRateMmPerHour);
+                    break;
+                case RainClass::Held:
+                    addReasonf(result, UnsafeRain, "Rain %.2f mm/h, held until dry", in.rainRateMmPerHour);
+                    break;
+                default:
+                    if (in.rainRateMmPerHour >= RAIN_RATE_SHOWN_MM_PER_HOUR)
+                        addReasonf(result, UnsafeRain, "Rain %.2f mm/h", in.rainRateMmPerHour);
+                    else
+                        addReason(result, UnsafeRain, "Rain detected");
+                    break;
+                }
+            }
+
             // Rain first and regardless of the other sensors' freshness - a
             // stale sky sensor must never hide the fact that it's raining.
+            // Only Rain needs cloud's healthy clear-sky reading can class it
+            // as dew (spec 036, Principle I).
             void checkRain(SafetyResult &result, const SafetyInputs &in, const SafetyThresholds &t)
             {
                 if (!in.rainSensorEnabled)
                     return;
-                if (t.rainUnsafeEnabled && in.raining)
-                    addReason(result, UnsafeRain, "Rain detected");
+                const bool dew = in.raining && in.rainClass == RainClass::DewSuspected;
+                if (dew)
+                {
+                    result.dewSuspected = true;
+                    result.rainRateMmPerHour = in.rainRateMmPerHour;
+                    result.cloudCoverPercent = in.cloudCoverPercent;
+                }
+                if (t.rainUnsafeEnabled && in.raining && !dew)
+                    addRainReason(result, in, t);
                 if (t.rainSensorRequired && !in.rainSensorHealthy)
                     addReason(result, UnsafeRainSensorFault, "Rain sensor offline, stale or reporting a lens fault");
             }
@@ -171,6 +212,15 @@ namespace SQM
                 }
             }
         } // namespace
+
+        void applyRainTrust(SafetyInputs &in, const SafetyThresholds &t, RainTrustLatch &latch)
+        {
+            RainEvidence evidence;
+            evidence.raining = in.rainSensorEnabled && in.raining;
+            evidence.skyUsable = in.skyCloudUsable;
+            evidence.cloudCoverPercent = in.cloudCoverPercent;
+            in.rainClass = latch.update(evidence, {t.rainNeedsCloud, t.rainNeedsCloudPercent});
+        }
 
         SafetyResult evaluateSafety(const SafetyInputs &in, const SafetyThresholds &t)
         {

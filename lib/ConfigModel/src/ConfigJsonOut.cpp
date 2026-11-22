@@ -233,6 +233,8 @@ namespace SQM
             alpaca["dewpointMarginMinC"] = a.dewpointMarginMinC;
             alpaca["rainUnsafeEnabled"] = a.rainUnsafeEnabled;
             alpaca["rainSensorRequired"] = a.rainSensorRequired;
+            alpaca["rainNeedsCloud"] = a.rainNeedsCloud;
+            alpaca["rainNeedsCloudPercent"] = a.rainNeedsCloudPercent;
             alpaca["safeDelaySeconds"] = a.safeDelaySeconds;
             alpaca["unsafeDelaySeconds"] = a.unsafeDelaySeconds;
             alpaca["windSpeedUnsafeEnabled"] = a.windSpeedUnsafeEnabled;

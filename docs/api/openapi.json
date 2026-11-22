@@ -700,7 +700,7 @@
           "Safety"
         ],
         "summary": "Safety verdict",
-        "description": "The verdict served to Alpaca clients as `IsSafe`, with the reasons and the safe-delay countdown. Key on `safe` and `reasonFlags`; `reasons` is English text that may be reworded.\n\nOpen: Read-only verdict and reasons.",
+        "description": "The verdict served to Alpaca clients as `IsSafe`, with the reasons and the safe-delay countdown. Key on `safe` and `reasonFlags`; `reasons` is English text that may be reworded. `dewSuspected` (spec 036): with Rain needs cloud on, the rain sensor reports rain under a healthy clear sky; it is not an unsafe reason, and `dew` gives the rain intensity, cloud cover and age while it lasts.\n\nOpen: Read-only verdict and reasons.",
         "security": [],
         "responses": {
           "200": {
@@ -721,6 +721,7 @@
                   "rulesNotInEffect": [],
                   "evaluatedAgeMs": 0,
                   "changedAgeMs": 2005,
+                  "dewSuspected": false,
                   "holds": []
                 }
               }
@@ -1991,7 +1992,8 @@
                 "battery_shutdown",
                 "power_restored",
                 "charge_complete",
-                "charge_fault"
+                "charge_fault",
+                "dew_suspected"
               ]
             }
           },
@@ -3443,6 +3445,30 @@
                       "title"
                     ],
                     "additionalProperties": false
+                  },
+                  "dew_suspected": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -3612,6 +3638,14 @@
               },
               "rainSensorRequired": {
                 "type": "boolean"
+              },
+              "rainNeedsCloud": {
+                "type": "boolean"
+              },
+              "rainNeedsCloudPercent": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
               },
               "rainUnsafeEnabled": {
                 "type": "boolean"
@@ -4725,6 +4759,24 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "dew_suspected": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false
@@ -4840,6 +4892,14 @@
               },
               "rainSensorRequired": {
                 "type": "boolean"
+              },
+              "rainNeedsCloud": {
+                "type": "boolean"
+              },
+              "rainNeedsCloudPercent": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
               },
               "rainUnsafeEnabled": {
                 "type": "boolean"
@@ -5684,6 +5744,29 @@
               "changedAgeMs": {
                 "type": "number"
               },
+              "dew": {
+                "type": "object",
+                "properties": {
+                  "cloudCoverPercent": {
+                    "type": "number"
+                  },
+                  "rainIntensity": {
+                    "type": "number"
+                  },
+                  "sinceAgeMs": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "cloudCoverPercent",
+                  "rainIntensity",
+                  "sinceAgeMs"
+                ],
+                "additionalProperties": false
+              },
+              "dewSuspected": {
+                "type": "boolean"
+              },
               "evaluatedAgeMs": {
                 "type": "number"
               },
@@ -6097,6 +6180,29 @@
           },
           "changedAgeMs": {
             "type": "number"
+          },
+          "dew": {
+            "type": "object",
+            "properties": {
+              "cloudCoverPercent": {
+                "type": "number"
+              },
+              "rainIntensity": {
+                "type": "number"
+              },
+              "sinceAgeMs": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "cloudCoverPercent",
+              "rainIntensity",
+              "sinceAgeMs"
+            ],
+            "additionalProperties": false
+          },
+          "dewSuspected": {
+            "type": "boolean"
           },
           "evaluatedAgeMs": {
             "type": "number"

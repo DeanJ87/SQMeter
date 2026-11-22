@@ -126,7 +126,8 @@ namespace SQM
                       &a.cloudedOver,
                       &a.clientLost,
                       &a.clientBack,
-                      &a.clientDisconnected})
+                      &a.clientDisconnected,
+                      &a.dewSuspected})
                     if (e->level == level)
                         return true;
                 return false;
@@ -175,6 +176,8 @@ namespace SQM
                     "D-37",
                     a.clientDisconnected.level != 0,
                     {event(a.clientDisconnected), alpacaOn});
+                // Rain needs cloud (spec 036): only the rain sensor's dew raises it.
+                c.add("alerts.events.dew_suspected.level", "D-05", a.dewSuspected.level != 0, {event(a.dewSuspected), rainOn});
             }
 
             void addAlertOptions(const Context &c)
@@ -234,6 +237,14 @@ namespace SQM
                 const Shown ignored{Unmet::Inactive, true};
                 c.add("alpaca.rainUnsafeEnabled", "D-15", s.rainUnsafeEnabled, {rainOn}, ignored);
                 c.add("alpaca.rainSensorRequired", "D-15", s.rainSensorRequired, {rainOn}, ignored);
+                // Rain needs cloud (spec 036): without the rain sensor there is
+                // nothing to confirm; without the IR sky sensor rain always counts.
+                c.add(
+                    "alpaca.rainNeedsCloud",
+                    "D-52",
+                    s.rainNeedsCloud,
+                    {{"D-52", "rain-off", c.cfg.rain.enabled}, {"D-52", "infrared-missing", c.f.infraredDetected}},
+                    Shown{Unmet::Inactive, false});
                 const Link windOn{"D-16", "wind-off", c.cfg.wind.enabled};
                 c.add("alpaca.windSpeedUnsafeEnabled", "D-16", s.windSpeedUnsafeEnabled, {windOn}, FAIL_SAFE);
                 c.add("alpaca.windGustUnsafeEnabled", "D-16", s.windGustUnsafeEnabled, {windOn}, FAIL_SAFE);

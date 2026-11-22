@@ -235,9 +235,10 @@ void test_battery_alerts_part()
     TEST_ASSERT_FALSE(deserializeJson(doc, c.alertsToJson(false, Config::AlertsPart::Battery)));
     TEST_ASSERT_EQUAL(1, doc.as<JsonObject>().size());
     JsonObject events = doc["events"];
-    TEST_ASSERT_EQUAL(6, events.size());
+    TEST_ASSERT_EQUAL(7, events.size()); // and dew_suspected (spec 036)
     for (const char *key : EVENT_KEYS)
         TEST_ASSERT_FALSE_MESSAGE(events[key].isNull(), key);
+    TEST_ASSERT_FALSE(events["dew_suspected"].isNull());
 
     // As ConfigStore loads them, all three parts spliced into the main document.
     c.alerts.batteryLow = {3, "bike", "Low {battery}", "Left {battery_time_left}"};

@@ -97,7 +97,12 @@ const rainStatusOf = (rain: Rain) => {
 
 const rainedText = (rain: Rain) => (rain.raining ? t('dashboard.yes') : rain.status === 'ok' ? t('dashboard.no') : '--');
 
-export const RainCard: FunctionalComponent<{ rain: Rain; config: Config | null }> = ({ rain, config }) => {
+// dewSuspected: Rain needs cloud classed this rain as dew (spec 036, safety.dewSuspected).
+export const RainCard: FunctionalComponent<{ rain: Rain; config: Config | null; dewSuspected?: boolean }> = ({
+  rain,
+  config,
+  dewSuspected = false,
+}) => {
   // The device reports rain in mm; show it in the units the RG-15 is set to.
   const imperialRain = config?.rain?.units === 'imperial';
   const rainUnits = imperialRain ? { depth: 'in', intensity: 'in/hr' } : { depth: 'mm', intensity: 'mm/hr' };
@@ -120,8 +125,9 @@ export const RainCard: FunctionalComponent<{ rain: Rain; config: Config | null }
         <MetricTile label={t('dashboard.event')} value={formatNumber(rainValue(rain.eventAccumulation), 2)} unit={rainUnits.depth} />
         <MetricTile label={t('dashboard.daily')} value={formatNumber(rainValue(rain.totalAccumulation), 2)} unit={rainUnits.depth} />
       </div>
-      {(rain.lensFault || rain.emitterSaturated) && (
+      {(rain.lensFault || rain.emitterSaturated || dewSuspected) && (
         <div class="warning-list">
+          {dewSuspected && <span data-inventory="rain-dew">{t('dashboard.dewSuspected')}</span>}
           {rain.lensFault && <span>{t('dashboard.lensFaultCleanOrInspect')}</span>}
           {rain.emitterSaturated && <span>{t('dashboard.emitterSaturationDetected')}</span>}
         </div>

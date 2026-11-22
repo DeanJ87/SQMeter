@@ -446,6 +446,10 @@ void test_battery_pin_validation();
 void test_battery_alerts_part();
 void test_battery_worst_cases_fit();
 void test_battery_rule_limit_follows_critical();
+void test_rain_needs_cloud_defaults_off_at_ten_percent();
+void test_rain_needs_cloud_round_trips();
+void test_rain_needs_cloud_missing_from_older_config_loads_off();
+void test_rain_needs_cloud_level_range();
 
 int main()
 {
@@ -490,5 +494,9 @@ int main()
     RUN_TEST(test_battery_alerts_part);
     RUN_TEST(test_battery_worst_cases_fit);
     RUN_TEST(test_battery_rule_limit_follows_critical);
+    RUN_TEST(test_rain_needs_cloud_defaults_off_at_ten_percent);
+    RUN_TEST(test_rain_needs_cloud_round_trips);
+    RUN_TEST(test_rain_needs_cloud_missing_from_older_config_loads_off);
+    RUN_TEST(test_rain_needs_cloud_level_range);
     return UNITY_END();
 }
