@@ -46,6 +46,9 @@
     "username": "admin",
     "password": ""
   },
+  "sharing": {
+    "secrets": false
+  },
   "ntp": {
     "enabled": true,
     "server1": "pool.ntp.org",

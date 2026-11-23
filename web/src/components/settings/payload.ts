@@ -3,6 +3,7 @@ import {
   defaultAlpacaConfig,
   defaultAuthConfig,
   defaultBatteryConfig,
+  defaultSharingConfig,
   defaultBleConfig,
   defaultCloudDetectionConfig,
   defaultDisplayConfig,
@@ -99,6 +100,8 @@ export const toConfigPayload = (source: Config): Config => {
     wind: { ...defaultWindConfig, ...source.wind },
     location: { ...defaultLocationConfig, ...source.location },
     display: { ...defaultDisplayConfig, ...source.display, pages: [...(source.display?.pages ?? defaultDisplayConfig.pages)] },
+    // Only to firmware that has it (spec 037).
+    ...(source.sharing ? { sharing: { ...defaultSharingConfig, ...source.sharing } } : {}),
     // Only to firmware that has it (spec 032).
     ...(source.battery ? { battery: { ...defaultBatteryConfig, ...source.battery } } : {}),
   };

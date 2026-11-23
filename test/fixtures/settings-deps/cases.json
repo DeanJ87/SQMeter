@@ -2080,6 +2080,42 @@
           "reason": "rain-off"
         }
       }
+    },
+    {
+      "name": "D-53 password sharing without a device password",
+      "config": {
+        "sharing": {
+          "secrets": true
+        }
+      },
+      "expect": {
+        "sharing.secrets": {
+          "state": "inactive",
+          "id": "D-53",
+          "reason": "no-web-password",
+          "text": "Set a device password",
+          "fix": "device#security"
+        }
+      }
+    },
+    {
+      "name": "D-53 met",
+      "config": {
+        "sharing": {
+          "secrets": true
+        },
+        "auth": {
+          "enabled": true,
+          "username": "admin",
+          "password": "secret"
+        }
+      },
+      "expect": {
+        "sharing.secrets": {
+          "state": "active",
+          "id": "D-53"
+        }
+      }
     }
   ]
 }

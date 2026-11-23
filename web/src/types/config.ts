@@ -188,6 +188,7 @@ export interface Config {
   mqtt: MQTTConfig;
   ota: OTAConfig;
   auth: AuthConfig;
+  sharing?: SharingConfig; // older firmware has none (spec 037)
   ntp: NTPConfig;
   gps: GPSConfig;
   sensor: SensorConfig;
@@ -205,6 +206,11 @@ export interface Config {
   location?: LocationConfig;
   display?: DisplayConfig; // older firmware has none
   battery?: BatteryConfig; // older firmware has none
+}
+
+// What this device hands to a paired device (spec 037): GET /api/secrets.
+export interface SharingConfig {
+  secrets: boolean;
 }
 
 export interface LocationConfig {

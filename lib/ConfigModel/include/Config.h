@@ -70,6 +70,14 @@ namespace SQM
         std::string password;
     };
 
+    // What this device hands to a paired device (spec 037). Off by default.
+    struct SharingConfig
+    {
+        // GET /api/secrets: the MQTT password, ntfy token and Pushover keys,
+        // to a correct login while a device password is set.
+        bool secrets = false;
+    };
+
     struct NTPConfig
     {
         bool enabled;
@@ -360,6 +368,7 @@ namespace SQM
         MQTTConfig mqtt;
         OTAConfig ota;
         AuthConfig auth;
+        SharingConfig sharing;
         NTPConfig ntp;
         GPSConfig gps;
         RainConfig rain;

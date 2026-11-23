@@ -1000,6 +1000,10 @@
       "reason": "Doesn't affect safety or alerts; shown on its Settings row"
     },
     {
+      "match": "deps.D-53",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
       "match": "deps.D-36",
       "reason": "Doesn't affect safety or alerts; shown on its Settings row"
     },

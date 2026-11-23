@@ -25,6 +25,7 @@
 #include "SafetyStatus.h"
 #include "BleService.h"
 #include "ConfigBackup.h"
+#include "SharedSecrets.h"
 #include "WebStallMonitor.h"
 #include <atomic>
 #include <ESPAsyncWebServer.h>
@@ -234,6 +235,10 @@ namespace SQM
         void restoreHolds();
         static void storeHolds(const std::string &stored);
         void setupHoldRoutes();
+        // Passwords for a paired device (specs/037-share-secrets, src/WebServerSecrets.cpp).
+        SharedSecrets::LoginLock secretsLoginLock;
+        void setupSecretsRoutes();
+        void handleGetSecrets(AsyncWebServerRequest *request);
         void subscribeHoldCommands();
         void handleHold(AsyncWebServerRequest *request);
         Core::HoldOutcome runHoldCommand(const Core::HoldCommand &command);

@@ -51,7 +51,8 @@
     "language-offline": { "text": "Needs WiFi to download - or upload the file", "fix": "network#wifi" },
     "ota-no-password": { "text": "Set an upload password", "fix": "device#security" },
     "display-missing": { "text": "No display detected", "fix": "device#display" },
-    "battery-missing": { "text": "No battery gauge detected", "fix": "device#battery" }
+    "battery-missing": { "text": "No battery gauge detected", "fix": "device#battery" },
+    "no-web-password": { "text": "Set a device password", "fix": "device#security" }
   },
   "entries": [
     { "id": "D-01", "class": "dependency", "kind": "setting", "settings": ["alerts.mqtt.enabled"], "dependsOn": "MQTT on", "reasons": ["mqtt-off"] },
@@ -105,6 +106,7 @@
     { "id": "D-49", "class": "dependency", "kind": "setting", "neutral": true, "settings": ["mqtt.publish.battery"], "dependsOn": "MQTT on and a fuel gauge (spec 032)", "reasons": ["mqtt-off", "battery-missing"] },
     { "id": "D-50", "class": "dependency", "kind": "setting", "neutral": true, "settings": ["alpaca.batteryPhoneAlarm"], "dependsOn": "Bluetooth build, Bluetooth on, passkey set, at least one paired phone, as D-08 (spec 032)", "reasons": ["ble-build", "ble-off", "no-passkey", "no-phones"] },
     { "id": "D-51", "class": "constraint", "kind": "feature", "settings": ["battery.alertPin", "battery.stat1Pin", "battery.stat2Pin", "battery.pgPin"], "dependsOn": "Battery pins: none (255) or valid, different GPIOs; the charger's STAT1, STAT2 and PG together or not at all; not used by I2C-1, I2C-2, GPS, the rain sensor, the anemometer or the display button; PG able to wake the device (spec 032)", "reasons": [], "messages": ["Battery: pins must be valid and different", "Battery: set all three charger pins or none", "Battery: pin is already in use", "Battery: the USB power pin must be able to wake the device"] },
-    { "id": "D-52", "class": "dependency", "kind": "setting", "runtime": true, "unmet": "inactive", "settings": ["alpaca.rainNeedsCloud"], "dependsOn": "Rain sensor on and the IR sky sensor (MLX90614) detected; without it rain always counts (spec 036)", "reasons": ["rain-off", "infrared-missing"] }
+    { "id": "D-52", "class": "dependency", "kind": "setting", "runtime": true, "unmet": "inactive", "settings": ["alpaca.rainNeedsCloud"], "dependsOn": "Rain sensor on and the IR sky sensor (MLX90614) detected; without it rain always counts (spec 036)", "reasons": ["rain-off", "infrared-missing"] },
+    { "id": "D-53", "class": "dependency", "kind": "setting", "settings": ["sharing.secrets"], "dependsOn": "Password protection on with a device password; without it nothing is shared (spec 037)", "reasons": ["no-web-password"] }
   ]
 }

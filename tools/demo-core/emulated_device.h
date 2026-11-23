@@ -156,6 +156,10 @@ public:
     // Returns {status, body} like the device.
     std::string holdRequest(const std::string &method, const std::string &path, const std::string &body, const std::string &source);
 
+    // GET /api/secrets (specs/037-share-secrets): the device's refusals and
+    // answer. The demo has no login, so a correct one is assumed.
+    std::string secretsRequest() const;
+
 private:
     int64_t validEpoch() const { return epoch >= Core::CLOCK_VALID_EPOCH ? epoch : 0; }
 

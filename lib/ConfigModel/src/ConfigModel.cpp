@@ -38,6 +38,7 @@ namespace SQM
             cfg.auth.enabled = false;
             cfg.auth.username = "admin";
             cfg.auth.password = "";
+            cfg.sharing = SharingConfig{};
         }
 
         void defaultTime(Config &cfg, const BoardProfile &board)

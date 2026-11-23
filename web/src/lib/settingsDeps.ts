@@ -271,6 +271,7 @@ const addDevice = (c: Context) => {
   c.add('ble.enabled', 'D-30', bleEnabled, [bleBuild, bleRunning]);
   c.add('ble.phoneAlarm', 'D-31', read(c.config, 'ble.passkey', '') !== '', [bleBuild, ['D-31', 'ble-off', bleEnabled], bleRunning]);
   c.add('ota.enabled', 'D-32', on(c.config, 'ota.enabled'), [['D-32', 'ota-no-password', read(c.config, 'ota.password', '') !== '']]);
+  c.add('sharing.secrets', 'D-53', on(c.config, 'sharing.secrets'), [['D-53', 'no-web-password', on(c.config, 'auth.enabled')]]); // D-34: on means a password
   c.add('wifi.mdns', 'D-36', on(c.config, 'wifi.mdns', true), [['D-36', 'wifi-disconnected', c.fact('wifiConnected')]]);
   c.add('wifi.ipv6', 'D-36', on(c.config, 'wifi.ipv6', true), [['D-36', 'wifi-disconnected', c.fact('wifiConnected')]]);
   // A non-English language needs its file: stored, or downloadable over WiFi (a hand upload works offline).

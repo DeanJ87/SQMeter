@@ -1,11 +1,11 @@
 {
-  "esp32dev": 1563456,
-  "esp32dev-ble": 1755840,
-  "esp32s3-eth": 1576512,
-  "esp32s3-eth-ble": 1766320,
-  "esp32s3-zero": 1574496,
-  "esp32s3-zero-ble": 1764320,
-  "esp32s3-zero8": 1576528,
-  "esp32s3-zero8-ble": 1766336,
-  "overBudgetReason": "Safety holds (spec 035): about 14-20 KB of hold routes, MQTT command, NVS storage and history; Rain needs cloud (spec 036): about 5.5 KB of the rain rule, dew flag, alert and HA entity. The 4 MB Bluetooth builds go over 95% of their app slot (esp32dev-ble 95.7%, esp32s3-zero-ble 96.1%)."
+  "esp32dev": 1566400,
+  "esp32dev-ble": 1758752,
+  "esp32s3-eth": 1579456,
+  "esp32s3-eth-ble": 1769232,
+  "esp32s3-zero": 1577440,
+  "esp32s3-zero-ble": 1767232,
+  "esp32s3-zero8": 1579472,
+  "esp32s3-zero8-ble": 1769248,
+  "overBudgetReason": "Safety holds (spec 035): about 14-20 KB of hold routes, MQTT command, NVS storage and history; Rain needs cloud (spec 036): about 5.5 KB of the rain rule, dew flag, alert and HA entity; Share passwords (spec 037): about 3 KB of the /api/secrets route, its setting and login lock. The 4 MB Bluetooth builds go over 95% of their app slot (esp32dev-ble 95.8%, esp32s3-zero-ble 96.3%)."
 }

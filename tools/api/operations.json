@@ -349,6 +349,81 @@
         "500": "error"
       }
     },
+    "GET /api/secrets": {
+      "tag": "Settings",
+      "summary": "Passwords for a paired device",
+      "description": "The MQTT password, ntfy token and Pushover keys as stored (`\"\"` when not set), so a paired device such as RoofRoof can copy them with the other settings. Nothing else is ever included. Answers only while `sharing.secrets` is on (403 `Password sharing is off in SQMeter`) and a device password is set (403 `Set a web password in SQMeter before sharing passwords`); then the login is always needed (401). Five failed logins in a row lock it for a minute (429 with `Retry-After`). Every answer carries `Cache-Control: no-store`. Plain HTTP: anyone who can see the LAN traffic can read the values.",
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "mqtt": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "description": "As stored; \"\" when not set."
+                  }
+                },
+                "required": [
+                  "password"
+                ],
+                "additionalProperties": false
+              },
+              "alerts": {
+                "type": "object",
+                "properties": {
+                  "ntfy": {
+                    "type": "object",
+                    "properties": {
+                      "token": {
+                        "type": "string",
+                        "description": "As stored; \"\" when not set."
+                      }
+                    },
+                    "required": [
+                      "token"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "pushover": {
+                    "type": "object",
+                    "properties": {
+                      "userKey": {
+                        "type": "string",
+                        "description": "As stored; \"\" when not set."
+                      },
+                      "appToken": {
+                        "type": "string",
+                        "description": "As stored; \"\" when not set."
+                      }
+                    },
+                    "required": [
+                      "userKey",
+                      "appToken"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "ntfy",
+                  "pushover"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "mqtt",
+              "alerts"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "403": "error",
+        "429": "error"
+      }
+    },
     "POST /api/restart": {
       "tag": "Device",
       "summary": "Restart",
