@@ -47,9 +47,12 @@ namespace SQM
         }
 
         // A device password is set (refusal above), so this asks for a login.
+        // Only a wrong login counts towards the lock; a bare request guesses nothing.
+        const bool loginAttempt =
+            request->hasHeader("Authorization") && SharedSecrets::isLoginAttempt(request->header("Authorization").c_str());
         if (!requireAuth(request))
         {
-            if (secretsLoginLock.failed(now))
+            if (loginAttempt && secretsLoginLock.failed(now))
                 Logger::warn(
                     SECRETS_TAG,
                     "Password sharing locked for a minute after failed logins from %s",

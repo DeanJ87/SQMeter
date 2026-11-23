@@ -183,6 +183,39 @@ void test_lock_survives_the_millis_wrap()
     TEST_ASSERT_EQUAL_UINT32(0, lock.retryAfterSeconds(start));
 }
 
+void test_only_basic_credentials_count_as_a_login_attempt()
+{
+    TEST_ASSERT_FALSE(isLoginAttempt(nullptr));
+    TEST_ASSERT_FALSE(isLoginAttempt(""));
+    TEST_ASSERT_FALSE(isLoginAttempt("Basic"));
+    TEST_ASSERT_FALSE(isLoginAttempt("Basic "));
+    TEST_ASSERT_FALSE(isLoginAttempt("Bearer abc"));
+    TEST_ASSERT_FALSE(isLoginAttempt("Digest username=\"admin\""));
+    TEST_ASSERT_TRUE(isLoginAttempt("Basic YWRtaW46d3Jvbmc="));
+    TEST_ASSERT_TRUE(isLoginAttempt("basic YWRtaW46d3Jvbmc="));
+}
+
+void test_a_quiet_spell_forgets_old_failures()
+{
+    LoginLock lock;
+    for (int i = 0; i < 4; ++i)
+        lock.failed(0);
+    // Ten quiet minutes: the next miss is the first again, so a host that
+    // misses now and then never locks the paired device out.
+    TEST_ASSERT_FALSE(lock.failed(LoginLock::QUIET_RESET_MS));
+    for (int i = 0; i < 3; ++i)
+        TEST_ASSERT_FALSE(lock.failed(LoginLock::QUIET_RESET_MS + 1000));
+    TEST_ASSERT_TRUE(lock.failed(LoginLock::QUIET_RESET_MS + 2000));
+}
+
+void test_misses_closer_than_the_quiet_spell_still_add_up()
+{
+    LoginLock lock;
+    for (uint32_t i = 0; i < 4; ++i)
+        TEST_ASSERT_FALSE(lock.failed(i * (LoginLock::QUIET_RESET_MS - 1)));
+    TEST_ASSERT_TRUE(lock.failed(4 * (LoginLock::QUIET_RESET_MS - 1)));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -200,5 +233,8 @@ int main(int, char **)
     RUN_TEST(test_success_resets_the_count);
     RUN_TEST(test_after_the_lock_five_more_failures_are_needed);
     RUN_TEST(test_lock_survives_the_millis_wrap);
+    RUN_TEST(test_only_basic_credentials_count_as_a_login_attempt);
+    RUN_TEST(test_a_quiet_spell_forgets_old_failures);
+    RUN_TEST(test_misses_closer_than_the_quiet_spell_still_add_up);
     return UNITY_END();
 }

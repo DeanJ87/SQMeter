@@ -37,24 +37,32 @@ namespace SQM::SharedSecrets
 
     static constexpr const char *TOO_MANY_FAILURES = "Too many failed logins; try again in a minute";
 
-    // Failed logins on this request: five in a row lock it for a minute. One
-    // lock for the device, in RAM. Times are millis(); unsigned differences
-    // keep it right across the 49-day wrap.
+    // A wrong login worth counting: the request sent Basic credentials. A
+    // request without them (a browser's first try, a stray GET from any page
+    // on the LAN) guesses nothing, so it never counts towards the lock.
+    bool isLoginAttempt(const char *authorizationHeader);
+
+    // Wrong logins on this request: five in a row lock it for a minute; ten
+    // quiet minutes without one forget the count. One lock for the device, in
+    // RAM. It throttles this request only, not the device password.
+    // Times are millis(); unsigned differences keep it right across the wrap.
     class LoginLock
     {
     public:
         static constexpr uint8_t MAX_FAILURES = 5;
         static constexpr uint32_t LOCK_MS = 60000;
+        static constexpr uint32_t QUIET_RESET_MS = 600000;
 
         // Seconds until the lock lifts (at least 1), or 0 when not locked.
         // Call it on every request: a lifted lock is forgotten here.
         uint32_t retryAfterSeconds(uint32_t nowMs);
-        // A missing or wrong login. True when this one starts the lock.
+        // A wrong login (isLoginAttempt). True when this one starts the lock.
         bool failed(uint32_t nowMs);
         void succeeded() { failures = 0; }
 
     private:
         uint8_t failures = 0;
+        uint32_t lastFailureMs = 0;
         bool locked = false;
         uint32_t lockedAtMs = 0;
     };

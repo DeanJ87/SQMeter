@@ -1,7 +1,7 @@
 <!--
 Sync Impact Report
 - 1.4.0 -> 1.5.0 (MINOR, spec 037): Principle VI allows one owner opt-in exception to masking:
-  GET /api/secrets returns the MQTT password, ntfy token and Pushover keys to a correct login,
+  one endpoint, GET /api/secrets, returns the MQTT password, ntfy token and Pushover keys to a correct login,
   only while sharing is on and a device password is set; every other answer keeps masking
 - 1.3.1 -> 1.4.0 (MINOR, spec 036): Principle I allows one owner opt-in rain corroboration rule
   ("Rain needs cloud"): rain is always trusted unless the sky sensor is enabled, fresh, healthy
@@ -106,9 +106,10 @@ The device is designed for a trusted LAN and has no TLS of its own.
   `requireAuth`.
 - Secrets (passwords, keys, tokens, passkeys) MUST be masked in API responses and preserved
   when the masked value is sent back. The one exception is an owner opt-in (off by default) for a
-  paired device: one request may return the MQTT password, ntfy token and Pushover keys, only
-  while a device password is set and to a correct login, never cached or logged. No other secret
-  is ever returned unmasked.
+  paired device: one endpoint (`GET /api/secrets`) may return the MQTT password, ntfy token and
+  Pushover keys, only while a device password is set and to a correct login, never cached or
+  logged by SQMeter. No other API response returns a secret unmasked; passphrase-encrypted settings
+  backups are governed separately (spec 033).
 - Nothing may imply the device is safe to expose to the internet.
 - The maintainer's private email address MUST NOT appear in any public file.
 

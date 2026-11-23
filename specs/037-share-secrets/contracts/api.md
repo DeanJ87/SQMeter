@@ -8,7 +8,7 @@ Returns four stored secrets for a paired device (RoofRoof). Checked in this orde
 |---|---|---|---|
 | 1 | `sharing.secrets` is off | 403 | `{"error":"Password sharing is off in SQMeter"}` |
 | 2 | Password protection off, or no password | 403 | `{"error":"Set a web password in SQMeter before sharing passwords"}` |
-| 3 | Five failed logins in a row in the last minute | 429 | `{"error":"Too many failed logins; try again in a minute"}`, header `Retry-After: <seconds>` |
+| 3 | Five wrong logins in a row (Basic credentials sent but wrong; bare requests don't count; 10 quiet minutes reset the count), the last under a minute ago | 429 | `{"error":"Too many failed logins; try again in a minute"}`, header `Retry-After: <seconds>` |
 | 4 | Missing or wrong HTTP Basic login | 401 | the device's standard challenge (`WWW-Authenticate: Basic realm="SQMeter"`) |
 | 5 | Otherwise | 200 | see below |
 

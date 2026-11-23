@@ -340,11 +340,11 @@ Every key is always there; a value that isn't set is `""`. Nothing else is ever 
 |--------|------|---------|
 | 403 | **Share passwords** is off (`sharing.secrets`) | `Password sharing is off in SQMeter` |
 | 403 | Password protection is off, or has no password | `Set a web password in SQMeter before sharing passwords` |
-| 429 | Five failed logins in a row, less than a minute ago (`Retry-After` gives the seconds; the lock is for the device, not per client) | `Too many failed logins; try again in a minute` |
+| 429 | Five wrong logins in a row (Basic credentials that don't match; a request without credentials doesn't count), the last less than a minute ago. `Retry-After` gives the seconds. The lock is for the device, not per client; ten minutes without a wrong login clear the count. It throttles this request only, not guesses at the password on other routes | `Too many failed logins; try again in a minute` |
 | 401 | No username and password, or wrong ones | (the usual login challenge) |
 | 200 | Otherwise | |
 
-Answers carry `Cache-Control: no-store`. The device logs which address the passwords went to, never the values. This is plain HTTP: anyone who can watch the network traffic can read the values, and anything with the device password can ask for them.
+The 200, 403 and 429 answers carry `Cache-Control: no-store`; the 401 is the device's standard login challenge and carries nothing secret. The device logs which address the passwords went to, never the values. This is plain HTTP: anyone who can watch the network traffic can read the values, and anything with the device password can ask for them.
 
 ---
 

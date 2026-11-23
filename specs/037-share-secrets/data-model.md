@@ -34,9 +34,10 @@ device password is allowed; D-53 reports it not in effect.
 
 | Field | Meaning |
 |---|---|
-| `failures` | failed logins in a row (0-5) |
+| `failures` | wrong logins in a row (0-5); only requests that sent Basic credentials (`isLoginAttempt`) |
+| `lastFailureMs` | when the last one came; 10 minutes later the count starts again |
 | `lockedUntilMs` | while `now < lockedUntilMs` the request answers 429 |
 
-Transitions: `failed(now)` adds one; the fifth starts a 60 s lock and resets the count.
+Transitions: `failed(now)` first forgets the count if the last miss was 10 minutes or more ago, then adds one; the fifth starts a 60 s lock and resets the count.
 `succeeded()` resets the count. `retryAfterSeconds(now)` is 0 when not locked, else the whole
 seconds left (at least 1). Times are `millis()`; differences are unsigned, so wrap-around is safe.

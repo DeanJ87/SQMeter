@@ -77,9 +77,11 @@ login gets a refusal without any secret in it.
    asks, **Then** it is refused with "Set a web password in SQMeter before sharing passwords".
 3. **Given** sharing is on and a device password is set, **When** a client asks with no login or a
    wrong one, **Then** it gets the device's usual "password needed" answer.
-4. **Given** a client has failed the login five times in a row, **When** it asks again within a
+4. **Given** a client has sent a wrong login five times in a row, **When** it asks again within a
    minute, **Then** it is told to wait, without the login being checked, and the lock lifts after
    that minute.
+5. **Given** any number of requests without a login, **When** the paired device then asks with
+   the right login, **Then** it gets the values: requests that guess nothing never lock it out.
 
 ---
 
@@ -131,10 +133,13 @@ device password, enabled once one is set, and shows the warning when on.
   device MUST refuse with "Set a web password in SQMeter before sharing passwords" (forbidden).
 - **FR-006**: The request MUST pass the device's existing login check; a missing or wrong login
   gets the existing "password needed" answer.
-- **FR-007**: After five failed logins in a row on this request, the device MUST refuse further
+- **FR-007**: After five wrong logins in a row on this request, the device MUST refuse further
   attempts for 60 seconds without checking the login (too many requests, with the seconds to
-  wait). A successful login resets the count.
-- **FR-008**: Every answer the device builds for this request MUST tell clients not to store it.
+  wait). Only a request that sends Basic credentials which don't match counts; a request without
+  credentials never does. A successful login, or 10 minutes without a wrong login, resets the
+  count.
+- **FR-008**: Every answer the device builds for this request (200, 403, 429) MUST tell clients
+  not to store it; the 401 is the server's standard challenge and carries nothing secret.
 - **FR-009**: The device MUST NOT log any shared value; it MAY log that passwords were shared and
   to which address.
 - **FR-010**: The setting MUST appear in Settings → Device → Security with a "?" explanation of
@@ -195,10 +200,12 @@ device password, enabled once one is set, and shows the warning when on.
 - **"Device password set"** means password protection is on and its password is not empty: the
   same condition under which the device asks for a login at all.
 - **Rate limit**: SQMeter had no failed-login protection. This request gets its own: five failed
-  logins in a row lock it for 60 seconds, device-wide (not per client), forgotten on restart. A
-  request without a login (a browser's first try) counts as a failure. The lock applies to this
-  request only; the device's other password-protected requests are unchanged, so the security page
-  still says there is no general rate limiting.
+  logins in a row lock it for 60 seconds, device-wide (not per client), forgotten on restart or
+  after 10 minutes without a wrong login. Only requests that send Basic credentials count; a
+  request without a login (a browser's first try, a stray request from any page on the LAN) does
+  not, so it can't be used to lock the paired device out. The lock applies to this request only
+  and doesn't protect the password: the device's other password-protected requests are unchanged,
+  and the security page says so.
 - **No https**: SQMeter has no TLS, so the values cross the LAN as plain HTTP. The docs and the
   warning note say so.
 - **Values of channels that are off** are shared as stored, because the client copies settings,

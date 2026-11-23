@@ -1,6 +1,8 @@
 #include "SharedSecrets.h"
 
 #include <ArduinoJson.h>
+#include <cctype>
+#include <cstddef>
 
 namespace SQM::SharedSecrets
 {
@@ -54,6 +56,21 @@ namespace SQM::SharedSecrets
         return json;
     }
 
+    bool isLoginAttempt(const char *authorizationHeader)
+    {
+        if (authorizationHeader == nullptr)
+            return false;
+        // "Basic <credentials>", scheme case-insensitive (RFC 7617).
+        const char *scheme = "basic ";
+        for (size_t i = 0; scheme[i] != '\0'; ++i)
+        {
+            const char ch = authorizationHeader[i];
+            if (ch == '\0' || std::tolower(static_cast<unsigned char>(ch)) != scheme[i])
+                return false;
+        }
+        return authorizationHeader[6] != '\0';
+    }
+
     uint32_t LoginLock::retryAfterSeconds(uint32_t nowMs)
     {
         if (!locked)
@@ -69,6 +86,9 @@ namespace SQM::SharedSecrets
 
     bool LoginLock::failed(uint32_t nowMs)
     {
+        if (failures > 0 && nowMs - lastFailureMs >= QUIET_RESET_MS)
+            failures = 0; // a quiet spell: an old miss no longer counts
+        lastFailureMs = nowMs;
         if (++failures < MAX_FAILURES)
             return false;
         failures = 0;

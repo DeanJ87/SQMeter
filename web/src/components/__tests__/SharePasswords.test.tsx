@@ -65,6 +65,27 @@ describe('Share passwords', () => {
     expect(screen.queryByText(WARNING)).toBeNull();
   });
 
+  it('warns again once password protection is turned back on (D-53)', async () => {
+    mockDevice({ config: { sharing: { secrets: true } } });
+    window.history.replaceState(null, '', '/settings?tab=device');
+    const { container } = render(<Settings />);
+
+    expect(await screen.findByLabelText('Share passwords')).toBeChecked();
+    await waitFor(() => expect(screen.getAllByText(/Set a device password/).length).toBeGreaterThan(0));
+    expect(screen.queryByText(WARNING)).toBeNull();
+
+    fireEvent.click(screen.getByLabelText('Password-protect changes'));
+    const password = await waitFor(() => {
+      const input = container.querySelector<HTMLInputElement>('input[data-field="auth.password"]');
+      expect(input).not.toBeNull();
+      return input!;
+    });
+    fireEvent.input(password, { target: { value: 'observatory-pass' } });
+
+    expect(await screen.findByText(WARNING)).toBeInTheDocument();
+    expect(screen.queryByText(/Set a device password/)).toBeNull();
+  });
+
   it('is not shown for firmware without the setting', async () => {
     const { sharing: _sharing, ...older } = mockConfig;
     server.use(http.get('/api/config', () => HttpResponse.json(older)));

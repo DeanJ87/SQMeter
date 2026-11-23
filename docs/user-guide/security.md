@@ -21,7 +21,7 @@ SQMeter assumes the local network is trusted. The main risks on a typical home o
 SQMeter does **not** defend against:
 
 - An attacker who already has LAN access and captures HTTP traffic (no TLS).
-- Brute-force attacks; there is no rate limiting or account lockout, except on [`/api/secrets`](#password-sharing).
+- Brute-force attacks; there is no rate limiting or account lockout. ([`/api/secrets`](#password-sharing) throttles wrong logins on that one request, which doesn't protect the password: every other protected route still accepts guesses.)
 - Remote internet attackers — do not expose the device to the public internet.
 
 Over IPv6 the device only accepts requests from link-local addresses and its own network prefixes
@@ -103,7 +103,7 @@ RoofRoof, or another device at the same observatory, can copy SQMeter's site set
 
 Nothing else is ever shared: not the WiFi password, the device password, the upload password, the webhook authorization or the Bluetooth passkey.
 
-It is off by default, and it needs password protection on with a password. Without one, the switch can't be turned on, and the request is refused (403 "Set a web password in SQMeter before sharing passwords"). With sharing off the request is refused too (403 "Password sharing is off in SQMeter"). Otherwise every request needs the username and password (401 without them). After five failed logins in a row the request is locked for a minute (429, with `Retry-After`), whoever asks; a restart clears the lock. Answers are marked `Cache-Control: no-store`, and the device log records which address the passwords were shared with, never the values.
+It is off by default, and it needs password protection on with a password. Without one, the switch can't be turned on, and the request is refused (403 "Set a web password in SQMeter before sharing passwords"). With sharing off the request is refused too (403 "Password sharing is off in SQMeter"). Otherwise every request needs the username and password (401 without them). Five wrong logins in a row (requests that send a username and password that don't match; a request with none doesn't count) lock this request for a minute (429, with `Retry-After`), whoever asks; ten minutes without a wrong login, or a restart, clears the count. The lock only throttles this one request. It does **not** protect the device password: every other password-protected route still answers guesses at full speed, so a strong password is what keeps it safe. The 200, 403 and 429 answers are marked `Cache-Control: no-store` (the 401 login challenge carries nothing secret), and the device log records which address the passwords were shared with, never the values.
 
 !!! warning "What turning it on means"
     - **Anything that knows the device password can read these four secrets**, from anywhere on your network. Use a strong device password that nothing else uses.

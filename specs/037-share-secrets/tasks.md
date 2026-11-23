@@ -42,3 +42,9 @@ toggle and D-53.
 ## Dependencies
 
 T001 first; T002 before T004-T011; T005 before T006 and T008; T009 before T011; T012 before T013.
+
+## Phase 6: Review follow-up
+
+- [X] T016 Count only wrong Basic logins towards the lock (`isLoginAttempt`), forget the count after 10 quiet minutes; tests in test/test_shared_secrets
+- [X] T017 Docs say the lock throttles this request only, not the password, and which answers carry `no-store`; constitution wording (one endpoint, passphrase backups governed separately, not cached or logged by SQMeter)
+- [X] T018 Vitest: the warning returns when password protection is turned back on while sharing is on (D-53)

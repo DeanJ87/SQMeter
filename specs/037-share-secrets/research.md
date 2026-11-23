@@ -22,8 +22,12 @@
 
 ## D3. Failed-login protection
 
-- **Decision**: `LoginLock`: five failed logins in a row lock the request for 60 s; a success
-  resets the count; one lock for the device, in RAM.
+- **Decision**: `LoginLock`: five wrong logins in a row lock the request for 60 s; a success or
+  10 minutes without a wrong login resets the count; one lock for the device, in RAM. Only a
+  request that sends Basic credentials counts: a bare request (no `Authorization` header) guesses
+  nothing, and counting it would let any LAN host, or a web page firing requests, keep the paired
+  device locked out. The lock doesn't protect the password (every other `requireAuth` route still
+  takes guesses); it only bounds guessing through this request.
 - **Rationale**: SQMeter has no failed-login protection; a small lock on the one request that
   returns secrets bounds guessing there (SC-005) at no cost to the paired device, which sends the
   right login. Per-client tables need memory and are easy to dodge on a LAN.
