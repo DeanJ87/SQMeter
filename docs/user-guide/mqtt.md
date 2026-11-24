@@ -47,21 +47,22 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels.
 | `<base>/alerts/armed` | Yes | `1` sending alerts, `0` paused | On change and reconnect |
 | `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` resume or pause alerts | Command |
 | `<base>/safety/hold/set` | - | Subscribed: `{"id","reason","source"?,"expiresMin"?}` sets a [safety hold](#safety-holds), `{"id","clear":true}` clears it | Command |
+| `<base>/device` | Yes | Why and when the device last started: `{"resetReason","resetReasonCode","bootCount","bootTime"}` ([below](#restart-reason)) | On connect, and again when the clock first gives the boot time |
 | `<base>/diagnostics` | No | Light-sensor sample counts, RG-15 serial counters (rain sensor on) and the fuel gauge's registers and power policy (with a gauge) - same as `/api/status` → `diagnostics` | Every publish interval, when enabled |
 
 Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 
 <!-- diagram: DIA-09
-sources: src/WebServerStatus.cpp#WebServer::publishMqttReadings src/WebServerAlerts.cpp#WebServer::publishMqttSafety src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
+sources: src/WebServerStatus.cpp#WebServer::publishMqttReadings src/WebServerStatus.cpp#WebServer::publishMqttDevice src/WebServerAlerts.cpp#WebServer::publishMqttSafety src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: 21b88f8378333479
+fingerprint: b202525a2ed9dd5e
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart LR
     accTitle: MQTT topic map
-    accDescr: SQMeter listens on alerts/armed/set and safety/hold/set and publishes state, safe, safety, availability, alerts, alerts/armed and diagnostics under its base topic, plus Home Assistant discovery under the discovery prefix.
+    accDescr: SQMeter listens on alerts/armed/set and safety/hold/set and publishes state, safe, safety, availability, alerts, alerts/armed, device and diagnostics under its base topic, plus Home Assistant discovery under the discovery prefix.
     SET["alerts/armed/set<br/>1/0, on/off, true/false"] -->|command| D["SQMeter"]
     HOLD["safety/hold/set<br/>JSON: set or clear a hold"] -->|command| D
     D --> STATE["state<br/>retained, every publish interval<br/>and on reconnect"]
@@ -70,6 +71,7 @@ flowchart LR
     D --> AVAIL["availability: online or offline<br/>retained, last will"]
     D --> ALERTS["alerts<br/>not retained, one message per alert"]
     D --> ARMED["alerts/armed: 1 sending, 0 paused<br/>retained, on change and reconnect"]
+    D --> DEVICE["device: restart reason and boot time<br/>retained, on connect"]
     D --> DIAG["diagnostics<br/>not retained, every interval, off by default"]
     D --> DISC["homeassistant/.../config<br/>retained, when discovery is on;<br/>the Alerts switch only while alerts can go out"]
 ```
@@ -86,6 +88,7 @@ flowchart LR
     - `availability` - `online`, or `offline` as the last will, retained;
     - `alerts` - one message per alert, not retained (with the MQTT alert channel on);
     - `alerts/armed` - `1` sending / `0` paused, retained, on change and on reconnect;
+    - `device` - why and when the device last started, retained, on connect;
     - `diagnostics` - not retained, every publish interval, only when switched on.
 
     It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to resume or pause alerts, and on `safety/hold/set` (JSON) to set or clear a safety hold.
@@ -105,6 +108,18 @@ Don't retain these messages: a retained set would set the hold again after every
 mosquitto_pub -h <broker-ip> -t sqmeter/safety/hold/set -m '{"id":"smoke","reason":"Smoke: PM2.5 high"}'
 mosquitto_pub -h <broker-ip> -t sqmeter/safety/hold/set -m '{"id":"smoke","clear":true}'
 ```
+
+### Restart reason
+
+`<base>/device` says why and when SQMeter last started, so restarts can be matched against power work, roof runs or weather. It is published after every connection to the broker, whatever the publish switches say:
+
+```json
+{"resetReason": "brownout", "resetReasonCode": 9, "bootCount": 1, "bootTime": "2026-11-24T20:10:12Z"}
+```
+
+- `resetReason`: `poweron`, `external` (reset pin), `software` (a restart, an update or a settings change), `panic` (a crash), `watchdog`, `deepsleep`, `brownout`, `powerglitch`, `cpulockup`, `sdio`, `usb`, `jtag`, `efuse` or `unknown`. `resetReasonCode` is the ESP-IDF number behind it.
+- **`brownout` means the supply dipped *or* power was lost.** The ESP32 also reports a brownout when its supply rises slowly at power-on, which a large power supply often does. A restart when you switched the power off is expected; a brownout at a time nobody touched it points at the supply or the wiring.
+- `bootTime` is UTC, and `null` until the clock is set (network time or GPS); the message is sent again once it is. `bootCount` counts restarts since the last full power loss.
 
 ### Choosing what's published
 
@@ -172,6 +187,7 @@ Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**.
 - **Battery** (spec 032, with a fuel gauge and the Battery group published): *Battery* (%), *Battery voltage*, *Charging state* (an enum: discharging, charging, charged, fault, no-battery) and *Battery time to empty* (minutes)
 - **Binary sensors**: *Raining* (moisture), *Observatory* (safety: on = unsafe) and *Dew suspected* (problem: on while [Rain needs cloud](alpaca.md#rain-needs-cloud) treats the rain sensor's rain as dew under a clear sky; read from `<base>/safety` → `dewSuspected`, so it needs the rain group and the safety topic published). *Dew suspected* is never unsafe: *Observatory* stays the verdict
 - **Switch**: *Alerts* - on while sending, off while paused (see [When to send](alerts.md#when-to-send))
+- **Diagnostic** (spec 038): *Last restart reason* (shown as "brownout or power loss" for `brownout`) and *Last boot* (a timestamp), from [`<base>/device`](#restart-reason). Their history in Home Assistant is a log of restarts
 
 Each entity is unavailable while the device is offline or its sensor isn't `ok` (*SQM-L − SQM*: while either isn't). Switching a group or a sky sensor off removes its entities. The discovery prefix defaults to `homeassistant`.
 

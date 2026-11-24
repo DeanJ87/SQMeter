@@ -51,6 +51,7 @@ namespace SQM
     {
         if (mqttClient == nullptr || !mqttClient->isConnected())
             return;
+        publishMqttDevice();
         const MQTTConfig &mqtt = getConfigCallback().mqtt;
         Readings::Groups groups;
         groups.sky = mqtt.publish.sky;
@@ -94,6 +95,28 @@ namespace SQM
             serializeJson(diag, diagPayload);
             mqttClient->publishSubtopic("diagnostics", diagPayload, false);
         }
+    }
+
+    // Spec 038: why and when the device started, retained on <base>/device after
+    // each connection, and once more when the clock first gives the boot time.
+    void WebServer::publishMqttDevice()
+    {
+        Readings::DeviceInfo info;
+        info.resetReason = static_cast<int>(esp_reset_reason());
+        info.bootCount = ::bootCount;
+        info.bootEpoch = static_cast<int64_t>(time(nullptr)) - static_cast<int64_t>(millis() / 1000);
+        const bool hasBootTime = Readings::bootTimeKnown(info.bootEpoch);
+        const bool reconnected = mqttClient->connectionCount() != mqttDeviceConnection;
+        if (!reconnected && (mqttDeviceHadBootTime || !hasBootTime))
+            return;
+        DynamicJsonDocument doc(256);
+        Readings::writeDevice(doc.to<JsonObject>(), info);
+        std::string payload;
+        serializeJson(doc, payload);
+        if (!mqttClient->publishSubtopic("device", payload, true))
+            return; // retried on the next publish tick
+        mqttDeviceConnection = mqttClient->connectionCount();
+        mqttDeviceHadBootTime = hasBootTime;
     }
 
     void WebServer::publishDiscovery(const MQTTConfig &mqtt, const Readings::Groups &groups)

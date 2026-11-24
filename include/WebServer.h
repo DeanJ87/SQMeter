@@ -293,6 +293,8 @@ namespace SQM
         uint32_t mqttSafetyConnection = 0xFFFFFFFF;
         uint32_t mqttStatePublishedAt = 0;
         uint32_t mqttStateConnection = 0xFFFFFFFF;
+        uint32_t mqttDeviceConnection = 0xFFFFFFFF; // spec 038: <base>/device sent on this connection
+        bool mqttDeviceHadBootTime = false;
         std::string discoveryKey;
         uint32_t discoveryConnection = 0xFFFFFFFF;
         Readings::DiscoveryDevice discoveryDevice;
@@ -300,6 +302,7 @@ namespace SQM
         Readings::Snapshot buildReadings() const;
         void appendDiagnostics(JsonObject root, const SensorSnapshot &snapshot) const;
         void publishMqttReadings(uint32_t now);
+        void publishMqttDevice();
         void publishDiscovery(const MQTTConfig &mqtt, const Readings::Groups &groups);
         bool mqttSafetyPublished = false;
         bool mqttLastPublishedSafe = false;
