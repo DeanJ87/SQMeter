@@ -279,6 +279,7 @@ namespace SQM
                 Safety,
                 AlertsSwitch,
                 RainSafety, // the rain sensor's state in the safety document (spec 036)
+                Device,     // <base>/device: restart reason and boot time (spec 038)
             };
 
             struct Entity
@@ -436,6 +437,17 @@ namespace SQM
                 {"switch", "alerts", "Alerts", Group::AlertsSwitch, nullptr, nullptr, nullptr, nullptr, "mdi:bell-ring"},
                 // Rain needs cloud (spec 036): rain under a clear sky. Not unsafe.
                 {"binary_sensor", "dew_suspected", "Dew suspected", Group::RainSafety, nullptr, nullptr, nullptr, "problem", nullptr},
+                // Restart reason and boot time (spec 038), diagnostic entities.
+                {"sensor",
+                 "restart_reason",
+                 "Last restart reason",
+                 Group::Device,
+                 nullptr,
+                 "value_json.resetReason",
+                 nullptr,
+                 nullptr,
+                 "mdi:restart-alert"},
+                {"sensor", "last_boot", "Last boot", Group::Device, nullptr, "value_json.bootTime", nullptr, "timestamp", nullptr},
             };
 
             bool enabled(Group group, const Groups &groups, bool safety)
@@ -454,6 +466,7 @@ namespace SQM
                     safety,                                        // Safety
                     groups.alertsSwitch,                           // AlertsSwitch
                     groups.rain && safety,                         // RainSafety
+                    true,                                          // Device (spec 038)
                 };
                 const auto index = static_cast<size_t>(group);
                 return index < sizeof(on) / sizeof(on[0]) ? on[index] : true;
@@ -485,6 +498,16 @@ namespace SQM
                 {
                     doc["state_topic"] = base + "/safety";
                     doc["value_template"] = "{{ 'ON' if value_json.dewSuspected else 'OFF' }}";
+                }
+                else if (entity.group == Group::Device)
+                {
+                    doc["state_topic"] = base + "/device";
+                    doc["entity_category"] = "diagnostic";
+                    // A slow power-up also reads as brownout, so say both.
+                    doc["value_template"] =
+                        entity.deviceClass != nullptr
+                            ? std::string("{{ ") + entity.value + " if " + entity.value + " else none }}"
+                            : std::string("{{ 'brownout or power loss' if ") + entity.value + " == 'brownout' else " + entity.value + " }}";
                 }
                 else if (entity.value == nullptr) // raining
                 {

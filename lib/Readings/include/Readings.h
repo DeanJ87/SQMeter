@@ -226,6 +226,20 @@ namespace SQM
         // `parent["battery"]` alone (also /api/status "battery", spec 032).
         JsonObject writeBattery(JsonObject parent, const Battery &battery);
 
+        // Why and when the device last started (spec 038): retained MQTT <base>/device.
+        struct DeviceInfo
+        {
+            int resetReason = 0; // esp_reset_reason_t
+            uint32_t bootCount = 0;
+            int64_t bootEpoch = 0; // Unix seconds; written as null while the clock isn't set
+        };
+        // Fixed English token for an esp_reset_reason_t code ("unknown" for any other).
+        const char *restartReasonName(int resetReason);
+        // {"resetReason", "resetReasonCode", "bootCount", "bootTime"}.
+        void writeDevice(JsonObject root, const DeviceInfo &info);
+        // A boot epoch at or after 2024-01-01 is a real clock reading.
+        bool bootTimeKnown(int64_t bootEpoch);
+
         // Home Assistant MQTT discovery.
         struct DiscoveryDevice
         {

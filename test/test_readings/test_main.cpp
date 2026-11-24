@@ -234,8 +234,9 @@ void test_discovery_messages(void)
     forEachDiscovery(
         device, groups, true, [&](const std::string &topic, const std::string &payload) { messages.emplace_back(topic, payload); });
 
-    // + the sky sensors' three (spec 030), the battery's four (spec 032), removed here, and dew suspected (spec 036)
-    TEST_ASSERT_EQUAL(25, messages.size());
+    // + the sky sensors' three (spec 030), the battery's four (spec 032), removed here, dew suspected (spec 036)
+    // and the restart reason and last boot (spec 038)
+    TEST_ASSERT_EQUAL(27, messages.size());
     bool sawSqm = false, sawWindRemoval = false, sawSafety = false, sawSwitch = false, sawDew = false;
     for (const auto &m : messages)
     {
@@ -358,6 +359,9 @@ void test_battery_nulls_while_estimating_and_without_charger();
 void test_battery_not_ok_carries_status_and_charger_only();
 void test_battery_group_off_for_mqtt();
 void test_battery_home_assistant_entities();
+void test_restart_reason_names();
+void test_device_message_with_and_without_clock();
+void test_device_discovery_entities();
 
 int main(int argc, char **argv)
 {
@@ -388,5 +392,8 @@ int main(int argc, char **argv)
     RUN_TEST(test_battery_not_ok_carries_status_and_charger_only);
     RUN_TEST(test_battery_group_off_for_mqtt);
     RUN_TEST(test_battery_home_assistant_entities);
+    RUN_TEST(test_restart_reason_names);
+    RUN_TEST(test_device_message_with_and_without_clock);
+    RUN_TEST(test_device_discovery_entities);
     return UNITY_END();
 }
