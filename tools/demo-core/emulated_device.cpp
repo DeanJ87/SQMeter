@@ -1,6 +1,7 @@
 // EmulatedDevice: settings, the sensor cycle, alerts and Alpaca (see emulated_device.h).
 
 #include "emulated_device.h"
+#include "SharedSecrets.h"
 
 using namespace DemoCore;
 
@@ -109,6 +110,14 @@ void EmulatedDevice::tickDisplay()
     in.blank = displayBlank;
     displayWake = displayBlank = false;
     displayOut = displayController.tick(cfg.display, in);
+}
+
+std::string EmulatedDevice::secretsRequest() const
+{
+    const SharedSecrets::Refusal refusal = SharedSecrets::refusal(cfg);
+    if (refusal != SharedSecrets::Refusal::None)
+        return response(SharedSecrets::refusalStatus(refusal), errorJson(SharedSecrets::refusalMessage(refusal)));
+    return response(200, SharedSecrets::toJson(cfg));
 }
 
 std::string EmulatedDevice::displayRequest(bool wake)

@@ -103,7 +103,7 @@ Unless you turn on real notifications, the demo only talks to itself: there is n
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/demo/simulator.ts web/src/main.tsx tools/demo-core/bridge.cpp tools/demo-core/sensor_feed.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: 28a2fd2c08ea4d83
+fingerprint: d712c8f2d924eaee
 -->
 <figure class="diagram" markdown>
 

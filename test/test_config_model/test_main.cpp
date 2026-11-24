@@ -450,6 +450,11 @@ void test_rain_needs_cloud_defaults_off_at_ten_percent();
 void test_rain_needs_cloud_round_trips();
 void test_rain_needs_cloud_missing_from_older_config_loads_off();
 void test_rain_needs_cloud_level_range();
+void test_sharing_secrets_defaults_off();
+void test_sharing_secrets_round_trips_unmasked();
+void test_sharing_secrets_missing_from_older_config_loads_off();
+void test_sharing_secrets_saves_without_a_device_password();
+void test_sharing_secrets_must_be_a_switch();
 
 int main()
 {
@@ -498,5 +503,10 @@ int main()
     RUN_TEST(test_rain_needs_cloud_round_trips);
     RUN_TEST(test_rain_needs_cloud_missing_from_older_config_loads_off);
     RUN_TEST(test_rain_needs_cloud_level_range);
+    RUN_TEST(test_sharing_secrets_defaults_off);
+    RUN_TEST(test_sharing_secrets_round_trips_unmasked);
+    RUN_TEST(test_sharing_secrets_missing_from_older_config_loads_off);
+    RUN_TEST(test_sharing_secrets_saves_without_a_device_password);
+    RUN_TEST(test_sharing_secrets_must_be_a_switch);
     return UNITY_END();
 }

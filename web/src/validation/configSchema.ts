@@ -306,6 +306,8 @@ export const configSchema = z
     mqtt: mqttConfigSchema,
     ota: otaConfigSchema,
     auth: authConfigSchema,
+    // Saved even without a device password: a dependency (D-53), not a rejected save.
+    sharing: z.object({ secrets: z.boolean() }).optional(),
     ntp: ntpConfigSchema,
     gps: gpsConfigSchema,
     sensor: sensorConfigSchema,

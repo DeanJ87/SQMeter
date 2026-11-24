@@ -19,6 +19,7 @@ export interface Core extends BackupCore {
   armedDocument(): string;
   setArmed(on: boolean, source: string): void;
   holdRequest(method: string, path: string, body: string, source: string): string;
+  secretsRequest(): string;
   testAlert(params: string): string;
   realTestAlert(): void;
   deliveryRequests(id: number, credentials: string): string;

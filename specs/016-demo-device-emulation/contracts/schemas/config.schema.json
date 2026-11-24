@@ -754,6 +754,18 @@
       ],
       "additionalProperties": false
     },
+    "sharing": {
+      "type": "object",
+      "properties": {
+        "secrets": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "secrets"
+      ],
+      "additionalProperties": false
+    },
     "ble": {
       "type": "object",
       "properties": {

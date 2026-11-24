@@ -32,6 +32,7 @@ export const REASONS: Record<string, { text: string; fix: string }> = {
   'language-offline': { text: t('settingsDeps.needsWifiToDownloadOr'), fix: 'network#wifi' },
   'display-missing': { text: t('settingsDeps.noDisplayDetected'), fix: 'device#display' },
   'battery-missing': { text: t('settingsDeps.noBatteryGaugeDetected'), fix: 'device#battery' },
+  'no-web-password': { text: t('settingsDeps.setADevicePassword'), fix: 'device#security' },
 };
 
 // Label for the one-click fix of each reason.
@@ -64,4 +65,5 @@ export const FIX_LABEL: Record<string, string> = {
   'language-offline': t('settingsDeps.wifiSettings'),
   'display-missing': t('settingsDeps.display'),
   'battery-missing': t('settingsDeps.battery'),
+  'no-web-password': t('settingsDeps.setPassword'),
 };

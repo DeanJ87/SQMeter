@@ -13,7 +13,7 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
 Some settings only work when something else is on - MQTT alerts need MQTT, rain alerts need the rain sensor, night-only alerts need your location. Such a setting can't be switched on while what it needs is off, and if you switch the other thing off later the setting is kept exactly as it was but marked **Inactive** with the reason and a button that takes you to the fix. The device doesn't act on it until then, and nothing has to be set up again when you switch the other thing back on. Before you save, a note lists anything the change would make inactive. Every such setting is listed in [Settings dependencies](../reference/settings-dependencies.md).
 
 === "Device"
-    Name, language, password protection, command-line uploads (ArduinoOTA), Bluetooth, the OLED display, the battery, backup and restore.
+    Name, language, password protection, password sharing, command-line uploads (ArduinoOTA), Bluetooth, the OLED display, the battery, backup and restore.
 
     ![Device settings](../assets/screenshots/settings-device.png)
 
@@ -100,6 +100,10 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "enabled": false,
     "username": "admin",
     "password": ""
+  },
+
+  "sharing": {
+    "secrets": false
   },
 
   "rain": {
@@ -399,6 +403,14 @@ When `auth.enabled` is `true`, every endpoint that changes something needs HTTP 
 
 The `auth.password` field is masked in `GET /api/config` responses. Send the mask placeholder or an empty string to preserve the stored password; send `null` to clear it.
 
+### Password sharing
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `sharing.secrets` | bool | `false` | **Share passwords** (Settings → Device → Security): lets a paired device such as RoofRoof read the MQTT password, ntfy token and Pushover keys with [`GET /api/secrets`](../api/rest.md#get-apisecrets) |
+
+It only works while password protection is on with a password (settings dependency D-53): switched on without one it is saved but inactive ("Set a device password"), and the request is refused. Anyone who has the device password can then read these four values over the network, unencrypted. Nothing else is shared: not the WiFi, device or upload password, the webhook authorization or the Bluetooth passkey. See [Security](security.md#password-sharing).
+
 ### Rain Sensor
 
 | Field | Type | Default | Description |
@@ -623,6 +635,7 @@ SQMeter is designed for a trusted LAN environment. See the [Security Guide](secu
 - By default there is no HTTP authentication; read-only and mutation endpoints are both accessible to any LAN device.
 - Enable `auth.enabled` with a strong password to protect mutation endpoints (config save, OTA, restart, WiFi change).
 - `GET /api/config` masks stored secrets (WiFi, MQTT, OTA and device passwords, the Bluetooth passkey, the Pushover keys, the ntfy token and the webhook authorization), but still exposes non-secret settings.
+- With **Share passwords** on (`sharing.secrets`, off by default), `GET /api/secrets` returns the MQTT password, ntfy token and Pushover keys to anyone with the device password.
 - HTTP traffic is plaintext, so credentials sent via config updates are visible to LAN observers. TLS is not supported on the ESP32 in this firmware.
 - Command-line ArduinoOTA is disabled unless `ota.enabled` is `true` and `ota.password` is set.
 - `rain.debugUart` only affects serial logging for RG-15 command/response traffic. It does not log WiFi, MQTT, or OTA secrets.

@@ -40,6 +40,7 @@ namespace SQM
                 {"language-offline", "Needs WiFi to download - or upload the file", "network#wifi"},
                 {"display-missing", "No display detected", "device#display"},
                 {"battery-missing", "No battery gauge detected", "device#battery"},
+                {"no-web-password", "Set a device password", "device#security"},
             };
 
             const Reason *reason(const char *code)
@@ -305,6 +306,8 @@ namespace SQM
                 c.add("ble.enabled", "D-30", cfg.ble.enabled, {bleBuild, bleRunning});
                 c.add("ble.phoneAlarm", "D-31", !cfg.ble.passkey.empty(), {bleBuild, {"D-31", "ble-off", cfg.ble.enabled}, bleRunning});
                 c.add("ota.enabled", "D-32", cfg.ota.enabled, {{"D-32", "ota-no-password", !cfg.ota.password.empty()}});
+                const bool devicePassword = cfg.auth.enabled && !cfg.auth.password.empty();
+                c.add("sharing.secrets", "D-53", cfg.sharing.secrets, {{"D-53", "no-web-password", devicePassword}});
                 c.add("wifi.mdns", "D-36", cfg.wifi.mdns, {{"D-36", "wifi-disconnected", c.f.wifiConnected}});
                 c.add("wifi.ipv6", "D-36", cfg.wifi.ipv6, {{"D-36", "wifi-disconnected", c.f.wifiConnected}});
                 // A non-English language needs its file: stored already, or

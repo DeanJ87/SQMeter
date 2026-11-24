@@ -125,6 +125,8 @@ export const demoHandlers = [
   http.get('/api/safety/history', () => json(demoDevice.safetyHistory())),
   http.get('/api/safety', () => json(demoDevice.safety())),
   http.get('/api/settings/effective', () => json(demoDevice.effective())),
+  // Password sharing (spec 037): the demo's own settings, no login.
+  http.get('/api/secrets', () => reply(demoDevice.secretsRequest())),
   // Safety holds (spec 035): set, and clear one by id.
   http.post(HOLD_ROUTE, holdReply),
   http.delete(HOLD_ROUTE, holdReply),

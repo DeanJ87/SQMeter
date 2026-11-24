@@ -50,6 +50,7 @@ export const DEP_LABELS: Record<string, string> = {
   'ble.enabled': t('settings.depLabels.bluetooth'),
   'ble.phoneAlarm': t('settings.depLabels.phoneAlarm'),
   'ota.enabled': t('settings.depLabels.commandLineUploads'),
+  'sharing.secrets': t('settings.device.sharePasswords'),
   'wifi.mdns': 'mDNS',
   language: t('language.label'),
 };

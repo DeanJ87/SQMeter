@@ -32,7 +32,33 @@ const randomPasskey = () => {
   return String(100000 + (values[0] % 900000));
 };
 
-// Password protection and command-line (ArduinoOTA) uploads.
+// Hands the MQTT password, ntfy token and Pushover keys to a paired device
+// (specs/037-share-secrets); needs the device password (D-53).
+const SharePasswords: FunctionalComponent<
+  Pick<SettingsTabProps, 'update' | 'deps' | 'fix'> & { sharing: NonNullable<SettingsTabProps['config']['sharing']> }
+> = ({ sharing, update, deps, fix }) => {
+  const entry = deps.get('sharing.secrets');
+  return (
+    <>
+      <DepToggle
+        entry={entry}
+        onFix={fix}
+        dataField="sharing.secrets"
+        label={t('settings.device.sharePasswords')}
+        checked={sharing.secrets}
+        onChange={(v) => update(['sharing', 'secrets'], v)}
+        hint={t('settings.device.sharePasswordsHint')}
+      />
+      {sharing.secrets && entry.state === 'active' && (
+        <div class="indent">
+          <Note tone="warn">{t('settings.device.sharePasswordsOn')}</Note>
+        </div>
+      )}
+    </>
+  );
+};
+
+// Password protection, password sharing and command-line (ArduinoOTA) uploads.
 const SecurityCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error, deps, fix }) => {
   const auth = config.auth ?? { enabled: false, username: 'admin', password: '' };
   return (
@@ -53,6 +79,7 @@ const SecurityCard: FunctionalComponent<SettingsTabProps> = ({ config, update, e
           </Field>
         </div>
       )}
+      {config.sharing && <SharePasswords sharing={config.sharing} update={update} deps={deps} fix={fix} />}
       <DepToggle
         entry={deps.get('ota.enabled')}
         onFix={fix}

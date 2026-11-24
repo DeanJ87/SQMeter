@@ -20,7 +20,7 @@ SQMeter is open-source (MIT) firmware that makes an ESP32 and a few I²C sensors
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/sensors/ include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/BleService.h include/OtaUpdater.h include/TimeManager.h
 blocking: false
-fingerprint: 8134492dd1458c11
+fingerprint: eb2015a6b469880e
 -->
 <figure class="diagram" markdown>
 

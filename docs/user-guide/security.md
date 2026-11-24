@@ -16,11 +16,12 @@ SQMeter assumes the local network is trusted. The main risks on a typical home o
 - **Unauthorised OTA updates** — any device on the LAN can flash new firmware or a new filesystem image via `POST /api/update`.
 - **Credential exposure** — credentials sent over HTTP are visible to passive LAN observers. SQMeter does not support TLS.
 - **Restart/reboot abuse** — `POST /api/restart` is unauthenticated by default; any LAN device can reboot the device.
+- **Shared passwords** — with [password sharing](#password-sharing) on, anything that has the device password can read the MQTT password, ntfy token and Pushover keys.
 
 SQMeter does **not** defend against:
 
 - An attacker who already has LAN access and captures HTTP traffic (no TLS).
-- Brute-force attacks; there is no rate limiting or account lockout.
+- Brute-force attacks; there is no rate limiting or account lockout. ([`/api/secrets`](#password-sharing) throttles wrong logins on that one request, which doesn't protect the password: every other protected route still accepts guesses.)
 - Remote internet attackers — do not expose the device to the public internet.
 
 Over IPv6 the device only accepts requests from link-local addresses and its own network prefixes
@@ -39,6 +40,7 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 |----------|--------|---------|
 | `/api/config` | POST / PUT | Save configuration |
 | `/api/backup`, `/api/backup/preview`, `/api/backup/apply` | POST | Back up and restore settings |
+| `/api/secrets` | GET | [Passwords for a paired device](#password-sharing); refused unless sharing is on and protection is on |
 | `/api/restart` | POST | Reboot device |
 | `/api/update` | POST | Flash firmware OTA |
 | `/api/update/fs` | POST | Flash filesystem OTA |
@@ -90,6 +92,23 @@ Once saved, the browser will prompt for credentials on the next mutation request
 ### Password masking and preservation
 
 `GET /api/config` returns `********` for the auth password (and likewise for the WiFi/MQTT/OTA passwords, Pushover keys, ntfy token, webhook auth header and Bluetooth passkey). When you POST config back, sending `********` or an empty string preserves the stored password unchanged. Send `null` only to intentionally clear the password.
+
+### Password sharing
+
+RoofRoof, or another device at the same observatory, can copy SQMeter's site settings. Most of them are in the open `GET /api/config`, but the secrets there are masked. **Share passwords** (Settings → Device → Security, `sharing.secrets`) lets that device read four of them from `GET /api/secrets`:
+
+- the MQTT password;
+- the ntfy access token;
+- the Pushover user key and application token.
+
+Nothing else is ever shared: not the WiFi password, the device password, the upload password, the webhook authorization or the Bluetooth passkey.
+
+It is off by default, and it needs password protection on with a password. Without one, the switch can't be turned on, and the request is refused (403 "Set a web password in SQMeter before sharing passwords"). With sharing off the request is refused too (403 "Password sharing is off in SQMeter"). Otherwise every request needs the username and password (401 without them). Five wrong logins in a row (requests that send a username and password that don't match; a request with none doesn't count) lock this request for a minute (429, with `Retry-After`), whoever asks; ten minutes without a wrong login, or a restart, clears the count. The lock only throttles this one request. It does **not** protect the device password: every other password-protected route still answers guesses at full speed, so a strong password is what keeps it safe. The 200, 403 and 429 answers are marked `Cache-Control: no-store` (the 401 login challenge carries nothing secret), and the device log records which address the passwords were shared with, never the values.
+
+!!! warning "What turning it on means"
+    - **Anything that knows the device password can read these four secrets**, from anywhere on your network. Use a strong device password that nothing else uses.
+    - **They travel as plain HTTP.** SQMeter has no HTTPS, so anyone who can watch the network traffic between the two devices can read them, as they can the device password itself. Keep both devices on a private network or VLAN.
+    - Turn it off again once the paired device has copied them; it only needs them again when you change one.
 
 ### Backups
 

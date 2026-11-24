@@ -40,6 +40,7 @@ namespace SQM
     {
         setupBackupRoutes();
         setupHoldRoutes();
+        setupSecretsRoutes();
         setupReadingRoutes();
         setupSettingsRoutes();
         setupNetworkRoutes();

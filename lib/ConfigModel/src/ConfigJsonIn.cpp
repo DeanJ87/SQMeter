@@ -196,6 +196,8 @@ namespace SQM
             auth.take("enabled", cfg.auth.enabled);
             auth.take("username", cfg.auth.username);
             assignSecret(auth, "password", cfg.auth.password, keepSecrets);
+
+            doc.child("sharing").take("secrets", cfg.sharing.secrets);
         }
 
         void applyTime(const Section &doc, Config &cfg)

@@ -19,7 +19,7 @@ using namespace SQM;
 // are shared with web/src/lib/__tests__/settingsDeps.test.ts, so the device
 // and the web UI's preview give the same answers. Catalogue IDs covered here:
 // D-01 D-02 D-03 D-04 D-05 D-06 D-07 D-08 D-09 D-10 D-11 D-12 D-13 D-14 D-15
-// D-16 D-17 D-18 D-19 D-23 D-24 D-25 D-26 D-28 D-29 D-30 D-31 D-32 D-35 D-36 D-37 D-38 D-39 D-40 D-41 D-42 D-52.
+// D-16 D-17 D-18 D-19 D-23 D-24 D-25 D-26 D-28 D-29 D-30 D-31 D-32 D-35 D-36 D-37 D-38 D-39 D-40 D-41 D-42 D-52 D-53.
 
 namespace
 {

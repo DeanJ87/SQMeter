@@ -145,7 +145,10 @@ void test_backup_without_passphrase_holds_no_secret()
     const std::string file = backupOf(configured());
     for (const char *secret : SECRET_VALUES)
         TEST_ASSERT_TRUE_MESSAGE(file.find(secret) == std::string::npos, secret); // SC-002
-    TEST_ASSERT_TRUE(file.find("\"secrets\"") == std::string::npos);
+    // No secrets block (the sharing.secrets setting, spec 037, is in "settings").
+    DynamicJsonDocument doc(16384);
+    TEST_ASSERT_FALSE(deserializeJson(doc, file));
+    TEST_ASSERT_TRUE(doc["secrets"].isNull());
 }
 
 void test_backup_holds_every_section_and_the_header()

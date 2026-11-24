@@ -84,6 +84,12 @@ export interface Reply {
   contentType?: string;
 }
 
+// The core's {status, body} answer as a reply.
+const coreReply = (text: string): Reply => {
+  const reply = JSON.parse(text);
+  return { status: reply.status, body: JSON.stringify(reply.body) };
+};
+
 type Listener = () => void;
 
 class DemoDevice {
@@ -245,11 +251,11 @@ class DemoDevice {
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 
+  /** GET /api/secrets (spec 037): no login in the demo. */
+  secretsRequest = (): Reply => coreReply(this.core.secretsRequest());
+
   /** POST /api/display/wake or /blank (spec 031). */
-  displayRequest(wake: boolean): Reply {
-    const reply = JSON.parse(this.core.displayRequest(wake));
-    return { status: reply.status, body: JSON.stringify(reply.body) };
-  }
+  displayRequest = (wake: boolean): Reply => coreReply(this.core.displayRequest(wake));
 
   alpaca(method: string, path: string, params: [string, string][]): Reply {
     const reply = JSON.parse(this.core.alpaca(method, path, JSON.stringify(params)));

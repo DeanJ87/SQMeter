@@ -138,6 +138,9 @@ namespace SQM
             auth["enabled"] = c.auth.enabled;
             auth["username"] = c.auth.username;
             auth["password"] = secretOut(c.auth.password, redact);
+
+            JsonObject sharing = doc.createNestedObject("sharing");
+            sharing["secrets"] = c.sharing.secrets;
         }
 
         void appendTimeAndSerial(JsonDocument &doc, const Config &c)

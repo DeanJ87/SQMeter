@@ -46,6 +46,7 @@ export const mockConfig: Config = {
     username: 'admin',
     password: '',
   },
+  sharing: { secrets: false },
   sensor: {
     readIntervalMs: 5000,
     i2cSDA: 21,

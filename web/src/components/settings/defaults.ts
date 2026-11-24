@@ -19,6 +19,10 @@ export const defaultAuthConfig: NonNullable<Config['auth']> = {
   password: '',
 };
 
+export const defaultSharingConfig: NonNullable<Config['sharing']> = {
+  secrets: false,
+};
+
 export const defaultRainConfig: NonNullable<Config['rain']> = {
   enabled: false,
   rxPin: 18,

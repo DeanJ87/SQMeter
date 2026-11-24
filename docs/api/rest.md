@@ -17,7 +17,7 @@ page covers what the reference can't: behaviour, the password and limits.
 
 - Keys are camelCase. Timestamps are Unix seconds (`timestamp`, `time.epoch`), `0` until the device's clock is set; `iso` strings are for display only. Readings use the same names and units as `/ws/sensors` and MQTT `<base>/state`.
 - **Success** is a 2xx status. Actions return `{"success": true, ...}`: 200 when done, 202 when queued.
-- **Failure** is a 4xx or 5xx status with `{"error": "message"}`: 400 bad request, 401 unauthorised, 404 not found, 409 conflict, 500 device failure, 502 a sensor or broker didn't answer.
+- **Failure** is a 4xx or 5xx status with `{"error": "message"}`: 400 bad request, 401 unauthorised, 403 not allowed, 404 not found, 409 conflict, 500 device failure, 502 a sensor or broker didn't answer.
 - Endpoints that change something need the password when [protection](../user-guide/security.md) is on.
 
 !!! note "The same in every language"
@@ -319,6 +319,32 @@ curl -X POST http://sqmeter.local/api/backup/apply -H "Content-Type: application
 ```
 
 With `restarting`, the device restarts about 2 s later. `409` with `"code": "stale"` when the token was already used or replaced, is more than 10 minutes old, or the settings changed after the preview: preview again.
+
+---
+
+### `GET /api/secrets`
+
+The MQTT password, ntfy token and Pushover keys as stored, for a paired device such as RoofRoof that copies SQMeter's site settings ([password sharing](../user-guide/security.md#password-sharing)). Always needs the username and password.
+
+```bash
+curl -u admin:<password> http://sqmeter.local/api/secrets
+```
+
+```json
+{ "mqtt": { "password": "broker-pass" }, "alerts": { "ntfy": { "token": "tk_abc123" }, "pushover": { "userKey": "uQiRzpo4DXghDmr9QzzfQu27cmVRsG", "appToken": "azGDORePK8gMaC0QOYAMyEEuzJnyUi" } } }
+```
+
+Every key is always there; a value that isn't set is `""`. Nothing else is ever included. Checked in this order:
+
+| Status | When | `error` |
+|--------|------|---------|
+| 403 | **Share passwords** is off (`sharing.secrets`) | `Password sharing is off in SQMeter` |
+| 403 | Password protection is off, or has no password | `Set a web password in SQMeter before sharing passwords` |
+| 429 | Five wrong logins in a row (Basic credentials that don't match; a request without credentials doesn't count), the last less than a minute ago. `Retry-After` gives the seconds. The lock is for the device, not per client; ten minutes without a wrong login clear the count. It throttles this request only, not guesses at the password on other routes | `Too many failed logins; try again in a minute` |
+| 401 | No username and password, or wrong ones | (the usual login challenge) |
+| 200 | Otherwise | |
+
+The 200, 403 and 429 answers carry `Cache-Control: no-store`; the 401 is the device's standard login challenge and carries nothing secret. The device logs which address the passwords went to, never the values. This is plain HTTP: anyone who can watch the network traffic can read the values, and anything with the device password can ask for them.
 
 ---
 
