@@ -67,6 +67,10 @@ namespace SQM
             // Which one: a faulted sensor's zeroed readings mustn't also
             // produce a misleading threshold reason (e.g. 100% cloud).
             bool skyLightFault = false; // authoritative sky sensor (TSL2591) -> SQM rule skipped
+            // The authoritative sky sensor is switched on in the settings. A
+            // sensor that is off isn't a fault and isn't required, unless the
+            // sky brightness limit needs its reading (no sensor, no limit).
+            bool skyLightEnabled = true;
             // Which sky sensor the light inputs come from, and whether both
             // are on (spec 030): only picks the literal reason ("light
             // sensor" with one sensor, "SQM sensor" / "SQM-L sensor" with two).

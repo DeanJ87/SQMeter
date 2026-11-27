@@ -45,6 +45,7 @@ namespace
         in.skyRole = role;
         in.skyNamed = named;
         in.requiredSensorFault = true;
+        in.skyLightEnabled = true; // switched on but not answering
         in.skyLightFault = true;
         in.irSkyFault = ir;
         return in;
@@ -88,4 +89,41 @@ void test_sky_limit_reasons_per_role()
     TEST_ASSERT_FALSE(r.isSafe);
     TEST_ASSERT_TRUE(r.reasonFlags & UnsafeSensorFault);
     TEST_ASSERT_FALSE(r.reasonFlags & UnsafeSkyBright);
+}
+
+// A sky sensor switched off in Settings -> Sensors is not required: its empty
+// reading is not a fault (docs/user-guide/alpaca.md, "Safety rules").
+void test_light_sensor_switched_off_is_not_a_fault()
+{
+    const SafetyThresholds t;
+    SafetyInputs in = skyOk();
+    in.skyLightEnabled = false;
+    in.skyLightFault = true; // Core::derive's empty copy for a sensor that is off
+    in.requiredSensorFault = true;
+
+    const SafetyResult safe = evaluateSafety(in, t);
+    TEST_ASSERT_TRUE(safe.isSafe);
+    TEST_ASSERT_EQUAL(0, safe.unsafeReasons.size());
+
+    // The sky brightness limit still needs a reading: a limit that can't be
+    // measured reports unsafe, and the zeroed SQM is not compared.
+    const SafetyResult limited = evaluateSafety(in, sqmLimit());
+    TEST_ASSERT_FALSE(limited.isSafe);
+    TEST_ASSERT_EQUAL_UINT32(UnsafeSensorFault, limited.reasonFlags);
+}
+
+// With the light sensor off, a real IR fault keeps its own reason.
+void test_light_sensor_off_leaves_the_ir_fault_alone()
+{
+    const SafetyThresholds t;
+    SafetyInputs in = skyOk();
+    in.skyLightEnabled = false;
+    in.skyLightFault = true;
+    in.irSkyFault = true;
+    in.requiredSensorFault = true;
+
+    const SafetyResult r = evaluateSafety(in, t);
+    TEST_ASSERT_FALSE(r.isSafe);
+    TEST_ASSERT_EQUAL_UINT32(UnsafeSensorFault, r.reasonFlags);
+    TEST_ASSERT_EQUAL_STRING("Sensor fault: IR sky sensor", firstReason(in, t).c_str());
 }

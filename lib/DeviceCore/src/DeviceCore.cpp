@@ -412,6 +412,10 @@ namespace SQM
             // stale limit stretches by the extra interval, plus the grace.
             if (snapshot.readIntervalMs > cfg.sensor.readIntervalMs)
                 in.staleExtraSeconds = (snapshot.readIntervalMs - cfg.sensor.readIntervalMs + SENSOR_STALE_GRACE_MS + 999U) / 1000U;
+            // A sky sensor switched off in the settings feeds an empty copy
+            // (Core::derive), so it is not a fault: only one that is on and
+            // not answering is (docs/user-guide/alpaca.md, "Safety rules").
+            in.skyLightEnabled = cfg.skyEnabled(snapshot.skySource);
             in.skyLightFault = snapshot.tsl.status != SensorStatus::Ok;
             in.irSkyFault = snapshot.mlx.status != SensorStatus::Ok;
             in.requiredSensorFault = snapshot.tsl.status != SensorStatus::Ok || snapshot.mlx.status != SensorStatus::Ok;

@@ -322,6 +322,22 @@ void test_sky_safety_uses_the_authoritative_sensor_only()
     TEST_ASSERT_FALSE(r.isSafe);
     TEST_ASSERT_TRUE(r.reasonFlags & Alpaca::UnsafeSensorFault);
 
+    // ...unless the sky brightness limit is off: a sensor switched off in the
+    // settings isn't required, so it isn't a fault (docs/user-guide/alpaca.md).
+    Config offNoLimit = off;
+    offNoLimit.alpaca.sqmMinEnabled = false;
+    s = twoSensors(now);
+    TEST_ASSERT_TRUE(skyVerdict(s, offNoLimit, now).isSafe);
+
+    // A sensor that is switched on but faulted is still required.
+    Config onNoLimit = cfg;
+    onNoLimit.alpaca.sqmMinEnabled = false;
+    s = twoSensors(now);
+    s.skySensors[SQML_I].reading.status = SensorStatus::ReadError;
+    r = skyVerdict(s, onNoLimit, now);
+    TEST_ASSERT_FALSE(r.isSafe);
+    TEST_ASSERT_EQUAL_UINT32(Alpaca::UnsafeSensorFault, r.reasonFlags);
+
     // The non-authoritative sensor faulting changes nothing.
     cfg.alpaca.sqmMinEnabled = false;
     s = twoSensors(now);
