@@ -96,12 +96,15 @@ Assistant's Sky quality entity; `sky.source` says which one it is. Both readings
 published under their own names (`skySensors` in the readings, `{sqm_wide}` / `{sqm_l}` in
 alerts, Home Assistant's SQM (wide), SQM-L (narrow) and SQM-L − SQM entities).
 
-**No fallback.** If the authoritative sensor is switched off, not found or stops answering, the
-sky reading is missing: the safety verdict is unsafe with a reason naming it ("Sensor fault:
-SQM-L sensor"), Alpaca reports no data, and the other sensor's value is **not** used in its
-place. Pick the other sensor as authoritative to use it: the dashboard's Sky Quality card names
-the missing sensor with a **Use SQM** (or **Use SQM-L**) button, and Settings shows the same note.
-The sensor that isn't authoritative never changes the safety verdict.
+**No fallback.** If the authoritative sensor stops answering or is not found, the sky reading is
+missing: the safety verdict is unsafe with a reason naming it ("Sensor fault: SQM-L sensor"),
+Alpaca reports no data, and the other sensor's value is **not** used in its place. Switched off in
+Settings, the sky reading is missing too, but the verdict doesn't require it - unless **Min sky
+darkness** is on, which needs a reading - so the device can judge the sky from the IR sensor's
+cloud cover alone ([safety rules](../user-guide/alpaca.md#safety-rules)). Pick the other sensor as
+authoritative to use it: the dashboard's Sky Quality card names the missing sensor with a
+**Use SQM** (or **Use SQM-L**) button, and Settings shows the same note. The sensor that isn't
+authoritative never changes the safety verdict.
 
 **In Settings.** **Settings → Sensors → Sky sensors** lists the SQM and the SQM-L, each with its
 state and a **Use SQM** / **Use SQM-L** switch, the **I2C-2 SDA** and **I2C-2 SCL** pins (empty

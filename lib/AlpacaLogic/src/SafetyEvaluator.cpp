@@ -163,15 +163,20 @@ namespace SQM
                     addReason(result, UnsafeSensorFault, "Sensor fault: light sensor");
             }
 
-            void checkSensorFaults(SafetyResult &result, const SafetyInputs &in)
+            // The light sensor is part of the verdict while it is switched on,
+            // and always when the sky brightness limit needs a reading: a limit
+            // you can't measure is a limit you can't trust. A sensor switched
+            // off in Settings -> Sensors is not required, so its empty reading
+            // isn't reported as a fault (docs/user-guide/alpaca.md).
+            void checkSensorFaults(SafetyResult &result, const SafetyInputs &in, const SafetyThresholds &t)
             {
                 if (!in.requiredSensorFault)
                     return;
-                if (in.skyLightFault)
+                if (in.skyLightFault && (in.skyLightEnabled || t.sqmMinEnabled))
                     addSkyFault(result, in);
                 else if (in.irSkyFault)
                     addReason(result, UnsafeSensorFault, "Sensor fault: IR sky sensor");
-                else
+                else if (!in.skyLightFault)
                     addReason(result, UnsafeSensorFault, "A required sensor is reporting a fault");
             }
 
@@ -233,7 +238,7 @@ namespace SQM
             checkWind(result, in, t);
             checkBattery(result, in, t);
             checkFreshness(result, in, t);
-            checkSensorFaults(result, in);
+            checkSensorFaults(result, in, t);
 
             // Threshold checks only apply once we have fresh data - an unsafe
             // verdict from missing/stale data above already covers that case,

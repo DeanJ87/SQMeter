@@ -457,6 +457,8 @@ Two TSL2591 sky sensors, the wide **SQM** (first I2C bus) and the narrow-lens **
 
 Settings saved before these keys existed load with the defaults above: one sensor, the SQM, exactly as before. In Settings these are **Use SQM**, **Use SQM-L**, **Authoritative reading** and **Show other reading** in **Settings → Sensors → Sky sensors**.
 
+With the authoritative sensor switched off there is no sky reading, and the [safety rules](alpaca.md#safety-rules) don't require a light sensor: the verdict keeps judging cloud cover, rain, wind, humidity, dew and the battery. The exception is **Min sky darkness**: that rule needs a reading, so it reports unsafe while the sensor is off or not answering.
+
 ### Sky Averaging
 
 | Field | Type | Default | Description |
